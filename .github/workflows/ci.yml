@@ -1,0 +1,68 @@
+# Builds and tests the project on pull requests and on pushes to main.
+name: "CI"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "ci-${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  # Baseline build on the minimum supported JDK. The project compiles with
+  # sourceCompatibility/targetCompatibility 17, so 17 is what has to keep working.
+  build:
+    name: "Build"
+    uses: OneLiteFeatherNET/workflows/.github/workflows/gradle-build-pr.yml@v2.4.0
+    with:
+      java-version: "17"
+      java-distribution: "temurin"
+      # The default 3-OS matrix is narrowed to Linux on purpose: the backend integration
+      # tests use Testcontainers, and only the ubuntu runners ship a usable Docker daemon.
+      runs-on: '["ubuntu-latest"]'
+    secrets: inherit
+
+  # Second JDK leg, combined with the JaCoCo report so the test suite is not run three times.
+  # This job is intentionally repo-specific: the shared gradle-build-pr workflow has no
+  # coverage upload, and the Codecov integration is a Reposilite-only mechanic.
+  coverage:
+    name: "Coverage"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+        with:
+          # TODO(onelitefeather): drop fetch-depth once the axion-release-plugin is removed
+          # from build.gradle.kts. Until then the build resolves its version from git tags
+          # and fails outright on a shallow checkout.
+          fetch-depth: 0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: "Set up Java"
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: "Run tests with coverage"
+        run: ./gradlew :reposilite-backend:testCoverage
+
+      - name: "Upload coverage to Codecov"
+        uses: codecov/codecov-action@v6
+        with:
+          files: "./reposilite-backend/build/reports/jacoco/reposilite-backend-report.xml"
+          fail_ci_if_error: false
+          # Tokenless uploads are rate limited. Set CODECOV_TOKEN in the repository secrets,
+          # or drop this input together with codecov.yml if coverage reporting is not wanted.
+          token: ${{ secrets.CODECOV_TOKEN }}

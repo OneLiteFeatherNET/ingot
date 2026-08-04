@@ -1,0 +1,114 @@
+# Release automation.
+#
+# Every push to main lets Release Please open or update the release pull request.
+# Merging that pull request tags the release, which in the same run publishes the
+# Maven artifacts and the container image. Pushes that do not produce a release
+# refresh the rolling nightly container image instead.
+name: "Release Please"
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      container_version:
+        description: "Version to rebuild and push the container image for, e.g. 3.5.29. Runs only the container job."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "release-please-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  # The action is called directly rather than through the shared
+  # OneLiteFeatherNET/workflows/.github/workflows/release-please.yml wrapper, because the
+  # publish jobs below have to read its release_created / version outputs.
+  release-please:
+    name: "Release Please"
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # TODO(onelitefeather): target maven repository. build.gradle.kts still declares
+  # `publishing.repositories.maven` with url https://maven.reposilite.com/{releases,snapshots}
+  # and reads the MAVEN_NAME / MAVEN_TOKEN environment variables. Point that block at the
+  # OneLiteFeather Maven repository and let it read ONELITEFEATHER_MAVEN_USERNAME /
+  # ONELITEFEATHER_MAVEN_PASSWORD, which this workflow forwards via `secrets: inherit`.
+  # Until that is done this job publishes to the upstream repository, not ours.
+  maven:
+    name: "Maven"
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    uses: OneLiteFeatherNET/workflows/.github/workflows/gradle-publish.yml@v2.4.0
+    with:
+      java-version: "21"
+      java-distribution: "temurin"
+      build-task: ":reposilite-backend:shadowJar"
+      publish-task: "publish"
+    secrets: inherit
+
+  container:
+    name: "Container image"
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: OneLiteFeatherNET/workflows/.github/workflows/docker-publish.yml@v2.4.0
+    with:
+      # TODO(onelitefeather): target container image name. This must be the Harbor
+      # project/image path for this product; the value below fails the push on purpose
+      # so nothing is silently published to the wrong place.
+      image-name: "TODO-onelitefeather-set-harbor-image-name"
+      version: ${{ needs.release-please.outputs.version }}
+      context: "."
+      extra-tags: "latest"
+    secrets: inherit
+
+  # Rolling development image, replaces the former "nightly" tag of the snapshot workflow.
+  container-nightly:
+    name: "Container image (nightly)"
+    needs: release-please
+    if: github.event_name == 'push' && needs.release-please.outputs.release_created != 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: OneLiteFeatherNET/workflows/.github/workflows/docker-publish.yml@v2.4.0
+    with:
+      # TODO(onelitefeather): target container image name, same value as the container job above.
+      image-name: "TODO-onelitefeather-set-harbor-image-name"
+      version: "nightly"
+      context: "."
+      sign: false
+    secrets: inherit
+
+  # Manual re-push of an already released image, e.g. after a registry incident.
+  container-manual:
+    name: "Container image (manual)"
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      id-token: write
+    uses: OneLiteFeatherNET/workflows/.github/workflows/docker-publish.yml@v2.4.0
+    with:
+      # TODO(onelitefeather): target container image name, same value as the container job above.
+      image-name: "TODO-onelitefeather-set-harbor-image-name"
+      version: ${{ inputs.container_version }}
+      context: "."
+    secrets: inherit
