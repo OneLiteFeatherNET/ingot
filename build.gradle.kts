@@ -28,56 +28,22 @@ plugins {
     val kotlinVersion = "2.4.0"
     kotlin("jvm") version kotlinVersion
     kotlin("kapt") version kotlinVersion
-
-    id("pl.allegro.tech.build.axion-release")
 }
 
-scmVersion {
-    checks.apply {
-        uncommittedChanges.set(false)
-    }
-
-    tag.apply {
-        prefix = ""
-    }
-
-    nextVersion.apply {
-        suffix = "next"
-    }
-
-    versionIncrementer("incrementPrerelease")
-
-    hooks.apply {
-        fileUpdate(".github/README.md") { version -> "reposilite-$version.jar" }
-        fileUpdate(".github/README.md") { version -> "dzikoysk/reposilite:$version" }
-        fileUpdate("docker-compose.yml") { version -> "image: reposilite:$version" }
-        fileUpdate("docker-compose.yml") { version -> "image: dzikoysk/reposilite:$version" }
-        fileUpdate("reposilite-backend/src/main/kotlin/com/reposilite/Reposilite.kt") { version -> "const val VERSION = \"$version\"" }
-        fileUpdate("reposilite-frontend/package.json") { version -> "\"version\": \"$version\"" }
-        fileUpdate("reposilite-frontend/package-lock.json") { version -> "\"version\": \"$version\"" }
-        fileUpdate("reposilite-site/data/guides/developers/endpoints.md") { version -> "\"version\": \"$version\"" }
-        fileUpdate("reposilite-site/data/guides/developers/plugin-api.md") { version -> "\"com.reposilite:reposilite:$version\"" }
-        fileUpdate("reposilite-site/data/guides/installation/docker.md") { version -> version }
-        commit { version -> "Release $version" }
-    }
-
-    scmVersion {
-        checks.snapshotDependencies.set(false)
-    }
-}
+// The version is owned by Release Please, which rewrites the line below on every
+// release. It replaced the axion-release-plugin, which derived the version from git
+// tags: both wanted to own the same value, and the tag based approach also broke any
+// build without full history, such as a shallow CI checkout or a source tarball.
+//
+// Do not edit this by hand. The marker comment is what Release Please looks for.
+val projectVersion = "3.5.28" // x-release-please-version
 
 allprojects {
     apply(plugin = "java-library")
     apply(plugin = "application")
 
     group = "com.reposilite"
-    version = rootProject.scmVersion.version
-
-    // Give a friendly error when building project and git tags aren't available
-    // ~ https://github.com/dzikoysk/reposilite/issues/1725
-    if (version == "0.1.0-SNAPSHOT") {
-        throw IllegalStateException("Version is not set, please run 'git fetch --tags' command to fetch tags from main repository.")
-    }
+    version = projectVersion
 
     repositories {
         mavenCentral()
@@ -143,11 +109,15 @@ subprojects {
     publishing {
         repositories {
             maven {
-                name = "panda-repository"
-                url = uri("https://maven.reposilite.com/${if (version.toString().endsWith("-SNAPSHOT")) "snapshots" else "releases"}")
+                name = "OneLiteFeatherRepository"
+                url = if (version.toString().contains("SNAPSHOT")) {
+                    uri("https://repo.onelitefeather.dev/onelitefeather-snapshots")
+                } else {
+                    uri("https://repo.onelitefeather.dev/onelitefeather-releases")
+                }
                 credentials {
-                    username = System.getenv("MAVEN_NAME") ?: property("mavenUser").toString()
-                    password = System.getenv("MAVEN_TOKEN") ?: property("mavenPassword").toString()
+                    username = System.getenv("ONELITEFEATHER_MAVEN_USERNAME") ?: providers.gradleProperty("mavenUser").orNull
+                    password = System.getenv("ONELITEFEATHER_MAVEN_PASSWORD") ?: providers.gradleProperty("mavenPassword").orNull
                 }
             }
         }

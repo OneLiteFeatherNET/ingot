@@ -22,6 +22,5 @@ repositories {
     gradlePluginPortal()
 }
 
-dependencies {
-    implementation("pl.allegro.tech.build:axion-release-plugin:1.21.2")
-}
+// No plugin dependencies. The axion-release-plugin was removed together with the git
+// tag based versioning; Release Please owns the version now.

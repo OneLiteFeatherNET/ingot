@@ -38,9 +38,8 @@ jobs:
       - name: "Checkout repository"
         uses: actions/checkout@v6
         with:
-          # TODO(onelitefeather): drop fetch-depth once the axion-release-plugin is removed
-          # from build.gradle.kts. Until then the build resolves its version from git tags
-          # and fails outright on a shallow checkout.
+          # Full history so Codecov can attribute coverage to the right commits. The build
+          # itself no longer needs tags: the version is a literal in build.gradle.kts.
           fetch-depth: 0
 
       - name: "Validate Gradle wrapper"

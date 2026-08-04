@@ -45,12 +45,9 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # TODO(onelitefeather): target maven repository. build.gradle.kts still declares
-  # `publishing.repositories.maven` with url https://maven.reposilite.com/{releases,snapshots}
-  # and reads the MAVEN_NAME / MAVEN_TOKEN environment variables. Point that block at the
-  # OneLiteFeather Maven repository and let it read ONELITEFEATHER_MAVEN_USERNAME /
-  # ONELITEFEATHER_MAVEN_PASSWORD, which this workflow forwards via `secrets: inherit`.
-  # Until that is done this job publishes to the upstream repository, not ours.
+  # Publishes to repo.onelitefeather.dev. The credentials come from
+  # ONELITEFEATHER_MAVEN_USERNAME / ONELITEFEATHER_MAVEN_PASSWORD, forwarded by
+  # `secrets: inherit` and read in build.gradle.kts.
   maven:
     name: "Maven"
     needs: release-please
@@ -79,9 +76,6 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          # The build inside the Dockerfile runs the axion-release-plugin, which needs tags.
-          fetch-depth: 0
 
       - name: "Determine version and platforms"
         id: params
