@@ -11,19 +11,11 @@ RUN --mount=type=cache,target=/root/.gradle <<EOF
   ./gradlew :reposilite-backend:shadowJar --no-daemon --stacktrace
 EOF
 
-# Build-time metadata stage
-ARG BUILD_DATE
-ARG VCS_REF
-ARG VERSION
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.name="Reposilite" \
-      org.label-schema.description="Lightweight repository management software dedicated for the Maven artifacts" \
-      org.label-schema.url="https://reposilite.com" \
-      org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url="https://github.com/dzikoysk/reposilite" \
-      org.label-schema.vendor="dzikoysk" \
-      org.label-schema.version=$VERSION \
-      org.label-schema.schema-version="1.0"
+# Image labels are not declared here on purpose. The block that used to sit at this
+# point was attached to the build stage, so it never reached the published image, and
+# it still named the upstream project as vendor. The release workflow now applies
+# OCI labels (org.opencontainers.image.*) at push time, which keeps version and
+# revision in one place instead of duplicating them into build arguments.
 
 # Run stage
 FROM eclipse-temurin:21-jre-noble AS run

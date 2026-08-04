@@ -63,52 +63,93 @@ jobs:
       publish-task: "publish"
     secrets: inherit
 
+  # Container images go to the GitHub Container Registry. The OneLiteFeather
+  # docker-publish reusable targets Harbor and exposes no platforms input, so this is a
+  # repository specific job. Publishing to ghcr.io needs no registry secret: the built in
+  # GITHUB_TOKEN authenticates via the packages: write permission below.
   container:
     name: "Container image"
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    if: >-
+      always() && !cancelled()
+      && (github.event_name == 'workflow_dispatch' || needs.release-please.result == 'success')
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
-    uses: OneLiteFeatherNET/workflows/.github/workflows/docker-publish.yml@v2.4.0
-    with:
-      # TODO(onelitefeather): target container image name. This must be the Harbor
-      # project/image path for this product; the value below fails the push on purpose
-      # so nothing is silently published to the wrong place.
-      image-name: "TODO-onelitefeather-set-harbor-image-name"
-      version: ${{ needs.release-please.outputs.version }}
-      context: "."
-      extra-tags: "latest"
-    secrets: inherit
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build inside the Dockerfile runs the axion-release-plugin, which needs tags.
+          fetch-depth: 0
 
-  # Rolling development image, replaces the former "nightly" tag of the snapshot workflow.
-  container-nightly:
-    name: "Container image (nightly)"
-    needs: release-please
-    if: github.event_name == 'push' && needs.release-please.outputs.release_created != 'true'
-    permissions:
-      contents: read
-      id-token: write
-    uses: OneLiteFeatherNET/workflows/.github/workflows/docker-publish.yml@v2.4.0
-    with:
-      # TODO(onelitefeather): target container image name, same value as the container job above.
-      image-name: "TODO-onelitefeather-set-harbor-image-name"
-      version: "nightly"
-      context: "."
-      sign: false
-    secrets: inherit
+      - name: "Determine version and platforms"
+        id: params
+        env:
+          EVENT: ${{ github.event_name }}
+          DISPATCH_VERSION: ${{ inputs.container_version }}
+          RELEASE_CREATED: ${{ needs.release-please.outputs.release_created }}
+          RELEASE_VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            version="$DISPATCH_VERSION"; released=true
+          elif [ "$RELEASE_CREATED" = "true" ]; then
+            version="$RELEASE_VERSION"; released=true
+          else
+            version="nightly"; released=false
+          fi
+          # The jar is architecture independent, but the Dockerfile builds it inside the
+          # image, so a second architecture means running the whole Gradle build again
+          # under QEMU emulation. That cost is worth paying for a release, not for every
+          # push to main.
+          if [ "$released" = "true" ]; then
+            platforms="linux/amd64,linux/arm64"
+          else
+            platforms="linux/amd64"
+          fi
+          {
+            echo "version=$version"
+            echo "released=$released"
+            echo "platforms=$platforms"
+          } >> "$GITHUB_OUTPUT"
 
-  # Manual re-push of an already released image, e.g. after a registry incident.
-  container-manual:
-    name: "Container image (manual)"
-    if: github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: read
-      id-token: write
-    uses: OneLiteFeatherNET/workflows/.github/workflows/docker-publish.yml@v2.4.0
-    with:
-      # TODO(onelitefeather): target container image name, same value as the container job above.
-      image-name: "TODO-onelitefeather-set-harbor-image-name"
-      version: ${{ inputs.container_version }}
-      context: "."
-    secrets: inherit
+      - uses: docker/setup-qemu-action@v3
+        if: steps.params.outputs.released == 'true'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Compute tags and labels"
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # ghcr.io requires a lowercase path; the organisation name is mixed case.
+          images: ghcr.io/onelitefeathernet/ingot
+          # Floating major and major.minor tags are only meaningful for real releases.
+          tags: |
+            type=raw,value=${{ steps.params.outputs.version }}
+            type=raw,value=latest,enable=${{ steps.params.outputs.released == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
+            type=semver,pattern={{major}},value=${{ steps.params.outputs.version }},enable=${{ steps.params.outputs.released == 'true' }}
+          labels: |
+            org.opencontainers.image.title=Ingot
+            org.opencontainers.image.description=Repository management software for Maven artifacts in the JVM ecosystem
+            org.opencontainers.image.vendor=OneLiteFeather
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.params.outputs.version }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ steps.params.outputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
