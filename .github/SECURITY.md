@@ -18,7 +18,7 @@ Once the first Ingot release is published, this table will list the release line
 Do not report security vulnerabilities through public issues, pull requests or community chat.
 
 If you have spotted a security vulnerability, or something that could be treated as a security issue, use the
-[Security Advisory](https://github.com/OneLiteFeatherNET/reposilite/security/advisories/new) form on this
+[Security Advisory](https://github.com/OneLiteFeatherNET/ingot/security/advisories/new) form on this
 repository. Alternatively you can reach the maintainers privately at:
 
 TODO(onelitefeather): security contact address

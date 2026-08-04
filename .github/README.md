@@ -2,7 +2,7 @@
  <h1>Ingot</h1>
  <p><strong>A self-hosted Maven repository manager for the JVM ecosystem.</strong></p>
  <p>
-  <a href="https://github.com/OneLiteFeatherNET/reposilite/blob/main/LICENSE">
+  <a href="https://github.com/OneLiteFeatherNET/ingot/blob/main/LICENSE">
    <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" />
   </a>
  </p>
@@ -32,7 +32,7 @@ affiliated with, endorsed by, or sponsored by** the upstream Reposilite project 
 authors. "Reposilite" is the name of the upstream project and is not used as part of the
 Ingot product name.
 
-See [NOTICE](https://github.com/OneLiteFeatherNET/reposilite/blob/main/NOTICE) for the
+See [NOTICE](https://github.com/OneLiteFeatherNET/ingot/blob/main/NOTICE) for the
 full attribution and the statement of changes required by section 4(b) of the license.
 
 > **Status:** the rebrand is in progress. The source tree, the build outputs and the
@@ -103,7 +103,7 @@ Ingot needs Java 17 or newer. The bundled Docker Compose example runs the server
 ### From source
 
 ```bash
-git clone https://github.com/OneLiteFeatherNET/reposilite.git
+git clone https://github.com/OneLiteFeatherNET/ingot.git
 cd reposilite
 ./gradlew shadowJar
 
@@ -149,7 +149,7 @@ Add the matching token as a `<server>` entry in your `settings.xml`, then run
      repository contains the upstream guides and is not published by this project. -->
 
 Configuration, deployment and authentication guides live as Markdown in the
-[`reposilite-site/data/guides`](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-site/data/guides)
+[`reposilite-site/data/guides`](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-site/data/guides)
 directory of this repository. They still describe the upstream project and are being
 reworked for Ingot.
 
@@ -182,7 +182,7 @@ WindiCSS and JsonForms.
 
 ## License
 
-Ingot is licensed under the [Apache License 2.0](https://github.com/OneLiteFeatherNET/reposilite/blob/main/LICENSE),
+Ingot is licensed under the [Apache License 2.0](https://github.com/OneLiteFeatherNET/ingot/blob/main/LICENSE),
 the same license as the upstream Reposilite project it is derived from. Attribution and
 the statement of changes are recorded in
-[NOTICE](https://github.com/OneLiteFeatherNET/reposilite/blob/main/NOTICE).
+[NOTICE](https://github.com/OneLiteFeatherNET/ingot/blob/main/NOTICE).

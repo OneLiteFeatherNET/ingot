@@ -2,7 +2,7 @@
 
 This document describes how to contribute to Ingot, the Maven artifact repository maintained by OneLiteFeather.
 When contributing to this repository, please first discuss the change you wish to make via
-[issue](https://github.com/OneLiteFeatherNET/reposilite/issues), as every pull request should address an issue.
+[issue](https://github.com/OneLiteFeatherNET/ingot/issues), as every pull request should address an issue.
 
 Ingot is a fork of [Reposilite](https://github.com/dzikoysk/reposilite) by dzikoysk and is licensed under the
 Apache License 2.0. See the `NOTICE` file in the repository root for attribution details.
@@ -57,10 +57,10 @@ Closes #123
 The project has several modules that use different tech stacks.
 Visit the README.md of each module to see details about how to run it and work with it:
 
-* [Backend](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-backend) - sources of the main application
-  * [Plugins](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-plugins) - plugin system related subprojects
-* [Frontend](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-frontend) - sources of the default frontend in Vue
-* [Site](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-site) - sources of the documentation website
+* [Backend](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-backend) - sources of the main application
+  * [Plugins](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-plugins) - plugin system related subprojects
+* [Frontend](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-frontend) - sources of the default frontend in Vue
+* [Site](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-site) - sources of the documentation website
 
 ## Code of Conduct
 

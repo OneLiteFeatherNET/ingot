@@ -21,8 +21,15 @@ application {
     mainClass.set("example.plugin.TestPluginKt")
 }
 
+repositories {
+    maven("https://repo.onelitefeather.dev/onelitefeather-releases")
+}
+
 dependencies {
-    compileOnly("com.reposilite:reposilite:3.0.2")
+    // Ingot publishes under its own group id. The packages are still com.reposilite.*,
+    // so a plugin written against Reposilite compiles against Ingot unchanged: only this
+    // line has to change.
+    compileOnly("net.onelitefeather.ingot:reposilite:3.5.28")
 }
 
 tasks.withType<ShadowJar> {

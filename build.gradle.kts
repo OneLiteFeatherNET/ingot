@@ -42,7 +42,11 @@ allprojects {
     apply(plugin = "java-library")
     apply(plugin = "application")
 
-    group = "com.reposilite"
+    // Only the Maven coordinate moves to our namespace. The Kotlin and Java packages stay
+    // com.reposilite.* on purpose: existing Reposilite plugins keep compiling against
+    // Ingot, and migrating is a changed dependency line rather than a port. Code that gets
+    // rewritten moves into net.onelitefeather.ingot.* at that point, not before.
+    group = "net.onelitefeather.ingot"
     version = projectVersion
 
     repositories {

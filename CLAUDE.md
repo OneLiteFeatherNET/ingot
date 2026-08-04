@@ -1,8 +1,26 @@
 # Ingot (Fork von Reposilite)
 
 Dieses Repository ist ein Fork von `dzikoysk/reposilite` und wird zum eigenständigen
-FOSS-Produkt **Ingot** umgebaut. Ziel-Namespace: `net.onelitefeather.ingot`.
-Der Code trägt aktuell noch durchgängig den alten Namen.
+FOSS-Produkt **Ingot** umgebaut.
+
+## Namensräume: bewusst zweigeteilt
+
+- **Maven-groupId:** `net.onelitefeather.ingot`
+- **Java-/Kotlin-Packages:** bleiben `com.reposilite.*`
+
+Das ist Absicht und **kein Aufräum-Rückstand**. Bestehende Reposilite-Plugins
+kompilieren dadurch unverändert gegen Ingot, und eine Migration kostet nur eine
+geänderte Abhängigkeitszeile statt einer Portierung. Erst wenn Teile tatsächlich neu
+geschrieben werden, wandern genau diese nach `net.onelitefeather.ingot.*`.
+
+Führe also **keinen** pauschalen Namespace-Umzug durch. Falls er später doch kommt:
+
+- `com.reposilite.journalist` ist eine **fremde Bibliothek** von dzikoysk (Import in 59
+  Dateien, zugleich Gradle-Koordinate) und darf nie mitgezogen werden.
+- `org.panda_lang.*` im `migration-plugin` liest Reposilite-2.x-Datenstrukturen und muss
+  zu den Altdaten passen.
+- `reposilite-test/workspace/` enthält echte Maven-Artefakte als Testdaten, deren Pfade
+  Teil der Testlogik sind.
 
 ## Commit-Konventionen
 
@@ -53,7 +71,7 @@ Kommunikation mit dem Team in der Sitzung: **Deutsch**.
 
 ## Projektkontext
 
-- Upstream-Remote `upstream` zeigt auf `dzikoysk/reposilite`, `origin` auf `OneLiteFeatherNET/reposilite`.
+- Upstream-Remote `upstream` zeigt auf `dzikoysk/reposilite`, `origin` auf `OneLiteFeatherNET/ingot`.
 - Apache-2.0. Copyright-Header von dzikoysk in 265 Quelldateien müssen erhalten bleiben,
   eigene Zeile wird ergänzt statt ersetzt.
 - Offener Blocker: ApexCharts im Frontend ist kommerziell lizenziert und muss vor einem
