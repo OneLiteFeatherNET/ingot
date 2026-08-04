@@ -44,7 +44,7 @@ jobs:
           fetch-depth: 0
 
       - name: "Validate Gradle wrapper"
-        uses: gradle/actions/wrapper-validation@v6
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Set up Java"
         uses: actions/setup-java@v5
@@ -53,13 +53,13 @@ jobs:
           distribution: "temurin"
 
       - name: "Set up Gradle"
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Run tests with coverage"
         run: ./gradlew :reposilite-backend:testCoverage
 
       - name: "Upload coverage to Codecov"
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
         with:
           files: "./reposilite-backend/build/reports/jacoco/reposilite-backend-report.xml"
           fail_ci_if_error: false
