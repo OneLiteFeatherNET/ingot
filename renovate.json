@@ -1,0 +1,42 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>OneLiteFeatherNET/renovate:default(OneLiteFeatherNET/ingot-maintainers)"
+  ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "reposilite-test/**"
+  ],
+  "separateMultipleMajor": true,
+  "packageRules": [
+    {
+      "description": "Major updates are never automerged and are labelled for manual review. Renovate has no license detection, so the license check has to be done by a human on the PR.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "addLabels": ["major-update", "license-review"],
+      "prBodyNotes": [
+        "**Major update, manual review required.**",
+        "- [ ] Read the upstream changelog and release notes for breaking changes.",
+        "- [ ] Confirm the dependency license did not change. A package can switch from a free to a commercial license under the same package id, and Renovate does not detect that."
+      ]
+    },
+    {
+      "description": "Let new npm releases settle before proposing them. Packaging and license mistakes are usually reported within a few days.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major", "minor"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Group all GitHub Actions and reusable workflow pin updates into a single pull request.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "groupSlug": "github-actions"
+    },
+    {
+      "description": "docker-compose.yml pins this project's own published image. Its version is owned by the release process, not by Renovate.",
+      "matchManagers": ["docker-compose"],
+      "matchPackageNames": ["/(^|/)reposilite$/", "/(^|/)ingot$/"],
+      "enabled": false
+    }
+  ]
+}
