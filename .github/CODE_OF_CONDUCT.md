@@ -1,4 +1,8 @@
-This code of conduct outlines our expectations for all those who participate in our open source projects and communities (community programs), as well as the consequences for unacceptable behaviour. 
+# Code of Conduct
+
+This code of conduct outlines our expectations for all those who participate in the Ingot project and in the
+OneLiteFeather open source projects and communities (community programs), as well as the consequences for
+unacceptable behaviour.
 We invite all those who participate to help us create safe and positive experiences for everyone.
 Communities mirror the societies in which they exist and positive action is essential to counteract the many forms of inequality and abuses of power that exist in society. 
 
@@ -23,3 +27,18 @@ The following behaviours are expected and requested of all community members:
 Please take into account that online communities bring together people from many different cultures and backgrounds. 
 It's important to understand that sometimes the combination of cultural differences and online interaction can lead to misunderstandings. 
 That is why having empathy is very important.
+
+#### Reporting
+
+If you experience or witness behaviour that violates this code of conduct, report it to the OneLiteFeather
+maintainers at:
+
+TODO(onelitefeather): code of conduct contact address
+
+Reports are handled confidentially. Please do not use public issues to report a code of conduct violation.
+
+#### Scope
+
+This code of conduct applies within all project spaces, including the issue tracker, pull requests, discussions
+and any community channel operated by OneLiteFeather, and also applies when an individual is representing the
+project in public spaces.

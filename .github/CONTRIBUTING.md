@@ -1,41 +1,67 @@
 # Contributing
 
-This document describes how to contribute to the core [Reposilite](https://reposilite.org) project.
-When contributing to this repository, 
-please first discuss the change you wish to make via [issue](https://github.com/dzikoysk/reposilite/issues) as every pull request should address an issue.
+This document describes how to contribute to Ingot, the Maven artifact repository maintained by OneLiteFeather.
+When contributing to this repository, please first discuss the change you wish to make via
+[issue](https://github.com/OneLiteFeatherNET/reposilite/issues), as every pull request should address an issue.
+
+Ingot is a fork of [Reposilite](https://github.com/dzikoysk/reposilite) by dzikoysk and is licensed under the
+Apache License 2.0. See the `NOTICE` file in the repository root for attribution details.
 
 ## Creating an issue
 
-Creating an issue to ask a question is fine. You can also join our Discord server for a little more fluent conversation:
+Creating an issue to ask a question is fine. You can also reach the maintainers through our community channel:
 
-<ul>
- <li>
-  <a href="https://discord.gg/qGRqmGjUFX">
-   <img alt="Discord Online" src="https://img.shields.io/discord/204728244434501632.svg" />
-  </a>
-  <a href="https://discord.gg/qGRqmGjUFX">
-   <img alt="Discord" src="https://img.shields.io/badge/discord-reposilite-738bd7.svg?style=square" />
-  </a>
- </li>
-</ul>
+TODO(onelitefeather): community link
 
-Remember to include enough information if you're reporting a bug to simplify reproduction phase.
+Remember to include enough information if you're reporting a bug, so the problem can be reproduced.
 
 ## Creating a PR
-Every pull request will be considered :)
+
+Every pull request will be considered.
+
+TODO(onelitefeather): decide on the contribution agreement model (no CLA, DCO sign-off, or a
+CLA) and document it here. This has to be settled before the first outside pull request is
+merged, because changing it afterwards would require re-licensing contributions that were
+already accepted under the previous terms.
 
 ### How to increase the chance of having your PR merged
 
-1. If related issue does not exist, create a new one to start a discussion about it
-2. Try to write some tests for your change. There are a lot of examples in the `test` dir.
-3. Format your code, so it looks somewhat like the rest of the source, don't make any extra changes like refactor that is not related to the subject of your PR.
+1. If a related issue does not exist, create a new one to start a discussion about it.
+2. Try to write tests for your change. There are a lot of examples in the `test` directories.
+3. Format your code so it looks like the rest of the sources, and avoid unrelated changes such as
+   drive-by refactors that are not part of the subject of your PR.
+4. Keep the Apache License headers of existing files intact. If you substantially change a file that
+   carries an upstream copyright header, add your own line instead of replacing the existing one.
+
+### Commit messages
+
+Commit messages, pull request descriptions and issue texts follow the conventions documented in
+[`CLAUDE.md`](../CLAUDE.md) in the repository root: [Conventional Commits](https://www.conventionalcommits.org/),
+written in English, in the imperative mood.
+
+Allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `build`, `ci`, `chore`, `perf`.
+
+Example:
+
+```
+feat(backend): add checksum validation for uploaded artifacts
+
+Explains why the change was needed, not what the diff already shows.
+Wrap the body at 72 characters.
+
+Closes #123
+```
 
 ## Running
 
-Reposilite has 3 modules that use different tech stack. 
-Visit README.md of each module to see details about how to run specific module and work with it:
+The project has several modules that use different tech stacks.
+Visit the README.md of each module to see details about how to run it and work with it:
 
-* [Reposilite :: Backend](https://github.com/dzikoysk/reposilite/tree/main/reposilite-backend) - Sources of main Reposilite application
-  * [Reposilite :: Plugins](https://github.com/dzikoysk/reposilite/tree/main/reposilite-plugins) - Plugin system related subprojects
-* [Reposilite :: Frontend](https://github.com/dzikoysk/reposilite/tree/main/reposilite-frontend) - Sources of default Reposilite frontend in Vue
-* [Reposilite :: Site](https://github.com/dzikoysk/reposilite/tree/main/reposilite-site) - Sources of [reposilite.com](https://reposilite.com/) website
+* [Backend](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-backend) - sources of the main application
+  * [Plugins](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-plugins) - plugin system related subprojects
+* [Frontend](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-frontend) - sources of the default frontend in Vue
+* [Site](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-site) - sources of the documentation website
+
+## Code of Conduct
+
+By participating in this project you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
