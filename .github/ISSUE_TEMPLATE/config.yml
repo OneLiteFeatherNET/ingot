@@ -1,5 +1,23 @@
+# Contact links shown above the issue form.
+#
+# The upstream Reposilite Discord and documentation site are not the right place to
+# ask for help with Ingot, so they were removed. Re-enable the entries below once the
+# OneLiteFeather equivalents exist and replace the placeholder URLs.
+#
+# TODO(onelitefeather): community link (chat/Discord/Matrix for Ingot)
+# TODO(onelitefeather): documentation link (Ingot guide/handbook)
+# TODO(onelitefeather): decide whether GitHub Discussions is enabled for this repository
 blank_issues_enabled: true
 contact_links:
-- name: 💬 Discord server
-  url: https://discord.gg/qGRqmGjUFX
-  about: Chat with devs and community
+  - name: Security vulnerability
+    url: https://github.com/OneLiteFeatherNET/reposilite/security/policy
+    about: Please report security issues privately instead of opening a public issue.
+# - name: Community chat
+#   url: TODO(onelitefeather) community link
+#   about: Ask questions and talk to other Ingot users.
+# - name: Documentation
+#   url: TODO(onelitefeather) documentation link
+#   about: Installation, configuration and deployment guides.
+# - name: Upstream Reposilite
+#   url: https://github.com/dzikoysk/reposilite/issues
+#   about: Ingot is a fork of Reposilite. Report upstream bugs there.

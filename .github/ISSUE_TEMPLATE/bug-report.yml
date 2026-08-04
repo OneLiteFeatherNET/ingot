@@ -1,27 +1,108 @@
 name: Bug Report
-description: Report a bug or a problem you've found in Reposilite
-labels: ["bug"]
+description: Report a bug or a problem you have found in Ingot
+labels: ["bug", "triage"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report.
+
+        Ingot is a fork of [Reposilite](https://github.com/dzikoysk/reposilite).
+        If you can reproduce the problem on an unmodified upstream Reposilite build as
+        well, please consider reporting it there too, so the fix benefits both projects.
+
   - type: textarea
     id: what-happened
     attributes:
       label: What happened?
-      description: Also tell us about the full context and your environment to simplify process of bug reproduction
+      description: Describe the problem, what you expected instead, and the steps to reproduce it.
+      placeholder: |
+        1. Deploy an artifact with `mvn deploy` to the `releases` repository
+        2. Open the file browser
+        3. The artifact is not listed
     validations:
       required: true
-  - type: dropdown
+
+  - type: input
     id: version
     attributes:
-      label: Reposilite version
-      description: Remember that Reposilite 2.x may receive only major security updates, because the currently developed version is 3.x
-      options:
-        - 3.x
-        - 2.x
+      label: Ingot version
+      description: >-
+        The exact version you are running. You can find it in the startup log or in the
+        dashboard. If you built from source, paste the commit hash instead.
+      placeholder: "e.g. 1.0.0 or 161d9ae8"
     validations:
       required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      description: Where does the problem show up? Pick the closest match.
+      options:
+        - Backend (server, Maven endpoints, storage, authentication)
+        - Frontend (dashboard, file browser, settings editor, web console)
+        - Plugin - checksum
+        - Plugin - groovy
+        - Plugin - migration
+        - Plugin - prometheus
+        - Plugin - swagger
+        - Docker image / deployment
+        - Build (Gradle)
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How do you run Ingot?
+      options:
+        - Standalone JAR
+        - Docker
+        - Docker Compose
+        - Kubernetes
+        - Built from source
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >-
+        Java version (`java -version`), operating system, storage backend
+        (filesystem or S3) and database (SQLite, MariaDB, MySQL, PostgreSQL or H2).
+        Ingot targets Java 17 and newer.
+      placeholder: |
+        Java: Temurin 21.0.5
+        OS: Ubuntu 24.04
+        Storage: S3 (MinIO)
+        Database: PostgreSQL 16
+    validations:
+      required: true
+
   - type: textarea
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      description: >-
+        Copy and paste any relevant log output. This is automatically formatted into
+        code, so no backticks are needed. Please remove access tokens, secrets and
+        other credentials before posting.
       render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Relevant configuration
+      description: >-
+        The relevant part of your configuration file or of the settings shown in the
+        dashboard. Please remove access tokens, secrets and other credentials.
+      render: yaml
+    validations:
+      required: false

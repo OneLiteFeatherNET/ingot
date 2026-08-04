@@ -1,11 +1,67 @@
 name: Feature Request
-description: Request a new feature or an enhancement to the existing one
-labels: ["triage"]
+description: Request a new feature or an enhancement to an existing one
+labels: ["enhancement", "triage"]
 body:
-  - type: textarea
-    id: request-details
+  - type: markdown
     attributes:
-      label: Request details
-      description: Try to precisely explain your request and how it may improve Reposilite
+      value: |
+        Please search the existing issues first. If a similar request already exists,
+        add your use case there instead of opening a new one.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: >-
+        What are you trying to do, and what stops you today? Describe the concrete
+        situation rather than the solution you already have in mind.
+      placeholder: >-
+        Our CI publishes to the snapshots repository, and we have no way to ...
     validations:
       required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: >-
+        How should Ingot behave? Include configuration, API or UI sketches if you have them.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      description: Where would this change live? Pick the closest match.
+      options:
+        - Backend (server, Maven endpoints, storage, authentication)
+        - Frontend (dashboard, file browser, settings editor, web console)
+        - Plugin - checksum
+        - Plugin - groovy
+        - Plugin - migration
+        - Plugin - prometheus
+        - Plugin - swagger
+        - New plugin
+        - Docker image / deployment
+        - Build (Gradle)
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you tried, or how other repository managers solve this.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to open a pull request for this
+          required: false

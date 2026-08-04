@@ -1,197 +1,188 @@
-﻿<div align="center">
- <h1>Reposilite</h1>
- <div>
-  <a href="https://github.com/dzikoysk/reposilite/actions/workflows/gradle.yml">
-   <img alt="Reposilite CI" src="https://github.com/dzikoysk/reposilite/actions/workflows/gradle.yml/badge.svg" />
+<div align="center">
+ <h1>Ingot</h1>
+ <p><strong>A self-hosted Maven repository manager for the JVM ecosystem.</strong></p>
+ <p>
+  <a href="https://github.com/OneLiteFeatherNET/reposilite/blob/main/LICENSE">
+   <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" />
   </a>
-  <a href="https://github.com/dzikoysk/reposilite/releases">
-   <img src="https://maven.reposilite.com/api/badge/latest/releases/com/reposilite/reposilite?color=40c14a&name=Reposilite&prefix=v" />
-  </a>
-  <a href="https://codecov.io/gh/dzikoysk/reposilite">
-   <img alt="CodeCov" src="https://codecov.io/gh/dzikoysk/reposilite/branch/main/graph/badge.svg?token=9flNHTSJpp" />
-  </a>
-  <a href="https://hub.docker.com/r/dzikoysk/reposilite">
-   <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/dzikoysk/reposilite.svg?label=pulls&logo=docker" />
-  </a>
-  <!--
-  <a href="(https://www.codefactor.io/repository/github/dzikoysk/reposilite/overview/main">
-   <img alt="CodeFactor" src="https://www.codefactor.io/repository/github/dzikoysk/reposilite/badge/main" />
-  </a>
-  -->
-  <a href="https://discord.gg/qGRqmGjUFX">
-   <img alt="Discord" src="https://img.shields.io/badge/discord-reposilite-738bd7.svg?style=square" />
-  </a>
-  <!--
-  <a href="https://discord.gg/qGRqmGjUFX">
-   <img alt="Discord Online" src="https://img.shields.io/discord/204728244434501632.svg" />
-  </a>
-  -->
- </div>
- <br>
- <div>
-  Lightweight and easy-to-use repository manager for Maven-based artifacts in the JVM ecosystem. 
-This is a simple, extensible and scalable self-hosted solution that replaces managers like Nexus, Archiva or Artifactory, with reduced resource consumption. 
- </div>
- <br>
- <div>
-  <a href="https://reposilite.com">Website</a>
-  |
-  <a href="https://reposilite.com/guide/about">Official Guide</a>
-  |
-  <a href="https://github.com/dzikoysk/reposilite/releases">GitHub Releases</a>
-  |
-  <a href="https://hub.docker.com/r/dzikoysk/reposilite">DockerHub Images</a>
-  |
-  <a href="https://panda-lang.org/support">Support</a>
-  |
-  <a href="https://maven.reposilite.com">Demo</a>
- </div>
- <br>
- <img alt="Preview" src="https://user-images.githubusercontent.com/4235722/133891983-966e5c6d-97b1-48cc-b754-6e88117ee4f7.png" />
- <br>
+ </p>
 </div>
 
-### Installation
+Ingot stores, serves and proxies build artifacts. An ingot is a cast bar of metal: a
+standardised, immutable, valuable unit that gets stored and passed on. A build artifact
+is the same thing, so that is the name.
 
-To run Reposilite for your personal needs you should assign around 20MB of RAM and at least Java 11+ installed. <br>
-For huge public repositories you can adjust memory limit and even size of used thread pools in the configuration.
+It speaks the plain Maven HTTP protocol, which means `mvn deploy` and `gradle publish`
+work against it without a custom plugin or client. It is a single JVM process with a
+small footprint, aimed at teams who want a repository manager they can run on a cheap
+VM instead of a dedicated server.
 
-```bash
-# Launching a standalone JAR file
-$ java -Xmx32M -jar reposilite-3.5.28.jar
+Ingot is developed by [OneLiteFeather](https://github.com/OneLiteFeatherNET) and is free
+and open source software under the Apache License 2.0.
 
-# Using the official Docker image
-$ docker pull dzikoysk/reposilite:3.5.28
+## Relationship to Reposilite
 
-# Using the official Helm chart
-$ helm repo add reposilite https://helm.reposilite.com/
-$ helm repo update
-$ helm install reposilite/reposilite
-```
+**Ingot is a fork of [Reposilite](https://github.com/dzikoysk/reposilite) by
+[dzikoysk](https://github.com/dzikoysk) and contributors, licensed under the
+Apache License 2.0.** The upstream project did the original work that Ingot builds on,
+and the original copyright notices are retained throughout the source tree.
 
-Visit official guide to read more about extra parameters and configuration details.
+Ingot is a separate product with its own roadmap, releases and maintainers. It is **not
+affiliated with, endorsed by, or sponsored by** the upstream Reposilite project or its
+authors. "Reposilite" is the name of the upstream project and is not used as part of the
+Ingot product name.
 
-### Publications
+See [NOTICE](https://github.com/OneLiteFeatherNET/reposilite/blob/main/NOTICE) for the
+full attribution and the statement of changes required by section 4(b) of the license.
 
-Reposilite 3.x:
-* [Reposilite 3.x / Official Guide](https://reposilite.com/guide/about)
-* [Reddit / 3.x Thread](https://www.reddit.com/r/java/comments/xy07vc/reposilite_3x_released_alternative_lightweight/)
-* [Medium / Setup your own Maven repository manager in 5 minutes](https://dzikoysk.medium.com/reposilite-3-x-setup-your-own-maven-repository-manager-in-5-minutes-e72cc8b67bc3)
+> **Status:** the rebrand is in progress. The source tree, the build outputs and the
+> Java packages still carry the upstream name; renaming happens in a separate step.
+> There are no Ingot releases or container images published yet, so the quickstart below
+> builds from source.
 
-Reposilite 2.x:
-* [Reposilite 2.x / Official Guide](https://v2.reposilite.com/)
-* [Reddit / 2.x Thread](https://www.reddit.com/r/java/comments/k8i2m0/reposilite_alternative_lightweight_maven/)
-* [Dev.to / Publishing your artifacts to the Reposilite - a new self-hosted repository manager ](https://dev.to/dzikoysk/publishing-your-artifacts-to-the-reposilite-a-new-self-hosted-repository-manager-3n0h)
-* [Medium / Looking for simple repository manager by David Kihato](https://kihats.medium.com/custom-self-hosted-maven-repository-cbb778031f68)
+## Features
 
-### Supporters
+Artifact hosting
 
-Thanks to all contributors and people that decided to support my work financially ❤️
+- Hosted `releases`, `snapshots` and `private` repositories out of the box, with per
+  repository visibility (public, hidden, private)
+- Deployment over the standard Maven HTTP protocol, so `mvn deploy`, `gradle publish`
+  and sbt work unchanged
+- `maven-metadata.xml` maintained by the server, optional redeployment of the same
+  version, and automatic pruning of superseded snapshot builds
+- MD5 and SHA-1 checksums generated on deploy; the bundled checksum plugin adds
+  SHA-256 and SHA-512 on demand
 
-<table>
- <tr>
-  <td>
-   <a href="https://github.com/sponsors/dzikoysk">Active GitHub Sponsors</a>
-  </td>
-  <td>
-    <a href="https://github.com/talismanplatform">talismanplatform</a>,
-    <a href="https://github.com/andrm">andrm</a>, 
-    <a href="https://github.com/rdehuyss">rdehuyss</a>,
-    <a href="https://github.com/joshuasing">joshuasing</a>, 
-    <a href="https://github.com/insertt">insertt</a>,
-    <a href="https://github.com/Kamilkime">Kamilkime</a>,
-    <a href="https://github.com/Koressi">Koressi</a>,
-    <a href="https://github.com/tipsy">tipsy</a>,
-    <a href="https://github.com/that-apex">that-apex</a>,
-    <a href="https://github.com/Rollczi">Rollczi</a>,
-    <a href="https://github.com/Kebab81">Jan Bojarczuk</a>,
-    <a href="https://github.com/frankielc">frankielc</a>,
-    <a href="https://github.com/P3ridot">P3ridot</a>
-  </td>
- </tr>
- <tr>
-  <td>All time</td>
-  <td>
-   <a href="https://github.com/talismanplatform">talismanplatform</a>,
-   <a href="https://github.com/milkyway0308">milkyway0308</a>,
-   <a href="https://github.com/rdehuyss">rdehuyss</a>,
-   <a href="https://github.com/andrm">andrm</a>,
-   <a href="https://github.com/rdehuyss">amp7368</a>,
-   <a href="https://github.com/joshuasing">joshuasing</a>,
-   <a href="https://github.com/zzmgck">zzmgck</a>, 
-   <a href="https://github.com/insertt">insertt</a>,
-   <a href="https://github.com/GotoFinal">GotoFinal</a>,
-   <a href="https://github.com/Koressi">Koressi</a>,
-   <a href="https://github.com/tipsy">tipsy</a>, 
-   <a href="https://github.com/mcebular">mcebular</a>,
-   <a href="https://github.com/maxant">maxant</a>,
-   <a href="https://github.com/alexwhb">alexwhb</a>, 
-   <a href="https://github.com/kay">Douglas Lawrie</a>,
-   <a href="https://github.com/SirEndii">SirEndii</a>,
-   <a href="https://github.com/that-apex">that-apex</a>,
-   <a href="https://github.com/Kamilkime">Kamilkime</a>,
-   <a href="https://github.com/FlawCra">FlawCra</a>,
-   <a href="https://github.com/crejk">crejk</a>, 
-   <a href="https://github.com/Rollczi">Rollczi</a>,
-   <a href="https://github.com/Zur13">Zur13</a>,
-   <a href="https://github.com/mattwelke">mattwelke</a>,
-   Andreas R.,
-   <a href="https://github.com/TheFruxz">TheFruxz</a>, 
-   <a href="https://github.com/oskarscot">oskarscot</a>,
-   <a href="https://github.com/Szczurowsky">Szczurowsky</a>,
-   <a href="https://github.com/zugazagoitia">zugazagoitia</a>,
-   <a href="https://github.com/EthanDevelops">EthanDevelops</a>, 
-   <a href="https://github.com/bmstefanski">bmstefanski</a>,
-   <a href="https://github.com/neg4n">neg4n</a>,
-   <a href="https://github.com/escv">escv</a>,
-   <a href="https://github.com/scheidtp">scheidtp</a>,
-   Lukas P.,
-   <a href="https://github.com/Kebab81">Jan Bojarczuk</a>,
-   <a href="https://github.com/Petersoj">Petersoj</a>,
-   <a href="https://github.com/arthurr0">arthurr0</a>,
-   <a href="https://github.com/shitzuu">shitzuu</a>,
-   <a href="https://github.com/peter-jerry-ye">peter-jerry-ye</a>,
-   Rob,
-   <a href="https://github.com/sebba-dev">sebba-dev</a>,
-   <a href="https://github.com/mufinlive">mufinlive</a>,
-   <a href="https://github.com/bopke">bopke</a>,
-   <a href="https://github.com/asikkema">asikkema</a>,
-   <a href="https://github.com/jdsdc">jdsdc</a>,
-   <a href="https://github.com/gcobr">gcobr</a>,
-   <a href="https://github.com/frankielc">frankielc</a>,
-   <a href="https://github.com/P3ridot">P3ridot</a>
-  </td>
- </tr>
-</table>
+Proxying and caching
 
-`\(^-^)/` The list is updated periodically and entries are sorted by aggregated total payment size of the given person.
+- Mirror remote repositories, optionally storing fetched artifacts locally so builds
+  keep working when the upstream is unreachable
+- Per mirror allow lists for groups and file extensions, connection timeouts,
+  Basic or custom header authentication, and HTTP or SOCKS proxy support
 
-### For developers
+Storage and persistence
 
-Recommended tool to develop backend module is IntelliJ IDE, for frontend it might be e.g. VSC.
+- Local filesystem storage with disk quotas (fixed size or percentage)
+- S3 compatible object storage with a configurable endpoint, so AWS S3, MinIO and
+  similar services work
+- SQLite (default) and MariaDB for metadata and tokens; MySQL, PostgreSQL and H2 are
+  present but marked experimental in the configuration
+
+Access control
+
+- Access tokens with route based read and write permissions, scoped by path prefix
+- Persistent and temporary tokens, plus a manager permission for administrative access
+- LDAP authentication, optional brute force protection, and built in TLS
+
+Web interface
+
+- File browser with upload and delete, breadcrumb navigation and ready to paste
+  Maven, Gradle and sbt snippets
+- Schema driven settings editor, token management, and a live server console
+- Dashboard with instance status and resolved request charts
+
+API and observability
+
+- REST API with a generated OpenAPI scheme; the bundled Swagger plugin serves a UI for it
+- Latest version resolution endpoints and an SVG version badge endpoint for READMEs
+- Resolved artifact statistics and instance health endpoints; the bundled Prometheus
+  plugin exposes metrics
+- Browsable Javadoc rendered directly from deployed `-javadoc.jar` files
+
+Extensibility
+
+- Plugin system loaded from a plugins directory, with dependency ordering
+- Bundled plugins: checksum, Prometheus, Swagger, Groovy scripting, and a migration
+  plugin that imports Reposilite 2.x tokens
+
+## Quickstart
+
+Ingot needs Java 17 or newer. The bundled Docker Compose example runs the server with a
+64 MB heap, which is enough for a small team.
+
+### From source
 
 ```bash
-# Run only backend through CLI
-$ ./gradlew run
+git clone https://github.com/OneLiteFeatherNET/reposilite.git
+cd reposilite
+./gradlew shadowJar
 
-# Run only frontend
-$ cd reposilite-frontend && npm i && npm run full
-
-# Run only Reposilite site
-$ cd reposilite-site/website && npm i && npm run start
+# The build output still carries the upstream name for now
+java -Xmx64M -jar reposilite-backend/build/libs/reposilite-*.jar
 ```
 
-#### Stack
+The server listens on port `8080` by default. A fresh instance has no access tokens, so
+create one either with the `--token name:secret` flag on startup or with the
+`token-generate` command in the server console, then open <http://localhost:8080> and
+sign in with it.
 
-[Reposilite 3.x](https://reposilite.com/)
-* Reposilite Backend: [Kotlin](https://kotlinlang.org/) + [Javalin](https://javalin.io) + [Exposed (SQL)](https://github.com/JetBrains/Exposed) + [AWS SDK](https://github.com/aws/aws-sdk-java) + [JUnit](https://junit.org/junit5/) + [Testcontainers](https://www.testcontainers.org/) + _(DDD & Hexagonal Architecture)_
-* Reposilite Frontend: [Vue3](https://vuejs.org/) + [Vite](https://vitejs.dev/) + [WindiCSS](https://windicss.org/) + [JsonForms](https://jsonforms.io/)
-* Reposilite Site: [Next.js](https://nextjs.org/) + [Vercel](https://vercel.com/)
+### With Docker
 
-[Reposilite 2.x](https://v2.reposilite.com/)
-* Reposilite Backend: Java + [Javalin](https://javalin.io/) + [Groovy](https://groovy-lang.org/) ([JUnit](https://junit.org/junit5/)) + _(DDD)_
-* Reposilite Frontend: [Vue2](https://v2.vuejs.org/) + [Pug](https://pugjs.org/api/getting-started.html) + [Stylus](https://stylus-lang.com/) + [TailwindCSS](https://tailwindcss.com/)
-* Reposilite Site: [React.js](https://reactjs.org/) + [Docusaurus v1](https://docusaurus.io/)
+The repository ships a `Dockerfile` and a `docker-compose.yml`. The Compose file reads
+its settings from `.env` (port, heap size, JVM and server arguments) and stores data in a
+named volume.
 
-Reposilite 1.x
-* Reposilite: Java + [NanoHTTPD](https://github.com/NanoHttpd/nanohttpd)
+```bash
+docker compose up -d
+```
+
+<!-- TODO(onelitefeather): container image coordinates. The Compose file and the release
+     workflows still reference the upstream image; no Ingot image is published yet. -->
+
+### Publishing to it
+
+```xml
+<distributionManagement>
+  <repository>
+    <id>ingot</id>
+    <url>https://your-host.example/releases</url>
+  </repository>
+</distributionManagement>
+```
+
+Add the matching token as a `<server>` entry in your `settings.xml`, then run
+`mvn deploy`. The web interface generates the equivalent snippets for Gradle and sbt.
+
+## Documentation
+
+<!-- TODO(onelitefeather): documentation link. The `reposilite-site` module in this
+     repository contains the upstream guides and is not published by this project. -->
+
+Configuration, deployment and authentication guides live as Markdown in the
+[`reposilite-site/data/guides`](https://github.com/OneLiteFeatherNET/reposilite/tree/main/reposilite-site/data/guides)
+directory of this repository. They still describe the upstream project and are being
+reworked for Ingot.
+
+## Contributing
+
+Bug reports, feature requests and pull requests are welcome. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+Security issues should go through the [security policy](SECURITY.md) rather than a public
+issue.
+
+<!-- TODO(onelitefeather): community link for user questions and discussion. -->
+
+### Building and running locally
+
+```bash
+# Backend only, with hot classpath from Gradle
+./gradlew run
+
+# Frontend dev server
+cd reposilite-frontend && npm install && npm run full
+
+# Full test suite
+./gradlew test
+```
+
+The backend is Kotlin on [Javalin](https://javalin.io) with
+[Exposed](https://github.com/JetBrains/Exposed) for persistence and the AWS SDK for S3
+storage, tested with JUnit 5 and Testcontainers. The frontend is Vue 3 with Vite,
+WindiCSS and JsonForms.
+
+## License
+
+Ingot is licensed under the [Apache License 2.0](https://github.com/OneLiteFeatherNET/reposilite/blob/main/LICENSE),
+the same license as the upstream Reposilite project it is derived from. Attribution and
+the statement of changes are recorded in
+[NOTICE](https://github.com/OneLiteFeatherNET/reposilite/blob/main/NOTICE).
