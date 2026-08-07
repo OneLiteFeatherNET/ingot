@@ -29,6 +29,11 @@ class FrontendFacade internal constructor(
     val forwardedPrefixHeader: Reference<String>
 ) : Facade {
 
+    internal companion object {
+        private const val BASE_PATH = "{{REPOSILITE.BASE_PATH}}"
+        private const val VITE_BASE_PATH = "{{REPOSILITE.VITE_BASE_PATH}}"
+    }
+
     private val resources = HashMap<String, ResourceSupplier>(0)
     private val additionalPlaceholders = mutableMapOf<String, Reference<String>>()
     val formattedBasePath: Reference<String> = basePath.computed { BasePathFormatter.formatBasePath(it) }
@@ -59,26 +64,45 @@ class FrontendFacade internal constructor(
             .replace("\n", "\\n")
 
     private fun createLazyPlaceholderResolver(): LazyPlaceholderResolver =
-        with (frontendSettings.get()) {
-            LazyPlaceholderResolver(buildMap {
-                put("{{REPOSILITE.BASE_PATH}}", formattedBasePath.get())
-                put(URLEncoder.encode("{{REPOSILITE.BASE_PATH}}", StandardCharsets.UTF_8), formattedBasePath.get())
+        LazyPlaceholderResolver(buildMap {
+            putAll(createPlaceholders(escapeForJs = true))
 
-                put("{{REPOSILITE.VITE_BASE_PATH}}", formatAsViteBasePath(formattedBasePath.get()))
-                put(URLEncoder.encode("{{REPOSILITE.VITE_BASE_PATH}}", StandardCharsets.UTF_8), formatAsViteBasePath(formattedBasePath.get()))
+            // The URL encoded spellings only matter for substitution inside the served
+            // assets, where a placeholder can appear inside a query string. They are noise
+            // in the API response, so they are added here rather than in createPlaceholders.
+            put(URLEncoder.encode(BASE_PATH, StandardCharsets.UTF_8), formattedBasePath.get())
+            put(URLEncoder.encode(VITE_BASE_PATH, StandardCharsets.UTF_8), formatAsViteBasePath(formattedBasePath.get()))
+        })
+
+    /**
+     * The values the dashboard needs in order to render itself. Both the substitution into
+     * the bundled assets and the public settings endpoint read this, so a dashboard served
+     * by this instance and one served by a separate container cannot drift apart.
+     *
+     * [escapeForJs] applies only to the substitution path, where the value is spliced into a
+     * JavaScript string literal. A JSON response encodes itself.
+     */
+    internal fun createPlaceholders(escapeForJs: Boolean): Map<String, String> =
+        with (frontendSettings.get()) {
+            val escape: (String) -> String = if (escapeForJs) ::escapeForJsString else { it -> it }
+
+            buildMap {
+                put(BASE_PATH, formattedBasePath.get())
+                put(VITE_BASE_PATH, formatAsViteBasePath(formattedBasePath.get()))
 
                 put("{{REPOSILITE.ID}}", id)
-                put("{{REPOSILITE.TITLE}}", escapeForJsString(title))
-                put("{{REPOSILITE.DESCRIPTION}}", escapeForJsString(description))
+                put("{{REPOSILITE.TITLE}}", escape(title))
+                put("{{REPOSILITE.DESCRIPTION}}", escape(description))
                 put("{{REPOSILITE.ORGANIZATION_WEBSITE}}", organizationWebsite)
                 put("{{REPOSILITE.ORGANIZATION_LOGO}}", organizationLogo)
                 put("{{REPOSILITE.ICP_LICENSE}}", icpLicense)
                 put("{{REPOSILITE.PRIVACY_POLICY}}", privacyPolicy)
 
+                // Plugins register their own, so they reach a detached dashboard too.
                 additionalPlaceholders.forEach { (key, value) ->
                     put(key, value.get())
                 }
-            })
+            }
         }
 
     fun createNotFoundPage(originUri: String, details: String, forwardedPrefix: String?): String =
