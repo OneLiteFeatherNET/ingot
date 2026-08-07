@@ -1,6 +1,6 @@
 services:
   ingot:
-    image: ghcr.io/onelitefeathernet/ingot:3.5.28 # x-release-please-version
+    image: ghcr.io/onelitefeathernet/ingot:1.0.0 # x-release-please-version
     #
     # To build from sources:
     #

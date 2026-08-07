@@ -50,6 +50,14 @@ running a fork: upstream's bar is upstream's business, ours is ours. See
 `ExtensionsTest.kt` for the shape, including checking that the new test actually fails
 against the pre-fix code.
 
+## Versions
+
+Ingot's version line is its own and starts at 1.0.0. Upstream's tags are not in this
+repository, and an upstream version number never becomes ours. When a cherry-pick fixes
+something upstream shipped in 3.5.x, the commit message may reference their issue, but the
+release it lands in is numbered on our line. [VERSIONING.md](../VERSIONING.md) is the
+public explanation; point people at it rather than re-arguing it in an issue.
+
 ## Where we deliberately diverge
 
 These areas will conflict on almost every sync. That is expected, not a problem to solve

@@ -18,7 +18,7 @@ let
 in
 stdenv.mkDerivation rec {
   pname = "ingot-bin";
-  version = "3.5.28";
+  version = "1.0.0";
 
   jar = builtins.fetchurl {
     url="https://github.com/OneLiteFeatherNET/ingot/releases/download/v${version}/ingot-${version}.jar";

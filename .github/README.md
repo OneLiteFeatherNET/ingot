@@ -41,6 +41,11 @@ full attribution and the statement of changes required by section 4(b) of the li
 > compiling. No Ingot release has been cut yet, so the quickstart below builds from
 > source.
 
+**Ingot's version line starts at 1.0.0**, independent of the Reposilite 3.5.28 the sources
+came from. The number restarting does not mean the feature set did: 1.0.0 has everything
+3.5.28 had. [VERSIONING.md](../VERSIONING.md) explains the cut, how the two line up, and
+what moving an existing instance over involves.
+
 ## Features
 
 Artifact hosting

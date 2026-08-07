@@ -14,8 +14,8 @@ There are three different types of tags used on the images:
 First of all, you have to pull the image:
 
 ```bash
-# released builds, e.g. 3.5.28
-$ docker pull ghcr.io/onelitefeathernet/ingot:3.5.28
+# released builds, e.g. 1.0.0
+$ docker pull ghcr.io/onelitefeathernet/ingot:1.0.0
 
 # nightly builds
 $ docker pull ghcr.io/onelitefeathernet/ingot:nightly

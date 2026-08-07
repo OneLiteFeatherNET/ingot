@@ -29,7 +29,7 @@ dependencies {
     // Ingot publishes under its own group id, and the server bundle under the artifact id
     // `ingot`. The packages are still com.reposilite.*, so a plugin written against
     // Reposilite compiles against Ingot unchanged: only this line has to change.
-    compileOnly("net.onelitefeather.ingot:ingot:3.5.28")
+    compileOnly("net.onelitefeather.ingot:ingot:1.0.0")
 }
 
 tasks.withType<ShadowJar> {

@@ -35,8 +35,11 @@ plugins {
 // tags: both wanted to own the same value, and the tag based approach also broke any
 // build without full history, such as a shallow CI checkout or a source tarball.
 //
+// Ingot versions independently of Reposilite and started over at 1.0.0. This is not a
+// downgrade from the 3.5.x the sources came from; see VERSIONING.md.
+//
 // Do not edit this by hand. The marker comment is what Release Please looks for.
-val projectVersion = "3.5.28" // x-release-please-version
+val projectVersion = "1.0.0" // x-release-please-version
 
 allprojects {
     apply(plugin = "java-library")
