@@ -62,6 +62,12 @@ Visit the README.md of each module to see details about how to run it and work w
 * [Frontend](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-frontend) - sources of the default frontend in Vue
 * [Site](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-site) - sources of the documentation website
 
+## Maintainers
+
+Ingot is a fork, so keeping it reconcilable with upstream is part of maintaining it.
+[MAINTAINING.md](MAINTAINING.md) describes how upstream changes are pulled in, which areas
+deliberately diverge, and which names are kept for compatibility rather than left behind.
+
 ## Code of Conduct
 
 By participating in this project you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
