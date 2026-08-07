@@ -3,7 +3,7 @@ import { ref, defineAsyncComponent } from "vue"
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from "../../store/session"
 
-const VueApexCharts = defineAsyncComponent(() => import('vue3-apexcharts'))
+const TimeSeriesChart = defineAsyncComponent(() => import('./TimeSeriesChart.vue'))
 
 const { client } = useSession()
 const statisticsEnabled = ref(false)
@@ -15,66 +15,21 @@ client.value.statistics.allResolved()
     resolvedSeries.value = allResolved.repositories.map(repositoryStatistics => {
       return {
         name: repositoryStatistics.name,
-        data: repositoryStatistics.data.map(record => ({
-          x: record.date,
-          y: record.count
-        }))
+        // [epoch millis, count] is what the time axis expects
+        data: repositoryStatistics.data.map(record => [record.date, record.count])
       }
     })
-    console.log(resolvedSeries.value)
     statisticsEnabled.value = allResolved.statisticsEnabled
   })
   .catch(error => {
-    console.log(error)
+    console.error(error)
     createErrorToast(`Cannot load statistics`)
   })
-
-const chartOptions = {
-  chart: {
-    id: "reposilite-requests-over-time",
-  },
-  tooltip: {
-    shared: true,
-  },
-  xaxis: {
-    type: 'datetime',
-    axisBorder: {
-      show: false
-    },
-    axisTicks: {
-      show: false
-    }
-  },
-  dataLabels: {
-    enabled: false
-  },
-  dropShadow: {
-    enabled: true,
-  },
-  onDatasetHover: {
-    highlightDataSeries: true
-  },
-  theme: {
-    palette: 'palette10'
-  },
-  legend: {
-    itemMargin: {
-      vertical: 15
-    }
-  }
-}
 </script>
 
 <template>
-  <div v-if="statisticsEnabled">
+  <div v-if="statisticsEnabled && resolvedSeries">
     <h1 class="font-bold text-lg">Resolved requests</h1>
-    <VueApexCharts 
-      class="dark:text-black pt-2"
-      width="100%"
-      height="320px"
-      type="area"
-      :options="chartOptions"
-      :series="resolvedSeries"
-    />
+    <TimeSeriesChart class="pt-2" variant="area" :series="resolvedSeries" />
   </div>
 </template>
