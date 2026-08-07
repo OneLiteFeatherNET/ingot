@@ -1,31 +1,42 @@
-# Release Guide
-Reposilite 3.x uses [axios-release-plugin](https://github.com/allegro/axion-release-plugin) to simplify release process.
-The general order of commands required to mark sources as next-version:
+# Release guide
 
-```bash
-# Check current version
-$ gradle cV
-# Release current sources as <version>
-$ gradle release -Prelease.version=<version> -Prelease.customKeyPassword=<passwd>
-# Push stable artifact to the Maven repository
-$ gradle publish
-# Check current version
-$ gradle cV
-# Push changes + tags
-git push --tags && git push
-```
+Releases are automated. There is no command a maintainer runs by hand, and there is no
+release branch: the version lives in the repository and
+[Release Please](https://github.com/googleapis/release-please) owns it.
 
-It is recommended to perform release on a standalone branch to avoid complications in case of any error during the release process.
+## How a release happens
 
-### Notes
+1. Commits land on `main` following [Conventional Commits](https://www.conventionalcommits.org/).
+   `feat` bumps the minor version, `fix` the patch, and a `!` or a `BREAKING CHANGE:`
+   footer the major.
+2. Release Please opens or updates a release pull request. It carries the changelog and
+   the version bump across `build.gradle.kts`, the frontend manifests and the Compose
+   example. Do not edit those version lines by hand.
+3. Merging that pull request creates the tag and the GitHub release. The same workflow run
+   then publishes the Maven artifacts to `repo.onelitefeather.dev`, attaches the standalone
+   `ingot-<version>.jar` to the release, and pushes the container image to
+   `ghcr.io/onelitefeathernet/ingot`.
 
-#### Signed commits 
-In case of any issues with signing, we can disable this in `.gitconfig` by changing `gpgsign` to false:
+A push to `main` that produces no release still refreshes the `nightly` container image.
 
-```.git
-[commit]
-gpgsign = false
-```
+Everything above lives in [`release-please.yml`](workflows/release-please.yml) and
+[`release-please-config.json`](../release-please-config.json).
 
-#### GitHub Authentication
-Reposilite uses `localMode` of `axios-release-plugin`, so there is no need to configure GitHub authentication.
+## What a release needs
+
+- `ONELITEFEATHER_MAVEN_USERNAME` and `ONELITEFEATHER_MAVEN_PASSWORD` repository secrets
+  for the Maven publish. The container push authenticates with the built-in `GITHUB_TOKEN`
+  and needs no secret.
+
+## Rebuilding a container image
+
+The `Release Please` workflow takes a `workflow_dispatch` with a `container_version` input.
+It runs only the container job, for the version you name, and leaves the release itself
+alone.
+
+## Adding a file whose version has to follow
+
+Add it to `extra-files` in `release-please-config.json` and put an
+`x-release-please-version` marker on the line holding the version, or use the `json`
+updater with a JSON path. Keep markers out of snippets that readers copy: a stale example
+version is a smaller problem than a confusing one.
