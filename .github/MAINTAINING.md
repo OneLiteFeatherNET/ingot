@@ -84,6 +84,16 @@ a third-party plugin depend on, and renaming them breaks people for no gain:
 `com.reposilite.journalist` is a separate library by the same author, not our code. It is
 never renamed, and it is the one dependency not available from Maven Central.
 
+## Sign-off
+
+Contributions carry a [DCO](https://developercertificate.org/) sign-off, documented in
+[CONTRIBUTING.md](CONTRIBUTING.md). It is not enforced by CI yet.
+
+> **TODO(onelitefeather):** add the check. Whatever enforces it has to exempt commits
+> cherry-picked from upstream, which carry no sign-off because Reposilite does not use the
+> DCO, and it has to leave their original authorship alone. A check that simply requires
+> `Signed-off-by` on every commit would make syncing impossible.
+
 ## Contributing back
 
 A fix that is not about branding and not about a decision specific to Ingot belongs

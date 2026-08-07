@@ -19,10 +19,26 @@ Remember to include enough information if you're reporting a bug, so the problem
 
 Every pull request will be considered.
 
-TODO(onelitefeather): decide on the contribution agreement model (no CLA, DCO sign-off, or a
-CLA) and document it here. This has to be settled before the first outside pull request is
-merged, because changing it afterwards would require re-licensing contributions that were
-already accepted under the previous terms.
+### Sign your commits
+
+Ingot uses the [Developer Certificate of Origin](https://developercertificate.org/). There
+is no contributor licence agreement to sign: instead, every commit carries a line stating
+that you have the right to submit it under the project's licence.
+
+```
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+`git commit -s` adds it for you. The name and address have to be real ones you can be
+reached at; anonymous contributions cannot be signed off.
+
+By signing off you certify the [DCO 1.1](https://developercertificate.org/) in full, which
+in short means the contribution is yours to give, or you received it under a compatible
+licence, and you are fine with it being distributed under the Apache License 2.0 as part of
+this project.
+
+Missing a sign-off is fixable: `git commit --amend -s` for the last commit, or
+`git rebase --signoff <base>` for a branch, then force push.
 
 ### How to increase the chance of having your PR merged
 
