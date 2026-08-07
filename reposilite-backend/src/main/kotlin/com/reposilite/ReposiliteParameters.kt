@@ -28,7 +28,7 @@ import picocli.CommandLine.Option
 import java.nio.file.Path
 import java.nio.file.Paths
 
-@Command(name = "reposilite", version = ["Reposilite $VERSION"])
+@Command(name = "ingot", version = ["Ingot $VERSION"])
 class ReposiliteParameters : Runnable {
 
     @Option(names = ["--help"], usageHelp = true, description = ["Display help message"])

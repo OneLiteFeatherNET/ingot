@@ -38,7 +38,7 @@ class HttpServer {
         val localConfiguration = extensionsManagement.facade<LocalConfiguration>()
 
         val webThreadPool = ConcurrencyUtil.jettyThreadPool(
-            name = "Reposilite | Web (${localConfiguration.webThreadPool.get()}) -",
+            name = "Ingot | Web (${localConfiguration.webThreadPool.get()}) -",
             minThreads = localConfiguration.webThreadPool.get(),
             maxThreads = localConfiguration.webThreadPool.get(),
             useLoom = false

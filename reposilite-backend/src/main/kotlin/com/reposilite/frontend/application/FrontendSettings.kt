@@ -24,9 +24,9 @@ import io.javalin.openapi.JsonSchema
 @Doc(title = "Frontend", description = "Frontend settings")
 data class FrontendSettings(
     @get:Doc(title = "Id", description = "Repository id used in Maven repository configuration")
-    val id: String = "reposilite-repository",
+    val id: String = "ingot-repository",
     @get:Doc(title = "Title", description = "The title displayed on the frontend homepage.")
-    val title: String = "Reposilite Repository",
+    val title: String = "Ingot Repository",
     @get:Doc(
         title = "Description",
         description = """
@@ -34,11 +34,11 @@ data class FrontendSettings(
             Note: HTML tags are not supported.
         """,
     )
-    val description: String = "Public Maven repository hosted through the Reposilite",
+    val description: String = "Public Maven repository hosted through Ingot",
     @get:Doc(title = "Organisation Website", description = "Link to organization's website.")
-    val organizationWebsite: String = "https://reposilite.com",
+    val organizationWebsite: String = "https://github.com/OneLiteFeatherNET",
     @get:Doc(title = "Organisation Logo", description = "Link to organization's logo.")
-    val organizationLogo: String = "https://avatars.githubusercontent.com/u/88636591",
+    val organizationLogo: String = "https://avatars.githubusercontent.com/u/103827826",
     @get:Doc(title = "Privacy Policy", description = "Link to your privacy policy displayed in the footer. Useful for EU GDPR compliance.")
     val privacyPolicy: String = "",
     @get:Doc(title = "ICP License", description = """

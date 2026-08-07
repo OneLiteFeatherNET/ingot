@@ -30,7 +30,7 @@ import picocli.CommandLine.UnmatchedArgumentException
 import java.io.InputStream
 import java.util.function.Consumer
 
-@Command(name = "", version = ["Reposilite $VERSION"])
+@Command(name = "", version = ["Ingot $VERSION"])
 internal class CommandExecutor(
     private val journalist: ReposiliteJournalist,
     failureFacade: FailureFacade,

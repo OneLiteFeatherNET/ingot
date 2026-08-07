@@ -58,7 +58,7 @@ class Reposilite(
             extensions.emitEvent(ReposiliteInitializeEvent(this))
             extensions.emitEvent(ReposilitePostInitializeEvent(this))
             alive.set(true)
-            Thread.currentThread().name = "Reposilite | Main Thread"
+            Thread.currentThread().name = "Ingot | Main Thread"
             logger.info("")
             logger.info("Binding server at ${parameters.hostname}::${parameters.port}")
             webServer.start(this)
@@ -66,7 +66,7 @@ class Reposilite(
             extensions.emitEvent(ReposiliteStartedEvent(this))
             ok(this)
         } catch (exception: Exception) {
-            logger.error("Failed to start Reposilite")
+            logger.error("Failed to start Ingot")
             logger.exception(exception)
             shutdown()
             exception.asError()

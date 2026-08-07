@@ -52,7 +52,7 @@ internal fun createCommandHelp(commands: Map<String, CommandLine>, requestedComm
     val uniqueCommands: MutableSet<CommandLine> = TreeSet(Comparator.comparing { it.commandName })
     uniqueCommands.addAll(commands.values)
 
-    val response = mutableListOf("Reposilite $VERSION Commands:")
+    val response = mutableListOf("Ingot $VERSION Commands:")
 
     uniqueCommands
         .forEach { command ->

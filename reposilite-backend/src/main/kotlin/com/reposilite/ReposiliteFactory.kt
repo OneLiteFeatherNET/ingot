@@ -47,7 +47,7 @@ object ReposiliteFactory {
         )
 
         journalist.logger.info("")
-        journalist.logger.info("${journalist.effect { MAGENTA_BOLD }}Reposilite $VERSION${journalist.effect { RESET }}")
+        journalist.logger.info("${journalist.effect { MAGENTA_BOLD }}Ingot $VERSION${journalist.effect { RESET }}")
         journalist.logger.info("")
         journalist.logger.info("--- Environment")
         journalist.logger.info("Platform: ${System.getProperty("java.version")} (${System.getProperty("os.name")} :: ${System.getProperty("os.arch")})")
@@ -72,9 +72,9 @@ object ReposiliteFactory {
             ioService = newFixedThreadPool(
                 min = 0,
                 max = localConfiguration.ioThreadPool.get(),
-                prefix = "Reposilite | IO"
+                prefix = "Ingot | IO"
             ),
-            scheduler = newSingleThreadScheduledExecutor("Reposilite | Scheduler"),
+            scheduler = newSingleThreadScheduledExecutor("Ingot | Scheduler"),
             extensions = Extensions(journalist)
         )
 

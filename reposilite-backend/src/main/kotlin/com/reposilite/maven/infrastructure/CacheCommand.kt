@@ -28,7 +28,7 @@ import picocli.CommandLine.Parameters
 
 private const val DEFAULT_TOP = 20
 
-@Command(name = "cache", description = ["Inspect or purge a Reposilite cache. Usage: cache <target> <action> [<repository>]. Targets: resolution. Actions: stats, purge."])
+@Command(name = "cache", description = ["Inspect or purge an Ingot cache. Usage: cache <target> <action> [<repository>]. Targets: resolution. Actions: stats, purge."])
 internal class CacheCommand(private val mavenFacade: MavenFacade) : ReposiliteCommand {
 
     @Parameters(index = "0", paramLabel = "<target>", description = ["Cache to operate on. Supported: 'resolution'."])

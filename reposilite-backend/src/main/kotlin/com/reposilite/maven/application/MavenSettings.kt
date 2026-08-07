@@ -51,13 +51,13 @@ data class RepositorySettings(
     val visibility: RepositoryVisibility = PUBLIC,
     @get:Doc(title = "Redeployment", description = "Does this repository accept redeployment of the same artifact version.")
     val redeployment: Boolean = false,
-    @get:Doc(title = "Preserved snapshots", "By default, Reposilite deletes all deprecated build files. If you'd like to preserve them, set this property to true.")
+    @get:Doc(title = "Preserved snapshots", "By default, Ingot deletes all deprecated build files. If you'd like to preserve them, set this property to true.")
     val preserveSnapshots: Boolean = false,
     @get:Doc(title = "Storage provider", description = "The storage type of this repository.")
     @get:OneOf(FileSystemStorageProviderSettings::class, S3StorageProviderSettings::class)
     val storageProvider: StorageProviderSettings = FileSystemStorageProviderSettings(),
     @get:Doc(title = "Storage policy", description = """
-        Defines how Reposilite should handle requests to repository with configured mirrored repositories. <br/>
+        Defines how Ingot should handle requests to repository with configured mirrored repositories. <br/>
         PRIORITIZE_UPSTREAM_METADATA - try to fetch the latest version of the artifact from the remote repository <br/>
         STRICT - prioritize cached version over upstream metadata (full offline mode)
     """)
@@ -88,17 +88,17 @@ data class MirroredRepositorySettings(
     @Min(1)
     @get:Doc(title = "Link", description = "Either the id of other local repository or the URL of a remote repository.")
     val reference: String = "",
-    @get:Doc(title = "Store", description = "Reposilite can store proxied artifacts locally to reduce response time and improve stability.")
+    @get:Doc(title = "Store", description = "Ingot can store proxied artifacts locally to reduce response time and improve stability.")
     val store: Boolean = false,
     @get:Doc(title = "Allowed Groups", description = "Allowed artifact groups. If none are given, all artifacts can be obtained from this mirror.")
     val allowedGroups: List<String> = listOf(),
     @get:Doc(title = "Allowed Extensions", description = "List of accepted file extensions. If none are given, all files can be obtained from this mirror. Use the special value '&lt;none&gt;' to permit files without an extension (e.g. native binaries).")
     val allowedExtensions: List<String> = listOf(".jar", ".war", ".aar", ".pom", ".xml", ".module", ".md5", ".sha1", ".sha256", ".sha512", ".asc"),
     @Min(0)
-    @get:Doc(title = "Connect Timeout", description = "How long Reposilite can wait for establishing the connection with a remote host. (In seconds)")
+    @get:Doc(title = "Connect Timeout", description = "How long Ingot can wait for establishing the connection with a remote host. (In seconds)")
     val connectTimeout: Int = 3,
     @Min(0)
-    @get:Doc(title = "Read Timeout", description = "How long Reposilite can read data from remote proxy. (In seconds)")
+    @get:Doc(title = "Read Timeout", description = "How long Ingot can read data from remote proxy. (In seconds)")
     val readTimeout: Int = 15,
     // Adding:
     // @Doc(title = "Authorization", description = "The authorization information of the proxied repository.")
@@ -106,7 +106,7 @@ data class MirroredRepositorySettings(
     // ~ https://github.com/dzikoysk/reposilite/issues/1320
     val authorization: MirrorCredentials? = null,
     @get:Doc(title = "HTTP Proxy", description = """
-        Custom proxy configuration for HTTP/SOCKS client used by Reposilite to connect to the mirrored repository. Examples: <br/>
+        Custom proxy configuration for HTTP/SOCKS client used by Ingot to connect to the mirrored repository. Examples: <br/>
         HTTP 127.0.0.1:1081 <br/>
         SOCKS 127.0.0.1:1080 login password 
     """)

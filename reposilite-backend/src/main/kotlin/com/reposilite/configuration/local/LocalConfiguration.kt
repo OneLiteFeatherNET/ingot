@@ -29,10 +29,10 @@ class LocalConfiguration : Facade {
     /* General */
 
     @Description("# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #")
-    @Description("#       Reposilite :: Local       #")
+    @Description("#         Ingot :: Local         #")
     @Description("# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #")
     @Description("")
-    @Description("# Local configuration contains init params for current Reposilite instance.")
+    @Description("# Local configuration contains init params for current Ingot instance.")
     @Description("# For more options, shared between instances, login to the dashboard with management token and visit 'Configuration' tab.")
     @Description("")
     @Description("# Hostname")
@@ -140,8 +140,8 @@ class LocalConfiguration : Facade {
     @Description("# Enable default frontend with dashboard")
     val defaultFrontend = mutableReference(true)
 
-    @Description("# Set custom base path for Reposilite instance.")
-    @Description("# It's not recommended to mount Reposilite under custom base path")
+    @Description("# Set custom base path for Ingot instance.")
+    @Description("# It's not recommended to mount Ingot under custom base path")
     @Description("# and you should always prioritize subdomain over this option.")
     val basePath = mutableReference("/")
 

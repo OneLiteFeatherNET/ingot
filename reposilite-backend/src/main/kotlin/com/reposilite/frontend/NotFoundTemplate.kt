@@ -32,7 +32,7 @@ object NotFoundTemplate {
         <html lang="en">
             <head>
               <meta charset="UTF-8" />
-              <title>Reposilite - 404 Not Found</title>
+              <title>Ingot - 404 Not Found</title>
             </head>
             <style>
               body {

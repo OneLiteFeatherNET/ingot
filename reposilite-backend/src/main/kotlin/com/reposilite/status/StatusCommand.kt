@@ -27,7 +27,7 @@ internal class StatusCommand(private val statusFacade: StatusFacade) : Reposilit
 
     override fun execute(context: CommandContext) {
         statusFacade.fetchInstanceStatus().apply {
-            context.append("Reposilite $VERSION Status")
+            context.append("Ingot $VERSION Status")
             context.append("  Active: ${context.effect { GREEN_BOLD }}${statusFacade.isAlive()}${context.effect { RESET }}")
             context.append("  Uptime: ${TimeUtils.getPrettyUptime(statusFacade.getUptime())}")
             context.append("  Memory usage of process: ${TimeUtils.format(usedMemory)}M")
@@ -40,7 +40,7 @@ internal class StatusCommand(private val statusFacade: StatusFacade) : Reposilit
                 { "${if (VERSION == it) context.effect { GREEN } else context.effect { RED_UNDERLINED }}$it${context.effect { RESET }}" },
                 { "${context.effect { RED_UNDERLINED }}$it${context.effect { RESET }}" }
             )
-            .let { coloredStatus -> context.append("  Latest version of Reposilite: $coloredStatus") }
+            .let { coloredStatus -> context.append("  Latest version of Ingot: $coloredStatus") }
     }
 
 }

@@ -130,12 +130,12 @@ internal class MavenEndpoints(
             OpenApiParam(name = "gav", description = "Artifact path qualifier", required = true)
         ],
         headers = [
-            OpenApiParam(name = X_GENERATE_CHECKSUMS, description = "Determines if Reposilite should generate checksums for this file", required = false)
+            OpenApiParam(name = X_GENERATE_CHECKSUMS, description = "Determines if Ingot should generate checksums for this file", required = false)
         ],
         responses = [
             OpenApiResponse(status = "200", description = "Input stream of requested file", content = [OpenApiContent(type = FORM_DATA_MULTIPART)]),
             OpenApiResponse(status = "401", description = "Returns 401 for invalid credentials"),
-            OpenApiResponse(status = "507", description = "Returns 507 if Reposilite does not have enough disk space to store the uploaded file")
+            OpenApiResponse(status = "507", description = "Returns 507 if Ingot does not have enough disk space to store the uploaded file")
         ]
     )
     private val deployFile = ReposiliteRoute<Unit>("/{repository}/<gav>", POST, PUT) {

@@ -54,8 +54,8 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
         if (loadResult.isErr && !parameters().ignoreSharedConfigurationErrors) {
             logger.error("Failed to load shared configuration from '${sharedConfigurationFacade.getProviderName()}' provider.")
             logger.error("Please check your configuration and try again.")
-            logger.error("If you want to ignore those errors and let Reposilite start with default settings as a fallback values,")
-            logger.error("please launch Reposilite with --ignore-shared-configuration-errors' flag.")
+            logger.error("If you want to ignore those errors and let Ingot start with default settings as a fallback values,")
+            logger.error("please launch Ingot with --ignore-shared-configuration-errors' flag.")
             throw loadResult.error
         }
 

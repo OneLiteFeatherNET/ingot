@@ -26,7 +26,7 @@ internal class ConsoleThread(
 ) : Thread() {
 
     init {
-        name = "Reposilite | Console Thread"
+        name = "Ingot | Console Thread"
         isDaemon = true
     }
 

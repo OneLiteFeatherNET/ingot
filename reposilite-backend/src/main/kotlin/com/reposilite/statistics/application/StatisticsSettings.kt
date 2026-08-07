@@ -32,7 +32,7 @@ data class StatisticsSettings(
     """)
     val enabled: Boolean = true,
     @get:Doc(title = "Resolved Requests Interval", description = """
-        How often Reposilite should divide recorded requests into separated groups.
+        How often Ingot should divide recorded requests into separated groups.
         With higher precision you can get more detailed timestamps, but it'll increase database size.
         It's not that important for small repos with low traffic, but public instances should not use daily interval.
     """)

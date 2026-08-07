@@ -21,7 +21,7 @@ import io.javalin.community.routing.Route
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 
 private const val WWW_AUTHENTICATE = "www-authenticate"
-private const val WWW_BASIC_REALM = """Basic realm="Reposilite", charset="UTF-8""""
+private const val WWW_BASIC_REALM = """Basic realm="Ingot", charset="UTF-8""""
 
 internal class PostAuthHandler : ReposiliteRoutes() {
 

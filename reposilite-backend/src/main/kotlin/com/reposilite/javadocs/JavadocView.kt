@@ -39,7 +39,7 @@ internal object JavadocView {
         <html lang="en">
             <head>
                 <meta charset="UTF-8" />
-                <title>Reposilite - JavaDoc</title>
+                <title>Ingot - JavaDoc</title>
             </head>
             <style>
                 :root {
@@ -103,7 +103,7 @@ internal object JavadocView {
             <body>
                 <div class="sticky-nav">
                     <div class="row">
-                        <a class="title" href="/"><h3>Reposilite</h3></a>
+                        <a class="title" href="/"><h3>Ingot</h3></a>
                         <a id='raw'><h4>Raw docs</h4></a>
                         <select id="javadoc-selector">
                             $dropdownOptions

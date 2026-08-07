@@ -32,7 +32,7 @@ data class WebSettings(
     """)
     val forwardedIp: String = "X-Forwarded-For",
     @get:Doc(title = "Forwarded Prefix Header", description = """
-        Name of the header a reverse proxy uses to advertise the sub-path Reposilite is mounted under
+        Name of the header a reverse proxy uses to advertise the sub-path Ingot is mounted under
         (e.g. X-Forwarded-Prefix). When set, requests carrying it render the repository index and 404
         links under the configured base path, while direct requests render them at the root, so a single
         instance works both ways. Leave empty to disable. <br />
