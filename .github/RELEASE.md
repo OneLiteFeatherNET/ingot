@@ -22,6 +22,17 @@ A push to `main` that produces no release still refreshes the `nightly` containe
 Everything above lives in [`release-please.yml`](workflows/release-please.yml) and
 [`release-please-config.json`](../release-please-config.json).
 
+## The release pull request needs its CI approved
+
+This repository is still a GitHub fork of dzikoysk/reposilite, so workflow runs on pull
+requests land in `action_required` and wait for a maintainer to press "Approve and run".
+That includes the release pull request Release Please opens, which is why its checks look
+stuck rather than failing.
+
+Two ways out, both in Settings → Actions → General: relax "Fork pull request workflows", or
+leave the fork network so the repository stands on its own. The second is irreversible, and
+the attribution does not depend on it: that lives in NOTICE, the README and the git history.
+
 ## What a release needs
 
 - `ONELITEFEATHER_MAVEN_USERNAME` and `ONELITEFEATHER_MAVEN_PASSWORD` repository secrets
