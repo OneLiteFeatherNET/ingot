@@ -4,6 +4,15 @@ build/
 .gradle/
 .kotlin/
 
+# Dependencies and build output from any module. Without these a host checkout would ship
+# its own node_modules into the image, on top of what the build just installed. The two are
+# not interchangeable: the images build on alpine, so anything with a native component
+# would be the wrong binary for the platform it ends up running on.
+**/node_modules/
+**/build/
+**/.next/
+**/dist/
+
 # Dockerfile related files do not need to be included
 Dockerfile
 docker-compose.yml

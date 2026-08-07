@@ -31,10 +31,14 @@ export default defineConfig({
     WindiCSS(),
     visualizer(),
   ],
+  // Served by the server itself, the placeholder is substituted on the way out and the
+  // asset URLs come out right. Served by anything else nothing substitutes it, and since
+  // the URLs sit in script tags they have to resolve before any of our code runs, so a
+  // detached build has to bake the real prefix in. INGOT_BASE_PATH is how the dashboard
+  // image does that.
   base:
-    process.env.NODE_ENV === "production"
-      ? "{{REPOSILITE.VITE_BASE_PATH}}"
-      : "/",
+    process.env.INGOT_BASE_PATH ||
+    (process.env.NODE_ENV === "production" ? "{{REPOSILITE.VITE_BASE_PATH}}" : "/"),
   build: {
     minify: true,
     emptyOutDir: true,
