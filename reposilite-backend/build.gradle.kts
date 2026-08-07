@@ -331,6 +331,13 @@ tasks["integration"].mustRunAfter(tasks["test"])
 tasks["jacocoTestReport"].mustRunAfter(tasks["integration"])
 tasks["jacocoTestCoverageVerification"].mustRunAfter(tasks["jacocoTestReport"])
 
+// The coditory plugin contributes `integration` and the JVM test suite plugin contributes
+// `integrationTest`, and both write coverage into the build directory that jacocoTestReport
+// reads. Only the first was ordered, so a run that reaches both, such as `gradle build test`,
+// fails validation: the report would consume execution data from a task Gradle is free to
+// schedule after it.
+tasks["jacocoTestReport"].mustRunAfter(tasks["integrationTest"])
+
 //detekt {
 //    buildUponDefaultConfig = true
 //    allRules = false
