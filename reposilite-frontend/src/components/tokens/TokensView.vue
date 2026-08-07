@@ -79,7 +79,7 @@ const isExpired = (token) => !!token.expiresAt && Date.now() > toMs(token.expire
 const expiryOf = (token) => !token.expiresAt ? '∞' : (isExpired(token) ? 'expired' : rel(toMs(token.expiresAt)) + ' left')
 const datesTitle = (token) => `Created ${formatDate(token.createdAt)}` + (token.expiresAt ? `  •  Expires ${formatDate(token.expiresAt)}` : '  •  Never expires')
 
-/* Placeholder usage metric (UI commented out below) — Reposilite tracks no per-token usage yet. */
+/* Placeholder usage metric (UI commented out below) — Ingot tracks no per-token usage yet. */
 const spark = (token) => {
   const seed = token.name.length * 7
   return Array.from({ length: 10 }, (_, i) => 5 + ((seed * (i + 3)) % 18))
@@ -131,7 +131,7 @@ const runConfirm = (token) => {
 <template>
   <div class="container mx-auto pt-7 px-15 pb-12 <sm:px-4">
     <div class="pb-7">
-      <p>Generate and revoke access tokens used to authenticate with this Reposilite instance.</p>
+      <p>Generate and revoke access tokens used to authenticate with this Ingot instance.</p>
       <p class="text-sm text-gray-500">A token's secret is shown only once, at the moment it is generated.</p>
     </div>
 
@@ -162,9 +162,9 @@ const runConfirm = (token) => {
           <span class="tag">{{ token.identifier.type.toLowerCase() }}</span>
           <span v-if="tokenIsManager(token)" class="tag mgr">manager</span>
           <span class="desc">{{ token.description }}</span>
-          <span class="dates" :title="datesTitle(token)"><span>{{ ageOf(token) }}</span><span class="exsep">·</span><span class="ex" :class="{ expired: isExpired(token), forever: !token.expiresAt }">{{ expiryOf(token) }}</span><!-- usage count (placeholder, disabled): <span class="exsep">·</span><span class="reqs" title="Sample data — Reposilite doesn't track per-token usage yet">{{ requests(token).toLocaleString() }} requests</span> --></span>
+          <span class="dates" :title="datesTitle(token)"><span>{{ ageOf(token) }}</span><span class="exsep">·</span><span class="ex" :class="{ expired: isExpired(token), forever: !token.expiresAt }">{{ expiryOf(token) }}</span><!-- usage count (placeholder, disabled): <span class="exsep">·</span><span class="reqs" title="Sample data — Ingot does not track per-token usage yet">{{ requests(token).toLocaleString() }} requests</span> --></span>
           <!-- usage chart (placeholder, disabled — no per-token stats in the backend yet)
-          <span class="usage" title="Sample data — Reposilite doesn't track per-token usage yet">
+          <span class="usage" title="Sample data — Ingot does not track per-token usage yet">
             <svg class="spark" viewBox="0 0 60 18" preserveAspectRatio="none">
               <rect v-for="(h, i) in spark(token)" :key="i" :x="i * 6 + 0.5" :y="18 - h" width="5" :height="h" rx="1" />
             </svg>

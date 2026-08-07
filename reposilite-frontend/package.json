@@ -1,7 +1,7 @@
 {
   "name": "reposilite-frontend",
   "version": "3.5.28",
-  "repository": "https://github.com/dzikoysk/reposilite",
+  "repository": "https://github.com/OneLiteFeatherNET/ingot",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "eslint": "eslint \"src/**\"",
     "build": "vite build",
     "serve": "vite preview",
-    "fake-api": "nodemon fake-api/fake-reposilite-backend.js",
+    "fake-api": "nodemon fake-api/fake-ingot-backend.js",
     "full": "concurrently -k \"npm run fake-api\" \"vite\""
   },
   "engines": {

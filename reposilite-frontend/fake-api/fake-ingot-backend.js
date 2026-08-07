@@ -117,7 +117,7 @@ const statisticsSeries = [
 ]
 
 application
-  .get("/", (req, res) => res.send("Reposilite stub API"))
+  .get("/", (req, res) => res.send("Ingot stub API"))
   .use((req, res, next) => {
     console.log("Requested fake " + req.method + " " + req.url)
     res.setHeader("Access-Control-Allow-Origin", "*")
@@ -445,4 +445,4 @@ application
   )
   .listen(8887)
 
-console.log("Reposilite stub API started on port 8887")
+console.log("Ingot stub API started on port 8887")

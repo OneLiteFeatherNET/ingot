@@ -28,7 +28,7 @@
           "preserveSnapshots": {
             "type": "boolean",
             "title": "Preserved snapshots",
-            "description": "By default Reposilite deletes all deprecated build files. If you'd like to preserve them, set this property to true."
+            "description": "By default Ingot deletes all deprecated build files. If you'd like to preserve them, set this property to true."
           },
           "storageProvider": {
             "oneOf": [
@@ -108,7 +108,7 @@
                 "store": {
                   "type": "boolean",
                   "title": "Store",
-                  "description": "Reposilite can store proxied artifacts locally to reduce response time and improve stability."
+                  "description": "Ingot can store proxied artifacts locally to reduce response time and improve stability."
                 },
                 "allowedGroups": {
                   "title": "Allowed Groups",
@@ -124,13 +124,13 @@
                   "type": "integer",
                   "format": "int32",
                   "title": "Connect Timeout",
-                  "description": "How long Reposilite can wait for establishing the connection with a remote host."
+                  "description": "How long Ingot can wait for establishing the connection with a remote host."
                 },
                 "readTimeout": {
                   "type": "integer",
                   "format": "int32",
                   "title": "Read Timeout",
-                  "description": "How long Reposilite can read data from remote proxy."
+                  "description": "How long Ingot can read data from remote proxy."
                 },
                 "authorization": {
                   "type": ["object", "null"],
@@ -153,7 +153,7 @@
                 "httpProxy": {
                   "type": "string",
                   "title": "HTTP Proxy",
-                  "description": "Custom proxy configuration for HTTP/SOCKS client used by Reposilite. Examples: <br/>\nHTTP 127.0.0.1:1081 <br/>\nSOCKS 127.0.0.1:1080 login password "
+                  "description": "Custom proxy configuration for HTTP/SOCKS client used by Ingot. Examples: <br/>\nHTTP 127.0.0.1:1081 <br/>\nSOCKS 127.0.0.1:1080 login password "
                 }
               },
               "title": "Mirrored Maven Repository",

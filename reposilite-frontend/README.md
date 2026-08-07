@@ -1,4 +1,4 @@
-# Reposilite Frontend
+# Ingot Frontend
 Uses [Vue 3](https://v3.vuejs.org/) with [WindiCSS](https://windicss.org/)
 
 ### Running
