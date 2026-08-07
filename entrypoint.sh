@@ -42,8 +42,8 @@ else
   # shellcheck disable=SC2012
   existing_gid=$(ls -dln data | awk '{print $4}')
   if [ "$existing_uid" != "$USER_ID" ] || [ "$existing_gid" != "$GROUP_ID" ]; then
-    printf "\033[1;31mStarting with Reposilite 3.5.20 (inherited by Ingot) the standard user id will be 977, I will make those changes now.\033[0m\n" 1>&2
-    printf "\033[1;31mAfter 3.6.0 docker installations with user id of 999 will no longer work.\033[0m\n" 1>&2
+    printf "\033[1;31mThe data directory is owned by %s:%s, the server runs as %s:%s, so ownership is being changed now.\033[0m\n" "$existing_uid" "$existing_gid" "$USER_ID" "$GROUP_ID" 1>&2
+    printf "\033[1;31mSet PUID and PGID if you need a different owner. Reposilite images before 3.5.20 used 999, which stops working after 3.6.0.\033[0m\n" 1>&2
     printf "\033[1;31mFor more information see: https://github.com/dzikoysk/reposilite/issues/2288\033[0m\n" 1>&2
     printf "\033[1;31mIF YOU DOWNGRADE PAST THIS POINT \"Hic sunt dracones\"\033[0m\n" 1>&2
   fi
