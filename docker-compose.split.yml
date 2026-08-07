@@ -1,0 +1,83 @@
+# The dashboard and the server in separate containers.
+#
+#   docker compose -f docker-compose.split.yml up -d
+#
+# Only the dashboard publishes a port. The server is reachable on the internal network
+# alone, and everything that is not the dashboard's own static content is proxied to it, so
+# both stay on one origin and no repository read needs CORS.
+#
+# The plain docker-compose.yml next to this file runs the server on its own, serving the
+# dashboard itself. That is the simpler deployment; see
+# reposilite-site/data/guides/installation/split-containers.md for when this one is worth
+# the extra moving part.
+services:
+  dashboard:
+    image: ghcr.io/onelitefeathernet/ingot-dashboard:1.0.0 # x-release-please-version
+    #
+    # To build from sources:
+    #
+    # build:
+    #   context: .
+    #   dockerfile: reposilite-frontend/Dockerfile
+    ports:
+      - ${PORT}:8080
+    environment:
+      # Resolved per request, so this container starts whether or not the server is up yet.
+      - INGOT_BACKEND=http://server:8080
+      - INGOT_RESOLVER=127.0.0.11
+      - INGOT_MAX_UPLOAD_SIZE=1024m
+    depends_on:
+      - server
+    restart: unless-stopped
+
+    # Static content and a proxy: nothing to write, nothing to escalate into.
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # The paths nginx writes anyway. They need the image's own uid, otherwise the mounts
+    # land owned by root and nginx cannot render its config into conf.d, which leaves it
+    # running with no server block at all rather than failing outright.
+    tmpfs:
+      - /tmp:uid=101,gid=101
+      - /var/cache/nginx:uid=101,gid=101
+      - /var/run:uid=101,gid=101
+      - /etc/nginx/conf.d:uid=101,gid=101
+
+  server:
+    image: ghcr.io/onelitefeathernet/ingot:1.0.0 # x-release-please-version
+    #
+    # To build from sources:
+    #
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - JAVA_OPTS=-Xmx${MEMORY} ${JAVA_COMPOSE_OPTS}
+      - INGOT_OPTS=--port 8080 ${INGOT_COMPOSE_OPTS}
+      # The dashboard is served by the other container, so this one should not answer for
+      # it as well. Two copies at different URLs is the confusing outcome, not a safe one.
+      - INGOT_LOCAL_DEFAULTFRONTEND=false
+    volumes:
+      - ingot-data:/app/data
+    restart: unless-stopped
+    # Kept for the interactive console, which is how the first access token is generated.
+    stdin_open: true
+    tty: true
+
+    # Not read_only: the server writes artifacts, logs and its database. It runs as an
+    # unprivileged user by default, which is where the value is here.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    # Deliberately not published. Reaching the server means going through the dashboard,
+    # which is the only thing that should be exposed. Add a ports entry only if something
+    # has to talk to it directly, and know that it bypasses the proxy when you do.
+
+volumes:
+  ingot-data: {}

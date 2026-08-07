@@ -1,3 +1,7 @@
+# The server on its own, serving the dashboard itself.
+#
+# This is the simpler deployment and the one to start from. To run the dashboard in its own
+# container instead, see docker-compose.split.yml next to this file.
 services:
   ingot:
     image: ghcr.io/onelitefeathernet/ingot:1.0.0 # x-release-please-version
@@ -19,5 +23,8 @@ services:
     restart: unless-stopped
     stdin_open: true
     tty: true
+    security_opt:
+      # Nothing in here ever needs a privilege it was not started with.
+      - no-new-privileges:true
 volumes:
   ingot-data: {}

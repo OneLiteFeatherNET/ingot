@@ -16,6 +16,7 @@ const categories = [
       'general',
       'jar',
       'docker',
+      'split-containers',
       'kubernetes',
     ]
   },
