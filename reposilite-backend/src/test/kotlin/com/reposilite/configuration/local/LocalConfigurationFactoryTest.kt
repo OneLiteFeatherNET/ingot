@@ -1,6 +1,7 @@
 package com.reposilite.configuration.local
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.entry
 import org.junit.jupiter.api.Test
 
 internal class LocalConfigurationFactoryTest {
@@ -51,6 +52,47 @@ internal class LocalConfigurationFactoryTest {
 
         // then: the property is updated
         assertThat(localConfiguration.hostname.get()).isEqualTo("reposilite.local")
+    }
+
+    @Test
+    fun `should read environment variables from the ingot prefix`() {
+        // when: an environment variable uses the INGOT_LOCAL_ prefix
+        val properties = LocalConfigurationFactory.getEnvironmentVariables(mapOf("INGOT_LOCAL_PORT" to "8181"))
+
+        // then: it is exposed under the bare property name
+        assertThat(properties).containsExactly(entry("PORT", "8181"))
+    }
+
+    @Test
+    fun `should still read environment variables from the legacy reposilite prefix`() {
+        // when: an environment variable uses the REPOSILITE_LOCAL_ prefix an existing deployment was set up with
+        val properties = LocalConfigurationFactory.getEnvironmentVariables(mapOf("REPOSILITE_LOCAL_PORT" to "8181"))
+
+        // then: it is still honoured
+        assertThat(properties).containsExactly(entry("PORT", "8181"))
+    }
+
+    @Test
+    fun `should prefer the ingot prefix over the legacy one`() {
+        // when: the same property is set under both prefixes
+        val properties = LocalConfigurationFactory.getEnvironmentVariables(
+            mapOf(
+                "INGOT_LOCAL_PORT" to "8181",
+                "REPOSILITE_LOCAL_PORT" to "8080"
+            )
+        )
+
+        // then: the ingot prefix wins
+        assertThat(properties).containsExactly(entry("PORT", "8181"))
+    }
+
+    @Test
+    fun `should ignore environment variables without a known prefix`() {
+        // when: an unrelated environment variable is present
+        val properties = LocalConfigurationFactory.getEnvironmentVariables(mapOf("PATH" to "/usr/bin"))
+
+        // then: it is not treated as a configuration override
+        assertThat(properties).isEmpty()
     }
 
     private fun applyProperty(localConfiguration: LocalConfiguration, key: String, value: String) {

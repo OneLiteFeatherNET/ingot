@@ -71,26 +71,43 @@ internal object LocalConfigurationFactory {
     }
 
     /**
-     * Get all environment variables that starts with REPOSILITE.LOCAL., example:
-     * REPOSILITE_LOCAL_SSLENABLED=false
+     * Prefixes recognized for external overrides, most specific first. The legacy REPOSILITE
+     * prefix stays supported so an existing deployment keeps working after the switch to Ingot;
+     * when both prefixes carry the same property, the INGOT one wins.
      */
-    private fun getEnvironmentVariables(): Map<String, String> =
-        System.getenv()
-            .asSequence()
-            .map { it.key.uppercase() to it.value }
-            .filter { (key) -> key.startsWith("REPOSILITE_LOCAL_") }
-            .associate { (key, value) -> key.substringAfter("REPOSILITE_LOCAL_") to value }
+    private val ENVIRONMENT_VARIABLE_PREFIXES = listOf("INGOT_LOCAL_", "REPOSILITE_LOCAL_")
+    private val SYSTEM_PROPERTY_PREFIXES = listOf("ingot.local.", "reposilite.local.")
 
     /**
-     * Get all system properties that starts with reposilite.local., example:
-     * reposilite.local.sslEnabled=false
+     * Get all environment variables that start with INGOT_LOCAL_ or the legacy REPOSILITE_LOCAL_, example:
+     * INGOT_LOCAL_SSLENABLED=false
+     */
+    internal fun getEnvironmentVariables(environment: Map<String, String> = System.getenv()): Map<String, String> =
+        stripPrefixes(environment.mapKeys { (key) -> key.uppercase() }, ENVIRONMENT_VARIABLE_PREFIXES)
+
+    /**
+     * Get all system properties that start with ingot.local. or the legacy reposilite.local., example:
+     * ingot.local.sslEnabled=false
      */
     private fun getProperties(): Map<String, String> =
         System.getProperties()
             .propertyNames()
             .asSequence()
             .map { it.toString() }
-            .filter { it.lowercase().startsWith("reposilite.local.") }
-            .associate { it.lowercase().substringAfter("reposilite.local.") to System.getProperty(it) }
+            .associate { it.lowercase() to System.getProperty(it) }
+            .let { stripPrefixes(it, SYSTEM_PROPERTY_PREFIXES) }
+
+    /**
+     * Strips the matching prefix off every key of [source] that carries one. [prefixes] is ordered
+     * most preferred first and applied back to front, so a value found under an earlier prefix
+     * overwrites the one a later prefix contributed for the same property.
+     */
+    private fun stripPrefixes(source: Map<String, String>, prefixes: List<String>): Map<String, String> =
+        prefixes.foldRight(mutableMapOf<String, String>()) { prefix, accumulator ->
+            source
+                .filterKeys { it.startsWith(prefix) }
+                .forEach { (key, value) -> accumulator[key.substringAfter(prefix)] = value }
+            accumulator
+        }
 
 }
