@@ -41,6 +41,16 @@ application {
 dependencies {
     implementation(project(":reposilite-frontend"))
 
+    // Transitive dependencies that ship in the fat jar and reach the network, pinned to
+    // versions without known advisories. Neither is declared directly: netty arrives with
+    // the AWS SDK's netty-nio-client and jetty with javalin-ssl, so a platform is the only
+    // way to raise them without waiting for those projects to bump.
+    //
+    // Both stay on the line their consumers expect. netty 4.2.x and jetty 12.1.x are not
+    // interchangeable with what the AWS SDK and Javalin compile against.
+    implementation(platform("io.netty:netty-bom:4.1.136.Final"))
+    implementation(platform("org.eclipse.jetty:jetty-bom:12.1.12"))
+
 //    val detekt = "1.23.5"
 //    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:$detekt")
 
@@ -100,14 +110,14 @@ dependencies {
     implementation("com.zaxxer:HikariCP:7.0.2")
     implementation("org.xerial:sqlite-jdbc:3.49.1.0") // note: 3.50.3.0 is broken
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.8")
-    implementation("org.postgresql:postgresql:42.7.11")
+    implementation("org.postgresql:postgresql:42.7.13")
     implementation("com.h2database:h2:2.3.232")
     implementation("com.mysql:mysql-connector-j:9.7.0") {
         exclude(group = "com.google.protobuf", module = "protobuf-java")
     }
     implementation("com.google.protobuf:protobuf-java:4.35.0")
 
-    val jackson = "2.21.3"
+    val jackson = "2.21.5"
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jackson")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jackson")
@@ -230,6 +240,18 @@ jacoco {
     toolVersion = "0.8.14"
 }
 
+// Trivy cannot see Gradle dependencies. It reads lockfiles, and this build has none; the
+// shadow jar is no help either, because merging the dependencies flattens away the nested
+// jars it would identify them by. So the resolved runtime classpath is copied out and the
+// scanner is pointed at the jars themselves, which it identifies by checksum.
+val collectRuntimeDependencies by tasks.registering(Copy::class) {
+    group = "verification"
+    description = "Copies the resolved runtime classpath so a vulnerability scanner can read it"
+
+    from(configurations.named("runtimeClasspath"))
+    into(layout.buildDirectory.dir("dependency-jars"))
+}
+
 // Ingot ships as FOSS, so every bundled dependency has to stay compatible with that.
 // ApexCharts is what this guards against: same package id, new licence, one dependency
 // bump, and nobody notices until a distribution packages the product. `checkLicense`
@@ -308,6 +330,13 @@ val testCoverage by tasks.registering {
 tasks["integration"].mustRunAfter(tasks["test"])
 tasks["jacocoTestReport"].mustRunAfter(tasks["integration"])
 tasks["jacocoTestCoverageVerification"].mustRunAfter(tasks["jacocoTestReport"])
+
+// The coditory plugin contributes `integration` and the JVM test suite plugin contributes
+// `integrationTest`, and both write coverage into the build directory that jacocoTestReport
+// reads. Only the first was ordered, so a run that reaches both, such as `gradle build test`,
+// fails validation: the report would consume execution data from a task Gradle is free to
+// schedule after it.
+tasks["jacocoTestReport"].mustRunAfter(tasks["integrationTest"])
 
 //detekt {
 //    buildUponDefaultConfig = true
