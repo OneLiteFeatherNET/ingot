@@ -19,6 +19,16 @@ jobs:
   # sourceCompatibility/targetCompatibility 17, so 17 is what has to keep working.
   build:
     name: "Build"
+    # Pull requests only, as the name gradle-build-pr says. Its first job runs
+    # dorny/paths-filter without a checkout, which works on pull_request because the action
+    # asks the API for the changed files, and fails on push because there it needs a
+    # working copy to diff. A failing filter job takes the build with it, since the build
+    # job's `if` carries no status function and is therefore implicitly gated on success.
+    #
+    # Pushes to main are covered by the Coverage job below, which builds and runs the full
+    # backend suite. Drop this condition once the shared workflow checks out before
+    # filtering.
+    if: github.event_name == 'pull_request'
     # gradle-build-pr.yml publishes the JUnit results as a check and a PR comment, so it
     # declares checks: write and pull-requests: write on that job. A called workflow cannot
     # request more than the caller granted, and the repository default here is
