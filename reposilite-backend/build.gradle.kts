@@ -17,6 +17,10 @@
 //import io.gitlab.arturbosch.detekt.Detekt
 //import io.gitlab.arturbosch.detekt.DetektCreateBaselineTask
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import com.github.jk1.license.filter.LicenseBundleNormalizer
+import com.github.jk1.license.render.InventoryHtmlReportRenderer
+import com.github.jk1.license.render.ReportRenderer
+import com.github.jk1.license.render.JsonReportRenderer
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.jetbrains.kotlin.gradle.tasks.KaptGenerateStubs
 
@@ -26,6 +30,7 @@ plugins {
     kotlin("kapt")
     id("com.coditory.integration-test") version "2.2.5"
     id("com.gradleup.shadow") version "9.4.2"
+    id("com.github.jk1.dependency-license-report") version "3.1.4"
 //    id("io.gitlab.arturbosch.detekt").version("1.22.0")
 }
 
@@ -223,6 +228,18 @@ kapt {
 
 jacoco {
     toolVersion = "0.8.14"
+}
+
+// Ingot ships as FOSS, so every bundled dependency has to stay compatible with that.
+// ApexCharts is what this guards against: same package id, new licence, one dependency
+// bump, and nobody notices until a distribution packages the product. `checkLicense`
+// fails the build on any licence that is not on the list, which forces the decision to
+// be made deliberately instead of silently.
+licenseReport {
+    configurations = arrayOf("runtimeClasspath")
+    filters = arrayOf(LicenseBundleNormalizer())
+    renderers = arrayOf<ReportRenderer>(InventoryHtmlReportRenderer(), JsonReportRenderer())
+    allowedLicensesFile = file("allowed-licenses.json")
 }
 
 tasks.test {

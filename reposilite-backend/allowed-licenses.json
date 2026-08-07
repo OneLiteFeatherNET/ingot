@@ -1,0 +1,56 @@
+{
+  "_comment": [
+    "Licences Ingot is allowed to bundle. `checkLicense` fails on anything not listed.",
+    "",
+    "Adding an entry is a licensing decision, not a build fix. Before you add one, check",
+    "what the licence actually obliges a redistributor to do: Ingot ships as FOSS that",
+    "users run themselves, which counts as redistribution.",
+    "",
+    "Several names repeat with different spellings on purpose. LicenseBundleNormalizer",
+    "collapses most of them, but a dependency whose POM names its licence in a way the",
+    "bundle does not know still needs its literal spelling here.",
+    "",
+    "The copyleft entries below were evaluated and accepted:",
+    "  - MySQL Connector/J is GPL-2.0 with the Universal FOSS Exception, which lists",
+    "    Apache-2.0 among the licences it permits, so bundling it is fine for a FOSS build.",
+    "  - MariaDB Connector/J is LGPL-2.1, which we link against and do not modify.",
+    "  - The jakarta.* APIs and the JDK classpath libraries are dual licensed EPL-2.0 and",
+    "    GPL-2.0 with the Classpath Exception, so the permissive half applies.",
+    "  - H2 is dual licensed EPL-1.0 and MPL-2.0.",
+    "Unbundling the JDBC drivers would let the first two entries go."
+  ],
+  "allowedLicenses": [
+    { "moduleLicense": "Apache License, Version 2.0" },
+    { "moduleLicense": "Apache-2.0" },
+    { "moduleLicense": "MIT License" },
+    { "moduleLicense": "MIT-0" },
+    { "moduleLicense": "BSD 2-Clause License" },
+    { "moduleLicense": "BSD 3-Clause License" },
+    { "moduleLicense": "The 2-Clause BSD License" },
+    { "moduleLicense": "The 3-Clause BSD License" },
+    { "moduleLicense": "Bouncy Castle Licence" },
+    { "moduleLicense": "Eclipse Public License 1.0" },
+    { "moduleLicense": "Eclipse Public License 2.0" },
+    { "moduleLicense": "EPL 1.0" },
+    { "moduleLicense": "Eclipse Public License - v 2.0" },
+    { "moduleLicense": "Mozilla Public License 2.0" },
+    { "moduleLicense": "Mozilla Public License, Version 2.0" },
+    { "moduleLicense": "GNU General Public License, version 2 with the GNU Classpath Exception" },
+    { "moduleLicense": "GNU GENERAL PUBLIC LICENSE, Version 2 + Classpath Exception" },
+    { "moduleLicense": "The GNU General Public License, v2 with Universal FOSS Exception, v1.0" },
+    { "moduleLicense": "LGPL-2.1-or-later" },
+    { "moduleLicense": "GNU Lesser General Public License v2.1 or later" },
+
+    {
+      "_comment": [
+        "journalist publishes no licence metadata in its POM, so the check has nothing to",
+        "match on. The project itself is Apache-2.0 (github.com/reposilite-playground/journalist).",
+        "These three artifacts are also the open supply chain item: they are served only from",
+        "maven.reposilite.com, not from Maven Central."
+      ],
+      "moduleName": "com.reposilite:journalist"
+    },
+    { "moduleName": "com.reposilite:journalist-slf4j" },
+    { "moduleName": "com.reposilite:journalist-tinylog" }
+  ]
+}
