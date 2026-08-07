@@ -14,7 +14,7 @@ The path must follow the given pattern: `/{repository}/{gav}`:
 * `{repository}` - required name of repository used to distinguish repositories
 * `{gav}` - optional GAV (`group-artifact-version`) path
 
-Matching is a **case-insensitive byte-prefix** — a request is authorized when the request URI starts with the route's path. This means a route cascades to every URI sharing the prefix, including sibling paths that happen to share the same leading characters. Append a trailing `/` to anchor the prefix at a segment boundary: `/releases/` does not match `/releases-snapshots`, while `/releases` does.
+Matching is a **case-insensitive byte-prefix**: a request is authorized when the request URI starts with the route's path. This means a route cascades to every URI sharing the prefix, including sibling paths that happen to share the same leading characters. Append a trailing `/` to anchor the prefix at a segment boundary: `/releases/` does not match `/releases-snapshots`, while `/releases` does.
 
 Some examples of path declaration and matched URLs:
 
@@ -35,21 +35,21 @@ Currently supported permissions:
 ### Commands
 
 #### Adding write access to route
-You can add access to specified route for token using the `route-add <token> <path> <permissions>` command in Reposilite CLI.
+You can add access to specified route for token using the `route-add <token> <path> <permissions>` command in Ingot CLI.
 ```bash
 $ route-add reposilite-publisher /releases/com/reposilite w
 Route Route(path=/releases/com/reposilite, permissions=[WRITE]) has been added to token reposilite-publisher
 ```
 
 #### Adding full access to route
-You can add full access (read and write) to specified route using `rw` for permissions attribute in Reposilite CLI command.
+You can add full access (read and write) to specified route using `rw` for permissions attribute in Ingot CLI command.
 ```bash
 $ route-add reposilite-publisher /releases/com/reposilite rw
 Route Route(path=/releases/com/reposilite, permissions=[READ, WRITE]) has been added to token reposilite-publisher
 ```
 
 #### Removing access to route
-You can remove access to specified route for token using the `route-remove <token> <path>` command in Reposilite CLI.
+You can remove access to specified route for token using the `route-remove <token> <path>` command in Ingot CLI.
 
 ```bash
 $ route-remove reposilite-publisher /releases/com/reposilite

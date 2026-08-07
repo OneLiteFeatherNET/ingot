@@ -8,43 +8,39 @@ import { chakraColor } from "../helpers/chakra-theme"
 const individualCards = [
   { 
     title: 'Star project',
-    description: 'Star project on GitHub to help us reach a wider audience',
+    description: 'Star the project on GitHub to help us reach a wider audience',
     buttons: [
       {
-        title: 'Star Reposilite',
-        link: 'https://github.com/dzikoysk/reposilite/stargazers'
-      },
-      {
-        title: 'Follow @dzikoysk',
-        link: 'https://twitter.com/dzikoysk'
+        title: 'Star Ingot',
+        link: 'https://github.com/OneLiteFeatherNET/ingot/stargazers'
       }
     ]
   },
   {
-    title: 'Donation',
-    description: 'Consider a donation to financially support my work and ecosystem around',
+    title: 'Support upstream',
+    description: 'Ingot is a fork of Reposilite. Its author still carries most of the work this project is built on',
     buttons: [
       {
-        title: 'GitHub Sponsors',
+        title: 'Sponsor @dzikoysk',
         link: 'https://github.com/sponsors/dzikoysk'
       },
       {
-        title: 'Panda organization',
-        link: 'https://panda-lang.org/support'
+        title: 'Star Reposilite',
+        link: 'https://github.com/dzikoysk/reposilite/stargazers'
       }
     ]
   },
   {
     title: 'Contribute',
-    description: 'Join developers team and develop projects associated with Reposilite project',
+    description: 'Report what breaks, or pick up an issue and send a pull request',
     buttons: [
       {
         title: 'Visit issues',
-        link: 'https://github.com/dzikoysk/reposilite/issues'
+        link: 'https://github.com/OneLiteFeatherNET/ingot/issues'
       },
       {
         title: 'Visit PRs',
-        link: 'https://github.com/dzikoysk/reposilite/pulls'
+        link: 'https://github.com/OneLiteFeatherNET/ingot/pulls'
       }
     ]
   }
@@ -91,9 +87,9 @@ const organizationCards = [
     title: 'Sponsor',
     description: (
       <Box>
-        If you'd like to invest into open source sector, feel free to contact me using one of conversation channels listed on&nbsp;
-        <Link href={'https://dzikoysk.net/#contact'} color={'purple.400'}>dzikoysk.net</Link>.
-        I'm open to discuss various possibilities and scenarios individually, so we can find out the best solution for both sides! :)
+        If you'd like to invest into the open source sector, get in touch through the&nbsp;
+        <Link href={'https://github.com/OneLiteFeatherNET/ingot/issues'} color={'purple.400'}>issue tracker</Link>.
+        We're open to discussing possibilities individually, so we can find the best arrangement for both sides.
       </Box>
     )
   }
@@ -117,16 +113,18 @@ export default function Home() {
   return (
     <Layout>
       <Head>
-        <title>Support · Reposilite</title>  
+        <title>Support · Ingot</title>  
       </Head>
       <Flex flexDirection={'column'} maxW={'container.lg'} px={'10'} mx={'auto'}>
         <Flex flexDirection={'column'} textAlign={'center'} justifyContent={'center'} paddingTop={14} paddingBottom={8}>
           <Heading  as={'h1'} size={'lg'}>How to help? 💕</Heading>
           <Box paddingTop={3}>
-            Reposilite project and associated components are fully open source initiative.
+            Ingot is a fully open source project, maintained by&nbsp;
+            <Link color={'purple.400'} href={'https://github.com/OneLiteFeatherNET'}>OneLiteFeather</Link>.
             <br />
-            It's currently mainly maintained by&nbsp;
-            <Link color={'purple.400'} href={'https://twitter.com/dzikoysk'}>@dzikoysk</Link>
+            It is a fork of&nbsp;
+            <Link color={'purple.400'} href={'https://github.com/dzikoysk/reposilite'}>Reposilite</Link>
+            &nbsp;by <Link color={'purple.400'} href={'https://github.com/dzikoysk'}>@dzikoysk</Link>, licensed under the Apache License 2.0.
           </Box>
         </Flex>
         <Heading textAlign={'center'} size={'md'} paddingBottom={10}>For individuals</Heading>

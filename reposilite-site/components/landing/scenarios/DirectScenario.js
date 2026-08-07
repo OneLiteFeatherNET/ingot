@@ -3,7 +3,7 @@ import { StyledNode } from "./Flow"
 
 const localReposiliteFlow = {
   nodes: [
-    { id: 'local', data: { label: <Text as='i' fontWeight={'bold'}>Local Reposilite Instance</Text> }, position: { x: 95, y: -10 }, sourcePosition: 'bottom', targetPosition: 'bottom' },
+    { id: 'local', data: { label: <Text as='i' fontWeight={'bold'}>Local Ingot Instance</Text> }, position: { x: 95, y: -10 }, sourcePosition: 'bottom', targetPosition: 'bottom' },
     { id: 'fs', data: { label: <Text>Local FileSystem</Text> }, position: { x: 0, y: 50 }, sourcePosition: 'top', targetPosition: 'top' },
     { id: 'sql', data: { label: 'Embedded SQL' }, position: { x: 60, y: 100 }, sourcePosition: 'top', targetPosition: 'top' },
     { id: 'memory', data: { label: 'Low consumption' }, position: { x: 240, y: 50 }, sourcePosition: 'top', targetPosition: 'top' },
@@ -31,7 +31,7 @@ const directScenario = {
     { id: 'maven', data: { label: <Text>Maven <br /> Clients</Text> }, position: { x: 0, y: 5 }, sourcePosition: 'bottom', targetPosition: 'bottom' },
     { id: 'ci', data: { label: <Text>CI & CD <br /> Workers</Text> }, position: { x: 360, y: 5 }, sourcePosition: 'bottom', targetPosition: 'bottom' },
     { id: 'reposilite', data: { label: <LocalReposiliteGraph /> }, position: { x: 20, y: 130 }, sourcePosition: 'bottom', targetPosition: 'top' },
-    { id: 'api', data: { label: <Text>Reposilite API</Text> }, position: { x: 167, y: 340 }, sourcePosition: 'bottom', targetPosition: 'top' },
+    { id: 'api', data: { label: <Text>Ingot API</Text> }, position: { x: 167, y: 340 }, sourcePosition: 'bottom', targetPosition: 'top' },
     { id: 'rest', data: { label: <Text>Public API</Text> }, position: { x: 55, y: 420 }, sourcePosition: 'top', targetPosition: 'top' },
     { id: 'plugins', data: { label: <Text>Plugins</Text> }, position: { x: 300, y: 420 }, sourcePosition: 'top', targetPosition: 'top' },
   ],

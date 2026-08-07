@@ -4,6 +4,10 @@ title: Arch Linux
 community: true
 ---
 
+`Note` There is no Ingot AUR package yet. This guide describes the Reposilite package,
+maintained outside this project, and installs Reposilite rather than Ingot. Until an Ingot
+package exists, use the [standalone jar](/guide/jar) or the [container image](/guide/docker).
+
 The Reposilite AUR package can be found at the following sources:
 - [GitHub / Reposilite AUR](https://github.com/reposilite-playground/reposilite-aur) -
   releases and official source of package.

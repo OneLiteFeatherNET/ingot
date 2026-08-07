@@ -18,7 +18,7 @@ const GitHubLink = ({ url, children }) => {
   )
 }
 export default function Plugin({ plugin }) {
-  const title = `${plugin.title} plugin · Plugins · Reposilite`
+  const title = `${plugin.title} plugin · Plugins · Ingot`
 
   const {
     maven,

@@ -3,20 +3,20 @@ id: systemd
 title: Systemd
 ---
 
-You can launch Reposilite as a service using [systemd](https://en.wikipedia.org/wiki/Systemd).
-Here is an example configuration of `/etc/systemd/system/reposilite.service` file:
+You can launch Ingot as a service using [systemd](https://en.wikipedia.org/wiki/Systemd).
+Here is an example configuration of `/etc/systemd/system/ingot.service` file:
 
 ```json5
 [Unit]
-Description=Reposilite Service
+Description=Ingot Service
 
 [Service]
 # Non-root user
-User=reposilite-user
-# Reposilite workspace directory
-WorkingDirectory=/opt/reposilite
-# Path to Reposilite executable/script and its configuration.
-ExecStart=java -jar reposilite.jar --local-configuration=/etc/reposilite/reposilite.cdn --working-directory=/opt/reposilite
+User=ingot
+# Ingot workspace directory
+WorkingDirectory=/opt/ingot
+# Path to Ingot executable/script and its configuration.
+ExecStart=java -jar ingot.jar --local-configuration=/etc/ingot/configuration.cdn --working-directory=/opt/ingot
 # Policy
 SuccessExitStatus=0
 TimeoutStopSec=10

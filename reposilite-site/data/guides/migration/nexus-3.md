@@ -20,7 +20,7 @@ mvn package -DskipTests
 mkdir exported-data
 java -jar target/nexus3-export-1.0.jar YOUR_NEXUS_URL YOUR_NEXUS_REPOSITORY_NAME exported-data
 
-# OPTIONAL (largely depends on your Reposilite setup)
+# OPTIONAL (largely depends on your Ingot setup)
 cd exported-data
 chown --recursive reposilite:reposilite *
 mv * /var/lib/reposilite/repositories/releases/

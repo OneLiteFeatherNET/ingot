@@ -3,7 +3,7 @@ id: plugin-api
 title: Plugin API
 ---
 
-Plugin system has been introduced in Reposilite 3.x and allows users to extend & customize their instances.
+Plugin system has been introduced in Ingot 3.x and allows users to extend & customize their instances.
 
 ### Build system
 Preferred build for plugins is [Gradle 7+](https://gradle.org/) with [Kotlin DSL](https://docs.gradle.org/current/userguide/kotlin_dsl.html). 
@@ -27,7 +27,7 @@ repositories {
 
 dependencies {
     // Ingot publishes under its own group id. The packages are still com.reposilite.*,
-    // so a plugin written against Reposilite compiles against Ingot unchanged: only this
+    // so a plugin written against Ingot compiles against Ingot unchanged: only this
     // line has to change.
     compileOnly("net.onelitefeather.ingot:reposilite:3.5.28")
 }
@@ -93,7 +93,7 @@ The last thing you need to do is a declaration of a service file in resources di
 example.ExamplePlugin
 ```
 
-Then, just run `gradle shadowJar` task and put output file in `plugins` directory located in working directory of your Reposilite instance.
+Then, just run `gradle shadowJar` task and put output file in `plugins` directory located in working directory of your Ingot instance.
 
 ### API
 List of classes and functions:
@@ -105,24 +105,24 @@ Plugin annotation describes plugin using those properties:
 | Property | Type | Description |
 | :--: | :--: | :--: |
 | name | String | Defines the name of plugin |
-| version | String | Plugin version, by default the same as Reposilite dependency |
+| version | String | Plugin version, by default the same as Ingot dependency |
 | dependencies | String[] | Array of required dependencies (builtin domains or plugins) |
 
-~ [API / Plugin.java](https://github.com/dzikoysk/reposilite/blob/main/reposilite-backend/src/main/kotlin/com/reposilite/plugin/api/Plugin.java)
+~ [API / Plugin.java](https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-backend/src/main/kotlin/com/reposilite/plugin/api/Plugin.java)
 
 </Spoiler>
 
 <Spoiler title="ReposilitePlugin" paddingX="5" paddingY="2">
 
-Allows Reposilite to inject `Extensions` instance into your plugin, 
+Allows Ingot to inject `Extensions` instance into your plugin, 
 so you can communicate with other components of application.
 
 _ReposilitePlugin_ exposes 2 callbacks:
-1. `fun load(loader: PluginLoader)` - Called immediately when plugin is loaded in Reposilite
+1. `fun load(loader: PluginLoader)` - Called immediately when plugin is loaded in Ingot
 2. `fun initialize() -> Facade?` - Main method for your plugin,
-   called when Reposilite will ensure that all required dependencies have been satisfied and everything works. You can also expose your own Facade implementation here if you want to expose some public API from your plugin.
+   called when Ingot will ensure that all required dependencies have been satisfied and everything works. You can also expose your own Facade implementation here if you want to expose some public API from your plugin.
 
-~ [API / ReposilitePlugin.java](https://github.com/dzikoysk/reposilite/blob/main/reposilite-backend/src/main/kotlin/com/reposilite/plugin/api/ReposilitePlugin.java)
+~ [API / ReposilitePlugin.java](https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-backend/src/main/kotlin/com/reposilite/plugin/api/ReposilitePlugin.java)
 
 </Spoiler>
 
@@ -134,7 +134,7 @@ Extensions allows you to:
 * Register facades
 * Get external facades
 
-~ [API / Extensions.java](https://github.com/dzikoysk/reposilite/blob/main/reposilite-backend/src/main/kotlin/com/reposilite/plugin/Extensions.kt)
+~ [API / Extensions.java](https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-backend/src/main/kotlin/com/reposilite/plugin/Extensions.kt)
 
 </Spoiler>
 
@@ -142,4 +142,4 @@ Extensions allows you to:
 
 Facade is just a name for class that exposes public functions to other domains (API). The difference between `Facade` and `Service` is in the visibility - `Service` is meant to use and handle internal implementation, `Facade` for external users. You can find more about used architecture here:
 
-* [Reposilite :: Backend - README](https://github.com/dzikoysk/reposilite/tree/main/reposilite-backend)
+* [Ingot :: Backend - README](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-backend)

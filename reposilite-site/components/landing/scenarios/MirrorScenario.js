@@ -3,14 +3,14 @@ import { StyledNode } from "./Flow"
 
 const LocalRepository = () => (
   <StyledNode
-    label={<Text>Repository in <br />Reposilite instance</Text>}
+    label={<Text>Repository in <br />Ingot instance</Text>}
     style={{ width: '100px', height: '40px' }}
   />
 )
 
 const ReposiliteInstance = () => (
   <StyledNode
-    label={'Reposilite instance as proxy'}
+    label={'Ingot instance as proxy'}
     style={{ width: '330px', height: '90px' }}
   />
 )

@@ -6,7 +6,7 @@ title: Mirrors
 Our projects often use various repositories.
 To simplify & speed up your build process, 
 you can list all of these repositories in `Mirrored repositories` section 
-and Reposilite will also search for requested artifacts among them:
+and Ingot will also search for requested artifacts among them:
 
 ![Mirrored Repositories](/images/guides/mirrored-repositories.png)
 
@@ -17,7 +17,7 @@ Caching may allocate thousands of artifacts, especially at the beginning - for t
 
 ![Disk Quota](/images/guides/disk-quota.png)
 
-Stable Reposilite instance should guarantee much better availability than any other public repository - even Maven Central repository.
+Stable Ingot instance should guarantee much better availability than any other public repository - even Maven Central repository.
 
 </Spoiler>
 
@@ -55,7 +55,7 @@ If the list is empty, all groups are allowed.
 
 #### Allowed extensions
 You can limit the scope of proxied artifacts by specifying list of allowed extensions.
-By default, Reposilite allows these extensions:
+By default, Ingot allows these extensions:
 
 - `.jar`
 - `.war`
@@ -76,11 +76,11 @@ you can increase the timeout value to prevent such issues.
 | Name    | Description                                            | Default |
 |---------|--------------------------------------------------------|---------|
 | Connect | Time required to establish a connection                | `3s`    |
-| Read    | How long Reposilite can read the data from remote host | `15s`   |
+| Read    | How long Ingot can read the data from remote host | `15s`   |
 
 #### Credentials
 Mirrored proxy may require authentication to access the repository.
-Reposilite supports 3 types of authentication:
+Ingot supports 3 types of authentication:
 
 ##### Basic
 Basic authentication is the simplest method to authenticate the user.
@@ -93,7 +93,7 @@ Password: Secret
 
 ##### Header
 Some repositories may require authentication via a custom header & some kind of API key.
-You can configure Reposilite to use such authentication by specifying header name and value:
+You can configure Ingot to use such authentication by specifying header name and value:
 
 ```yaml
 Login: X-Api-Key
@@ -101,7 +101,7 @@ Password: Token
 ```
 
 ##### Loopback link
-Since Reposilite 3.4.x, 
+Since Ingot 3.4.x, 
 private local repositories requires dedicated authentication as well.
 This enhanced security layer prevents accidental access to private repositories.
 
@@ -115,7 +115,7 @@ Password: secret
 
 #### Proxy
 
-Reposilite supports 2 type of proxies:
+Ingot supports 2 type of proxies:
 
 - HTTP, for instance:
 

@@ -8,7 +8,7 @@ const feature = (title, description) =>
 
 const features = [
   feature('Open Source', 'Personal access-token based authorization with configurable routes and permissions'),
-  feature('Docker 🐋', <Box>Available docker images <Link color={'purple.400'} href="https://hub.docker.com/r/dzikoysk/reposilite">hub.docker.com/r/dzikoysk/reposilite</Link></Box>),
+  feature('Docker 🐋', <Box>Available container images <Link color={'purple.400'} href="https://github.com/OneLiteFeatherNET/ingot/pkgs/container/ingot">ghcr.io/onelitefeathernet/ingot</Link></Box>),
   feature('Authorization', 'Personal access-token based authorization with configurable routes and permissions'),
   feature('Dashboard', 'Simple dashboard with repository browser and management panel'),
   feature('API Endpoints', 'Exposes dedicated REST API to communicate with repository using external tools'),

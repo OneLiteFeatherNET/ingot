@@ -3,7 +3,7 @@ import { StyledNode } from "./Flow"
 
 const ReposiliteInstance = ({ number, status }) => (
   <Text>
-    Reposilite {number} <br />
+    Ingot {number} <br />
     {status === 'offline'
       ? <Text as='sup' color={'red.500'}>Offline</Text>
       : <Text as='sup' color={'green.500'}>Online</Text>

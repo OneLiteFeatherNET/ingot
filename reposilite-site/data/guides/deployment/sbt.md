@@ -9,12 +9,12 @@ All you need is to link your repository and provide valid credentials to [token]
 
 ```groovy
 // Standard
-publishTo := Some("Reposilite" at "https://maven.reposilite.com/releases")
-credentials += Credentials("Reposilite", "maven.reposilite.com", "token", "secret")
+publishTo := Some("Ingot" at "https://repo.example.com/releases")
+credentials += Credentials("Ingot", "repo.example.com", "token", "secret")
 
 // For localhost
-publishTo := Some("Reposilite" at "http://localhost:8080/releases")
-credentials += Credentials("Reposilite", "localhost", "token", "secret")
+publishTo := Some("Ingot" at "http://localhost:8080/releases")
+credentials += Credentials("Ingot", "localhost", "token", "secret")
 ```
 
 For more advanced configurations, take a look at official publishing guide for SBT:

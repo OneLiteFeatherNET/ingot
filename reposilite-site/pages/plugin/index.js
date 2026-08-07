@@ -34,7 +34,7 @@ export default function Guide({ plugins }) {
   return (
     <Layout>
       <Head>
-        <title>Plugins · Reposilite</title>  
+        <title>Plugins · Ingot</title>  
       </Head>
       <ColorModeStyles styles={[cardBgCss, cardBorderCss]} />
       <Box maxW={{ base: '95vw', md: 'container.md' }} mx='auto'>

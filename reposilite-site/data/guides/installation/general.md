@@ -3,28 +3,28 @@ id: general
 title: General
 ---
 
-Reposilite supports multiple use cases and environments. By default we support 3 of them:
+Ingot supports multiple use cases and environments. By default we support 3 of them:
 
 * [Standalone](/guide/jar) - run regular JAR file as standalone Java application
-* [Docker](/guide/docker) - launch Reposilite within Docker container
-* [Kubernetes](/guide/kubernetes) - manage multiple Reposilite instances using Kubernetes
+* [Docker](/guide/docker) - launch Ingot within Docker container
+* [Kubernetes](/guide/kubernetes) - manage multiple Ingot instances using Kubernetes
 
 That's why there're different ways to configure your instance. We divided it into 3 configuration layers:
 
 * [Parameters](#parameters) - Startup configuration
-* [Configuration - Local configuration](#local-configuration) - Immutable file-based configuration of the given Reposilite instance
-* [Settings - Shared configuration](#shared-configuration) - Stores mutable state of Reposilite in database, it's shared between all Reposilite instances and supports hot-reloading of properties
+* [Configuration - Local configuration](#local-configuration) - Immutable file-based configuration of the given Ingot instance
+* [Settings - Shared configuration](#shared-configuration) - Stores mutable state of Ingot in database, it's shared between all Ingot instances and supports hot-reloading of properties
 
 You don't have to create configuration files manually,
-Reposilite will generate it during the first startup,
+Ingot will generate it during the first startup,
 but make sure that process is able to write to the disk.
 
 ## Parameters
 
-Parameters are configuration properties passed to Reposilite through program arguments:
+Parameters are configuration properties passed to Ingot through program arguments:
 
 ```bash
-$ java -jar reposilite.jar --parameter=value
+$ java -jar ingot.jar --parameter=value
 ```
 
 List of available parameters:
@@ -32,8 +32,8 @@ List of available parameters:
 | Parameter                                                         | Description                                                                                                                                                                                    |                     Default value                      |
 |:------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------:|
 | `--help`                                                          | Displays help message with all parameters                                                                                                                                                      |                           -                            |
-| `--version`                                                       | Display current version of Reposilite                                                                                                                                                          |                           -                            |
-| `--working-directory` <br/> `-wd`                                 | Sets custom working directory for this instance, so the location where Reposilite keeps local data                                                                                             |                          `./`                          |
+| `--version`                                                       | Display current version of Ingot                                                                                                                                                          |                           -                            |
+| `--working-directory` <br/> `-wd`                                 | Sets custom working directory for this instance, so the location where Ingot keeps local data                                                                                             |                          `./`                          |
 | `--plugin-directory` <br/> `-pd`                                  | Sets custom directory for plugins                                                                                                                                                              |                      `./plugins`                       |
 | `--generate-configuration` <br/> `-gc`                            | Generate default template of the requested file. Supported templates: `configuration.cdn` for local configuration and `configuration.shared.json` for shared configuration                     |                           -                            |
 | `--local-configuration`<br/>`--local-config`<br/>`-lc`            | Sets custom location of local configuration file in CDN format. By default it's relative to working directory path, but you can also use absolute path.                                        |                  `configuration.cdn`                   |
@@ -43,17 +43,17 @@ List of available parameters:
 | `--port`<br/>`-p`                                                 | Overrides port from local configuration                                                                                                                                                        | Value from [local configuration](#local-configuration) |
 | `--database`                                                      | Overrides database from local configuration                                                                                                                                                    | Value from [local configuration](#local-configuration) |
 | `--token`<br/>`-t`                                                | Create temporary token with the given credentials in `name:secret` format                                                                                                                      |                         Empty                          |
-| `--channel`<br/>`-c`                                              | Sets channel of Reposilite updates. Supported channels: `fatal`, `error`, `warn`, `info`, `debug`, `trace`                                                                                     |                         `info`                         |
+| `--channel`<br/>`-c`                                              | Sets channel of Ingot updates. Supported channels: `fatal`, `error`, `warn`, `info`, `debug`, `trace`                                                                                     |                         `info`                         |
 | `--enable-migrations`                                             | Runs set of optional migrations. Currently available migrations: <br/> 1. 001 Change `repository` identifier size from 32 to 64. This migration is required to support longer repository names |                           -                            |
 | `--test-env`<br/>`--debug`<br/>`-d`                               | Enables debug mode                                                                                                                                                                             |                           -                            |
 
 #### Configuration modes
 
-Configuration mode describes how the given configuration should be processed by Reposilite.
-Because Reposilite still evolves, 
+Configuration mode describes how the given configuration should be processed by Ingot.
+Because Ingot still evolves, 
 there are introduced new properties over and over.
 To simplify migration & update process, 
-Reposilite supports automatic config migrations through [CDN](https://github.com/dzikoysk/cdn) library.
+Ingot supports automatic config migrations through [CDN](https://github.com/dzikoysk/cdn) library.
 Sometimes you want to keep your configuration file immutable,
 and to give a possibility to control this process, 
 configuration modes where introduced. Supported configuration modes:
@@ -65,19 +65,19 @@ configuration modes where introduced. Supported configuration modes:
 
 ## Local configuration
 
-Local configuration describes configuration of current Reposilite instance.
+Local configuration describes configuration of current Ingot instance.
 It mostly refers to infrastructure setup, such as hostname, port or database connection.
 
-Example local configuration file in CDN format from [test workspace](https://github.com/dzikoysk/reposilite/tree/main/reposilite-backend/src/test/workspace):
+Example local configuration file in CDN format from [test workspace](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-backend/src/test/workspace):
 
 <Spoiler title="configuration.cdn">
 
 ```yaml
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-#       Reposilite :: Local       #
+#         Ingot :: Local         #
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-# Local configuration contains init params for current Reposilite instance.
+# Local configuration contains init params for current Ingot instance.
 # For more options, shared between instances, login to the dashboard with management token and visit 'Configuration' tab.
 
 # Hostname
@@ -137,8 +137,8 @@ bypassExternalCache: true
 cachedLogSize: 50
 # Enable default frontend with dashboard
 defaultFrontend: true
-# Set custom base path for Reposilite instance.
-# It's not recommended to mount Reposilite under custom base path
+# Set custom base path for Ingot instance.
+# It's not recommended to mount Ingot under custom base path
 # and you should always prioritize subdomain over this option.
 basePath: /
 # Debug mode
@@ -151,17 +151,20 @@ You can also updated those properties using system properties or environment var
 
 | Mode | Prefix | Example |
 | :--: | :--: | :--: |
-| System properties | `reposilite.local.` | `-Dreposilite.local.sslEnabled=true` |
-| Environment variables | `REPOSILITE_LOCAL_` | `REPOSILITE_LOCAL_SSLENABLED=true` |
+| System properties | `ingot.local.` | `-Dingot.local.sslEnabled=true` |
+| Environment variables | `INGOT_LOCAL_` | `INGOT_LOCAL_SSLENABLED=true` |
+
+The Ingot prefixes `reposilite.local.` and `REPOSILITE_LOCAL_` are still read, so an
+existing deployment keeps working. When a property is set under both, the ingot prefix wins.
 
 ## Shared configuration
 
-Settings (shared configuration) describes content of all your Reposilite instances, such as repositories or frontend customization. 
-This configuration supports hot-reloading of properties and should be shared between all your Reposilite instances
+Settings (shared configuration) describes content of all your Ingot instances, such as repositories or frontend customization. 
+This configuration supports hot-reloading of properties and should be shared between all your Ingot instances
 to make sure that every instance behaves and offers the same content.
 
 `Note` By default, 
-Reposilite uses database to store shared configuration and synchronizes its state every 10 seconds.
+Ingot uses database to store shared configuration and synchronizes its state every 10 seconds.
 Configuration synchronization is based on top of an interval, 
 due to the lack of 3rd party service that could broadcast data between instances.
 
@@ -174,10 +177,10 @@ Shared configuration can be modified by access token with management permission 
 Most users should use default configuration with shared configuration in database that offers support for hot-reloading and automatic updates, 
 but for some of them it's not really what they want/can use. Some use cases where database based shared configuration may not be the best solution:
 
-* Boot temporary Reposilite instance without preserved database file
+* Boot temporary Ingot instance without preserved database file
 * Specific environments with external configuration supervisors that don't want to share state between shared database
 
-That's why Reposilite allows you to export shared configuration into JSON file and link it manually using `--shared-configuration` parameter. 
+That's why Ingot allows you to export shared configuration into JSON file and link it manually using `--shared-configuration` parameter. 
 You can generate default template with `--generate-configuration=configuration.shared.json` parameter or just configure your instance through web dashboard and download configuration as JSON file.
 Example output:
 
@@ -204,11 +207,11 @@ Example output:
     "resolvedRequestsInterval": "MONTHLY"
   },
   "frontend": {
-    "id": "reposilite-repository",
-    "title": "Reposilite Repository",
-    "description": "Public Maven repository hosted through the Reposilite",
-    "organizationWebsite": "https://reposilite.com",
-    "organizationLogo": "https://avatars.githubusercontent.com/u/88636591",
+    "id": "ingot-repository",
+    "title": "Ingot Repository",
+    "description": "Public Maven repository hosted through Ingot",
+    "organizationWebsite": "https://github.com/OneLiteFeatherNET",
+    "organizationLogo": "https://avatars.githubusercontent.com/u/103827826",
     "icpLicense": ""
   },
   "web": {

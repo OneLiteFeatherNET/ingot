@@ -3,7 +3,7 @@ id: repositories
 title: Repositories
 ---
 
-By default, Reposilite generates three standard repositories:
+By default, Ingot generates three standard repositories:
 
 * `releases` - the most popular repository type where we can push our artifacts
 * `snapshots` - dedicated repository for snapshot artifacts (with `-SNAPSHOT` suffix)
@@ -16,7 +16,7 @@ but it's a common practice to follow standardized `releases` - `snapshots` namin
 Each repository has individual configuration, so you can define different rules for each of them:
 
 #### Redeployment
-By default, Reposilite does not allow to redeploy artifacts to the same repository.
+By default, Ingot does not allow to redeploy artifacts to the same repository.
 If you try to deploy the same artifact twice, 
 you'll get [409 Conflict](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/409) response.
 You can enable redeployment in the repository configuration.
@@ -35,7 +35,7 @@ Each repository has individual storage provider configuration,
 so some of them can use [S3-compatible object storage](/guide/s3) and others can use local filesystem.
 
 #### Mirrors
-Reposilite can mirror (proxy) other repositories:
+Ingot can mirror (proxy) other repositories:
 - [Guide / Mirrors](/guide/mirrors) - how to configure mirrors
 
 ### Custom repository

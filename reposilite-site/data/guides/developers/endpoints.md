@@ -3,10 +3,8 @@ id: endpoints
 title: Endpoints
 ---
 
-All endpoints are described using OpenApi. Useful links:
-
-* [Reposilite / OpenAPI Scheme](https://maven.reposilite.com/openapi)
-* [Reposilite / Swagger](https://maven.reposilite.com/swagger)
+All endpoints are described using OpenApi. Every instance serves the schema for itself,
+under `/openapi` and `/swagger` on its own host.
 
 Raw JSON scheme:
 
@@ -14,9 +12,9 @@ Raw JSON scheme:
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Reposilite Repository",
+    "title": "Ingot Repository",
     "version": "3.5.19-SNAPSHOT",
-    "description": "Official public Maven repository powered by Reposilite 💜"
+    "description": "Official public Maven repository powered by Ingot 💜"
   },
   "paths": {
     "/api/auth/me": {
@@ -1025,7 +1023,7 @@ Raw JSON scheme:
           {
             "name": "X-Generate-Checksums",
             "in": "header",
-            "description": "Determines if Reposilite should generate checksums for this file",
+            "description": "Determines if Ingot should generate checksums for this file",
             "required": false,
             "deprecated": false,
             "allowEmptyValue": false,
@@ -1067,7 +1065,7 @@ Raw JSON scheme:
             "description": "Returns 401 for invalid credentials"
           },
           "507": {
-            "description": "Returns 507 if Reposilite does not have enough disk space to store the uploaded file"
+            "description": "Returns 507 if Ingot does not have enough disk space to store the uploaded file"
           }
         },
         "deprecated": false,
@@ -1083,7 +1081,7 @@ Raw JSON scheme:
           {
             "name": "X-Generate-Checksums",
             "in": "header",
-            "description": "Determines if Reposilite should generate checksums for this file",
+            "description": "Determines if Ingot should generate checksums for this file",
             "required": false,
             "deprecated": false,
             "allowEmptyValue": false,
@@ -1125,7 +1123,7 @@ Raw JSON scheme:
             "description": "Returns 401 for invalid credentials"
           },
           "507": {
-            "description": "Returns 507 if Reposilite does not have enough disk space to store the uploaded file"
+            "description": "Returns 507 if Ingot does not have enough disk space to store the uploaded file"
           }
         },
         "deprecated": false,

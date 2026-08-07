@@ -18,9 +18,9 @@ ProxyPassReverse / http://127.0.0.1:8081/
 ```
 
 This configuration assumes that:
-* Reposilite runs on `127.0.0.1:8081`
+* Ingot runs on `127.0.0.1:8081`
 
-To secure the port and IP on which Reposilite runs (e.g. to `127.0.0.1` so that it cannot be accessed from outside Apache), change the local configuration (by default `configuration.cdn`):
+To secure the port and IP on which Ingot runs (e.g. to `127.0.0.1` so that it cannot be accessed from outside Apache), change the local configuration (by default `configuration.cdn`):
 ```yaml
 # Hostname
 # It is recommended to use 127.0.0.1 so that it cannot be accessed outside of the server or Apache.
@@ -102,7 +102,7 @@ sudo systemctl restart apache2
 ### Web console
 
 The web console streams logs from `/api/console/log` using [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) (a long-lived `GET`).
-Older versions used a WebSocket, so the previous `RewriteCond %{HTTP:Upgrade}` rules are no longer needed — just make sure the stream is not compressed:
+Older versions used a WebSocket, so the previous `RewriteCond %{HTTP:Upgrade}` rules are no longer needed. Just make sure the stream is not compressed:
 
 ```apacheconf
 <Location /api/console/log>

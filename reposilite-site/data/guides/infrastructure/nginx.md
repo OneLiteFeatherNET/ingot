@@ -12,9 +12,9 @@ map $http_upgrade $connection_upgrade {
     '' close;
 }
 
-# Load balancing pool for Reposilite
+# Load balancing pool for Ingot
 upstream reposilite {
-    # Reposilite IP and port, see below for explanation
+    # Ingot IP and port, see below for explanation
     server domain.com:8081;
 }
 
@@ -28,7 +28,7 @@ server {
     client_max_body_size 50m; # maximum allowed artifact upload size
 
     location / {
-        proxy_pass http://reposilite; # the name of Reposilite's upstream specified above
+        proxy_pass http://reposilite; # the name of Ingot's upstream specified above
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -40,17 +40,17 @@ server {
 }
 ```
 
-Depending on your inital setup of Reposilite, the IP address to use will vary.
+Depending on your inital setup of Ingot, the IP address to use will vary.
 
-* If you want to reference a Reposilite instance running on a different machine, use its IP address
+* If you want to reference a Ingot instance running on a different machine, use its IP address
 or a domain name pointing to it. 
-* If Reposilite runs on the same machine (possibly in a Docker
+* If Ingot runs on the same machine (possibly in a Docker
 container), use `localhost`. 
-* If you are using Docker Compose to combine both, Reposilite and Nginx, 
-you can simply reference the Reposilite instance via its service name directly and you do not need to
-expose any port of the Reposilite container (see [Networking in Compose](https://docs.docker.com/compose/networking/)).
+* If you are using Docker Compose to combine both, Ingot and Nginx, 
+you can simply reference the Ingot instance via its service name directly and you do not need to
+expose any port of the Ingot container (see [Networking in Compose](https://docs.docker.com/compose/networking/)).
 
-Also, don't forget to change the port according to your Reposilite startup parameters.
+Also, don't forget to change the port according to your Ingot startup parameters.
 
 #### Custom base path
 
@@ -83,19 +83,19 @@ location /reposilite/ {
 ```
 
 Requests arriving with that header render repository **index and 404 links** under `basePath`, while
-direct requests render them at the root — so both entry points work. This covers only those
+direct requests render them at the root, so both entry points work. This covers only those
 server-rendered pages; the dashboard web console always follows the configured `basePath`, so serve
 it under a sub-path via `basePath` or a dedicated subdomain.
 
 ### SSL Configuration
 
-Lots of people like to use a reverse proxy like Nginx with Reposilite.
+Lots of people like to use a reverse proxy like Nginx with Ingot.
 This is a page on how to setup Nginx with SSL.
 
 #### Step 1 - Setup environment
 
-First, install and setup Reposilite.
-Make sure to setup Reposilite to listen on port 8080 (or anything other than 80 and 443).
+First, install and setup Ingot.
+Make sure to setup Ingot to listen on port 8080 (or anything other than 80 and 443).
 
 Then, install nginx, openssl and certbot [using snapd\*](https://snapcraft.io/docs/installing-snapd/) 
 
@@ -146,7 +146,7 @@ server {
   include /etc/nginx/custom-snippets/ssl.conf;
 
   location / {
-    proxy_pass http://localhost:8080/; # 8080 is the port Reposilite is running on in this setup
+    proxy_pass http://localhost:8080/; # 8080 is the port Ingot is running on in this setup
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;

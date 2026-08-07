@@ -3,7 +3,7 @@ id: tokens
 title: Tokens
 ---
 
-To simplify management process and reduce complex permission system between users and available projects, Reposilite does not define such entities. The only source of truth is personal access token with associated metadata. 
+To simplify management process and reduce complex permission system between users and available projects, Ingot does not define such entities. The only source of truth is personal access token with associated metadata. 
 
 The generalized token structure is presented below:
 
@@ -47,16 +47,16 @@ $ token-generate [--secret=<secret>] [--silent] <name> [<permissions>]
 ```
 
 `secret` is optional and gives option to use user-provided secret instead of auto-generated value.
-It is recommended to let Reposilite generate strong password,
+It is recommended to let Ingot generate strong password,
 but it might be useful for some people that want to migrate from Reposilite 2.x or other repository manager.
 
-`silent` is optional and if specified, Reposilite will not print the generated secret to the console.
+`silent` is optional and if specified, Ingot will not print the generated secret to the console.
 
 `permissions` is optional list of token permissions. Currently, you can define only one, 
 which is management permission. You have to use permissions shortcuts.
 
 #### Temporary tokens
-For bootstrapping your permissions setup, or fixing a broken one, you may have to use a temporary manager token. Via the `--token root:root-secret` command line parameter to your Reposilite instance, you can create a manager token named `root` with the secret `root-secret`. This token will not be persisted in the database and cease to exist if the Reposilite process is restarted without the command line option.
+For bootstrapping your permissions setup, or fixing a broken one, you may have to use a temporary manager token. Via the `--token root:root-secret` command line parameter to your Ingot instance, you can create a manager token named `root` with the secret `root-secret`. This token will not be persisted in the database and cease to exist if the Ingot process is restarted without the command line option.
 
 Temporary tokens can optionally have an expiration time (`expiresAt`). When set, the token is automatically evicted from memory once the expiration timestamp has passed. Expired tokens, along with their associated routes and permissions, are cleaned up lazily on the next access attempt or listing operation. This is useful for short-lived tokens created programmatically (eg. by CI/CD authentication plugins) that should not accumulate indefinitely in memory.
 
@@ -71,7 +71,7 @@ If you're confused about your first auth configuration, you may find this video 
   </Spoiler>
 
 ### Export and import
-Reposilite allows you to export your tokens to JSON file, so you can backup them or exchange between instances.
+Ingot allows you to export your tokens to JSON file, so you can backup them or exchange between instances.
 You can do this using `token-export <file>` and `token-import <file>` commands as follows:
 
 ```bash
@@ -80,7 +80,7 @@ $ token-export tokens.json
 All tokens have been exported to $working-directory/tokens.json in JSON format.
 ```
 
-By default Reposilite puts the file in your working directory, but you can also specify an absolute path.
+By default Ingot puts the file in your working directory, but you can also specify an absolute path.
 To import such JSON file, just specify it in the import command:
 
 ```bash

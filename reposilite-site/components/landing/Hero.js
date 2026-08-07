@@ -22,7 +22,7 @@ const HeroDescription = ({ style }) => {
       <ColorModeStyles styles={[startBgCss, colorCss, downloadBgCss]} />
       <Box paddingX={{ base: '0', md: '7' }}>
         <Heading>
-          Reposilite <Text as="u">3.x</Text>
+          Ingot <Text as="u">3.x</Text>
         </Heading>
         <Text fontWeight={'bold'} paddingTop={6}>
           Lightweight and easy-to-use repository manager for Maven-based artifacts in the JVM ecosystem.
@@ -35,7 +35,7 @@ const HeroDescription = ({ style }) => {
         <Flex paddingTop={7} justifyContent={'space-between'}>
           <HeroButton
             label='Get started'
-            description='Get started - Learn about Reposilite'
+            description='Get started - Learn about Ingot'
             url='/guide/about'
             style={{
               color,
@@ -44,8 +44,8 @@ const HeroDescription = ({ style }) => {
           />
           <HeroButton
             label='Download'
-            description='Download Reposilite'
-            url='https://github.com/dzikoysk/reposilite/releases'
+            description='Download Ingot'
+            url='https://github.com/OneLiteFeatherNET/ingot/releases'
             style={{
               color,
               backgroundColor: downloadBg

@@ -3,20 +3,17 @@ const URL = process.env.NODE_ENV === "production"
   : "http://localhost:3000/"
 
 export default {
-  title: 'Reposilite',
+  title: 'Ingot',
   description: 'Lightweight and easy-to-use repository manager for Maven based artifacts in JVM ecosystem. This is simple, extensible and scalable self-hosted solution to replace managers like Nexus, Archiva or Artifactory, with reduced resources consumption.',
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: URL,
-    site_name: 'Reposilite',
-    images: [
-      { url: 'https://user-images.githubusercontent.com/4235722/133891983-966e5c6d-97b1-48cc-b754-6e88117ee4f7.png' }
-    ]
+    site_name: 'Ingot',
+    // TODO(onelitefeather): social preview image for Ingot. The upstream one was dropped
+    // rather than reused, because it carries the Reposilite branding.
   },
   twitter: {
-    handle: '@dzikoysk',
-    site: '@dzikoysk',
-    cardType: 'summary_large_image'
+    cardType: 'summary'
   },
 };

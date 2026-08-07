@@ -3,7 +3,11 @@ id: kubernetes
 title: Kubernetes
 ---
 
-You may use the official Helm chart to install Reposilite on Kubernetes.
+`Note` There is no Ingot Helm chart yet. The chart below is Reposilite's and deploys the
+Reposilite image. It is still a usable starting point: override the image with
+`ghcr.io/onelitefeathernet/ingot` in your chart values to run Ingot instead.
+
+You may use the Reposilite Helm chart to install it on Kubernetes.
 
 Requirements: `Kubernetes: 1.14+`, [`Helm: v3.x+`](https://helm.sh/docs/intro/install/)
 

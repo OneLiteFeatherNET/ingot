@@ -1,4 +1,4 @@
-# Reposilite Site
+# Ingot Site
 Uses [Next.js](https://nextjs.org/)
 ### Running
 

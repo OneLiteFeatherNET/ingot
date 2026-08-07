@@ -12,7 +12,7 @@ const Links = [
   link('Guide', '/guide/about'),
   link('Plugins', '/plugin'),
   link('Support', '/support'),
-  link('Contribute', 'https://github.com/dzikoysk/reposilite')
+  link('Contribute', 'https://github.com/OneLiteFeatherNET/ingot')
 ]
 
 const NavLink = ({ link }) => {
@@ -40,7 +40,7 @@ const ThemeSwitcher = dynamic(() =>
   import('./ThemeSwitcher'), { ssr: false })
 
 const GitHubButton = ({ style }) => (
-  <Link href='https://github.com/dzikoysk/reposilite'>
+  <Link href='https://github.com/OneLiteFeatherNET/ingot'>
     <Button aria-label='Go to project on GitHub' style={style}>
       <FaGithub />
     </Button>
@@ -61,7 +61,7 @@ export default function Nav() {
           direction={{ base: 'column', md: 'row' }}
         >
           <Link href='/' py={4}>
-            <Box fontWeight={'bold'}>Reposilite</Box>
+            <Box fontWeight={'bold'}>Ingot</Box>
           </Link>
           <HStack as={'nav'} spacing={3} >
             {Links.map(link => (

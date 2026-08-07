@@ -3,7 +3,7 @@ id: ssl
 title: SSL
 ---
 
-In most cases people does not really want to use SSL directly in Reposilite, because they serve it behind some proxy services like Nginx and usually that's where they should set it up. 
+In most cases people does not really want to use SSL directly in Ingot, because they serve it behind some proxy services like Nginx and usually that's where they should set it up. 
 
 If you're not sure how to bootstrap your infrastructure and SSL, take a look on the official Javalin SSL guide:
 
@@ -14,7 +14,7 @@ If you're not sure how to bootstrap your infrastructure and SSL, take a look on 
 You can find several tutorials on how to generate PKCS certificate from e.g. `Let's Encrypt`.
 We can recommend to take a look on the official 
 [Javalin.io / SSL Tutorial - Generate self-signed certificate](https://javalin.io/tutorials/javalin-ssl-tutorial#securing-javalin-with-ssl), 
-because we're using this integration to support PEM certificates in Reposilite.
+because we're using this integration to support PEM certificates in Ingot.
 
 ### JKS
 

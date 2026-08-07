@@ -3,13 +3,13 @@ id: kotlin
 title: Kotlin
 ---
 
-A lot of people come from Java to Reposilite, but never really gave Kotlin a try. 
+A lot of people come from Java to Ingot, but never really gave Kotlin a try. 
 Its syntax may look confusing at first, but it's really simple and clear when you'll learn what it does.
 
 ### General
 
 * Forget about primitive types, those are handled automatically under the hood whenever possible
-* Semicolons are optional in Kotlin and we don't use them in Reposilite
+* Semicolons are optional in Kotlin and we don't use them in Ingot
 * Declarations are in reversed order, 
   so the name of property is first and then comes its type,
   e.g. `surname: String`. 
@@ -208,7 +208,7 @@ Kotlin supports multiple variants of functions, you can find them all in Kotlin 
 
 
 We'll just show its fundamentals here,
-but it should be enough to understand most of use-cases in Reposilite.
+but it should be enough to understand most of use-cases in Ingot.
 
 #### Definition 
 Kotlin supports functional signatures on language level, 
@@ -223,7 +223,7 @@ In Kotlin, lambda definition looks like this:
   <CodeVariant name="Kotlin">
 
 ```kotlin
-val runnable: () -> Unit = { println("Reposilite") }
+val runnable: () -> Unit = { println("Ingot") }
 val consumer: (String) -> Unit = { println(it) }
 val function: (Int) -> String = { it.toString() }
 val biFunction: (Int, Int) -> Int = { a, b -> a + b }
@@ -233,7 +233,7 @@ val biFunction: (Int, Int) -> Int = { a, b -> a + b }
   <CodeVariant name="Java">
 
 ```java
-Runnable runnable = () -> out.println("Reposilite");
+Runnable runnable = () -> out.println("Ingot");
 Consumer<String> consumer = value -> out.println(value);
 Function<Integer, String> function = value -> Integer.toString(value);
 BiFunction<Integer, Integer, String> biFunction = (a, b) -> a + b;
@@ -304,7 +304,7 @@ List of functions available on every object:
 | `with` | `with(user) { this.username }` | Username | Maps value with DSL function
 
 ### Error handling
-Reposilite uses `panda.std.Result<Value, Error>` wrapper from [expressible](https://github.com/panda-lang/expressible) 
+Ingot uses `panda.std.Result<Value, Error>` wrapper from [expressible](https://github.com/panda-lang/expressible) 
 library to handle errors gracefully, without unexpected runtime exceptions. 
 For instance, instead of:
 

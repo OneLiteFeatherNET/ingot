@@ -121,8 +121,8 @@ const GuideView = ({ category, selected }) => {
         >
           <Text fontSize={'sm'}>
             This is a <Text as="span" fontWeight='bold'>community</Text> guide.
-            It was written by Reposilite's community member and may not be up to date. 
-            It may also reference thrid-party services that are not affiliated with the Reposilite project.
+            It was written by a community member and may not be up to date. 
+            It may also reference third-party services that are not affiliated with this project.
           </Text>
         </Flex>
       )}
@@ -136,7 +136,7 @@ const GuideView = ({ category, selected }) => {
           <Flex justifyContent='center'>
             <EditIcon marginTop='1' />
             <Box marginLeft='2'>
-              <LinkOverlay href={`https://github.com/dzikoysk/reposilite/blob/main/reposilite-site/data/guides/${category}/${id}.md`}>
+              <LinkOverlay href={`https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-site/data/guides/${category}/${id}.md`}>
                 Edit this page on GitHub
               </LinkOverlay>
             </Box>
@@ -148,7 +148,7 @@ const GuideView = ({ category, selected }) => {
 }
 
 export default function Guide({ categories, category, selected }) {
-  const title = `${selected.title} · Guide · Reposilite`
+  const title = `${selected.title} · Guide · Ingot`
 
   return (
     <Layout>

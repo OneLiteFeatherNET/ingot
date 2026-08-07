@@ -5,7 +5,7 @@ title: Cloudflare
 
 We often use CDN services, like e.g. Cloudflare to proxy traffic. 
 By default, these services use some kind of cache policy which causes a lot of random issues.
-To avoid these problems, you have to exclude Reposilite from cached resources.
+To avoid these problems, you have to exclude Ingot from cached resources.
 
 
 If you use Cloudflare - you can set `Cache Level` property to `Bypass` through the custom page rules (`Rules` -> `Page Rules`):

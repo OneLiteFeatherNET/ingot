@@ -3,7 +3,7 @@ id: ldap
 title: LDAP
 ---
 
-LDAP support in Reposilite is quite limited. 
+LDAP support in Ingot is quite limited. 
 It's stale and oldish tool with a very specific approach to domain configuration.
 If you feel that current implementation could be improved or slightly changed, let us know.
 
@@ -22,5 +22,5 @@ Then, you can configure configuration to your LDAP server.
 
 `Tip` If you're not familiar with LDAP, 
 you may also try to find some detailed docs about LDAP integration in other open source tools such as e.g. [GitLab Docs / LDAP](https://docs.gitlab.com/ee/administration/auth/ldap/). 
-LDAP integration in Reposilite was highly inspired by existing implementations, 
+LDAP integration in Ingot was highly inspired by existing implementations, 
 so you should find a lot of similarities :)

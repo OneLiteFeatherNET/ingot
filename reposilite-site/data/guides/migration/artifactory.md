@@ -5,32 +5,32 @@ title: Artifactory
 
 ### General
 
-Reposilite works slightly different than Artifactory or Nexus, so make sure you've properly configured your instance and environment.
+Ingot works slightly different than Artifactory or Nexus, so make sure you've properly configured your instance and environment.
 Guides you may find especially useful during migration:
 
-* [Reposilite / Guide - General](/guide/general) - How you can configure Reposilite instance
-* [Reposilite / Guide - Tokens](/guide/tokens) - How to generate access to your instance
+* [Ingot / Guide - General](/guide/general) - How you can configure Ingot instance
+* [Ingot / Guide - Tokens](/guide/tokens) - How to generate access to your instance
 
 ### Export repository from Artifactory
-Be sure to check the `.m2 compatible export` box to get an export that Reposilite can use. Also, we recommend excluding artifactory build metadata if your version of Artifactory has this feature.
+Be sure to check the `.m2 compatible export` box to get an export that Ingot can use. Also, we recommend excluding artifactory build metadata if your version of Artifactory has this feature.
     
 ![Artifactory - Export menu preview](https://user-images.githubusercontent.com/823828/167173140-6777ed00-d5e6-44b9-bf40-c337bae712a9.png)
     
-Move the resulting export files to your new Reposilite server and extract them to the repository folder you would like them in.
+Move the resulting export files to your new Ingot server and extract them to the repository folder you would like them in.
 Depending on the organization of your new repositories, you may need to move your artifacts out of parent folders to get them in the location you want them in your new repository.
    
-* [Reposilite / Guide - Data Structure](/guide/standalone#data-structure)
+* [Ingot / Guide - Data Structure](/guide/standalone#data-structure)
 
-Configure the new repository in Reposilite, if you haven't already, making sure it is loading files from the correct directory.
+Configure the new repository in Ingot, if you haven't already, making sure it is loading files from the correct directory.
 You should be able to browse the artifacts once configuration reloads.
     
-* [Reposilite / Guide - Custom repository configuration](/guide/repositories)
+* [Ingot / Guide - Custom repository configuration](/guide/repositories)
 
 ### Helpful Tips
 
 #### Combining Releases / Snapshots
 
-In some cases, you may want to merge separated release and snapshot repositories into one Reposilite repository. Rsync offers a useful way to do this and is installed by default on many unix systems. The following command safely merges releases in a `releases` folder into a `snapshots` folder containing snapshots. You can then move / rename the snapshots folder accordingly.
+In some cases, you may want to merge separated release and snapshot repositories into one Ingot repository. Rsync offers a useful way to do this and is installed by default on many unix systems. The following command safely merges releases in a `releases` folder into a `snapshots` folder containing snapshots. You can then move / rename the snapshots folder accordingly.
 
 ```bash
 # Merge all files in releases into the snapshots folder

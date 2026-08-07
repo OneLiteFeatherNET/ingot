@@ -15,7 +15,7 @@ Defined variables can be used in workflow files using the given syntax: `${{ sec
 
 #### Publication
 
-Configure workflow task that builds your project and then deploys it to your Reposilite instance with the following setup:
+Configure workflow task that builds your project and then deploys it to your Ingot instance with the following setup:
 
 ```yaml
 name: Publish project to Maven repository

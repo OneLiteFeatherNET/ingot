@@ -4,8 +4,8 @@ title: Static files
 ---
 
 Despite of content served by each repository, 
-Reposilite supports also static files. 
-By default, Reposilite creates `static` directory in workdir. 
+Ingot supports also static files. 
+By default, Ingot creates `static` directory in workdir. 
 
 ```yaml
 reposilite_working_directory/
@@ -15,13 +15,13 @@ reposilite_working_directory/
 ```
 
 Endpoints used to serve files located in `static` directory have the lowest priority.
-Due to this fact, you cannot override routes registered by Reposilite using static files.
+Due to this fact, you cannot override routes registered by Ingot using static files.
 
 #### Placeholders
 
 | Placeholder | Description |
 | :-- | :---: |
-| \{\{REPOSILITE.BASE_PATH}} | Location where Reposilite instance has been mounted |
+| \{\{REPOSILITE.BASE_PATH}} | Location where Ingot instance has been mounted |
 | \{\{REPOSILITE.ID}} | Identifier |
 | \{\{REPOSILITE.TITLE}} | Title |
 | \{\{REPOSILITE.ID}} | Description |

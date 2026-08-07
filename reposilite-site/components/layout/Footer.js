@@ -13,11 +13,12 @@ const guideLinks = [
   link('Developer API', '/guide/sources'),
 ]
 
+// TODO(onelitefeather): community chat link once one exists for Ingot. The upstream
+// Discord and Twitter were removed rather than kept, because they are not our channels.
 const communityLinks = [
-  link('Report Issue', 'https://github.com/dzikoysk/reposilite/issues/new/choose'),
-  link('Join Discord', 'https://discord.gg/qGRqmGjUFX'),
-  link('Visit Twitter', 'https://twitter.com/dzikoysk'),
-  link('Go to GitHub', 'https://github.com/dzikoysk/reposilite'),
+  link('Report Issue', 'https://github.com/OneLiteFeatherNET/ingot/issues/new/choose'),
+  link('Go to GitHub', 'https://github.com/OneLiteFeatherNET/ingot'),
+  link('Upstream Reposilite', 'https://github.com/dzikoysk/reposilite'),
 ]
 
 export default function Footer() {
@@ -44,7 +45,7 @@ export default function Footer() {
             </VStack>
           </Flex>
           <Text textAlign={'center'} paddingY='4' fontSize={'sm'}>
-            Copyright © 2023 dzikoysk with ❤ panda-lang
+            Copyright © 2023 dzikoysk, © 2026 OneLiteFeather · Apache License 2.0
           </Text>
         </Container>
       </Box>
