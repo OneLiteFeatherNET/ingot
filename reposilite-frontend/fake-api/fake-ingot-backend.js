@@ -374,6 +374,24 @@ application
       () => invalidCredentials(res)
     )
   })
+  // Public on purpose, mirroring the real server: a detached dashboard reads its own
+  // settings here before it has any credentials.
+  .get("/api/frontend/settings", (req, res) =>
+    res.send({
+      placeholders: {
+        "{{REPOSILITE.BASE_PATH}}": "/",
+        "{{REPOSILITE.VITE_BASE_PATH}}": ".",
+        "{{REPOSILITE.ID}}": "ingot-repository",
+        "{{REPOSILITE.TITLE}}": "Ingot Repository",
+        "{{REPOSILITE.DESCRIPTION}}": "Public Maven repository hosted through Ingot",
+        "{{REPOSILITE.ORGANIZATION_WEBSITE}}": "https://github.com/OneLiteFeatherNET",
+        "{{REPOSILITE.ORGANIZATION_LOGO}}": "https://avatars.githubusercontent.com/u/103827826?s=200&v=4",
+        "{{REPOSILITE.ICP_LICENSE}}": "\u56fdICP\u5907000000000\u53f7",
+        "{{REPOSILITE.PRIVACY_POLICY}}": "https://example.com/privacy",
+        "{{REPOSILITE.JAVADOC_SUFFIXES}}": "-javadoc.jar,-groovydoc.jar"
+      }
+    })
+  )
   .get("/api/statistics/resolved/all", (req, res) => {
     authorized(
       req,
