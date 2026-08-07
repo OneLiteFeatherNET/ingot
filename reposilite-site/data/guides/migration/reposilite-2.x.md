@@ -3,8 +3,9 @@ id: reposilite-2.x
 title: Reposilite 2.x
 ---
 
-Ingot continues the Reposilite 3.x line, so migrating from Reposilite 2.x means moving to 3.x
-first. This guide is inherited from upstream and describes that step.
+Ingot's sources come from Reposilite 3.5.x, so migrating from Reposilite 2.x means making
+the 2.x to 3.x jump. This guide is inherited from upstream and describes that step. Note
+that Ingot numbers its own releases from 1.0.0; see [Guide / Versioning](/guide/versioning).
 
 ### Summary
 There are some differences between 2.x and 3.x you should be aware of:
@@ -48,7 +49,7 @@ To learn more about all possibilities to setup your Ingot instance, take a look 
 * [Ingot / Guide - Settings](/guide/settings)
 
 #### Tokens
-Reposilite 2.x stored access tokens & statistics in local files and those are incompatible with Ingot 3.x. 
+Reposilite 2.x stored access tokens & statistics in local files and those are incompatible with 3.x and therefore with Ingot. 
 There's no option to migrate statistics, but a dedicated plugin can help you with tokens:
 
 * [Ingot / Plugins - Migration plugin](/plugin/migration)

@@ -101,7 +101,7 @@ Password: Token
 ```
 
 ##### Loopback link
-Since Ingot 3.4.x, 
+Since Reposilite 3.4.x, and therefore in every Ingot release, 
 private local repositories requires dedicated authentication as well.
 This enhanced security layer prevents accidental access to private repositories.
 

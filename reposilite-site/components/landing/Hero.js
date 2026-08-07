@@ -22,7 +22,7 @@ const HeroDescription = ({ style }) => {
       <ColorModeStyles styles={[startBgCss, colorCss, downloadBgCss]} />
       <Box paddingX={{ base: '0', md: '7' }}>
         <Heading>
-          Ingot <Text as="u">3.x</Text>
+          Ingot
         </Heading>
         <Text fontWeight={'bold'} paddingTop={6}>
           Lightweight and easy-to-use repository manager for Maven-based artifacts in the JVM ecosystem.

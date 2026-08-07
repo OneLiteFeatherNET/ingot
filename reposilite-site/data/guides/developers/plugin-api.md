@@ -3,7 +3,7 @@ id: plugin-api
 title: Plugin API
 ---
 
-Plugin system has been introduced in Ingot 3.x and allows users to extend & customize their instances.
+The plugin system, inherited from Reposilite 3.x, allows users to extend & customize their instances.
 
 ### Build system
 Preferred build for plugins is [Gradle 7+](https://gradle.org/) with [Kotlin DSL](https://docs.gradle.org/current/userguide/kotlin_dsl.html). 

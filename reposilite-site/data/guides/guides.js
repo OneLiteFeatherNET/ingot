@@ -4,6 +4,7 @@ const categories = [
     directory: 'introduction',
     content: [
       'about',
+      'versioning',
       // 'comparison',
       'support'
     ]

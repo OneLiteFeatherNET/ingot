@@ -36,4 +36,4 @@ If everything is setup correctly, resolve, publish, and other Ivy Ant tasks will
 
 As noted in the Ivy documentation, resolvers in m2compatible mode, are not able list available organizations. It means some features like <b>repreport</b> are not available.
 
-Requires Ingot 3.5.16 or later.
+Requires Ingot 1.0.0 or later, which corresponds to Reposilite 3.5.16 or later.
