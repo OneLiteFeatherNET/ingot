@@ -60,6 +60,45 @@ jobs:
       publish-task: "publish"
     secrets: inherit
 
+  # Attaches the standalone jar to the GitHub release. Without this there is no public
+  # download for the jar at all: the Maven job publishes to repo.onelitefeather.dev, which
+  # requires credentials even to read, so the standalone installation guide would point at a
+  # release page with no artifact on it.
+  jar:
+    name: "Standalone jar"
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Build the standalone jar"
+        run: ./gradlew :reposilite-backend:shadowJar
+
+      - name: "Upload the jar to the release"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "reposilite-backend/build/libs/ingot-${VERSION}.jar" --clobber
+
   # Container images go to the GitHub Container Registry. The OneLiteFeather
   # docker-publish reusable targets Harbor and exposes no platforms input, so this is a
   # repository specific job. Publishing to ghcr.io needs no registry secret: the built in
