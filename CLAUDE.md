@@ -7,6 +7,8 @@ FOSS-Produkt **Ingot** umgebaut.
 
 - **Maven-groupId:** `net.onelitefeather.ingot`
 - **Java-/Kotlin-Packages:** bleiben `com.reposilite.*`
+- **Modulverzeichnisse und Bibliotheks-artifactIds:** bleiben `reposilite-*`
+- **Server-Bundle:** `net.onelitefeather.ingot:ingot` (Ersatz fuer `com.reposilite:reposilite`)
 
 Das ist Absicht und **kein Aufräum-Rückstand**. Bestehende Reposilite-Plugins
 kompilieren dadurch unverändert gegen Ingot, und eine Migration kostet nur eine
@@ -74,6 +76,17 @@ Kommunikation mit dem Team in der Sitzung: **Deutsch**.
 - Upstream-Remote `upstream` zeigt auf `dzikoysk/reposilite`, `origin` auf `OneLiteFeatherNET/ingot`.
 - Apache-2.0. Copyright-Header von dzikoysk in 265 Quelldateien müssen erhalten bleiben,
   eigene Zeile wird ergänzt statt ersetzt.
-- Offener Blocker: ApexCharts im Frontend ist kommerziell lizenziert und muss vor einem
-  FOSS-Release ersetzt werden. Betrifft `ResolvedRequestsChart.vue` und `StatusSnapshotsChart.vue`.
 - Planung liegt in Outline (Vault), nicht im Repo.
+
+## Laufzeit-Kontrakte, die bewusst `reposilite` heissen
+
+Umbenennen wuerde bestehende Deployments oder Plugins brechen, ohne dass jemand etwas
+davon haette. Diese Namen bleiben:
+
+- Konfigurationsdateien (`configuration.cdn`, `configuration.shared.json`) und die
+  SQLite-Datei `reposilite.db`
+- `{{REPOSILITE.*}}`-Platzhalter im Frontend, ueber die auch Plugins eigene Werte
+  registrieren
+- Container-Pfade `/app/data`, `/var/log/reposilite` und der Service-User `reposilite`
+- Die alten Env- und Property-Praefixe `REPOSILITE_LOCAL_` / `reposilite.local.` sowie
+  `REPOSILITE_OPTS`. Die `INGOT_`-Varianten existieren zusaetzlich und haben Vorrang.

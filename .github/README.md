@@ -35,10 +35,11 @@ Ingot product name.
 See [NOTICE](https://github.com/OneLiteFeatherNET/ingot/blob/main/NOTICE) for the
 full attribution and the statement of changes required by section 4(b) of the license.
 
-> **Status:** the rebrand is in progress. The source tree, the build outputs and the
-> Java packages still carry the upstream name; renaming happens in a separate step.
-> There are no Ingot releases or container images published yet, so the quickstart below
-> builds from source.
+> **Status:** the product is branded as Ingot and the build publishes as
+> `net.onelitefeather.ingot`. The module directories and the Java packages stay
+> `reposilite-*` and `com.reposilite.*` on purpose, so existing Reposilite plugins keep
+> compiling. No Ingot release has been cut yet, so the quickstart below builds from
+> source.
 
 ## Features
 
@@ -104,11 +105,10 @@ Ingot needs Java 17 or newer. The bundled Docker Compose example runs the server
 
 ```bash
 git clone https://github.com/OneLiteFeatherNET/ingot.git
-cd reposilite
-./gradlew shadowJar
+cd ingot
+./gradlew :reposilite-backend:shadowJar
 
-# The build output still carries the upstream name for now
-java -Xmx64M -jar reposilite-backend/build/libs/reposilite-*.jar
+java -Xmx64M -jar reposilite-backend/build/libs/ingot-*.jar
 ```
 
 The server listens on port `8080` by default. A fresh instance has no access tokens, so
@@ -126,8 +126,9 @@ named volume.
 docker compose up -d
 ```
 
-<!-- TODO(onelitefeather): container image coordinates. The Compose file and the release
-     workflows still reference the upstream image; no Ingot image is published yet. -->
+Released images go to `ghcr.io/onelitefeathernet/ingot`, with a `nightly` tag rebuilt on
+every push to `main`. `INGOT_OPTS` passes startup parameters to the server;
+`REPOSILITE_OPTS` is still read as a fallback so an existing manifest starts unchanged.
 
 ### Publishing to it
 
@@ -145,13 +146,13 @@ Add the matching token as a `<server>` entry in your `settings.xml`, then run
 
 ## Documentation
 
-<!-- TODO(onelitefeather): documentation link. The `reposilite-site` module in this
-     repository contains the upstream guides and is not published by this project. -->
+<!-- TODO(onelitefeather): a published documentation site. The `reposilite-site` module
+     builds one, but nothing deploys it yet. -->
 
 Configuration, deployment and authentication guides live as Markdown in the
 [`reposilite-site/data/guides`](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-site/data/guides)
-directory of this repository. They still describe the upstream project and are being
-reworked for Ingot.
+directory of this repository. Guides that describe a distribution channel Ingot does not
+have yet, such as the Arch package and the Helm chart, say so at the top.
 
 ## Contributing
 
