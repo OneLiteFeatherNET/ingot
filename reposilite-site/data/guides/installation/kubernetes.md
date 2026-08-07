@@ -3,6 +3,10 @@ id: kubernetes
 title: Kubernetes
 ---
 
+`Note` Running the dashboard as its own Deployment, with its own replica count and probes,
+is described in [Guide / Split containers](/guide/split-containers). That is usually what you
+want on Kubernetes, and it works without a chart.
+
 `Note` There is no Ingot Helm chart yet. The chart below is Reposilite's and deploys the
 Reposilite image. It is still a usable starting point: override the image with
 `ghcr.io/onelitefeathernet/ingot` in your chart values to run Ingot instead.

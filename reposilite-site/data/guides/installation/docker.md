@@ -6,6 +6,11 @@ title: Docker
 The Ingot container image is published to the GitHub Container Registry:
  - [ghcr.io/onelitefeathernet/ingot](https://github.com/OneLiteFeatherNET/ingot/pkgs/container/ingot)
 
+This image serves the dashboard itself, which is the deployment to start from. The dashboard
+also ships separately as `ghcr.io/onelitefeathernet/ingot-dashboard`, for setups that want to
+scale it on its own or keep a JVM off the edge; see
+[Guide / Split containers](/guide/split-containers) for when that trade is worth making.
+
 There are three different types of tags used on the images:
  - `X.X.X` (tag-based) - published per release, recommended for production environments.
  - `latest` - always refers to the most recent release, not recommended.

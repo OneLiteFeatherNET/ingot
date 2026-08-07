@@ -1,7 +1,14 @@
 # syntax=docker.io/docker/dockerfile:1.7-labs
 
-# Build stage
-FROM eclipse-temurin:21-jdk-noble AS build
+# The Ingot server.
+#
+# Serves the dashboard itself by default, which is the simpler deployment and needs nothing
+# else running. Set INGOT_LOCAL_DEFAULTFRONTEND=false and put the dashboard image in front
+# to split the two; see reposilite-site/data/guides/installation/split-containers.md.
+
+# Build stage. Pinned by digest as well as tag so a rebuild cannot silently land on a
+# different base. Renovate raises both together.
+FROM eclipse-temurin:21-jdk-noble@sha256:a871f3e3caddad75608fd4531ed8bbca5cc42a27dc1da3ea3a2e554772b0ee15 AS build
 COPY --exclude=entrypoint.sh . /home/ingot-build
 WORKDIR /home/ingot-build
 
@@ -18,7 +25,7 @@ EOF
 # revision in one place instead of duplicating them into build arguments.
 
 # Run stage
-FROM eclipse-temurin:21-jre-noble AS run
+FROM eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2 AS run
 
 # Setup runtime environment.
 #
@@ -26,17 +33,22 @@ FROM eclipse-temurin:21-jre-noble AS run
 # the operational contract of a running instance: bind mounts, volume claims and log
 # shippers point at those paths, and renaming them would break an existing deployment on
 # upgrade for no functional gain. Only the artifact itself is branded.
-RUN mkdir -p /app/data && mkdir -p /var/log/reposilite
-VOLUME /app/data
+#
+# The account is created here rather than by the entrypoint at boot, so the image has a
+# non-root default instead of relying on being told to drop privileges.
 RUN <<EOF
-    mkdir -p /app/data
-    mkdir -p /var/log/reposilite
+    set -eu
+    groupadd --gid 977 reposilite
+    useradd --uid 977 --gid 977 --system --shell /bin/sh --no-create-home reposilite
+    mkdir -p /app/data /var/log/reposilite
+    chown -R reposilite:reposilite /app /var/log/reposilite
 EOF
+VOLUME /app/data
 WORKDIR /app
 
 # Import application code
 COPY --chmod=755 entrypoint.sh entrypoint.sh
-COPY --from=build /home/ingot-build/reposilite-backend/build/libs/ingot-*.jar ingot.jar
+COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-backend/build/libs/ingot-*.jar ingot.jar
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=15s \
     --retries=3 CMD [ "sh", "-c", "URL=$(cat /app/data/.local/reposilite.address); echo -n \"curl $URL... \"; \
@@ -45,5 +57,11 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=15s \
     ) && echo OK || (\
         echo Fail && exit 2\
     )"]
+
+# Non-root by default. The entrypoint still has a root path that creates the account and
+# chowns the data directory, for deployments that set PUID or PGID or that hand this
+# container a volume owned by somebody else; those start it with `user: root` on purpose.
+USER 977:977
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 EXPOSE 8080

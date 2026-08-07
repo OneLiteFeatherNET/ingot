@@ -1,0 +1,93 @@
+# Serves the dashboard and hands everything else to the server.
+#
+# The split works because routing in the dashboard is hash based: whatever the user
+# navigates to, the browser only ever asks this container for the document root, the hashed
+# assets and the favicon. Repository paths are arbitrary top level names, so they cannot be
+# told apart from dashboard routes by prefix, which is why the default here is to proxy and
+# the exceptions are enumerated rather than the other way round.
+#
+# Proxying rather than pointing the browser straight at the server keeps both on one origin.
+# The dashboard derives its API base from window.location, so a second origin would mean
+# CORS on every repository read, not just on the API.
+#
+# This is a template. The nginx entrypoint runs envsubst over it at startup and substitutes
+# only names that exist in the environment, which is why nginx's own $uri and $host survive.
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    # 8080 rather than 80: binding a privileged port needs a capability this container drops.
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # The version banner tells an attacker which advisories to try first and helps nobody else.
+    server_tokens off;
+
+    # Resolved per request rather than once at startup, so this container starts whether or
+    # not the server is up yet and survives its address changing underneath.
+    resolver ${INGOT_RESOLVER} valid=30s ipv6=off;
+    set $ingot_backend ${INGOT_BACKEND};
+
+    client_max_body_size ${INGOT_MAX_UPLOAD_SIZE};
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "same-origin" always;
+    # No unsafe-eval and no third party origins: the dashboard bundles everything it runs.
+    # Images stay open because the organisation logo is a configurable remote URL.
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    # Hashed file names, so a cached copy can never be the wrong one.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location = /favicon.png {
+        expires 7d;
+        try_files $uri =404;
+    }
+
+    # The dashboard itself, never cached: it names which asset bundle to load.
+    location = / {
+        add_header Cache-Control "no-cache" always;
+        try_files /index.html =404;
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Everything else belongs to the server: the API, every repository path, javadocs, badges.
+    location / {
+        proxy_pass $ingot_backend;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # The dashboard console is a websocket and the browser upgrades this connection.
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # Artifacts stream in both directions, so neither may be buffered to disk first, and
+        # a large upload must not die on a short timeout.
+        proxy_request_buffering off;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}

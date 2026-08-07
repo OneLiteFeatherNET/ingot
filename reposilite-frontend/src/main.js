@@ -21,6 +21,7 @@ import VueAxios from 'vue-axios'
 import Tabs from 'vue3-tabs'
 import App from './App.vue'
 import router from './router'
+import { loadFrontendSettings } from './store/placeholders'
 
 import 'virtual:windi.css'
 import 'mosha-vue-toastify/dist/style.css'
@@ -36,9 +37,14 @@ app.config.globalProperties.drop = (path) =>
     .slice(0, -1)
     .join('/')
 
-app
-  .use(createHead())
-  .use(VueAxios, axios)
-  .use(Tabs)
-  .use(router)
-  .mount('#app')
+// The settings have to be in hand before anything reads them, and the API client reads
+// them at module scope. When this dashboard is served by the server itself they are already
+// substituted into the bundle and this resolves immediately.
+loadFrontendSettings().then(() => {
+  app
+    .use(createHead())
+    .use(VueAxios, axios)
+    .use(Tabs)
+    .use(router)
+    .mount('#app')
+})

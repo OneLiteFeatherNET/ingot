@@ -17,10 +17,11 @@
 import axios from "axios"
 import usePlaceholders from "./placeholders"
 
-const { baseUrl } = usePlaceholders()
-
+// Read per call rather than once at import. This module is imported while the settings
+// are still being fetched, so capturing the base url here would freeze the fallback in
+// place and break any deployment mounted under a sub path.
 const createURL = (endpoint) =>
-  baseUrl + endpoint
+  usePlaceholders().baseUrl + endpoint
 
 const createClient = (defaultName, defaultSecret) => {
   const defaultAuthorization = () =>

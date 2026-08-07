@@ -135,6 +135,12 @@ Released images go to `ghcr.io/onelitefeathernet/ingot`, with a `nightly` tag re
 every push to `main`. `INGOT_OPTS` passes startup parameters to the server;
 `REPOSILITE_OPTS` is still read as a fallback so an existing manifest starts unchanged.
 
+The dashboard also ships on its own as `ghcr.io/onelitefeathernet/ingot-dashboard`, for
+deployments that want it scaled separately or want a static file server rather than a JVM
+on the edge. `docker compose -f docker-compose.split.yml up -d` runs the pair;
+[split-containers.md](https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-site/data/guides/installation/split-containers.md)
+explains when that trade is worth making.
+
 ### Publishing to it
 
 ```xml

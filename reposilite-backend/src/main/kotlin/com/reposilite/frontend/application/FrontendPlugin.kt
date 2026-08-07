@@ -21,6 +21,7 @@ import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.frontend.infrastructure.CustomFrontendHandler
+import com.reposilite.frontend.infrastructure.FrontendSettingsEndpoint
 import com.reposilite.frontend.infrastructure.NotFoundHandler
 import com.reposilite.frontend.infrastructure.ResourcesFrontendHandler
 import com.reposilite.plugin.api.Plugin
@@ -77,6 +78,10 @@ internal class FrontendPlugin : ReposilitePlugin() {
 
         event { event: RoutingSetupEvent ->
             val routes = mutableSetOf<ReposiliteRoutes>()
+
+            // Registered whether or not this instance serves the dashboard itself: a
+            // detached dashboard needs it precisely when defaultFrontend is off.
+            routes.add(FrontendSettingsEndpoint(frontendFacade))
 
             if (localConfiguration.defaultFrontend.get()) {
                 routes.add(
