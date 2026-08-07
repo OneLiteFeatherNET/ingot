@@ -8,7 +8,7 @@
       <env name="REPOSILITE_PROMETHEUS_PASSWORD" value="password" />
     </envs>
     <option name="MAIN_CLASS_NAME" value="com.reposilite.ReposiliteLauncherKt" />
-    <module name="reposilite-parent.reposilite-backend.main" />
+    <module name="ingot-parent.reposilite-backend.main" />
     <option name="PROGRAM_PARAMETERS" value="--token name:secret" />
     <option name="VM_PARAMETERS" value="-Xmx64M -Dreposilite.redirect.default-repository=releases" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/reposilite-test/workspace" />

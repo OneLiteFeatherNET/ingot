@@ -3,11 +3,13 @@
 # shellcheck disable=SC2086
 set -e
 
-REPOSILITE_ARGS="$REPOSILITE_OPTS"
-case "$REPOSILITE_OPTS" in
+# INGOT_OPTS is the name to use going forward; REPOSILITE_OPTS stays supported so an
+# existing compose file or Kubernetes manifest keeps working after switching images.
+INGOT_ARGS="${INGOT_OPTS:-$REPOSILITE_OPTS}"
+case "$INGOT_ARGS" in
   *"--working-directory"*) ;;
   *"-wd"*                ) ;;
-  *                      ) REPOSILITE_ARGS="--working-directory=/app/data $REPOSILITE_ARGS";;
+  *                      ) INGOT_ARGS="--working-directory=/app/data $INGOT_ARGS";;
 esac
 
 # GH-1762: support for running as non-root user
@@ -17,8 +19,8 @@ if [ "$(id -u)" != 0 ]; then
        -Dtinylog.writerFile.file="/var/log/reposilite/log_{date}.txt" \
        -Dtinylog.writerFile.latest=/var/log/reposilite/latest.log \
        $JAVA_OPTS \
-       -jar reposilite.jar \
-       $REPOSILITE_ARGS
+       -jar ingot.jar \
+       $INGOT_ARGS
 # GH-1200: run as non-root user
 else
 
@@ -40,14 +42,15 @@ else
   # shellcheck disable=SC2012
   existing_gid=$(ls -dln data | awk '{print $4}')
   if [ "$existing_uid" != "$USER_ID" ] || [ "$existing_gid" != "$GROUP_ID" ]; then
-    printf "\033[1;31mStarting with Reposilite 3.5.20 the standard user id will be 977, I will make those changes now.\033[0m\n" 1>&2
+    printf "\033[1;31mStarting with Reposilite 3.5.20 (inherited by Ingot) the standard user id will be 977, I will make those changes now.\033[0m\n" 1>&2
     printf "\033[1;31mAfter 3.6.0 docker installations with user id of 999 will no longer work.\033[0m\n" 1>&2
     printf "\033[1;31mFor more information see: https://github.com/dzikoysk/reposilite/issues/2288\033[0m\n" 1>&2
     printf "\033[1;31mIF YOU DOWNGRADE PAST THIS POINT \"Hic sunt dracones\"\033[0m\n" 1>&2
   fi
 
   # GH-2457: skip chown if ownership already matches target UID/GID
-  if [ "$REPOSILITE_FORCE_CHOWN" = "true" ] || [ "$existing_uid" != "$USER_ID" ] || [ "$existing_gid" != "$GROUP_ID" ]; then
+  FORCE_CHOWN="${INGOT_FORCE_CHOWN:-$REPOSILITE_FORCE_CHOWN}"
+  if [ "$FORCE_CHOWN" = "true" ] || [ "$existing_uid" != "$USER_ID" ] || [ "$existing_gid" != "$GROUP_ID" ]; then
     chown -R reposilite:reposilite /app
     chown -R reposilite:reposilite /var/log/reposilite
   fi
@@ -57,6 +60,6 @@ else
        -Dtinylog.writerFile.file="/var/log/reposilite/log_{date}.txt" \
        -Dtinylog.writerFile.latest=/var/log/reposilite/latest.log \
        $JAVA_OPTS \
-       -jar reposilite.jar \
-       $REPOSILITE_ARGS
+       -jar ingot.jar \
+       $INGOT_ARGS
 fi

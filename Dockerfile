@@ -2,8 +2,8 @@
 
 # Build stage
 FROM eclipse-temurin:21-jdk-noble AS build
-COPY --exclude=entrypoint.sh . /home/reposilite-build
-WORKDIR /home/reposilite-build
+COPY --exclude=entrypoint.sh . /home/ingot-build
+WORKDIR /home/ingot-build
 
 # The below line will show an Error in some IDE's, It is valid Dockerfile.
 RUN --mount=type=cache,target=/root/.gradle <<EOF
@@ -20,7 +20,12 @@ EOF
 # Run stage
 FROM eclipse-temurin:21-jre-noble AS run
 
-# Setup runtime environment
+# Setup runtime environment.
+#
+# /app/data, /var/log/reposilite and the reposilite service user keep their names. They are
+# the operational contract of a running instance: bind mounts, volume claims and log
+# shippers point at those paths, and renaming them would break an existing deployment on
+# upgrade for no functional gain. Only the artifact itself is branded.
 RUN mkdir -p /app/data && mkdir -p /var/log/reposilite
 VOLUME /app/data
 RUN <<EOF
@@ -31,7 +36,7 @@ WORKDIR /app
 
 # Import application code
 COPY --chmod=755 entrypoint.sh entrypoint.sh
-COPY --from=build /home/reposilite-build/reposilite-backend/build/libs/reposilite-3*.jar reposilite.jar
+COPY --from=build /home/ingot-build/reposilite-backend/build/libs/ingot-*.jar ingot.jar
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=15s \
     --retries=3 CMD [ "sh", "-c", "URL=$(cat /app/data/.local/reposilite.address); echo -n \"curl $URL... \"; \

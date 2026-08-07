@@ -148,7 +148,7 @@ dependencies {
 }
 
 tasks.withType<ShadowJar> {
-    archiveFileName.set("reposilite-${archiveVersion.get()}.jar")
+    archiveFileName.set("ingot-${archiveVersion.get()}.jar")
     mergeServiceFiles()
     minimize {
         exclude(dependency("org.eclipse.jetty:.*"))
@@ -180,7 +180,7 @@ publishing {
     publications {
         create<MavenPublication>("bundle") {
             from(components.getByName("java"))
-            artifactId = "reposilite"
+            artifactId = "ingot"
             // Gradle generator does not support <repositories> section from Maven specification.
             // ~ https://github.com/gradle/gradle/issues/15932
             pom.withXml {

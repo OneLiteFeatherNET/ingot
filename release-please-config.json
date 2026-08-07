@@ -15,6 +15,10 @@
           "path": "build.gradle.kts"
         },
         {
+          "type": "generic",
+          "path": "docker-compose.yml"
+        },
+        {
           "type": "json",
           "path": "reposilite-frontend/package.json",
           "jsonpath": "$.version"

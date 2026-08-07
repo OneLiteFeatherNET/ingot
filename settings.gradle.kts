@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-rootProject.name = "reposilite-parent"
+// Module directories keep their reposilite- names so upstream merges stay mechanical, and so
+// plugins that depend on reposilite-backend only have to swap the group id. Only the product
+// itself is branded: the server bundle publishes as net.onelitefeather.ingot:ingot.
+rootProject.name = "ingot-parent"
 
 val cores = Runtime.getRuntime().availableProcessors()
 gradle.startParameter.maxWorkerCount = maxOf(1, minOf(cores - 2, 16))

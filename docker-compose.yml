@@ -1,11 +1,9 @@
-version: "3.9"
 services:
-  reposilite:
-    image: dzikoysk/reposilite:3.5.28
+  ingot:
+    image: ghcr.io/onelitefeathernet/ingot:3.5.28 # x-release-please-version
     #
     # To build from sources:
     #
-    # image: reposilite:3.5.28
     # build:
     #  context: .
     #  dockerfile: Dockerfile
@@ -15,11 +13,11 @@ services:
       - .env
     environment:
       - JAVA_OPTS=-Xmx${MEMORY} ${JAVA_COMPOSE_OPTS}
-      - REPOSILITE_OPTS=--port ${PORT} ${REPOSILITE_COMPOSE_OPTS}
+      - INGOT_OPTS=--port ${PORT} ${INGOT_COMPOSE_OPTS}
     volumes:
-      - reposilite-data:/app/data
+      - ingot-data:/app/data
     restart: unless-stopped
     stdin_open: true
     tty: true
 volumes:
-  reposilite-data: {}
+  ingot-data: {}
