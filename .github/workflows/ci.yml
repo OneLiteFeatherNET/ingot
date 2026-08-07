@@ -19,6 +19,16 @@ jobs:
   # sourceCompatibility/targetCompatibility 17, so 17 is what has to keep working.
   build:
     name: "Build"
+    # gradle-build-pr.yml publishes the JUnit results as a check and a PR comment, so it
+    # declares checks: write and pull-requests: write on that job. A called workflow cannot
+    # request more than the caller granted, and the repository default here is
+    # contents: read, so without this block GitHub rejects the whole run during startup
+    # validation rather than failing a job. That is why it reported startup_failure and
+    # never produced a single log line.
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     uses: OneLiteFeatherNET/workflows/.github/workflows/gradle-build-pr.yml@v2.4.0
     with:
       java-version: "17"
