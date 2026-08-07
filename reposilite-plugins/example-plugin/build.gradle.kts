@@ -27,7 +27,7 @@ application {
 }
 
 dependencies {
-    // compileOnly("net.onelitefeather.ingot:reposilite:version") for external plugins
+    // compileOnly("net.onelitefeather.ingot:ingot:version") for external plugins
     compileOnly(project(":reposilite-backend"))
 }
 
