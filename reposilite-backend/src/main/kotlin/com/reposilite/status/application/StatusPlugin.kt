@@ -48,7 +48,16 @@ import kotlin.io.path.writeText
 @Plugin(name = "status", dependencies = ["console", "failure", "local-configuration"])
 internal class StatusPlugin : ReposilitePlugin() {
 
-    private val remoteVersionEndpoint = "https://maven.reposilite.com/api/maven/latest/version/releases/com/reposilite/reposilite?type=raw"
+    /**
+     * Where the update notice in the dashboard gets its "latest version" from. Upstream pointed
+     * this at the Reposilite release coordinate, which would make an Ingot instance compare itself
+     * against a version line it does not track. Operators who mirror our releases internally can
+     * redirect the check with -Dingot.status.remote-version-url, and disable it entirely with
+     * -Dingot.status.remote-version-check=false.
+     */
+    private val remoteVersionEndpoint =
+        System.getProperty("ingot.status.remote-version-url")
+            ?: "https://api.github.com/repos/OneLiteFeatherNET/ingot/releases/latest"
 
     override fun initialize(): StatusFacade {
         val journalist = reposilite().journalist

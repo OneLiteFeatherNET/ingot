@@ -56,12 +56,18 @@ class StatusFacade(
                                 else -> failureFacade.logger.warn("$remoteVersionUrl is unavailable: ${it.message}")
                             }
                         }
-                        .mapErr { "<unknown>" }
+                        .map { extractRemoteVersion(it) }
+                        .mapErr { UNKNOWN_VERSION }
             }
         }, 1, TimeUnit.HOURS)
 
     private val remoteVersionCheckEnabled: Boolean
-        get() = System.getProperty("reposilite.status.remote-version-check", "true") == "true"
+        get() = getBooleanProperty("ingot.status.remote-version-check")
+            ?: getBooleanProperty("reposilite.status.remote-version-check")
+            ?: true
+
+    private fun getBooleanProperty(key: String): Boolean? =
+        System.getProperty(key)?.let { it == "true" }
 
     init {
         recordStatusSnapshot()
@@ -96,6 +102,34 @@ class StatusFacade(
 
     internal fun getLatestVersion(): Result<String, String> =
         cachedLatestVersion.get()
+
+    internal companion object {
+
+        internal const val UNKNOWN_VERSION = "<unknown>"
+
+        private val TAG_NAME = Regex(""""tag_name"\s*:\s*"([^"]+)"""")
+
+        /**
+         * Ingot reads its release feed from the GitHub releases API, which answers with a JSON
+         * document rather than a bare version. A response that is not JSON is passed through
+         * untouched, so an endpoint that already returns plain text - a Maven latest-version query,
+         * for instance - stays a valid value for the remote version URL.
+         */
+        internal fun extractRemoteVersion(response: String): String {
+            val trimmed = response.trim()
+
+            val version = when {
+                trimmed.startsWith("{") -> TAG_NAME.find(trimmed)?.groupValues?.get(1) ?: return UNKNOWN_VERSION
+                else -> trimmed
+            }
+
+            return version
+                .removePrefix("v")
+                .takeIf { it.isNotEmpty() }
+                ?: UNKNOWN_VERSION
+        }
+
+    }
 
     fun getLatestStatusSnapshots(): Array<StatusSnapshot> =
         cachedStatusSnapshots.toTypedArray()
