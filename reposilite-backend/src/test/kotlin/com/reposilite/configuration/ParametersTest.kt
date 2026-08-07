@@ -18,7 +18,7 @@ internal class ParametersTest {
         createWithParameters("--working-directory=$workingDirectory", "--generate-configuration=local")
         val localConfiguration = workingDirectory.resolve(LOCAL_CONFIGURATION_FILE)
         assertThat(localConfiguration.exists()).isTrue
-        assertThat(localConfiguration.readText()).contains("Reposilite :: Local")
+        assertThat(localConfiguration.readText()).contains("Ingot :: Local")
     }
 
     @Test
