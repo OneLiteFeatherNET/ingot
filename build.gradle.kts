@@ -51,19 +51,21 @@ allprojects {
 
     repositories {
         mavenCentral()
+
+        // Every repository beyond Maven Central is restricted to the groups it actually
+        // serves. Without a content filter, Gradle asks each repository in turn for every
+        // coordinate, so any one of them could answer for a dependency it has no business
+        // serving: a compromised host, or an expired namespace someone re-registers, gets
+        // to substitute an artifact that Central would otherwise have provided.
+        //
+        // com.reposilite:journalist is the one dependency that is not on Maven Central. It
+        // is served only from the upstream maintainer's own infrastructure, which is a
+        // single point of failure for our builds. Narrowing the repository does not remove
+        // that dependency, it only stops the host from reaching any further.
         maven("https://maven.reposilite.com/releases") {
             mavenContent {
                 releasesOnly()
-            }
-        }
-        maven("https://maven.reposilite.com/snapshots") {
-            mavenContent {
-                snapshotsOnly()
-            }
-        }
-        maven("https://jitpack.io") {
-            mavenContent {
-                releasesOnly()
+                includeGroup("com.reposilite")
             }
         }
     }
