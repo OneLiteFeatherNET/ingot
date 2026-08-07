@@ -1,0 +1,17 @@
+# Advisories the vulnerability scan is told to skip.
+#
+# Empty on purpose. Every advisory Trivy reports today has a released fix and has been
+# taken, so nothing needs suppressing.
+#
+# Add an entry only when the advisory cannot be fixed, not when fixing it is inconvenient.
+# That is roughly two cases: no fixed version exists yet, or the vulnerable code path is
+# provably unreachable from Ingot. "The bump breaks something" is a reason to fix the
+# breakage, not to hide the advisory.
+#
+# Record the reason and an expiry date, so a suppression that outlived its cause shows up
+# instead of sitting here forever:
+#
+#   # netty's HTTP/3 codec is not on our classpath; the advisory is unreachable.
+#   CVE-0000-00000 exp:2026-12-31
+#
+# The scan itself lives in .github/workflows/ci.yml and fails on CRITICAL, HIGH and MEDIUM.
