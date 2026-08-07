@@ -165,7 +165,7 @@ internal abstract class MavenIntegrationTest : MavenIntegrationSpecification() {
 
         // then: service responds with custom 404 page
         assertThat(response.status).isEqualTo(NOT_FOUND.code)
-        assertThat(response.body).contains("Reposilite - 404 Not Found")
+        assertThat(response.body).contains("Ingot - 404 Not Found")
     }
 
 }
