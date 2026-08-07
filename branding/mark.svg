@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 91 91" width="91" height="91">
+  <circle cx="45.5" cy="45.5" r="44" fill="none" stroke="#111111" stroke-width="1.6"/>
+  <!-- A cast bar seen at a slight angle: trapezoid face plus the two visible sides. -->
+  <g stroke="#111111" stroke-width="3.2" stroke-linejoin="round" fill="none">
+    <path d="M24 58 L31.5 40 L59.5 40 L67 58 Z" fill="#111111"/>
+    <path d="M31.5 40 L37 30 L65 30 L59.5 40" fill="none"/>
+    <path d="M65 30 L72.5 48 L67 58" fill="none"/>
+  </g>
+</svg>
