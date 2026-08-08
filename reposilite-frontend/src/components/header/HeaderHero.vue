@@ -23,13 +23,13 @@ const { description, organizationWebsite, organizationLogo } = usePlaceholders()
 
 <template>
   <div class="bg-gray-100 dark:bg-black">
-    <div class="container mx-auto flex flex-row <sm:(flex-col items-center)">
-      <div class="w-35 <sm:mb-2">
+    <div class="container mx-auto flex flex-row max-sm:flex-col max-sm:items-center">
+      <div class="w-35 max-sm:mb-2">
         <img class="border-2 rounded-full dark:border-gray-700" :src="organizationLogo">
       </div>
-      <div class="flex flex-col justify-center px-10 <sm:px-0">
-        <div class="<sm:text-center" v-html="description"></div>
-        <div class="flex flex-row py-2 <sm:justify-center">
+      <div class="flex flex-col justify-center px-10 max-sm:px-0">
+        <div class="max-sm:text-center" v-html="description"></div>
+        <div class="flex flex-row py-2 max-sm:justify-center">
           <GlobeIcon />
           <a class="px-3 text-gray-500" :href="organizationWebsite" target="_blank">{{organizationWebsite}}</a>
         </div>

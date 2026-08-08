@@ -85,11 +85,34 @@ let accessTokens = [
   },
 ]
 
+// The dashboard now draws meters against maxMemory and maxThreads, so the stub has to stay
+// inside its own limits. It used to add to both without bound, which drove every reading
+// past 100% within a minute and made the panel impossible to judge.
+const MAX_MEMORY_MB = 512
+const MAX_THREADS = 64
+
+// A rolling window of snapshots, so the trend charts have a shape to draw rather than the
+// two points the stub used to return.
+const snapshots = []
+
+const recordSnapshot = () => {
+  snapshots.push({ at: new Date().getTime(), memory: Math.round(memory), threads })
+  if (snapshots.length > 120) snapshots.shift()
+}
+
+for (let step = 60; step > 0; step--) {
+  snapshots.push({
+    at: new Date().getTime() - step * 30000,
+    memory: Math.round(140 + Math.sin(step / 6) * 60 + step / 3),
+    threads: Math.round(18 + Math.sin(step / 4) * 6)
+  })
+}
+
 setInterval(() => {
-  memory += Math.random() * 10
-  threads += 1
+  memory = Math.min(MAX_MEMORY_MB, Math.max(64, memory + (Math.random() - 0.45) * 20))
+  threads = Math.min(MAX_THREADS, Math.max(4, threads + (Math.random() < 0.5 ? -1 : 1)))
   uptime += 5000
-  failures += 1
+  recordSnapshot()
 }, 5000)
 
 const statisticsSeries = [
@@ -341,13 +364,15 @@ application
       req,
       () => {
         res.send({
-          version: '3.2.0',
-          latestVersion: '<unknown>',
+          version: '1.0.0',
+          // Deliberately ahead of `version`, so the "update available" state on the version
+          // tile is reachable without editing this file.
+          latestVersion: '1.1.0',
           uptime: uptime,
           usedMemory: memory,
-          maxMemory: '32',
+          maxMemory: MAX_MEMORY_MB,
           usedThreads: threads,
-          maxThreads: 64,
+          maxThreads: MAX_THREADS,
           failuresCount: failures
         })
       },
@@ -358,18 +383,7 @@ application
     authorized(
       req,
       () => {
-        res.send([
-          {
-            at: new Date().getTime() - (1000 * 60),
-            memory: 20,
-            threads: 11
-          },
-          {
-            at: new Date().getTime(),
-            memory: 10,
-            threads: 5
-          }
-        ])
+        res.send(snapshots)
       },
       () => invalidCredentials(res)
     )

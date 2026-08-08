@@ -104,8 +104,8 @@ const uploadFiles = () => {
       :class="[ isEnabled ? 'rounded-t-3xl rounded-b' : 'rounded-3xl' ]"
       class="
         border border-dashed mt-1.5 cursor-pointer
-        bg-gray-50 border-gray-300 hover:(transition-colors duration-200 bg-white)
-        dark:bg-black dark:border-gray-800 dark:hover:(transition-colors duration-400 bg-gray-900)
+        bg-gray-50 border-gray-300 hover:transition-colors hover:duration-200 hover:bg-white
+        dark:bg-black dark:border-gray-800 dark:hover:transition-colors dark:hover:duration-400 dark:hover:bg-gray-900
       "
     >
       <FileUpload
@@ -125,7 +125,7 @@ const uploadFiles = () => {
             </p>
           </div>
           <div v-else class="flex">
-            <span class="text-xm pt-1.6">🟣</span>
+            <span class="text-xm pt-[0.4rem]">🟣</span>
             <span class="font-bold px-5">Select files</span>
           </div>
         </div>
@@ -133,7 +133,7 @@ const uploadFiles = () => {
       <div v-if="isEnabled">
         <div class="-mt-2 pb-2">
           <div v-for="file in files" :key="file.name" class="pt-1 px-6 flex">
-            <span @click="removeFile(file)" class="pt-0.85">
+            <span @click="removeFile(file)" class="pt-[0.2125rem]">
               <CloseIcon class="h-5 pb-1 text-purple-400" />
             </span>
             <span class="px-2">{{file.name}}</span>
@@ -177,8 +177,8 @@ const uploadFiles = () => {
           @click.prevent="uploadFiles"
           class="
             border text-sm py-1.5 h-9 px-4 mt-2 border-dashed rounded
-            bg-gray-50  border-gray-400 hover:(transition-colors duration-200 bg-purple-500 text-white)
-            dark:bg-black dark:border-gray-700 dark:text-white dark:hover:(transition-colors duration-200 bg-purple-700)
+            bg-gray-50  border-gray-400 hover:transition-colors hover:duration-200 hover:bg-purple-500 hover:text-white
+            dark:bg-black dark:border-gray-700 dark:text-white dark:hover:transition-colors dark:hover:duration-200 dark:hover:bg-purple-700
           "
         >
           <span>Upload files </span>
@@ -191,6 +191,7 @@ const uploadFiles = () => {
 </template>
 
 <style>
+@reference "../../style.css";
 #browser-upload label {
   @apply cursor-pointer;
 }

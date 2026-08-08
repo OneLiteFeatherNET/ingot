@@ -43,7 +43,7 @@ const breadcrumbs = computed(() => {
       </span>
       <span class="select-text">
         <router-link v-for="crumb of breadcrumbs" :key="crumb.link" :to="crumb.link">
-          <span class="hover:(transition-colors duration-200 text-purple-500)">{{ crumb.name }}</span>
+          <span class="hover:transition-colors hover:duration-200 hover:text-purple-500">{{ crumb.name }}</span>
         </router-link>
       </span>
       <router-link :to="parentPath">

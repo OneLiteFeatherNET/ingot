@@ -83,8 +83,8 @@ watch(
   <div class="container mx-auto pt-7 px-15 pb-12 text-xs">
     <div class="flex text-sm flex-col xl:flex-row w-full py-2 justify-between">
       <input placeholder="Filter" v-model="filter" class="w-full xl:w-1/2 mr-5 py-1 px-4 rounded-lg bg-white dark:bg-gray-900" />
-      <div class="flex flex-row justify-around w-full xl:w-1/2 <md:flex-wrap">
-        <div v-for="level in levels" :key="level.name" class="pt-1.9 xl:pt-0.8 font-sans whitespace-nowrap">
+      <div class="flex flex-row justify-around w-full xl:w-1/2 max-md:flex-wrap">
+        <div v-for="level in levels" :key="level.name" class="pt-[0.475rem] xl:pt-[0.2rem] font-sans whitespace-nowrap">
           <input
             type="checkbox" 
             :checked="level.enabled" 

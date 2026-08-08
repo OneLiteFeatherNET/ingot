@@ -17,7 +17,7 @@
 import { defineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
 import vueJsx from "@vitejs/plugin-vue-jsx"
-import WindiCSS from "vite-plugin-windicss"
+import tailwindcss from "@tailwindcss/vite"
 import { visualizer } from "rollup-plugin-visualizer"
 
 // https://vitejs.dev/config/
@@ -28,7 +28,7 @@ export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
-    WindiCSS(),
+    tailwindcss(),
     visualizer(),
   ],
   // Served by the server itself, the placeholder is substituted on the way out and the
