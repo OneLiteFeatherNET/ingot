@@ -68,8 +68,16 @@ services:
     stdin_open: true
     tty: true
 
-    # Not read_only: the server writes artifacts, logs and its database. It runs as an
-    # unprivileged user by default, which is where the value is here.
+    # Not read_only: the server writes artifacts, logs and its database. Running it
+    # unprivileged is where the value is here instead.
+    #
+    # The image itself starts as root and drops privileges in its entrypoint, the way the
+    # upstream Reposilite image does, because that is the only path that can take over a
+    # volume owned by somebody else or honour PUID and PGID. Pinning the user here is safe
+    # precisely because this volume is created empty by this file, so it is owned by 977
+    # from the start. Drop this line if you point the service at an existing data directory
+    # with a different owner, and let the entrypoint sort the ownership out once.
+    user: "977:977"
     cap_drop:
       - ALL
     security_opt:

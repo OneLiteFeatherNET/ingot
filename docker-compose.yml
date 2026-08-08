@@ -26,5 +26,12 @@ services:
     security_opt:
       # Nothing in here ever needs a privilege it was not started with.
       - no-new-privileges:true
+    #
+    # The image starts as root and drops to the service account in its entrypoint, which is
+    # what lets it adopt a data directory owned by somebody else and act on PUID and PGID.
+    # Once the volume is owned by 977, which is the case after the first start, you can pin
+    # the user and skip that step entirely:
+    #
+    # user: "977:977"
 volumes:
   ingot-data: {}
