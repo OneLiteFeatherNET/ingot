@@ -15,6 +15,7 @@
  */
 package com.reposilite.storage.api
 
+import com.reposilite.maven.RepositoryVisibility
 import com.reposilite.storage.api.FileType.DIRECTORY
 import com.reposilite.storage.api.FileType.FILE
 import io.javalin.http.ContentType
@@ -52,6 +53,21 @@ sealed class AbstractDirectoryInfo(
 
 class SimpleDirectoryInfo(
     name: String,
+) : AbstractDirectoryInfo(name)
+
+/**
+ * A directory that stands for a whole repository, used by the root listing of `/api/maven/details`.
+ *
+ * [SimpleDirectoryInfo] describes every other directory, so it deliberately carries no visibility:
+ * a folder inside a repository has none. This type exists so the repository level can expose one
+ * without putting a meaningless value on every entry of every other listing.
+ *
+ * Direct subclasses of the sealed [FileDetails] have to live in this package, which is why a
+ * repository concept is declared next to the storage ones.
+ */
+class RepositoryDirectoryInfo(
+    name: String,
+    val visibility: RepositoryVisibility,
 ) : AbstractDirectoryInfo(name)
 
 class DirectoryInfo(

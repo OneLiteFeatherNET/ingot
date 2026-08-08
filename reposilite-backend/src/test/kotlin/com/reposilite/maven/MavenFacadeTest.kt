@@ -96,6 +96,42 @@ internal class MavenFacadeTest : MavenSpecification() {
             assertThat(availableRepositories).isEqualTo(listOf(PRIVATE.name, PUBLIC.name, "PROXIED", "PROXIED-LOOPBACK"))
         }
 
+        @Test
+        fun `should describe the visibility of every listed repository`() {
+            // when: repositories are requested without any credentials
+            val anonymousVisibilities = findRepositoryVisibilities(UNAUTHORIZED)
+
+            // then: only public repositories are listed, and each of them says so
+            assertThat(anonymousVisibilities).isEqualTo(
+                mapOf(
+                    PUBLIC.name to PUBLIC,
+                    "PROXIED" to PUBLIC,
+                    "PROXIED-LOOPBACK" to PUBLIC
+                )
+            )
+
+            // given: a token that may see every repository
+            val manager = createManagerAccessToken("manager", "manager-secret")
+
+            // when: repositories are requested with that token
+            val managerVisibilities = findRepositoryVisibilities(manager)
+
+            // then: hidden and private repositories are listed with their own visibility
+            assertThat(managerVisibilities).isEqualTo(
+                mapOf(
+                    PRIVATE.name to PRIVATE,
+                    HIDDEN.name to HIDDEN,
+                    PUBLIC.name to PUBLIC,
+                    "PROXIED" to PUBLIC,
+                    "PROXIED-LOOPBACK" to PUBLIC,
+                    "PROXIED-PULL-AUTHED" to HIDDEN,
+                    "PROXIED-DEFAULT-EXTENSIONS" to HIDDEN,
+                    "PROXIED-ALL-EXTENSIONS" to HIDDEN,
+                    "PROXIED-BLANK-EXTENSIONS" to HIDDEN
+                )
+            )
+        }
+
         @ParameterizedTest
         @EnumSource(value = RepositoryVisibility::class, names = [ "PUBLIC", "HIDDEN" ])
         fun `should find requested details without credentials in public and hidden repositories`(visibility: RepositoryVisibility) {

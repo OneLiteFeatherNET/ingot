@@ -24,6 +24,7 @@ import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.maven.api.PomDetails
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.web.api.ReposiliteRoute
@@ -79,6 +80,22 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
         }
     }
 
+    @OpenApi(
+        tags = ["Maven"],
+        path = "/api/maven/details",
+        methods = [HttpMethod.GET],
+        summary = "List the available repositories",
+        description = "Get the repositories the requesting token is allowed to see as JSON response. " +
+            "Every entry is a RepositoryDirectoryInfo and carries the repository visibility (PUBLIC, HIDDEN or PRIVATE) " +
+            "in addition to the fields of a regular directory. Repositories the token cannot access are not listed at all.",
+        responses = [
+            OpenApiResponse(
+                status = "200",
+                description = "Returns a directory listing where every file entry describes one accessible repository",
+                content = [OpenApiContent(from = DirectoryInfo::class)]
+            )
+        ]
+    )
     private val findRepositories = ReposiliteRoute("/api/maven/details", GET, handler = findFileDetails)
     private val findRepository = ReposiliteRoute("/api/maven/details/{repository}", GET, handler = findFileDetails)
     private val findInRepository = ReposiliteRoute("/api/maven/details/{repository}/<gav>", GET, handler = findFileDetails)
