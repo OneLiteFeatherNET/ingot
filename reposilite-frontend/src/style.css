@@ -106,15 +106,6 @@
 
   --color-green-500: #22c55e;
   --color-yellow-500: #eab308;
-
-  /*
-   * Windi shipped a near-black ramp called `dark`, which the mobile tab dropdown and the
-   * console divider use. It has no Tailwind counterpart, so the two shades still in use
-   * are carried over verbatim. The name reads oddly next to the `dark:` variant; that is
-   * one more reason it goes away with this block.
-   */
-  --color-dark-300: #2d2d2d;
-  --color-dark-600: #1c1c1e;
 }
 
 /*

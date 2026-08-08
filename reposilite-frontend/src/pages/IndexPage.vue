@@ -19,6 +19,7 @@ import { computed, ref, watchEffect, defineAsyncComponent } from 'vue'
 import { useSession } from '../store/session'
 import useQualifier from '../store/qualifier'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
+import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
 import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
 import { property } from '../helpers/vue-extensions'
@@ -93,7 +94,11 @@ const selectHomepage = () =>
       <div class="overflow-auto">
         <TabPanels v-model="selectedTab">
           <TabPanel :val="'Overview'">
-            <FileBrowserView v-if="selectedTab == 'Overview'" :qualifier="qualifier" ref=""/>
+            <template v-if="selectedTab == 'Overview'">
+              <!-- The file browser below brings its own top padding, so this only needs its own. -->
+              <HeaderHero class="pt-8" />
+              <FileBrowserView :qualifier="qualifier" />
+            </template>
           </TabPanel>
           <TabPanel :val="'Dashboard'" v-show="isManager">
             <DashboardView v-if="selectedTab == 'Dashboard'" />

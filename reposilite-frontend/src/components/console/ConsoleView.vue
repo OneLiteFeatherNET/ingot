@@ -135,7 +135,7 @@ const awaitingFirstLine = computed(() => status.value === 'open' && log.value.le
         </div>
       </div>
 
-      <hr class="dark:border-dark-300">
+      <hr class="dark:border-gray-800">
 
       <label>
         <span class="sr-only">Console command</span>

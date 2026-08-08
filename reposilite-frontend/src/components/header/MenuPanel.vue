@@ -15,30 +15,31 @@
   -->
 
 <script setup>
+import { computed } from 'vue'
 import { useSession } from '../../store/session'
 import MenuButton from './MenuButton.vue'
 import LoginModal from './LoginModal.vue'
 import MoonIcon from '../icons/MoonIcon.vue'
 import SunIcon from '../icons/SunIcon.vue'
+import ContrastIcon from '../icons/ContrastIcon.vue'
 import LogoutIcon from '../icons/LogoutIcon.vue'
 import useTheme from "../../store/theme"
 
 const { theme, changeTheme } = useTheme()
 const { token, isLogged, logout } = useSession()
 
-const toggleTheme = () => {
-  switch (theme.mode) {
-    case 'light':
-      changeTheme('dark')
-      break
-    case 'dark':
-      changeTheme('auto')
-      break
-    case 'auto':
-      changeTheme('light')
-      break
-  }
-}
+const NEXT_MODE = { light: 'dark', dark: 'auto', auto: 'light' }
+
+const toggleTheme = () => changeTheme(NEXT_MODE[theme.mode])
+
+// The control cycles through three modes and used to say which one it was in only by
+// swapping an unlabelled glyph, so it never announced itself to a screen reader and never
+// told anyone what pressing it would do.
+const themeLabel = computed(() => ({
+  light: 'Theme: light. Switch to dark.',
+  dark: 'Theme: dark. Switch to follow the system.',
+  auto: 'Theme: follows the system. Switch to light.'
+}[theme.mode]))
 </script>
 
 <template>
@@ -63,12 +64,16 @@ const toggleTheme = () => {
     >
       <LogoutIcon @click="logout()"/>
     </div>
-    <div class="flex justify-center items-center rounded-full w-[40px] h-[35px] default-button" @click="toggleTheme()">
-      <SunIcon v-if="theme.mode === 'light'"/>
-      <MoonIcon class="pl-0.5" v-if="theme.mode === 'dark'"/>
-      <div class="font-bold w-full text-center text-lg" v-if="theme.mode === 'auto'">
-        A
-      </div>
-    </div>
+    <button
+      type="button"
+      class="default-button flex h-[35px] w-[40px] items-center justify-center rounded-full"
+      :aria-label="themeLabel"
+      :title="themeLabel"
+      @click="toggleTheme()"
+    >
+      <SunIcon v-if="theme.mode === 'light'" />
+      <MoonIcon v-else-if="theme.mode === 'dark'" class="pl-0.5" />
+      <ContrastIcon v-else />
+    </button>
   </nav>
 </template>

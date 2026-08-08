@@ -16,7 +16,6 @@
 
 <script setup>
 import usePlaceholders from '../../store/placeholders'
-import HeaderHero from './HeaderHero.vue'
 import MenuPanel from './MenuPanel.vue'
 
 defineProps({
@@ -37,6 +36,12 @@ const { title } = usePlaceholders()
       </h1>
       <MenuPanel class="mt-0.5"/>
     </div>
-    <HeaderHero class="pt-2 pb-10 max-sm:pb-4" />
+    <!--
+      The avatar, description and organisation link used to sit here, which put them above
+      the console, the settings form and every other view an operator works in: 356px of
+      chrome before the first line of content, on a screen that is often 900px tall. They
+      describe the repository, so they belong to the page that presents the repository, and
+      the overview tab renders HeaderHero itself.
+    -->
   </header>
 </template>
