@@ -2,8 +2,8 @@
 #
 # Every push to main lets Release Please open or update the release pull request.
 # Merging that pull request tags the release, which in the same run publishes the
-# Maven artifacts and the container image. Pushes that do not produce a release
-# refresh the rolling nightly container image instead.
+# Maven artifacts and the container image. Pushes that change something the image
+# contains refresh the rolling nightly container image instead.
 name: "Release Please"
 
 on:
@@ -19,9 +19,11 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: "release-please-${{ github.ref }}"
-  cancel-in-progress: false
+# There is deliberately no workflow level concurrency group. One would serialise every run
+# of this workflow, which sounds harmless and is not: a queued nightly still runs its full
+# push once the run ahead of it finishes, so a burst of pushes turns into a burst of
+# registry writes spread over an hour instead of a single one. The two jobs that actually
+# need coordinating declare their own groups, and they need opposite behaviour.
 
 jobs:
   # The action is called directly rather than through the shared
@@ -31,6 +33,12 @@ jobs:
     name: "Release Please"
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Two of these racing would open or update the same release pull request twice.
+    # Serialised rather than cancelled: a cancelled run can leave that pull request half
+    # written, and the next push would have to repair it.
+    concurrency:
+      group: "release-please-${{ github.ref }}"
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -44,6 +52,72 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # A push that changes nothing the image contains does not need a new nightly.
+  #
+  # Before this, every commit on main rebuilt and pushed both images for two architectures.
+  # On 2026-08-07 that meant four full nightly pushes between 12:04 and 12:23, all
+  # overwriting the same tag, and the next one GHCR refused outright: it answers a throttled
+  # manifest PUT with `403 permission_denied` and a secondary rate limit body, which reads
+  # like a permissions problem and is not one.
+  #
+  # Releases are never filtered. This job only decides whether a *nightly* is worth pushing.
+  changes:
+    name: "Detect image changes"
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.filter.outputs.image }}
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+        with:
+          # Both ends of the pushed range have to be present for the diff below, and a merge
+          # to main can span more commits than any shallow fetch would keep.
+          fetch-depth: 0
+
+      - name: "Check whether anything in the image changed"
+        id: filter
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # A first push, a force push or a rewritten history leaves no usable range.
+          # Building is the safe answer there: a nightly built for nothing costs minutes,
+          # a nightly silently missing costs somebody an afternoon.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            echo "No usable push range, building anyway."
+            echo "image=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # A deny list, not an allow list. The Dockerfile copies the whole repository into
+          # its build stage, so anything not named here can plausibly reach the image, and
+          # guessing wrong in that direction ships a stale nightly rather than a redundant
+          # one.
+          ignored='^(reposilite-site/|\.github/|\.claude/|LICENSE$|NOTICE$|codecov\.yml$|renovate\.json$|[^/]*\.md$)'
+
+          changed="$(git diff --name-only "$BEFORE" "$AFTER")"
+          if [ -z "$changed" ]; then
+            echo "Nothing changed in this push."
+            echo "image=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # grep -v exits 0 as soon as one path is *not* ignored, which is exactly the
+          # question being asked.
+          if relevant="$(printf '%s\n' "$changed" | grep -vE "$ignored")"; then
+            echo "Image relevant changes:"
+            printf '%s\n' "$relevant" | sed 's/^/  /'
+            echo "image=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only ignored paths changed, skipping the nightly:"
+            printf '%s\n' "$changed" | sed 's/^/  /'
+            echo "image=false" >> "$GITHUB_OUTPUT"
+          fi
 
   # Publishes to repo.onelitefeather.dev. The credentials come from
   # ONELITEFEATHER_MAVEN_USERNAME / ONELITEFEATHER_MAVEN_PASSWORD, forwarded by
@@ -105,11 +179,36 @@ jobs:
   # GITHUB_TOKEN authenticates via the packages: write permission below.
   container:
     name: "Container image"
-    needs: release-please
+    needs: [ release-please, changes ]
+    # A release always publishes. A push only does when the change detection above found
+    # something, or when that detection itself broke, in which case falling through to a
+    # build keeps a bug in the filter from quietly stopping nightlies altogether.
     if: >-
       always() && !cancelled()
-      && (github.event_name == 'workflow_dispatch' || needs.release-please.result == 'success')
+      && (
+        github.event_name == 'workflow_dispatch'
+        || (
+          needs.release-please.result == 'success'
+          && (
+            needs.release-please.outputs.release_created == 'true'
+            || needs.changes.outputs.image == 'true'
+            || needs.changes.result == 'failure'
+          )
+        )
+      )
     runs-on: ubuntu-latest
+    # A nightly is a rolling tag, so a build still in flight is already obsolete the moment
+    # the next push lands: the newer one cancels it rather than queueing a second full push
+    # behind it. Releases are keyed by their version and cancel nothing, because a release
+    # abandoned halfway through pushing is worse than a slow one.
+    concurrency:
+      group: >-
+        container-${{
+          (github.event_name == 'workflow_dispatch' && inputs.container_version)
+          || (needs.release-please.outputs.release_created == 'true' && needs.release-please.outputs.version)
+          || format('nightly-{0}', github.ref)
+        }}
+      cancel-in-progress: ${{ github.event_name == 'push' && needs.release-please.outputs.release_created != 'true' }}
     permissions:
       contents: read
       packages: write
@@ -175,6 +274,9 @@ jobs:
             org.opencontainers.image.version=${{ steps.params.outputs.version }}
 
       - name: "Build and push the server image"
+        id: server
+        # Retried below rather than failing the run outright; see the retry step.
+        continue-on-error: true
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
@@ -186,12 +288,42 @@ jobs:
           # The SBOM answers "is the thing I am running affected by this advisory" without
           # unpacking the image; provenance in max mode records which workflow, which
           # commit and which inputs produced it, which is what makes the answer worth
-          # anything. buildx attaches a minimal provenance attestation by default, so the
-          # SBOM and the extra detail are the part actually being asked for here.
-          sbom: true
-          provenance: mode=max
+          # anything.
+          #
+          # Releases only. Each attestation is a further manifest pushed per platform, and
+          # on a tag that is overwritten several times a day the evidence is replaced long
+          # before anyone reads it. Paying for it there is what pushed this job into GHCR's
+          # secondary rate limit; see the change detection job above.
+          sbom: ${{ steps.params.outputs.released == 'true' }}
+          provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
           # Scoped per image. Sharing one scope makes the two builds evict each other's
           # layers on every run, so neither ever finds the cache it wrote last time.
+          cache-from: type=gha,scope=release-server
+          cache-to: type=gha,mode=max,scope=release-server
+
+      # GHCR rejects a throttled manifest PUT outright and buildx has no backoff of its own,
+      # so one refused request loses an entire multi platform build. Waiting out the window
+      # and going again is nearly free: every layer is still in the cache, and what gets
+      # replayed is the push.
+      #
+      # Keep the two `with:` blocks identical.
+      - name: "Wait out the registry before retrying the server image"
+        if: steps.server.outcome == 'failure'
+        run: |
+          echo "The server image push failed. GHCR asks for a few minutes, so waiting before the retry."
+          sleep 180
+
+      - name: "Retry pushing the server image"
+        if: steps.server.outcome == 'failure'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          platforms: ${{ steps.params.outputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: ${{ steps.params.outputs.released == 'true' }}
+          provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
           cache-from: type=gha,scope=release-server
           cache-to: type=gha,mode=max,scope=release-server
 
@@ -215,6 +347,8 @@ jobs:
             org.opencontainers.image.version=${{ steps.params.outputs.version }}
 
       - name: "Build and push the dashboard image"
+        id: dashboard
+        continue-on-error: true
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           # The repository root, not the module: the image needs branding assets from
@@ -225,7 +359,29 @@ jobs:
           push: true
           tags: ${{ steps.meta-dashboard.outputs.tags }}
           labels: ${{ steps.meta-dashboard.outputs.labels }}
-          sbom: true
-          provenance: mode=max
+          sbom: ${{ steps.params.outputs.released == 'true' }}
+          provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
+          cache-from: type=gha,scope=release-dashboard
+          cache-to: type=gha,mode=max,scope=release-dashboard
+
+      # Same reasoning as the server retry above. Keep the two `with:` blocks identical.
+      - name: "Wait out the registry before retrying the dashboard image"
+        if: steps.dashboard.outcome == 'failure'
+        run: |
+          echo "The dashboard image push failed. GHCR asks for a few minutes, so waiting before the retry."
+          sleep 180
+
+      - name: "Retry pushing the dashboard image"
+        if: steps.dashboard.outcome == 'failure'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: reposilite-frontend/Dockerfile
+          platforms: ${{ steps.params.outputs.platforms }}
+          push: true
+          tags: ${{ steps.meta-dashboard.outputs.tags }}
+          labels: ${{ steps.meta-dashboard.outputs.labels }}
+          sbom: ${{ steps.params.outputs.released == 'true' }}
+          provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
           cache-from: type=gha,scope=release-dashboard
           cache-to: type=gha,mode=max,scope=release-dashboard
