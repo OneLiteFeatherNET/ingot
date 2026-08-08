@@ -143,7 +143,15 @@ not the test.
   multiplies the build time for an identical result.
 - **Both images are published for `linux/amd64` and `linux/arm64`**, nightlies included,
   and CI builds the second architecture on every pull request.
-- **Every push carries an SBOM and provenance** (`sbom: true`, `provenance: mode=max`).
+- **Every release carries an SBOM and provenance** (`sbom: true`, `provenance: mode=max`).
+  Nightlies carry neither. Each attestation is a further manifest pushed per platform, and
+  on a tag that is overwritten several times a day the evidence is gone before anyone reads
+  it. Releases are the artefacts anyone audits, and they keep the full set.
+- **A nightly is only pushed when the push changed something the image contains.** The
+  `changes` job in `release-please.yml` decides that with a deny list, so anything it has
+  not heard of counts as relevant. Releases are never filtered. Before this, docs-only
+  commits pushed both images for two architectures, and a burst of them ran the job into
+  GHCR's secondary rate limit, which arrives disguised as `403 permission_denied`.
 - **Base images are pinned by tag *and* digest**, and Renovate raises both together. Trivy
   scans both the dependency trees and the assembled images.
 
