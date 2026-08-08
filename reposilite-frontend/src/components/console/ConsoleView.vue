@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
 import useLog from '../../store/console/log'
 import useConsole from '../../store/console/connection'
@@ -62,6 +62,52 @@ onBeforeUnmount(close)
 const connecting = computed(() => status.value === 'connecting')
 const disconnected = computed(() => status.value === 'error' || status.value === 'closed')
 const awaitingFirstLine = computed(() => status.value === 'open' && log.value.length === 0)
+
+/*
+ * The panel used to be 36rem tall on every screen, which overflows a laptop and leaves a
+ * tall monitor half empty.
+ *
+ * It measures where it actually starts rather than subtracting a constant for the chrome
+ * above it. A constant would have to encode the height of the header, the tab bar and the
+ * filter row, and would be wrong the moment any of them changes: the header lost 188px
+ * only one commit ago. The floor keeps a phone, where that chrome is most of the screen,
+ * from ending up with a two line console.
+ */
+const BOTTOM_GUTTER_PX = 48
+const MIN_HEIGHT_PX = 320
+
+const panel = ref(null)
+const panelHeight = ref(`${MIN_HEIGHT_PX}px`)
+
+const measurePanel = () => {
+  if (!panel.value) return
+  const top = panel.value.getBoundingClientRect().top
+  const available = window.innerHeight - top - BOTTOM_GUTTER_PX
+  panelHeight.value = `${Math.max(MIN_HEIGHT_PX, Math.round(available))}px`
+}
+
+onMounted(() => {
+  nextTick(measurePanel)
+  window.addEventListener('resize', measurePanel)
+})
+
+onBeforeUnmount(() => window.removeEventListener('resize', measurePanel))
+
+/*
+ * Warn and Error are the two levels a reader looks for first, so they keep a colour while
+ * they are on. The colour never carries the state on its own: a chip that is on has a solid
+ * border, a filled marker and a heavier label, and one that is off has a dashed border, a
+ * hollow marker and muted text, whatever its level.
+ */
+const ENABLED_LEVEL_COLOURS = {
+  Warn: 'text-yellow-700 dark:text-yellow-500',
+  Error: 'text-red-700 dark:text-red-400'
+}
+
+const chipClasses = (level) =>
+  level.enabled
+    ? `border-solid border-gray-400 bg-white font-semibold dark:border-gray-500 dark:bg-gray-900 ${ENABLED_LEVEL_COLOURS[level.name] ?? 'text-gray-800 dark:text-gray-100'}`
+    : 'border-dashed border-gray-300 bg-transparent font-normal text-gray-500 dark:border-gray-700 dark:text-gray-400'
 </script>
 
 <template>
@@ -75,26 +121,36 @@ const awaitingFirstLine = computed(() => status.value === 'open' && log.value.le
           class="w-full rounded-lg bg-white px-4 py-1 dark:bg-gray-900"
         >
       </label>
-      <div class="flex w-full flex-row justify-around max-md:flex-wrap xl:w-1/2">
-        <label
+      <div class="flex w-full flex-row flex-wrap items-center gap-2 pt-2 xl:w-1/2 xl:justify-end xl:pt-0">
+        <button
           v-for="level in levels"
           :key="level.name"
-          class="flex cursor-pointer items-center gap-2 whitespace-nowrap py-1 font-sans"
+          type="button"
+          :aria-pressed="level.enabled"
+          class="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 font-sans text-xs focus-visible:outline-2 focus-visible:outline-offset-2"
+          :class="chipClasses(level)"
+          @click="level.enabled = !level.enabled"
         >
-          <input
-            type="checkbox"
-            :checked="level.enabled"
-            @change="level.enabled = !level.enabled"
-          >
-          <span class="pr-4">{{ level.name }} ({{ level.count }})</span>
-        </label>
+          <span
+            aria-hidden="true"
+            class="h-1.5 w-1.5 shrink-0 rounded-full"
+            :class="level.enabled ? 'bg-current' : 'ring-1 ring-current'"
+          />
+          {{ level.name }}
+          <span class="tabular-nums">{{ level.count }}</span>
+        </button>
       </div>
     </div>
 
-    <div class="rounded-lg bg-white dark:bg-gray-900">
+    <div
+      ref="panel"
+      class="flex flex-col rounded-lg bg-white dark:bg-gray-900"
+      :style="{ height: panelHeight }"
+    >
+      <!-- scrollToEnd() drives this element by id, so it has to stay the one that scrolls. -->
       <div
         id="console"
-        class="h-144 overflow-scroll whitespace-pre-wrap px-4 py-2 font-mono text-xs"
+        class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono text-xs"
         aria-live="polite"
       >
         <p
