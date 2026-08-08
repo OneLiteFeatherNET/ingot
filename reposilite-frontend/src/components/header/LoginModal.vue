@@ -17,7 +17,7 @@
 <script setup>
 import { ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
-import { createToast } from 'mosha-vue-toastify'
+import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import CloseIcon from '../icons/CloseIcon.vue'
 
@@ -25,15 +25,30 @@ const { login } = useSession()
 const showLogin = ref(false)
 const name = ref('')
 const secret = ref('')
+const failure = ref(null)
+const busy = ref(false)
 
-const close = () => 
-  (showLogin.value = false)
+const close = () => {
+  showLogin.value = false
+  failure.value = null
+}
 
-const signin = (name, secret) =>
-  login(name, secret)
-    .then(() => createToast(`Dashboard accessed as ${name}`, { position: 'bottom-right' }))
+// The failure belongs in the dialog, not in a toast: the form that has to be corrected is
+// right here, and a toast about it appears somewhere else entirely and then leaves.
+const signin = (name, secret) => {
+  busy.value = true
+  failure.value = null
+
+  return login(name, secret)
+    .then(() => createSuccessToast(`Dashboard accessed as ${name}`))
     .then(() => close())
-    .catch(error => createToast(`${error.response.status}: ${error.response.data.message}`, { type: 'danger' }))
+    .catch(error => {
+      failure.value = errorMessage(error)
+    })
+    .finally(() => {
+      busy.value = false
+    })
+}
 </script>
 
 <script>
@@ -47,19 +62,63 @@ export default {
     <VueFinalModal
       v-model="showLogin"
       v-bind="$attrs"
-      class="flex justify-center items-center"
+      class="flex items-center justify-center"
     >
-      <div class="relative border bg-white dark:bg-gray-900 border-gray-100 dark:border-black m-w-20 py-5 px-10 rounded-2xl shadow-xl text-center">
-        <p class="font-bold text-xl pb-4">Login with access token</p>
-        <form class="flex flex-col w-96 max-sm:w-65" @submit.prevent="signin(name, secret)">
-          <input placeholder="Name" v-model="name" type="text" class="input"/>
-          <input placeholder="Secret" v-model="secret" type="password" class="input"/>
-          <div class="text-right mt-1">
-            <button @click="close()" class="text-blue-400 text-xs">← Back to index</button>
-          </div>
-          <button class="bg-gray-100 dark:bg-gray-800 py-2 my-3 rounded-md cursor-pointer">Sign in</button>
+      <div class="relative rounded-2xl border border-gray-100 bg-white px-10 py-5 shadow-xl dark:border-black dark:bg-gray-900">
+        <p class="pb-4 text-center text-xl font-bold">Login with access token</p>
+
+        <form class="flex w-96 flex-col max-sm:w-65" @submit.prevent="signin(name, secret)">
+          <label class="flex flex-col text-left text-sm">
+            <span class="pb-1 text-gray-600 dark:text-gray-300">Name</span>
+            <input
+              v-model="name"
+              type="text"
+              autocomplete="username"
+              class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+            >
+          </label>
+
+          <label class="flex flex-col pt-3 text-left text-sm">
+            <span class="pb-1 text-gray-600 dark:text-gray-300">Secret</span>
+            <input
+              v-model="secret"
+              type="password"
+              autocomplete="current-password"
+              class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+            >
+          </label>
+
+          <p
+            v-if="failure"
+            class="pt-3 text-left text-sm text-red-600 dark:text-red-400"
+            role="alert"
+          >
+            {{ failure }}
+          </p>
+
+          <button
+            type="submit"
+            :disabled="busy"
+            class="mt-4 cursor-pointer rounded-md bg-blue-700 py-2 font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-700/60"
+          >
+            {{ busy ? 'Signing in...' : 'Sign in' }}
+          </button>
+
+          <button
+            type="button"
+            class="pt-3 text-xs text-blue-600 dark:text-blue-300"
+            @click="close()"
+          >
+            Back to index
+          </button>
         </form>
-        <button class="absolute top-0 right-0 mt-5 mr-5" @click="close()">
+
+        <button
+          type="button"
+          class="absolute top-0 right-0 mt-5 mr-5"
+          aria-label="Close the login dialog"
+          @click="close()"
+        >
           <CloseIcon />
         </button>
       </div>
@@ -69,17 +128,3 @@ export default {
     </div>
   </div>
 </template>
-
-<style scoped>
-@reference "../../style.css";
-.input {
-  @apply p-2;
-  @apply my-1;
-  @apply bg-gray-50 dark:bg-gray-800;
-  @apply rounded-md;
-}
-#login-modal button:hover {
-  @apply bg-gray-200 dark:bg-gray-700;
-  transition: background-color 0.5s;
-}
-</style>

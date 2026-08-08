@@ -99,7 +99,7 @@ const selectHomepage = () =>
             <DashboardView v-if="selectedTab == 'Dashboard'" />
           </TabPanel>
           <TabPanel :val="'Console'" v-show="isManager">
-            <ConsoleView v-if="selectedTab == 'Console'" :selectedTab="selectedTab" />
+            <ConsoleView v-if="selectedTab == 'Console'" />
           </TabPanel>
           <TabPanel :val="'Tokens'" v-show="isManager">
             <TokensView v-if="selectedTab == 'Tokens'" :selectedTab="selectedTab" />

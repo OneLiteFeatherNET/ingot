@@ -1,6 +1,6 @@
 import {computed, markRaw, ref, toRaw} from 'vue'
 import { useSession } from './session'
-import { createToast } from 'mosha-vue-toastify'
+import { createSuccessToast, createErrorToast, errorMessage } from '../helpers/toast'
 import { createAjv } from '@jsonforms/core'
 import { vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { default as ObjectRenderer, tester as objectTester } from '../components/renderers/ObjectRenderer.vue'
@@ -26,8 +26,8 @@ const fetchConfiguration = () => {
         .then(configurationResponse => configurations.value[domain] = configurationResponse.data)))
     )
     .then(() => selectedDomain.value = domains.value[0])
-    .then(() => createToast('Configuration loaded', { type: 'success' }))
-    .catch(error => createToast(`${error || ''}`, { type: 'danger' }))
+    .then(() => createSuccessToast('Configuration loaded'))
+    .catch(error => createErrorToast(`Cannot load configuration: ${errorMessage(error)}`))
 }
 
 const updateConfiguration = () =>
@@ -36,8 +36,8 @@ const updateConfiguration = () =>
       .then(() => client.value.settings.fetch(domain))
       .then(response => configurations.value[domain] = response.data)
   ))
-    .then(() => createToast('Configuration updated', { type: 'success' }))
-    .catch(error => createToast(`${error || ''}`, { type: 'danger' }))
+    .then(() => createSuccessToast('Configuration updated'))
+    .catch(error => createErrorToast(`Cannot update configuration: ${errorMessage(error)}`))
 
 const renderers = markRaw([
   { tester: arrayListTester, renderer: ArrayListRenderer },
