@@ -456,13 +456,52 @@ internal class DatabaseLockIntegrationTest {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails or is absent**
+- [ ] **Step 2: Add the negative control**
+
+The positive test only proves the lock does not crash. A lock that never blocks would pass it too. Rather than sabotaging the implementation by hand, exercise the no-op path against the same database: `DatabaseLock` with `vendor = "sqlite"` never asks for a connection and never locks, so the identical body must show the violation.
+
+Add to the same file:
+
+```kotlin
+    @Test
+    fun `should let threads overlap when the vendor takes no lock`() {
+        val threads = 8
+        dataSource(threads).use { source ->
+            // Same database, same body, no-op strategy: this is the control that proves the
+            // assertion above can fail at all.
+            val lock = DatabaseLock(source, "sqlite", logger)
+            val concurrent = AtomicInteger(0)
+            val maxObserved = AtomicInteger(0)
+            val start = CountDownLatch(1)
+            val pool = Executors.newFixedThreadPool(threads)
+
+            repeat(threads) {
+                pool.submit {
+                    start.await()
+                    lock.withLock("control-test") {
+                        val now = concurrent.incrementAndGet()
+                        maxObserved.updateAndGet { previous -> maxOf(previous, now) }
+                        Thread.sleep(50)
+                        concurrent.decrementAndGet()
+                    }
+                }
+            }
+
+            start.countDown()
+            pool.shutdown()
+            assertTrue(pool.awaitTermination(60, TimeUnit.SECONDS), "workers did not finish in time")
+            assertTrue(maxObserved.get() > 1, "expected the no-op strategy to allow overlap, so the locking assertion has teeth")
+        }
+    }
+```
+
+- [ ] **Step 3: Run the tests**
 
 Run: `./gradlew :reposilite-backend:integration --tests "com.reposilite.shared.DatabaseLockIntegrationTest"`
 
-Expected: PASS. This test is written against the implementation from Task 1, so it should pass immediately. If it fails, the Task 1 implementation is wrong and must be fixed before continuing. To confirm the test has teeth, temporarily change the `MySqlLockStrategy` dispatch in `DatabaseLock` to `NoopLockStrategy`, re-run, and observe `should let only one thread into the guarded section at a time` fail with a `maxObserved` above 1. Revert that change afterwards.
+Expected: PASS, 3 tests. The mutual-exclusion test proves the lock works, the control proves the test could detect its absence, and the timeout test proves it does not wait forever.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add reposilite-backend/src/integration/kotlin/com/reposilite/shared/DatabaseLockIntegrationTest.kt
@@ -470,8 +509,12 @@ git commit -m "test(shared): prove the database lock excludes concurrent holders
 
 Asserts against a real MariaDB rather than an embedded database, because
 GET_LOCK semantics are the behaviour under test and no embedded engine
-has them. Covers both mutual exclusion and the timeout path, so a lock
-that silently never blocks cannot pass."
+has them.
+
+A control case runs the identical body through the no-op strategy on the
+same database and asserts the threads do overlap. Without it, a lock that
+never blocked would pass the suite unnoticed, and the mutual exclusion
+assertion would be proving nothing."
 ```
 
 ---
@@ -811,13 +854,57 @@ internal class ConcurrentMetadataWriteIntegrationTest {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it has teeth**
+- [ ] **Step 2: Add the negative control**
+
+As in Task 2, the positive assertion needs a control that proves it could fail. Add to the same file, using the no-op strategy against the same database:
+
+```kotlin
+    @Test
+    fun `should lose an update when no lock is taken`() {
+        val writers = 10
+        val shared = AtomicInteger(0)
+        val start = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(writers)
+
+        HikariDataSource(
+            HikariConfig().apply {
+                jdbcUrl = mariadb.jdbcUrl
+                username = mariadb.username
+                password = mariadb.password
+                driverClassName = "org.mariadb.jdbc.Driver"
+                maximumPoolSize = writers
+            }
+        ).use { source ->
+            // The no-op strategy models the behaviour before this change: no coordination
+            // between writers. If this still reached 10, the test above would prove nothing.
+            val lock = DatabaseLock(source, "sqlite", logger)
+
+            repeat(writers) {
+                pool.submit {
+                    start.await()
+                    lock.withLock("ingot-metadata:releases:com/example/artifact") {
+                        val read = shared.get()
+                        Thread.sleep(20)
+                        shared.set(read + 1)
+                    }
+                }
+            }
+
+            start.countDown()
+            pool.shutdown()
+            assertTrue(pool.awaitTermination(120, TimeUnit.SECONDS), "writers did not finish in time")
+            assertTrue(shared.get() < writers, "expected a lost update without a lock, so the assertion above has teeth")
+        }
+    }
+```
+
+- [ ] **Step 3: Run the tests**
 
 Run: `./gradlew :reposilite-backend:integration --tests "com.reposilite.maven.ConcurrentMetadataWriteIntegrationTest"`
 
-Expected: PASS with the lock in place. To confirm the test detects the defect, temporarily replace `lock.withLock("...") { ... }` with a direct call to the block, re-run, and observe the assertion fail with a value well below 10. Revert afterwards.
+Expected: PASS, 2 tests.
 
-- [ ] **Step 3: Take the lock in MetadataService**
+- [ ] **Step 4: Take the lock in MetadataService**
 
 In `reposilite-backend/src/main/kotlin/com/reposilite/maven/MetadataService.kt`, add the import:
 
@@ -892,7 +979,7 @@ Wrap the read-modify-write inside `generatePom`. The guarded section starts at t
                 }
 ```
 
-- [ ] **Step 4: Pass the lock through the component wiring**
+- [ ] **Step 5: Pass the lock through the component wiring**
 
 In `reposilite-backend/src/main/kotlin/com/reposilite/maven/application/MavenComponents.kt`, add the import `com.reposilite.shared.DatabaseLock` and add `private val databaseLock: DatabaseLock,` to the class constructor.
 
@@ -910,13 +997,13 @@ The construction site is at line 60 and currently reads `MetadataService(securit
 
 In `reposilite-backend/src/main/kotlin/com/reposilite/maven/application/MavenPlugin.kt`, add `databaseLock = reposilite().databaseLock,` to the `MavenComponents(...)` argument list, next to the other facade arguments.
 
-- [ ] **Step 5: Run the tests**
+- [ ] **Step 6: Run the tests**
 
 Run: `./gradlew :reposilite-backend:test :reposilite-backend:integration`
 
 Expected: PASS. `MavenIntegrationTest` and `MavenApiIntegrationTest` exercise deployment and must be unaffected, because a single instance never contends.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add reposilite-backend/src/main/kotlin/com/reposilite/maven/MetadataService.kt \
@@ -943,44 +1030,71 @@ mechanism."
 
 **Files:**
 - Modify: `reposilite-backend/src/main/kotlin/com/reposilite/statistics/application/StatisticsPlugin.kt`
-- Test: `reposilite-backend/src/test/kotlin/com/reposilite/statistics/StatisticsFacadeTest.kt` (add a case to the existing file; create it from the pattern in `reposilite-backend/src/test/kotlin/com/reposilite/statistics/` if it does not exist)
+- Create: `reposilite-backend/src/integration/kotlin/com/reposilite/statistics/StatisticsShutdownFlushIntegrationTest.kt`
 
 **Interfaces:**
-- Consumes: `StatisticsFacade.saveRecordsBulk()`, already public.
+- Consumes: `StatisticsFacade.saveRecordsBulk()` and `StatisticsFacade.countRecords()`, both already public. `ReposiliteRunner` exposes `reposilite: Reposilite`, which carries `extensions`.
 - Produces: nothing later tasks depend on.
 
 **The defect:** `StatisticsFacade` buffers increments in memory and flushes every ten seconds from a scheduled task. `Reposilite.shutdown()` calls `scheduler.shutdown()` first, and `StatisticsPlugin` registers no dispose handler, so every rolling update discards up to ten seconds of statistics per pod.
 
+**Why an integration test:** the change is a piece of wiring, not a function. A unit test on `saveRecordsBulk()` would assert behaviour that already works and would pass before the fix, proving nothing. Emitting the dispose event against a running instance tests exactly what changes. The test emits the event directly rather than calling `reposilite.shutdown()`, because shutdown closes the database connection and the assertion needs to read through it afterwards.
+
 - [ ] **Step 1: Write the failing test**
 
-Add to `reposilite-backend/src/test/kotlin/com/reposilite/statistics/StatisticsFacadeTest.kt`:
+Create `reposilite-backend/src/integration/kotlin/com/reposilite/statistics/StatisticsShutdownFlushIntegrationTest.kt`:
 
 ```kotlin
+/*
+ * Copyright (c) 2026 dzikoysk
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.reposilite.statistics
+
+import com.reposilite.ReposiliteRunner
+import com.reposilite.maven.api.Identifier
+import com.reposilite.plugin.api.ReposiliteDisposeEvent
+import com.reposilite.plugin.facade
+import com.reposilite.statistics.api.IncrementResolvedRequest
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+
+internal class StatisticsShutdownFlushIntegrationTest : ReposiliteRunner() {
+
     @Test
-    fun `should persist buffered records when flushed explicitly`() {
+    fun `should flush buffered statistics when the instance is disposed`() {
+        val statisticsFacade = reposilite.extensions.facade<StatisticsFacade>()
         val identifier = Identifier("releases", "com/example/artifact/1.0.0/artifact-1.0.0.jar")
+
         statisticsFacade.incrementResolvedRequest(IncrementResolvedRequest(identifier))
+        assertEquals(0, statisticsFacade.countRecords(), "the increment should still be buffered, not written")
 
-        statisticsFacade.saveRecordsBulk()
+        reposilite.extensions.emitEvent(ReposiliteDisposeEvent(reposilite))
 
-        assertEquals(1, statisticsFacade.countRecords())
+        assertEquals(1, statisticsFacade.countRecords(), "dispose should have flushed the buffer")
     }
-
-    @Test
-    fun `should not persist anything when the buffer is empty`() {
-        statisticsFacade.saveRecordsBulk()
-
-        assertEquals(0, statisticsFacade.countRecords())
-    }
+}
 ```
 
-Use the imports and the `statisticsFacade` fixture that the surrounding `StatisticsSpecification` already provides. If the file does not exist, create it extending `StatisticsSpecification` from `reposilite-backend/src/test/kotlin/com/reposilite/statistics/specification/StatisticsSpecification.kt`, with the Apache header shown in Task 1.
+If `ReposiliteRunner` requires a JUnit extension annotation on concrete subclasses, copy the annotations from an existing subclass such as `reposilite-backend/src/integration/kotlin/com/reposilite/statistics/StatisticsIntegrationTest.kt` and use its inheritance shape rather than extending `ReposiliteRunner` directly. Match whatever that file does.
 
-- [ ] **Step 2: Run the test**
+- [ ] **Step 2: Run the test to verify it fails**
 
-Run: `./gradlew :reposilite-backend:test --tests "com.reposilite.statistics.StatisticsFacadeTest"`
+Run: `./gradlew :reposilite-backend:integration --tests "com.reposilite.statistics.StatisticsShutdownFlushIntegrationTest"`
 
-Expected: PASS. These assert existing behaviour and exist to pin it, so that the dispose wiring in Step 3 has something to rely on.
+Expected: FAIL on the second assertion, with `expected: <1> but was: <0>`, because nothing flushes on dispose yet. If it fails on the first assertion instead, the scheduled flush ran during the test; shorten the test or note it in the report before continuing.
 
 - [ ] **Step 3: Register the dispose handler**
 
@@ -1004,17 +1118,23 @@ Add this block directly after the existing `event { _: ReposiliteInitializeEvent
         }
 ```
 
-- [ ] **Step 4: Verify the full suite**
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `./gradlew :reposilite-backend:integration --tests "com.reposilite.statistics.StatisticsShutdownFlushIntegrationTest"`
+
+Expected: PASS.
+
+- [ ] **Step 5: Verify the full suite**
 
 Run: `./gradlew :reposilite-backend:test :reposilite-backend:integration`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add reposilite-backend/src/main/kotlin/com/reposilite/statistics/application/StatisticsPlugin.kt \
-        reposilite-backend/src/test/kotlin/com/reposilite/statistics/StatisticsFacadeTest.kt
+        reposilite-backend/src/integration/kotlin/com/reposilite/statistics/StatisticsShutdownFlushIntegrationTest.kt
 git commit -m "fix(statistics): flush the buffer before shutting down
 
 Increments are buffered in memory and written every ten seconds, and
@@ -1094,7 +1214,9 @@ allowance reads as a documented limit rather than a surprise."
 
 **Not covered here, by design.** `PreservedBuildsListener` deletes snapshot files based on a timestamp read from metadata another pod may be rewriting. It is named in the spec under 1.2 but is not fixed by this plan: the listener runs on `DeployEvent`, after `generatePom` has released its lock, so covering it means either widening the lock to span the event dispatch or giving the listener its own acquisition. That decision needs a look at whether event listeners may block a deployment, which this plan does not settle. **Add it to the Stage 2 plan or raise it as its own task.**
 
-**Placeholder scan.** No TBD, TODO or "handle edge cases" steps. Every code step carries the code. Two steps deliberately instruct a temporary revert to prove a test detects the defect it targets, and both say to revert afterwards.
+**Placeholder scan.** No TBD, TODO or "handle edge cases" steps. Every code step carries the code.
+
+**Test hygiene.** Tasks 2 and 4 each carry a negative control: the identical test body run through the no-op strategy against the same database, asserting the violation does appear. Without it, a lock that never blocked would pass the positive assertion and the suite would prove nothing. Task 5 asserts the buffer is still unwritten before the dispose event and written after, so it fails before the change and passes after. Every test in this plan fails for the right reason before its implementation exists.
 
 **Type consistency.** `DatabaseLock(dataSource, vendor, journalist)` is used with the same three arguments in Tasks 1, 2, 3 and 4. `withLock(name, timeoutSeconds, block)` keeps its signature at every call site, with `timeoutSeconds` defaulting to 60 and overridden to 300 for schema initialisation and 1 in the timeout test. `advisoryKeyOf` is `internal` and used only in the main source set and the unit test, which share a module.
 
