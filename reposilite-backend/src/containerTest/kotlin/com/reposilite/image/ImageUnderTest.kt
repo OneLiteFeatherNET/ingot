@@ -100,44 +100,44 @@ class DataDirectory(val path: Path, private val image: DockerImageName) : AutoCl
         runAsRoot("chown", "-R", "$uid:$gid", MOUNT_POINT)
     }
 
-    /** The `uid:gid` a file inside the directory ended up with. */
-    fun ownerOf(relativePath: String): String {
-        val file = path.resolve(relativePath)
-        val uid = Files.getAttribute(file, "unix:uid") as Int
-        val gid = Files.getAttribute(file, "unix:gid") as Int
-        return "$uid:$gid"
-    }
-
     /**
-     * Reads a file the server wrote. That happens through a container too: the file belongs
-     * to the service account, and this process is not it.
+     * The `uid:gid` a file inside the directory ended up with.
+     *
+     * Asked of a container rather than of the host filesystem. Once the directory belongs to
+     * an id this process does not have, and it is mode 700 as a temporary directory is, the
+     * host cannot even traverse into it to read an attribute. That is invisible on a machine
+     * whose own uid happens to match the one under test, and an AccessDeniedException
+     * everywhere else.
      */
-    fun read(relativePath: String): String =
-        GenericContainer(image)
-            .withCreateContainerCmdModifier { it.withUser("0:0").withEntrypoint("cat") }
-            .withCommand("$MOUNT_POINT/$relativePath")
-            .withFileSystemBind(path.toString(), MOUNT_POINT, BindMode.READ_ONLY)
-            .withStartupCheckStrategy(OneShotStartupCheckStrategy())
-            .use { container ->
-                container.start()
-                container.logs
-            }
+    fun ownerOf(relativePath: String): String =
+        inspect("stat", "-c", "%u:%g", "$MOUNT_POINT/$relativePath").trim()
+
+    /** Reads a file the server wrote, which belongs to the service account and not here. */
+    fun read(relativePath: String): String = inspect("cat", "$MOUNT_POINT/$relativePath")
 
     override fun close() {
         runAsRoot("chown", "-R", "$ownUid:$ownGid", MOUNT_POINT)
     }
 
-    private fun runAsRoot(vararg command: String) {
-        // Root is pinned deliberately rather than inherited: what the image starts as is
-        // itself under test, and a helper that inherited it would turn a failed assertion
-        // into a confusing setup error.
+    /** Runs a command against the directory and returns what it printed. */
+    private fun inspect(vararg command: String): String =
+        runAsRoot(*command)
+
+    /**
+     * Root is pinned deliberately rather than inherited: what the image starts as is itself
+     * under test, and a helper that inherited it would turn a failed assertion into a
+     * confusing setup error.
+     */
+    private fun runAsRoot(vararg command: String): String =
         GenericContainer(image)
             .withCreateContainerCmdModifier { it.withUser("0:0").withEntrypoint(command.first()) }
             .withCommand(*command.drop(1).toTypedArray())
             .withFileSystemBind(path.toString(), MOUNT_POINT, BindMode.READ_WRITE)
             .withStartupCheckStrategy(OneShotStartupCheckStrategy())
-            .use { it.start() }
-    }
+            .use { container ->
+                container.start()
+                container.logs
+            }
 
     private companion object {
         const val MOUNT_POINT = "/mnt/data"
