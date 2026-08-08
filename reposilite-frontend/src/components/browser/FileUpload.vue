@@ -100,16 +100,23 @@ const uploadFiles = () => {
 
 <template>
   <div id="browser-upload">
-    <div 
-      :class="[ isEnabled ? 'rounded-t-3xl rounded-b' : 'rounded-3xl' ]"
+    <!--
+      Set apart from the entries above it on purpose. This used to be a rounded pill of the
+      same size and shape as a directory row, separated from real content only by the colour
+      of a dot, so an action sat in the middle of a list of things.
+    -->
+    <p class="pt-6 pb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      Upload to <span class="normal-case">{{ '/' + destination }}</span>
+    </p>
+    <div
       class="
-        border border-dashed mt-1.5 cursor-pointer
-        bg-gray-50 border-gray-300 hover:transition-colors hover:duration-200 hover:bg-white
-        dark:bg-black dark:border-gray-800 dark:hover:transition-colors dark:hover:duration-400 dark:hover:bg-gray-900
+        mt-1.5 cursor-pointer rounded-lg border-2 border-dashed
+        border-gray-300 bg-gray-50 hover:transition-colors hover:duration-200 hover:bg-white
+        dark:border-gray-700 dark:bg-black dark:hover:transition-colors dark:hover:bg-gray-900
       "
     >
       <FileUpload
-        class="btn btn-primary flex text-left"
+        class="flex text-left"
         post-action="/upload/post"
         :multiple="true"
         :drop="true"
@@ -117,17 +124,19 @@ const uploadFiles = () => {
         v-model="files"
         ref="upload"
       >
-        <div class="my-3 px-6">
-          <div v-if="isEnabled" class="py-1">
-            <p class="font-bold">
-              Deploy selected files to
-              <span class="text-gray-500">{{'/' + destination}}</span>
+        <div class="w-full px-6 py-6 text-center">
+          <p v-if="isEnabled" class="font-bold">
+            Deploy selected files to
+            <span class="text-gray-500">{{ '/' + destination }}</span>
+          </p>
+          <template v-else>
+            <p class="font-semibold text-gray-700 dark:text-gray-200">
+              Drop files here, or click to choose them
             </p>
-          </div>
-          <div v-else class="flex">
-            <span class="text-xm pt-[0.4rem]">🟣</span>
-            <span class="font-bold px-5">Select files</span>
-          </div>
+            <p class="pt-1 text-xs text-gray-500 dark:text-gray-400">
+              Whole directories work too. Nothing is sent until you confirm.
+            </p>
+          </template>
         </div>
       </FileUpload>
       <div v-if="isEnabled">
