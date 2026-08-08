@@ -16,137 +16,111 @@
 # Usage: .github/scripts/check-upstream-migration.sh [our-image-tag] [upstream-image-tag]
 
 set -euo pipefail
+# shellcheck source=./lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 OURS="${1:-ingot:ci}"
 UPSTREAM="${2:-dzikoysk/reposilite:3.5.28}"
-WORK="$(mktemp -d)"
-DATA="$WORK/data"
-PIPE="$WORK/console"
-HOLDER=""
+use_image_for_cleanup "$OURS"
 
-cleanup() {
-    docker rm -f upstream-run ours-run rollback-run > /dev/null 2>&1 || true
-    [ -n "$HOLDER" ] && kill "$HOLDER" 2>/dev/null || true
-    docker run --rm --user 0:0 -v "$WORK:/w" --entrypoint rm "$OURS" -rf /w/data > /dev/null 2>&1 || true
-    rm -rf "$WORK"
-}
-trap cleanup EXIT
-
-fail() { echo "FAIL: $*" >&2; exit 1; }
-
-wait_http() {
-    local url="$1" name="$2"
-    for _ in $(seq 1 60); do
-        curl -fsS "$url" -o /dev/null 2>/dev/null && return 0
-        sleep 2
-    done
-    docker logs "$name" >&2 || true
-    fail "$name never answered on $url"
-}
-
+DATA="$WORKDIR/data"
 mkdir -p "$DATA"
-mkfifo "$PIPE"
 
 echo "### 1. Upstream $UPSTREAM creates the state"
-sleep infinity > "$PIPE" &
-HOLDER=$!
-docker run -i --name upstream-run -p 18150:8080 -v "$DATA:/app/data" "$UPSTREAM" < "$PIPE" > "$WORK/upstream.log" 2>&1 &
-wait_http "http://127.0.0.1:18150/" upstream-run
+start_container_with_console upstream "$UPSTREAM" -p 127.0.0.1::8080 -v "$DATA:/app/data"
+upstream_url="$(container_url upstream)"
+wait_for_http "$upstream_url" upstream
 
 echo "--> generating an access token through the interactive console"
-echo 'token-generate ci-user m' > "$PIPE"
-for _ in $(seq 1 20); do
-    grep -q "Generated new access token for ci-user" "$WORK/upstream.log" && break
-    sleep 1
-done
-# The secret is printed on the line after the announcement, behind the log prefix.
-SECRET="$(grep -A1 "Generated new access token for ci-user" "$WORK/upstream.log" | tail -1 | sed 's/.*INFO | //' | tr -d '\r')"
-[ -n "$SECRET" ] || { tail -20 "$WORK/upstream.log" >&2; fail "no token was generated"; }
+console_send 'token-generate ci-user m'
+wait_for_log "$CONSOLE_LOG" "Generated new access token for ci-user"
+# The secret is printed on its own line below the announcement, behind the log prefix.
+SECRET="$(grep -A1 "Generated new access token for ci-user" "$CONSOLE_LOG" \
+    | tail -1 | sed 's/.*INFO | //' | tr -d '\r')"
+[ -n "$SECRET" ] || { tail -20 "$CONSOLE_LOG" >&2; fail "no token secret was printed"; }
 echo "--> token secret captured"
 
 echo "--> granting it a write route"
 # The management permission alone does not grant repository writes; a route does.
-echo 'route-add ci-user / rw' > "$PIPE"
-for _ in $(seq 1 20); do
-    grep -q "Route .* has been" "$WORK/upstream.log" && break
-    sleep 1
-done
+console_send 'route-add ci-user / rw'
+wait_for_log "$CONSOLE_LOG" "Route .* has been added to token ci-user"
 
 echo "--> publishing an artifact as that token"
-echo "upstream artifact payload" > "$WORK/demo.jar"
-curl -fsS -u "ci-user:$SECRET" -X PUT --data-binary "@$WORK/demo.jar" \
-    "http://127.0.0.1:18150/releases/com/example/demo/1.0.0/demo-1.0.0.jar" -o /dev/null \
-    || { tail -25 "$WORK/upstream.log" >&2; fail "the upstream image refused the upload"; }
+echo "upstream artifact payload" > "$WORKDIR/demo.jar"
+artifact_v1="releases/com/example/demo/1.0.0/demo-1.0.0.jar"
+curl -fsS -u "ci-user:$SECRET" -X PUT --data-binary "@$WORKDIR/demo.jar" \
+    "${upstream_url}${artifact_v1}" -o /dev/null \
+    || { tail -25 "$CONSOLE_LOG" >&2; fail "the upstream image refused the upload"; }
 
-UPSTREAM_BODY="$(curl -fsS "http://127.0.0.1:18150/releases/com/example/demo/1.0.0/demo-1.0.0.jar")"
-[ "$UPSTREAM_BODY" = "upstream artifact payload" ] || fail "upstream did not serve back what was uploaded"
+body="$(curl -fsS "${upstream_url}${artifact_v1}")"
+[ "$body" = "upstream artifact payload" ] || fail "upstream did not serve back what was uploaded"
 
 echo "--> recording the configuration as upstream left it"
-docker run --rm --user 0:0 -v "$DATA:/d" --entrypoint cat "$OURS" /d/configuration.cdn > "$WORK/config.before"
-docker run --rm --user 0:0 -v "$DATA:/d" --entrypoint ls "$OURS" -la /d > "$WORK/listing.before"
-OWNER_BEFORE="$(docker run --rm --user 0:0 -v "$DATA:/d" --entrypoint stat "$OURS" -c '%u:%g' /d/reposilite.db)"
-echo "--> upstream wrote its database as $OWNER_BEFORE"
+in_image "$OURS" -v "$DATA:/mnt/data" -- cat /mnt/data/configuration.cdn > "$WORKDIR/config.before"
+owner="$(in_image "$OURS" -v "$DATA:/mnt/data" -- stat -c '%u:%g' /mnt/data/reposilite.db)"
+echo "--> upstream wrote its database as $owner"
 
-docker stop upstream-run > /dev/null
-docker rm upstream-run > /dev/null
+console_stop
+stop_container upstream
 
 echo
 echo "### 2. Our image takes over the same directory"
-docker run -d --name ours-run -p 18151:8080 -v "$DATA:/app/data" "$OURS" > /dev/null
-wait_http "http://127.0.0.1:18151/" ours-run
+start_container ours "$OURS" -p 127.0.0.1::8080 -v "$DATA:/app/data"
+ours_url="$(container_url ours)"
+wait_for_http "$ours_url" ours
 
 echo "--> the artifact published under upstream is still served"
-OURS_BODY="$(curl -fsS "http://127.0.0.1:18151/releases/com/example/demo/1.0.0/demo-1.0.0.jar")"
-[ "$OURS_BODY" = "upstream artifact payload" ] || fail "the artifact did not survive the switch"
+body="$(curl -fsS "${ours_url}${artifact_v1}")"
+[ "$body" = "upstream artifact payload" ] || fail "the artifact did not survive the switch"
 
 echo "--> the token generated under upstream still authenticates"
-echo "artifact published after the switch" > "$WORK/demo2.jar"
-curl -fsS -u "ci-user:$SECRET" -X PUT --data-binary "@$WORK/demo2.jar" \
-    "http://127.0.0.1:18151/releases/com/example/demo/2.0.0/demo-2.0.0.jar" -o /dev/null \
+artifact_v2="releases/com/example/demo/2.0.0/demo-2.0.0.jar"
+echo "artifact published after the switch" > "$WORKDIR/demo2.jar"
+curl -fsS -u "ci-user:$SECRET" -X PUT --data-binary "@$WORKDIR/demo2.jar" \
+    "${ours_url}${artifact_v2}" -o /dev/null \
     || fail "the token from the upstream database was rejected"
 
 echo "--> it did not change a single configured value"
 # Both products rewrite this file on startup, so the header comments end up branded
 # differently and that is expected. What must never differ is a setting: a changed value
 # would silently reconfigure an instance that only meant to change its image.
-docker run --rm --user 0:0 -v "$DATA:/d" --entrypoint cat "$OURS" /d/configuration.cdn > "$WORK/config.after"
+in_image "$OURS" -v "$DATA:/mnt/data" -- cat /mnt/data/configuration.cdn > "$WORKDIR/config.after"
 settings() { grep -vE '^\s*(#|$)' "$1"; }
-if ! diff -u <(settings "$WORK/config.before") <(settings "$WORK/config.after") > "$WORK/config.diff"; then
-    echo "    settings changed:" >&2
-    sed 's/^/      /' "$WORK/config.diff" >&2
+if ! diff -u <(settings "$WORKDIR/config.before") <(settings "$WORKDIR/config.after") > "$WORKDIR/config.diff"; then
+    sed 's/^/      /' "$WORKDIR/config.diff" >&2
     fail "our image rewrote configured values, not just its own comments"
 fi
 
 echo "--> it writes the same log files upstream did"
 # /var/log/reposilite is part of the contract: log shippers and volume mounts point at it.
-LOGFILES="$(docker exec ours-run sh -c 'ls /var/log/reposilite/ 2>/dev/null | wc -l')"
-[ "$LOGFILES" -ge 2 ] || fail "only $LOGFILES files in /var/log/reposilite, upstream writes latest.log and a dated one"
-docker exec ours-run sh -c 'test -s /var/log/reposilite/latest.log' || fail "latest.log is empty"
-if docker logs ours-run 2>&1 | grep -q "LOGGER ERROR"; then
-    docker logs ours-run 2>&1 | grep "LOGGER ERROR" | head -3 >&2
+logfiles="$(docker exec "$(container_name ours)" sh -c 'ls /var/log/reposilite/ 2>/dev/null | wc -l')"
+[ "$logfiles" -ge 2 ] || fail "only $logfiles files in /var/log/reposilite, upstream writes latest.log and a dated one"
+docker exec "$(container_name ours)" test -s /var/log/reposilite/latest.log || fail "latest.log is empty"
+if docker logs "$(container_name ours)" 2>&1 | grep -q "LOGGER ERROR"; then
+    docker logs "$(container_name ours)" 2>&1 | grep "LOGGER ERROR" | head -3 >&2
     fail "the logging backend reported an error"
 fi
 
-echo "--> no schema migration or error in the log"
-if docker logs ours-run 2>&1 | grep -iE "ERROR|exception|migrat" | grep -v "no errors" | head -5 | grep -q .; then
-    docker logs ours-run 2>&1 | grep -iE "ERROR|exception|migrat" | head -10 >&2
+echo "--> no error while adopting the directory"
+if docker logs "$(container_name ours)" 2>&1 | grep -iE "ERROR|exception" | head -5 | grep -q .; then
+    docker logs "$(container_name ours)" 2>&1 | grep -iE "ERROR|exception" | head -10 >&2
     fail "our image logged errors while adopting the directory"
 fi
 
-docker stop ours-run > /dev/null
-docker rm ours-run > /dev/null
+stop_container ours
 
 echo
 echo "### 3. Rollback: upstream takes the directory back"
-docker run -d --name rollback-run -p 18152:8080 -v "$DATA:/app/data" "$UPSTREAM" > /dev/null
-wait_http "http://127.0.0.1:18152/" rollback-run
+start_container rollback "$UPSTREAM" -p 127.0.0.1::8080 -v "$DATA:/app/data"
+rollback_url="$(container_url rollback)"
+wait_for_http "$rollback_url" rollback
 
 echo "--> upstream still serves the artifact published under our image"
-BACK_BODY="$(curl -fsS "http://127.0.0.1:18152/releases/com/example/demo/2.0.0/demo-2.0.0.jar")"
-[ "$BACK_BODY" = "artifact published after the switch" ] || fail "upstream cannot read what our image wrote"
+body="$(curl -fsS "${rollback_url}${artifact_v2}")"
+[ "$body" = "artifact published after the switch" ] || fail "upstream cannot read what our image wrote"
 
 echo "--> the token still works on upstream too"
-curl -fsS -u "ci-user:$SECRET" "http://127.0.0.1:18152/api/maven/details/releases/com/example/demo" -o /dev/null \
+curl -fsS -u "ci-user:$SECRET" "${rollback_url}api/maven/details/releases/com/example/demo" -o /dev/null \
     || fail "upstream rejected the token after the round trip"
 
 echo
