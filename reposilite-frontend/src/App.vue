@@ -50,36 +50,9 @@ initializeSession().catch(() => {})
   </div>
 </template>
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600&display=swap');
+<!--
+  - The global rules this component used to carry now live in src/style.css. They were
+  - never scoped to App.vue to begin with, and a component style block cannot express the
+  - cascade layer each of them needs.
+  -->
 
-html, body {
-  @apply bg-gray-100 dark:bg-black;
-}
-#app {
-  font-family: 'Open Sans', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-.router-view-full {
-  min-height: calc(100vh - 2rem);
-}
-.container {
-  @apply px-10 <sm:px-2;
-}
-.active {
-  @apply dark:border-white;
-}
-.bg-default {
-  @apply bg-gray-100 dark:border-gray-900;
-}
-
-/* skeleton placeholders: the card/background is instant, only these bars fade in so a fast response replaces them before they flicker */
-.skeleton-bars {
-  animation: skeleton-fade-in 0.8s ease-out 0.2s both;
-}
-@keyframes skeleton-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-</style>

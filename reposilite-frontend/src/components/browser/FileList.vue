@@ -150,6 +150,7 @@ const RouterEntry = ({ file }, context) => {
 </template>
 
 <style>
+@reference "../../style.css";
 .compact-background {
   @apply relative w-full bg-white dark:bg-gray-800 py-3 px-1 rounded-xl;
 }

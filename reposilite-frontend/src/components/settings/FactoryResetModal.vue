@@ -50,6 +50,7 @@ export default {
 </template>
 
 <style scoped>
+@reference "../../style.css";
 .factory-reset-confirm button {
   @apply mt-6 bg-gray-200 dark:bg-gray-700 px-20 py-2 rounded-lg;
 }

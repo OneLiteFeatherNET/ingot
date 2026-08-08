@@ -120,7 +120,7 @@ const toggleCompactMode = () => {
 const MenuButton = (_, context) => {
   return (
     <div class="w-9 mx-2">
-      <div class="bg-white dark:bg-gray-900 pl-2 pt-1.3 pb-1 pr-2 cursor-pointer rounded-full default-button">
+      <div class="bg-white dark:bg-gray-900 pl-2 pt-[0.325rem] pb-1 pr-2 cursor-pointer rounded-full default-button">
         {context.slots.default()}
       </div>
     </div>
@@ -131,7 +131,7 @@ const MenuButton = (_, context) => {
 <template>
   <div class="bg-gray-100">
     <div class="dark:bg-black">
-      <div class="container mx-auto relative min-h-320px mb-12">
+      <div class="container mx-auto relative min-h-[320px] mb-12">
         <div class="lg:absolute pt-13 -top-5 right-8">
           <Card :qualifier="qualifier" />
         </div>
@@ -140,14 +140,14 @@ const MenuButton = (_, context) => {
             <Breadcrumb :parentPath="parentPath" />
             <div class="flex">
               <MenuButton @click="toggleCompactMode()">
-                <ViewGrid v-if="fileBrowserCompactMode" class="pr-0.9"/>
-                <ViewList v-else class="pr-0.9"/>
+                <ViewGrid v-if="fileBrowserCompactMode" class="pr-[0.225rem]"/>
+                <ViewList v-else class="pr-[0.225rem]"/>
               </MenuButton>
               <AdjustmentsModal>
                 <template v-slot:button>
                   <div class="w-9">
-                    <div class="bg-white dark:bg-gray-900 pl-2 pt-1.3 pb-1 pr-2 cursor-pointer rounded-full default-button">
-                      <AdjustmentsIcon class="pr-0.9" />
+                    <div class="bg-white dark:bg-gray-900 pl-2 pt-[0.325rem] pb-1 pr-2 cursor-pointer rounded-full default-button">
+                      <AdjustmentsIcon class="pr-[0.225rem]" />
                     </div>
                   </div>
                 </template>

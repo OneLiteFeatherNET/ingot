@@ -23,7 +23,7 @@ import App from './App.vue'
 import router from './router'
 import { loadFrontendSettings } from './store/placeholders'
 
-import 'virtual:windi.css'
+import './style.css'
 import 'mosha-vue-toastify/dist/style.css'
 import 'vue-final-modal/style.css'
 

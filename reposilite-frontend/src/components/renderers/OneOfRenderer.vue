@@ -159,6 +159,7 @@ export default {
 </script>
 
 <style scoped>
+@reference "../../style.css";
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -177,6 +178,6 @@ button {
   @apply bg-blue-700 mx-2 rounded text-sm h-9 px-4 text-white;
 }
 .tabs {
-  @apply cursor-pointer !important;
+  @apply cursor-pointer!;
 }
 </style>

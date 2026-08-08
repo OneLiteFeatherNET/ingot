@@ -161,14 +161,15 @@ const formsConfiguration = {
 
 <!--suppress CssInvalidAtRule -->
 <style scoped>
+@reference "../../style.css";
 #configuration-state button {
   @apply mx-2 rounded text-sm px-4 text-white py-2;
 }
 #configuration-state .changed {
-  @apply bg-blue-700 cursor-pointer !important;
+  @apply bg-blue-700! cursor-pointer!;
 }
 #configuration-state .forbidden {
-  @apply bg-gray-500 cursor-not-allowed !important;
+  @apply bg-gray-500! cursor-not-allowed!;
 }
 .item {
   @apply pb-1;
@@ -185,6 +186,7 @@ const formsConfiguration = {
 
 <!--suppress CssInvalidAtRule -->
 <style>
+@reference "../../style.css";
 .error {
   @apply text-red-500 px-2 font-bold;
 }
@@ -252,7 +254,7 @@ const formsConfiguration = {
   @apply bg-gray-125 dark:bg-gray-900;
 }
 .one-of-container .tab-panel, .tab-panel .array-list .tab-panel .array-list .tab-panel {
-  @apply bg-gray-125 dark: bg-gray-900;
+  @apply bg-gray-125 dark:bg-gray-900;
   border-radius: 0.25rem;
   padding-left: 17px;
 }
@@ -285,10 +287,10 @@ const formsConfiguration = {
   @apply w-1/2;
 }
 .wrapper input, .wrapper select {
-  @apply dark:bg-gray-800 dark:text-white !important;
+  @apply dark:bg-gray-800! dark:text-white!;
 }
 .wrapper input:not([type=checkbox]):read-only {
-  @apply bg-gray-200 dark:bg-gray-800 text-gray-500 !important;
+  @apply bg-gray-200! dark:bg-gray-800! text-gray-500!;
 }
 .array-list-legend {
   margin-bottom: 0;

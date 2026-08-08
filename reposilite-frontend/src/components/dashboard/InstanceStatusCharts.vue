@@ -47,7 +47,7 @@ const prettyUptime = (seconds) => {
 
 <template>
   <div v-if="instanceStatus">
-    <div class="flex w-full <sm:flex-wrap justify-center">
+    <div class="flex w-full max-sm:flex-wrap justify-center">
       <DashboardBox 
         title="Version"
         :content="instanceStatus.version"

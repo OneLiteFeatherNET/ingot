@@ -69,7 +69,7 @@ const selectHomepage = () =>
   <div>
     <DefaultHeader :logoClickCallback="selectHomepage" />
     <div class="bg-gray-100 dark:bg-black overflow-y-visible">
-      <div class="container mx-auto <sm:px-0">
+      <div class="container mx-auto max-sm:px-0">
         <Tabs 
           v-model="selectedTab"
           @update:modelValue="createTabClick"
@@ -80,14 +80,14 @@ const selectHomepage = () =>
           >
             <Tab
               v-if="tab !== 'Dashboard'"
-              class="item font-normal <sm:w-1/4"
+              class="item font-normal max-sm:w-1/4"
               :val="tab"
               :label="tab"
               :indicator="true"
             />
             <Tab
               v-if="tab === 'Dashboard'"
-              class="item font-normal dashboard <sm:w-1/4"
+              class="item font-normal dashboard max-sm:w-1/4"
               :val="tab"
               :label="tab"
               :indicator="true"
@@ -120,6 +120,7 @@ const selectHomepage = () =>
 </template>
 
 <style>
+@reference "../style.css";
 .tabs .tab {
   cursor: pointer;
   text-transform: capitalize;
@@ -141,6 +142,7 @@ const selectHomepage = () =>
 </style>
 
 <style scoped>
+@reference "../style.css";
 .item {
   @apply px-1;
   @apply pb-1;

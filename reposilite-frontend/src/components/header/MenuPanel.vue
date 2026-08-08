@@ -42,8 +42,8 @@ const toggleTheme = () => {
 </script>
 
 <template>
-  <nav class="flex flex-row <sm:(max-w-100px flex-wrap flex-1 justify-end min-w-1/2)">
-    <div v-if="isLogged" class="pt-1.1 px-2 <sm:hidden">
+  <nav class="flex flex-row max-sm:max-w-[100px] max-sm:flex-wrap max-sm:flex-1 max-sm:justify-end max-sm:min-w-1/2">
+    <div v-if="isLogged" class="pt-[0.275rem] px-2 max-sm:hidden">
       Welcome 
       <span class="font-bold underline">{{ token.name }}</span>
     </div>
@@ -54,16 +54,16 @@ const toggleTheme = () => {
         </MenuButton>
       </template>
     </LoginModal>
-    <MenuButton v-if="isLogged" @click="logout()" class="<sm:hidden">
+    <MenuButton v-if="isLogged" @click="logout()" class="max-sm:hidden">
       Logout
     </MenuButton>
     <div
       v-if="isLogged"
-      class="hidden px-2.7 pt-0.8 mr-1.5 cursor-pointer rounded-full bg-white dark:bg-gray-900 max-h-35px <sm:(block pt-1.5)"
+      class="hidden px-[0.675rem] pt-[0.2rem] mr-1.5 cursor-pointer rounded-full bg-white dark:bg-gray-900 max-h-[35px] max-sm:block max-sm:pt-1.5"
     >
       <LogoutIcon @click="logout()"/>
     </div>
-    <div class="flex justify-center items-center rounded-full w-40px h-35px default-button" @click="toggleTheme()">
+    <div class="flex justify-center items-center rounded-full w-[40px] h-[35px] default-button" @click="toggleTheme()">
       <SunIcon v-if="theme.mode === 'light'"/>
       <MoonIcon class="pl-0.5" v-if="theme.mode === 'dark'"/>
       <div class="font-bold w-full text-center text-lg" v-if="theme.mode === 'auto'">

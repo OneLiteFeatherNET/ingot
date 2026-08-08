@@ -129,7 +129,7 @@ const runConfirm = (token) => {
 </script>
 
 <template>
-  <div class="container mx-auto pt-7 px-15 pb-12 <sm:px-4">
+  <div class="container mx-auto pt-7 px-15 pb-12 max-sm:px-4">
     <div class="pb-7">
       <p>Generate and revoke access tokens used to authenticate with this Ingot instance.</p>
       <p class="text-sm text-gray-500">A token's secret is shown only once, at the moment it is generated.</p>
@@ -238,6 +238,7 @@ const runConfirm = (token) => {
 </template>
 
 <style scoped>
+@reference "../../style.css";
 .flat { @apply bg-white dark:bg-transparent dark:border dark:border-gray-800 rounded-lg overflow-hidden text-sm text-gray-600 dark:text-gray-300; }
 .flat > :last-child { @apply border-b-0; }
 
@@ -248,11 +249,18 @@ const runConfirm = (token) => {
 .row { @apply flex items-center gap-2 px-4.5 h-11.5 border-b border-gray-200 dark:border-gray-800 transition-colors; }
 .row:hover { @apply bg-gray-50 dark:bg-gray-900; }
 .row.is-open { @apply bg-gray-100 dark:bg-gray-900; }
-.indent { @apply pl-9.5; }
+/*
+ * The text-indent is not decoration, it is restored behaviour: Windi shipped an `indent`
+ * utility of its own, so every element carrying this component's `indent` class silently
+ * picked up `text-indent: 1.5rem` on top of the padding. Tailwind spells that utility
+ * `indent-6` and never matched the bare name, which moved these rows 24px to the left.
+ * Whether these rows want two separate indents at all is a question for the redesign.
+ */
+.indent { @apply pl-9.5; text-indent: 1.5rem; }
 .lead { @apply whitespace-nowrap; }
 .meta { @apply text-gray-500 dark:text-gray-500 truncate; }
 .desc { @apply flex-1 min-w-0 truncate text-gray-500 dark:text-gray-500; }
-.dates { @apply inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap cursor-default <sm:hidden; }
+.dates { @apply inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap cursor-default max-sm:hidden; }
 .exsep { @apply text-gray-400 dark:text-gray-500; }
 .ex { @apply text-gray-600 dark:text-gray-300; }
 .ex.expired { @apply text-red-500; }

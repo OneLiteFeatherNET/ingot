@@ -142,7 +142,7 @@ const selectTab = (tab) =>
       @selectTab="selectTab"
     />
 
-    <hr class="dark:border-gray-800 <sm:(hidden)">
+    <hr class="dark:border-gray-800 max-sm:hidden">
 
     <div class="mt-6">
       <transition :name="transitionName" mode="out-in">
@@ -150,7 +150,7 @@ const selectTab = (tab) =>
           <span
             v-if="isCopySupported && !loading"
             @click="copy"
-            class="absolute top-2 right-2 z-10 flex items-center cursor-pointer select-none rounded-md p-1 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:(text-gray-600 bg-gray-200) dark:hover:(text-gray-200 bg-gray-700) transition-colors duration-200"
+            class="absolute top-2 right-2 z-10 flex items-center cursor-pointer select-none rounded-md p-1 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
           >
             <span v-if="copied" class="text-ssm font-normal text-green-500 mr-1.5">Copied</span>
             <CopiedIcon v-if="copied" class="text-green-500" />
@@ -189,6 +189,7 @@ const selectTab = (tab) =>
 </template>
 
 <style>
+@reference "../../style.css";
 #card-menu div {
   border-top-left-radius: 10%;
   border-top-right-radius: 10%;

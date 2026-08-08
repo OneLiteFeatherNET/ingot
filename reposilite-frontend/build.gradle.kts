@@ -32,7 +32,7 @@ node {
 //    dependsOn(tasks.npmInstall)
 //    inputs.dir("src")
 //    inputs.dir("node_modules")
-//    inputs.files("vite.config.js", "windi.config.js", "index.html", "eslint.config.js")
+//    inputs.files("vite.config.js", "index.html", "eslint.config.js")
 //    outputs.upToDateWhen { true }
 //}
 
@@ -44,7 +44,7 @@ val buildTask = tasks.register<NpmTask>("buildFrontend") {
     dependsOn(tasks.npmInstall)
     inputs.dir(project.fileTree("src"))
     inputs.dir("node_modules")
-    inputs.files("vite.config.js", "windi.config.js", "index.html")
+    inputs.files("vite.config.js", "index.html")
     outputs.dir("${project.layout.buildDirectory.get()}/frontend")
 }
 
