@@ -11,10 +11,26 @@ also ships separately as `ghcr.io/onelitefeathernet/ingot-dashboard`, for setups
 scale it on its own or keep a JVM off the edge; see
 [Guide / Split containers](/guide/split-containers) for when that trade is worth making.
 
+### Coming from Reposilite
+
+The image is a drop-in replacement. Change the image reference in your compose file, chart
+values or unit and start it again. Nothing else moves: same entrypoint, same `/app/data` and
+`/var/log/reposilite`, same port, same `JAVA_OPTS`, `REPOSILITE_OPTS`, `PUID` and `PGID`, and
+your existing data directory is picked up as it is. Configuration files keep their names, and
+the `INGOT_` spellings of the environment variables are additions rather than replacements.
+
+Every release is checked against that promise: CI starts the built image with an existing,
+foreign-owned data directory and the pre-Ingot environment variables before anything ships.
+
 There are three different types of tags used on the images:
  - `X.X.X` (tag-based) - published per release, recommended for production environments.
  - `latest` - always refers to the most recent release, not recommended.
  - `nightly` - published for each commit to the `main` branch, may contain bugs but is useful for testing new features.
+
+Every tag is a multi-platform manifest covering `linux/amd64` and `linux/arm64`, nightlies
+included, so Docker pulls the right one without you naming a platform. Each image also ships
+an SBOM and a SLSA provenance attestation, which you can read with
+`docker buildx imagetools inspect ghcr.io/onelitefeathernet/ingot:latest --format '{{ json .SBOM }}'`.
 
 First of all, you have to pull the image:
 

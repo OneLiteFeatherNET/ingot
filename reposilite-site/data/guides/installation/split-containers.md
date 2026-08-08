@@ -90,9 +90,15 @@ failing outright. The symptom is a container that looks healthy and refuses ever
 connection.
 
 **The server is not read only.** It writes artifacts, logs and its database. What it gets
-instead is an unprivileged default user, which is the part that matters. It still has a
-root path for deployments that set `PUID` or `PGID`, or that hand it a volume owned by
-somebody else; those start it with `user: root` deliberately.
+instead is `user: "977:977"` in the compose file, which is the part that matters.
+
+That line lives in the compose file rather than in the image on purpose. The image starts
+as root and drops privileges in its own entrypoint, exactly like the upstream Reposilite
+image, because that is the only path that can adopt a volume owned by somebody else or act
+on `PUID` and `PGID`. Pinning the user is safe here because this compose file creates the
+volume empty, so it is owned by 977 from the first start. Point the service at an existing
+data directory with a different owner and you should drop the line for one start, let the
+entrypoint fix the ownership, and put it back afterwards.
 
 Do not publish a port for the server. Reaching it means going through the dashboard, and
 adding a port bypasses the proxy along with everything configured on it.
