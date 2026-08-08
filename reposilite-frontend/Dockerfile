@@ -14,7 +14,12 @@
 
 # Pinned by digest as well as tag, so a rebuild cannot silently land on a different base.
 # Renovate raises both together.
-FROM node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
+#
+# --platform=$BUILDPLATFORM keeps this stage on the architecture doing the building. What it
+# produces is HTML, CSS and JavaScript, which is the same on every target, so emulating the
+# npm install and the bundler for a second architecture would buy an identical result at
+# several times the cost. Only the nginx stage below is built per target.
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 
 WORKDIR /build
 

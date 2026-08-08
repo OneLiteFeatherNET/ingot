@@ -12,7 +12,15 @@
 
 # Build stage. Pinned by digest as well as tag so a rebuild cannot silently land on a
 # different base. Renovate raises both together.
-FROM eclipse-temurin:21-jdk-noble@sha256:a871f3e3caddad75608fd4531ed8bbca5cc42a27dc1da3ea3a2e554772b0ee15 AS build
+#
+# --platform=$BUILDPLATFORM keeps this stage on the architecture of the machine doing the
+# building, whatever is being built for. A jar contains no machine code, so there is nothing
+# here that a second architecture would produce differently, and without this pin every
+# extra platform means running the entire Gradle build again under QEMU: minutes turn into
+# tens of minutes, and emulated JVM builds fail in ways a native one never does. Only the
+# run stage below is built per target, and all it does there is create an account and copy
+# files.
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk-noble@sha256:a871f3e3caddad75608fd4531ed8bbca5cc42a27dc1da3ea3a2e554772b0ee15 AS build
 COPY --exclude=entrypoint.sh . /home/ingot-build
 WORKDIR /home/ingot-build
 
@@ -48,6 +56,8 @@ FROM eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efa
 # Nothing here uses that account, so it goes.
 RUN <<EOF
     set -eu
+    userdel --remove ubuntu 2>/dev/null || true
+    groupdel ubuntu 2>/dev/null || true
     groupadd --gid 977 reposilite
     useradd --uid 977 --gid 977 --system --shell /bin/sh --no-create-home reposilite
     mkdir -p /app/data /var/log/reposilite
@@ -56,11 +66,14 @@ EOF
 VOLUME /app/data
 WORKDIR /app
 
-    userdel --remove ubuntu 2>/dev/null || true
-    groupdel ubuntu 2>/dev/null || true
 # Import application code
 COPY --chmod=755 entrypoint.sh entrypoint.sh
 COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-backend/build/libs/ingot-*.jar ingot.jar
+
+# The artifact is named after this project, but /app/reposilite.jar is part of what an
+# upstream deployment may reference: anything that overrides the entrypoint or the command
+# names the jar itself. The link keeps those working.
+RUN ln -s ingot.jar /app/reposilite.jar
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=15s \
     --retries=3 CMD [ "sh", "-c", "URL=$(cat /app/data/.local/reposilite.address); echo -n \"curl $URL... \"; \
@@ -69,11 +82,6 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=15s \
     ) && echo OK || (\
         echo Fail && exit 2\
     )"]
-
-# The artifact is named after this project, but /app/reposilite.jar is part of what an
-# upstream deployment may reference: anything that overrides the entrypoint or the command
-# names the jar itself. The link keeps those working.
-RUN ln -s ingot.jar /app/reposilite.jar
 
 # No USER on purpose. Upstream starts as root and lets the entrypoint drop to the service
 # account itself, which is what makes PUID, PGID and the chown of a volume owned by somebody

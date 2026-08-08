@@ -1,8 +1,24 @@
-# Per developer files
-build/
-.idea/
-.gradle/
-.kotlin/
+# Per developer files.
+#
+# Every one of these is matched with **/ rather than at the root. The plain spellings only
+# ever excluded the top level, so a checkout that had been built locally still shipped
+# reposilite-frontend/.gradle into the context, and the node-gradle plugin's downloaded
+# toolchain in there is a tree of symlinks pointing at host paths that do not exist in the
+# image. The build then fails on "Couldn't follow symbolic link", which reads like a broken
+# Dockerfile and is really the host leaking in.
+**/.idea/
+**/.gradle/
+**/.kotlin/
+.claude/
+
+# The repository history, 124 MB of it, which the build sends to the daemon and then copies
+# into a layer on every run. Nothing needs it: the version is a literal in build.gradle.kts
+# since Release Please took ownership of it, and the axion-release plugin that used to derive
+# it from tags is gone. Leaving it in also means every secret ever committed and reverted is
+# present in the build cache.
+.git/
+.gitignore
+.gitattributes
 
 # Dependencies and build output from any module. Without these a host checkout would ship
 # its own node_modules into the image, on top of what the build just installed. The two are
@@ -16,6 +32,7 @@ build/
 # Dockerfile related files do not need to be included
 Dockerfile
 docker-compose.yml
+docker-compose.split.yml
 .env
 
 # Not used in running application
