@@ -16,16 +16,26 @@
 
 import { ref } from "vue"
 import { createURL } from '../client'
-import { EventSource as Eventsource } from 'extended-eventsource';
-import { useSession } from "../session.js";
+import { EventSource as Eventsource } from 'extended-eventsource'
+import { useSession } from "../session.js"
 
 const { client } = useSession()
 
 const connection = ref()
 const command = ref("")
 
+/**
+ * Where the stream stands, as something a template can render. `readyState` alone cannot
+ * do that job: it is not reactive, and it collapses "never tried" and "gave up" into the
+ * same value, which are the two cases a reader most needs told apart.
+ *
+ * One of 'idle', 'connecting', 'open', 'closed' or 'error'.
+ */
+const status = ref('idle')
+const failure = ref(null)
+
 export default function useConsole() {
-  const consoleAddress = createURL("/api/console/log");
+  const consoleAddress = createURL("/api/console/log")
 
   const isConnected = () => {
     // using built-in EventSource for readystate constants
@@ -34,8 +44,12 @@ export default function useConsole() {
   }
 
   const close = () => {
-    if (isConnected())
-      connection.value.close()
+    // Not gated on isConnected: a stream still opening has a readyState of CONNECTING and
+    // would slip through, which is how leaving the tab mid-handshake used to leave the
+    // request running.
+    connection.value?.close()
+    connection.value = undefined
+    status.value = 'closed'
   }
 
   const history = ref([''])
@@ -78,11 +92,17 @@ export default function useConsole() {
   const onClose = ref()
 
   const connect = (token) => {
+    status.value = 'connecting'
+    failure.value = null
+
     try {
       connection.value = new Eventsource(consoleAddress, {
         headers: {
           Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}`
         },
+        // No automatic retry, on purpose. A stream that fails because the server is
+        // struggling is the worst moment to start reconnecting in a loop. The view offers
+        // a button instead, so the retry happens when somebody decides it should.
         disableRetry: true
       })
 
@@ -90,9 +110,10 @@ export default function useConsole() {
         // this is needed to stop an error from appearing in console when
         // switching/refreshing the page without closing the connection
         window.onbeforeunload = function () {
-          close();
-        };
+          close()
+        }
 
+        status.value = 'open'
         onOpen?.value()
       }
 
@@ -102,13 +123,20 @@ export default function useConsole() {
       })
 
       connection.value.onerror = (error) => {
+        status.value = 'error'
+        failure.value = describe(error)
         onError?.value(error)
       }
 
-      connection.value.onclose = () =>
+      connection.value.onclose = () => {
+        // An error already says more than a close does, so it keeps the field.
+        if (status.value !== 'error') status.value = 'closed'
         onClose?.value()
+      }
 
     } catch (error) {
+      status.value = 'error'
+      failure.value = describe(error)
       onError?.value(error)
     }
   }
@@ -117,6 +145,8 @@ export default function useConsole() {
     connection,
     connect,
     close,
+    status,
+    failure,
     onOpen,
     onMessage,
     onError,
@@ -127,4 +157,19 @@ export default function useConsole() {
     nextCommand,
     isConnected
   }
+}
+
+/**
+ * An EventSource error event carries no reason, so there is nothing to quote back. Say what
+ * is actually known instead of inventing a cause: whether the browser is offline is the one
+ * distinction that changes what the reader should do next.
+ */
+function describe(error) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return 'This browser is offline.'
+  }
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return 'The server closed the stream or could not be reached.'
 }

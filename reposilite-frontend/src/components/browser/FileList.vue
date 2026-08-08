@@ -17,7 +17,7 @@
 <script setup lang="jsx">
 import download from 'downloadjs'
 import { useRoute } from 'vue-router'
-import { createToast } from 'mosha-vue-toastify'
+import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { createURL } from '../../store/client'
 import { useSession } from '../../store/session'
 import ListEntry from './DetailedListEntry.vue'
@@ -49,9 +49,7 @@ const { client } = useSession()
 const downloadHandler = (path, name) => {
   client.value.maven.download(path.substring(1) + '/' + name)
     .then(response => download(response.data, name, response.headers['content-type']))
-    .catch(error => createToast(`Cannot download file - ${error.response.status}: ${error.response.data.message}`, {
-      type: 'danger'
-    }))
+    .catch(error => createErrorToast(`Cannot download file: ${errorMessage(error)}`))
 }
 
 const deleteModalValue = ref()

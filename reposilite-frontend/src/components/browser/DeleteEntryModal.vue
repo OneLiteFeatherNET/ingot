@@ -19,7 +19,7 @@ import { VueFinalModal } from 'vue-final-modal'
 import '@vueform/toggle/themes/default.css'
 import CloseIcon from '../icons/CloseIcon.vue'
 import { useSession } from '../../store/session'
-import { createToast } from 'mosha-vue-toastify'
+import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { computed } from 'vue'
 import useQualifier from '../../store/qualifier'
 import { property } from '../../helpers/vue-extensions'
@@ -35,9 +35,7 @@ const { refreshQualifier } = useQualifier()
 const deleteEntry = ({ path, file }) => {
   client.value.maven.delete(path + '/' + file)
     .then(() => refreshQualifier())
-    .catch(error => createToast(`Cannot delete file - ${error.response.status}: ${error.response.data.message}`, {
-      type: 'danger'
-    }))
+    .catch(error => createErrorToast(`Cannot delete file: ${errorMessage(error)}`))
 }
 
 const deleteAndClose = () => {
