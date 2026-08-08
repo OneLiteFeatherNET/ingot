@@ -286,6 +286,54 @@ tasks.named<Test>("integration") {
     systemProperty("reposilite.s3.pathStyleAccessEnabled", "true")
 }
 
+// Tests that run the published container images rather than the code inside them.
+//
+// They are a suite of their own, and deliberately not wired into `check`, because they
+// need an image that already exists. Building it is not something this build can do for
+// them: the image build runs Gradle, so a test that produced it would be this build
+// invoking itself. CI builds the image and then points these tests at the tag:
+//
+//     ./gradlew :reposilite-backend:containerTest -Dingot.image=ingot:ci
+//
+// They also depend on nothing from the main source set. What they exercise is the image as
+// an operator receives it, over HTTP and through Docker, so importing the server's own
+// classes would only let them assert against the wrong thing.
+testing {
+    suites {
+        register<JvmTestSuite>("containerTest") {
+            useJUnitJupiter("6.1.0")
+
+            targets.configureEach {
+                testTask.configure {
+                    // Both are passed through so a developer can check a local build, and so
+                    // the upstream reference can be raised without touching the tests.
+                    systemProperty("ingot.image", providers.systemProperty("ingot.image").getOrElse("ingot:ci"))
+                    systemProperty("ingot.dashboard.image", providers.systemProperty("ingot.dashboard.image").getOrElse("ingot-dashboard:ci"))
+                    systemProperty("ingot.upstream.image", providers.systemProperty("ingot.upstream.image").getOrElse("dzikoysk/reposilite:3.5.28"))
+
+                    // One container at a time, and several of them per test. Running the
+                    // classes in parallel would just contend for the same Docker daemon.
+                    maxParallelForks = 1
+                    testLogging {
+                        events("passed", "failed", "skipped")
+                        showStandardStreams = false
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Declared next to the suite rather than inside it: a suite's own dependencies block cannot
+// resolve `kotlin(...)`, and naming the standard library by coordinate would mean carrying
+// the Kotlin version a second time and keeping the two in step by hand.
+dependencies {
+    "containerTestImplementation"(kotlin("stdlib"))
+    "containerTestImplementation"("org.testcontainers:testcontainers:2.0.5")
+    "containerTestImplementation"("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
+    "containerTestImplementation"("org.assertj:assertj-core:4.0.0-M1")
+}
+
 tasks.jacocoTestReport {
     reports {
         html.required.set(false)

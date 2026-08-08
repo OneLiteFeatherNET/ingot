@@ -179,20 +179,6 @@ jobs:
           cache-from: type=gha,scope=ci-server
           cache-to: type=gha,mode=max,scope=ci-server
 
-      # The server image has to stay a drop-in replacement for the upstream Reposilite
-      # image, which is a promise about runtime behaviour and therefore invisible to a
-      # build. Every property this asserts has already been broken once by a change that
-      # built cleanly.
-      - name: "Check the server image is still a drop-in replacement"
-        run: .github/scripts/check-server-image.sh ingot:ci
-
-      # The check above runs against an empty directory. This one runs the real upstream
-      # image first, then hands its database, token and published artifact to ours, and
-      # finally hands everything back. It is the only test that can catch a regression
-      # which only shows up on data that already exists.
-      - name: "Rehearse the upgrade from the upstream image"
-        run: .github/scripts/check-upstream-migration.sh ingot:ci
-
       - name: "Build the dashboard image"
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
@@ -207,14 +193,35 @@ jobs:
           cache-from: type=gha,scope=ci-dashboard
           cache-to: type=gha,mode=max,scope=ci-dashboard
 
-      # Building it proves the Dockerfile parses. Starting it proves the parts that only
-      # fail at runtime, which is where both of this image's real bugs were: an nginx that
-      # renders no server block and answers nothing, and asset URLs that never resolve.
+      # Building an image proves the Dockerfile parses. Everything that has actually gone
+      # wrong with these two was runtime behaviour that a build cannot see: privileges the
+      # entrypoint could no longer drop, an environment variable read and ignored, a log
+      # directory that stayed empty, an nginx serving no server block.
       #
-      # A script rather than a block of YAML, so the same checks can be run against a local
-      # build before pushing.
-      - name: "Start the dashboard and check it serves the app"
-        run: .github/scripts/check-dashboard-image.sh ingot-dashboard:ci
+      # The suite lives in reposilite-backend/src/containerTest and runs both images the way
+      # a deployment does, including an upgrade rehearsal against the real upstream image.
+      # It is a suite of its own because it needs an image that already exists, which is why
+      # it cannot be part of the normal build.
+      - name: "Set up Java"
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Run the container tests"
+        run: ./gradlew :reposilite-backend:containerTest
+
+      - name: "Publish the container test results"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-test-results
+          path: reposilite-backend/build/reports/tests/containerTest
+          retention-days: 7
+          if-no-files-found: ignore
 
       # The vulnerabilities job next to this one scans the Gradle and npm trees, which says
       # nothing about the base image underneath them. That is where an unpatched openssl or
