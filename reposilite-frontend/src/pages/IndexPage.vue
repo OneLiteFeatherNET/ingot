@@ -69,30 +69,24 @@ const selectHomepage = () =>
   <div>
     <DefaultHeader :logoClickCallback="selectHomepage" />
     <div class="bg-gray-100 dark:bg-black overflow-y-visible">
-      <div class="container mx-auto max-sm:px-0">
-        <Tabs 
+      <!--
+        The bar scrolls sideways when it runs out of room. Every tab used to be pinned to a
+        quarter of the width on small screens, which five tabs cannot satisfy: the row wrapped
+        onto a second line and the last label was cut off at the edge.
+      -->
+      <div class="tab-bar container mx-auto overflow-x-auto max-sm:px-0">
+        <Tabs
           v-model="selectedTab"
           @update:modelValue="createTabClick"
         >
-          <template 
-            v-for="(tab, i) in menuTabs" 
+          <Tab
+            v-for="(tab, i) in menuTabs"
             :key="`menu${i}`"
-          >
-            <Tab
-              v-if="tab !== 'Dashboard'"
-              class="item font-normal max-sm:w-1/4"
-              :val="tab"
-              :label="tab"
-              :indicator="true"
-            />
-            <Tab
-              v-if="tab === 'Dashboard'"
-              class="item font-normal dashboard max-sm:w-1/4"
-              :val="tab"
-              :label="tab"
-              :indicator="true"
-            />
-          </template>
+            class="item font-normal whitespace-nowrap"
+            :val="tab"
+            :label="tab"
+            :indicator="true"
+          />
         </Tabs>
       </div>
       <hr class="dark:border-gray-700">
@@ -102,7 +96,7 @@ const selectHomepage = () =>
             <FileBrowserView v-if="selectedTab == 'Overview'" :qualifier="qualifier" ref=""/>
           </TabPanel>
           <TabPanel :val="'Dashboard'" v-show="isManager">
-            <DashboardView v-if="selectedTab == 'Dashboard'" :selectedTab="selectedTab" />
+            <DashboardView v-if="selectedTab == 'Dashboard'" />
           </TabPanel>
           <TabPanel :val="'Console'" v-show="isManager">
             <ConsoleView v-if="selectedTab == 'Console'" :selectedTab="selectedTab" />
@@ -129,15 +123,17 @@ const selectHomepage = () =>
   @apply bg-gray-150 dark:bg-gray-900;
   transition: background-color 0.5s;
 }
-  .dashboard {
-    @media (max-width: 640px) {
-      padding-left: 0px !important;
-    }
+/*
+ * vue3-tabs lets its row wrap. On a phone that turns the bar into two ragged lines, so the
+ * row is held on one line and the wrapper around it scrolls instead. Two classes deep
+ * because the rule it overrides is a scoped one from the library, which carries the weight
+ * of a class and an attribute.
+ */
+.tab-bar > .tabs {
+  flex-wrap: nowrap;
 }
-.dashboard .tab {
-  @media (max-width: 640px){
-    padding-left: 15px !important;
-  }
+.tab-bar .item {
+  flex-shrink: 0;
 }
 </style>
 

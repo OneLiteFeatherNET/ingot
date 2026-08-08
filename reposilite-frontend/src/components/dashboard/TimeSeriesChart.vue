@@ -15,12 +15,13 @@
   -->
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { init, use } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import useTheme from '../../store/theme'
+import { categorical, chrome } from '../../store/palette'
 
 // ECharts ships every chart type and component separately so a build only pays for what it
 // draws. The dashboard needs one chart type and three components, which keeps this bundle
@@ -32,83 +33,96 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  // 'line' draws the plain series, 'area' fills the space below it.
-  variant: {
+  /**
+   * Appended to every value in the axis and the tooltip. A chart carries one unit and one
+   * scale: two measures that do not share a unit belong in two charts, because a single
+   * axis makes their relative size look like a fact when it is an accident of units.
+   */
+  unit: {
     type: String,
-    default: 'line'
+    default: ''
   },
   height: {
     type: String,
-    default: '320px'
+    default: '220px'
   }
 })
 
 const { theme } = useTheme()
-
-// The dashboard sits on a white or near-black surface, so the axes and the legend have to
-// follow the theme. The series colours are picked to stay distinguishable on both.
-const PALETTE = ['#4f46e5', '#0891b2', '#e11d48', '#16a34a', '#d97706', '#7c3aed', '#0ea5e9', '#65a30d']
-
 const container = ref(null)
 let chart = null
 
-const axisColor = () => (theme.isDark ? '#9ca3af' : '#6b7280')
-const splitLineColor = () => (theme.isDark ? '#374151' : '#e5e7eb')
+// One series is its own subject and the surrounding heading already names it, so a legend
+// would only repeat the title. Several series have to be told apart, and then the legend is
+// what keeps identity off colour alone.
+const multiSeries = computed(() => props.series.length > 1)
 
-const buildOption = () => ({
-  color: PALETTE,
-  animation: false,
-  backgroundColor: 'transparent',
-  grid: {
-    left: 8,
-    right: 16,
-    top: 8,
-    // Room for the legend, which sits below the plot and would otherwise print on top of
-    // the axis labels.
-    bottom: 32,
-    containLabel: true
-  },
-  legend: {
-    bottom: 0,
-    icon: 'roundRect',
-    itemGap: 20,
-    textStyle: { color: axisColor() }
-  },
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: { type: 'line' }
-  },
-  xAxis: {
-    type: 'time',
-    axisLine: { show: false },
-    axisTick: { show: false },
-    axisLabel: { color: axisColor(), hideOverlap: true },
-    splitLine: { show: false }
-  },
-  yAxis: {
-    type: 'value',
-    axisLine: { show: false },
-    axisTick: { show: false },
-    axisLabel: { color: axisColor() },
-    splitLine: { lineStyle: { color: splitLineColor() } }
-  },
-  series: props.series.map(series => ({
-    name: series.name,
-    type: 'line',
-    smooth: false,
-    showSymbol: false,
-    areaStyle: props.variant === 'area' ? { opacity: 0.2 } : undefined,
-    data: series.data
-  }))
-})
+const formatValue = (value) => {
+  const rounded = Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 10) / 10
+  return props.unit ? `${rounded} ${props.unit}` : `${rounded}`
+}
+
+const buildOption = () => {
+  const ink = chrome(theme.isDark)
+
+  return {
+    color: categorical(theme.isDark),
+    animation: false,
+    backgroundColor: 'transparent',
+    grid: {
+      left: 4,
+      right: 12,
+      top: 8,
+      bottom: multiSeries.value ? 28 : 4,
+      containLabel: true
+    },
+    legend: multiSeries.value
+      ? {
+          bottom: 0,
+          icon: 'roundRect',
+          itemGap: 18,
+          itemWidth: 10,
+          itemHeight: 10,
+          textStyle: { color: ink.text, fontSize: 11 }
+        }
+      : { show: false },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'line', lineStyle: { color: ink.baseline } },
+      valueFormatter: formatValue
+    },
+    xAxis: {
+      type: 'time',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: ink.axis, hideOverlap: true, fontSize: 11 },
+      splitLine: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: ink.axis, fontSize: 11, formatter: formatValue },
+      splitLine: { lineStyle: { color: ink.grid } }
+    },
+    series: props.series.map(series => ({
+      name: series.name,
+      type: 'line',
+      smooth: false,
+      showSymbol: false,
+      lineStyle: { width: 2 },
+      // Only a lone series gets a fill. Stacked translucent areas hide each other, and the
+      // overlap reads as a value of its own.
+      areaStyle: multiSeries.value ? undefined : { opacity: 0.14 },
+      data: series.data
+    }))
+  }
+}
 
 const render = () => {
-  if (chart === null) {
-    return
-  }
   // notMerge, because a redraw after a theme switch has to drop the previous colours
   // instead of layering the new option on top of them.
-  chart.setOption(buildOption(), true)
+  chart?.setOption(buildOption(), true)
 }
 
 const resize = () => chart?.resize()
