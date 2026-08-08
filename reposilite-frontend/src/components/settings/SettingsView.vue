@@ -15,7 +15,7 @@
   -->
   
 <script setup>
-import {ref, toRaw, watch} from 'vue'
+import {provide, ref, toRaw, watch} from 'vue'
 import {JsonForms} from '@jsonforms/vue'
 import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
 import { useConfiguration } from '../../store/configuration'
@@ -29,14 +29,21 @@ const props = defineProps({
 
 const {
   fetchConfiguration,
-  updateConfiguration, 
-  renderers, 
+  updateConfiguration,
+  renderers,
+  configurationStyles,
   configurationValidator,
-  domains, 
+  domains,
   configurations,
   schemas,
   selectedDomain
 } = useConfiguration()
+
+/*
+ * 'styles' is the injection key useStyles() of @dzikoysk/vue-vanilla looks up, so every
+ * renderer below this component takes its class names from here.
+ */
+provide('styles', configurationStyles)
 
 const isValid = ref(true)
 const hasChanged = ref(false)
@@ -187,69 +194,62 @@ const formsConfiguration = {
 <!--suppress CssInvalidAtRule -->
 <style>
 @reference "../../style.css";
-.error {
-  @apply text-red-500 px-2 font-bold;
-}
-.vertical-layout, .group-layout {
+/*
+ * Everything the renderer styles object can carry now lives in src/store/configuration.js.
+ * What is left below stays here because each rule selects on something no key of that
+ * object names.
+ */
+
+/*
+ * `container` has to stay an @apply. Written into the class attribute it would also match
+ * the project's own `.container` rule from style.css, which adds the page gutter.
+ */
+.vertical-layout {
   @apply container mx-auto;
 }
-.control .input:not([type=checkbox]), .control .select {
+/*
+ * A checkbox and a text field share one class name, styles.control.input, so the split
+ * between the two only exists as an attribute selector.
+ */
+.control .input:not([type=checkbox]) {
   @apply text-sm h-9 px-4 text-black;
 }
 .control .input[type="checkbox"] {
   @apply h-5 w-5;
 }
-.control .input, .control .select {
-  @apply mx-2 rounded;
-}
-.control .select {
-  @apply pr-8;
-}
-.vertical-layout, .group, .array-list {
-  @apply flex flex-col flex-wrap py-4 h-full;
-  gap: 1rem;
-}
+/*
+ * `label` matches an element rather than a class, and the enum array renderer prints
+ * labels that pass through no style key at all.
+ */
 .label, label {
   padding-bottom: 0.5em;
   padding-left: 0.45em;
   display: inline-block;
   font-weight: bold;
 }
-.description {
-  padding-left: 0.45em;
-  padding-bottom: 0.7em;
-  @apply text-sm italic;
+/*
+ * Descendants of the control wrapper. The "Enabled" caption beside a checkbox is a bare
+ * <p>; the width is deliberately tied to the wrapper, because the enum array renderer
+ * emits its checkboxes outside of one; and `:read-only` is a state the object cannot
+ * express. The last two rules also have to stay together: both are important, and an
+ * important utility would outrank the more specific of the two instead of losing to it.
+ */
+.wrapper p {
+  @apply px-2 text-sm;
 }
-.array-list {
-  padding: 0;
+.wrapper input {
+  @apply w-1/2;
 }
-.array-list-label {
-  font-weight: bold;
+.wrapper input, .wrapper select {
+  @apply dark:bg-gray-800! dark:text-white!;
 }
-.array-list-item-label {
-  margin-right: auto;
+.wrapper input:not([type=checkbox]):read-only {
+  @apply bg-gray-200! dark:bg-gray-800! text-gray-500!;
 }
-.array-list-item-delete {
-  @apply absolute right-0 top-2;
-}
-.array-list-item-toolbar {
-  @apply flex flex-row items-baseline relative;
-}
-.array-list-item-label {
-  display: none;
-}
-.array-list-item-toolbar>button {
-  padding: 0.5rem;
-}
-.array-list-legend {
-  @apply flex flex-row-reverse gap-2 w-full;
-  margin-bottom: 1rem;
-}
-.array-list-item-wrapper {
-}
-.one-of-container {
-  @apply h-full flex flex-col; 
-}
+/*
+ * vue3-tabs wraps the array and one-of renderers, and none of its markup takes class names
+ * from the styles object.
+ */
 .one-of-container .active, .tab-panel .array-list .tab-panel .array-list .active {
   @apply bg-gray-125 dark:bg-gray-900;
 }
@@ -264,38 +264,5 @@ const formsConfiguration = {
 .settings-view .tab-panel {
   @apply h-full;
   @apply border rounded-md px-6 py-2 dark:border-gray-600;
-}
-.array-list-add {
-  @apply rounded-full h-6 w-6 leading-6 bg-blue-700 ml-auto text-white z-1;
-}
-.array-list-item-move-up {
-  display: none;
-}
-.array-list-item-move-down {
-  display: none;
-}
-.array-list-no-data {
-  @apply p-4 bg-gray-200 dark:bg-gray-900 italic rounded-md;
-}
-.wrapper {
-  @apply flex py-2;
-}
-.wrapper p {
-  @apply px-2 text-sm;
-}
-.wrapper input {
-  @apply w-1/2;
-}
-.wrapper input, .wrapper select {
-  @apply dark:bg-gray-800! dark:text-white!;
-}
-.wrapper input:not([type=checkbox]):read-only {
-  @apply bg-gray-200! dark:bg-gray-800! text-gray-500!;
-}
-.array-list-legend {
-  margin-bottom: 0;
-}
-.description {
-  padding-bottom: 0;
 }
 </style>

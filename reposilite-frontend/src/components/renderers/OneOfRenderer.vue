@@ -1,5 +1,5 @@
 <template>
-  <div v-if="control.visible" class="one-of-container">
+  <div v-if="control.visible" :class="styles.oneOf.root">
     <Tabs v-model="tabIndex">
       <Tab 
         v-for="(oneOfRenderInfo, oneOfIndex) in oneOfRenderInfos"
