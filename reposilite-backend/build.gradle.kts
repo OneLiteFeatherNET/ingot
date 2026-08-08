@@ -164,6 +164,14 @@ dependencies {
 
 tasks.withType<ShadowJar> {
     archiveFileName.set("ingot-${archiveVersion.get()}.jar")
+    // Shadow 9 changed the default duplicates strategy to EXCLUDE, under which
+    // mergeServiceFiles() stops merging and silently keeps only the first
+    // META-INF/services file it encounters. That is not a cosmetic difference: the fat jar
+    // then declared journalist's own tinylog writer and none of tinylog's, so the server
+    // came up logging "Service implementation 'rolling file' not found" and wrote nothing
+    // to /var/log/reposilite at all. Shadow 8, which produced the last upstream release,
+    // defaulted to INCLUDE. See https://github.com/GradleUp/shadow/releases/tag/9.0.0
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
     minimize {
         exclude(dependency("org.eclipse.jetty:.*"))
