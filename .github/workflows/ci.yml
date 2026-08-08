@@ -158,18 +158,24 @@ jobs:
       - name: "Checkout repository"
         uses: actions/checkout@v6
 
+      # For the arm64 leg further down. Only the run stages are emulated; the Gradle and npm
+      # builds are pinned to the native platform in the Dockerfiles.
+      - name: "Set up QEMU"
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4.2.0
+
       - name: "Set up Buildx"
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
-      # One architecture only. The point is to catch a Dockerfile that no longer builds, and
-      # a second architecture would mean running the whole Gradle build again under
-      # emulation to learn the same thing.
+      # Built for the host architecture and loaded, because the checks below run it. The
+      # other published architecture is covered by its own step at the end.
       - name: "Build the server image"
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
           platforms: linux/amd64
           push: false
+          load: true
+          tags: ingot:ci
           cache-from: type=gha,scope=ci-server
           cache-to: type=gha,mode=max,scope=ci-server
 
@@ -187,49 +193,89 @@ jobs:
           cache-from: type=gha,scope=ci-dashboard
           cache-to: type=gha,mode=max,scope=ci-dashboard
 
-      # Building it proves the Dockerfile parses. Starting it proves the parts that only
-      # fail at runtime, which is where both of this image's real bugs were: an nginx that
-      # renders no server block and answers nothing, and asset URLs that never resolve.
-      - name: "Start the dashboard and check it serves the app"
-        run: |
-          set -euo pipefail
-          docker run -d --name dashboard-check -p 8081:8080 \
-            --read-only \
-            --tmpfs /tmp:uid=101,gid=101 \
-            --tmpfs /var/cache/nginx:uid=101,gid=101 \
-            --tmpfs /var/run:uid=101,gid=101 \
-            --tmpfs /etc/nginx/conf.d:uid=101,gid=101 \
-            --cap-drop ALL \
-            --security-opt no-new-privileges:true \
-            ingot-dashboard:ci
+      # Building an image proves the Dockerfile parses. Everything that has actually gone
+      # wrong with these two was runtime behaviour that a build cannot see: privileges the
+      # entrypoint could no longer drop, an environment variable read and ignored, a log
+      # directory that stayed empty, an nginx serving no server block.
+      #
+      # The suite lives in reposilite-backend/src/containerTest and runs both images the way
+      # a deployment does, including an upgrade rehearsal against the real upstream image.
+      # It is a suite of its own because it needs an image that already exists, which is why
+      # it cannot be part of the normal build.
+      - name: "Set up Java"
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: "temurin"
 
-          for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8081/ > index.html 2>/dev/null; then
-              break
-            fi
-            sleep 2
-          done
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
-          if [ ! -s index.html ]; then
-            echo "The dashboard never answered." >&2
-            docker logs dashboard-check >&2 || true
-            exit 1
-          fi
+      - name: "Run the container tests"
+        run: ./gradlew :reposilite-backend:containerTest
 
-          # An unsubstituted placeholder here means the script tag points at a path that
-          # does not exist, and the app never starts.
-          if grep -q '{{REPOSILITE\.' index.html; then
-            echo "index.html still contains placeholders, so its asset URLs cannot resolve:" >&2
-            grep -o '{{REPOSILITE\.[A-Z_]*}}' index.html | sort -u >&2
-            exit 1
-          fi
+      - name: "Publish the container test results"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-test-results
+          path: reposilite-backend/build/reports/tests/containerTest
+          retention-days: 7
+          if-no-files-found: ignore
 
-          # Follow the bundle the page actually asks for, rather than assuming a name.
-          asset=$(grep -o 'src="[^"]*index-[^"]*\.js"' index.html | head -1 | cut -d'"' -f2)
-          echo "Dashboard asks for $asset"
-          curl -fsS -o /dev/null "http://127.0.0.1:8081${asset}"
+      # The vulnerabilities job next to this one scans the Gradle and npm trees, which says
+      # nothing about the base image underneath them. That is where an unpatched openssl or
+      # zlib would sit, and it is the half that is shipped without anyone here declaring it.
+      #
+      # Only fixable findings fail the build. An advisory with no released fix cannot be
+      # acted on by bumping anything, so failing on it would train everyone to ignore this
+      # step; those are caught by the Renovate base image bumps instead.
+      - name: "Scan the server image"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ingot:ci
+          scanners: vuln,secret
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          exit-code: "1"
 
-          docker rm -f dashboard-check > /dev/null
+      - name: "Scan the dashboard image"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ingot-dashboard:ci
+          scanners: vuln,secret
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      # Both images are published for linux/arm64 as well, and the run stages are the part
+      # that is genuinely built per architecture: creating the service account, copying
+      # files, rendering an nginx config. Emulated, those are seconds, because the Gradle
+      # and npm work is pinned to the native platform and is already in the cache from the
+      # steps above. The alternative is finding out at release time.
+      #
+      # Neither loaded nor pushed: a single Docker image store cannot hold two
+      # architectures under one tag, and the question here is only whether it builds.
+      - name: "Build the server image for arm64"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha,scope=ci-server
+          cache-to: type=gha,mode=max,scope=ci-server-arm64
+
+      - name: "Build the dashboard image for arm64"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: reposilite-frontend/Dockerfile
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha,scope=ci-dashboard
+          cache-to: type=gha,mode=max,scope=ci-dashboard-arm64
 
   # Second JDK leg, combined with the JaCoCo report so the test suite is not run three times.
   # This job is intentionally repo-specific: the shared gradle-build-pr workflow has no

@@ -25,15 +25,28 @@ if [ "$(id -u)" != 0 ]; then
 else
 
   # GH-1634: support custom user and group ids
+  #
+  # Unlike the upstream image, this one ships the account pre-created, so the "does it
+  # exist" guards below no longer decide anything on their own: without the adjusting
+  # branches, PUID and PGID would be read and then silently ignored, and a deployment that
+  # relies on them would come up owning nothing it can write to.
   GROUP_ID="${PGID:-977}"
   if ! grep -q "^reposilite" /etc/group;
   then
     addgroup --gid "$GROUP_ID" reposilite;
+  elif [ "$(getent group reposilite | cut -d: -f3)" != "$GROUP_ID" ];
+  then
+    groupmod --gid "$GROUP_ID" reposilite;
   fi
   USER_ID="${PUID:-977}"
   if ! grep "^reposilite" /etc/passwd;
   then
     adduser --system -uid "$USER_ID" --ingroup reposilite --shell /bin/sh reposilite;
+  elif [ "$(id -u reposilite)" != "$USER_ID" ] || [ "$(id -g reposilite)" != "$GROUP_ID" ];
+  then
+    # Both ids are passed together: a changed group id alone already leaves the account
+    # pointing at a group that no longer exists under that number.
+    usermod --uid "$USER_ID" --gid "$GROUP_ID" reposilite;
   fi
 
   # GH-2288: Dockerfile Step-1 migration warning
