@@ -22,6 +22,7 @@ import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.Repository
+import com.reposilite.maven.RepositoryVisibility
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.Metadata
 import com.reposilite.maven.api.SaveMetadataRequest
@@ -43,8 +44,10 @@ import com.reposilite.status.application.FailureComponents
 import com.reposilite.storage.StorageFacade
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
+import com.reposilite.storage.api.RepositoryDirectoryInfo
 import com.reposilite.storage.api.toLocation
 import com.reposilite.token.AccessTokenIdentifier
+import com.reposilite.token.AccessTokenPermission
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.Route
 import com.reposilite.token.RoutePermission
@@ -189,6 +192,11 @@ internal abstract class MavenSpecification {
     protected fun findRepositories(accessToken: AccessTokenIdentifier?): Collection<String> =
         mavenFacade.findRepositories(accessToken).files.map { it.name }
 
+    protected fun findRepositoryVisibilities(accessToken: AccessTokenIdentifier?): Map<String, RepositoryVisibility> =
+        mavenFacade.findRepositories(accessToken).files
+            .filterIsInstance<RepositoryDirectoryInfo>()
+            .associate { it.name to it.visibility }
+
     protected fun addFileToRepository(fileSpec: FileSpec): FileSpec {
         workingDirectory.toPath()
             .resolve("repositories")
@@ -207,6 +215,12 @@ internal abstract class MavenSpecification {
         accessTokenFacade.createAccessToken(CreateAccessTokenRequest(TEMPORARY, name, secret = secret))
             .accessToken
             .also { accessTokenFacade.addRoute(it.identifier, Route("/$repository/${gav.toLocation()}", permission)) }
+            .identifier
+
+    protected fun createManagerAccessToken(name: String, secret: String): AccessTokenIdentifier =
+        accessTokenFacade.createAccessToken(CreateAccessTokenRequest(TEMPORARY, name, secret = secret))
+            .accessToken
+            .also { accessTokenFacade.addPermission(it.identifier, AccessTokenPermission.MANAGER) }
             .identifier
 
     private fun String.isAllowed(): Boolean =

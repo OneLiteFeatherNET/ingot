@@ -193,6 +193,30 @@ Raw JSON scheme:
         "security": []
       }
     },
+    "/api/maven/details": {
+      "get": {
+        "tags": [
+          "Maven"
+        ],
+        "summary": "List the available repositories",
+        "description": "Get the repositories the requesting token is allowed to see as JSON response. Every entry is a RepositoryDirectoryInfo and carries the repository visibility (PUBLIC, HIDDEN or PRIVATE) in addition to the fields of a regular directory. Repositories the token cannot access are not listed at all.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Returns a directory listing where every file entry describes one accessible repository",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryInfo"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": false,
+        "security": []
+      }
+    },
     "/api/maven/details/{repository}/{gav}": {
       "get": {
         "tags": [
@@ -1433,6 +1457,29 @@ Raw JSON scheme:
           "threads"
         ]
       },
+      "DirectoryInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/FileType"
+          },
+          "name": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileDetails"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "files"
+        ]
+      },
       "FileDetails": {
         "type": "object",
         "additionalProperties": false,
@@ -1447,6 +1494,34 @@ Raw JSON scheme:
         "required": [
           "type",
           "name"
+        ]
+      },
+      "RepositoryDirectoryInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/FileType"
+          },
+          "name": {
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/RepositoryVisibility"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "visibility"
+        ]
+      },
+      "RepositoryVisibility": {
+        "type": "string",
+        "enum": [
+          "PUBLIC",
+          "HIDDEN",
+          "PRIVATE"
         ]
       },
       "FileType": {

@@ -39,7 +39,7 @@ import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.FileType.DIRECTORY
 import com.reposilite.storage.api.Location
-import com.reposilite.storage.api.SimpleDirectoryInfo
+import com.reposilite.storage.api.RepositoryDirectoryInfo
 import com.reposilite.token.AccessTokenIdentifier
 import io.javalin.http.HttpStatus.CONFLICT
 import panda.std.Result
@@ -187,10 +187,17 @@ internal class RepositoryService(
         }
     }
 
+    /**
+     * Lists the repositories the given token is allowed to see, each with its visibility.
+     *
+     * Exposing the visibility leaks nothing: entries the caller may not reach are dropped by
+     * [RepositorySecurityProvider.canAccessRepository] before the response is assembled, so an
+     * anonymous caller only ever learns that public repositories are public.
+     */
     fun getRootDirectory(accessToken: AccessTokenIdentifier?): DirectoryInfo =
         repositoryProvider.getRepositories()
             .filter { securityProvider.canAccessRepository(accessToken, it) }
-            .map { SimpleDirectoryInfo(it.name) }
+            .map { RepositoryDirectoryInfo(name = it.name, visibility = it.visibility) }
             .let { DirectoryInfo("/", it) }
 
     override fun getLogger(): Logger =
