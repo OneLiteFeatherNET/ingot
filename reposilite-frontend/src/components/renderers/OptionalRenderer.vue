@@ -4,7 +4,7 @@
       {{ control.label }}
       <input type="checkbox" v-model="present" class="mx-4 mb-1" />
     </div>
-    <div class="description">
+    <div :class="styles.control.description">
       {{ control.description }}
     </div>
     <div v-if="present && control.visible" class="border-1 rounded-lg mt-1">

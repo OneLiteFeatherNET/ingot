@@ -12,7 +12,7 @@
         {{ control.label }}
       </label>
     </legend>
-    <div v-if="control?.description" class="description">
+    <div v-if="control?.description" :class="styles.arrayList.description">
       {{ control.description }}
       <!-- It is a list of items. You can add new entries by clicking the '+' button on the right. -->
     </div>

@@ -16,13 +16,10 @@
 
 import { ref } from 'vue'
 import { useSession } from './session'
-import { createSuccessToast, createErrorToast } from '../helpers/toast'
+import { createSuccessToast, createErrorToast, errorMessage } from '../helpers/toast'
 
 const { client } = useSession()
 const tokens = ref([])
-
-const errorMessage = (error) =>
-  error?.response?.data?.message || `${error}`
 
 const tokenIsManager = (token) =>
   (token.permissions || []).some(permission => permission.identifier === 'access-token:manager')

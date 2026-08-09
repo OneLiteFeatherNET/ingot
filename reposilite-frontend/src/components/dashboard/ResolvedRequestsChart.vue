@@ -93,10 +93,16 @@ const emptyMessage = computed(() => {
 })
 </script>
 
+<!--
+  The subtitle names no bucket size on purpose. The backend groups resolved requests by
+  `statistics.resolvedRequestsInterval`, which defaults to MONTHLY, and the response carries
+  no hint of which interval produced it. Saying "per day" here stated something this
+  component cannot know, and on a default instance it was simply wrong.
+-->
 <template>
   <ChartCard
     title="Resolved requests"
-    subtitle="Requests served per repository, per day"
+    subtitle="Requests served per repository"
     :loading="loading"
     :empty-message="emptyMessage"
   >
