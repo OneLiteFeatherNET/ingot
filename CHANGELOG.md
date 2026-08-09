@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0](https://github.com/OneLiteFeatherNET/ingot/compare/v1.0.0...v1.1.0) (2026-08-09)
+
+
+### Features
+
+* **backend:** report repository visibility in the root listing ([#14](https://github.com/OneLiteFeatherNET/ingot/issues/14)) ([3d9d067](https://github.com/OneLiteFeatherNET/ingot/commit/3d9d067d8fee0a236f0b60ec586a5453a999bce3))
+* **frontend:** move the dashboard to Tailwind CSS v4 and rebuild it around limits ([#10](https://github.com/OneLiteFeatherNET/ingot/issues/10)) ([d137bd3](https://github.com/OneLiteFeatherNET/ingot/commit/d137bd3e6796fe4638d2e9505444081c2135ab45))
+* **frontend:** work through the dashboard design audit ([#13](https://github.com/OneLiteFeatherNET/ingot/issues/13)) ([b14183d](https://github.com/OneLiteFeatherNET/ingot/commit/b14183d6637f10304179c2433a0bce9a34809ef3))
+
 ## 1.0.0 (2026-08-08)
 
 
