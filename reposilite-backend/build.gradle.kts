@@ -172,9 +172,6 @@ dependencies {
     api("com.google.guava:guava:33.7.2-android")
     testImplementation("com.google.http-client:google-http-client-jackson2:$httpClient")
 
-    val jansi = "2.4.3"
-    implementation("org.fusesource.jansi:jansi:$jansi")
-
     val journalist = "1.0.12"
     api("com.reposilite:journalist:$journalist")
     implementation("com.reposilite:journalist-slf4j:$journalist")
