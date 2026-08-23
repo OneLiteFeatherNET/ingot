@@ -19,6 +19,9 @@ import com.reposilite.console.CommandContext
 
 interface ReposiliteCommand {
 
+    val sensitiveInput: Boolean
+        get() = false
+
     fun execute(context: CommandContext)
 
 }
