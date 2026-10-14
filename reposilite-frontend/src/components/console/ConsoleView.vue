@@ -227,7 +227,7 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
           role="region"
           aria-label="Console output"
           tabindex="0"
-          class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono text-xs text-on-surface"
+          class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono md-body-small text-on-surface"
           @scroll="updateFollowing"
         >
           <template
