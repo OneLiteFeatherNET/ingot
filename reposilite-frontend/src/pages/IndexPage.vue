@@ -16,11 +16,18 @@
 
 <script setup>
 import { computed, defineAsyncComponent } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../store/session'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
 import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
+import MdNavigationBar from '../components/md/MdNavigationBar.vue'
+import MdNavigationRail from '../components/md/MdNavigationRail.vue'
+import OverviewIcon from '../components/icons/OverviewIcon.vue'
+import DashboardIcon from '../components/icons/DashboardIcon.vue'
+import TokensIcon from '../components/icons/TokensIcon.vue'
+import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
+import SettingsIcon from '../components/icons/SettingsIcon.vue'
 import { property } from '../helpers/vue-extensions'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
@@ -39,64 +46,58 @@ const DashboardView = lazyView(() => import('../components/dashboard/DashboardVi
 const TokensView = lazyView(() => import('../components/tokens/TokensView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 
+// The icon of each section. The active one is drawn filled, the others outlined.
+const SECTION_ICONS = {
+  overview: OverviewIcon,
+  dashboard: DashboardIcon,
+  tokens: TokensIcon,
+  console: ConsoleIcon,
+  settings: SettingsIcon,
+}
+
 defineProps({
   qualifier: property(Object, true)
 })
 
 const route = useRoute()
+const router = useRouter()
 const { isManager } = useSession()
 
 // The section lives in the URL, so the back button and deep links work. A manager tab that
-// is named but not visible to this user shows Overview instead. Each tab link keeps the
+// is named but not visible to this user shows Overview instead. Each section link keeps the
 // repository path already in the URL, which is how the browsed path comes back.
 const activeKey = computed(() => resolveTab(route.query.tab, isManager.value))
 const activeLabel = computed(() => tabLabel(activeKey.value))
 const menuTabs = computed(() => visibleTabs(isManager.value))
 
+// One section on its own needs no navigation: the bar and the rail are left out, and the
+// page keeps its full width.
+const hasNavigation = computed(() => menuTabs.value.length > 1)
+
 const tabTarget = (key) => ({ path: route.path, query: withTab(route.query, key) })
+
+// The bar and the rail share these destinations. Each one is a real link, so it can be
+// opened in a new tab and the browser's history works.
+const destinations = computed(() => menuTabs.value.map(tab => ({
+  key: tab.key,
+  label: tab.label,
+  href: router.resolve(tabTarget(tab.key)).href,
+})))
+
+const selectSection = (key) => router.push(tabTarget(key))
 </script>
 
 <template>
-  <div class="bg-surface text-on-surface">
-    <DefaultHeader />
+  <div
+    class="bg-surface text-on-surface"
+    :class="hasNavigation ? 'max-[600px]:pb-[calc(5rem+env(safe-area-inset-bottom))] min-[600px]:pl-20' : ''"
+  >
     <!--
-      Primary tabs in the Material Design 3 style. The row scrolls sideways when it runs out
-      of room, which five tabs can do on a phone. Each tab is a real link, so it can be
-      opened in a new tab and the browser's history works.
+      Below 600px the bar sits at the bottom, so the page reserves its height and the device's
+      safe area. From 600px the rail sits at the left and the page moves right by its 80px
+      width, the header included.
     -->
-    <nav
-      aria-label="Sections"
-      class="border-b border-outline-variant"
-    >
-      <ul class="container mx-auto flex list-none overflow-x-auto">
-        <li
-          v-for="tab in menuTabs"
-          :key="tab.key"
-          class="shrink-0"
-        >
-          <router-link
-            v-slot="{ href, navigate }"
-            :to="tabTarget(tab.key)"
-            custom
-          >
-            <a
-              :href="href"
-              :aria-current="tab.key === activeKey ? 'page' : undefined"
-              class="md-state-layer md-focus-ring relative flex min-h-12 items-center rounded-corner-small px-4 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard"
-              :class="tab.key === activeKey ? 'text-primary' : 'text-on-surface-variant'"
-              @click="navigate"
-            >
-              {{ tab.label }}
-              <span
-                v-if="tab.key === activeKey"
-                class="absolute inset-x-0 bottom-0 h-1 rounded-t-corner-extra-small bg-primary"
-                aria-hidden="true"
-              />
-            </a>
-          </router-link>
-        </li>
-      </ul>
-    </nav>
+    <DefaultHeader />
     <div class="overflow-auto">
       <template v-if="activeKey === 'overview'">
         <HeaderHero />
@@ -113,5 +114,36 @@ const tabTarget = (key) => ({ path: route.path, query: withTab(route.query, key)
         :selected-tab="activeLabel"
       />
     </div>
+    <template v-if="hasNavigation">
+      <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[600px]:hidden">
+        <MdNavigationBar
+          :items="destinations"
+          :model-value="activeKey"
+          @update:model-value="selectSection"
+        >
+          <template #icon="{ item, active }">
+            <component
+              :is="SECTION_ICONS[item.key]"
+              :filled="active"
+            />
+          </template>
+        </MdNavigationBar>
+      </div>
+      <div class="fixed inset-y-0 left-0 z-20 hidden w-20 min-[600px]:block">
+        <MdNavigationRail
+          class="h-full"
+          :items="destinations"
+          :model-value="activeKey"
+          @update:model-value="selectSection"
+        >
+          <template #icon="{ item, active }">
+            <component
+              :is="SECTION_ICONS[item.key]"
+              :filled="active"
+            />
+          </template>
+        </MdNavigationRail>
+      </div>
+    </template>
   </div>
 </template>
