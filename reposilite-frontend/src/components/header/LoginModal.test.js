@@ -80,6 +80,13 @@ describe('LoginModal', () => {
     expect(dialog(), 'a request from outside the header must open the dialog').not.toBeNull()
   })
 
+  it('renders the dialog directly under the body so page content cannot paint over it', async () => {
+    await openDialog(wrapper)
+
+    expect(dialog().parentElement, 'a dialog left in place is stacked by the z-order of the page content')
+      .toBe(document.body)
+  })
+
   it('names the dialog after its heading', async () => {
     await openDialog(wrapper)
 

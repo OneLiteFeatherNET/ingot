@@ -143,6 +143,15 @@
 }
 
 /*
+ * vue-final-modal sets no z-index unless it is given a zIndexFn, so a dialog would sit at
+ * `auto` and any positioned page element with a z-index (a copy button, say) would paint
+ * over it. Every dialog root takes the stacking token from the MD3 foundation instead.
+ */
+.vfm {
+  z-index: var(--md-sys-z-dialog);
+}
+
+/*
  * Skeleton placeholders: the card and its background appear at once, only these bars fade
  * in, so a fast response replaces them before they get a chance to flicker.
  */

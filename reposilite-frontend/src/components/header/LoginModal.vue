@@ -83,12 +83,15 @@ const overlayStyle = {
     </MdButton>
     <VueFinalModal
       v-model="showLogin"
-      class="flex items-center justify-center p-4"
+      class="flex items-center justify-center"
+      content-class="w-full px-6"
+      teleport-to="body"
       :overlay-style="overlayStyle"
       aria-labelledby="login-title"
       @opened="focusName"
     >
-      <div class="w-96 max-w-full rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3">
+      <!-- The 24px side inset is set on the modal's content wrapper; the dialog caps at 560px. -->
+      <div class="mx-auto w-full min-w-70 max-w-140 rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3">
         <h2
           id="login-title"
           class="md-headline-small"

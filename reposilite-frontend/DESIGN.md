@@ -38,6 +38,11 @@ Source files:
   consistent.
 - **Do not add new `--color-*` or `--md-*` tokens inside a view.** A new role goes into
   `color.css` (and this file) so that every view can use it.
+- **Every dialog is a vue-final-modal with `teleport-to="body"`.** Page content can carry
+  its own z-index, so a dialog left in place can paint under it. The `.vfm` rule in
+  `src/style.css` gives every modal root the `--md-sys-z-dialog` stacking value. The dialog
+  itself keeps a 24px side inset (set on the modal's `content-class`), caps at 560px and
+  never goes below 280px.
 
 ## Colour
 
@@ -254,4 +259,7 @@ These are deliberately left for the views that own them:
   still paints `dark:bg-black`. They render correctly; they are not yet on the roles.
 - The `container` class keeps the shared page gutter (`px-10`, `px-2` below 640px). It is
   layout, not colour, and the layout work decides its final form.
-- The header tab bar still uses `vue3-tabs`. `MdNavigationBar` could replace it.
+- The section tabs on the index page are primary tabs built in `src/pages/IndexPage.vue`
+  on the `md-state-layer` and `md-focus-ring` classes, not on `MdNavigationBar`. That
+  primitive is a bottom bar with icons and a pill indicator, which does not suit a top row
+  of text tabs.
