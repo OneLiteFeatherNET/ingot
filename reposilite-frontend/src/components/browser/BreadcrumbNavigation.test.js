@@ -63,6 +63,17 @@ describe('BreadcrumbNavigation', () => {
     expect(index.classes(), 'the text stays centred in the taller target').toContain('items-center')
   })
 
+  it('gives every ancestor crumb a 48px touch target', async () => {
+    wrapper = await mountBreadcrumb()
+    const crumbs = wrapper.findAll('ol a')
+
+    expect(crumbs.length, 'the path has ancestor links').toBeGreaterThan(0)
+    for (const crumb of crumbs) {
+      expect(crumb.classes(), `the crumb ${crumb.text()} is at least 48px tall`).toContain('min-h-12')
+      expect(crumb.classes(), 'the text stays centred in the taller target').toContain('items-center')
+    }
+  })
+
   it('shows the current directory as text rather than as a link', async () => {
     wrapper = await mountBreadcrumb()
     const current = wrapper.find('[aria-current="page"]')

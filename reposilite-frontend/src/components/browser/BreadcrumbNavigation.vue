@@ -65,7 +65,7 @@ const breadcrumbs = computed(() => {
         <router-link
           v-else
           :to="crumb.link"
-          class="md-focus-ring rounded-corner-small px-1 py-1 text-on-surface hover:text-primary"
+          class="md-focus-ring inline-flex min-h-12 items-center rounded-corner-small px-1 py-1 text-on-surface hover:text-primary"
         >
           {{ crumb.name }}
         </router-link>
