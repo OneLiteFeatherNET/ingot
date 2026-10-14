@@ -32,7 +32,8 @@ defineProps({
   },
   /**
    * Route rows carry an action per route, which turns the list into a wall of icons. They
-   * stay out of the way until the row is hovered or something inside it takes focus.
+   * stay out of the way until the row is hovered or something inside it takes focus. Touch screens
+   * have no hover, so on a coarse pointer they are always shown.
    */
   revealActionsOnHover: {
     type: Boolean,
@@ -55,7 +56,7 @@ defineProps({
     <span
       v-if="$slots.actions"
       class="flex items-center gap-1"
-      :class="revealActionsOnHover ? 'opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100' : ''"
+      :class="revealActionsOnHover ? 'opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100' : ''"
     >
       <slot name="actions" />
     </span>
