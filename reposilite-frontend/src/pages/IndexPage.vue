@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, watchEffect, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../store/session'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
@@ -29,6 +29,7 @@ import TokensIcon from '../components/icons/TokensIcon.vue'
 import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
 import SettingsIcon from '../components/icons/SettingsIcon.vue'
 import { property } from '../helpers/vue-extensions'
+import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
 import { visibleTabs, resolveTab, withTab, tabLabel } from './index-tabs'
@@ -73,6 +74,16 @@ const menuTabs = computed(() => visibleTabs(isManager.value))
 // One section on its own needs no navigation: the bar and the rail are left out, and the
 // page keeps its full width.
 const hasNavigation = computed(() => menuTabs.value.length > 1)
+
+// The snackbar lives outside this page, so it learns the bar height from the document root.
+// Below 600px it adds the value to its margin; from 600px it ignores it, as the rail is at the
+// side. The variable goes away with the page.
+watchEffect(() => {
+  document.documentElement.style.setProperty(BOTTOM_BAR_VARIABLE, bottomBarHeight(hasNavigation.value))
+})
+onBeforeUnmount(() => {
+  document.documentElement.style.removeProperty(BOTTOM_BAR_VARIABLE)
+})
 
 const tabTarget = (key) => ({ path: route.path, query: withTab(route.query, key) })
 

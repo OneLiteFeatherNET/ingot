@@ -116,4 +116,13 @@ describe('MdSnackbar', () => {
 
     expect(wrapper.find('[role="status"]').exists(), 'the success notice must leave on its own').toBe(false)
   })
+
+  it('sits above the navigation bar below 600px by reading the bar height variable', () => {
+    const wrapper = mountSnackbar()
+    const host = wrapper.get('div').classes().join(' ')
+
+    expect(host, 'the offset adds the bar height and the safe area to the normal margin').toContain(
+      'max-[600px]:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))]'
+    )
+  })
 })

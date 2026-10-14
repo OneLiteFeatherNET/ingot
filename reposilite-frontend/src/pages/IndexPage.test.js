@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -196,5 +196,39 @@ describe('IndexPage adaptive navigation', () => {
 
     expect(tokens.attributes('href'), 'a section link must keep the path being browsed')
       .toBe('/org/repo?tab=tokens')
+  })
+})
+
+const rootBarHeight = () => document.documentElement.style.getPropertyValue('--app-bottom-bar-height')
+
+describe('IndexPage bottom bar height', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  afterEach(() => {
+    document.documentElement.style.removeProperty('--app-bottom-bar-height')
+  })
+
+  it('publishes the bar height on the document root when the page has several sections', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    expect(rootBarHeight(), 'the snackbar reads this variable to clear the bar').toBe('80px')
+    wrapper.unmount()
+  })
+
+  it('publishes zero when the user has only one section', async () => {
+    const { wrapper } = await mountAt('/', { manager: false })
+
+    expect(rootBarHeight(), 'no bar means no offset').toBe('0px')
+    wrapper.unmount()
+  })
+
+  it('removes the variable when the page unmounts', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    wrapper.unmount()
+
+    expect(rootBarHeight(), 'a page that is gone must not leave an offset behind').toBe('')
   })
 })
