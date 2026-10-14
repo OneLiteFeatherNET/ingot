@@ -22,6 +22,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 // stream is a fake the test drives event by event: nothing here opens a socket or waits.
 const session = vi.hoisted(() => ({ client: null, token: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
+const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
+vi.mock('../../store/login', () => ({ openLogin: login.openLogin }))
 vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),
   errorMessage: (error) => error.message
@@ -188,6 +190,48 @@ describe('ConsoleView', () => {
       await flushPromises()
 
       expect(wrapper.find('[role="status"]').text(), 'a change in the connection should be announced').toContain('Connected')
+    })
+  })
+
+  describe('expired session', () => {
+    const unauthorized = () => Promise.reject(Object.assign(new Error('Unauthorized'), { response: { status: 401 } }))
+
+    // The stream fails and the session check answers 401, which is the case the console
+    // reports as an expired session.
+    const expireSession = async () => {
+      session.client = ref({ auth: { me: vi.fn(unauthorized) }, console: { execute: vi.fn() } })
+      await mountView()
+      FakeEventSource.instances[0].onerror(new Event('error'))
+      await flushPromises()
+    }
+
+    it('offers a sign in button when the session has expired', async () => {
+      await expireSession()
+
+      expect(buttonLabelled(wrapper, 'Sign in'), 'an expired session should offer a sign in button').toBeDefined()
+    })
+
+    it('does not tell the reader to look for sign in in the menu', async () => {
+      await expireSession()
+
+      expect(wrapper.text(), 'the instruction is now a button, not a pointer to the menu').not.toContain('from the menu')
+    })
+
+    it('opens the sign in dialog when the sign in button is pressed', async () => {
+      await expireSession()
+
+      buttonLabelled(wrapper, 'Sign in').trigger('click')
+
+      expect(login.openLogin, 'pressing sign in should ask the header for the sign in dialog').toHaveBeenCalledTimes(1)
+    })
+
+    it('offers no sign in button for an ordinary stream failure', async () => {
+      session.client = ref({ auth: { me: vi.fn(() => Promise.reject(new Error('Network Error'))) }, console: { execute: vi.fn() } })
+      await mountView()
+      FakeEventSource.instances[0].onerror(new Event('error'))
+      await flushPromises()
+
+      expect(buttonLabelled(wrapper, 'Sign in'), 'a server that cannot be reached is not an expired session').toBeUndefined()
     })
   })
 })

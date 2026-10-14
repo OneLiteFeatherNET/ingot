@@ -35,7 +35,7 @@ const command = ref("")
 const status = ref('idle')
 const failure = ref(null)
 // Set when the session check answers 401 after the stream failed. The reader can fix that
-// from the menu, which a generic "stream closed" message would never tell them.
+// with the sign in button, which a generic "stream closed" message would never tell them.
 const sessionExpired = ref(false)
 
 /*
@@ -116,7 +116,7 @@ export default function useConsole() {
       .catch(error => {
         if (error?.response?.status !== 401 || status.value !== 'error') return
         sessionExpired.value = true
-        failure.value = 'Your session has expired. Sign in again from the menu, then reconnect.'
+        failure.value = 'Your session has expired. Sign in again, then reconnect.'
       })
 
   const connect = (token) => {
