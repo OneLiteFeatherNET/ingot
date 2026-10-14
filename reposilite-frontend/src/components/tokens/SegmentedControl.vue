@@ -25,10 +25,11 @@ defineProps({
 </script>
 
 <template>
+  <!-- An MD3 segmented button: one outlined track, each segment a toggle. -->
   <div
     role="group"
     :aria-label="label"
-    class="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-gray-700"
+    class="inline-flex overflow-hidden rounded-corner-full border border-outline"
   >
     <slot />
   </div>
