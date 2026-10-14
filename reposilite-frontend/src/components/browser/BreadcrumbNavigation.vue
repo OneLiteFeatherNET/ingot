@@ -72,6 +72,7 @@ const breadcrumbs = computed(() => {
     </ol>
     <router-link
       :to="parentPath"
+      aria-label="Parent directory"
       class="md-state-layer md-focus-ring ml-1 inline-flex size-12 items-center justify-center rounded-corner-full text-on-surface-variant"
     >
       <BrowserIcon name="arrowUp" />
