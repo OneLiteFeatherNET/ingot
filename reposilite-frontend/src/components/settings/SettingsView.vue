@@ -17,11 +17,11 @@
 <script setup>
 import {computed, provide, watch} from 'vue'
 import {JsonForms} from '@jsonforms/vue'
-import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
 import { useConfiguration } from '../../store/configuration'
 import download from 'downloadjs'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
+import SettingsTabs from './SettingsTabs.vue'
 import { property } from '../../helpers/vue-extensions'
 
 const props = defineProps({
@@ -47,6 +47,8 @@ const {
  * renderer below this component takes its class names from here.
  */
 provide('styles', configurationStyles)
+
+const domainTabs = computed(() => domains.value.map(domain => ({ key: domain, label: store.titleOf(domain) })))
 
 const namesOf = (domains) => domains.map(domain => store.titleOf(domain)).join(', ')
 const invalidNames = computed(() => namesOf(invalidDomains.value))
@@ -135,34 +137,29 @@ const formsConfiguration = {
       {{ loadError }}
     </p>
 
-    <Tabs v-model="selectedDomain">
-      <Tab
-        v-for="domain in domains"
-        :key="`config:${domain}`"
-        class="item"
-        :val="domain"
-        :label="schemas[domain]?.title"
-        :indicator="true"
+    <SettingsTabs
+      v-model="selectedDomain"
+      label="Configuration domains"
+      variant="primary"
+      :tabs="domainTabs"
+    />
+    <div
+      v-for="domain in domains"
+      v-show="domain === selectedDomain"
+      :key="`config_tab:${domain}`"
+      role="tabpanel"
+      class="mt-6 rounded-corner-large border border-outline-variant bg-surface-container-low p-4 md:p-6"
+    >
+      <JsonForms
+        v-if="configurations[domain]"
+        :config="formsConfiguration"
+        :data="configurations[domain]"
+        :schema="schemas[domain]"
+        :renderers="renderers"
+        :ajv="store.configurationValidator"
+        @change="onFormChange(domain, $event)"
       />
-    </Tabs>
-    <TabPanels v-model="selectedDomain">
-      <TabPanel
-        v-for="domain in domains"
-        :key="`config_tab:${domain}`"
-        :val="domain"
-        class="rounded-corner-large border border-outline-variant bg-surface-container-low p-4 md:p-6"
-      >
-        <JsonForms
-          v-if="configurations[domain]"
-          :config="formsConfiguration"
-          :data="configurations[domain]"
-          :schema="schemas[domain]"
-          :renderers="renderers"
-          :ajv="store.configurationValidator"
-          @change="onFormChange(domain, $event)"
-        />
-      </TabPanel>
-    </TabPanels>
+    </div>
 
     <div class="sticky bottom-0 z-10 mt-6 flex flex-col gap-3 border-t border-outline-variant bg-surface-container px-6 py-3 md:flex-row md:items-center md:justify-between">
       <p
@@ -213,31 +210,6 @@ const formsConfiguration = {
 </template>
 
 <!--suppress CssInvalidAtRule -->
-<style scoped>
-@reference "../../style.css";
-/*
- * The tabs are vue3-tabs markup, which takes no class names from the styles object. The
- * rules stay here, under .settings-view, so they reach nothing outside this view.
- */
-.settings-view :deep(.tabs) {
-  @apply flex gap-1 border-b border-outline-variant overflow-x-auto;
-}
-.settings-view :deep(.item) {
-  @apply cursor-pointer px-4 py-3 md-label-large text-on-surface-variant;
-  @apply transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard;
-  border-top-left-radius: var(--md-sys-shape-corner-small);
-  border-top-right-radius: var(--md-sys-shape-corner-small);
-}
-.settings-view :deep(.item.active) {
-  @apply text-primary;
-  box-shadow: inset 0 -3px 0 0 var(--md-sys-color-primary);
-}
-.settings-view :deep(.item:hover) {
-  @apply text-on-surface;
-}
-</style>
-
-<!--suppress CssInvalidAtRule -->
 <style>
 @reference "../../style.css";
 /*
@@ -273,8 +245,4 @@ const formsConfiguration = {
   @apply bg-surface-container text-on-surface-variant;
 }
 
-/* vue3-tabs nests panels for the array and one-of renderers; each level needs a little air above it. */
-.settings-view .tab-panel .tab-panel {
-  @apply pt-4;
-}
 </style>
