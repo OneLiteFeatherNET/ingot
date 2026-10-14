@@ -247,12 +247,12 @@ const configurationStyles = mergeStyles(defaultStyles, {
     /* Spelled out because the defaults leave this one unset, unlike every other key here. */
     description: 'description md-body-small text-on-surface-variant',
     noData: 'md-body-medium p-4 rounded-corner-medium bg-surface-container text-on-surface-variant',
-    itemToolbar: 'flex flex-row items-center relative',
+    itemToolbar: 'flex flex-row items-center justify-end min-h-12',
     itemLabel: 'mr-auto hidden',
     /* The tab bar already moves entries around, so the two arrows stay out of the way. */
     itemMoveUp: 'hidden p-2',
     itemMoveDown: 'hidden p-2',
-    itemDelete: 'absolute right-0 top-2 p-2 text-error'
+    itemDelete: 'shrink-0'
   },
   oneOf: {
     root: 'one-of-container flex flex-col gap-4'
