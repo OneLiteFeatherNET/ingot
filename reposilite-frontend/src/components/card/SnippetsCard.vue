@@ -15,9 +15,9 @@
   -->
 
 <script setup>
-import { ref, watch, watchEffect } from 'vue'
-import { useClipboard } from '@vueuse/core'
+import { onBeforeUnmount, ref, watch, watchEffect } from 'vue'
 import { useSession } from '../../store/session'
+import { copyToClipboard, selectText } from './copySnippet'
 import useRepository from '../../store/maven/repository'
 import useMetadata from '../../store/maven/metadata'
 import MdCard from '../md/MdCard.vue'
@@ -46,7 +46,6 @@ const loading = ref(false)
 const { createRepositories } = useRepository()
 const { parseMetadata } = useMetadata()
 const { client } = useSession()
-const { copy: copyText, isSupported: isCopySupported } = useClipboard()
 
 const displayRepository = () => {
   title.value = 'Repository details'
@@ -112,17 +111,31 @@ watch(selectedTab, (to, from) => {
 })
 
 const snippetRef = ref()
-const copied = ref(false)
+const codeBlock = ref()
+
+// '' (nothing yet), 'copied' or 'selected'. Shown as a status line next to the copy action.
+const copyState = ref('')
+let resetCopyState
 
 const copy = async () => {
-  if (copied.value) return
-  let snippet = snippetRef.value[0].content.trim()
-  await copyText(snippet)
-  copied.value = true
-  setTimeout(() => {
-    copied.value = false
-  }, 2000)
+  if (copyState.value === 'copied') return
+
+  const snippet = snippetRef.value?.[0]?.content?.trim() ?? ''
+  if (await copyToClipboard(snippet, navigator.clipboard)) {
+    copyState.value = 'copied'
+    clearTimeout(resetCopyState)
+    resetCopyState = setTimeout(() => {
+      copyState.value = ''
+    }, 2000)
+    return
+  }
+
+  // No clipboard here: select the snippet so the keyboard shortcut finishes the job.
+  selectText(codeBlock.value)
+  copyState.value = 'selected'
 }
+
+onBeforeUnmount(() => clearTimeout(resetCopyState))
 
 const selectTab = (tab) =>
   selectedTab.value = tab
@@ -161,21 +174,25 @@ const selectTab = (tab) =>
             class="relative"
           >
             <div
-              v-if="isCopySupported && !loading"
+              v-if="!loading"
               class="absolute top-2 right-2 z-10 flex items-center gap-1"
             >
               <span
-                v-if="copied"
+                v-if="copyState === 'copied'"
+                role="status"
                 class="md-label-medium text-success"
               >Copied</span>
               <MdIconButton
                 aria-label="Copy snippet"
                 @click="copy"
               >
-                <BrowserIcon :name="copied ? 'check' : 'copy'" />
+                <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
               </MdIconButton>
             </div>
-            <div class="card-editor overflow-auto font-mono text-ssm h-29 relative py-3 px-4 rounded-corner-medium bg-surface-container-highest text-on-surface">
+            <div
+              ref="codeBlock"
+              class="card-editor overflow-auto font-mono text-ssm h-29 relative py-3 px-4 rounded-corner-medium bg-surface-container-highest text-on-surface"
+            >
               <div
                 v-if="loading"
                 class="skeleton-bars space-y-2.5 pt-1"
@@ -219,6 +236,13 @@ const selectTab = (tab) =>
                 </template>
               </template>
             </div>
+            <p
+              v-if="copyState === 'selected'"
+              role="status"
+              class="mt-2 md-body-small text-on-surface-variant"
+            >
+              Copying is not available here. The snippet is selected: press Ctrl+C (Cmd+C on macOS) to copy it.
+            </p>
           </div>
         </transition>
       </div>
