@@ -14,22 +14,34 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
+import download from 'downloadjs'
 import FileList from './FileList.vue'
 import { useAdjustments } from '../../store/adjustments'
+import { sessionState } from '../../store/session'
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ path: '/releases/net/example' })
 }))
 
+vi.mock('downloadjs', () => ({
+  default: vi.fn()
+}))
+
+// The session is replaced per file. Each test sets the client and the token it needs.
 vi.mock('../../store/session', async () => {
   const { ref } = await import('vue')
+  const state = {
+    client: ref(null),
+    token: ref({ name: '', secret: '' })
+  }
   return {
+    sessionState: state,
     useSession: () => ({
-      client: ref(null),
+      client: state.client,
       hasPermissionTo: () => false,
-      token: ref({ name: '', secret: '' })
+      token: state.token
     })
   }
 })
@@ -93,5 +105,84 @@ describe('FileList empty state', () => {
     const wrapper = mountList({ loading: true, files: { list: [], error: false } })
 
     expect(wrapper.text(), 'a loading listing is not empty').not.toContain('Directory is empty')
+  })
+})
+
+const signedInAs = (name, secret) => {
+  sessionState.token.value = { name, secret }
+}
+
+// A download that stays pending until the test settles it.
+const pendingDownload = () => {
+  let settle
+  const promise = new Promise((resolve, reject) => {
+    settle = { resolve, reject }
+  })
+  return { promise, settle }
+}
+
+const fileLink = (wrapper) =>
+  wrapper.find('a[href$="example-1.0.jar"]')
+
+describe('FileList downloads', () => {
+  let wrapper
+
+  beforeEach(() => {
+    vi.mocked(download).mockClear()
+    sessionState.token.value = { name: '', secret: '' }
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('lets anonymous visitors follow the file link directly', () => {
+    const maven = { download: vi.fn(() => new Promise(() => {})) }
+    sessionState.client.value = { maven }
+    wrapper = mountList({ files: { list: [jar], error: false } })
+
+    fileLink(wrapper).trigger('click')
+
+    expect(maven.download, 'no request is made by the page, the browser follows the link').not.toHaveBeenCalled()
+    expect(fileLink(wrapper).attributes('href'), 'the link points at the file').toContain('example-1.0.jar')
+  })
+
+  it('downloads through the client for signed-in visitors', async () => {
+    const maven = { download: vi.fn(() => Promise.resolve({ data: 'bytes', headers: {} })) }
+    sessionState.client.value = { maven }
+    signedInAs('me', 'secret')
+    wrapper = mountList({ files: { list: [jar], error: false } })
+
+    fileLink(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(maven.download, 'the request carries the signed-in credentials').toHaveBeenCalledWith('releases/net/example/example-1.0.jar')
+    expect(download, 'the bytes are saved under the file name').toHaveBeenCalledWith('bytes', 'example-1.0.jar', undefined)
+  })
+
+  it('shows progress on the row while a signed-in download runs', async () => {
+    const pending = pendingDownload()
+    sessionState.client.value = { maven: { download: () => pending.promise } }
+    signedInAs('me', 'secret')
+    wrapper = mountList({ files: { list: [jar], error: false } })
+
+    fileLink(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="progressbar"]').exists(), 'the row reports that it is downloading').toBe(true)
+  })
+
+  it('removes the progress once the download has finished', async () => {
+    const pending = pendingDownload()
+    sessionState.client.value = { maven: { download: () => pending.promise } }
+    signedInAs('me', 'secret')
+    wrapper = mountList({ files: { list: [jar], error: false } })
+
+    fileLink(wrapper).trigger('click')
+    pending.settle.resolve({ data: 'bytes', headers: {} })
+    await flushPromises()
+
+    expect(wrapper.find('[role="progressbar"]').exists(), 'a finished download leaves no progress behind').toBe(false)
   })
 })

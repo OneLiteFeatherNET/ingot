@@ -21,6 +21,7 @@ import usePlaceholders from '../../store/placeholders'
 import { createURL } from '../../store/client'
 import { property } from '../../helpers/vue-extensions'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdLinearProgress from '../md/MdLinearProgress.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { describeEntry } from './entryMeta'
 
@@ -35,7 +36,9 @@ const props = defineProps({
   url: property(String, false),
   to: property(String, false),
   openDeleteEntryModal: property(Function, true),
-  compactMode: property(Boolean, true)
+  compactMode: property(Boolean, true),
+  signedIn: property(Boolean, false),
+  busy: property(Boolean, false)
 })
 
 const emit = defineEmits(['download'])
@@ -69,7 +72,13 @@ const canOpenJavadocs = computed(() =>
   javadocSuffixes.some(suffix => props.file.name.endsWith(suffix)) && getJavaDocsUrl() != null
 )
 
+// Anonymous visitors follow the link and the browser saves the file. A signed-in request has
+// to carry the token, which a link cannot send, so the page fetches the file itself.
 const onFileClick = (event) => {
+  if (!props.signedIn) {
+    return
+  }
+
   event.preventDefault()
   emit('download', props.file)
 }
@@ -79,6 +88,7 @@ const onFileClick = (event) => {
   <li
     class="md-state-layer group relative flex items-center gap-4 rounded-corner-medium transition-colors"
     :class="compactMode ? 'min-h-12 px-3' : 'min-h-16 px-4 py-2'"
+    :aria-busy="busy ? 'true' : undefined"
   >
     <router-link
       v-if="isDirectory"
@@ -115,6 +125,12 @@ const onFileClick = (event) => {
           v-if="!compactMode && meta"
           class="md-body-medium text-on-surface-variant"
         >{{ meta }}</span>
+        <MdLinearProgress
+          v-if="busy"
+          indeterminate
+          :label="`Downloading ${file.name}`"
+          class="mt-2"
+        />
       </span>
     </a>
 

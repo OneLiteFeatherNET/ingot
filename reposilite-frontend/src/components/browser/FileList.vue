@@ -25,7 +25,7 @@ import DeleteEntryModal from './DeleteEntryModal.vue'
 import { useAdjustments } from '../../store/adjustments'
 import MdButton from '../md/MdButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { property } from '../../helpers/vue-extensions'
 
 const props = defineProps({
@@ -94,12 +94,24 @@ const displayedEntries = computed(() =>
 )
 
 const route = useRoute()
-const { client } = useSession()
+const { client, token } = useSession()
+
+// Only a signed-in request needs the page to fetch the file; anonymous links go straight to it.
+const signedIn = computed(() => Boolean(token.value.name && token.value.secret))
+
+// Names of the files being fetched right now, so their rows can show progress.
+const downloading = reactive({})
+// A property read, not Object.hasOwn: only reads through the proxy register for re-rendering.
+const isDownloading = (file) => downloading[file.name] === true
 
 const downloadHandler = (file) => {
+  downloading[file.name] = true
   client.value.maven.download(route.path.substring(1) + '/' + file.name)
     .then(response => download(response.data, file.name, response.headers['content-type']))
     .catch(error => createErrorToast(`Cannot download file: ${errorMessage(error)}`))
+    .finally(() => {
+      delete downloading[file.name]
+    })
 }
 
 const deleteModalValue = ref()
@@ -156,6 +168,8 @@ const entryUrl = (file) =>
           :url="entryUrl(entry)"
           :open-delete-entry-modal="openDeleteModal"
           :compact-mode="compactMode"
+          :signed-in="signedIn"
+          :busy="isDownloading(entry)"
           @download="downloadHandler"
         />
       </template>
