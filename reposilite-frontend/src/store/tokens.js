@@ -18,9 +18,6 @@ import { ref } from 'vue'
 import { useSession } from './session'
 import { createSuccessToast, createErrorToast, errorMessage } from '../helpers/toast'
 
-const { client } = useSession()
-const tokens = ref([])
-
 const tokenIsManager = (token) =>
   (token.permissions || []).some(permission => permission.identifier === 'access-token:manager')
 
@@ -45,64 +42,137 @@ const toMs = (value) =>
     : typeof value === 'number' ? (value < 1e12 ? value * 1000 : value)
     : new Date(value).getTime()
 
-const toUpdateRequest = (token) => ({
-  description: token.description || '',
-  permissions: tokenIsManager(token) ? ['access-token:manager'] : [],
-  routes: groupedToRequestRoutes(groupRoutes(token)),
-  expiresAt: token.expiresAt ? new Date(toMs(token.expiresAt)).toISOString() : null,
-})
-
-const fetchTokens = () =>
-  client.value.tokens.list()
-    .then(response => { tokens.value = response.data })
-    .catch(error => createErrorToast(errorMessage(error)))
-
-const createToken = (name, { type, description = '' }) =>
-  client.value.tokens.createOrUpdate(name, {
-    type, secretType: 'RAW', secret: null, description, permissions: [], routes: [], expiresAt: null,
-  })
-    .then(response => fetchTokens().then(() => response.data))
-
-const saveToken = (token, overrides, successMessage) =>
-  client.value.tokens.update(token.name, { ...toUpdateRequest(token), ...overrides })
-    .then(() => fetchTokens())
-    .then(() => { createSuccessToast(successMessage); return true })
-    .catch(error => { createErrorToast(errorMessage(error)); return false })
-
-const saveTokenMeta = (token, { description, manager, expiresAt }) =>
-  saveToken(token, {
-    description: description.trim(),
-    permissions: manager ? ['access-token:manager'] : [],
-    expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-  }, `Token '${token.name}' updated`)
-
-const saveRoute = (token, route, originalPath) => {
-  const replaced = new Set([route.path, originalPath].filter(Boolean))
-  return saveToken(token, {
-    routes: groupedToRequestRoutes([
-      ...groupRoutes(token).filter(existing => !replaced.has(existing.path)),
-      route,
-    ]),
-  }, `Route '${route.path}' saved`)
+/** Trims a route path and makes sure it starts with a slash. A blank path stays blank. */
+export const normalizeRoutePath = (path) => {
+  const trimmed = (path || '').trim()
+  if (trimmed === '') return ''
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
 }
 
-const removeRoute = (token, path) =>
-  saveToken(token, {
-    routes: groupedToRequestRoutes(groupRoutes(token).filter(route => route.path !== path)),
-  }, `Route '${path}' removed`)
+/**
+ * Checks the route draft against the routes the token already has. The route being edited is
+ * passed as `original` and is not counted as a conflict with itself.
+ *
+ * @returns {{ path: string, error: null | 'empty' | 'duplicate', existing?: object }}
+ */
+export const checkRouteDraft = (token, draft) => {
+  const path = normalizeRoutePath(draft.path)
+  if (path === '') return { path, error: 'empty' }
+  const originalPath = draft.original ? normalizeRoutePath(draft.original) : null
+  const existing = groupRoutes(token).find(route =>
+    normalizeRoutePath(route.path) === path && normalizeRoutePath(route.path) !== originalPath)
+  if (existing) return { path, error: 'duplicate', existing }
+  return { path, error: null }
+}
 
-const deleteToken = (name) =>
-  client.value.tokens.delete(name)
-    .then(() => fetchTokens())
-    .then(() => createSuccessToast(`Token '${name}' has been deleted`))
-    .catch(error => createErrorToast(errorMessage(error)))
+/** @returns {null | 'empty' | 'invalid' | 'duplicate'} */
+export const validateTokenName = (name, existingTokens) => {
+  const trimmed = (name || '').trim()
+  if (trimmed === '') return 'empty'
+  if (/[:/]/.test(trimmed)) return 'invalid'
+  if (existingTokens.some(token => token.name === trimmed)) return 'duplicate'
+  return null
+}
 
-const regenerateSecret = (name) =>
-  client.value.tokens.regenerateSecret(name).then(response => response.data)
+/** Compares a draft with the values it started from. Any differing key makes it dirty. */
+export const isDraftDirty = (draft, baseline) =>
+  Object.keys({ ...baseline, ...draft }).some(key => draft[key] !== baseline[key])
 
-export function useTokens() {
+const defaultNotify = {
+  success: createSuccessToast,
+  error: createErrorToast
+}
+
+/**
+ * Creates an independent token store. The dashboard shares one through `useTokens`; tests
+ * create their own so that no state carries over between them.
+ */
+export function createTokenStore({ getClient, notify = defaultNotify }) {
+  const tokens = ref([])
+  const loaded = ref(false)
+  const loading = ref(false)
+  const loadError = ref('')
+  const secret = ref(null)
+
+  const fetchTokens = () => {
+    loading.value = true
+    loadError.value = ''
+    return getClient().tokens.list()
+      .then(response => {
+        tokens.value = response.data
+        loaded.value = true
+      })
+      .catch(error => { loadError.value = errorMessage(error) })
+      .finally(() => { loading.value = false })
+  }
+
+  const showSecret = (name, value) => { secret.value = { name, value } }
+  const dismissSecret = () => { secret.value = null }
+
+  const createToken = (name, { type, description = '' }) =>
+    getClient().tokens.createOrUpdate(name, {
+      type, secretType: 'RAW', secret: null, description, permissions: [], routes: [], expiresAt: null,
+    })
+      .then(response => fetchTokens().then(() => {
+        showSecret(name, response.data.secret)
+        return response.data
+      }))
+
+  const toUpdateRequest = (token) => ({
+    description: token.description || '',
+    permissions: tokenIsManager(token) ? ['access-token:manager'] : [],
+    routes: groupedToRequestRoutes(groupRoutes(token)),
+    expiresAt: token.expiresAt ? new Date(toMs(token.expiresAt)).toISOString() : null,
+  })
+
+  const saveToken = (token, overrides, successMessage) =>
+    getClient().tokens.update(token.name, { ...toUpdateRequest(token), ...overrides })
+      .then(() => fetchTokens())
+      .then(() => { notify.success(successMessage); return true })
+      .catch(error => { notify.error(errorMessage(error)); return false })
+
+  const saveTokenMeta = (token, { description, manager, expiresAt }) =>
+    saveToken(token, {
+      description: description.trim(),
+      permissions: manager ? ['access-token:manager'] : [],
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+    }, `Token '${token.name}' updated`)
+
+  const saveRoute = (token, route, originalPath) => {
+    const replaced = new Set([route.path, originalPath].filter(Boolean))
+    return saveToken(token, {
+      routes: groupedToRequestRoutes([
+        ...groupRoutes(token).filter(existing => !replaced.has(existing.path)),
+        route,
+      ]),
+    }, `Route '${route.path}' saved`)
+  }
+
+  const removeRoute = (token, path) =>
+    saveToken(token, {
+      routes: groupedToRequestRoutes(groupRoutes(token).filter(route => route.path !== path)),
+    }, `Route '${path}' removed`)
+
+  const deleteToken = (name) =>
+    getClient().tokens.delete(name)
+      .then(() => fetchTokens())
+      .then(() => notify.success(`Token '${name}' has been deleted`))
+      .catch(error => notify.error(errorMessage(error)))
+
+  const regenerateSecret = (name) =>
+    getClient().tokens.regenerateSecret(name)
+      .then(response => {
+        showSecret(name, response.data)
+        return response.data
+      })
+
   return {
     tokens,
+    loaded,
+    loading,
+    loadError,
+    secret,
+    dismissSecret,
     fetchTokens,
     createToken,
     saveTokenMeta,
@@ -115,4 +185,13 @@ export function useTokens() {
     toMs,
     errorMessage
   }
+}
+
+const { client } = useSession()
+let shared = null
+
+/** The token store the dashboard shares between views. */
+export function useTokens() {
+  shared ??= createTokenStore({ getClient: () => client.value })
+  return shared
 }
