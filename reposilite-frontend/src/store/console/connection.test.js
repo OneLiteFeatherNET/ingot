@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 
 // The store reads the session for its client and token at import time, and it talks to the
 // stream through EventSource. Both are replaced so the test runs without a server, a token
@@ -28,11 +29,36 @@ vi.mock('../../helpers/toast', () => ({
   errorMessage: (error) => error.message
 }))
 
+// A stream that never leaves the test: the test reads what the store attached to it and
+// fires the events itself, so nothing waits on a socket.
+const { FakeEventSource } = vi.hoisted(() => {
+  class FakeEventSource {
+    constructor(url, options) {
+      this.url = url
+      this.options = options
+      this.listeners = new Map()
+      FakeEventSource.instances.push(this)
+    }
+
+    addEventListener(type, handler) {
+      this.listeners.set(type, handler)
+    }
+
+    close() {
+      this.closed = true
+    }
+  }
+  FakeEventSource.instances = []
+  return { FakeEventSource }
+})
+vi.mock('extended-eventsource', () => ({ EventSource: FakeEventSource }))
+
 describe('useConsole', () => {
   beforeEach(() => {
     // Every test imports the store afresh, so the command history and the other module-scope
     // state of one test cannot leak into the next one, whatever order they run in.
     vi.resetModules()
+    FakeEventSource.instances.length = 0
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
@@ -68,6 +94,44 @@ describe('useConsole', () => {
       afterRemount.previousCommand()
 
       expect(afterRemount.command.value, 'the arrow key should still recall the command sent before the remount').toBe('list')
+    })
+  })
+
+  describe('stream failure', () => {
+    const streamWithProbe = (probe) => {
+      session.client = ref({ auth: { me: probe }, console: { execute: vi.fn() } })
+    }
+
+    const failStream = async (useConsole) => {
+      const store = useConsole()
+      store.connect({ name: 'ops', secret: 'secret' })
+      FakeEventSource.instances[0].onerror(new Event('error'))
+      await flushPromises()
+      return store
+    }
+
+    it('says the session expired when the stream fails and the session check answers 401', async () => {
+      const probe = vi.fn(() => Promise.reject(Object.assign(new Error('Unauthorized'), { response: { status: 401 } })))
+      streamWithProbe(probe)
+      const { default: useConsole } = await import('./connection')
+
+      const { failure, sessionExpired } = await failStream(useConsole)
+
+      expect(probe, 'the failure should be checked against the session, not guessed').toHaveBeenCalledTimes(1)
+      expect(sessionExpired.value, 'a 401 from the session check means the session expired').toBe(true)
+      expect(failure.value, 'the reader should be told the session expired, not that the stream closed').toContain('session has expired')
+    })
+
+    it('keeps the generic failure when the session check cannot reach the server', async () => {
+      streamWithProbe(vi.fn(() => Promise.reject(new Error('Network Error'))))
+      const { default: useConsole } = await import('./connection')
+
+      const { failure, sessionExpired } = await failStream(useConsole)
+
+      expect(sessionExpired.value, 'an unreachable server is not an expired session').toBe(false)
+      expect(failure.value, 'without a 401 the message must not blame the session').toBe(
+        'The server closed the stream or could not be reached.'
+      )
     })
   })
 })
