@@ -98,6 +98,30 @@ describe('ConsoleView', () => {
     expect(output, 'the gap in the stream should be marked in the log').toContain('Reconnected')
   })
 
+  describe('empty output', () => {
+    it('says the first line is awaited while nothing has been printed', async () => {
+      await mountView()
+      FakeEventSource.instances[0].onopen()
+      await flushPromises()
+
+      expect(wrapper.text(), 'an open console with no output yet should say it is waiting').toContain('Waiting for the first log line')
+    })
+
+    it('says no line matches the filter instead of waiting for a first line', async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      emitLine(stream, 'hello')
+      await flushPromises()
+
+      await wrapper.find('input').setValue('zzz')
+      await flushPromises()
+
+      expect(wrapper.text(), 'a filter that hides everything should say so').toContain('No lines match the filter')
+      expect(wrapper.text(), 'lines have arrived, so the view must not claim to be waiting for one').not.toContain('Waiting for the first log line')
+    })
+  })
+
   describe('following the output', () => {
     // jsdom has no layout, so the panel's geometry is set by hand and its scroll position is
     // a plain value the view can read and write.

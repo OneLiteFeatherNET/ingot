@@ -88,7 +88,12 @@ onBeforeUnmount(close)
 
 const connecting = computed(() => status.value === 'connecting')
 const disconnected = computed(() => status.value === 'error' || status.value === 'closed')
-const awaitingFirstLine = computed(() => status.value === 'open' && log.value.length === 0)
+// Two different emptinesses. Nothing has been printed yet, so waiting is right. Lines have
+// arrived but the filter or the level switches hide all of them, and waiting would be wrong:
+// the output exists, it is just not on show.
+const awaitingFirstLine = computed(() => status.value === 'open' && !hasLines.value)
+const noLinesMatch = computed(() =>
+  status.value === 'open' && hasLines.value && !log.value.some(entry => entry.kind !== 'separator'))
 
 const announcement = computed(() => {
   switch (status.value) {
@@ -243,6 +248,13 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
             class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
           >
             Connected. Waiting for the first log line.
+          </p>
+
+          <p
+            v-else-if="noLinesMatch"
+            class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
+          >
+            No lines match the filter. Clear the filter or switch a level back on to see the output.
           </p>
         </div>
 
