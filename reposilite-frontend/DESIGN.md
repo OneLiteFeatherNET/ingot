@@ -262,15 +262,26 @@ one.
 
 Callers do not use the component directly. They use the helpers in `src/helpers/toast.js`:
 
-- `createSuccessToast(message)`, `createInfoToast(message)`: leave by themselves after
-  about 4 seconds
-- `createWarningToast(message)`, `createErrorToast(message)`: stay until the user dismisses
-  them, because they ask for a decision or a fix
+- `createSuccessToast(message)`, `createInfoToast(message)`: leave by themselves after 4
+  seconds
+- `createWarningToast(message)`: leaves after 6 seconds
+- `createErrorToast(message)`: leaves after 10 seconds
 - `errorMessage(error)`: the readable text of a failed request
+
+Every notice leaves by itself, so a persistent failure cannot hold up the notices behind it.
+A notice with an action stays until it is dismissed or the action is taken.
 
 Each helper also takes `{ action: { label, onClick }, duration }` as its second argument.
 The action runs its callback and then dismisses the notice. `duration` overrides the default
 for the tone, and `null` keeps the notice until it is dismissed.
+
+Queue rules:
+
+- One notice is visible at a time. The waiting line holds at most three notices. When it is
+  full, the oldest waiting non-error notice is dropped. Errors are never dropped, so the line
+  can grow past three when it holds only errors.
+- A notice identical to the visible one (same text and tone) restarts its timer and is not
+  added again. A notice identical to the last waiting one is not queued twice.
 
 Visuals: `bg-inverse-surface` with `text-inverse-on-surface`, `md-body-medium`, the
 `rounded-corner-extra-small` corner and `shadow-elevation-3`. The action label is

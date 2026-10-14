@@ -20,17 +20,26 @@ import { computed, ref } from 'vue'
  * The queue behind MdSnackbar. Only the head of the queue is shown, so a burst of
  * notifications becomes a sequence instead of a stack that covers the page.
  *
- * Success and info notices leave on their own after a few seconds. Warnings and errors stay
- * until the user dismisses them, because they describe something the user has to act on.
- * A caller can override the duration; `null` means "stay until dismissed".
+ * Every notice leaves on its own, so that a persistent failure cannot block the queue behind
+ * it: success and info after 4 seconds, warnings after 6, errors after 10. A notice with an
+ * action stays until it is dismissed or the action is taken. A caller can override the
+ * duration; `null` means "stay until dismissed".
+ *
+ * Repeats are collapsed: a notice identical to the visible one restarts its timer, and one
+ * identical to the last queued notice is not queued again. The waiting line holds at most
+ * three notices. When it is full, the oldest waiting non-error notice is dropped; errors are
+ * never dropped.
  *
  * The timers are injected so that a test can drive them explicitly. The default uses the
  * global timer functions, which `vi.useFakeTimers()` replaces.
  */
 
 export const AUTO_DISMISS_MS = 4000
+export const MAX_WAITING = 3
 
-const defaultDuration = (tone) => (tone === 'success' || tone === 'info' ? AUTO_DISMISS_MS : null)
+const DURATION_MS = { success: 4000, info: 4000, warning: 6000, error: 10000 }
+
+const defaultDuration = (tone, action) => (action ? null : DURATION_MS[tone] ?? DURATION_MS.info)
 
 const systemTimers = {
   setTimeout: (callback, ms) => globalThis.setTimeout(callback, ms),
@@ -69,16 +78,38 @@ export function createSnackbarQueue({ timers = systemTimers } = {}) {
    * on screen, otherwise after the notices ahead of it have been dismissed.
    */
   function enqueue({ message, tone = 'info', action = null, duration }) {
+    const last = entries.value[entries.value.length - 1]
+    if (last && last.message === message && last.tone === tone) {
+      // A repeat of the notice on screen gets a fresh timer; a repeat of a waiting notice is
+      // already queued and says the same thing, so it is not queued again.
+      if (entries.value.length === 1) {
+        cancelTimer(last.id)
+        startTimer(last)
+      }
+      return last.id
+    }
+
     const entry = {
       id: nextId++,
       message,
       tone,
       action,
-      duration: duration === undefined ? defaultDuration(tone) : duration
+      duration: duration === undefined ? defaultDuration(tone, action) : duration
     }
     entries.value = [...entries.value, entry]
     if (entries.value.length === 1) startTimer(entry)
+    dropOverflow()
     return entry.id
+  }
+
+  // Keeps the waiting line within MAX_WAITING by removing the oldest non-error notice. Errors
+  // are never removed, so the line can exceed the limit when it holds only errors.
+  function dropOverflow() {
+    while (entries.value.length - 1 > MAX_WAITING) {
+      const oldest = entries.value.slice(1).find(entry => entry.tone !== 'error')
+      if (!oldest) return
+      entries.value = entries.value.filter(entry => entry !== oldest)
+    }
   }
 
   // Runs the action of a notice, then dismisses it. Dismissal happens even when the

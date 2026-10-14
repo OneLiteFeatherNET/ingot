@@ -67,7 +67,7 @@ describe('toast helpers', () => {
     toast.createErrorToast('Cannot load statistics')
     toast.createSuccessToast('Configuration loaded')
 
-    vi.advanceTimersByTime(60000)
+    vi.advanceTimersByTime(9999)
 
     expect(snackbar.current.value.message, 'the error must still be the one on screen').toBe('Cannot load statistics')
     expect(snackbar.entries.value.length, 'the success must still be waiting').toBe(2)
