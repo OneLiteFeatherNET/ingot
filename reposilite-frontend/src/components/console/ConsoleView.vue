@@ -19,6 +19,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
 import useLog from '../../store/console/log'
 import useConsole from '../../store/console/connection'
+import { isNearBottom } from './scroll'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdIconButton from '../md/MdIconButton.vue'
@@ -43,6 +44,19 @@ const scrollToEnd = () => {
   if (console) console.scrollTop = console.scrollHeight
 }
 
+// Whether the reader is at the end of the output. New lines are only pulled into view while
+// they are, so somebody reading earlier output is not dragged down by every line that arrives.
+const atBottom = ref(true)
+
+const updateFollowing = (event) => {
+  atBottom.value = isNearBottom(event.currentTarget)
+}
+
+const jumpToLatest = () => {
+  scrollToEnd()
+  atBottom.value = true
+}
+
 const setupConnection = () => {
   // A reconnect keeps what was already printed. The gap is marked rather than hidden, so the
   // reader can tell output that came before the drop from output after it.
@@ -50,8 +64,13 @@ const setupConnection = () => {
     if (hasLines.value) addSeparator('Reconnected')
   }
   onMessage.value = message => {
+    // Decided before the line lands: the scroll event for the new line has not fired yet, so
+    // the flag still says where the reader was.
+    const following = atBottom.value
     logMessage(message)
-    nextTick(() => scrollToEnd())
+    nextTick(() => {
+      if (following) scrollToEnd()
+    })
   }
   // The connection used to announce itself through three toasts, one of which landed on
   // the header while the panel below stayed an empty white rectangle. The state belongs
@@ -70,6 +89,16 @@ onBeforeUnmount(close)
 const connecting = computed(() => status.value === 'connecting')
 const disconnected = computed(() => status.value === 'error' || status.value === 'closed')
 const awaitingFirstLine = computed(() => status.value === 'open' && log.value.length === 0)
+
+const announcement = computed(() => {
+  switch (status.value) {
+    case 'connecting': return 'Connecting to the remote console.'
+    case 'open': return 'Connected to the remote console.'
+    case 'error':
+    case 'closed': return 'Not connected to the remote console.'
+    default: return ''
+  }
+})
 
 /*
  * The panel used to be 36rem tall on every screen, which overflows a laptop and leaves a
@@ -138,9 +167,19 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
       class="flex flex-col overflow-hidden rounded-corner-medium bg-surface-container-highest"
       :style="{ height: panelHeight }"
     >
+      <!--
+        The one live region in the view, and it carries the connection state only. The log
+        itself is not announced: a busy server would otherwise read out every line it prints.
+      -->
+      <p
+        class="sr-only"
+        role="status"
+      >
+        {{ announcement }}
+      </p>
+
       <div
         v-if="connecting || disconnected"
-        role="status"
         class="flex flex-wrap items-center gap-3 px-4 py-3 md-body-medium"
         :class="disconnected ? 'bg-error-container text-on-error-container' : 'bg-surface-container-high text-on-surface-variant'"
       >
@@ -167,40 +206,58 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
         </template>
       </div>
 
-      <!-- scrollToEnd() drives this element by id, so it has to stay the one that scrolls. -->
-      <div
-        id="console"
-        class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono text-xs text-on-surface"
-        aria-live="polite"
-      >
-        <template
-          v-for="entry in log"
-          :key="entry.id"
+      <div class="relative flex min-h-0 flex-1 flex-col">
+        <!-- scrollToEnd() drives this element by id, so it has to stay the one that scrolls. -->
+        <div
+          id="console"
+          role="region"
+          aria-label="Console output"
+          tabindex="0"
+          class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono text-xs text-on-surface"
+          @scroll="updateFollowing"
         >
-          <p
-            v-if="entry.kind === 'separator'"
-            class="whitespace-normal py-1 font-sans text-on-surface-variant"
+          <template
+            v-for="entry in log"
+            :key="entry.id"
           >
-            {{ entry.message }}
-          </p>
-          <p
-            v-else
-            class="whitespace-nowrap"
-            v-html="entry.message"
-          />
-        </template>
+            <p
+              v-if="entry.kind === 'separator'"
+              class="whitespace-normal py-1 font-sans text-on-surface-variant"
+            >
+              {{ entry.message }}
+            </p>
+            <p
+              v-else
+              class="whitespace-nowrap"
+              v-html="entry.message"
+            />
+          </template>
 
-        <!--
+          <!--
           whitespace-normal on each of these: the panel around them keeps pre-wrap so log
           lines survive verbatim, and without resetting it the indentation of this template
           is rendered as part of the sentence.
         -->
-        <p
-          v-if="awaitingFirstLine"
-          class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
+          <p
+            v-if="awaitingFirstLine"
+            class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
+          >
+            Connected. Waiting for the first log line.
+          </p>
+        </div>
+
+        <div
+          v-if="!atBottom"
+          class="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center"
         >
-          Connected. Waiting for the first log line.
-        </p>
+          <MdButton
+            variant="tonal"
+            class="pointer-events-auto shadow-elevation-1"
+            @click="jumpToLatest"
+          >
+            Jump to latest
+          </MdButton>
+        </div>
       </div>
 
       <div class="flex items-start gap-2 border-t border-outline-variant p-3">

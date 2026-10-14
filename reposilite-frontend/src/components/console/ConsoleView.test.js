@@ -97,4 +97,73 @@ describe('ConsoleView', () => {
     expect(output, 'lines printed before the drop must stay visible after reconnecting').toContain('hello')
     expect(output, 'the gap in the stream should be marked in the log').toContain('Reconnected')
   })
+
+  describe('following the output', () => {
+    // jsdom has no layout, so the panel's geometry is set by hand and its scroll position is
+    // a plain value the view can read and write.
+    const measurePanel = (panel, { top, height = 1000, view = 200 }) => {
+      let position = top
+      Object.defineProperty(panel, 'scrollTop', {
+        configurable: true,
+        get: () => position,
+        set: (value) => { position = value }
+      })
+      Object.defineProperty(panel, 'scrollHeight', { configurable: true, value: height })
+      Object.defineProperty(panel, 'clientHeight', { configurable: true, value: view })
+      panel.dispatchEvent(new Event('scroll'))
+    }
+
+    it('keeps the reader in place when new output arrives while they have scrolled up', async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      await flushPromises()
+      const panel = wrapper.find('#console').element
+      measurePanel(panel, { top: 100 })
+
+      emitLine(stream, 'hello')
+      await flushPromises()
+
+      expect(panel.scrollTop, 'a reader reading earlier output must not be pulled to the end').toBe(100)
+    })
+
+    it('follows new output while the reader is at the end of the panel', async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      await flushPromises()
+      const panel = wrapper.find('#console').element
+      measurePanel(panel, { top: 800 })
+
+      emitLine(stream, 'hello')
+      await flushPromises()
+
+      expect(panel.scrollTop, 'a reader at the end should keep seeing the newest line').toBe(1000)
+    })
+
+    it('offers a jump to the latest output once the reader has scrolled away from the end', async () => {
+      await mountView()
+      const panel = wrapper.find('#console').element
+      expect(buttonLabelled(wrapper, 'Jump to latest'), 'the jump should not be offered while at the end').toBeUndefined()
+
+      measurePanel(panel, { top: 100 })
+      await flushPromises()
+
+      expect(buttonLabelled(wrapper, 'Jump to latest'), 'scrolling away from the end should offer the jump').toBeDefined()
+    })
+
+    it('does not announce every log line to assistive technology', async () => {
+      await mountView()
+
+      expect(wrapper.find('#console').attributes('aria-live'), 'the whole log must not be a live region').toBeUndefined()
+    })
+
+    it('announces the connection state through a status region', async () => {
+      await mountView()
+      FakeEventSource.instances[0].onopen()
+      await flushPromises()
+
+      expect(wrapper.find('[role="status"]').text(), 'a change in the connection should be announced').toContain('Connected')
+    })
+  })
 })
