@@ -35,7 +35,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <dialog ref="dialog" class="v-native-dialog" v-bind="attrs">
+  <dialog
+    ref="dialog"
+    class="v-native-dialog"
+    v-bind="attrs"
+  >
     <slot />
   </dialog>
 </template>

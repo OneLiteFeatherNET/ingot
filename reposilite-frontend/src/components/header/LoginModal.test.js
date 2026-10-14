@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { VueFinalModal } from 'vue-final-modal'
 import LoginModal from './LoginModal.vue'
+import { openLogin } from '../../store/login'
 
 // Only the login call is replaced. The real loginFailureMessage decides the wording, so the
 // dialog is tested with the mapping the app actually uses.
@@ -68,6 +69,17 @@ describe('LoginModal', () => {
     expect(dialog(), 'the dialog must open when the trigger is pressed').not.toBeNull()
   })
 
+  it('opens when another part of the app asks for the sign in dialog', async () => {
+    // The console and other views call openLogin() when a session has expired. The dialog
+    // is opened from here, so the request does not depend on the header button.
+    expect(dialog(), 'the dialog starts closed').toBeNull()
+
+    openLogin()
+    await flushPromises()
+
+    expect(dialog(), 'a request from outside the header must open the dialog').not.toBeNull()
+  })
+
   it('names the dialog after its heading', async () => {
     await openDialog(wrapper)
 
@@ -95,7 +107,7 @@ describe('LoginModal', () => {
     expect(field('login-secret').required, 'an empty secret must be caught before the request').toBe(true)
   })
 
-  it('shows that the name or the secret is incorrect when the server rejects them', async () => {
+  const submitRejectedPair = async () => {
     session.login.mockRejectedValue(rejection(401))
     await openDialog(wrapper)
 
@@ -105,10 +117,22 @@ describe('LoginModal', () => {
     field('login-secret').dispatchEvent(new Event('input'))
     dialog().querySelector('form').dispatchEvent(new Event('submit'))
     await flushPromises()
+  }
 
-    expect(dialog().querySelector('[role="alert"]').textContent.trim(),
-      'a rejected pair must be explained in words, not as a status code')
+  it('shows that the name or the secret is incorrect when the server rejects them', async () => {
+    await submitRejectedPair()
+
+    const helper = document.getElementById(field('login-secret').getAttribute('aria-describedby'))
+    expect(helper?.textContent.trim(),
+      'a rejected pair must be explained in words, not as a status code, and linked to the field')
       .toBe('Name or secret is incorrect')
+  })
+
+  it('moves focus to the secret field after a rejected sign in so the message is read out', async () => {
+    await submitRejectedPair()
+
+    expect(document.activeElement, 'focus on the field that carries the message makes it announced')
+      .toBe(field('login-secret'))
   })
 
   it('labels the way out of the dialog as Cancel', async () => {

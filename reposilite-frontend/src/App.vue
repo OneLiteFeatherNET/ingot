@@ -42,16 +42,32 @@ initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${
 </script>
 
 <template>
-  <div v-bind:class="{ 'dark': theme.isDark }">
-    <div class="min-h-screen dark:bg-black dark:text-white">
-      <router-view 
-        class="router-view-full "
+  <div :class="{ 'dark': theme.isDark }">
+    <div class="min-h-screen bg-surface text-on-surface">
+      <router-view
+        class="router-view-full"
         :qualifier="qualifier"
       />
-      <div v-if="icpLicense || privacyPolicy" class="absolute h-8 pb-2 w-full text-center text-xs dark:bg-black dark:text-white">
-        <a v-if="icpLicense" href="https://beian.miit.gov.cn" target="_blank">{{ icpLicense }}</a>
-        <span v-if="icpLicense && privacyPolicy" class="mx-1">·</span>
-        <a v-if="privacyPolicy" :href="privacyPolicy" target="_blank">Privacy Policy</a>
+      <div
+        v-if="icpLicense || privacyPolicy"
+        class="absolute h-8 pb-2 w-full text-center md-label-medium text-on-surface-variant"
+      >
+        <a
+          v-if="icpLicense"
+          class="text-primary"
+          href="https://beian.miit.gov.cn"
+          target="_blank"
+        >{{ icpLicense }}</a>
+        <span
+          v-if="icpLicense && privacyPolicy"
+          class="mx-1"
+        >·</span>
+        <a
+          v-if="privacyPolicy"
+          class="text-primary"
+          :href="privacyPolicy"
+          target="_blank"
+        >Privacy Policy</a>
       </div>
     </div>
   </div>

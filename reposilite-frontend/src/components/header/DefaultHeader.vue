@@ -22,12 +22,18 @@ const { title } = usePlaceholders()
 </script>
 
 <template>
-  <header class="bg-gray-100 dark:bg-black dark:text-white">
-    <div class="container mx-auto flex flex-row py-10 justify-between max-sm:pb-2 max-sm:pt-5 max-sm:px-5 max-sm:justify-start">
-      <h1 class="text-xl font-medium py-1 max-sm:w-1/2">
-        <router-link :to="'/'">{{ title }}</router-link>
+  <header class="bg-surface text-on-surface">
+    <!-- The top app bar: the title on the left, the account and theme actions on the right. -->
+    <div class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2 max-sm:px-5">
+      <h1 class="md-title-large min-w-0 truncate">
+        <router-link
+          :to="'/'"
+          class="md-focus-ring rounded-corner-small text-on-surface no-underline"
+        >
+          {{ title }}
+        </router-link>
       </h1>
-      <MenuPanel class="mt-0.5"/>
+      <MenuPanel />
     </div>
     <!--
       The avatar, description and organisation link used to sit here, which put them above

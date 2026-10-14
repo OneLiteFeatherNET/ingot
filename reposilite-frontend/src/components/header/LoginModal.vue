@@ -15,21 +15,28 @@
   -->
 
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { createSuccessToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
-import CloseIcon from '../icons/CloseIcon.vue'
-import MenuButton from './MenuButton.vue'
+import { loginRequests } from '../../store/login'
+import MdButton from '../md/MdButton.vue'
+import MdTextField from '../md/MdTextField.vue'
 
 const { login, loginFailureMessage } = useSession()
 const showLogin = ref(false)
+
+// Other views ask for the dialog through openLogin(); see store/login.js.
+watch(loginRequests, () => {
+  showLogin.value = true
+})
 const name = ref('')
 const secret = ref('')
 const failure = ref(null)
 const busy = ref(false)
 
 const NAME_FIELD_ID = 'login-name'
+const SECRET_FIELD_ID = 'login-secret'
 
 const close = () => {
   showLogin.value = false
@@ -40,7 +47,8 @@ const close = () => {
 const focusName = () => document.getElementById(NAME_FIELD_ID)?.focus()
 
 // The failure belongs in the dialog, not in a toast: the form that has to be corrected is
-// right here, and a toast about it appears somewhere else entirely and then leaves.
+// right here, and a toast about it appears somewhere else entirely and then leaves. Focus
+// moves to the secret field, which carries the message, so that it is read out.
 const signin = () => {
   const user = name.value
   busy.value = true
@@ -51,104 +59,83 @@ const signin = () => {
     .then(() => close())
     .catch(error => {
       failure.value = loginFailureMessage(error)
+      return nextTick().then(() => document.getElementById(SECRET_FIELD_ID)?.focus())
     })
     .finally(() => {
       busy.value = false
     })
 }
+
+// A scrim in the role colour. The modal's own stylesheet paints the overlay in a fixed black
+// and is not layered, so the colour goes in as an inline style that wins over it.
+const overlayStyle = {
+  backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)'
+}
 </script>
 
 <template>
   <div>
-    <MenuButton @click="showLogin = true">
+    <MdButton
+      variant="tonal"
+      @click="showLogin = true"
+    >
       Sign in
-    </MenuButton>
+    </MdButton>
     <VueFinalModal
       v-model="showLogin"
-      class="flex items-center justify-center"
+      class="flex items-center justify-center p-4"
+      :overlay-style="overlayStyle"
       aria-labelledby="login-title"
       @opened="focusName"
     >
-      <div class="relative rounded-2xl border border-gray-100 bg-white px-10 py-5 shadow-xl dark:border-black dark:bg-gray-900">
+      <div class="w-96 max-w-full rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3">
         <h2
           id="login-title"
-          class="pb-4 text-center text-xl font-bold"
+          class="md-headline-small"
         >
           Sign in with access token
         </h2>
 
         <form
-          class="flex w-96 flex-col max-sm:w-65"
+          class="mt-6 flex flex-col gap-4"
           @submit.prevent="signin()"
         >
-          <label
-            for="login-name"
-            class="flex flex-col text-left text-sm"
-          >
-            <span class="pb-1 text-gray-600 dark:text-gray-300">Name</span>
-            <input
-              id="login-name"
-              v-model="name"
-              type="text"
-              autocomplete="username"
-              required
-              :aria-invalid="failure ? 'true' : undefined"
-              :aria-describedby="failure ? 'login-failure' : undefined"
-              class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+          <MdTextField
+            id="login-name"
+            v-model="name"
+            label="Name"
+            type="text"
+            autocomplete="username"
+            required
+            :error="failure !== null"
+          />
+
+          <MdTextField
+            id="login-secret"
+            v-model="secret"
+            label="Secret"
+            type="password"
+            autocomplete="current-password"
+            required
+            :error="failure !== null"
+            :error-text="failure || ''"
+          />
+
+          <div class="mt-2 flex justify-end gap-2">
+            <MdButton
+              variant="text"
+              @click="close()"
             >
-          </label>
-
-          <label
-            for="login-secret"
-            class="flex flex-col pt-3 text-left text-sm"
-          >
-            <span class="pb-1 text-gray-600 dark:text-gray-300">Secret</span>
-            <input
-              id="login-secret"
-              v-model="secret"
-              type="password"
-              autocomplete="current-password"
-              required
-              :aria-invalid="failure ? 'true' : undefined"
-              :aria-describedby="failure ? 'login-failure' : undefined"
-              class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+              Cancel
+            </MdButton>
+            <MdButton
+              type="submit"
+              :disabled="busy"
             >
-          </label>
-
-          <p
-            v-if="failure"
-            id="login-failure"
-            class="pt-3 text-left text-sm text-error"
-            role="alert"
-          >
-            {{ failure }}
-          </p>
-
-          <button
-            type="submit"
-            :disabled="busy"
-            class="mt-4 cursor-pointer rounded-md bg-primary py-2 font-medium text-on-primary hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/60"
-          >
-            {{ busy ? 'Signing in...' : 'Sign in' }}
-          </button>
-
-          <button
-            type="button"
-            class="pt-3 text-xs text-primary"
-            @click="close()"
-          >
-            Cancel
-          </button>
+              {{ busy ? 'Signing in...' : 'Sign in' }}
+            </MdButton>
+          </div>
         </form>
-
-        <button
-          type="button"
-          class="absolute top-0 right-0 mt-5 mr-5"
-          aria-label="Close the sign in dialog"
-          @click="close()"
-        >
-          <CloseIcon />
-        </button>
       </div>
     </VueFinalModal>
   </div>

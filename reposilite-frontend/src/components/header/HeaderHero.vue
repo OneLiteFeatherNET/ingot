@@ -22,18 +22,37 @@ const { description, organizationWebsite, organizationLogo } = usePlaceholders()
 </script>
 
 <template>
-  <div class="bg-gray-100 dark:bg-black">
-    <div class="container mx-auto flex flex-row max-sm:flex-col max-sm:items-center">
-      <div class="w-35 max-sm:mb-2">
-        <img class="border-2 rounded-full dark:border-gray-700" :src="organizationLogo">
-      </div>
-      <div class="flex flex-col justify-center px-10 max-sm:px-0">
-        <div class="max-sm:text-center" v-html="description"></div>
-        <div class="flex flex-row py-2 max-sm:justify-center">
-          <GlobeIcon />
-          <a class="px-3 text-gray-500" :href="organizationWebsite" target="_blank">{{organizationWebsite}}</a>
-        </div>
+  <section class="border-b border-outline-variant bg-surface-container-low text-on-surface">
+    <!--
+      The organisation's own introduction. It sits on a raised surface so that it reads as a
+      separate band from the file list below, and it stacks into one centred column on small
+      screens instead of leaving the logo alone on its own line.
+    -->
+    <div class="container mx-auto flex flex-col items-center gap-6 py-10 md:flex-row md:items-center md:gap-10 max-sm:py-6">
+      <img
+        class="size-32 shrink-0 rounded-corner-full border-2 border-outline-variant md:size-40"
+        alt=""
+        :src="organizationLogo"
+      >
+      <div class="flex min-w-0 flex-col items-center gap-3 text-center md:items-start md:text-left">
+        <div
+          class="md-title-large text-on-surface"
+          v-html="description"
+        />
+        <a
+          v-if="organizationWebsite"
+          class="md-focus-ring md-label-large inline-flex min-h-12 items-center gap-2 rounded-corner-small text-primary no-underline hover:underline"
+          :href="organizationWebsite"
+          target="_blank"
+          rel="noopener"
+        >
+          <GlobeIcon
+            class="size-5"
+            aria-hidden="true"
+          />
+          {{ organizationWebsite }}
+        </a>
       </div>
     </div>
-  </div>
+  </section>
 </template>

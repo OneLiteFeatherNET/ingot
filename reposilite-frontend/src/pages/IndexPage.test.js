@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest"
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import { Tabs } from 'vue3-tabs'
 import IndexPage from './IndexPage.vue'
 
 // The session is replaced by a plain flag, so each test decides whether the user is a manager.
@@ -65,19 +64,14 @@ const mountAt = async (url, { manager }) => {
 const shownView = (wrapper) =>
   wrapper.find('[data-test="view"]').text()
 
+// The tab bar is made of links, so a section is chosen the way a visitor chooses one.
+const chooseTab = async (wrapper, label) => {
+  const link = wrapper.findAll('a').find(anchor => anchor.text() === label)
+  await link.trigger('click')
+  await flushPromises()
+}
+
 describe('IndexPage section from the query', () => {
-  // jsdom has no layout, and vue3-tabs scrolls its panel row into view on mount. The method
-  // is removed again after the file, so no other test sees the stand-in.
-  const hadScrollTo = 'scrollTo' in HTMLElement.prototype
-
-  beforeAll(() => {
-    HTMLElement.prototype.scrollTo = () => {}
-  })
-
-  afterAll(() => {
-    if (!hadScrollTo) delete HTMLElement.prototype.scrollTo
-  })
-
   beforeEach(() => {
     session.isManager = null
   })
@@ -105,8 +99,7 @@ describe('IndexPage section from the query', () => {
   it('writes the tab the user selects into the query', async () => {
     const { wrapper, router } = await mountAt('/', { manager: true })
 
-    wrapper.findComponent(Tabs).vm.$emit('update:modelValue', 'Tokens')
-    await flushPromises()
+    await chooseTab(wrapper, 'Tokens')
 
     expect(router.currentRoute.value.query.tab, 'selecting a tab must update the URL')
       .toBe('tokens')
@@ -115,12 +108,19 @@ describe('IndexPage section from the query', () => {
   it('keeps the browsed repository path when Overview is selected', async () => {
     const { wrapper, router } = await mountAt('/org/repo?tab=dashboard', { manager: true })
 
-    wrapper.findComponent(Tabs).vm.$emit('update:modelValue', 'Overview')
-    await flushPromises()
+    await chooseTab(wrapper, 'Overview')
 
     expect(router.currentRoute.value.path, 'returning to Overview must not drop the browsed path')
       .toBe('/org/repo')
     expect(router.currentRoute.value.query.tab).toBeUndefined()
+  })
+
+  it('marks the selected section as the current page', async () => {
+    const { wrapper } = await mountAt('/?tab=dashboard', { manager: true })
+
+    const current = wrapper.findAll('a').find(anchor => anchor.attributes('aria-current') === 'page')
+
+    expect(current?.text(), 'assistive technology must be told which section is open').toBe('Dashboard')
   })
 
   it('shows the previous section again when the browser goes back', async () => {

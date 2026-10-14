@@ -16,16 +16,15 @@
 
 <script setup>
 import { computed, defineAsyncComponent } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useSession } from '../store/session'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
 import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
-import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
 import { property } from '../helpers/vue-extensions'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { TABS, visibleTabs, resolveTab, withTab, tabLabel } from './index-tabs'
+import { visibleTabs, resolveTab, withTab, tabLabel } from './index-tabs'
 
 // Each section is its own bundle. While it downloads the page shows a progress bar, and if
 // the download fails it says so and offers a reload instead of an empty panel.
@@ -45,123 +44,74 @@ defineProps({
 })
 
 const route = useRoute()
-const router = useRouter()
 const { isManager } = useSession()
 
 // The section lives in the URL, so the back button and deep links work. A manager tab that
-// is named but not visible to this user shows Overview instead. Switching to Overview keeps
-// the repository path already in the URL, which is how the browsed path comes back.
+// is named but not visible to this user shows Overview instead. Each tab link keeps the
+// repository path already in the URL, which is how the browsed path comes back.
 const activeKey = computed(() => resolveTab(route.query.tab, isManager.value))
+const activeLabel = computed(() => tabLabel(activeKey.value))
+const menuTabs = computed(() => visibleTabs(isManager.value))
 
-const selectTab = (label) => {
-  const key = TABS.find(tab => tab.label === label)?.key
-  if (key) {
-    router.push({ path: route.path, query: withTab(route.query, key) })
-  }
-}
-
-const menuTabs = computed(() =>
-  visibleTabs(isManager.value).map(tab => tab.label)
-)
-
-const selectedTab = computed({
-  get: () => tabLabel(activeKey.value),
-  set: selectTab
-})
+const tabTarget = (key) => ({ path: route.path, query: withTab(route.query, key) })
 </script>
 
 <template>
-  <div>
+  <div class="bg-surface text-on-surface">
     <DefaultHeader />
-    <div class="bg-gray-100 dark:bg-black overflow-y-visible">
-      <!--
-        The bar scrolls sideways when it runs out of room. Every tab used to be pinned to a
-        quarter of the width on small screens, which five tabs cannot satisfy: the row wrapped
-        onto a second line and the last label was cut off at the edge.
-      -->
-      <div class="tab-bar container mx-auto overflow-x-auto max-sm:px-0">
-        <Tabs
-          v-model="selectedTab"
+    <!--
+      Primary tabs in the Material Design 3 style. The row scrolls sideways when it runs out
+      of room, which five tabs can do on a phone. Each tab is a real link, so it can be
+      opened in a new tab and the browser's history works.
+    -->
+    <nav
+      aria-label="Sections"
+      class="border-b border-outline-variant"
+    >
+      <ul class="container mx-auto flex list-none overflow-x-auto">
+        <li
+          v-for="tab in menuTabs"
+          :key="tab.key"
+          class="shrink-0"
         >
-          <Tab
-            v-for="(tab, i) in menuTabs"
-            :key="`menu${i}`"
-            class="item font-normal whitespace-nowrap"
-            :val="tab"
-            :label="tab"
-            :indicator="true"
-          />
-        </Tabs>
-      </div>
-      <hr class="dark:border-gray-700">
-      <div class="overflow-auto">
-        <TabPanels v-model="selectedTab">
-          <TabPanel :val="'Overview'">
-            <template v-if="selectedTab == 'Overview'">
-              <!-- The file browser below brings its own top padding, so this only needs its own. -->
-              <HeaderHero class="pt-8" />
-              <FileBrowserView :qualifier="qualifier" />
-            </template>
-          </TabPanel>
-          <TabPanel :val="'Dashboard'" v-show="isManager">
-            <DashboardView v-if="selectedTab == 'Dashboard'" />
-          </TabPanel>
-          <TabPanel :val="'Console'" v-show="isManager">
-            <ConsoleView v-if="selectedTab == 'Console'" />
-          </TabPanel>
-          <TabPanel :val="'Tokens'" v-show="isManager">
-            <TokensView v-if="selectedTab == 'Tokens'" :selectedTab="selectedTab" />
-          </TabPanel>
-           <TabPanel :val="'Settings'" v-show="isManager">
-            <SettingsView v-if="selectedTab == 'Settings'" :selectedTab="selectedTab" />
-          </TabPanel>
-        </TabPanels>
-      </div>
+          <router-link
+            v-slot="{ href, navigate }"
+            :to="tabTarget(tab.key)"
+            custom
+          >
+            <a
+              :href="href"
+              :aria-current="tab.key === activeKey ? 'page' : undefined"
+              class="md-state-layer md-focus-ring relative flex min-h-12 items-center rounded-corner-small px-4 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard"
+              :class="tab.key === activeKey ? 'text-primary' : 'text-on-surface-variant'"
+              @click="navigate"
+            >
+              {{ tab.label }}
+              <span
+                v-if="tab.key === activeKey"
+                class="absolute inset-x-0 bottom-0 h-1 rounded-t-corner-extra-small bg-primary"
+                aria-hidden="true"
+              />
+            </a>
+          </router-link>
+        </li>
+      </ul>
+    </nav>
+    <div class="overflow-auto">
+      <template v-if="activeKey === 'overview'">
+        <HeaderHero />
+        <FileBrowserView :qualifier="qualifier" />
+      </template>
+      <DashboardView v-else-if="activeKey === 'dashboard'" />
+      <TokensView
+        v-else-if="activeKey === 'tokens'"
+        :selected-tab="activeLabel"
+      />
+      <ConsoleView v-else-if="activeKey === 'console'" />
+      <SettingsView
+        v-else-if="activeKey === 'settings'"
+        :selected-tab="activeLabel"
+      />
     </div>
   </div>
 </template>
-
-<style>
-@reference "../style.css";
-.tabs .tab {
-  cursor: pointer;
-  text-transform: capitalize;
-}
-.tabs .item:hover {
-  @apply bg-gray-150 dark:bg-gray-900;
-  transition: background-color 0.5s;
-}
-/*
- * vue3-tabs lets its row wrap. On a phone that turns the bar into two ragged lines, so the
- * row is held on one line and the wrapper around it scrolls instead. Two classes deep
- * because the rule it overrides is a scoped one from the library, which carries the weight
- * of a class and an attribute.
- */
-.tab-bar > .tabs {
-  flex-wrap: nowrap;
-}
-.tab-bar .item {
-  flex-shrink: 0;
-}
-</style>
-
-<style scoped>
-@reference "../style.css";
-.item {
-  @apply px-1;
-  @apply pb-1;
-  @apply pt-1.5;
-  @apply cursor-pointer;
-  @apply text-gray-600 dark:text-gray-300;
-  @apply bg-gray-100 dark:bg-black;
-}
-.selected {
-  @apply border-b-2;
-  @apply border-black dark:border-white;
-  @apply text-black dark:text-white;
-}
-.tabs .item {
-  border-top-left-radius: 10%;
-  border-top-right-radius: 10%;
-}
-</style>

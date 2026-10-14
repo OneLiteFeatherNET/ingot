@@ -17,7 +17,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useSession } from '../../store/session'
-import MenuButton from './MenuButton.vue'
+import MdButton from '../md/MdButton.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import LoginModal from './LoginModal.vue'
 import MoonIcon from '../icons/MoonIcon.vue'
 import SunIcon from '../icons/SunIcon.vue'
@@ -43,34 +44,43 @@ const themeLabel = computed(() => ({
 </script>
 
 <template>
-  <nav class="flex flex-row max-sm:max-w-[100px] max-sm:flex-wrap max-sm:flex-1 max-sm:justify-end max-sm:min-w-1/2">
-    <div v-if="isLogged" class="pt-[0.275rem] px-2 max-sm:hidden">
-      Welcome 
-      <span class="font-bold underline">{{ token.name }}</span>
-    </div>
-    <LoginModal v-if="!isLogged" />
-    <MenuButton v-if="isLogged" @click="logout()" class="max-sm:hidden">
-      Logout
-    </MenuButton>
-    <button
+  <nav
+    aria-label="Account"
+    class="flex flex-row items-center gap-1"
+  >
+    <span
       v-if="isLogged"
-      type="button"
-      aria-label="Logout"
-      class="hidden px-[0.675rem] pt-[0.2rem] mr-1.5 cursor-pointer rounded-full bg-white dark:bg-gray-900 max-h-[35px] max-sm:block max-sm:pt-1.5"
+      class="px-3 md-body-large text-on-surface-variant max-sm:hidden"
+    >
+      Welcome
+      <span class="font-medium text-on-surface">{{ token.name }}</span>
+    </span>
+    <LoginModal v-if="!isLogged" />
+    <MdButton
+      v-if="isLogged"
+      variant="text"
+      class="max-sm:hidden"
       @click="logout()"
     >
-      <LogoutIcon/>
-    </button>
-    <button
-      type="button"
-      class="cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500 flex h-[35px] w-[40px] items-center justify-center rounded-full"
+      Logout
+    </MdButton>
+    <!-- On small screens the text action gives way to an icon with the same name. -->
+    <MdIconButton
+      v-if="isLogged"
+      aria-label="Logout"
+      class="sm:hidden"
+      @click="logout()"
+    >
+      <LogoutIcon />
+    </MdIconButton>
+    <MdIconButton
       :aria-label="themeLabel"
       :title="themeLabel"
       @click="toggleTheme()"
     >
       <SunIcon v-if="theme.mode === 'light'" />
-      <MoonIcon v-else-if="theme.mode === 'dark'" class="pl-0.5" />
+      <MoonIcon v-else-if="theme.mode === 'dark'" />
       <ContrastIcon v-else />
-    </button>
+    </MdIconButton>
   </nav>
 </template>
