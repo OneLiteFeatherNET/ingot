@@ -10,6 +10,7 @@ import { default as ArrayListRenderer, tester as arrayListTester } from '../comp
 import { default as OneOfRenderer, tester as oneOfTester } from '../components/renderers/OneOfRenderer.vue'
 import { default as ConstantRenderer, tester as constantTester } from '../components/renderers/ConstantRenderer.vue'
 import { default as OptionalRenderer, tester as optionalTester } from '../components/renderers/OptionalRenderer.vue'
+import { default as BooleanSwitchRenderer, tester as booleanSwitchTester } from '../components/renderers/BooleanSwitchRenderer.vue'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
 
@@ -193,6 +194,7 @@ export const createConfigurationStore = (client) => {
 const store = createConfigurationStore(useSession().client)
 
 const renderers = markRaw([
+  { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
   { tester: arrayListTester, renderer: ArrayListRenderer },
   { tester: allOfTester, renderer: AllOfRenderer },
   { tester: oneOfTester, renderer: OneOfRenderer },
@@ -217,15 +219,16 @@ const renderers = markRaw([
  *
  * mergeStyles appends to the defaults instead of replacing them, so each element keeps its
  * original class name as well. The few rules that cannot live here still select on those
- * names, and so does the vue3-tabs markup wrapped around the array and one-of renderers.
+ * names. The tab rows of the array and one-of renderers are SettingsTabs, which styles itself.
  */
 const configurationStyles = mergeStyles(defaultStyles, {
   control: {
     /* Field chrome (outline, height, corner) is applied to text inputs in SettingsView, because a checkbox shares this key. */
     description: 'md-body-small text-on-surface-variant px-2 pb-1',
     error: 'md-body-small text-error px-2 pt-1',
-    input: 'md-body-large text-on-surface md-focus-ring',
-    select: 'md-body-large block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface md-focus-ring',
+    /* Focus is drawn by the outlined field rules in SettingsView: a primary border, 2px in total. */
+    input: 'md-body-large text-on-surface',
+    select: 'md-body-large block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface',
     wrapper: 'flex flex-col items-start py-1'
   },
   verticalLayout: {
@@ -239,18 +242,17 @@ const configurationStyles = mergeStyles(defaultStyles, {
   arrayList: {
     /* The fieldset carries the list; the legend holds the add button. Browser fieldset chrome is reset. */
     root: 'flex flex-col gap-4 p-0 m-0 min-w-0 border-0',
-    legend: 'flex flex-row-reverse items-center gap-2 w-full mb-0',
-    addButton: 'md-state-layer md-focus-ring ml-auto flex h-10 w-10 items-center justify-center rounded-corner-full bg-primary md-title-large text-on-primary z-1',
+    legend: 'flex flex-row flex-wrap items-center justify-between gap-2 w-full mb-0',
     label: 'md-title-medium text-on-surface',
     /* Spelled out because the defaults leave this one unset, unlike every other key here. */
     description: 'description md-body-small text-on-surface-variant',
     noData: 'md-body-medium p-4 rounded-corner-medium bg-surface-container text-on-surface-variant',
-    itemToolbar: 'flex flex-row items-center relative',
+    itemToolbar: 'flex flex-row items-center justify-end min-h-12',
     itemLabel: 'mr-auto hidden',
     /* The tab bar already moves entries around, so the two arrows stay out of the way. */
     itemMoveUp: 'hidden p-2',
     itemMoveDown: 'hidden p-2',
-    itemDelete: 'absolute right-0 top-2 p-2 text-error'
+    itemDelete: 'shrink-0'
   },
   oneOf: {
     root: 'one-of-container flex flex-col gap-4'

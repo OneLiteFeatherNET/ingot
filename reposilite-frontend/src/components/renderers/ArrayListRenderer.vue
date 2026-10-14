@@ -1,63 +1,62 @@
 <template>
   <fieldset v-if="control.visible" :class="styles.arrayList.root">
     <legend :class="styles.arrayList.legend">
-      <button
-        :class="styles.arrayList.addButton"
-        @click="addButtonClick"
-        type="button"
-      >
-        +
-      </button>
       <label :class="styles.arrayList.label">
         {{ control.label }}
       </label>
+      <MdButton
+        variant="tonal"
+        type="button"
+        @click="addButtonClick"
+      >
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </template>
+        {{ addLabel }}
+      </MdButton>
     </legend>
     <div v-if="control?.description" :class="styles.arrayList.description">
       {{ control.description }}
-      <!-- It is a list of items. You can add new entries by clicking the '+' button on the right. -->
     </div>
-    <div class="tabs-component">
-       <Tabs v-model="selectedIndex">
-        <Tab
-          v-for="(element, index) in control.data"
-          :key="`${control.path}-${index}-tab`"
-          :val="index"
-          :label="createLabel(element)"
-          :indicator="true"
-          class="item"
-        />
-      </Tabs>
-      <TabPanels v-model="selectedIndex">
-        <TabPanel
-            v-for="(element, index) in control.data"
-            :key="`${control.path}-${index}-panel`"
-            :val="index"
-        >
-          <div :class="styles.arrayList.itemWrapper">
-            <array-list-element
-              :moveUp="moveUp(control.path, index)"
-              :moveUpEnabled="index > 0"
-              :moveDown="moveDown(control.path, index)"
-              :moveDownEnabled="index < control.data.length - 1"
-              :delete="removeItems(control.path, [index])"
-              :label="childLabelForIndex(index)"
-              :styles="styles"
-            >
-              <dispatch-renderer
-                :schema="control.schema"
-                :uischema="childUiSchema"
-                :path="composePaths(control.path, `${index}`)"
-                :enabled="control.enabled"
-                :renderers="control.renderers"
-                :cells="control.cells"
-              />
-            </array-list-element>
-          </div>
-          <div v-if="noData" :class="styles.arrayList.noData">
-            No data
-          </div>
-        </TabPanel>
-      </TabPanels>
+    <div v-if="noData" :class="styles.arrayList.noData">
+      No data
+    </div>
+    <div v-else class="tabs-component">
+      <SettingsTabs
+        v-model="selectedIndex"
+        :label="control.label"
+        variant="secondary"
+        :tabs="itemTabs"
+      />
+      <div
+        v-if="selectedIndex < control.data.length"
+        :key="`${control.path}-${selectedIndex}-panel`"
+        role="tabpanel"
+        class="pt-4"
+      >
+        <div :class="styles.arrayList.itemWrapper">
+          <array-list-element
+            :moveUp="moveUp(control.path, selectedIndex)"
+            :moveUpEnabled="selectedIndex > 0"
+            :moveDown="moveDown(control.path, selectedIndex)"
+            :moveDownEnabled="selectedIndex < control.data.length - 1"
+            :delete="removeItems(control.path, [selectedIndex])"
+            :label="childLabelForIndex(selectedIndex)"
+            :styles="styles"
+          >
+            <dispatch-renderer
+              :schema="control.schema"
+              :uischema="childUiSchema"
+              :path="composePaths(control.path, `${selectedIndex}`)"
+              :enabled="control.enabled"
+              :renderers="control.renderers"
+              :cells="control.cells"
+            />
+          </array-list-element>
+        </div>
+      </div>
     </div>
   </fieldset>
 </template>
@@ -67,7 +66,8 @@ import { ref } from 'vue'
 import { composePaths, createDefaultValue, rankWith, schemaTypeIs } from '@jsonforms/core'
 import { DispatchRenderer, rendererProps, useJsonFormsArrayControl } from '@jsonforms/vue'
 import { useVanillaArrayControl } from '@dzikoysk/vue-vanilla'
-import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
+import MdButton from '../md/MdButton.vue'
+import SettingsTabs from '../settings/SettingsTabs.vue'
 import ArrayListElement from './ArrayListElement.vue'
 
 export const tester = rankWith(2, schemaTypeIs('array'))
@@ -77,10 +77,8 @@ export default {
   components: {
     ArrayListElement,
     DispatchRenderer,
-    Tabs,
-    Tab, 
-    TabPanels,
-    TabPanel
+    MdButton,
+    SettingsTabs
   },
   props: {
     ...rendererProps()
@@ -124,6 +122,17 @@ export default {
   computed: {
     noData() {
       return !this.control.data || this.control.data.length === 0
+    },
+    itemTabs() {
+      return (this.control.data || []).map((element, index) => ({
+        key: index,
+        label: this.createLabel(element)
+      }))
+    },
+    /* The add button names the kind of entry it adds, taken from the item schema title. */
+    addLabel() {
+      const title = this.control.schema?.items?.title
+      return `Add ${title ? title.toLowerCase() : 'entry'}`
     }
   },
   methods: {
@@ -148,10 +157,6 @@ export default {
 </script>
 
 <style>
-.array-list .tabs .tab {
-  overflow-wrap: anywhere;
-  text-transform: none !important;
-}
 .tabs-component {
   width: 100%;
 }
@@ -176,3 +181,4 @@ export default {
   }
 }
 </style>
+

@@ -3,34 +3,26 @@
     v-if="control.visible"
     :class="styles.oneOf.root"
   >
-    <Tabs v-model="tabIndex">
-      <Tab 
-        v-for="(oneOfRenderInfo, oneOfIndex) in oneOfRenderInfos"
-        :key="`${control.path}-${oneOfIndex}`"
-        :val="oneOfIndex"
-        :label="oneOfRenderInfo.label"
-        :indicator="true"
-        class="item"
-        @click="tabChanged"
+    <SettingsTabs
+      :model-value="tabIndex"
+      :label="control.label || 'Variants'"
+      variant="secondary"
+      :tabs="oneOfTabs"
+      @update:model-value="onTabSelected"
+    />
+    <div
+      v-if="selectedRenderInfo"
+      role="tabpanel"
+      class="pt-4"
+    >
+      <DispatchRenderer
+        :schema="selectedRenderInfo.schema"
+        :uischema="selectedRenderInfo.uischema"
+        :path="control.path"
+        :renderers="control.renderers"
+        :cells="control.cells"
       />
-    </Tabs>
-    <TabPanels v-model="selectedIndex">
-      <TabPanel 
-        v-for="(oneOfRenderInfo, oneOfIndex) in oneOfRenderInfos"
-        :key="`${control.path}-${oneOfIndex}`"
-        :val="oneOfIndex"
-        :name="`${control.path}-${oneOfIndex}`"
-      >
-        <DispatchRenderer
-          v-if="selectedIndex === oneOfIndex"
-          :schema="oneOfRenderInfo.schema"
-          :uischema="oneOfRenderInfo.uischema"
-          :path="control.path"
-          :renderers="control.renderers"
-          :cells="control.cells" 
-        />
-      </TabPanel>
-    </TabPanels>
+    </div>
   </div>
   <DialogWrapper :open="dialog">
     <p>
@@ -66,7 +58,7 @@ import {
 } from '@jsonforms/core'
 import {DispatchRenderer, rendererProps, useJsonFormsOneOfControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
-import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
+import SettingsTabs from '../settings/SettingsTabs.vue'
 import isEmpty from 'lodash/isEmpty'
 import DialogWrapper from '../util/DialogWrapper.vue'
 
@@ -94,10 +86,7 @@ export default {
   components: {
     DialogWrapper,
     DispatchRenderer,
-    Tabs,
-    Tab,
-    TabPanels,
-    TabPanel
+    SettingsTabs
   },
   props: rendererProps(),
   setup(props) {
@@ -127,6 +116,12 @@ export default {
     subSchema() {
       return this.control.schema
     },
+    oneOfTabs() {
+      return this.oneOfRenderInfos.map((info, index) => ({ key: index, label: info.label }))
+    },
+    selectedRenderInfo() {
+      return this.oneOfRenderInfos[this.selectedIndex]
+    },
     oneOfRenderInfos() {
       return createCombinatorRenderInfos(
           this.subSchema.oneOf,
@@ -139,6 +134,11 @@ export default {
     }
   },
   methods: {
+    /* The bar's value follows the click first, so tabChanged sees the tab that was picked. */
+    onTabSelected(index) {
+      this.tabIndex = index
+      this.tabChanged()
+    },
     tabChanged() {
       if (this.controlEnabled && !isEmpty(this.control.data)) {
         this.dialog = true
@@ -191,8 +191,5 @@ dialog::backdrop {
 /* Scoped to this dialog. The rule used to be a bare `button`, which restyled every button in the app. */
 .dialog-actions button {
   @apply relative inline-flex min-h-12 items-center justify-center rounded-corner-full bg-primary px-6 md-label-large text-on-primary;
-}
-.tabs {
-  @apply cursor-pointer!;
 }
 </style>

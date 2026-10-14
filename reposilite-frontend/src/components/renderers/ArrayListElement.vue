@@ -18,14 +18,14 @@
       >
         ↓
       </button>
-      <button
-        @click="deleteClicked"
-        class="font-mono text-xl"
+      <MdIconButton
+        variant="error"
+        :aria-label="`Remove ${label || 'entry'}`"
         :class="styles.arrayList.itemDelete"
-        type="button"
+        @click="deleteClicked"
       >
-        x
-      </button>
+        <TrashIcon />
+      </MdIconButton>
     </div>
     <div :class="contentClasses">
       <slot></slot>
@@ -35,9 +35,15 @@
 
 <script>
 import { classes } from '@dzikoysk/vue-vanilla'
+import MdIconButton from '../md/MdIconButton.vue'
+import TrashIcon from '../icons/TrashIcon.vue'
 
 export default {
   name: 'array-list-element',
+  components: {
+    MdIconButton,
+    TrashIcon
+  },
   props: {
     initiallyExpanded: {
       required: false,
