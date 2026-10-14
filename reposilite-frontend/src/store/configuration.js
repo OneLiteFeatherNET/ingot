@@ -226,8 +226,9 @@ const configurationStyles = mergeStyles(defaultStyles, {
     /* Field chrome (outline, height, corner) is applied to text inputs in SettingsView, because a checkbox shares this key. */
     description: 'md-body-small text-on-surface-variant px-2 pb-1',
     error: 'md-body-small text-error px-2 pt-1',
-    input: 'md-body-large text-on-surface md-focus-ring',
-    select: 'md-body-large block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface md-focus-ring',
+    /* Focus is drawn by the outlined field rules in SettingsView: a primary border, 2px in total. */
+    input: 'md-body-large text-on-surface',
+    select: 'md-body-large block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface',
     wrapper: 'flex flex-col items-start py-1'
   },
   verticalLayout: {

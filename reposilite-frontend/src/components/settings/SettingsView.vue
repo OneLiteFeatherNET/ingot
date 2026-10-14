@@ -224,17 +224,19 @@ const formsConfiguration = {
   @apply container mx-auto;
 }
 
-.settings-view .control .input:not([type="checkbox"]) {
+.settings-view .control :is(.input, select) {
   @apply block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface;
 }
-.settings-view .control .input:not([type="checkbox"]):focus {
-  @apply border-primary ring-1 ring-primary outline-none;
+/* MD3 outlined field focus: the outline turns primary and gains 1px inside, which makes 2px. */
+.settings-view .control :is(.input, select):focus {
+  @apply border-primary outline-none;
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-primary);
 }
 
-/* Labels: the control label has the `label` class; the enum array renderer prints bare labels that pass through no style key. */
+/* Field labels sit above the field in the MD3 outlined style. The control label has the `label` class; the enum array renderer prints bare labels that pass through no style key. */
 .settings-view .label,
 .settings-view label:not([class]) {
-  @apply block px-2 pb-1 md-label-large text-on-surface-variant;
+  @apply block px-2 pb-1 md-body-small text-on-surface-variant;
 }
 
 /* The caption beside a checkbox is a bare <p>, and read-only is a state the object cannot express. */
