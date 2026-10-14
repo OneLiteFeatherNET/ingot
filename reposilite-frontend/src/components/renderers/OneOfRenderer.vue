@@ -1,5 +1,8 @@
 <template>
-  <div v-if="control.visible" :class="styles.oneOf.root">
+  <div
+    v-if="control.visible"
+    :class="styles.oneOf.root"
+  >
     <Tabs v-model="tabIndex">
       <Tab 
         v-for="(oneOfRenderInfo, oneOfIndex) in oneOfRenderInfos"
@@ -7,7 +10,8 @@
         :val="oneOfIndex"
         :label="oneOfRenderInfo.label"
         :indicator="true"
-        @click="tabChanged" 
+        class="item"
+        @click="tabChanged"
       />
     </Tabs>
     <TabPanels v-model="selectedIndex">
@@ -34,8 +38,19 @@
       Do you want to proceed?
     </p>
     <div class="dialog-actions">
-      <button @click="cancel"> No </button>
-      <button ref="confirm" @click="confirm"> Yes </button>
+      <button
+        class="md-state-layer md-focus-ring"
+        @click="cancel"
+      >
+        No
+      </button>
+      <button
+        ref="confirm"
+        class="md-state-layer md-focus-ring"
+        @click="confirm"
+      >
+        Yes
+      </button>
     </div>
   </DialogWrapper>
 </template>
@@ -166,16 +181,16 @@ export default {
   margin-top: 1.5rem;
 }
 dialog {
-  @apply text-gray-600 dark:text-gray-300;
-  @apply bg-gray-100 dark:bg-black;
-  @apply border-gray-200 dark:border-gray-700;
-  @apply rounded border-2;
+  @apply rounded-corner-extra-large border-0 bg-surface-container-high p-6 text-on-surface shadow-elevation-3 md-body-medium;
+  @apply max-w-md;
 }
 dialog::backdrop {
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--md-sys-color-scrim);
+  opacity: 0.4;
 }
-button {
-  @apply bg-primary mx-2 rounded text-sm h-9 px-4 text-on-primary;
+/* Scoped to this dialog. The rule used to be a bare `button`, which restyled every button in the app. */
+.dialog-actions button {
+  @apply relative inline-flex min-h-12 items-center justify-center rounded-corner-full bg-primary px-6 md-label-large text-on-primary;
 }
 .tabs {
   @apply cursor-pointer!;
