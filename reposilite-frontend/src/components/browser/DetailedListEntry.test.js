@@ -181,6 +181,18 @@ describe('DetailedListEntry md3 list spec', () => {
     expect(icon.classes(), 'the folder icon is not primary').not.toContain('text-primary')
   })
 
+  it('gives a repository link a 48px touch target', () => {
+    const link = mountRow({}, folder).find('a')
+
+    expect(link.classes(), 'the link box is at least 48px tall, not the 24px text line').toContain('min-h-12')
+  })
+
+  it('gives a file link a 48px touch target', () => {
+    const link = mountRow().find('a')
+
+    expect(link.classes(), 'the link box is at least 48px tall').toContain('min-h-12')
+  })
+
   it('draws a file icon in the on-surface-variant role', () => {
     const icon = mountRow().find('svg')
 

@@ -101,7 +101,7 @@ const onFileClick = (event) => {
     <router-link
       v-if="isDirectory"
       :to="to"
-      class="md-focus-ring flex min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+      class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
     >
       <BrowserIcon
         name="folder"
@@ -127,7 +127,7 @@ const onFileClick = (event) => {
       v-else
       :href="url"
       target="_blank"
-      class="md-focus-ring flex min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+      class="md-focus-ring flex min-h-12 min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
       @click="onFileClick"
     >
       <BrowserIcon
