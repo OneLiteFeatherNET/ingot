@@ -26,8 +26,13 @@ const manager = defineModel('manager', { type: Boolean, default: false })
 const expiry = defineModel('expiry', { type: String, default: '' })
 
 defineProps({
-  /** Set by the view when the chosen date is in the past. Text fields cannot enforce a minimum. */
+  /** Set by the view when the chosen date is in the past. The view checks it again on save. */
   expiryError: {
+    type: String,
+    default: ''
+  },
+  /** The earliest date the picker offers, as yyyy-mm-dd. Empty means no lower bound. */
+  expiryMin: {
     type: String,
     default: ''
   }
@@ -61,6 +66,7 @@ defineEmits(['submit', 'cancel'])
         label="Expires on"
         type="date"
         variant="outlined"
+        :min="expiryMin || undefined"
         :error="!!expiryError"
         :error-text="expiryError"
       />

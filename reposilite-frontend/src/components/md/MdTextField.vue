@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, useId } from 'vue'
+import { computed, useAttrs, useId } from 'vue'
 
 /*
  * Material Design 3 text field, filled or outlined. The label is always a real <label for>
@@ -26,7 +26,16 @@ import { computed, useId } from 'vue'
  * Supporting text and error text share one slot in the layout. When `error` is set the
  * error text replaces the supporting text, and aria-invalid is set. Both are linked to the
  * input through aria-describedby.
+ *
+ * Attributes that are not props, such as min, max, step, pattern, maxlength or inputmode,
+ * go to the input, where the browser enforces them. Class and style stay on the wrapper.
  */
+defineOptions({ inheritAttrs: false })
+
+const attrs = useAttrs()
+const forwardedAttrs = () =>
+  Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'class' && key !== 'style'))
+
 const props = defineProps({
   modelValue: {
     type: String,
@@ -123,7 +132,11 @@ const labelClass = computed(() => [
 </script>
 
 <template>
-  <div class="flex w-full flex-col gap-1">
+  <div
+    class="flex w-full flex-col gap-1"
+    :class="attrs.class"
+    :style="attrs.style"
+  >
     <div class="relative">
       <span
         v-if="$slots['leading-icon']"
@@ -133,6 +146,7 @@ const labelClass = computed(() => [
         <slot name="leading-icon" />
       </span>
       <input
+        v-bind="forwardedAttrs()"
         :id="inputId"
         :class="[
           'peer',

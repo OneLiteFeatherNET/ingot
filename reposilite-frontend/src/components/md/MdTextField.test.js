@@ -127,6 +127,33 @@ describe('MdTextField', () => {
     expect(wrapper.find('[data-test="trail"]').exists()).toBe(true)
   })
 
+  it('forwards constraint attributes to the input element', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Count' },
+      attrs: { min: '1', max: '99', step: '1', pattern: '[0-9]+', maxlength: '2', inputmode: 'numeric' }
+    })
+
+    const input = wrapper.find('input')
+    expect(input.attributes('min')).toBe('1')
+    expect(input.attributes('max')).toBe('99')
+    expect(input.attributes('step')).toBe('1')
+    expect(input.attributes('pattern')).toBe('[0-9]+')
+    expect(input.attributes('maxlength')).toBe('2')
+    expect(input.attributes('inputmode')).toBe('numeric')
+  })
+
+  it('keeps class and style on the root element instead of the input', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Name' },
+      attrs: { class: 'w-48', style: 'margin-top: 4px' }
+    })
+
+    expect(wrapper.classes()).toContain('w-48')
+    expect(wrapper.attributes('style')).toContain('margin-top: 4px')
+    expect(wrapper.find('input').classes()).not.toContain('w-48')
+    expect(wrapper.find('input').attributes('style')).toBeUndefined()
+  })
+
   it('outlined variant draws the outline border on the input', () => {
     const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'outlined' } })
 

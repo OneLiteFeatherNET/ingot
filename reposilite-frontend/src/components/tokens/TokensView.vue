@@ -323,6 +323,7 @@ const runConfirm = (token) => {
             v-model:manager="draft.manager"
             v-model:expiry="draft.expiresAt"
             :expiry-error="expiryError"
+            :expiry-min="toDateInput(Date.now())"
             @submit="saveToken(token)"
             @cancel="close"
           />
