@@ -17,7 +17,6 @@
 <script setup>
 import { nextTick, ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
-import { createSuccessToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import { loginRequests } from '../../store/login'
 import MdButton from '../md/MdButton.vue'
@@ -55,7 +54,6 @@ const signin = () => {
   failure.value = null
 
   return login(user, secret.value)
-    .then(() => createSuccessToast(`Dashboard accessed as ${user}`))
     .then(() => close())
     .catch(error => {
       failure.value = loginFailureMessage(error)
