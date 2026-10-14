@@ -59,15 +59,21 @@ describe('SwitchField', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 
-  it('ties the visible label to the switch', () => {
+  it('names the switch with the label above it through aria-labelledby', () => {
     const wrapper = mountSwitch()
 
-    const label = wrapper.find('label')
+    const label = wrapper.find('#store-input-label')
     const toggle = wrapper.find('[role="switch"]')
 
-    expect(label.attributes('for')).toBe('store-input')
+    expect(label.text()).toContain('Store')
     expect(toggle.attributes('id')).toBe('store-input')
-    expect(label.element.control).toBe(toggle.element)
+    expect(toggle.attributes('aria-labelledby')).toBe('store-input-label')
+  })
+
+  it('shows the required marker on the label when the field is required', () => {
+    const wrapper = mountSwitch({ required: true })
+
+    expect(wrapper.find('#store-input-label').text()).toContain('*')
   })
 
   it('shows Enabled for an on switch and Disabled for an off one', () => {

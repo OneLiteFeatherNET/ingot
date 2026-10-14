@@ -72,6 +72,19 @@ describe('MdChip', () => {
     expect(wrapper.classes()).toContain('bg-secondary-container')
   })
 
+  it('is a 32px tall container, not a 48px one', () => {
+    const wrapper = mount(MdChip, { slots: { default: 'Copy' } })
+
+    expect(wrapper.classes()).toContain('h-8')
+    expect(wrapper.classes()).not.toContain('min-h-12')
+  })
+
+  it('marks the root with the touch target class that widens the hit area to 48px', () => {
+    const wrapper = mount(MdChip, { slots: { default: 'Copy' } })
+
+    expect(wrapper.classes()).toContain('md-touch-target')
+  })
+
   it('disabled button chip is disabled', () => {
     const wrapper = mount(MdChip, { props: { disabled: true }, slots: { default: 'Copy' } })
 

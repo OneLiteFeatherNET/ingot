@@ -30,8 +30,11 @@ Source files:
 - **One filled button per view**, as the primary action. Everything else is `tonal`,
   `outlined` or `text`.
 - **Every icon-only control has an `aria-label`.** `MdIconButton` warns without one.
-- **Touch targets are at least 48px.** The primitives already do this; a custom control
-  needs `min-h-12` (48px) or larger.
+- **Visual size and touch target are separate.** MD3 sizes a control by what it shows
+  (a 40px button, a 40px icon button, a 32px chip) and gives it a touch target of at least
+  48 by 48px, which may be larger than the control. A custom control that needs a touch
+  target adds `md-touch-target` (see Touch target below). Do not make a visible control
+  48px tall just to reach the minimum.
 - **Focusable custom controls use `md-focus-ring`** (or the `:focus-visible` outline that
   it sets). Do not remove outlines without replacing them.
 - **Interactive elements add `md-state-layer`** to get hover, focus and pressed overlays
@@ -143,6 +146,13 @@ and one utility class:
 | `md-label-large` | 14 / 20 | 500 | 0.1 |
 | `md-label-medium` | 12 / 16 | 500 | 0.5 |
 | `md-label-small` | 11 / 16 | 500 | 0.5 |
+| `md-label-large-prominent` | 14 / 20 | 700 | 0.1 |
+| `md-label-medium-prominent` | 12 / 16 | 700 | 0.5 |
+
+The two prominent labels are the label roles in the bold weight, for emphasis within a
+line of label text, such as a name in a sentence. The type scale has no other sizes:
+`text-xxs`, `text-xm` and `text-ssm` were removed. Use the `md-*` role closest to the size
+you need.
 
 The classes are Tailwind utilities, so variants work: `md:md-title-large`,
 `peer-focus:md-label-medium`.
@@ -170,12 +180,26 @@ exist. Prefer the `rounded-corner-*` names in new code.
 ## State layers and focus
 
 - `md-state-layer` adds a translucent overlay in the element's own text colour
-  (`currentColor`). Hover is 8%, focus-visible and pressed are 10%. Add `is-dragged` for
-  the 16% dragged state. The element needs a border radius, which it can inherit.
+  (`currentColor`). Hover is 8%, focus-visible and pressed are 12%, and the dragged
+  state (`is-dragged`) is 16%. These are the MD3 state opacities (`md-sys-state`). The
+  element needs a border radius, which it can inherit.
 - The overlay is a `::before` pseudo-element. Do not give the element its own `::before`.
 - Hover only applies on devices that can hover. Disabled elements and
   `aria-disabled="true"` get no overlay.
-- `md-focus-ring` draws a 2px `primary` outline on `:focus-visible`, offset by 2px.
+- `md-focus-ring` draws the MD3 focus ring on `:focus-visible`: a 3px outline in the
+  `secondary` role, drawn 2px outside the element's edge (`outline-offset: 2px`).
+
+## Touch target
+
+Visual size and hit area are separate, as in MD3 and material-web:
+
+- A button is a 40px container, a standard or filled icon button is 40 by 40 px with a
+  24px icon, and a chip is 32px. The visual size is what a control shows.
+- `md-touch-target` gives the element a hit area of at least 48 by 48 px. It is an
+  invisible box centred on the element, drawn with `::after` (`min-width` and
+  `min-height` 48px). It takes no space and paints nothing.
+- The element needs `position: relative`, which the primitives set. `::before` stays
+  reserved for the state layer, so the two never clash.
 
 ## Motion
 
@@ -184,7 +208,8 @@ Easing (`ease-md-*`): `standard`, `standard-decelerate`, `standard-accelerate`,
 
 Durations are not theme-driven in Tailwind 4, so reference the variable directly:
 `duration-(--md-sys-motion-duration-short3)`. Available steps are `short1` to `short4`
-(50 to 200ms), `medium1` to `medium4` (250 to 400ms) and `long1` to `long4` (450 to 600ms).
+(50 to 200ms), `medium1` to `medium4` (250 to 400ms), `long1` to `long4` (450 to 600ms) and
+`extra-long1` to `extra-long4` (700 to 1000ms, for the largest transitions).
 
 `md-state-layer` and the linear progress animation respect `prefers-reduced-motion`.
 
@@ -214,6 +239,9 @@ Props:
 
 Slots: `default` (the label), `icon` (decorative, hidden from assistive technology).
 
+The container is 40px tall with 24px horizontal padding, or 16px on the leading edge when
+an icon is present. The touch target is 48px (see Touch target).
+
 Listeners such as `@click` pass through to the root element.
 
 ### MdIconButton
@@ -229,7 +257,8 @@ Props:
 
 Requires `aria-label`. Without it the component logs a `console.warn` on mount.
 
-Slot: `default` (the icon). The root is 48 by 48 px.
+Slot: `default` (the icon). The container and state layer are 40 by 40 px, the icon is
+24px, and the touch target is 48 by 48 px.
 
 ### MdCard
 
@@ -255,6 +284,14 @@ Props:
 
 Emits `update:modelValue`. Slots: `leading-icon`, `trailing-icon` (both decorative).
 
+- Focus: the active indicator (filled) and the outline (outlined) are 2px in the `primary`
+  role, the MD3 reference value.
+- Icons sit 12px from the edge. The input text keeps its 48px inset when a leading icon is
+  present.
+- Disabled, per MD3: the filled container is `on-surface` at 4%, the filled active
+  indicator is `on-surface` at 38%, the outlined outline is `on-surface` at 12%, and the
+  input text, label, supporting text and icons are `on-surface` at 38%.
+
 The label floats through the peer pattern, and that pattern needs the input's placeholder
 to be a space. A real `placeholder` is therefore not supported.
 
@@ -273,7 +310,41 @@ Props:
 - `href`: string. For `assist` only: renders an `<a>`
 - `disabled`: boolean
 
-Slots: `default` (the label), `icon`.
+Slots: `default` (the label), `icon`. The chip container is 32px tall, and its touch target
+is 48px (see Touch target).
+
+### MdSwitch
+
+Props:
+
+- `modelValue`: boolean, for `v-model`
+- `disabled`: boolean
+- `id`: optional. Generated when not given
+
+Emits `update:modelValue`. The default slot is the label, tied to the switch through
+`<label for>`. Attributes that are not props, such as `aria-labelledby`, go to the switch
+element. `class` and `style` stay on the root.
+
+The switch is a `<button role="switch">` with `aria-checked`. The track is 52 by 32px with a
+2px outline when off. The handle is 16px when off, 24px when on and 28px while pressed. The
+40px state layer sits around the handle: hover 8%, focus and pressed 12%. A disabled switch
+uses on-surface at 12% for the track and at 38% for the handle, as the MD3 token reference
+sets it.
+
+### MdCheckbox
+
+Props:
+
+- `modelValue`: boolean, for `v-model`
+- `indeterminate`: boolean. Shows a dash in place of the check mark
+- `error`: boolean. Draws the box in the error role and sets `aria-invalid`
+- `disabled`: boolean
+- `id`: optional. Generated when not given
+
+Emits `update:modelValue`. The default slot is the label. The control is a real
+`<input type="checkbox">`, transparent and covering a 48px area over the 40px state layer.
+The visible box is 18px with a 2px outline, and it fills with `primary` when checked. A
+disabled checkbox uses on-surface at 38%. Attributes that are not props go to the input.
 
 ### MdNavigationBar
 
@@ -343,8 +414,22 @@ Do not show a success notice for something the header already confirms, such as 
 
 These are deliberately left for the views that own them:
 
-- The `container` class keeps the shared page gutter (`px-10`, `px-2` below 640px). It is
-  layout, not colour, and the layout work decides its final form.
+- The `container` class keeps the shared page gutter: 16px on compact windows (below 600px)
+  and 24px from 600px up, the MD3 window size classes. A view that sets its own `px-*` on the
+  same element overrides it. The views still doing that are listed in the window margins
+  section below.
+
+## Window margins
+
+The `container` class is the page gutter. Its side padding follows the MD3 window size
+classes: 16px below 600px (compact), 24px from 600px (medium and expanded). The rule is
+inside `@layer components`, so a view's own `px-*` utility still wins, and it will override
+the gutter. Do not add `px-*` to a `container` element unless the gutter should differ from
+the page. Views that do so today, and must move to the shared gutter, are:
+
+- `ConsoleView.vue`, `DashboardView.vue`, `TokensView.vue` and `SettingsView.vue`: `px-15`
+  (60px at every width from 640px)
+- `DefaultHeader.vue`: `max-sm:px-5` (20px below 640px, where the gutter is 16px)
 - The section tabs on the index page are primary tabs built in `src/pages/IndexPage.vue`
   on the `md-state-layer` and `md-focus-ring` classes, not on `MdNavigationBar`. That
   primitive is a bottom bar with icons and a pill indicator, which does not suit a top row

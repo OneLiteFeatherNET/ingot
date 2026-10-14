@@ -192,7 +192,7 @@ const selectTab = (tab) =>
             </div>
             <div
               ref="codeBlock"
-              class="card-editor overflow-auto font-mono text-ssm h-29 relative py-3 px-4 rounded-corner-medium bg-surface-container-highest text-on-surface"
+              class="card-editor overflow-auto font-mono md-body-small h-29 relative py-3 px-4 rounded-corner-medium bg-surface-container-highest text-on-surface"
             >
               <div
                 v-if="loading"

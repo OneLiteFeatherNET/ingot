@@ -121,10 +121,34 @@ describe('MdButton', () => {
     expect(wrapper.attributes('data-variant')).toBe('outlined')
   })
 
-  it('keeps a 48px minimum touch target', () => {
+  it('is a 40px tall container, not a 48px one', () => {
     const wrapper = mount(MdButton, { slots: { default: 'Save' } })
 
-    expect(wrapper.classes()).toContain('min-h-12')
+    expect(wrapper.classes()).toContain('h-10')
+    expect(wrapper.classes()).not.toContain('min-h-12')
+  })
+
+  it('marks the root with the touch target class that widens the hit area to 48px', () => {
+    const wrapper = mount(MdButton, { slots: { default: 'Save' } })
+
+    expect(wrapper.classes()).toContain('md-touch-target')
+  })
+
+  it('uses 24px horizontal padding without an icon', () => {
+    const wrapper = mount(MdButton, { slots: { default: 'Save' } })
+
+    expect(wrapper.classes()).toContain('pl-6')
+    expect(wrapper.classes()).toContain('pr-6')
+  })
+
+  it('uses 16px leading padding when an icon is present', () => {
+    const wrapper = mount(MdButton, {
+      slots: { icon: () => h('svg'), default: 'Upload' }
+    })
+
+    expect(wrapper.classes()).toContain('pl-4')
+    expect(wrapper.classes()).not.toContain('pl-6')
+    expect(wrapper.classes()).toContain('pr-6')
   })
 
   it('renders the icon slot in a wrapper hidden from assistive technology', () => {
