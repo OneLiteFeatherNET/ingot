@@ -17,6 +17,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import { createConfigurationStore } from './configuration'
+import { createSuccessToast, createErrorToast } from '../helpers/toast'
 
 // The store is built per test with a fake client, so no module state leaks between tests.
 // Session and toast are replaced so that importing the store touches neither the network
@@ -142,6 +143,24 @@ describe('configuration store', () => {
     expect(store.configurations.value.maven, 'discard must restore the server value').toEqual({ name: 'server-maven' })
     expect(store.hasChanges.value, 'no domain may be dirty after discard').toBe(false)
     expect(store.invalidDomains.value, 'discard must clear the validity of the discarded domain').toEqual([])
+  })
+
+  it('does not announce a successful load, because loading is not a user action', async () => {
+    vi.clearAllMocks()
+
+    await loadedStore()
+
+    expect(createSuccessToast, 'a successful load must not raise a success notice').not.toHaveBeenCalled()
+  })
+
+  it('still announces a failed load', async () => {
+    vi.clearAllMocks()
+    const client = fakeClient()
+    client.settings.domains = async () => { throw new Error('unreachable') }
+
+    await createConfigurationStore(ref(client)).fetchConfiguration()
+
+    expect(createErrorToast, 'a failed load must raise an error notice').toHaveBeenCalledTimes(1)
   })
 
   it('reports a failed load and no domains', async () => {

@@ -97,7 +97,6 @@ export const createConfigurationStore = (client) => {
       if (!domainNames.includes(selectedDomain.value)) selectedDomain.value = domainNames[0]
 
       loadError.value = null
-      createSuccessToast('Configuration loaded')
       return true
     } catch (error) {
       loadError.value = `Cannot load configuration: ${errorMessage(error)}`
