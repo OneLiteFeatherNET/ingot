@@ -494,7 +494,7 @@ describe('TokensView', () => {
 
       const discard = buttonWithText(wrapper, 'Discard changes')
       expect(discard.attributes('data-variant')).toBe('text')
-      expect(discard.classes()).toContain('text-error')
+      expect(discard.classes()).toContain('text-error!')
     })
 
     it('makes cancel the tonal action of the revoke confirmation', async () => {
@@ -514,7 +514,7 @@ describe('TokensView', () => {
 
       const revoke = buttonWithText(wrapper, 'Revoke')
       expect(revoke.attributes('data-variant')).toBe('text')
-      expect(revoke.classes()).toContain('text-error')
+      expect(revoke.classes()).toContain('text-error!')
     })
   })
 })

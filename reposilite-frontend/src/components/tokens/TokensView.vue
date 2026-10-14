@@ -251,16 +251,17 @@ const runConfirm = (token) => {
       >
         <span class="md-body-medium text-on-surface">You have unsaved changes. Discard them to continue?</span>
         <MdButton
-          variant="error"
-          @click="discardAndContinue"
-        >
-          Discard changes
-        </MdButton>
-        <MdButton
           variant="tonal"
           @click="keepEditing"
         >
           Keep editing
+        </MdButton>
+        <MdButton
+          variant="text"
+          class="text-error!"
+          @click="discardAndContinue"
+        >
+          Discard changes
         </MdButton>
       </div>
 
