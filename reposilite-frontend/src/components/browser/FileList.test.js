@@ -196,3 +196,24 @@ describe('FileList container', () => {
     expect(list.classes(), 'the list no longer uses the 28px radius').not.toContain('rounded-corner-extra-large')
   })
 })
+
+describe('FileList rows follow the md3 list spec', () => {
+  const folder = { name: 'releases', type: 'DIRECTORY' }
+
+  it('separates default rows with an inset divider instead of a full-width rule', () => {
+    const wrapper = mountList({ files: { list: [jar, folder], error: false } })
+    const list = wrapper.find('ul')
+
+    expect(list.classes(), 'a full-width divide-y rule is not used').not.toContain('divide-y')
+    expect(list.classes(), 'the divider is inset 16px on both sides').toContain('[&>li+li]:after:inset-x-4')
+    expect(list.classes(), 'the divider is 1px tall').toContain('[&>li+li]:after:h-px')
+    expect(list.classes(), 'the divider uses outline-variant').toContain('[&>li+li]:after:bg-outline-variant')
+  })
+
+  it('gives skeleton rows the same minimum height as the one-line rows they stand in for', () => {
+    const wrapper = mountList({ loading: true, compactMode: true, files: { list: [], error: false } })
+    const skeleton = wrapper.find('ul').findAll('li')[0]
+
+    expect(skeleton.classes(), 'a placeholder one-line row is 56px tall').toContain('min-h-14')
+  })
+})

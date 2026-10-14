@@ -95,7 +95,7 @@ const onFileClick = (event) => {
 <template>
   <li
     class="md-state-layer group relative flex items-center gap-4 rounded-corner-medium transition-colors"
-    :class="compactMode ? 'min-h-12 px-3' : 'min-h-16 px-4 py-2'"
+    :class="compactMode ? 'min-h-14 px-4' : 'min-h-18 px-4 py-2'"
     :aria-busy="busy ? 'true' : undefined"
   >
     <router-link
@@ -105,7 +105,7 @@ const onFileClick = (event) => {
     >
       <BrowserIcon
         name="folder"
-        class="text-primary"
+        class="text-on-surface-variant"
       />
       <span :class="textClass">
         <span
@@ -114,7 +114,7 @@ const onFileClick = (event) => {
         >{{ file.name }}</span>
         <span
           v-if="compactMode && size"
-          class="shrink-0 md-body-small text-on-surface-variant"
+          class="shrink-0 md-label-small text-on-surface-variant"
         >{{ size }}</span>
         <span
           v-if="!compactMode && meta"
@@ -141,7 +141,7 @@ const onFileClick = (event) => {
         >{{ file.name }}</span>
         <span
           v-if="compactMode && size"
-          class="shrink-0 md-body-small text-on-surface-variant"
+          class="shrink-0 md-label-small text-on-surface-variant"
         >{{ size }}</span>
         <span
           v-if="!compactMode && meta"
