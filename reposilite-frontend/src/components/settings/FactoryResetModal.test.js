@@ -44,4 +44,12 @@ describe('FactoryResetModal', () => {
     expect(title, 'the dialog title is in the document').not.toBeNull()
     expect(wrapper.element.contains(title), 'the dialog is teleported out of the page').toBe(false)
   })
+
+  it('announces the open dialog as an alert dialog', async () => {
+    await openDialog()
+
+    const alert = document.querySelector('[role="alertdialog"]')
+    expect(alert, 'an element with role alertdialog is in the document').not.toBeNull()
+    expect(alert.contains(document.getElementById('factory-reset-title'))).toBe(true)
+  })
 })

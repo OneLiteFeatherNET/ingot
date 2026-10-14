@@ -34,11 +34,15 @@ export default {
       teleport-to="body"
       overlay-class="bg-scrim/40"
       class="flex min-h-full items-center justify-center p-4"
-      aria-labelledby="factory-reset-title"
-      aria-describedby="factory-reset-body"
-      role="alertdialog"
     >
-      <div class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3">
+      <!-- The role sits on the card: the modal root always carries role="dialog" of its own. -->
+      <div
+        class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="factory-reset-title"
+        aria-describedby="factory-reset-body"
+      >
         <h2
           id="factory-reset-title"
           class="md-headline-small text-on-surface"
