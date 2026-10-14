@@ -93,12 +93,20 @@
 
 @layer components {
   /*
-   * The shared page gutter. Width comes from Tailwind's container utility; this adds the
-   * side padding that several views rely on without writing it themselves. It sits in a
-   * layer so that a view's own px-* utility still wins.
+   * The shared page gutter, from the MD3 window size classes: 16px on compact windows (below
+   * 600px) and 24px on medium and expanded windows (600px and up). Width comes from Tailwind's
+   * container utility; this adds the side padding that several views rely on without writing
+   * it themselves. It sits in a layer so that a view's own px-* utility still wins. The media
+   * query has to stay inside the layer too: unlayered CSS would beat every utility.
    */
   .container {
-    @apply px-10 max-sm:px-4;
+    padding-inline: 16px;
+  }
+
+  @media (width >= 600px) {
+    .container {
+      padding-inline: 24px;
+    }
   }
 }
 

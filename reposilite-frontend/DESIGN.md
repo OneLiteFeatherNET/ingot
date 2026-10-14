@@ -414,8 +414,22 @@ Do not show a success notice for something the header already confirms, such as 
 
 These are deliberately left for the views that own them:
 
-- The `container` class keeps the shared page gutter (`px-10`, `px-2` below 640px). It is
-  layout, not colour, and the layout work decides its final form.
+- The `container` class keeps the shared page gutter: 16px on compact windows (below 600px)
+  and 24px from 600px up, the MD3 window size classes. A view that sets its own `px-*` on the
+  same element overrides it. The views still doing that are listed in the window margins
+  section below.
+
+## Window margins
+
+The `container` class is the page gutter. Its side padding follows the MD3 window size
+classes: 16px below 600px (compact), 24px from 600px (medium and expanded). The rule is
+inside `@layer components`, so a view's own `px-*` utility still wins, and it will override
+the gutter. Do not add `px-*` to a `container` element unless the gutter should differ from
+the page. Views that do so today, and must move to the shared gutter, are:
+
+- `ConsoleView.vue`, `DashboardView.vue`, `TokensView.vue` and `SettingsView.vue`: `px-15`
+  (60px at every width from 640px)
+- `DefaultHeader.vue`: `max-sm:px-5` (20px below 640px, where the gutter is 16px)
 - The section tabs on the index page are primary tabs built in `src/pages/IndexPage.vue`
   on the `md-state-layer` and `md-focus-ring` classes, not on `MdNavigationBar`. That
   primitive is a bottom bar with icons and a pill indicator, which does not suit a top row
