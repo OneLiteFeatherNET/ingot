@@ -103,10 +103,11 @@ const downloadHandler = (file) => {
 }
 
 const deleteModalValue = ref()
-const openDeleteModal = (file) => {
+const openDeleteModal = (entry) => {
   deleteModalValue.value = {
     path: props.qualifier.path,
-    file
+    file: entry.name,
+    directory: entry.type === 'DIRECTORY'
   }
 }
 const closeDeleteModal = () =>

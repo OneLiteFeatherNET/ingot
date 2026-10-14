@@ -143,7 +143,7 @@ const onFileClick = (event) => {
       <MdIconButton
         v-if="canDelete"
         :aria-label="`Delete ${file.name}`"
-        @click.stop="openDeleteEntryModal(file.name)"
+        @click.stop="openDeleteEntryModal(file)"
       >
         <BrowserIcon name="delete" />
       </MdIconButton>

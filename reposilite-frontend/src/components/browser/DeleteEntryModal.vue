@@ -46,6 +46,18 @@ const deleteAndClose = () => {
 }
 
 const isOpen = computed(() => props.value != undefined)
+
+const kind = computed(() => (props.value?.directory ? 'folder' : 'file'))
+const title = computed(() => `Delete this ${kind.value}?`)
+const fullPath = computed(() => `/${props.value?.path}/${props.value?.file}`)
+
+// Says what the delete removes and that nothing brings it back, since the repository has
+// no trash. A folder goes with everything inside it, so that is spelled out.
+const scope = computed(() =>
+  props.value?.directory
+    ? 'This permanently removes the folder and every file inside it. It cannot be undone.'
+    : 'This permanently removes the file from the repository. It cannot be undone.'
+)
 </script>
 
 <template>
@@ -68,14 +80,19 @@ const isOpen = computed(() => props.value != undefined)
           :id="titleId"
           class="md-headline-small"
         >
-          Delete this entry?
+          {{ title }}
         </h2>
-        <p
+        <div
           :id="bodyId"
           class="mt-4 md-body-medium text-on-surface-variant"
         >
-          <span class="break-all font-mono text-on-surface">{{ '/' + value.path + '/' + value.file }}</span>
-        </p>
+          <p class="break-all font-mono text-on-surface">
+            {{ fullPath }}
+          </p>
+          <p class="mt-2">
+            {{ scope }}
+          </p>
+        </div>
         <div class="mt-6 flex justify-end gap-2">
           <MdButton
             variant="text"
@@ -88,7 +105,7 @@ const isOpen = computed(() => props.value != undefined)
             class="md-state-layer md-focus-ring inline-flex min-h-12 items-center justify-center rounded-corner-full bg-error px-6 md-label-large text-on-error"
             @click="deleteAndClose()"
           >
-            Confirm
+            Delete
           </button>
         </div>
       </div>
