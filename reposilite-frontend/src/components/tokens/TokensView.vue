@@ -34,8 +34,18 @@ import TokenSecretBanner from './TokenSecretBanner.vue'
 import TokenSummary from './TokenSummary.vue'
 
 const props = defineProps({
-  selectedTab: property(String, true)
+  selectedTab: property(String, true),
+  /**
+   * The reference time in epoch milliseconds, used to judge expiry dates. The view leaves it out and
+   * gets the current time; tests pass a fixed value so that the result does not depend on the day it runs.
+   */
+  now: {
+    type: Number,
+    default: undefined
+  }
 })
+
+const currentMs = () => props.now ?? Date.now()
 
 const {
   tokens, loaded, loading, loadError, secret, dismissSecret,
@@ -126,7 +136,7 @@ const editToken = (token) => {
 
 const saveToken = (token) => {
   const expiryChanged = draft.value.expiresAt !== baseline.value.expiresAt
-  if (expiryChanged && draft.value.expiresAt && draft.value.expiresAt < toDateInput(Date.now())) {
+  if (expiryChanged && draft.value.expiresAt && draft.value.expiresAt < toDateInput(currentMs())) {
     expiryError.value = 'Choose today or a later date, or clear the expiry.'
     return
   }
@@ -303,7 +313,10 @@ const runConfirm = (token) => {
           :key="tid(token)"
         >
           <TokenRow :highlighted="isOpen(`token:${tid(token)}`)">
-            <TokenSummary :token="token" />
+            <TokenSummary
+              :token="token"
+              :now="now"
+            />
             <template #actions>
               <TokenRowActions
                 :name="token.name"
@@ -323,7 +336,7 @@ const runConfirm = (token) => {
             v-model:manager="draft.manager"
             v-model:expiry="draft.expiresAt"
             :expiry-error="expiryError"
-            :expiry-min="toDateInput(Date.now())"
+            :expiry-min="toDateInput(currentMs())"
             @submit="saveToken(token)"
             @cancel="close"
           />
