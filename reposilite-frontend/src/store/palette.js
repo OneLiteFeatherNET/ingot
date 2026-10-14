@@ -25,8 +25,8 @@
  *
  * The categorical order is part of the data: the first series takes the first chart token.
  * The chart tokens are a dedicated set of eight hues, harmonised toward the seed, and are
- * not derived from the MD3 roles: the roles of a copper seed sit too close together to tell
- * series apart. See DESIGN.md, the chart section.
+ * not derived from the MD3 roles: the accent roles sit too close together to tell series
+ * apart. See DESIGN.md, the chart section.
  */
 
 const FALLBACK = 'CanvasText'
