@@ -430,6 +430,23 @@ Props:
 Emits `update:modelValue` with the key of the clicked item. Slot `icon` receives
 `{ item, active }`.
 
+80px `surface-container` bar with a 64 by 32 `secondary-container` pill and a 24px icon. Labels are always shown. A plain click on a link emits `update:modelValue` and keeps the page; a modified click is left to the browser.
+
+### MdNavigationRail
+
+Same props and events as `MdNavigationBar`. 80px `surface` rail, 56 by 32 pill, 56px items with the label under the icon, first item 44px from the top. Used from 600px.
+
+### Adaptive navigation
+
+Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bottom)`; the page reserves its height. From 600px the rail is fixed at the left and the page is offset by 80px, header included. Switch with the CSS breakpoints `max-[600px]:` / `min-[600px]:`, never with JavaScript. A user with one section gets no navigation.
+
+The page publishes the bar height as `--app-bottom-bar-height` on the document root (80px with a
+bar, 0px without). The snackbar adds it to its bottom margin below 600px, so it sits above the bar.
+
+### Top app bar
+
+64px, `sticky top-0`, `surface`. Takes `surface-container` once the window has scrolled (`useWindowScroll`), with a `short4` colour transition. No shadow change.
+
 ### MdLinearProgress
 
 Props:
@@ -482,25 +499,13 @@ Do not show a success notice for something the header already confirms, such as 
 
 ## Known gaps
 
-These are deliberately left for the views that own them:
-
-- The `container` class keeps the shared page gutter: 16px on compact windows (below 600px)
-  and 24px from 600px up, the MD3 window size classes. A view that sets its own `px-*` on the
-  same element overrides it. The views still doing that are listed in the window margins
-  section below.
+None at present. Gaps that are deliberately left for the views that own them are listed here.
 
 ## Window margins
 
 The `container` class is the page gutter. Its side padding follows the MD3 window size
 classes: 16px below 600px (compact), 24px from 600px (medium and expanded). The rule is
-inside `@layer components`, so a view's own `px-*` utility still wins, and it will override
+inside `@layer components`, so a view's own `px-*` utility would still win and override
 the gutter. Do not add `px-*` to a `container` element unless the gutter should differ from
-the page. Views that do so today, and must move to the shared gutter, are:
-
-- `ConsoleView.vue`, `DashboardView.vue`, `TokensView.vue` and `SettingsView.vue`: `px-15`
-  (60px at every width from 640px)
-- `DefaultHeader.vue`: `max-sm:px-5` (20px below 640px, where the gutter is 16px)
-- The section tabs on the index page are primary tabs built in `src/pages/IndexPage.vue`
-  on the `md-state-layer` and `md-focus-ring` classes, not on `MdNavigationBar`. That
-  primitive is a bottom bar with icons and a pill indicator, which does not suit a top row
-  of text tabs.
+the page. Every view and the header use the shared gutter; a test reads their sources and
+fails if a `container` element carries a `px-*` class.
