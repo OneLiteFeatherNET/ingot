@@ -20,8 +20,9 @@ import { useClipboard } from '@vueuse/core'
 import { useSession } from '../../store/session'
 import useRepository from '../../store/maven/repository'
 import useMetadata from '../../store/maven/metadata'
-import CopyIcon from '../icons/CopyIcon.vue'
-import CopiedIcon from '../icons/CopiedIcon.vue'
+import MdCard from '../md/MdCard.vue'
+import MdIconButton from '../md/MdIconButton.vue'
+import BrowserIcon from '../browser/BrowserIcon.vue'
 import CardMenu from './CardMenu.vue'
 import RepositorySnippet from "./RepositorySnippet.vue"
 import ArtifactSnippet from "./ArtifactSnippet.vue"
@@ -128,77 +129,104 @@ const selectTab = (tab) =>
 </script>
 
 <template>
-  <div class="bg-white dark:bg-gray-900 shadow-lg p-7 rounded-xl border-gray-100 dark:border-black">
-    <div class="flex flex-row justify-between">
-      <h1 class="font-bold flex items-center w-full">
-        <span v-if="loading" class="h-4 w-36 rounded bg-gray-200 dark:bg-gray-700 skeleton-bars" />
-        <template v-else>{{title}}</template>
-      </h1>
-      <!-- <button class="bg-black dark:bg-white text-white dark:text-black px-6 py-1 rounded">Download</button> -->
-    </div>
-
-    <CardMenu
-      :configurations="configurations"
-      @selectTab="selectTab"
-    />
-
-    <hr class="dark:border-gray-800 max-sm:hidden">
-
-    <div class="mt-6">
-      <transition :name="transitionName" mode="out-in">
-        <div :key="selectedTab" class="relative">
+  <MdCard
+    variant="elevated"
+    class="w-full"
+  >
+    <div class="px-2 pb-2">
+      <div class="flex flex-row justify-between">
+        <h1 class="flex w-full items-center md-title-large">
           <span
-            v-if="isCopySupported && !loading"
-            @click="copy"
-            class="absolute top-2 right-2 z-10 flex items-center cursor-pointer select-none rounded-md p-1 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+            v-if="loading"
+            class="h-5 w-36 rounded bg-surface-container-high skeleton-bars"
+          />
+          <template v-else>
+            {{ title }}
+          </template>
+        </h1>
+      </div>
+
+      <CardMenu
+        :configurations="configurations"
+        @select-tab="selectTab"
+      />
+
+      <div class="mt-5">
+        <transition
+          :name="transitionName"
+          mode="out-in"
+        >
+          <div
+            :key="selectedTab"
+            class="relative"
           >
-            <span v-if="copied" class="text-ssm font-normal text-success mr-1.5">Copied</span>
-            <CopiedIcon v-if="copied" class="text-success" />
-            <CopyIcon v-else />
-          </span>
-          <div class="card-editor overflow-auto font-mono text-ssm h-29 relative py-3 px-4 rounded-lg bg-gray-100 dark:bg-gray-800">
-            <div v-if="loading" class="skeleton-bars space-y-2.5 pt-1">
-              <div class="h-3 rounded bg-gray-200 dark:bg-gray-700" style="width: 80%" />
-              <div class="h-3 rounded bg-gray-200 dark:bg-gray-700" style="width: 55%" />
-              <div class="h-3 rounded bg-gray-200 dark:bg-gray-700" style="width: 68%" />
-              <div class="h-3 rounded bg-gray-200 dark:bg-gray-700" style="width: 40%" />
+            <div
+              v-if="isCopySupported && !loading"
+              class="absolute top-2 right-2 z-10 flex items-center gap-1"
+            >
+              <span
+                v-if="copied"
+                class="md-label-medium text-success"
+              >Copied</span>
+              <MdIconButton
+                aria-label="Copy snippet"
+                @click="copy"
+              >
+                <BrowserIcon :name="copied ? 'check' : 'copy'" />
+              </MdIconButton>
             </div>
-            <template v-else>
-              <template v-for="entry in configurations" :key="entry.name">
-                <template v-if="entry.name === selectedTab">
-                  <RepositorySnippet
+            <div class="card-editor overflow-auto font-mono text-ssm h-29 relative py-3 px-4 rounded-corner-medium bg-surface-container-highest text-on-surface">
+              <div
+                v-if="loading"
+                class="skeleton-bars space-y-2.5 pt-1"
+              >
+                <div
+                  class="h-3 rounded bg-surface-container-high"
+                  style="width: 80%"
+                />
+                <div
+                  class="h-3 rounded bg-surface-container-high"
+                  style="width: 55%"
+                />
+                <div
+                  class="h-3 rounded bg-surface-container-high"
+                  style="width: 68%"
+                />
+                <div
+                  class="h-3 rounded bg-surface-container-high"
+                  style="width: 40%"
+                />
+              </div>
+              <template v-else>
+                <template
+                  v-for="entry in configurations"
+                  :key="entry.name"
+                >
+                  <template v-if="entry.name === selectedTab">
+                    <RepositorySnippet
                       v-if="data.type === 'repository'"
                       ref="snippetRef"
                       :configuration="entry"
                       :data="data"
-                  />
-                  <ArtifactSnippet
+                    />
+                    <ArtifactSnippet
                       v-else-if="data.type === 'artifact'"
                       ref="snippetRef"
                       :configuration="entry"
                       :data="data"
-                  />
+                    />
+                  </template>
                 </template>
               </template>
-            </template>
+            </div>
           </div>
-        </div>
-      </transition>
+        </transition>
+      </div>
     </div>
-  </div>
+  </MdCard>
 </template>
 
 <style>
-@reference "../../style.css";
-#card-menu div {
-  border-top-left-radius: 10%;
-  border-top-right-radius: 10%;
-}
-#card-menu div:hover {
-  @apply bg-gray-100 dark:bg-gray-800;
-  transition: background-color 0.5s;
-}
-
 .slide-right-enter-active,
 .slide-right-leave-active,
 .slide-left-enter-active,
@@ -225,7 +253,7 @@ const selectTab = (tab) =>
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(155, 155, 155, 0.4);
+  background-color: var(--md-sys-color-outline-variant);
   border-radius: 20px;
   border: transparent;
   margin-top: 10px;

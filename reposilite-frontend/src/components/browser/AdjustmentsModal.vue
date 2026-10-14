@@ -15,53 +15,86 @@
   -->
 
 <script setup>
-import { ref } from 'vue'
-import Toggle from '@vueform/toggle'
+import { ref, useId } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
-import '@vueform/toggle/themes/default.css'
 import { useAdjustments } from '../../store/adjustments'
-import CloseIcon from '../icons/CloseIcon.vue'
+import AdjustmentsIcon from '../icons/AdjustmentsIcon.vue'
+import MdButton from '../md/MdButton.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 
 const { reversedFileOrder, displayHashFiles } = useAdjustments()
 const showAdjustments = ref(false)
-</script>
-
-<script>
-export default {
-  inheritAttrs: false
-}
+const titleId = useId()
 </script>
 
 <template>
-  <div id="adjustments-modal">
+  <div>
+    <MdIconButton
+      aria-label="File browser adjustments"
+      @click="showAdjustments = true"
+    >
+      <AdjustmentsIcon />
+    </MdIconButton>
     <VueFinalModal
       v-model="showAdjustments"
-      v-bind="$attrs"
-      class="flex justify-center iems-center"
+      :overlay-class="'vfm__overlay bg-scrim/40!'"
+      class="flex items-center justify-center p-4"
     >
-      <div class="relative border bg-white dark:bg-gray-900 border-gray-100 dark:border-black m-w-20 py-5 px-10 rounded-2xl shadow-xl text-center">
-        <div>
-          <h1 class="font-bold pb-4">File browser adjustments</h1>
-          <hr class>
-          <div class="flex justify-between pt-6">
-            <p class="pr-7">Sort files from newest to oldest</p>
-            <Toggle v-model="reversedFileOrder" class="ml-10"/>
-          </div>
-          <div class="flex justify-between pt-6">
-            <p class="pr-7">
-              Display utility files such as 
-              <span class="font-italic font-mono bg-gray-200 dark:bg-black px-2 py-0.5 m-2 rounded-lg">.asc/.md5/.sha1/.sha256/.sha512</span>
-            </p>
-            <Toggle v-model="displayHashFiles" class="ml-10"/>
-          </div>
+      <div
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        class="w-full max-w-lg rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+      >
+        <h2
+          :id="titleId"
+          class="md-headline-small"
+        >
+          File browser adjustments
+        </h2>
+
+        <div class="mt-4 divide-y divide-outline-variant">
+          <label class="flex min-h-16 cursor-pointer items-center justify-between gap-6 py-3">
+            <span class="md-body-large">Sort files from newest to oldest</span>
+            <span class="relative inline-flex h-8 w-13 shrink-0 items-center">
+              <input
+                v-model="reversedFileOrder"
+                type="checkbox"
+                role="switch"
+                class="peer sr-only"
+              >
+              <span class="absolute inset-0 rounded-corner-full border-2 border-outline bg-surface-container-highest transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary" />
+              <span class="absolute left-1.5 size-4 rounded-corner-full bg-outline transition-all peer-checked:translate-x-5 peer-checked:size-6 peer-checked:bg-on-primary" />
+            </span>
+          </label>
+
+          <label class="flex min-h-16 cursor-pointer items-center justify-between gap-6 py-3">
+            <span class="md-body-large">
+              Display utility files such as
+              <span class="font-mono text-on-surface-variant">.asc/.md5/.sha1/.sha256/.sha512</span>
+            </span>
+            <span class="relative inline-flex h-8 w-13 shrink-0 items-center">
+              <input
+                v-model="displayHashFiles"
+                type="checkbox"
+                role="switch"
+                class="peer sr-only"
+              >
+              <span class="absolute inset-0 rounded-corner-full border-2 border-outline bg-surface-container-highest transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary" />
+              <span class="absolute left-1.5 size-4 rounded-corner-full bg-outline transition-all peer-checked:translate-x-5 peer-checked:size-6 peer-checked:bg-on-primary" />
+            </span>
+          </label>
         </div>
-        <button class="absolute top-0 right-0 mt-5 mr-9" @click="showAdjustments = false">
-          <CloseIcon />
-        </button>
+
+        <div class="mt-6 flex justify-end">
+          <MdButton
+            variant="text"
+            @click="showAdjustments = false"
+          >
+            Done
+          </MdButton>
+        </div>
       </div>
     </VueFinalModal>
-    <div @click="showAdjustments = true">
-      <slot name="button"></slot>
-    </div>
   </div>
 </template>

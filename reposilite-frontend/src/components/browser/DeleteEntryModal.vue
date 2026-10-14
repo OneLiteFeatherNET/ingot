@@ -16,13 +16,12 @@
 
 <script setup>
 import { VueFinalModal } from 'vue-final-modal'
-import '@vueform/toggle/themes/default.css'
-import CloseIcon from '../icons/CloseIcon.vue'
 import { useSession } from '../../store/session'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import useQualifier from '../../store/qualifier'
 import { property } from '../../helpers/vue-extensions'
+import MdButton from '../md/MdButton.vue'
 
 const props = defineProps({
   value: property(Object, false),
@@ -31,6 +30,9 @@ const props = defineProps({
 
 const { client } = useSession()
 const { refreshQualifier } = useQualifier()
+
+const titleId = useId()
+const bodyId = useId()
 
 const deleteEntry = ({ path, file }) => {
   client.value.maven.delete(path + '/' + file)
@@ -46,36 +48,49 @@ const deleteAndClose = () => {
 const isOpen = computed(() => props.value != undefined)
 </script>
 
-<script>
-export default {
-  inheritAttrs: false
-}
-</script>
-
 <template>
-  <div id="adjustments-modal">
+  <div id="delete-modal">
     <VueFinalModal
       v-if="isOpen"
-      v-model="isOpen"
-      v-bind="$attrs"
-      class="flex justify-center iems-center"
+      :model-value="isOpen"
+      :overlay-class="'vfm__overlay bg-scrim/40!'"
+      class="flex items-center justify-center p-4"
+      @update:model-value="(open) => { if (!open) close() }"
     >
-      <div class="relative border bg-white dark:bg-gray-900 border-gray-100 dark:border-black m-w-20 py-5 px-10 rounded-2xl shadow-xl text-center">
-        <div>
-          <h1 class="font-bold px-16">
-            Do you want to delete 
-            <span class="text-error">
-              {{ '/' + value.path + '/' + value.file }}
-            </span>
-          </h1>
-          <div class="flex flex-row justify-evenly pt-4">
-            <button @click="deleteAndClose()" class="px-12 py-1 rounded-full bg-error text-on-error">Confirm</button>
-            <button @click="close()" class="px-12 py-1 rounded-full bg-gray-200 dark:bg-gray-600">Cancel</button>
-          </div>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        :aria-describedby="bodyId"
+        class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+      >
+        <h2
+          :id="titleId"
+          class="md-headline-small"
+        >
+          Delete this entry?
+        </h2>
+        <p
+          :id="bodyId"
+          class="mt-4 md-body-medium text-on-surface-variant"
+        >
+          <span class="break-all font-mono text-on-surface">{{ '/' + value.path + '/' + value.file }}</span>
+        </p>
+        <div class="mt-6 flex justify-end gap-2">
+          <MdButton
+            variant="text"
+            @click="close()"
+          >
+            Cancel
+          </MdButton>
+          <button
+            type="button"
+            class="md-state-layer md-focus-ring inline-flex min-h-12 items-center justify-center rounded-corner-full bg-error px-6 md-label-large text-on-error"
+            @click="deleteAndClose()"
+          >
+            Confirm
+          </button>
         </div>
-        <button class="absolute top-0 right-0 mt-5 mr-9" @click.left.prevent="close()" v-on:click.stop>
-          <CloseIcon />
-        </button>
       </div>
     </VueFinalModal>
   </div>

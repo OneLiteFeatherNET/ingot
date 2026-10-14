@@ -47,28 +47,49 @@ defineExpose({ content })
 </script>
 
 <template>
-<pre v-if="configuration.lang === 'xml'" ref="preElement">
+  <pre
+    v-if="configuration.lang === 'xml'"
+    ref="preElement"
+  >
 <XmlTag name="repository">
   <XmlTag name="id">{{ data.repoId }}</XmlTag>
   <XmlTag name="name">{{ data.title }}</XmlTag>
   <XmlTag name="url">{{ data.domain }}</XmlTag>
 </XmlTag>
 </pre>
-<pre v-else-if="configuration.lang === 'groovy'" ref="preElement">
-maven <CodeBrackets start="{" end="}">
+  <pre
+    v-else-if="configuration.lang === 'groovy'"
+    ref="preElement"
+  >
+maven <CodeBrackets
+start="{"
+end="}"
+>
     name <CodeString>{{ gradleId }}</CodeString>
     url <CodeString>{{ data.domain }}</CodeString>
 </CodeBrackets>
 </pre>
-<pre v-else-if="configuration.lang === 'kotlin'" ref="preElement">
-maven <CodeBrackets start="{" end="}">
+  <pre
+    v-else-if="configuration.lang === 'kotlin'"
+    ref="preElement"
+  >
+maven <CodeBrackets
+start="{"
+end="}"
+>
     name = <CodeString>{{ gradleId }}</CodeString>
-    url = uri<CodeBrackets start="(" end=")"><CodeString>{{ data.domain }}</CodeString></CodeBrackets>
+    url = uri<CodeBrackets
+start="("
+end=")"
+><CodeString>{{ data.domain }}</CodeString></CodeBrackets>
 </CodeBrackets>
 </pre>
-<pre v-else-if="configuration.lang === 'scala'" ref="preElement">
+  <pre
+    v-else-if="configuration.lang === 'scala'"
+    ref="preElement"
+  >
 resolvers +=
-  <CodeString>{{data.repoId}}</CodeString>
-     at <CodeString>{{data.domain}}</CodeString>
+  <CodeString>{{ data.repoId }}</CodeString>
+     at <CodeString>{{ data.domain }}</CodeString>
 </pre>
 </template>

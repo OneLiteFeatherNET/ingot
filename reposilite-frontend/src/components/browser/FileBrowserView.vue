@@ -14,12 +14,11 @@
   - limitations under the License.
   -->
 
-<script setup lang="jsx">
+<script setup>
 import { computed, ref, watch } from 'vue'
 import { useAdjustments } from '../../store/adjustments'
 import { useSession } from '../../store/session'
 import useQualifier from '../../store/qualifier'
-import AdjustmentsIcon from '../icons/AdjustmentsIcon.vue'
 import AdjustmentsModal from './AdjustmentsModal.vue'
 import Card from '../card/SnippetsCard.vue'
 import Breadcrumb from './BreadcrumbNavigation.vue'
@@ -27,6 +26,7 @@ import FileList from './FileList.vue'
 import BrowserUpload from './FileUpload.vue'
 import ViewGrid from '../icons/ViewGrid.vue'
 import ViewList from '../icons/ViewList.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import { property } from '../../helpers/vue-extensions'
 import { createErrorToast } from '../../helpers/toast'
 
@@ -116,48 +116,39 @@ const toggleCompactMode = () => {
   fileBrowserCompactMode.value = !fileBrowserCompactMode.value
   localStorage.setItem(fileBrowserCompactViewKey, fileBrowserCompactMode.value.toString())
 }
-
-const MenuButton = (_, context) => {
-  return (
-    <div class="w-9 mx-2">
-      <div class="pl-2 pt-[0.325rem] pb-1 pr-2 rounded-full cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
-        {context.slots.default()}
-      </div>
-    </div>
-  )
-}
 </script>
 
 <template>
-  <div class="bg-gray-100">
-    <div class="dark:bg-black">
-      <div class="container mx-auto relative min-h-[320px] mb-12">
-        <div class="lg:absolute pt-13 -top-5 right-8">
-          <Card :qualifier="qualifier" />
-        </div>
-        <div class="lg:max-w-2/5 xl:max-w-1/2">
-          <div class="flex justify-between pt-7 px-2">
-            <Breadcrumb :parentPath="parentPath" />
-            <div class="flex">
-              <MenuButton @click="toggleCompactMode()">
-                <ViewGrid v-if="fileBrowserCompactMode" class="pr-[0.225rem]"/>
-                <ViewList v-else class="pr-[0.225rem]"/>
-              </MenuButton>
-              <AdjustmentsModal>
-                <template v-slot:button>
-                  <div class="w-9">
-                    <div class="pl-2 pt-[0.325rem] pb-1 pr-2 rounded-full cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
-                      <AdjustmentsIcon class="pr-[0.225rem]" />
-                    </div>
-                  </div>
-                </template>
-              </AdjustmentsModal>
-            </div>
-          </div>
-          <FileList :qualifier="qualifier" :files="processedFiles" :compactMode="fileBrowserCompactMode" :loading="loading"/>
-          <BrowserUpload v-if="canUpload" :qualifier="qualifier" />
+  <div class="container relative mx-auto mb-12 min-h-[320px]">
+    <div class="lg:absolute pt-13 -top-5 right-8">
+      <Card :qualifier="qualifier" />
+    </div>
+    <div class="lg:max-w-2/5 xl:max-w-1/2">
+      <div class="flex items-center justify-between gap-2 pt-7">
+        <Breadcrumb :parent-path="parentPath" />
+        <div class="flex shrink-0 items-center gap-1">
+          <MdIconButton
+            toggle
+            aria-label="Compact list"
+            :selected="fileBrowserCompactMode"
+            @click="toggleCompactMode()"
+          >
+            <ViewGrid v-if="fileBrowserCompactMode" />
+            <ViewList v-else />
+          </MdIconButton>
+          <AdjustmentsModal />
         </div>
       </div>
+      <FileList
+        :qualifier="qualifier"
+        :files="processedFiles"
+        :compact-mode="fileBrowserCompactMode"
+        :loading="loading"
+      />
+      <BrowserUpload
+        v-if="canUpload"
+        :qualifier="qualifier"
+      />
     </div>
   </div>
 </template>

@@ -39,25 +39,33 @@ const selectConfiguration = (configuration) =>
 </script>
 
 <!--
-  One row that scrolls sideways when it runs out of width, which is what the main navigation
-  does. There used to be a second implementation underneath: a dropdown that only appeared
-  below 640px, so the same choice was made two different ways depending on the window.
-  It also never reopened after a reload, because its open flag came back from localStorage
-  as the string "false", which is true.
+  One row of build tools that scrolls sideways when it runs out of width, which is what the
+  main navigation does. There used to be a second implementation underneath: a dropdown that
+  only appeared below 640px, so the same choice was made two different ways depending on the
+  window. It also never reopened after a reload, because its open flag came back from
+  localStorage as the string "false", which is true.
 -->
 <template>
-  <div id="card-menu" class="mt-2 overflow-x-auto">
+  <div
+    id="card-menu"
+    class="-mx-2 overflow-x-auto border-b border-outline-variant"
+  >
     <div class="flex flex-nowrap">
       <button
         v-for="configuration in configurations"
         :key="configuration.name"
         type="button"
-        class="shrink-0 grow cursor-pointer whitespace-nowrap border-b-2 border-transparent px-7 py-4 text-center"
-        :class="{ 'border-gray-800! dark:border-gray-100!': configuration.name === selectedTab }"
+        class="md-state-layer md-focus-ring relative shrink-0 cursor-pointer whitespace-nowrap rounded-t-corner-small px-4 min-h-12 md-title-small transition-colors duration-(--md-sys-motion-duration-short3)"
+        :class="configuration.name === selectedTab ? 'text-primary' : 'text-on-surface-variant'"
         :aria-current="configuration.name === selectedTab ? 'true' : undefined"
         @click="selectConfiguration(configuration)"
       >
         {{ configuration.name }}
+        <span
+          aria-hidden="true"
+          class="absolute inset-x-2 bottom-0 h-[3px] rounded-t-corner-extra-small transition-colors duration-(--md-sys-motion-duration-short3)"
+          :class="configuration.name === selectedTab ? 'bg-primary' : 'bg-transparent'"
+        />
       </button>
     </div>
   </div>
