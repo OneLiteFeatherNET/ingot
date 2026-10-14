@@ -31,6 +31,7 @@ export default {
     <VueFinalModal
       v-model="showFactoryReset"
       v-bind="$attrs"
+      teleport-to="body"
       overlay-class="bg-scrim/40"
       class="flex min-h-full items-center justify-center p-4"
       aria-labelledby="factory-reset-title"
