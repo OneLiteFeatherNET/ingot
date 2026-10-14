@@ -15,24 +15,16 @@
  */
 
 import { computed, ref, reactive } from 'vue'
-import Convert from 'ansi-to-html'
+import { parseAnsi } from './ansi'
 
 const levelNames = ['Other', 'Trace', 'Debug', 'Info', 'Warn', 'Error']
 const levels  = reactive({})
 const filter = ref('')
 const id = ref(0)
 const rawLog = reactive([])
-const convert = new Convert()
 
 const getLevel = message =>
   levelNames.find(level => message.includes(`${level.toUpperCase()} | `)) ?? 'Other'
-
-const sanitizeMessage = (message) => convert.toHtml(
-  message
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll(' ', '&nbsp;')
-)
 
 export default function useLog() {
   levelNames.forEach(level => {
@@ -45,12 +37,14 @@ export default function useLog() {
 
   const log = computed(() => {
     return rawLog
-      .filter(entry => entry.message.toLowerCase().includes(filter.value.toLowerCase()))
+      .filter(entry => entry.text.toLowerCase().includes(filter.value.toLowerCase()))
       .filter(entry => levels[entry.level].enabled)
   })
 
   const logMessage = value => {
-    rawLog.push({ id: id.value++, message: sanitizeMessage(value), level: getLevel(value) })
+    const segments = parseAnsi(value)
+    const text = segments.map(segment => segment.text).join('')
+    rawLog.push({ id: id.value++, segments, text, level: getLevel(value) })
   }
 
   const clearLog = () => {
@@ -61,7 +55,6 @@ export default function useLog() {
     levels,
     log,
     filter,
-    sanitizeMessage,
     logMessage,
     clearLog
   }

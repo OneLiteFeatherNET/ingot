@@ -156,9 +156,12 @@ const chipClasses = (level) =>
         <p
           v-for="entry in log"
           :key="entry.id"
-          v-html="entry.message"
           class="whitespace-nowrap"
-        />
+        ><span
+          v-for="(segment, index) in entry.segments"
+          :key="index"
+          :class="segment.classes"
+        >{{ segment.text }}</span></p>
 
         <!--
           whitespace-normal on each of these: the panel around them keeps pre-wrap so log
