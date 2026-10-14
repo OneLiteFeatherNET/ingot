@@ -22,6 +22,7 @@ import { createURL } from '../../store/client'
 import { useSession } from '../../store/session'
 import DetailedListEntry from './DetailedListEntry.vue'
 import DeleteEntryModal from './DeleteEntryModal.vue'
+import { useAdjustments } from '../../store/adjustments'
 import MdButton from '../md/MdButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { computed, ref } from 'vue'
@@ -31,10 +32,21 @@ const props = defineProps({
   qualifier: property(Object, true),
   files: property(Object, true),
   compactMode: property(Boolean, true),
-  loading: property(Boolean, true)
+  loading: property(Boolean, true),
+  hiddenCount: property(Number, false)
 })
 
 const emit = defineEmits(['retry'])
+
+// Judged on the list as it is shown, after hidden files are filtered out.
+const isEmpty = computed(() =>
+  !props.loading && !props.files.error && (props.files.list?.length ?? 0) === 0
+)
+
+const { displayHashFiles } = useAdjustments()
+const showUtilityFiles = () => {
+  displayHashFiles.value = true
+}
 
 // What each kind of failed listing says, and whether asking again can help.
 const FAILURES = {
@@ -147,8 +159,23 @@ const entryUrl = (file) =>
         />
       </template>
     </ul>
+    <div
+      v-if="isEmpty && hiddenCount > 0"
+      class="flex flex-col items-start gap-3 px-4 pt-4"
+    >
+      <p class="md-body-large text-on-surface-variant">
+        This directory holds {{ hiddenCount }} utility {{ hiddenCount === 1 ? 'file' : 'files' }}
+        (checksums and signatures), which are hidden.
+      </p>
+      <MdButton
+        variant="tonal"
+        @click="showUtilityFiles"
+      >
+        Show utility files
+      </MdButton>
+    </div>
     <p
-      v-if="!loading && files.isEmpty"
+      v-else-if="isEmpty"
       class="px-4 pt-4 md-body-large text-on-surface-variant"
     >
       Directory is empty

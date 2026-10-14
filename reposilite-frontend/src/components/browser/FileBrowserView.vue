@@ -39,13 +39,16 @@ const parentPath = ref('')
 const files = ref({})
 const loading = ref(true)
 const { details, client, hasPermissionTo } = useSession()
-const { applyAdjustments } = useAdjustments()
+const { applyAdjustments, countHiddenFiles } = useAdjustments()
 const { getParentPath } = useQualifier()
 
 const processedFiles = computed(() => ({
   ...files.value,
   list: applyAdjustments([...files.value.list ?? []])
 }))
+
+// Hidden utility files are counted here, on the listing as the server sent it.
+const hiddenCount = computed(() => countHiddenFiles(files.value.list ?? []))
 
 const canUpload = computed(() => {
   return props.qualifier.path.length > 1 && hasPermissionTo(`/${props.qualifier.path}`, 'route:write')
@@ -72,7 +75,6 @@ watch(
         if (isStale()) return
         files.value = {
           list: response.data.files,
-          isEmpty: response.data.files.length === 0,
           error: false
         }
         loading.value = false
@@ -98,7 +100,6 @@ watch(
               type: 'DIRECTORY',
               list: []
             })),
-            isEmpty: false,
             error: false
           }
         } else {
@@ -150,6 +151,7 @@ const toggleCompactMode = () => {
         :files="processedFiles"
         :compact-mode="fileBrowserCompactMode"
         :loading="loading"
+        :hidden-count="hiddenCount"
         @retry="retry"
       />
       <BrowserUpload

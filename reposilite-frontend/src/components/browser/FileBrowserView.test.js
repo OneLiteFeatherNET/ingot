@@ -157,3 +157,37 @@ describe('FileBrowserView listing errors', () => {
     expect(wrapper.text(), 'a bare error still ends the loading state').toContain('Cannot load this directory')
   })
 })
+
+describe('FileBrowserView empty directories', () => {
+  beforeEach(() => {
+    sessionState.details.value = { routes: [] }
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('reports the hidden checksum files when they are the only files in the directory', async () => {
+    sessionState.client.value = clientWithDetails(() => Promise.resolve({
+      data: { files: [
+        { name: 'example-1.0.jar.sha1', type: 'FILE' },
+        { name: 'example-1.0.jar.md5', type: 'FILE' }
+      ] }
+    }))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text(), 'the hidden checksum files are counted, not hidden silently').toContain('2 utility files')
+    expect(wrapper.text(), 'the directory is not reported as empty').not.toContain('Directory is empty')
+  })
+
+  it('reports a plainly empty directory as empty', async () => {
+    sessionState.client.value = clientWithDetails(() => Promise.resolve({ data: { files: [] } }))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text(), 'an empty directory says so').toContain('Directory is empty')
+  })
+})
