@@ -15,7 +15,11 @@
   -->
 
 <template>
-  <div class="mx-2 py-1.5 rounded-full font-bold px-6 text-sm max-h-[35px] min-w-[93px] cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
+  <!-- A real button, so that it takes keyboard focus and announces itself as an action. -->
+  <button
+    type="button"
+    class="mx-2 py-1.5 rounded-full font-bold px-6 text-sm max-h-[35px] min-w-[93px] cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500"
+  >
     <slot/>
-  </div>
+  </button>
 </template>

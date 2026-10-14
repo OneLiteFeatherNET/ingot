@@ -17,33 +17,40 @@
 <script setup>
 import { ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
-import { createSuccessToast, errorMessage } from '../../helpers/toast'
+import { createSuccessToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import CloseIcon from '../icons/CloseIcon.vue'
+import MenuButton from './MenuButton.vue'
 
-const { login } = useSession()
+const { login, loginFailureMessage } = useSession()
 const showLogin = ref(false)
 const name = ref('')
 const secret = ref('')
 const failure = ref(null)
 const busy = ref(false)
 
+const NAME_FIELD_ID = 'login-name'
+
 const close = () => {
   showLogin.value = false
   failure.value = null
 }
 
+// The field is only in the document once the dialog has opened, so focus waits for that.
+const focusName = () => document.getElementById(NAME_FIELD_ID)?.focus()
+
 // The failure belongs in the dialog, not in a toast: the form that has to be corrected is
 // right here, and a toast about it appears somewhere else entirely and then leaves.
-const signin = (name, secret) => {
+const signin = () => {
+  const user = name.value
   busy.value = true
   failure.value = null
 
-  return login(name, secret)
-    .then(() => createSuccessToast(`Dashboard accessed as ${name}`))
+  return login(user, secret.value)
+    .then(() => createSuccessToast(`Dashboard accessed as ${user}`))
     .then(() => close())
     .catch(error => {
-      failure.value = errorMessage(error)
+      failure.value = loginFailureMessage(error)
     })
     .finally(() => {
       busy.value = false
@@ -51,45 +58,66 @@ const signin = (name, secret) => {
 }
 </script>
 
-<script>
-export default {
-  inheritAttrs: false,
-}
-</script>
-
 <template>
-  <div id="login-modal">
+  <div>
+    <MenuButton @click="showLogin = true">
+      Sign in
+    </MenuButton>
     <VueFinalModal
       v-model="showLogin"
-      v-bind="$attrs"
       class="flex items-center justify-center"
+      aria-labelledby="login-title"
+      @opened="focusName"
     >
       <div class="relative rounded-2xl border border-gray-100 bg-white px-10 py-5 shadow-xl dark:border-black dark:bg-gray-900">
-        <p class="pb-4 text-center text-xl font-bold">Login with access token</p>
+        <h2
+          id="login-title"
+          class="pb-4 text-center text-xl font-bold"
+        >
+          Sign in with access token
+        </h2>
 
-        <form class="flex w-96 flex-col max-sm:w-65" @submit.prevent="signin(name, secret)">
-          <label class="flex flex-col text-left text-sm">
+        <form
+          class="flex w-96 flex-col max-sm:w-65"
+          @submit.prevent="signin()"
+        >
+          <label
+            for="login-name"
+            class="flex flex-col text-left text-sm"
+          >
             <span class="pb-1 text-gray-600 dark:text-gray-300">Name</span>
             <input
+              id="login-name"
               v-model="name"
               type="text"
               autocomplete="username"
+              required
+              :aria-invalid="failure ? 'true' : undefined"
+              :aria-describedby="failure ? 'login-failure' : undefined"
               class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
             >
           </label>
 
-          <label class="flex flex-col pt-3 text-left text-sm">
+          <label
+            for="login-secret"
+            class="flex flex-col pt-3 text-left text-sm"
+          >
             <span class="pb-1 text-gray-600 dark:text-gray-300">Secret</span>
             <input
+              id="login-secret"
               v-model="secret"
               type="password"
               autocomplete="current-password"
+              required
+              :aria-invalid="failure ? 'true' : undefined"
+              :aria-describedby="failure ? 'login-failure' : undefined"
               class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
             >
           </label>
 
           <p
             v-if="failure"
+            id="login-failure"
             class="pt-3 text-left text-sm text-error"
             role="alert"
           >
@@ -109,22 +137,19 @@ export default {
             class="pt-3 text-xs text-primary"
             @click="close()"
           >
-            Back to index
+            Cancel
           </button>
         </form>
 
         <button
           type="button"
           class="absolute top-0 right-0 mt-5 mr-5"
-          aria-label="Close the login dialog"
+          aria-label="Close the sign in dialog"
           @click="close()"
         >
           <CloseIcon />
         </button>
       </div>
     </VueFinalModal>
-    <div @click="showLogin = true">
-      <slot name="button"></slot>
-    </div>
   </div>
 </template>

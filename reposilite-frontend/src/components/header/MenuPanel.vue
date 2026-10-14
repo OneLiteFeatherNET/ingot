@@ -48,22 +48,19 @@ const themeLabel = computed(() => ({
       Welcome 
       <span class="font-bold underline">{{ token.name }}</span>
     </div>
-    <LoginModal>
-      <template v-slot:button>
-        <MenuButton v-if="!isLogged">
-          Sign in
-        </MenuButton>
-      </template>
-    </LoginModal>
+    <LoginModal v-if="!isLogged" />
     <MenuButton v-if="isLogged" @click="logout()" class="max-sm:hidden">
       Logout
     </MenuButton>
-    <div
+    <button
       v-if="isLogged"
+      type="button"
+      aria-label="Logout"
       class="hidden px-[0.675rem] pt-[0.2rem] mr-1.5 cursor-pointer rounded-full bg-white dark:bg-gray-900 max-h-[35px] max-sm:block max-sm:pt-1.5"
+      @click="logout()"
     >
-      <LogoutIcon @click="logout()"/>
-    </div>
+      <LogoutIcon/>
+    </button>
     <button
       type="button"
       class="cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500 flex h-[35px] w-[40px] items-center justify-center rounded-full"
