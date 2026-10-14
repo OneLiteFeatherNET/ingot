@@ -13,31 +13,34 @@
   - See the License for the specific language governing permissions and
   - limitations under the License.
   -->
-  
+
 <script setup>
-import {provide, ref, toRaw, watch} from 'vue'
+import {computed, provide, watch} from 'vue'
 import {JsonForms} from '@jsonforms/vue'
 import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
 import { useConfiguration } from '../../store/configuration'
 import download from 'downloadjs'
 import FactoryResetModal from './FactoryResetModal.vue'
+import MdButton from '../md/MdButton.vue'
 import { property } from '../../helpers/vue-extensions'
 
 const props = defineProps({
   selectedTab: property(String, true)
 })
 
+const { store, renderers, configurationStyles } = useConfiguration()
 const {
-  fetchConfiguration,
-  updateConfiguration,
-  renderers,
-  configurationStyles,
-  configurationValidator,
   domains,
-  configurations,
   schemas,
-  selectedDomain
-} = useConfiguration()
+  configurations,
+  selectedDomain,
+  hasChanges,
+  invalidDomains,
+  dirtyDomains,
+  saving,
+  saveError,
+  loadError
+} = store
 
 /*
  * 'styles' is the injection key useStyles() of @dzikoysk/vue-vanilla looks up, so every
@@ -45,50 +48,55 @@ const {
  */
 provide('styles', configurationStyles)
 
-const isValid = ref(true)
-const hasChanged = ref(false)
+const namesOf = (domains) => domains.map(domain => store.titleOf(domain)).join(', ')
+const invalidNames = computed(() => namesOf(invalidDomains.value))
+const dirtyNames = computed(() => namesOf(dirtyDomains.value))
 
-const executeIfValid = (callback) => { 
-  if (isValid.value) callback() 
-}
+const canSave = computed(() => hasChanges.value && invalidDomains.value.length === 0 && !saving.value)
+const canDownload = computed(() => invalidDomains.value.length === 0 && domains.value.length > 0)
 
-const updateFormsConfiguration = (domain, event) => {
-  if (!hasChanged.value) {
-    hasChanged.value = configurations.value[domain] != event.data
+/* One line next to the actions. Errors take precedence, so a failed save is never hidden. */
+const status = computed(() => {
+  if (saveError.value) return { text: saveError.value, error: true }
+  if (saving.value) return { text: 'Saving', error: false }
+  if (invalidDomains.value.length > 0) {
+    return { text: `Fix the errors in ${invalidNames.value} to save or download.`, error: true }
   }
-  configurations.value[domain] = event.data
-  isValid.value = event.errors.length == 0
-  event.errors.forEach(error => {
-    console.log(error)
-  })
-}
+  if (hasChanges.value) return { text: `Unsaved changes in ${dirtyNames.value}.`, error: false }
+  return null
+})
 
-const reload = (action) => action().then(() => hasChanged.value = false)
+const downloadHint = computed(() =>
+  canDownload.value ? null : `Download is unavailable until the errors in ${invalidNames.value} are fixed.`
+)
+
+const onFormChange = (domain, event) => {
+  store.setDomainData(domain, event.data)
+  store.setValidity(domain, event.errors.length === 0)
+}
 
 watch(
   () => props.selectedTab,
   (selectedTab, prev) => {
     /* Fetch configuration only when user opens the configuration tab  */
     if (selectedTab === 'Settings' && prev == undefined && domains.value.length == 0)
-      fetchConfiguration()
+      store.fetchConfiguration()
   },
   { immediate: true }
 )
 
 const downloadSettings = () => {
+  if (!canDownload.value) return
   download(
-    JSON.stringify(toRaw(configurations.value)), 
-    'shared.configuration.json', 
+    JSON.stringify(configurations.value),
+    'shared.configuration.json',
     'application/json'
   )
 }
 
-const factoryReset = () => {
-  const emptyConfiguration = {}
-  domains.value.forEach(domain => emptyConfiguration[domain] = {})
-  configurations.value = emptyConfiguration
-  updateConfiguration()
-}
+const save = () => store.saveConfiguration()
+const discard = () => store.discardChanges()
+const factoryReset = () => store.factoryReset()
 
 /* JsonForms configuration */
 const formsConfiguration = {
@@ -97,60 +105,52 @@ const formsConfiguration = {
 </script>
 
 <template>
-  <div class="settings-view container mx-auto pt-7 px-15 pb-12">
-    <div class="flex justify-between pb-3 flex-col">
-      <div>
-        <p>Modify configuration shared between all instances.</p>
-        <p><strong>Remember</strong>: Configuration propagation can take up to 10 seconds on all your instances.</p>
+  <div class="settings-view container mx-auto pt-7 px-15 pb-4">
+    <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-start md:justify-between">
+      <div class="flex flex-col gap-1 max-w-prose">
+        <p class="md-body-large text-on-surface-variant">
+          Modify configuration shared between all instances.
+        </p>
+        <p class="md-body-medium text-on-surface-variant">
+          <strong class="text-on-surface">Remember</strong>: Configuration propagation can take up to 10 seconds on all your instances.
+        </p>
       </div>
-      <div id="configuration-state" class="flex flex-row pt-8">
-        <button 
-          @click.prevent="executeIfValid(downloadSettings)" 
-          class="bg-gray-800 dark:bg-gray-600"
-          :class="{ forbidden: !isValid }"
-          v-if="!hasChanged"
-        >
-          Download as JSON
-        </button>
-        <FactoryResetModal :callback="factoryReset">
-            <template v-slot:button>
-                <button class="bg-gray-800 dark:bg-gray-600">Factory reset</button>
-            </template>
-        </FactoryResetModal>
-        <button 
-          @click.prevent="reload(updateConfiguration)"
-          class="bg-gray-500 dark:bg-gray-800 cursor-not-allowed"
-          :class="{ changed: hasChanged, forbidden: !isValid }"
-          :disabled="!isValid || !hasChanged"
-          v-if="hasChanged"
-        >
-          Update and reload
-        </button>
-        <button 
-          @click.prevent="reload(fetchConfiguration)"
-          class="bg-gray-500 dark:bg-gray-800 cursor-not-allowed"
-          :class="{ changed: hasChanged }"
-          :disabled="!isValid || !hasChanged"
-        >
-          Reset changes
-        </button>
-      </div>
-    </div>
+      <FactoryResetModal :callback="factoryReset">
+        <template #button>
+          <button
+            type="button"
+            class="md-state-layer md-focus-ring relative inline-flex min-h-12 shrink-0 items-center justify-center rounded-corner-full px-6 md-label-large text-error"
+          >
+            Factory reset
+          </button>
+        </template>
+      </FactoryResetModal>
+    </header>
+
+    <p
+      v-if="loadError"
+      role="alert"
+      class="md-body-medium text-error pb-4"
+    >
+      {{ loadError }}
+    </p>
+
     <Tabs v-model="selectedDomain">
-      <Tab v-for="domain in domains"
-        class="item"
+      <Tab
+        v-for="domain in domains"
         :key="`config:${domain}`"
+        class="item"
         :val="domain"
         :label="schemas[domain]?.title"
         :indicator="true"
       />
     </Tabs>
     <TabPanels v-model="selectedDomain">
-      <TabPanel 
-        v-for="domain in domains" 
-        :val="domain" 
-        :key="`config_tab:${domain}`" 
-        class="border-1 rounded dark:border-gray-700 p-4"
+      <TabPanel
+        v-for="domain in domains"
+        :key="`config_tab:${domain}`"
+        :val="domain"
+        class="rounded-corner-large border border-outline-variant bg-surface-container-low p-4 md:p-6"
       >
         <JsonForms
           v-if="configurations[domain]"
@@ -158,36 +158,82 @@ const formsConfiguration = {
           :data="configurations[domain]"
           :schema="schemas[domain]"
           :renderers="renderers"
-          :ajv="configurationValidator"
-          @change="updateFormsConfiguration(domain, $event)"
+          :ajv="store.configurationValidator"
+          @change="onFormChange(domain, $event)"
         />
       </TabPanel>
     </TabPanels>
+
+    <div class="sticky bottom-0 z-10 mt-6 flex flex-col gap-3 border-t border-outline-variant bg-surface-container px-6 py-3 md:flex-row md:items-center md:justify-between">
+      <p
+        id="settings-status"
+        class="md-body-medium min-w-0 flex-1"
+        :class="status?.error ? 'text-error' : 'text-on-surface-variant'"
+        :role="status?.error ? 'alert' : 'status'"
+      >
+        <template v-if="status">
+          {{ status.text }}
+        </template>
+        <template v-else>
+          No unsaved changes.
+        </template>
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <MdButton
+          variant="outlined"
+          :disabled="!canDownload"
+          :aria-describedby="downloadHint ? 'settings-download-hint' : undefined"
+          :title="downloadHint ?? undefined"
+          @click="downloadSettings"
+        >
+          Download as JSON
+        </MdButton>
+        <span
+          v-if="downloadHint"
+          id="settings-download-hint"
+          class="sr-only"
+        >{{ downloadHint }}</span>
+        <MdButton
+          variant="text"
+          :disabled="!hasChanges || saving"
+          @click="discard"
+        >
+          Reset
+        </MdButton>
+        <MdButton
+          variant="filled"
+          :disabled="!canSave"
+          @click="save"
+        >
+          Save
+        </MdButton>
+      </div>
+    </div>
   </div>
 </template>
 
 <!--suppress CssInvalidAtRule -->
 <style scoped>
 @reference "../../style.css";
-#configuration-state button {
-  @apply mx-2 rounded text-sm px-4 text-white py-2;
+/*
+ * The tabs are vue3-tabs markup, which takes no class names from the styles object. The
+ * rules stay here, under .settings-view, so they reach nothing outside this view.
+ */
+.settings-view :deep(.tabs) {
+  @apply flex gap-1 border-b border-outline-variant overflow-x-auto;
 }
-#configuration-state .changed {
-  @apply bg-primary! text-on-primary! cursor-pointer!;
+.settings-view :deep(.item) {
+  @apply cursor-pointer px-4 py-3 md-label-large text-on-surface-variant;
+  @apply transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard;
+  border-top-left-radius: var(--md-sys-shape-corner-small);
+  border-top-right-radius: var(--md-sys-shape-corner-small);
 }
-#configuration-state .forbidden {
-  @apply bg-gray-500! cursor-not-allowed!;
+.settings-view :deep(.item.active) {
+  @apply text-primary;
+  box-shadow: inset 0 -3px 0 0 var(--md-sys-color-primary);
 }
-.item {
-  @apply pb-1;
-  @apply pt-1.5;
-  @apply cursor-pointer;
-  @apply text-gray-600 dark:text-gray-300;
-  @apply bg-gray-100 dark:bg-black;
-}
-.tabs .item:hover {
-  @apply bg-gray-150 dark:bg-gray-900;
-  transition: background-color 0.5s;
+.settings-view :deep(.item:hover) {
+  @apply text-on-surface;
 }
 </style>
 
@@ -195,74 +241,44 @@ const formsConfiguration = {
 <style>
 @reference "../../style.css";
 /*
- * Everything the renderer styles object can carry now lives in src/store/configuration.js.
- * What is left below stays here because each rule selects on something no key of that
- * object names.
+ * Everything the renderer styles object can carry lives in src/store/configuration.js. What is
+ * left below stays here because each rule selects on something no key of that object names.
+ * Every rule is scoped to .settings-view, so none of it reaches the header or another view.
+ * Unlayered rules beat utilities, so the states that must win are written here, not in the object.
  */
 
-/*
- * `container` has to stay an @apply. Written into the class attribute it would also match
- * the project's own `.container` rule from style.css, which adds the page gutter.
- */
-.vertical-layout {
+/* `container` has to stay an @apply, because written into the class attribute it would also match the page gutter rule. */
+.settings-view .vertical-layout {
   @apply container mx-auto;
 }
-/*
- * A checkbox and a text field share one class name, styles.control.input, so the split
- * between the two only exists as an attribute selector.
- */
-.control .input:not([type=checkbox]) {
-  @apply text-sm h-9 px-4 text-black;
+
+/* A checkbox and a text field share one class name, styles.control.input, so the split between the two only exists as an attribute selector. */
+.settings-view .control .input:not([type="checkbox"]) {
+  @apply block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface;
 }
-.control .input[type="checkbox"] {
-  @apply h-5 w-5;
+.settings-view .control .input:not([type="checkbox"]):focus {
+  @apply border-primary ring-1 ring-primary outline-none;
 }
-/*
- * `label` matches an element rather than a class, and the enum array renderer prints
- * labels that pass through no style key at all.
- */
-.label, label {
-  padding-bottom: 0.5em;
-  padding-left: 0.45em;
-  display: inline-block;
-  font-weight: bold;
+.settings-view .control .input[type="checkbox"] {
+  @apply h-5 w-5 accent-primary;
 }
-/*
- * Descendants of the control wrapper. The "Enabled" caption beside a checkbox is a bare
- * <p>; the width is deliberately tied to the wrapper, because the enum array renderer
- * emits its checkboxes outside of one; and `:read-only` is a state the object cannot
- * express. The last two rules also have to stay together: both are important, and an
- * important utility would outrank the more specific of the two instead of losing to it.
- */
-.wrapper p {
-  @apply px-2 text-sm;
+
+/* Labels: the control label has the `label` class; the enum array renderer prints bare labels that pass through no style key. */
+.settings-view .label,
+.settings-view label:not([class]) {
+  @apply block px-2 pb-1 md-label-large text-on-surface-variant;
 }
-.wrapper input {
-  @apply w-1/2;
+
+/* The caption beside a checkbox is a bare <p>, and read-only is a state the object cannot express. */
+.settings-view .wrapper p {
+  @apply px-2 md-body-medium text-on-surface;
 }
-.wrapper input, .wrapper select {
-  @apply dark:bg-gray-800! dark:text-white!;
+.settings-view .wrapper input:not([type="checkbox"]):read-only {
+  @apply bg-surface-container text-on-surface-variant;
 }
-.wrapper input:not([type=checkbox]):read-only {
-  @apply bg-gray-200! dark:bg-gray-800! text-gray-500!;
-}
-/*
- * vue3-tabs wraps the array and one-of renderers, and none of its markup takes class names
- * from the styles object.
- */
-.one-of-container .active, .tab-panel .array-list .tab-panel .array-list .active {
-  @apply bg-gray-125 dark:bg-gray-900;
-}
-.one-of-container .tab-panel, .tab-panel .array-list .tab-panel .array-list .tab-panel {
-  @apply bg-gray-125 dark:bg-gray-900;
-  border-radius: 0.25rem;
-  padding-left: 17px;
-}
-.tabs > div {
-  @apply rounded-t-lg;
-}
-.settings-view .tab-panel {
-  @apply h-full;
-  @apply border rounded-md px-6 py-2 dark:border-gray-600;
+
+/* vue3-tabs nests panels for the array and one-of renderers; each level needs a little air above it. */
+.settings-view .tab-panel .tab-panel {
+  @apply pt-4;
 }
 </style>
