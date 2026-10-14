@@ -135,3 +135,66 @@ describe('IndexPage section from the query', () => {
       .toBe('dashboard section')
   })
 })
+
+// The bar and the rail are both in the page. CSS shows one of them, so each test checks both.
+const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
+
+const SECTION_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console', 'Settings']
+
+describe('IndexPage adaptive navigation', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  it('has no tab row above the content any more', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    expect(wrapper.find('nav[aria-label="Sections"]').exists(), 'the sections now live in the bar and the rail')
+      .toBe(false)
+  })
+
+  it('offers the bar and the rail, each with every section, to a manager', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const labels = navigations(wrapper).map(nav => nav.findAll('a').map(link => link.text()))
+
+    expect(labels, 'the bar and the rail must list the same five sections in the same order')
+      .toEqual([SECTION_LABELS, SECTION_LABELS])
+  })
+
+  it('shows no navigation at all when the user has only one section', async () => {
+    const { wrapper } = await mountAt('/', { manager: false })
+
+    expect(navigations(wrapper), 'a single destination needs no navigation').toHaveLength(0)
+  })
+
+  it('marks the active section as the current page in both navigations', async () => {
+    const { wrapper } = await mountAt('/?tab=tokens', { manager: true })
+
+    const current = navigations(wrapper).map(nav =>
+      nav.findAll('[aria-current="page"]').map(item => item.text()))
+
+    expect(current).toEqual([['Tokens'], ['Tokens']])
+  })
+
+  it('switches the section when a rail item is chosen', async () => {
+    const { wrapper, router } = await mountAt('/', { manager: true })
+
+    const rail = navigations(wrapper)[1]
+    await rail.findAll('a').find(link => link.text() === 'Console').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.query.tab, 'the rail must update the URL like the bar does')
+      .toBe('console')
+    expect(shownView(wrapper)).toBe('console section')
+  })
+
+  it('links each section to the repository path that was browsed', async () => {
+    const { wrapper } = await mountAt('/org/repo?tab=dashboard', { manager: true })
+
+    const tokens = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Tokens')
+
+    expect(tokens.attributes('href'), 'a section link must keep the path being browsed')
+      .toBe('/org/repo?tab=tokens')
+  })
+})

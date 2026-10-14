@@ -66,3 +66,40 @@ describe('MdNavigationBar', () => {
     expect(wrapper.find('button').exists()).toBe(false)
   })
 })
+
+describe('MdNavigationBar links', () => {
+  const LINKS = [
+    { key: 'overview', label: 'Overview', href: '#/org/repo' },
+    { key: 'tokens', label: 'Tokens', href: '#/org/repo?tab=tokens' }
+  ]
+
+  const clickWith = (element, init) => {
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init })
+    element.dispatchEvent(event)
+    return event
+  }
+
+  it('keeps the page in place for a plain click, so the section can switch without a reload', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: LINKS, modelValue: 'overview' } })
+
+    const event = clickWith(wrapper.findAll('a')[1].element, { button: 0 })
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(wrapper.emitted('update:modelValue')[0]).toEqual(['tokens'])
+  })
+
+  it('leaves a modified click to the browser, so the link can open in a new tab', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: LINKS, modelValue: 'overview' } })
+
+    const event = clickWith(wrapper.findAll('a')[1].element, { button: 0, ctrlKey: true })
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(wrapper.emitted('update:modelValue'), 'a modified click must not also switch this page').toBeUndefined()
+  })
+
+  it('shows the label of every link as its visible text', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: LINKS, modelValue: 'overview' } })
+
+    expect(wrapper.findAll('a').map(link => link.text())).toEqual(['Overview', 'Tokens'])
+  })
+})
