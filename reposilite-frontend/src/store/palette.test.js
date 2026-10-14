@@ -23,11 +23,11 @@ const root = () => document.documentElement
 // custom properties on the root that the real theme sets, and the palette has to read them.
 const setRole = (name, value) => root().style.setProperty(name, value)
 
+const CHART_VALUES = ['#100001', '#100002', '#100003', '#100004', '#100005', '#100006', '#100007', '#100008']
+
 describe('palette', () => {
   beforeEach(() => {
-    setRole('--md-sys-color-primary', '#101010')
-    setRole('--md-sys-color-tertiary', '#202020')
-    setRole('--md-sys-color-secondary', '#303030')
+    CHART_VALUES.forEach((value, index) => setRole(`--md-ext-color-chart-${index + 1}`, value))
     setRole('--md-sys-color-on-surface', '#404040')
     setRole('--md-sys-color-on-surface-variant', '#505050')
     setRole('--md-sys-color-outline', '#606060')
@@ -42,18 +42,24 @@ describe('palette', () => {
     }
   })
 
-  it('starts the categorical palette with primary, tertiary and secondary', () => {
-    const [first, second, third] = categorical()
-
-    expect(first, 'first series should take the primary role').toBe('#101010')
-    expect(second, 'second series should take the tertiary role').toBe('#202020')
-    expect(third, 'third series should take the secondary role').toBe('#303030')
+  it('returns the eight chart series in token order, chart-1 first', () => {
+    expect(categorical(), 'the categorical palette should be the eight chart tokens in order').toEqual(CHART_VALUES)
   })
 
-  it('follows the role values when the theme changes them', () => {
-    setRole('--md-sys-color-primary', '#abcdef')
+  it('reads one colour per series, so no two series share a value', () => {
+    expect(new Set(categorical()).size, 'every series needs its own colour').toBe(8)
+  })
 
-    expect(categorical()[0], 'the palette should pick up the new primary role on the next read').toBe('#abcdef')
+  it('follows the chart token values when the theme changes them', () => {
+    setRole('--md-ext-color-chart-1', '#abcdef')
+
+    expect(categorical()[0], 'the palette should pick up the new chart-1 value on the next read').toBe('#abcdef')
+  })
+
+  it('does not take series colours from the MD3 roles', () => {
+    setRole('--md-sys-color-primary', '#999999')
+
+    expect(categorical(), 'a change to a role must not alter the series palette').not.toContain('#999999')
   })
 
   it('takes the chart axis colour from on-surface-variant', () => {
