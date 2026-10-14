@@ -87,6 +87,10 @@
   --md-sys-typescale-label-small-weight: 500;
   --md-sys-typescale-label-small-tracking: 0.5px;
 
+  /* Prominent labels: the same size and tracking as the label role, in the bold weight. */
+  --md-sys-typescale-label-large-weight-prominent: 700;
+  --md-sys-typescale-label-medium-weight-prominent: 700;
+
   --md-sys-typescale-body-large-size: 16px;
   --md-sys-typescale-body-large-line-height: 24px;
   --md-sys-typescale-body-large-weight: 400;
@@ -193,6 +197,22 @@
   font-size: var(--md-sys-typescale-label-medium-size);
   line-height: var(--md-sys-typescale-label-medium-line-height);
   font-weight: var(--md-sys-typescale-label-medium-weight);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+}
+
+@utility md-label-large-prominent {
+  font-family: var(--md-sys-typescale-font-family);
+  font-size: var(--md-sys-typescale-label-large-size);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  font-weight: var(--md-sys-typescale-label-large-weight-prominent);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+
+@utility md-label-medium-prominent {
+  font-family: var(--md-sys-typescale-font-family);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  font-weight: var(--md-sys-typescale-label-medium-weight-prominent);
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
 }
 

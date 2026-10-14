@@ -146,6 +146,13 @@ and one utility class:
 | `md-label-large` | 14 / 20 | 500 | 0.1 |
 | `md-label-medium` | 12 / 16 | 500 | 0.5 |
 | `md-label-small` | 11 / 16 | 500 | 0.5 |
+| `md-label-large-prominent` | 14 / 20 | 700 | 0.1 |
+| `md-label-medium-prominent` | 12 / 16 | 700 | 0.5 |
+
+The two prominent labels are the label roles in the bold weight, for emphasis within a
+line of label text, such as a name in a sentence. The type scale has no other sizes:
+`text-xxs`, `text-xm` and `text-ssm` were removed. Use the `md-*` role closest to the size
+you need.
 
 The classes are Tailwind utilities, so variants work: `md:md-title-large`,
 `peer-focus:md-label-medium`.
@@ -201,7 +208,8 @@ Easing (`ease-md-*`): `standard`, `standard-decelerate`, `standard-accelerate`,
 
 Durations are not theme-driven in Tailwind 4, so reference the variable directly:
 `duration-(--md-sys-motion-duration-short3)`. Available steps are `short1` to `short4`
-(50 to 200ms), `medium1` to `medium4` (250 to 400ms) and `long1` to `long4` (450 to 600ms).
+(50 to 200ms), `medium1` to `medium4` (250 to 400ms), `long1` to `long4` (450 to 600ms) and
+`extra-long1` to `extra-long4` (700 to 1000ms, for the largest transitions).
 
 `md-state-layer` and the linear progress animation respect `prefers-reduced-motion`.
 

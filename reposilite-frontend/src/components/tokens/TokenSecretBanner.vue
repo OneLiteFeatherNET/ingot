@@ -57,7 +57,7 @@ const copy = async () => {
     class="flex flex-col gap-3 border-b border-outline-variant bg-primary-container px-4 py-4 text-on-primary-container"
   >
     <p class="md-title-small">
-      New secret for <span class="font-semibold">{{ name }}</span>
+      New secret for <span class="md-label-large-prominent">{{ name }}</span>
     </p>
     <div class="flex flex-wrap items-center gap-2">
       <code class="md-body-large min-w-0 flex-1 break-all rounded-corner-small bg-surface px-3 py-2 font-mono text-on-surface">{{ value }}</code>

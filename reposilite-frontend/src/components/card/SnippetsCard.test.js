@@ -110,4 +110,13 @@ describe('SnippetsCard surface', () => {
 
     expect(wrapper.find('[data-variant]').attributes('data-variant')).toBe('outlined')
   })
+
+  it('sets the snippet text in the md body small role', async () => {
+    await mountCard()
+
+    const editor = wrapper.find('.card-editor')
+    expect(editor.exists()).toBe(true)
+    expect(editor.classes()).toContain('md-body-small')
+    expect(editor.classes()).not.toContain('text-ssm')
+  })
 })
