@@ -252,15 +252,11 @@ const formsConfiguration = {
   @apply container mx-auto;
 }
 
-/* A checkbox and a text field share one class name, styles.control.input, so the split between the two only exists as an attribute selector. */
 .settings-view .control .input:not([type="checkbox"]) {
   @apply block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface;
 }
 .settings-view .control .input:not([type="checkbox"]):focus {
   @apply border-primary ring-1 ring-primary outline-none;
-}
-.settings-view .control .input[type="checkbox"] {
-  @apply h-5 w-5 accent-primary;
 }
 
 /* Labels: the control label has the `label` class; the enum array renderer prints bare labels that pass through no style key. */
