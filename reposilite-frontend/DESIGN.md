@@ -103,6 +103,21 @@ The brand charcoal `#1f1f23` is at tone 12. The dark `surface-container` is also
 so the charcoal of the brand matches that step, and the dark `surface` (tone 6) sits one step
 darker than it. Light `surface` is `#fff8f8`, near white.
 
+### High contrast
+
+`@media (prefers-contrast: more)` swaps in the contrast 1.0 values of the same SchemeVibrant
+generator for the accent roles, the fixed roles, `on-surface`, `on-background`,
+`on-surface-variant` and `outline`. The surfaces keep their values, so the page keeps its
+colour and only the content gets stronger. The light set is scoped to `:root:not(.dark)` and
+the dark set to `.dark`, so a root that carries both classes takes the dark set. With the
+query on, every text pair in the table above reaches 7:1 in both themes; without it, 4.5:1.
+`src/styles/md3/color.test.js` checks both.
+
+Medium contrast (0.5) was generated with the same method and is not emitted. CSS has no
+middle step for `prefers-contrast` (only `no-preference`, `more` and `less`). If the
+dashboard ever gets a manual contrast setting, regenerate the medium set at 0.5 and attach
+it to a data attribute at that point.
+
 Status colours that MD3 does not define. Use them for text only:
 
 | Token | Utility | Light | Dark |

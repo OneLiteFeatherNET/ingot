@@ -130,6 +130,94 @@
 }
 
 /*
+ * High contrast, for a system that asks for more contrast. The accent roles, the fixed roles
+ * and the text and outline roles come from the official OLF table at contrast 1.0
+ * (SchemeVibrant). The surfaces keep their standard values, so the page does not change
+ * colour, only the contrast of the content on it. The fixed roles switch here as well, since
+ * the standard ones are the only theme-invariant values.
+ *
+ * Medium contrast (0.5) was generated too, but prefers-contrast has no middle step, so it is
+ * not emitted. DESIGN.md records the values. The light rule is :root:not(.dark), so a root
+ * that carries both the light and dark classes keeps the dark values.
+ */
+@media (prefers-contrast: more) {
+  :root:not(.dark) {
+    --md-sys-color-primary: #450025;
+    --md-sys-color-on-primary: #ffc5d8;
+    --md-sys-color-primary-container: #9a0559;
+    --md-sys-color-on-primary-container: #ffffff;
+    --md-sys-color-inverse-primary: #ffadca;
+    --md-sys-color-secondary: #410035;
+    --md-sys-color-on-secondary: #ffc3e7;
+    --md-sys-color-secondary-container: #842a6e;
+    --md-sys-color-on-secondary-container: #ffffff;
+    --md-sys-color-tertiary: #0a0077;
+    --md-sys-color-on-tertiary: #d1d0ff;
+    --md-sys-color-tertiary-container: #4041a9;
+    --md-sys-color-on-tertiary-container: #ffffff;
+    --md-sys-color-error: #470013;
+    --md-sys-color-on-error: #ffc6cb;
+    --md-sys-color-error-container: #a00035;
+    --md-sys-color-on-error-container: #ffffff;
+    --md-sys-color-surface-tint: #450025;
+    --md-sys-color-primary-fixed: #9a0559;
+    --md-sys-color-primary-fixed-dim: #86004d;
+    --md-sys-color-on-primary-fixed: #ffffff;
+    --md-sys-color-on-primary-fixed-variant: #ffffff;
+    --md-sys-color-secondary-fixed: #842a6e;
+    --md-sys-color-secondary-fixed-dim: #761d62;
+    --md-sys-color-on-secondary-fixed: #ffffff;
+    --md-sys-color-on-secondary-fixed-variant: #ffffff;
+    --md-sys-color-tertiary-fixed: #4041a9;
+    --md-sys-color-tertiary-fixed-dim: #34349d;
+    --md-sys-color-on-tertiary-fixed: #ffffff;
+    --md-sys-color-on-tertiary-fixed-variant: #ffffff;
+    --md-sys-color-on-surface: #000000;
+    --md-sys-color-on-background: #000000;
+    --md-sys-color-on-surface-variant: #372e31;
+    --md-sys-color-outline: #675b5e;
+  }
+
+  .dark {
+    --md-sys-color-primary: #ffdde6;
+    --md-sys-color-on-primary: #5c0033;
+    --md-sys-color-primary-container: #ff74af;
+    --md-sys-color-on-primary-container: #000000;
+    --md-sys-color-inverse-primary: #720040;
+    --md-sys-color-secondary: #ffdcef;
+    --md-sys-color-on-secondary: #570047;
+    --md-sys-color-secondary-container: #e980c8;
+    --md-sys-color-on-secondary-container: #000000;
+    --md-sys-color-tertiary: #e5e3ff;
+    --md-sys-color-on-tertiary: #1a1686;
+    --md-sys-color-tertiary-container: #989aff;
+    --md-sys-color-on-tertiary-container: #000000;
+    --md-sys-color-error: #ffdddf;
+    --md-sys-color-on-error: #5f001c;
+    --md-sys-color-error-container: #ff798c;
+    --md-sys-color-on-error-container: #000000;
+    --md-sys-color-surface-tint: #ffdde6;
+    --md-sys-color-primary-fixed: #ff74af;
+    --md-sys-color-primary-fixed-dim: #f95da3;
+    --md-sys-color-on-primary-fixed: #000000;
+    --md-sys-color-on-primary-fixed-variant: #000000;
+    --md-sys-color-secondary-fixed: #ffbfe6;
+    --md-sys-color-secondary-fixed-dim: #ffa9e1;
+    --md-sys-color-on-secondary-fixed: #000000;
+    --md-sys-color-on-secondary-fixed-variant: #21001a;
+    --md-sys-color-tertiary-fixed: #a7a9ff;
+    --md-sys-color-tertiary-fixed-dim: #9799ff;
+    --md-sys-color-on-tertiary-fixed: #000000;
+    --md-sys-color-on-tertiary-fixed-variant: #000000;
+    --md-sys-color-on-surface: #ffffff;
+    --md-sys-color-on-background: #ffffff;
+    --md-sys-color-on-surface-variant: #eedfe2;
+    --md-sys-color-outline: #b6a8ab;
+  }
+}
+
+
+/*
  * @theme inline writes var(--md-sys-color-*) straight into the utilities. Without
  * "inline" Tailwind resolves the variable where @theme is declared, and the dark values
  * on .dark would never reach a utility.

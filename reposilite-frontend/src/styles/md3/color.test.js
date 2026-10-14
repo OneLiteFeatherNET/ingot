@@ -89,9 +89,11 @@ const mediaBody = (text, query) => {
 }
 
 const sheet = stripComments(css)
+// The base theme is the sheet without the high-contrast media block, which repeats .dark.
+const baseSheet = sheet.replace(/@media \(prefers-contrast: more\) \{[\s\S]*?\n\}\n/, '')
 const THEMES = {
-  light: rulesFor(sheet, ':root'),
-  dark: rulesFor(sheet, '.dark')
+  light: rulesFor(baseSheet, ':root'),
+  dark: rulesFor(baseSheet, '.dark')
 }
 const CONTRAST = {
   light: rulesFor(mediaBody(sheet, '(prefers-contrast: more)'), CONTRAST_ROOT_LIGHT),
@@ -154,6 +156,14 @@ describe('colour roles', () => {
       }
     })
 
+    it(`keeps every text pair at 7:1 or more under prefers-contrast: more in the ${theme} theme`, () => {
+      const values = colours(theme, { highContrast: true })
+      for (const [text, background] of TEXT_PAIRS) {
+        const ratio = contrastRatio(values[`--md-sys-color-${text}`], values[`--md-sys-color-${background}`])
+        expect(ratio, `high contrast ${text} on ${background} is ${ratio.toFixed(2)}:1, below 7:1`).toBeGreaterThanOrEqual(7)
+      }
+    })
+
     it(`takes the accent roles from the official OneLiteFeather tables in the ${theme} theme`, () => {
       const expected = theme === 'light'
         ? { '--md-sys-color-primary': '#ac1c67', '--md-sys-color-secondary': '#94387c', '--md-sys-color-tertiary': '#4d4fb7' }
@@ -177,5 +187,22 @@ describe('colour roles', () => {
     expect(toLab(THEMES.light['--md-sys-color-surface'])[0], 'light surface should be near white (L* above 96)').toBeGreaterThan(96)
     const darkL = toLab(THEMES.dark['--md-sys-color-surface'])[0]
     expect(darkL, `dark surface L* is ${darkL.toFixed(1)}, expected a near-black charcoal`).toBeLessThan(12)
+  })
+})
+
+describe('high contrast', () => {
+  it('defines the light high-contrast values on :root:not(.dark), so a dark root keeps the dark values', () => {
+    expect(CONTRAST.light['--md-sys-color-on-surface'], 'the light high-contrast body text should be defined').toBeDefined()
+  })
+
+  it('defines the dark high-contrast values on .dark', () => {
+    expect(CONTRAST.dark['--md-sys-color-on-surface'], 'the dark high-contrast body text should be defined').toBeDefined()
+  })
+
+  it('does not change the surfaces, only the text and outline roles', () => {
+    for (const name of ['--md-sys-color-surface', '--md-sys-color-surface-container', '--md-sys-color-background']) {
+      expect(CONTRAST.light[name], `${name} should keep its standard value under high contrast`).toBeUndefined()
+      expect(CONTRAST.dark[name], `${name} should keep its standard value under high contrast`).toBeUndefined()
+    }
   })
 })
