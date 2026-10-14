@@ -28,7 +28,8 @@ import ViewGrid from '../icons/ViewGrid.vue'
 import ViewList from '../icons/ViewList.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { property } from '../../helpers/vue-extensions'
-import { createErrorToast } from '../../helpers/toast'
+import { errorMessage } from '../../helpers/toast'
+import { classifyListingError } from './listingError'
 
 const props = defineProps({
   qualifier: property(Object, true)
@@ -50,8 +51,12 @@ const canUpload = computed(() => {
   return props.qualifier.path.length > 1 && hasPermissionTo(`/${props.qualifier.path}`, 'route:write')
 })
 
+// bumped by the retry action, so a failed listing can be requested again
+const attempt = ref(0)
+const retry = () => attempt.value++
+
 watch(
-  () => [props.qualifier.watchable, details.value],
+  () => [props.qualifier.watchable, details.value, attempt.value],
   async () => {
     if (details.value === null) {
       return
@@ -79,7 +84,7 @@ watch(
             ?.filter(route => route.path.startsWith(`/${qualifier}`))
             ?? []
 
-        if (error.response.status === 403 && currentRoutes.length > 0) {
+        if (error?.response?.status === 403 && currentRoutes.length > 0) {
           const intermediateDirectories = currentRoutes.map(currentRoute => {
             let currentSegment = currentRoute.path.substring(`/${qualifier}/`.replaceAll('//', '/').length)
             return currentSegment.includes('/') ? currentSegment.substring(0, currentSegment.indexOf('/')) : currentSegment
@@ -97,10 +102,11 @@ watch(
             error: false
           }
         } else {
-          createErrorToast(`${error.response.status}: ${error.response.data.message}`)
+          // Shown in place of the listing, with a retry, so there is no toast to dismiss.
           files.value = {
             list: [],
-            error: true
+            error: classifyListingError(error),
+            message: errorMessage(error)
           }
         }
 
@@ -144,6 +150,7 @@ const toggleCompactMode = () => {
         :files="processedFiles"
         :compact-mode="fileBrowserCompactMode"
         :loading="loading"
+        @retry="retry"
       />
       <BrowserUpload
         v-if="canUpload"

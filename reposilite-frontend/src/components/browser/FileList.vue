@@ -22,6 +22,8 @@ import { createURL } from '../../store/client'
 import { useSession } from '../../store/session'
 import DetailedListEntry from './DetailedListEntry.vue'
 import DeleteEntryModal from './DeleteEntryModal.vue'
+import MdButton from '../md/MdButton.vue'
+import BrowserIcon from './BrowserIcon.vue'
 import { computed, ref } from 'vue'
 import { property } from '../../helpers/vue-extensions'
 
@@ -30,6 +32,42 @@ const props = defineProps({
   files: property(Object, true),
   compactMode: property(Boolean, true),
   loading: property(Boolean, true)
+})
+
+const emit = defineEmits(['retry'])
+
+// What each kind of failed listing says, and whether asking again can help.
+const FAILURES = {
+  network: {
+    icon: 'error',
+    title: 'Cannot reach the repository',
+    body: 'Check your connection, then try again.',
+    retryable: true
+  },
+  'not-found': {
+    icon: 'search',
+    title: 'Directory not found',
+    body: 'Nothing is published at this path. It may have moved or been removed.',
+    retryable: false
+  },
+  forbidden: {
+    icon: 'lock',
+    title: 'You do not have access to this directory',
+    body: 'Sign in with a token that can read it, or pick another path.',
+    retryable: false
+  },
+  unknown: {
+    icon: 'error',
+    title: 'Cannot load this directory',
+    body: 'The repository answered with an error. Try again in a moment.',
+    retryable: true
+  }
+}
+
+const failure = computed(() => {
+  const base = FAILURES[props.files.error] ?? FAILURES.unknown
+  const body = props.files.error === 'unknown' && props.files.message ? props.files.message : base.body
+  return { ...base, body }
 })
 
 // cycled across skeleton rows so the placeholder name bars vary in width
@@ -115,11 +153,31 @@ const entryUrl = (file) =>
     >
       Directory is empty
     </p>
-    <p
+    <section
       v-if="!loading && files.error"
-      class="px-4 pt-4 md-body-large text-on-surface-variant"
+      role="alert"
+      class="mt-3 flex flex-col items-start gap-3 rounded-corner-extra-large bg-surface-container-low p-6"
     >
-      Directory not found
-    </p>
+      <BrowserIcon
+        :name="failure.icon"
+        class="text-error"
+      />
+      <h2 class="md-title-medium text-on-surface">
+        {{ failure.title }}
+      </h2>
+      <p class="md-body-medium text-on-surface-variant">
+        {{ failure.body }}
+      </p>
+      <MdButton
+        v-if="failure.retryable"
+        variant="tonal"
+        @click="emit('retry')"
+      >
+        <template #icon>
+          <BrowserIcon name="refresh" />
+        </template>
+        Retry
+      </MdButton>
+    </section>
   </div>
 </template>
