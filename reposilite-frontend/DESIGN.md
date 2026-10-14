@@ -276,6 +276,14 @@ Props:
 
 Emits `update:modelValue`. Slots: `leading-icon`, `trailing-icon` (both decorative).
 
+- Focus: the active indicator (filled) and the outline (outlined) are 2px in the `primary`
+  role, the MD3 reference value.
+- Icons sit 12px from the edge. The input text keeps its 48px inset when a leading icon is
+  present.
+- Disabled, per MD3: the filled container is `on-surface` at 4%, the filled active
+  indicator is `on-surface` at 38%, the outlined outline is `on-surface` at 12%, and the
+  input text, label, supporting text and icons are `on-surface` at 38%.
+
 The label floats through the peer pattern, and that pattern needs the input's placeholder
 to be a space. A real `placeholder` is therefore not supported.
 

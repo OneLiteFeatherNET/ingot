@@ -97,14 +97,22 @@ const helperText = computed(() => (props.error ? props.errorText : props.support
 const describedBy = computed(() => (helperText.value ? helperId.value : undefined))
 
 // Every class name is spelled out in full so that Tailwind finds it in this file.
+// The focus indicator is 2px in both variants: the MD3 reference sets it to 2px. Filled is a
+// 1px primary border plus a 1px inset shadow. Outlined is a 1px primary border plus a 1px
+// inset shadow.
+// The disabled rules follow MD3 (`_md-comp-filled-text-field.scss` and
+// `_md-comp-outlined-text-field.scss`, v0_192): the filled container is on-surface at 4%,
+// the filled active indicator and the outlined outline are on-surface at 38% and 12%, and
+// the input text is on-surface at 38%. The label, supporting text and icons are coloured
+// from props in the script, because they are not after the input in the DOM.
 const FIELD = {
   filled: {
-    default: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-on-surface-variant outline-none focus:border-primary focus:shadow-[inset_0_-1px_0_0_var(--md-sys-color-primary)] disabled:opacity-[0.38]',
-    error: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-error outline-none shadow-[inset_0_-1px_0_0_var(--md-sys-color-error)] disabled:opacity-[0.38]'
+    default: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-on-surface-variant outline-none focus:border-primary focus:shadow-[inset_0_-1px_0_0_var(--md-sys-color-primary)] disabled:bg-on-surface/4 disabled:border-on-surface/38 disabled:text-on-surface/38',
+    error: 'h-14 w-full rounded-t-corner-extra-small bg-surface-container-highest pt-4 md-body-large text-on-surface border-b border-error outline-none shadow-[inset_0_-1px_0_0_var(--md-sys-color-error)] disabled:bg-on-surface/4 disabled:border-on-surface/38 disabled:text-on-surface/38 disabled:shadow-none'
   },
   outlined: {
-    default: 'h-14 w-full rounded-corner-extra-small border border-outline bg-transparent md-body-large text-on-surface outline-none focus:border-primary focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)] disabled:opacity-[0.38]',
-    error: 'h-14 w-full rounded-corner-extra-small border border-error bg-transparent md-body-large text-on-surface outline-none shadow-[inset_0_0_0_1px_var(--md-sys-color-error)] disabled:opacity-[0.38]'
+    default: 'h-14 w-full rounded-corner-extra-small border border-outline bg-transparent md-body-large text-on-surface outline-none focus:border-primary focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)] disabled:border-on-surface/12 disabled:text-on-surface/38',
+    error: 'h-14 w-full rounded-corner-extra-small border border-error bg-transparent md-body-large text-on-surface outline-none shadow-[inset_0_0_0_1px_var(--md-sys-color-error)] disabled:border-on-surface/12 disabled:text-on-surface/38 disabled:shadow-none'
   }
 }
 
@@ -116,7 +124,8 @@ const FLOAT = {
 
 const LABEL_COLOUR = {
   default: 'text-on-surface-variant peer-focus:text-primary',
-  error: 'text-error peer-focus:text-error'
+  error: 'text-error peer-focus:text-error',
+  disabled: 'text-on-surface/38'
 }
 
 const variantKey = computed(() => (props.variant === 'outlined' ? 'outlined' : 'filled'))
@@ -127,8 +136,17 @@ const fieldClass = computed(() => FIELD[variantKey.value][stateKey.value])
 const labelClass = computed(() => [
   'pointer-events-none absolute top-1/2 -translate-y-1/2 md-body-large transition-all duration-(--md-sys-motion-duration-short4) ease-md-standard',
   FLOAT[variantKey.value],
-  LABEL_COLOUR[stateKey.value]
+  props.disabled ? LABEL_COLOUR.disabled : LABEL_COLOUR[stateKey.value]
 ])
+
+// Icons and supporting text are outside the input's peer scope, so they take their colour
+// from the props. A disabled field uses on-surface at 38% for all of them.
+const iconClass = computed(() => (props.disabled ? 'text-on-surface/38' : 'text-on-surface-variant'))
+
+const helperClass = computed(() => {
+  if (props.disabled) return 'text-on-surface/38'
+  return props.error ? 'text-error' : 'text-on-surface-variant'
+})
 </script>
 
 <template>
@@ -140,7 +158,8 @@ const labelClass = computed(() => [
     <div class="relative">
       <span
         v-if="$slots['leading-icon']"
-        class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant [&>svg]:size-6"
+        class="absolute left-3 top-1/2 -translate-y-1/2 [&>svg]:size-6"
+        :class="iconClass"
         aria-hidden="true"
       >
         <slot name="leading-icon" />
@@ -174,7 +193,8 @@ const labelClass = computed(() => [
       >{{ label }}</label>
       <span
         v-if="$slots['trailing-icon']"
-        class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant [&>svg]:size-6"
+        class="absolute right-3 top-1/2 -translate-y-1/2 [&>svg]:size-6"
+        :class="iconClass"
         aria-hidden="true"
       >
         <slot name="trailing-icon" />
@@ -184,7 +204,7 @@ const labelClass = computed(() => [
       v-if="helperText"
       :id="helperId"
       class="md-body-small px-4"
-      :class="error ? 'text-error' : 'text-on-surface-variant'"
+      :class="helperClass"
     >
       {{ helperText }}
     </p>

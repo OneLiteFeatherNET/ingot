@@ -159,4 +159,104 @@ describe('MdTextField', () => {
 
     expect(wrapper.find('input').classes()).toContain('border-outline')
   })
+
+  describe('focus indicator', () => {
+    // The MD3 reference (`_md-comp-filled-text-field.scss`, `_md-comp-outlined-text-field.scss`,
+    // v0_192) sets both focus indicators to 2px. A 1px border in the primary role plus a 1px
+    // inset shadow in the same role draws that 2px line.
+    it('draws the filled focus active indicator as a 2px primary line', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name' } })
+
+      expect(wrapper.find('input').classes()).toContain('focus:border-primary')
+      expect(wrapper.find('input').classes()).toContain('focus:shadow-[inset_0_-1px_0_0_var(--md-sys-color-primary)]')
+    })
+
+    it('draws the outlined focus outline as a 2px primary line', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'outlined' } })
+
+      expect(wrapper.find('input').classes()).toContain('focus:border-primary')
+      expect(wrapper.find('input').classes()).toContain('focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]')
+    })
+  })
+
+  describe('leading and trailing icons', () => {
+    it('insets the leading icon 12px from the edge', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Search' },
+        slots: { 'leading-icon': () => h('svg', { 'data-test': 'lead' }) }
+      })
+
+      const iconWrapper = wrapper.find('[data-test="lead"]').element.parentElement
+      expect(iconWrapper.className).toContain('left-3')
+      expect(iconWrapper.className).not.toContain('left-4')
+    })
+
+    it('insets the trailing icon 12px from the edge', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Search' },
+        slots: { 'trailing-icon': () => h('svg', { 'data-test': 'trail' }) }
+      })
+
+      const iconWrapper = wrapper.find('[data-test="trail"]').element.parentElement
+      expect(iconWrapper.className).toContain('right-3')
+      expect(iconWrapper.className).not.toContain('right-4')
+    })
+  })
+
+  describe('disabled state', () => {
+    it('gives the filled container a 4 percent on-surface fill', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('input').classes()).toContain('disabled:bg-on-surface/4')
+    })
+
+    it('gives the filled active indicator and the outlined outline 38 and 12 percent on-surface', () => {
+      const filled = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+      const outlined = mount(MdTextField, { props: { label: 'Name', variant: 'outlined', disabled: true } })
+
+      expect(filled.find('input').classes()).toContain('disabled:border-on-surface/38')
+      expect(outlined.find('input').classes()).toContain('disabled:border-on-surface/12')
+    })
+
+    it('sets the input text to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('input').classes()).toContain('disabled:text-on-surface/38')
+      expect(wrapper.find('input').classes()).not.toContain('disabled:opacity-[0.38]')
+    })
+
+    it('sets the label to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('label').classes()).toContain('text-on-surface/38')
+      expect(wrapper.find('label').classes()).not.toContain('text-on-surface-variant')
+    })
+
+    it('sets the supporting text to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Name', disabled: true, supportingText: 'Shown in the token list' }
+      })
+
+      expect(wrapper.find('p').classes()).toContain('text-on-surface/38')
+    })
+
+    it('sets the leading and trailing icons to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Search', disabled: true },
+        slots: {
+          'leading-icon': () => h('svg', { 'data-test': 'lead' }),
+          'trailing-icon': () => h('svg', { 'data-test': 'trail' })
+        }
+      })
+
+      expect(wrapper.find('[data-test="lead"]').element.parentElement.className).toContain('text-on-surface/38')
+      expect(wrapper.find('[data-test="trail"]').element.parentElement.className).toContain('text-on-surface/38')
+    })
+
+    it('disables the input element', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('input').attributes('disabled')).toBeDefined()
+    })
+  })
 })
