@@ -14,21 +14,21 @@
   - limitations under the License.
   -->
 
-<script setup lang="jsx">
+<script setup>
 import { computed, ref, watch } from 'vue'
 import { useAdjustments } from '../../store/adjustments'
 import { useSession } from '../../store/session'
 import useQualifier from '../../store/qualifier'
-import AdjustmentsIcon from '../icons/AdjustmentsIcon.vue'
 import AdjustmentsModal from './AdjustmentsModal.vue'
 import Card from '../card/SnippetsCard.vue'
 import Breadcrumb from './BreadcrumbNavigation.vue'
 import FileList from './FileList.vue'
 import BrowserUpload from './FileUpload.vue'
-import ViewGrid from '../icons/ViewGrid.vue'
-import ViewList from '../icons/ViewList.vue'
+import BrowserIcon from './BrowserIcon.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import { property } from '../../helpers/vue-extensions'
-import { createErrorToast } from '../../helpers/toast'
+import { errorMessage } from '../../helpers/toast'
+import { classifyListingError } from './listingError'
 
 const props = defineProps({
   qualifier: property(Object, true)
@@ -38,7 +38,7 @@ const parentPath = ref('')
 const files = ref({})
 const loading = ref(true)
 const { details, client, hasPermissionTo } = useSession()
-const { applyAdjustments } = useAdjustments()
+const { applyAdjustments, countHiddenFiles } = useAdjustments()
 const { getParentPath } = useQualifier()
 
 const processedFiles = computed(() => ({
@@ -46,12 +46,19 @@ const processedFiles = computed(() => ({
   list: applyAdjustments([...files.value.list ?? []])
 }))
 
+// Hidden utility files are counted here, on the listing as the server sent it.
+const hiddenCount = computed(() => countHiddenFiles(files.value.list ?? []))
+
 const canUpload = computed(() => {
   return props.qualifier.path.length > 1 && hasPermissionTo(`/${props.qualifier.path}`, 'route:write')
 })
 
+// bumped by the retry action, so a failed listing can be requested again
+const attempt = ref(0)
+const retry = () => attempt.value++
+
 watch(
-  () => [props.qualifier.watchable, details.value],
+  () => [props.qualifier.watchable, details.value, attempt.value],
   async () => {
     if (details.value === null) {
       return
@@ -67,7 +74,6 @@ watch(
         if (isStale()) return
         files.value = {
           list: response.data.files,
-          isEmpty: response.data.files.length === 0,
           error: false
         }
         loading.value = false
@@ -79,7 +85,7 @@ watch(
             ?.filter(route => route.path.startsWith(`/${qualifier}`))
             ?? []
 
-        if (error.response.status === 403 && currentRoutes.length > 0) {
+        if (error?.response?.status === 403 && currentRoutes.length > 0) {
           const intermediateDirectories = currentRoutes.map(currentRoute => {
             let currentSegment = currentRoute.path.substring(`/${qualifier}/`.replaceAll('//', '/').length)
             return currentSegment.includes('/') ? currentSegment.substring(0, currentSegment.indexOf('/')) : currentSegment
@@ -93,14 +99,14 @@ watch(
               type: 'DIRECTORY',
               list: []
             })),
-            isEmpty: false,
             error: false
           }
         } else {
-          createErrorToast(`${error.response.status}: ${error.response.data.message}`)
+          // Shown in place of the listing, with a retry, so there is no toast to dismiss.
           files.value = {
             list: [],
-            error: true
+            error: classifyListingError(error),
+            message: errorMessage(error)
           }
         }
 
@@ -116,48 +122,41 @@ const toggleCompactMode = () => {
   fileBrowserCompactMode.value = !fileBrowserCompactMode.value
   localStorage.setItem(fileBrowserCompactViewKey, fileBrowserCompactMode.value.toString())
 }
-
-const MenuButton = (_, context) => {
-  return (
-    <div class="w-9 mx-2">
-      <div class="pl-2 pt-[0.325rem] pb-1 pr-2 rounded-full cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
-        {context.slots.default()}
-      </div>
-    </div>
-  )
-}
 </script>
 
 <template>
-  <div class="bg-gray-100">
-    <div class="dark:bg-black">
-      <div class="container mx-auto relative min-h-[320px] mb-12">
-        <div class="lg:absolute pt-13 -top-5 right-8">
-          <Card :qualifier="qualifier" />
-        </div>
-        <div class="lg:max-w-2/5 xl:max-w-1/2">
-          <div class="flex justify-between pt-7 px-2">
-            <Breadcrumb :parentPath="parentPath" />
-            <div class="flex">
-              <MenuButton @click="toggleCompactMode()">
-                <ViewGrid v-if="fileBrowserCompactMode" class="pr-[0.225rem]"/>
-                <ViewList v-else class="pr-[0.225rem]"/>
-              </MenuButton>
-              <AdjustmentsModal>
-                <template v-slot:button>
-                  <div class="w-9">
-                    <div class="pl-2 pt-[0.325rem] pb-1 pr-2 rounded-full cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
-                      <AdjustmentsIcon class="pr-[0.225rem]" />
-                    </div>
-                  </div>
-                </template>
-              </AdjustmentsModal>
-            </div>
-          </div>
-          <FileList :qualifier="qualifier" :files="processedFiles" :compactMode="fileBrowserCompactMode" :loading="loading"/>
-          <BrowserUpload v-if="canUpload" :qualifier="qualifier" />
+  <div class="container relative mx-auto mb-12 min-h-[320px]">
+    <div class="lg:absolute pt-13 -top-5 right-8">
+      <Card :qualifier="qualifier" />
+    </div>
+    <div class="lg:max-w-2/5 xl:max-w-1/2">
+      <div class="flex items-center justify-between gap-2 pt-7">
+        <Breadcrumb :parent-path="parentPath" />
+        <div class="flex shrink-0 items-center gap-1">
+          <MdIconButton
+            toggle
+            aria-label="Compact list"
+            title="Compact list"
+            :selected="fileBrowserCompactMode"
+            @click="toggleCompactMode()"
+          >
+            <BrowserIcon name="list" />
+          </MdIconButton>
+          <AdjustmentsModal />
         </div>
       </div>
+      <FileList
+        :qualifier="qualifier"
+        :files="processedFiles"
+        :compact-mode="fileBrowserCompactMode"
+        :loading="loading"
+        :hidden-count="hiddenCount"
+        @retry="retry"
+      />
+      <BrowserUpload
+        v-if="canUpload"
+        :qualifier="qualifier"
+      />
     </div>
   </div>
 </template>

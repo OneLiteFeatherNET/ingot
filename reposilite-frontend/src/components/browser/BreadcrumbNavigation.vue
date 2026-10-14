@@ -18,6 +18,8 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { property } from '../../helpers/vue-extensions'
+import MdIconButton from '../md/MdIconButton.vue'
+import BrowserIcon from './BrowserIcon.vue'
 
 defineProps({
   parentPath: property(String, true)
@@ -26,29 +28,64 @@ defineProps({
 const route = useRoute()
 
 const breadcrumbs = computed(() => {
-  const crumbs = route.path.split('/')
+  const segments = route.path.split('/').filter(segment => segment !== '')
 
-  return crumbs.map((name, index) => ({
-    link: crumbs.slice(0, index + 1).join('/') || '/',
-    name: index === crumbs.length - 1 ? name : name + '/'
+  const crumbs = segments.map((name, index) => ({
+    link: '/' + segments.slice(0, index + 1).join('/'),
+    name: index === segments.length - 1 ? name : name + '/',
+    current: index === segments.length - 1
   }))
+
+  return [{ link: '/', name: '/', current: segments.length === 0 }, ...crumbs]
 })
 </script>
 
 <template>
-  <div class="">
-    <p class="pb-3 font-semibold">
-      <span class="select-none">
-        <router-link to="/">Index of </router-link>
-      </span>
-      <span class="select-text">
-        <router-link v-for="crumb of breadcrumbs" :key="crumb.link" :to="crumb.link">
-          <span class="hover:transition-colors hover:duration-200 hover:text-primary">{{ crumb.name }}</span>
+  <nav
+    aria-label="Breadcrumb"
+    class="flex min-w-0 flex-wrap items-center gap-y-1 md-title-medium"
+  >
+    <router-link
+      to="/"
+      class="md-state-layer md-focus-ring rounded-corner-small px-2 py-1 text-on-surface-variant hover:text-primary"
+    >
+      Index of
+    </router-link>
+    <ol class="flex min-w-0 flex-wrap items-center">
+      <li
+        v-for="crumb of breadcrumbs"
+        :key="crumb.link"
+        class="flex items-center"
+      >
+        <span
+          v-if="crumb.current"
+          class="px-1 py-1 text-on-surface"
+          :aria-current="'page'"
+        >{{ crumb.name }}</span>
+        <router-link
+          v-else
+          :to="crumb.link"
+          class="md-focus-ring rounded-corner-small px-1 py-1 text-on-surface hover:text-primary"
+        >
+          {{ crumb.name }}
         </router-link>
-      </span>
-      <router-link :to="parentPath">
-        <span class="font-normal text-xl text-gray-500 select-none"> ⤴ </span>
-      </router-link>
-    </p>
-  </div>
+      </li>
+    </ol>
+    <!-- The icon button is the link itself, so a click still navigates through the router. -->
+    <router-link
+      v-slot="{ href, navigate }"
+      :to="parentPath"
+      custom
+    >
+      <MdIconButton
+        :href="href"
+        aria-label="Parent directory"
+        title="Parent directory"
+        class="ml-1"
+        @click="navigate"
+      >
+        <BrowserIcon name="arrowUp" />
+      </MdIconButton>
+    </router-link>
+  </nav>
 </template>

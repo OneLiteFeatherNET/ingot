@@ -15,11 +15,5 @@
   -->
 
 <template>
-  <span>&quot;<slot/>&quot;</span>
+  <span class="text-tertiary">&quot;<slot />&quot;</span>
 </template>
-
-<style scoped>
-span {
-  color: mediumpurple;
-}
-</style>

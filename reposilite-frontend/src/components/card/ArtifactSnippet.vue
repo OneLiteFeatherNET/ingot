@@ -38,20 +38,35 @@ defineExpose({ content })
 </script>
 
 <template>
-<pre v-if="configuration.lang === 'xml'" ref="preElement">
+  <pre
+    v-if="configuration.lang === 'xml'"
+    ref="preElement"
+  >
 <XmlTag name="dependency">
   <XmlTag name="groupId">{{ data.groupId }}</XmlTag>
   <XmlTag name="artifactId">{{ data.artifactId }}</XmlTag>
   <XmlTag name="version">{{ data.version }}</XmlTag>
 </XmlTag>
 </pre>
-<pre v-else-if="configuration.lang === 'groovy'" ref="preElement">
+  <pre
+    v-else-if="configuration.lang === 'groovy'"
+    ref="preElement"
+  >
 implementation <CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString>
 </pre>
-<pre v-else-if="configuration.lang === 'kotlin'" ref="preElement">
-implementation<CodeBrackets start="(" end=")"><CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString></CodeBrackets>
+  <pre
+    v-else-if="configuration.lang === 'kotlin'"
+    ref="preElement"
+  >
+implementation<CodeBrackets
+start="("
+end=")"
+><CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString></CodeBrackets>
 </pre>
-<pre v-else-if="configuration.lang === 'scala'" ref="preElement">
-<CodeString>{{data.groupId}}</CodeString> %% <CodeString>{{data.artifactId}}</CodeString> %% <CodeString>{{data.version}}</CodeString>
+  <pre
+    v-else-if="configuration.lang === 'scala'"
+    ref="preElement"
+  >
+<CodeString>{{ data.groupId }}</CodeString> %% <CodeString>{{ data.artifactId }}</CodeString> %% <CodeString>{{ data.version }}</CodeString>
 </pre>
 </template>

@@ -15,117 +15,176 @@
   -->
 
 <script setup>
-import prettyBytes from 'pretty-bytes'
-import {createURL} from "../../store/client"
-import {useSession} from '../../store/session'
-import usePlaceholders from '../../store/placeholders'
-import EyeIcon from '../icons/EyeIcon.vue'
-import JavaDocsIcon from "../icons/JavaDocsIcon.vue"
-import TrashIcon from '../icons/TrashIcon.vue'
-import {property} from '../../helpers/vue-extensions'
 import { computed } from 'vue'
+import { useSession } from '../../store/session'
+import usePlaceholders from '../../store/placeholders'
+import { createURL } from '../../store/client'
+import { property } from '../../helpers/vue-extensions'
+import MdIconButton from '../md/MdIconButton.vue'
+import MdLinearProgress from '../md/MdLinearProgress.vue'
+import BrowserIcon from './BrowserIcon.vue'
+import { describeEntry, describeSize } from './entryMeta'
 
+/*
+ * One row of the listing. The row is a list item; its name is the link, stretched over the
+ * whole row, and the actions sit above that stretch as buttons of their own. A link inside
+ * a link, or a button inside a link, is invalid, so the actions never live in the link.
+ */
 const props = defineProps({
   file: property(Object, true),
   qualifier: property(Object, true),
   url: property(String, false),
+  to: property(String, false),
   openDeleteEntryModal: property(Function, true),
-  compactMode: property(Boolean, true)
+  compactMode: property(Boolean, true),
+  signedIn: property(Boolean, false),
+  busy: property(Boolean, false)
 })
+
+const emit = defineEmits(['download'])
 
 const { hasPermissionTo } = useSession()
 const { javadocSuffixes } = usePlaceholders()
 
-const humanReadableMimeTypes = ['application/xml', 'text/plain', 'text/xml', 'text/markdown', 'application/json']
-const isHumanReadable = humanReadableMimeTypes.some(type => props.file?.contentType == type)
+const isDirectory = computed(() => props.file.type === 'DIRECTORY')
+const isHumanReadable = computed(() =>
+  ['application/xml', 'text/plain', 'text/xml', 'text/markdown', 'application/json'].includes(props.file?.contentType)
+)
+const canViewContent = computed(() => Object.hasOwn(props.file, 'contentLength') && isHumanReadable.value)
+const canDelete = computed(() => props.qualifier.path.length > 1 && hasPermissionTo(`/${props.qualifier.path}`, 'route:write'))
+const meta = computed(() => describeEntry(props.file))
+const size = computed(() => describeSize(props.file))
+
+// Compact rows put name and size on one line; default rows stack the size and date under the name.
+const textClass = computed(() =>
+  props.compactMode
+    ? 'flex min-w-0 flex-1 items-center gap-4'
+    : 'flex min-w-0 flex-1 flex-col'
+)
 
 const openUrl = (url) =>
-    window.open(url, '_blank')
+  window.open(url, '_blank')
 
-const isJavaDocsAvailable = () => javadocSuffixes.some(suffix => props.file.name.endsWith(suffix)) && getJavaDocsUrl() != null
 const getJavaDocsUrl = () => {
   const qualifier = props.qualifier.path
   const elements = qualifier.split('/')
 
   if (elements.length < 2 || elements[1] === '') {
-      return null
+    return null
   }
 
   return createURL(`/javadoc/${qualifier}`)
 }
 
-const defaultMode = computed(() => !props.compactMode)
+const canOpenJavadocs = computed(() =>
+  javadocSuffixes.some(suffix => props.file.name.endsWith(suffix)) && getJavaDocsUrl() != null
+)
+
+// Anonymous visitors follow the link and the browser saves the file. A signed-in request has
+// to carry the token, which a link cannot send, so the page fetches the file itself.
+const onFileClick = (event) => {
+  if (!props.signedIn) {
+    return
+  }
+
+  event.preventDefault()
+  emit('download', props.file)
+}
 </script>
 
 <template>
-  <div class="browser-entry" :class="{ 'default-entry': defaultMode, 'compact-entry': compactMode }">
-    <div class="flex flex-row max-w-full">
-      <div v-if="file.type == 'DIRECTORY'" :class="{ 'default-icon': defaultMode, 'compact-icon': compactMode }">⚫</div>
-      <div v-else :class="{ 'default-icon': defaultMode, 'compact-icon': compactMode }">⚪</div>
-      <div :class="{ 'default-filename': defaultMode, 'compact-filename': compactMode }">{{file.name}}</div>
+  <li
+    class="md-state-layer group relative flex items-center gap-4 rounded-corner-medium transition-colors"
+    :class="compactMode ? 'min-h-12 px-3' : 'min-h-16 px-4 py-2'"
+    :aria-busy="busy ? 'true' : undefined"
+  >
+    <router-link
+      v-if="isDirectory"
+      :to="to"
+      class="md-focus-ring flex min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+    >
+      <BrowserIcon
+        name="folder"
+        class="text-primary"
+      />
+      <span :class="textClass">
+        <span
+          class="md-body-large truncate"
+          :class="compactMode ? 'min-w-0 flex-1' : ''"
+        >{{ file.name }}</span>
+        <span
+          v-if="compactMode && size"
+          class="shrink-0 md-body-small text-on-surface-variant"
+        >{{ size }}</span>
+        <span
+          v-if="!compactMode && meta"
+          class="md-body-medium text-on-surface-variant"
+        >{{ meta }}</span>
+      </span>
+    </router-link>
+
+    <a
+      v-else
+      :href="url"
+      target="_blank"
+      class="md-focus-ring flex min-w-0 flex-1 items-center gap-4 rounded-corner-medium text-on-surface after:absolute after:inset-0 after:rounded-corner-medium"
+      @click="onFileClick"
+    >
+      <BrowserIcon
+        name="file"
+        class="text-on-surface-variant"
+      />
+      <span :class="textClass">
+        <span
+          class="md-body-large truncate"
+          :class="compactMode ? 'min-w-0 flex-1' : ''"
+        >{{ file.name }}</span>
+        <span
+          v-if="compactMode && size"
+          class="shrink-0 md-body-small text-on-surface-variant"
+        >{{ size }}</span>
+        <span
+          v-if="!compactMode && meta"
+          class="md-body-medium text-on-surface-variant"
+        >{{ meta }}</span>
+      </span>
+      <MdLinearProgress
+        v-if="busy"
+        indeterminate
+        :label="`Downloading ${file.name}`"
+        :class="compactMode ? 'absolute inset-x-3 bottom-0' : 'absolute inset-x-4 bottom-0'"
+      />
+    </a>
+
+    <!--
+      Hidden until the row is hovered, focused or touched, but never display: none. A keyboard
+      user tabs into these buttons, and a touch screen has no hover to reveal them with.
+    -->
+    <div
+      data-row-actions
+      class="relative z-10 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
+    >
+      <MdIconButton
+        v-if="canViewContent"
+        :aria-label="`View ${file.name} in a new tab`"
+        @click.stop="openUrl(url)"
+      >
+        <BrowserIcon name="visibility" />
+      </MdIconButton>
+      <MdIconButton
+        v-if="!isDirectory && canOpenJavadocs"
+        :aria-label="`Open javadoc for ${file.name} in a new tab`"
+        @click.stop="openUrl(getJavaDocsUrl())"
+      >
+        <BrowserIcon name="code" />
+      </MdIconButton>
+      <MdIconButton
+        v-if="canDelete"
+        :aria-label="`Delete ${file.name}`"
+        @click.stop="openDeleteEntryModal(file)"
+      >
+        <BrowserIcon name="delete" />
+      </MdIconButton>
     </div>
-    <div class="entry-details flex flex-1 justify-end">
-      <div class="entry-menu hidden flex flex-row justify-end">
-        <EyeIcon
-          v-if="file.hasOwnProperty('contentLength') && isHumanReadable" 
-          :title="`Click to view ${file.name} file content in a new tab`"
-          id="view-button"
-          class="px-1 mr-6 pt-[0.1rem] rounded-full text-primary hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900" 
-          @click.left.prevent="openUrl(url)"
-          v-on:click.stop
-        />
-        <JavaDocsIcon
-          v-if="isJavaDocsAvailable()"
-          :title="`Click to view ${file.name} javadocs in a new tab`"
-          id="javadoc-button"
-          class="px-1 mr-6 pt-[0.1rem] rounded-full text-primary hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900"
-          @click.left.prevent="openUrl(getJavaDocsUrl())"
-          v-on:click.stop
-        />
-        <TrashIcon
-          v-if="qualifier.path.length > 1 && hasPermissionTo(`/${qualifier.path}`, 'route:write')"
-          id="delete-button"
-          class="px-1 mr-6 pt-[0.1rem] rounded-full text-primary hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900"
-          @click.left.prevent="openDeleteEntryModal(file.name)"
-          v-on:click.stop
-        />
-      </div>
-      <div v-if="file.hasOwnProperty('contentLength')" class="pr-6">
-        {{ prettyBytes(file.contentLength) }}
-      </div>  
-    </div>
-  </div>
+  </li>
 </template>
-
-<style>
-@reference "../../style.css";
-.browser-entry:hover > .entry-details .entry-menu {
-  display: flex;
-}
-
-.default-entry {
-  @apply flex flex-row justify-between mb-1.5 py-3 rounded-3xl cursor-pointer bg-surface-container-low transition-colors duration-500 max-sm:rounded-xl;
-}
-.compact-entry {
-  @apply rounded-lg inline-block w-full flex;
-  @apply hover:transition-colors hover:duration-200 hover:bg-primary hover:text-on-primary;
-  @apply dark:text-white dark:hover:transition-colors dark:hover:duration-200 dark:hover:bg-primary;
-}
-
-.default-icon {
-  @apply text-xm px-6 pt-1.75 max-sm:px-3;
-}
-.compact-icon {
-  @apply text-xxs pl-4 pt-2 max-sm:px-3;
-}
-
-.default-filename {
-  @apply font-semibold;
-  overflow-wrap: anywhere;
-}
-.compact-filename {
-  @apply pl-3 pr-2 w-full whitespace-nowrap;
-  overflow-wrap: anywhere;
-  text-wrap: auto;
-}
-</style>
