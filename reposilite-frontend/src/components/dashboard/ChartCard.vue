@@ -56,9 +56,9 @@ const emit = defineEmits(['retry'])
     class="min-w-0"
   >
     <header class="pb-3">
-      <h2 class="md-title-medium text-on-surface">
+      <h3 class="md-title-medium text-on-surface">
         {{ title }}
-      </h2>
+      </h3>
       <p
         v-if="subtitle"
         class="md-body-small text-on-surface-variant"
