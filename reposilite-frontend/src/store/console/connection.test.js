@@ -54,4 +54,20 @@ describe('useConsole', () => {
       expect(command.value, 'a command that was not sent must stay in the input so it can be sent again').toBe('say hello')
     })
   })
+
+  describe('command history', () => {
+    it('keeps the commands sent before the console was opened again', async () => {
+      session.client = ref({ console: { execute: vi.fn(() => Promise.resolve()) } })
+      const { default: useConsole } = await import('./connection')
+      const beforeRemount = useConsole()
+      beforeRemount.command.value = 'list'
+      await beforeRemount.execute()
+
+      // Opening the view again creates a second call to the composable, as a remount does.
+      const afterRemount = useConsole()
+      afterRemount.previousCommand()
+
+      expect(afterRemount.command.value, 'the arrow key should still recall the command sent before the remount').toBe('list')
+    })
+  })
 })

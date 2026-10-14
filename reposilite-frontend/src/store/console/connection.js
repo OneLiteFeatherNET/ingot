@@ -35,6 +35,13 @@ const command = ref("")
 const status = ref('idle')
 const failure = ref(null)
 
+/*
+ * The command history belongs to the session, not to the view. The view is mounted each time
+ * its tab is opened, and a history created per mount would start empty on every visit.
+ */
+const history = ref([''])
+const historyIdx = ref(0)
+
 export default function useConsole() {
   const consoleAddress = createURL("/api/console/log")
 
@@ -52,9 +59,6 @@ export default function useConsole() {
     connection.value = undefined
     status.value = 'closed'
   }
-
-  const history = ref([''])
-  const historyIdx = ref(0)
 
   const addCommandToHistory = (command) => {
     if (history.value[history.value.length - 1] == '')
