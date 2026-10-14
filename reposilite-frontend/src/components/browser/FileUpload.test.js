@@ -107,16 +107,14 @@ describe('FileUpload controls', () => {
     wrapper = undefined
   })
 
-  it('wraps each option checkbox in a label that names it', async () => {
+  it('names each option checkbox through the label that points at it', async () => {
     await mountUpload()
     await selectFile('example-1.0.jar')
 
     const checksums = wrapper.findAll('input[type="checkbox"]')
-      .map(checkbox => checkbox.element.closest('label'))
-      .find(label => label?.textContent.includes('Generate default checksums'))
+      .find(checkbox => checkbox.element.labels?.[0]?.textContent.includes('Generate default checksums'))
 
-    expect(checksums, 'the checksum option is a labelled checkbox').toBeDefined()
-    expect(checksums.querySelector('input[type="checkbox"]'), 'the label contains the checkbox itself').not.toBeNull()
+    expect(checksums, 'the checksum option is a checkbox named by its label').toBeDefined()
   })
 
   it('names the remove button after the file it removes', async () => {

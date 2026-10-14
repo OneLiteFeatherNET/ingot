@@ -9,6 +9,7 @@ import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
 import BrowserIcon from './BrowserIcon.vue'
 
 const { client } = useSession()
@@ -235,22 +236,12 @@ const uploadFiles = () => {
       </ul>
 
       <div class="mt-4 space-y-1">
-        <label class="flex min-h-12 cursor-pointer items-center gap-3">
-          <input
-            v-model="checksumsEnabled"
-            type="checkbox"
-            class="size-5 accent-primary"
-          >
-          <span class="md-body-large">Generate default checksums</span>
-        </label>
-        <label class="flex min-h-12 cursor-pointer items-center gap-3">
-          <input
-            v-model="stubPomEnabled"
-            type="checkbox"
-            class="size-5 accent-primary"
-          >
-          <span class="md-body-large">Generate stub POM file</span>
-        </label>
+        <MdCheckbox v-model="checksumsEnabled">
+          Generate default checksums
+        </MdCheckbox>
+        <MdCheckbox v-model="stubPomEnabled">
+          Generate stub POM file
+        </MdCheckbox>
       </div>
 
       <div

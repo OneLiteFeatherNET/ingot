@@ -1,26 +1,12 @@
-<!--
-  - Copyright (c) 2026 OneLiteFeather
-  -
-  - Licensed under the Apache License, Version 2.0 (the "License");
-  - you may not use this file except in compliance with the License.
-  - You may obtain a copy of the License at
-  -
-  -     http://www.apache.org/licenses/LICENSE-2.0
-  -
-  - Unless required by applicable law or agreed to in writing, software
-  - distributed under the License is distributed on an "AS IS" BASIS,
-  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  - See the License for the specific language governing permissions and
-  - limitations under the License.
-  -->
-
 <script setup>
 import { computed } from 'vue'
+import MdSwitch from '../md/MdSwitch.vue'
 
 /*
- * Material Design 3 switch for a boolean setting. The switch is a button with role="switch",
- * so its state is announced through aria-checked, and the label above it is tied to it with
- * <label for>. The label is the accessible name; the visible state text is for sighted users.
+ * Material Design 3 switch for a boolean setting in the generated forms. The label and the
+ * description sit above the switch, and the switch is MdSwitch. Its visible state text is
+ * "Enabled" or "Disabled" for sighted users. The accessible name is the label above, through
+ * aria-labelledby, so the state text does not become part of it.
  */
 const props = defineProps({
   id: {
@@ -55,59 +41,36 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const toggle = () => {
-  if (!props.disabled) emit('update:modelValue', !props.modelValue)
-}
-
-const trackClasses = computed(() => [
-  'md-focus-ring relative inline-flex h-8 w-13 shrink-0 cursor-pointer items-center rounded-corner-full border-2',
-  'transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
-  'disabled:cursor-not-allowed disabled:opacity-40',
-  props.modelValue ? 'border-primary bg-primary' : 'border-outline bg-surface-container-highest'
-])
-
-// Handle: 16px outlined when off, 24px on-primary and pushed to the end when on (MD3 switch sizes).
-const handleClasses = computed(() => [
-  'absolute top-1/2 -translate-y-1/2 rounded-corner-full transition-all duration-(--md-sys-motion-duration-short3) ease-md-standard',
-  props.modelValue ? 'left-[calc(100%-28px)] size-6 bg-on-primary' : 'left-1 size-4 bg-outline'
-])
+const labelId = computed(() => `${props.id}-label`)
 </script>
 
 <template>
   <div class="flex flex-col items-start py-1">
-    <label
-      :for="id"
+    <span
+      :id="labelId"
       class="block px-2 pb-1 md-body-small text-on-surface-variant"
     >
       {{ label }}<span
         v-if="required"
         aria-hidden="true"
       > *</span>
-    </label>
+    </span>
     <p
       v-if="description"
       class="md-body-small text-on-surface-variant px-2 pb-1"
     >
       {{ description }}
     </p>
-    <div class="flex items-center gap-3 px-2">
-      <button
+    <div class="px-2">
+      <MdSwitch
         :id="id"
-        type="button"
-        role="switch"
-        :aria-checked="modelValue ? 'true' : 'false'"
+        :model-value="modelValue"
         :disabled="disabled"
-        :class="trackClasses"
-        @click="toggle"
+        :aria-labelledby="labelId"
+        @update:model-value="emit('update:modelValue', $event)"
       >
-        <span
-          aria-hidden="true"
-          :class="handleClasses"
-        />
-      </button>
-      <span class="md-body-large text-on-surface">
         {{ modelValue ? 'Enabled' : 'Disabled' }}
-      </span>
+      </MdSwitch>
     </div>
     <p
       v-if="errors"

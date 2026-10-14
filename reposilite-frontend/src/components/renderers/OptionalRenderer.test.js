@@ -70,9 +70,9 @@ describe('OptionalRenderer', () => {
   it('labels the optional switch with the property title', () => {
     const wrapper = mountForm()
     const switchButton = wrapper.find('[role="switch"]')
-    const label = wrapper.find(`label[for="${switchButton.attributes('id')}"]`)
+    const label = wrapper.find(`[id="${switchButton.attributes('aria-labelledby')}"]`)
 
-    expect(label.exists(), 'the switch must be tied to a label').toBe(true)
+    expect(label.exists(), 'the switch must be named by a label').toBe(true)
     expect(label.text()).toContain('Proxied credentials')
   })
 

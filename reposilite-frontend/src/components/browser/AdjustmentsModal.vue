@@ -21,6 +21,7 @@ import { useAdjustments } from '../../store/adjustments'
 import BrowserIcon from './BrowserIcon.vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdSwitch from '../md/MdSwitch.vue'
 
 const { reversedFileOrder, displayHashFiles } = useAdjustments()
 const showAdjustments = ref(false)
@@ -39,7 +40,7 @@ const titleId = useId()
     <VueFinalModal
       v-model="showAdjustments"
       teleport-to="body"
-      :overlay-class="'vfm__overlay bg-scrim/40!'"
+      :overlay-class="'vfm__overlay bg-scrim/32!'"
       class="flex items-center justify-center p-4"
     >
       <div
@@ -56,36 +57,22 @@ const titleId = useId()
         </h2>
 
         <div class="mt-4 divide-y divide-outline-variant">
-          <label class="flex min-h-16 cursor-pointer items-center justify-between gap-6 py-3">
-            <span class="md-body-large">Sort files from newest to oldest</span>
-            <span class="relative inline-flex h-8 w-13 shrink-0 items-center">
-              <input
-                v-model="reversedFileOrder"
-                type="checkbox"
-                role="switch"
-                class="peer sr-only"
-              >
-              <span class="absolute inset-0 rounded-corner-full border-2 border-outline bg-surface-container-highest transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary" />
-              <span class="absolute left-1.5 size-4 rounded-corner-full bg-outline transition-all peer-checked:translate-x-5 peer-checked:size-6 peer-checked:bg-on-primary" />
-            </span>
-          </label>
+          <MdSwitch
+            v-model="reversedFileOrder"
+            class="min-h-16 justify-between py-3 flex-row-reverse"
+          >
+            <span>Sort files from newest to oldest</span>
+          </MdSwitch>
 
-          <label class="flex min-h-16 cursor-pointer items-center justify-between gap-6 py-3">
-            <span class="md-body-large">
+          <MdSwitch
+            v-model="displayHashFiles"
+            class="min-h-16 justify-between py-3 flex-row-reverse"
+          >
+            <span>
               Display utility files such as
               <span class="font-mono text-on-surface-variant">.asc/.md5/.sha1/.sha256/.sha512</span>
             </span>
-            <span class="relative inline-flex h-8 w-13 shrink-0 items-center">
-              <input
-                v-model="displayHashFiles"
-                type="checkbox"
-                role="switch"
-                class="peer sr-only"
-              >
-              <span class="absolute inset-0 rounded-corner-full border-2 border-outline bg-surface-container-highest transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary" />
-              <span class="absolute left-1.5 size-4 rounded-corner-full bg-outline transition-all peer-checked:translate-x-5 peer-checked:size-6 peer-checked:bg-on-primary" />
-            </span>
-          </label>
+          </MdSwitch>
         </div>
 
         <div class="mt-6 flex justify-end">
