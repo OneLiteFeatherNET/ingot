@@ -38,7 +38,7 @@ defineEmits(['submit', 'cancel'])
 
 <template>
   <TokenFormRow>
-    <TokenTextField v-model="description" grow placeholder="Description" />
+    <TokenTextField v-model="description" name="description" grow placeholder="Description" />
     <SegmentedControl label="Token permissions">
       <SegmentedOption :on="manager" @click="manager = !manager">
         manager

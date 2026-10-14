@@ -192,6 +192,6 @@ let shared = null
 
 /** The token store the dashboard shares between views. */
 export function useTokens() {
-  shared ??= createTokenStore({ getClient: () => client.value })
+  if (!shared) shared = createTokenStore({ getClient: () => client.value })
   return shared
 }

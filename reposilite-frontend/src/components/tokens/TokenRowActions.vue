@@ -39,6 +39,9 @@ defineEmits(['edit', 'regenerate', 'revoke', 'confirm', 'cancel'])
 
 <template>
   <template v-if="confirmAction">
+    <span class="text-xs text-gray-600 dark:text-gray-300">
+      {{ confirmAction === 'revoke' ? 'Revoking cannot be undone.' : 'The old secret stops working immediately.' }}
+    </span>
     <button
       type="button"
       class="text-xs font-medium text-error"

@@ -1,17 +1,17 @@
 <!--
-  ~ Copyright (c) 2026 OneLiteFeather
-  ~
-  ~ Licensed under the Apache License, Version 2.0 (the "License");
-  ~ you may not use this file except in compliance with the License.
-  ~ You may obtain a copy of the License at
-  ~
-  ~     http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS,
-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
+  - Copyright (c) 2026 OneLiteFeather
+  -
+  - Licensed under the Apache License, Version 2.0 (the "License");
+  - you may not use this file except in compliance with the License.
+  - You may obtain a copy of the License at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
   -->
 
 <script setup>
@@ -23,15 +23,24 @@ const props = defineProps({
   token: {
     type: Object,
     required: true
+  },
+  /**
+   * The reference time in epoch milliseconds. The view leaves it out and gets the current time;
+   * tests pass a fixed value so that "3 days left" does not depend on the day it runs.
+   */
+  now: {
+    type: Number,
+    default: undefined
   }
 })
 
 const { toMs, tokenIsManager } = useTokens()
 
 const DAY = 86400000
+const current = computed(() => props.now ?? Date.now())
 const amount = (count, unit) => `${count} ${unit}${count === 1 ? '' : 's'}`
 const rel = (ms) => {
-  const days = Math.floor(Math.abs(Date.now() - ms) / DAY)
+  const days = Math.floor(Math.abs(current.value - ms) / DAY)
   if (days < 1) return 'today'
   if (days < 30) return amount(days, 'day')
   if (days < 365) return amount(Math.floor(days / 30), 'month')
@@ -44,7 +53,7 @@ const age = computed(() => {
   return since === 'today' ? 'new' : `${since} old`
 })
 
-const expired = computed(() => !!props.token.expiresAt && Date.now() > toMs(props.token.expiresAt))
+const expired = computed(() => !!props.token.expiresAt && current.value > toMs(props.token.expiresAt))
 
 /*
  * Written out rather than shortened. This is read once, in passing, and a reader who has to
@@ -52,14 +61,11 @@ const expired = computed(() => !!props.token.expiresAt && Date.now() > toMs(prop
  */
 const expiry = computed(() => {
   if (!props.token.expiresAt) return 'never expires'
-  if (expired.value) return 'expired'
+  if (expired.value) return `expired on ${formatDate(props.token.expiresAt)}`
   const left = rel(toMs(props.token.expiresAt))
-  return left === 'today' ? 'expires today' : `${left} left`
+  const until = formatDate(props.token.expiresAt)
+  return left === 'today' ? `expires today (${until})` : `${left} left (until ${until})`
 })
-
-const dates = computed(() =>
-  `Created ${formatDate(props.token.createdAt)}` +
-  (props.token.expiresAt ? `  •  Expires ${formatDate(props.token.expiresAt)}` : '  •  Never expires'))
 </script>
 
 <template>
@@ -69,10 +75,7 @@ const dates = computed(() =>
     manager
   </TokenTag>
   <span class="min-w-0 flex-1 truncate text-gray-500 dark:text-gray-500">{{ token.description }}</span>
-  <span
-    class="inline-flex cursor-default items-center gap-2 whitespace-nowrap text-xs text-gray-500 max-sm:hidden dark:text-gray-400"
-    :title="dates"
-  >
+  <span class="inline-flex w-full flex-wrap items-center gap-x-2 text-xs text-gray-500 sm:w-auto sm:whitespace-nowrap dark:text-gray-400">
     <span>{{ age }}</span>
     <span class="text-gray-400 dark:text-gray-500">·</span>
     <span :class="expired ? 'text-error' : 'text-gray-600 dark:text-gray-300'">{{ expiry }}</span>

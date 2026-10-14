@@ -50,7 +50,7 @@ defineProps({
     Whether these rows want two separate indents at all is a question for the redesign.
   -->
   <div
-    class="group flex h-11.5 items-center gap-2 border-b border-gray-200 transition-colors dark:border-gray-800"
+    class="group flex min-h-12 flex-wrap items-center gap-2 border-b border-gray-200 py-2 transition-colors dark:border-gray-800"
     :class="[
       indent ? 'pl-9.5 pr-4.5 indent-6' : 'px-4.5',
       hoverable ? 'hover:bg-gray-50 dark:hover:bg-gray-900' : '',

@@ -34,16 +34,25 @@ defineProps({
   placeholder: {
     type: String,
     default: null
+  },
+  /**
+   * `{ message, existing }` after a failed check. When `existing` is set, the editor offers to
+   * open the route that already has this path.
+   */
+  error: {
+    type: Object,
+    default: null
   }
 })
 
-defineEmits(['submit', 'cancel'])
+defineEmits(['submit', 'cancel', 'edit-existing'])
 </script>
 
 <template>
   <TokenFormRow indent>
     <TokenTextField
       v-model="path"
+      name="route-path"
       grow
       mono
       :placeholder="placeholder"
@@ -62,5 +71,16 @@ defineEmits(['submit', 'cancel'])
     <ActionButton small @click="$emit('cancel')">
       Cancel
     </ActionButton>
+    <p v-if="error" role="alert" class="basis-full text-xs text-error">
+      {{ error.message }}
+      <button
+        v-if="error.existing"
+        type="button"
+        class="ml-1 underline"
+        @click="$emit('edit-existing')"
+      >
+        Edit existing route
+      </button>
+    </p>
   </TokenFormRow>
 </template>

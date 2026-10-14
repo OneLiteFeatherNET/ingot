@@ -24,6 +24,14 @@ import TokenTextField from './TokenTextField.vue'
 const name = defineModel('name', { type: String, default: '' })
 const type = defineModel('type', { type: String, default: 'PERSISTENT' })
 
+defineProps({
+  /** Message for the name field, set by the view after a failed check. */
+  error: {
+    type: String,
+    default: ''
+  }
+})
+
 defineEmits(['submit', 'cancel'])
 </script>
 
@@ -31,6 +39,7 @@ defineEmits(['submit', 'cancel'])
   <TokenFormRow>
     <TokenTextField
       v-model="name"
+      name="token-name"
       grow
       placeholder="Token name (e.g. ci-bot)"
       @keyup.enter="$emit('submit')"
@@ -49,5 +58,11 @@ defineEmits(['submit', 'cancel'])
     <ActionButton small @click="$emit('cancel')">
       Cancel
     </ActionButton>
+    <p class="basis-full text-xs text-gray-600 dark:text-gray-300">
+      Persistent tokens are stored and survive a restart. Temporary tokens live in memory only and are lost on restart.
+    </p>
+    <p v-if="error" role="alert" class="basis-full text-xs text-error">
+      {{ error }}
+    </p>
   </TokenFormRow>
 </template>
