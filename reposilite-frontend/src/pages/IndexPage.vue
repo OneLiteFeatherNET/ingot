@@ -23,12 +23,22 @@ import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
 import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
 import { property } from '../helpers/vue-extensions'
+import ViewLoading from '../components/util/ViewLoading.vue'
+import ViewLoadError from '../components/util/ViewLoadError.vue'
 import { TABS, visibleTabs, resolveTab, withTab, tabLabel } from './index-tabs'
 
-const ConsoleView = defineAsyncComponent(() => import('../components/console/ConsoleView.vue'))
-const DashboardView = defineAsyncComponent(() => import('../components/dashboard/DashboardView.vue'))
-const TokensView = defineAsyncComponent(() => import('../components/tokens/TokensView.vue'))
-const SettingsView = defineAsyncComponent(() => import('../components/settings/SettingsView.vue'))
+// Each section is its own bundle. While it downloads the page shows a progress bar, and if
+// the download fails it says so and offers a reload instead of an empty panel.
+const lazyView = (loader) => defineAsyncComponent({
+  loader,
+  loadingComponent: ViewLoading,
+  errorComponent: ViewLoadError,
+})
+
+const ConsoleView = lazyView(() => import('../components/console/ConsoleView.vue'))
+const DashboardView = lazyView(() => import('../components/dashboard/DashboardView.vue'))
+const TokensView = lazyView(() => import('../components/tokens/TokensView.vue'))
+const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 
 defineProps({
   qualifier: property(Object, true)
