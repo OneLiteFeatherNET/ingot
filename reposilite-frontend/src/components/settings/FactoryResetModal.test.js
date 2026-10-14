@@ -52,4 +52,12 @@ describe('FactoryResetModal', () => {
     expect(alert, 'an element with role alertdialog is in the document').not.toBeNull()
     expect(alert.contains(document.getElementById('factory-reset-title'))).toBe(true)
   })
+
+  it('paints the scrim with the md3 scrim colour at 32% opacity', async () => {
+    await openDialog()
+
+    const overlay = document.querySelector('.vfm__overlay')
+    expect(overlay, 'the modal overlay is in the document').not.toBeNull()
+    expect(overlay.getAttribute('style')).toContain('color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)')
+  })
 })

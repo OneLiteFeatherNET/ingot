@@ -29,7 +29,7 @@ defineProps({
   <div
     role="group"
     :aria-label="label"
-    class="inline-flex overflow-hidden rounded-corner-full border border-outline"
+    class="inline-flex rounded-corner-full border border-outline"
   >
     <slot />
   </div>

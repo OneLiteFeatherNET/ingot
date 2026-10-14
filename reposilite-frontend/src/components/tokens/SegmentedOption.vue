@@ -25,13 +25,15 @@ defineProps({
 
 <template>
   <!--
+    The segment is 40px tall. The ::after pseudo element extends the hit area by 4px above and
+    below, to the 48px minimum touch target. The ::before pseudo element is the state layer.
     aria-pressed carries the state for assistive technology. The selected segment also gets the
     check mark MD3 uses, so the state does not rest on the colour alone.
   -->
   <button
     type="button"
     :aria-pressed="on"
-    class="md-state-layer md-focus-ring md-label-large relative inline-flex min-h-12 items-center gap-1.5 border-l border-outline px-4 first:border-l-0"
+    class="md-state-layer md-focus-ring md-label-large relative inline-flex h-10 items-center gap-1.5 border-l border-outline px-4 first:rounded-l-corner-full first:border-l-0 last:rounded-r-corner-full after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']"
     :class="on ? 'bg-secondary-container text-on-secondary-container' : 'bg-transparent text-on-surface'"
   >
     <svg
