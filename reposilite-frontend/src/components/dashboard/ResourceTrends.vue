@@ -81,7 +81,10 @@ const empty = computed(() => snapshots.value !== null && snapshots.value.length 
       :loading="loading"
       :empty-message="empty ? 'No snapshots recorded yet. The first one appears a few minutes after startup.' : ''"
     >
-      <TimeSeriesChart :series="memorySeries" unit="MB" />
+      <TimeSeriesChart
+        :series="memorySeries"
+        unit="MB"
+      />
     </ChartCard>
 
     <ChartCard

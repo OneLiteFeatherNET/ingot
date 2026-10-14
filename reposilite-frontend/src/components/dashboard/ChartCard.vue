@@ -15,6 +15,8 @@
   -->
 
 <script setup>
+import MdCard from '../md/MdCard.vue'
+
 defineProps({
   title: {
     type: String,
@@ -38,13 +40,26 @@ defineProps({
 </script>
 
 <template>
-  <section class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+  <MdCard
+    variant="outlined"
+    class="min-w-0"
+  >
     <header class="pb-3">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">{{ title }}</h2>
-      <p v-if="subtitle" class="text-xs text-gray-500 dark:text-gray-400">{{ subtitle }}</p>
+      <h2 class="md-title-medium text-on-surface">
+        {{ title }}
+      </h2>
+      <p
+        v-if="subtitle"
+        class="md-body-small text-on-surface-variant"
+      >
+        {{ subtitle }}
+      </p>
     </header>
 
-    <div v-if="loading" class="skeleton-bars h-[220px] w-full rounded bg-gray-100 dark:bg-gray-800" />
+    <div
+      v-if="loading"
+      class="skeleton-bars h-[220px] w-full rounded-corner-small bg-surface-container-high"
+    />
 
     <!--
       An empty state says which switch produces the emptiness. A blank rectangle leaves the
@@ -52,11 +67,11 @@ defineProps({
     -->
     <p
       v-else-if="emptyMessage"
-      class="flex h-[220px] items-center justify-center px-6 text-center text-xs text-gray-500 dark:text-gray-400"
+      class="flex h-[220px] items-center justify-center px-6 text-center md-body-medium text-on-surface-variant"
     >
       {{ emptyMessage }}
     </p>
 
     <slot v-else />
-  </section>
+  </MdCard>
 </template>

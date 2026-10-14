@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { init, use } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
@@ -63,10 +63,10 @@ const formatValue = (value) => {
 }
 
 const buildOption = () => {
-  const ink = chrome(theme.isDark)
+  const ink = chrome()
 
   return {
-    color: categorical(theme.isDark),
+    color: categorical(),
     animation: false,
     backgroundColor: 'transparent',
     grid: {
@@ -88,6 +88,9 @@ const buildOption = () => {
       : { show: false },
     tooltip: {
       trigger: 'axis',
+      backgroundColor: ink.tooltipSurface,
+      borderWidth: 0,
+      textStyle: { color: ink.tooltipText, fontSize: 12 },
       axisPointer: { type: 'line', lineStyle: { color: ink.baseline } },
       valueFormatter: formatValue
     },
@@ -140,7 +143,9 @@ onBeforeUnmount(() => {
 })
 
 watch(() => props.series, render, { deep: true })
-watch(() => theme.isDark, render)
+// The theme class lands on the root during the DOM update that follows this watcher, and the
+// palette reads the role values from the root. Rendering on the next tick reads the new ones.
+watch(() => theme.isDark, () => nextTick(render))
 </script>
 
 <template>

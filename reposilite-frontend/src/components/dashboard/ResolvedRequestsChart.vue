@@ -106,6 +106,9 @@ const emptyMessage = computed(() => {
     :loading="loading"
     :empty-message="emptyMessage"
   >
-    <TimeSeriesChart :series="series" height="260px" />
+    <TimeSeriesChart
+      :series="series"
+      height="260px"
+    />
   </ChartCard>
 </template>
