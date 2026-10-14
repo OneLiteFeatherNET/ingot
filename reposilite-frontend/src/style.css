@@ -104,7 +104,7 @@
    * layer so that a view's own px-* utility still wins.
    */
   .container {
-    @apply px-10 max-sm:px-2;
+    @apply px-10 max-sm:px-4;
   }
 }
 
