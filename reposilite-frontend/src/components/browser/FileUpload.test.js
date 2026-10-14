@@ -100,3 +100,31 @@ describe('FileUpload while an upload is in flight', () => {
     expect(wrapper.text(), 'the file reports its progress').toContain('Uploading')
   })
 })
+
+describe('FileUpload controls', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('wraps each option checkbox in a label that names it', async () => {
+    await mountUpload()
+    await selectFile('example-1.0.jar')
+
+    const checksums = wrapper.findAll('input[type="checkbox"]')
+      .map(checkbox => checkbox.element.closest('label'))
+      .find(label => label?.textContent.includes('Generate default checksums'))
+
+    expect(checksums, 'the checksum option is a labelled checkbox').toBeDefined()
+    expect(checksums.querySelector('input[type="checkbox"]'), 'the label contains the checkbox itself').not.toBeNull()
+  })
+
+  it('names the remove button after the file it removes', async () => {
+    await mountUpload()
+    await selectFile('example-1.0.jar')
+
+    const remove = wrapper.find('button[aria-label="Remove example-1.0.jar"]')
+
+    expect(remove.exists(), 'every remove control says which file it removes').toBe(true)
+  })
+})
