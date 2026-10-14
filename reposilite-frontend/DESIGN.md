@@ -128,6 +128,20 @@ Status colours that MD3 does not define. Use them for text only:
 Use the `error` roles for failures. `success` and `warning` are for confirmations and
 non-fatal notices only.
 
+### Brand gradient
+
+The OLF gradient is a brand element, not a role, so it has no Tailwind colour utility. The
+`--olf-gradient` custom property in `color.css` is the four-stop standard from the brand guide
+at 135 degrees: `#f7931d`, `#ec008b`, `#91268f`, `#2a388f`. Use it for brand areas only:
+
+- `.olf-brand-bar` is a 4px band at the top edge of a section. The Overview hero draws one,
+  in `HeaderHero.vue`.
+- Components stay on the MD3 roles. A button on a gradient area is still a `primary` filled
+  button.
+- Under `forced-colors: active` the bar takes the `Highlight` system colour, because forced
+  colours drop background images.
+- The feather logo is never recoloured, shadowed or tilted. Nothing in this file touches it.
+
 ## Charts
 
 Series colours are a dedicated palette, not MD3 roles. The roles of the copper seed sit too

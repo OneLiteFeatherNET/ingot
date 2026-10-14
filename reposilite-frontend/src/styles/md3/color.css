@@ -320,6 +320,29 @@
   --md-ext-color-chart-8: #ffb3b0;
 }
 
+/*
+ * The OLF gradient is a brand element, not a UI role, so it has no Tailwind colour utility.
+ * It is for the hero and the brand bar. Components stay on the MD3 roles: a button on a
+ * gradient hero is still a primary filled button. The gradient is the four-stop standard
+ * from the brand guide, running at 135 degrees.
+ */
+:root {
+  --olf-gradient: linear-gradient(135deg, #f7931d 0%, #ec008b 33%, #91268f 66%, #2a388f 100%);
+}
+
+/* A 4px band at the top edge of a section, the brand bar from the brand guide. */
+.olf-brand-bar {
+  height: 4px;
+  background: var(--olf-gradient);
+}
+
+/* Forced colours drop background images, so the bar takes a system colour instead. */
+@media (forced-colors: active) {
+  .olf-brand-bar {
+    background: Highlight;
+  }
+}
+
 @theme inline {
   --color-success: var(--md-ext-color-success);
   --color-warning: var(--md-ext-color-warning);

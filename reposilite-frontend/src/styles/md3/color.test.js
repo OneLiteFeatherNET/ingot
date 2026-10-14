@@ -206,3 +206,25 @@ describe('high contrast', () => {
     }
   })
 })
+
+describe('brand expression', () => {
+  it('defines the four-stop OLF gradient at 135 degrees', () => {
+    const gradient = THEMES.light['--olf-gradient']
+
+    expect(gradient, 'the gradient should be defined on :root').toBeDefined()
+    expect(gradient, 'the gradient should run at 135 degrees').toMatch(/^linear-gradient\(135deg,/)
+    for (const stop of ['#f7931d', '#ec008b', '#91268f', '#2a388f']) {
+      expect(gradient.toLowerCase(), `the gradient should contain the OLF stop ${stop}`).toContain(stop)
+    }
+  })
+
+  it('draws the brand bar as a 4px band filled with the gradient', () => {
+    expect(sheet, 'the brand bar should be a 4px band filled with the gradient').toMatch(
+      /\.olf-brand-bar\s*\{[^}]*height:\s*4px[^}]*background:\s*var\(--olf-gradient\)/
+    )
+  })
+
+  it('keeps the brand bar visible under forced colours', () => {
+    expect(mediaBody(sheet, '(forced-colors: active)'), 'forced colours should give the brand bar a visible fill').toMatch(/\.olf-brand-bar/)
+  })
+})
