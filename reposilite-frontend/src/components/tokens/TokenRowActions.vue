@@ -45,7 +45,7 @@ defineEmits(['edit', 'regenerate', 'revoke', 'confirm', 'cancel'])
     </span>
     <MdButton
       v-if="confirmAction === 'revoke'"
-      class="bg-error! text-on-error!"
+      variant="error"
       @click="$emit('confirm')"
     >
       Revoke
@@ -80,7 +80,7 @@ defineEmits(['edit', 'regenerate', 'revoke', 'confirm', 'cancel'])
       <RefreshIcon />
     </MdIconButton>
     <MdIconButton
-      class="text-error!"
+      variant="error"
       :aria-label="`Revoke token ${name}`"
       :title="`Revoke token ${name}`"
       @click="$emit('revoke')"

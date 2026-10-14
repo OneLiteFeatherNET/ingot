@@ -95,6 +95,17 @@ describe('MdIconButton', () => {
     expect(wrapper.classes()).toContain('text-on-primary')
   })
 
+  it('uses the error role as text colour for the error variant', () => {
+    const wrapper = mount(MdIconButton, {
+      props: { variant: 'error' },
+      attrs: { 'aria-label': 'Revoke token' },
+      slots: { default: () => h('svg') }
+    })
+
+    expect(wrapper.classes()).toContain('text-error')
+    expect(wrapper.classes()).not.toContain('bg-error')
+  })
+
   it('keeps a 48px square touch target', () => {
     const wrapper = mount(MdIconButton, {
       attrs: { 'aria-label': 'Close' },

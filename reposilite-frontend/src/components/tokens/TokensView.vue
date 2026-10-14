@@ -241,8 +241,7 @@ const runConfirm = (token) => {
       >
         <span class="md-body-medium text-on-surface">You have unsaved changes. Discard them to continue?</span>
         <MdButton
-          variant="text"
-          class="text-error!"
+          variant="error"
           @click="discardAndContinue"
         >
           Discard changes
@@ -368,7 +367,7 @@ const runConfirm = (token) => {
                   <PencilIcon />
                 </MdIconButton>
                 <MdIconButton
-                  class="text-error!"
+                  variant="error"
                   :aria-label="`Remove route ${route.path}`"
                   :title="`Remove route ${route.path}`"
                   @click="removeRoute(token, route.path)"

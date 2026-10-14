@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { property } from '../../helpers/vue-extensions'
+import MdButton from '../md/MdButton.vue'
 
 const props = defineProps({
   callback: property(Function, true)
@@ -63,13 +64,12 @@ export default {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            class="md-state-layer md-focus-ring relative inline-flex min-h-12 items-center justify-center rounded-corner-full bg-error px-6 md-label-large text-on-error"
+          <MdButton
+            variant="error"
             @click="factoryReset"
           >
             Reset all to defaults
-          </button>
+          </MdButton>
         </div>
       </div>
     </VueFinalModal>

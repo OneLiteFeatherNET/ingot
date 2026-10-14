@@ -27,7 +27,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'standard',
-    validator: (value) => ['standard', 'filled', 'tonal', 'outlined'].includes(value)
+    validator: (value) => ['standard', 'filled', 'tonal', 'outlined', 'error'].includes(value)
   },
   href: {
     type: String,
@@ -80,6 +80,13 @@ const VARIANTS = {
     on: 'border border-inverse-surface bg-inverse-surface text-inverse-on-surface',
     off: 'border border-outline bg-transparent text-on-surface-variant',
     disabled: 'border border-on-surface/12 bg-transparent text-on-surface/38'
+  },
+  // Destructive actions in the standard style: the trash icon, not a filled block.
+  error: {
+    default: 'bg-transparent text-error',
+    on: 'bg-transparent text-error',
+    off: 'bg-transparent text-error',
+    disabled: 'bg-transparent text-on-surface/38'
   }
 }
 

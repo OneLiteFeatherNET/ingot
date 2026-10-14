@@ -101,13 +101,12 @@ const scope = computed(() =>
           >
             Cancel
           </MdButton>
-          <button
-            type="button"
-            class="md-state-layer md-focus-ring inline-flex min-h-12 items-center justify-center rounded-corner-full bg-error px-6 md-label-large text-on-error"
+          <MdButton
+            variant="error"
             @click="deleteAndClose()"
           >
             Delete
-          </button>
+          </MdButton>
         </div>
       </div>
     </VueFinalModal>

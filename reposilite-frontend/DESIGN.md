@@ -162,7 +162,9 @@ file with a unit test next to it. None of them has runtime dependencies beyond V
 
 Props:
 
-- `variant`: `'filled'` (default), `'tonal'`, `'outlined'`, `'text'`, `'elevated'`
+- `variant`: `'filled'` (default), `'tonal'`, `'outlined'`, `'text'`, `'elevated'`, `'error'`.
+  `error` is a filled destructive action (`bg-error`, `text-on-error`), for the confirming
+  step of a delete or revoke. It counts as a filled button for the one-per-view rule
 - `href`: string. When set, the root is an `<a>`, otherwise a `<button>`
 - `disabled`: boolean. A button gets the `disabled` attribute; an anchor gets
   `aria-disabled="true"` and loses its `href`
@@ -176,7 +178,9 @@ Listeners such as `@click` pass through to the root element.
 
 Props:
 
-- `variant`: `'standard'` (default), `'filled'`, `'tonal'`, `'outlined'`
+- `variant`: `'standard'` (default), `'filled'`, `'tonal'`, `'outlined'`, `'error'`. The
+  `error` variant is a standard button in the `error` role (`text-error`) for destructive
+  row actions such as delete or revoke
 - `href`, `disabled`, `type` as in MdButton
 - `toggle`: boolean. Turns the button into a toggle that reports `aria-pressed`
 - `selected`: boolean. The toggle state, used only with `toggle`

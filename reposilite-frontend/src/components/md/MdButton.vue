@@ -26,7 +26,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'filled',
-    validator: (value) => ['filled', 'tonal', 'outlined', 'text', 'elevated'].includes(value)
+    validator: (value) => ['filled', 'tonal', 'outlined', 'text', 'elevated', 'error'].includes(value)
   },
   href: {
     type: String,
@@ -62,6 +62,10 @@ const VARIANTS = {
   elevated: {
     base: 'bg-surface-container-low text-primary shadow-elevation-1',
     disabled: 'bg-on-surface/12 text-on-surface/38 shadow-none'
+  },
+  error: {
+    base: 'bg-error text-on-error',
+    disabled: 'bg-on-surface/12 text-on-surface/38'
   }
 }
 

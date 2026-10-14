@@ -64,6 +64,13 @@ describe('MdButton', () => {
     expect(wrapper.classes()).toContain('text-on-secondary-container')
   })
 
+  it('uses the error roles for the error variant', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'error' }, slots: { default: 'Revoke' } })
+
+    expect(wrapper.classes()).toContain('bg-error')
+    expect(wrapper.classes()).toContain('text-on-error')
+  })
+
   it('reports the variant through data-variant', () => {
     const wrapper = mount(MdButton, { props: { variant: 'outlined' }, slots: { default: 'Save' } })
 
