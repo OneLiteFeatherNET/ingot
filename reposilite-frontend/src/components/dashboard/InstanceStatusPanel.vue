@@ -18,6 +18,8 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
+import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
 import StatTile from './StatTile.vue'
 
 // Five seconds, where this used to ask once a second. Memory, threads and uptime do not
@@ -124,23 +126,51 @@ const failures = computed(() => {
 
 <template>
   <!--
+    The first request failed, so there is nothing to show and nothing coming. Placeholders
+    here would promise a result that is not on its way; the card says so and offers a retry.
+  -->
+  <MdCard
+    v-if="!instanceStatus && failed"
+    variant="outlined"
+    role="alert"
+    class="flex flex-wrap items-center justify-between gap-3"
+  >
+    <p class="md-body-large text-on-surface">
+      Cannot load instance status. The server may be down or unreachable.
+    </p>
+    <MdButton
+      variant="tonal"
+      @click="requestStatus()"
+    >
+      Retry
+    </MdButton>
+  </MdCard>
+
+  <!--
     Loading placeholder with the same shape as the result, so the row does not jump into
     place once the first response lands.
   -->
-  <div v-if="!instanceStatus" class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-    <div
+  <div
+    v-else-if="!instanceStatus"
+    class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+  >
+    <MdCard
       v-for="slot in 5"
       :key="`status-placeholder-${slot}`"
-      class="h-28 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+      variant="outlined"
+      class="h-28"
     >
       <div class="skeleton-bars">
-        <div class="h-3 w-20 rounded bg-gray-200 dark:bg-gray-800" />
-        <div class="mt-3 h-6 w-24 rounded bg-gray-200 dark:bg-gray-800" />
+        <div class="h-3 w-20 rounded-corner-extra-small bg-surface-container-high" />
+        <div class="mt-3 h-6 w-24 rounded-corner-extra-small bg-surface-container-high" />
       </div>
-    </div>
+    </MdCard>
   </div>
 
-  <div v-else class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+  <div
+    v-else
+    class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+  >
     <StatTile
       label="Used memory"
       :value="memory.value"

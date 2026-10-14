@@ -15,6 +15,9 @@
   -->
 
 <script setup>
+import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
+
 defineProps({
   title: {
     type: String,
@@ -29,22 +32,61 @@ defineProps({
     type: Boolean,
     default: false
   },
+  /**
+   * The request behind the card failed. Shown in place of the plot with a retry, which is a
+   * different thing from "nothing to draw": a failure must not read as an empty instance.
+   */
+  error: {
+    type: String,
+    default: ''
+  },
   /** Shown instead of the plot when there is genuinely nothing to draw. */
   emptyMessage: {
     type: String,
     default: ''
   }
 })
+
+const emit = defineEmits(['retry'])
 </script>
 
 <template>
-  <section class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+  <MdCard
+    variant="outlined"
+    class="min-w-0"
+  >
     <header class="pb-3">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">{{ title }}</h2>
-      <p v-if="subtitle" class="text-xs text-gray-500 dark:text-gray-400">{{ subtitle }}</p>
+      <h3 class="md-title-medium text-on-surface">
+        {{ title }}
+      </h3>
+      <p
+        v-if="subtitle"
+        class="md-body-small text-on-surface-variant"
+      >
+        {{ subtitle }}
+      </p>
     </header>
 
-    <div v-if="loading" class="skeleton-bars h-[220px] w-full rounded bg-gray-100 dark:bg-gray-800" />
+    <div
+      v-if="loading"
+      class="skeleton-bars h-[220px] w-full rounded-corner-small bg-surface-container-high"
+    />
+
+    <div
+      v-else-if="error"
+      role="alert"
+      class="flex h-[220px] flex-col items-center justify-center gap-3 px-6 text-center"
+    >
+      <p class="md-body-medium text-on-surface">
+        {{ error }}
+      </p>
+      <MdButton
+        variant="tonal"
+        @click="emit('retry')"
+      >
+        Retry
+      </MdButton>
+    </div>
 
     <!--
       An empty state says which switch produces the emptiness. A blank rectangle leaves the
@@ -52,11 +94,11 @@ defineProps({
     -->
     <p
       v-else-if="emptyMessage"
-      class="flex h-[220px] items-center justify-center px-6 text-center text-xs text-gray-500 dark:text-gray-400"
+      class="flex h-[220px] items-center justify-center px-6 text-center md-body-medium text-on-surface-variant"
     >
       {{ emptyMessage }}
     </p>
 
     <slot v-else />
-  </section>
+  </MdCard>
 </template>

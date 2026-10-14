@@ -15,13 +15,14 @@
   -->
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { init, use } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import useTheme from '../../store/theme'
 import { categorical, chrome } from '../../store/palette'
+import { summariseSeries } from './seriesSummary'
 
 // ECharts ships every chart type and component separately so a build only pays for what it
 // draws. The dashboard needs one chart type and three components, which keeps this bundle
@@ -62,11 +63,15 @@ const formatValue = (value) => {
   return props.unit ? `${rounded} ${props.unit}` : `${rounded}`
 }
 
+// A canvas has no text a screen reader can reach, so the chart says its latest and highest
+// values in words. It is visually hidden, the plot already shows the trend.
+const summaryText = computed(() => summariseSeries(props.series, formatValue).join('. '))
+
 const buildOption = () => {
-  const ink = chrome(theme.isDark)
+  const ink = chrome()
 
   return {
-    color: categorical(theme.isDark),
+    color: categorical(),
     animation: false,
     backgroundColor: 'transparent',
     grid: {
@@ -88,6 +93,9 @@ const buildOption = () => {
       : { show: false },
     tooltip: {
       trigger: 'axis',
+      backgroundColor: ink.tooltipSurface,
+      borderWidth: 0,
+      textStyle: { color: ink.tooltipText, fontSize: 12 },
       axisPointer: { type: 'line', lineStyle: { color: ink.baseline } },
       valueFormatter: formatValue
     },
@@ -140,13 +148,19 @@ onBeforeUnmount(() => {
 })
 
 watch(() => props.series, render, { deep: true })
-watch(() => theme.isDark, render)
+// The theme class lands on the root during the DOM update that follows this watcher, and the
+// palette reads the role values from the root. Rendering on the next tick reads the new ones.
+watch(() => theme.isDark, () => nextTick(render))
 </script>
 
 <template>
-  <div
-    ref="container"
-    class="w-full"
-    :style="{ height }"
-  />
+  <div class="w-full">
+    <div
+      ref="container"
+      :style="{ height }"
+    />
+    <p class="sr-only">
+      {{ summaryText }}
+    </p>
+  </div>
 </template>

@@ -43,14 +43,25 @@ export default function useLog() {
     }
   })
 
+  // A separator is a marker in the output, not a line from the server, so the filters and the
+  // level switches never hide it.
+  const isSeparator = entry => entry.kind === 'separator'
+
   const log = computed(() => {
     return rawLog
-      .filter(entry => entry.message.toLowerCase().includes(filter.value.toLowerCase()))
-      .filter(entry => levels[entry.level].enabled)
+      .filter(entry => isSeparator(entry) || entry.message.toLowerCase().includes(filter.value.toLowerCase()))
+      .filter(entry => isSeparator(entry) || levels[entry.level].enabled)
   })
 
+  const hasLines = computed(() => rawLog.some(entry => !isSeparator(entry)))
+
   const logMessage = value => {
-    rawLog.push({ id: id.value++, message: sanitizeMessage(value), level: getLevel(value) })
+    rawLog.push({ id: id.value++, kind: 'line', message: sanitizeMessage(value), level: getLevel(value) })
+  }
+
+  // The label is ours and constant, which is why a separator is never rendered as HTML.
+  const addSeparator = label => {
+    rawLog.push({ id: id.value++, kind: 'separator', message: label, level: null })
   }
 
   const clearLog = () => {
@@ -60,9 +71,11 @@ export default function useLog() {
   return {
     levels,
     log,
+    hasLines,
     filter,
     sanitizeMessage,
     logMessage,
+    addSeparator,
     clearLog
   }
 }

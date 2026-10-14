@@ -19,6 +19,7 @@ import { computed, defineAsyncComponent, ref } from 'vue'
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import ChartCard from './ChartCard.vue'
+import { statisticsState } from './statisticsState'
 
 const TimeSeriesChart = defineAsyncComponent(() => import('./TimeSeriesChart.vue'))
 
@@ -29,6 +30,7 @@ const SERIES_LIMIT = 7
 
 const { client } = useSession()
 const statisticsEnabled = ref(null)
+const failed = ref(false)
 const series = ref(null)
 
 const foldTail = (repositories) => {
@@ -61,23 +63,40 @@ const foldTail = (repositories) => {
   ]
 }
 
-client.value.statistics.allResolved()
-  .then(response => response.data)
-  .then(allResolved => {
-    statisticsEnabled.value = allResolved.statisticsEnabled
-    series.value = foldTail(allResolved.repositories).map(repository => ({
-      name: repository.name,
-      // [epoch millis, count] is what the time axis expects
-      data: repository.data.map(record => [record.date, record.count])
-    }))
-  })
-  .catch(error => {
-    console.error(error)
-    statisticsEnabled.value = false
-    createErrorToast('Cannot load statistics')
-  })
+const load = () =>
+  client.value.statistics.allResolved()
+    .then(response => response.data)
+    .then(allResolved => {
+      statisticsEnabled.value = allResolved.statisticsEnabled
+      series.value = foldTail(allResolved.repositories).map(repository => ({
+        name: repository.name,
+        // [epoch millis, count] is what the time axis expects
+        data: repository.data.map(record => [record.date, record.count])
+      }))
+      failed.value = false
+    })
+    .catch(error => {
+      console.error(error)
+      // A failed request says nothing about whether statistics are on, so it does not touch
+      // the flag. It is a failure of its own and is reported as one.
+      if (!failed.value) {
+        failed.value = true
+        createErrorToast('Cannot load statistics')
+      }
+    })
 
-const loading = computed(() => statisticsEnabled.value === null)
+load()
+
+const state = computed(() => statisticsState({
+  enabled: statisticsEnabled.value,
+  failed: failed.value,
+  series: series.value
+}))
+
+const loading = computed(() => state.value === 'loading')
+
+const errorMessage = computed(() =>
+  state.value === 'error' ? 'Cannot load resolved request statistics.' : '')
 
 /*
  * This card used to disappear entirely when statistics were switched off, which left a gap
@@ -85,11 +104,10 @@ const loading = computed(() => statisticsEnabled.value === null)
  * was off or the request had failed.
  */
 const emptyMessage = computed(() => {
-  if (loading.value) return ''
-  if (!statisticsEnabled.value) {
+  if (state.value === 'disabled') {
     return 'Resolved request statistics are disabled for this instance. Enable them under Settings to start recording.'
   }
-  return series.value?.length ? '' : 'No resolved requests recorded yet.'
+  return state.value === 'empty' ? 'No resolved requests recorded yet.' : ''
 })
 </script>
 
@@ -104,8 +122,13 @@ const emptyMessage = computed(() => {
     title="Resolved requests"
     subtitle="Requests served per repository"
     :loading="loading"
+    :error="errorMessage"
     :empty-message="emptyMessage"
+    @retry="load"
   >
-    <TimeSeriesChart :series="series" height="260px" />
+    <TimeSeriesChart
+      :series="series"
+      height="260px"
+    />
   </ChartCard>
 </template>
