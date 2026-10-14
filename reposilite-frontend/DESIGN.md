@@ -305,6 +305,39 @@ Props:
 Slots: `default` (the label), `icon`. The chip container is 32px tall, and its touch target
 is 48px (see Touch target).
 
+### MdSwitch
+
+Props:
+
+- `modelValue`: boolean, for `v-model`
+- `disabled`: boolean
+- `id`: optional. Generated when not given
+
+Emits `update:modelValue`. The default slot is the label, tied to the switch through
+`<label for>`. Attributes that are not props, such as `aria-labelledby`, go to the switch
+element. `class` and `style` stay on the root.
+
+The switch is a `<button role="switch">` with `aria-checked`. The track is 52 by 32px with a
+2px outline when off. The handle is 16px when off, 24px when on and 28px while pressed. The
+40px state layer sits around the handle: hover 8%, focus and pressed 12%. A disabled switch
+uses on-surface at 12% for the track and at 38% for the handle, as the MD3 token reference
+sets it.
+
+### MdCheckbox
+
+Props:
+
+- `modelValue`: boolean, for `v-model`
+- `indeterminate`: boolean. Shows a dash in place of the check mark
+- `error`: boolean. Draws the box in the error role and sets `aria-invalid`
+- `disabled`: boolean
+- `id`: optional. Generated when not given
+
+Emits `update:modelValue`. The default slot is the label. The control is a real
+`<input type="checkbox">`, transparent and covering a 48px area over the 40px state layer.
+The visible box is 18px with a 2px outline, and it fills with `primary` when checked. A
+disabled checkbox uses on-surface at 38%. Attributes that are not props go to the input.
+
 ### MdNavigationBar
 
 A bottom or top bar for three to five destinations. It fits the dashboard's five tabs.
