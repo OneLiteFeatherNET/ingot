@@ -1,12 +1,14 @@
 <script setup>
 import { ref, computed, watchEffect } from 'vue'
-import { createSuccessToast, createErrorToast } from '../../helpers/toast'
+import { createSuccessToast, createErrorToast, errorMessage } from '../../helpers/toast'
+import { createUploadQueue } from './uploadQueue'
 import { useSession } from '../../store/session'
 import useQualifier from '../../store/qualifier'
 import FileUpload from 'vue-upload-component'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MdLinearProgress from '../md/MdLinearProgress.vue'
 import BrowserIcon from './BrowserIcon.vue'
 
 const { client } = useSession()
@@ -77,27 +79,55 @@ const isEnabled = computed(() => files.value.length > 0)
 const removeFile = (file) =>
   files.value = files.value.filter(element => element !== file)
 
+// One batch at a time: a second press while files are in flight is ignored by the queue.
+const queue = createUploadQueue()
+const uploading = computed(() => queue.state.busy)
+
+const STATUS_LABELS = {
+  uploading: 'Uploading',
+  failed: 'Upload failed. Press Upload files to try again.',
+  done: 'Uploaded'
+}
+const statusLabel = (name) =>
+  STATUS_LABELS[queue.state.statuses[name]] ?? 'Ready to upload'
+
 const uploadFiles = () => {
+  if (uploading.value) {
+    return
+  }
+
   if (stubPomEnabled.value && (artifactId.value == "" || groupId.value == "" || version.value == "")) {
     createErrorToast(`Cannot upload files, one of artifactId/groupId/version is empty`)
     return
   }
 
-  files.value.forEach(vueFile =>
-    client.value.maven.deploy(`${destination.value}/${vueFile.name}`, vueFile.file, checksumsEnabled.value)
-      .then(() => createSuccessToast(`File ${vueFile.name} has been uploaded`))
-      .then(() => removeFile(vueFile))
-      .then(() => refreshQualifier())
-      .catch(error => createErrorToast(`Cannot upload file ${vueFile.name} - ${error.response.status}: ${error.response.data.message}`))
-      .catch(error => createErrorToast(error))
-  )
+  const tasks = files.value.map(vueFile => ({
+    key: vueFile.name,
+    run: () => client.value.maven.deploy(`${destination.value}/${vueFile.name}`, vueFile.file, checksumsEnabled.value)
+      .then(() => {
+        createSuccessToast(`File ${vueFile.name} has been uploaded`)
+        removeFile(vueFile)
+        refreshQualifier()
+      })
+      .catch(error => {
+        createErrorToast(`Cannot upload file ${vueFile.name}: ${errorMessage(error)}`)
+        throw error
+      })
+  }))
 
   if (stubPomEnabled.value) {
-    client.value.maven.generatePom(destination.value, groupId.value, artifactId.value, version.value)
-      .then(() => createSuccessToast(`Stub POM.xml file has been generated`))
-      .catch(error => createErrorToast(`Cannot generate stub POM file - ${error.response.status}: ${error.response.data.message}`))
-      .catch(error => createErrorToast(error))
+    tasks.push({
+      key: 'stub POM',
+      run: () => client.value.maven.generatePom(destination.value, groupId.value, artifactId.value, version.value)
+        .then(() => createSuccessToast(`Stub POM.xml file has been generated`))
+        .catch(error => {
+          createErrorToast(`Cannot generate stub POM file: ${errorMessage(error)}`)
+          throw error
+        })
+    })
   }
+
+  queue.start(tasks)
 }
 </script>
 
@@ -150,15 +180,25 @@ const uploadFiles = () => {
         <li
           v-for="file in files"
           :key="file.name"
-          class="flex min-h-12 items-center gap-3 px-3"
+          class="flex min-h-12 items-center gap-3 px-3 py-2"
         >
           <BrowserIcon
             name="file"
             class="text-on-surface-variant"
           />
-          <span class="min-w-0 flex-1 truncate md-body-large">{{ file.name }}</span>
+          <span class="flex min-w-0 flex-1 flex-col">
+            <span class="truncate md-body-large">{{ file.name }}</span>
+            <span class="md-body-small text-on-surface-variant">{{ statusLabel(file.name) }}</span>
+            <MdLinearProgress
+              v-if="queue.state.statuses[file.name] === 'uploading'"
+              indeterminate
+              :label="`Uploading ${file.name}`"
+              class="mt-1"
+            />
+          </span>
           <MdIconButton
             :aria-label="`Remove ${file.name}`"
+            :disabled="uploading"
             @click="removeFile(file)"
           >
             <BrowserIcon name="close" />
@@ -228,6 +268,8 @@ const uploadFiles = () => {
       <div class="mt-4 flex justify-end">
         <MdButton
           variant="filled"
+          :disabled="uploading"
+          :aria-busy="uploading ? 'true' : undefined"
           @click.prevent="uploadFiles"
         >
           Upload files
