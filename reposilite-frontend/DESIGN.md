@@ -48,8 +48,12 @@ Source files:
 
 ## Colour
 
-Generated from the seed `#B5651D` (copper) with the MD3 `SchemeTonalSpot` variant. Values
-live in `src/styles/md3/color.css`:
+Seed `#EC008B`, the OneLiteFeather Pink that the brand uses as its Material 3 source colour.
+The scheme is MD3 `SchemeVibrant` at contrast 0, and the accent roles are the official OLF
+tables from the brand skill (`references/material3.md`). The same generator, the Python
+`materialyoucolor` package, reproduces those tables exactly, so the values can be checked.
+The `@material/material-color-utilities` package for JavaScript does not match them and was
+not used for the accents. Values live in `src/styles/md3/color.css`:
 
 - Light values on `:root`, dark values on `.dark`.
 - Each role is a CSS custom property `--md-sys-color-<role>`.
@@ -73,6 +77,31 @@ Roles:
 | Surface containers | `surface-container-lowest`, `surface-container-low`, `surface-container`, `surface-container-high`, `surface-container-highest` |
 | Inverse | `inverse-surface`, `inverse-on-surface`, `inverse-primary` |
 | Outline and overlay | `outline`, `outline-variant`, `scrim`, `shadow` |
+
+The fixed roles are not in the official tables. They come from the same generator at
+contrast 0 and do not switch with the theme, which is what a fixed role is for.
+
+### Neutral surfaces (override)
+
+The official table is strongly pink: its light surface is `#fff4f7` and its surface-variant
+`#ffcfeb`. The project does not want tinted surfaces, so the neutral roles are not taken
+from the table. They come from a near-neutral palette at the source hue (357) with chroma 3,
+and the variant roles (`surface-variant`, `on-surface-variant`, `outline`, `outline-variant`)
+from the same hue at chroma 6. Chroma 3 is low enough to read as grey and high enough that a
+surface does not look dead next to the pink accents. Each role takes its tone from the
+standard MD3 mapping:
+
+| Theme | Surfaces | Text and outline |
+| --- | --- | --- |
+| Light | `surface`, `background`, `surface-bright` T98; `surface-container-lowest` T100, `-low` T96, `-container` T94, `-high` T92, `-highest` T90; `surface-dim` T87 | `on-surface` T10; `on-surface-variant` T30; `outline` T50; `outline-variant` T80; `surface-variant` T90 |
+| Dark | `surface`, `background`, `surface-dim` T6; `surface-container-lowest` T4, `-low` T10, `-container` T12, `-high` T17, `-highest` T22; `surface-bright` T24 | `on-surface` T90; `on-surface-variant` T80; `outline` T60; `outline-variant` T30; `surface-variant` T30 |
+
+The inverse roles follow the same pattern: `inverse-surface` is T20 in light and T90 in
+dark, and `inverse-on-surface` is T95 and T20.
+
+The brand charcoal `#1f1f23` is at tone 12. The dark `surface-container` is also at tone 12,
+so the charcoal of the brand matches that step, and the dark `surface` (tone 6) sits one step
+darker than it. Light `surface` is `#fff8f8`, near white.
 
 Status colours that MD3 does not define. Use them for text only:
 
