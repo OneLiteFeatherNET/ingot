@@ -48,6 +48,8 @@ const TEXT_PAIRS = [
   ['error', 'surface']
 ]
 
+const CHART_SERIES = 8
+
 const CONTRAST_ROOT_LIGHT = ':root:not(.dark)'
 const CONTRAST_DARK = '.dark'
 
@@ -135,6 +137,14 @@ const toLab = (hex) => {
   const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116)
   return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))]
 }
+
+const deltaE = (a, b) => {
+  const [l1, a1, b1] = toLab(a)
+  const [l2, a2, b2] = toLab(b)
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2)
+}
+
+const chartSeries = (values) => Array.from({ length: CHART_SERIES }, (_, i) => values[`--md-ext-color-chart-${i + 1}`])
 
 describe('colour roles', () => {
   for (const theme of ['light', 'dark']) {
@@ -226,5 +236,38 @@ describe('brand expression', () => {
 
   it('keeps the brand bar visible under forced colours', () => {
     expect(mediaBody(sheet, '(forced-colors: active)'), 'forced colours should give the brand bar a visible fill').toMatch(/\.olf-brand-bar/)
+  })
+})
+
+describe('chart series', () => {
+  for (const theme of ['light', 'dark']) {
+    it(`gives every series at least 3:1 against the surfaces in the ${theme} theme`, () => {
+      const series = chartSeries(THEMES[theme])
+      const surfaces = ['--md-sys-color-surface', '--md-sys-color-surface-container-highest']
+      for (const [index, colour] of series.entries()) {
+        for (const surface of surfaces) {
+          const ratio = contrastRatio(colour, THEMES[theme][surface])
+          expect(ratio, `chart-${index + 1} is ${ratio.toFixed(2)}:1 on ${surface}, below 3:1`).toBeGreaterThanOrEqual(3)
+        }
+      }
+    })
+
+    it(`keeps every pair of series at least 15 CIE76 units apart in the ${theme} theme`, () => {
+      const series = chartSeries(THEMES[theme])
+      for (let i = 0; i < series.length; i++) {
+        for (let j = i + 1; j < series.length; j++) {
+          const difference = deltaE(series[i], series[j])
+          expect(difference, `chart-${i + 1} and chart-${j + 1} differ by only ${difference.toFixed(1)}`).toBeGreaterThanOrEqual(15)
+        }
+      }
+    })
+  }
+
+  it('starts the series with the brand pink, a hue between magenta and red', () => {
+    const [light] = chartSeries(THEMES.light)
+    const [, a, b] = toLab(light)
+    const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360
+    // Pink and magenta sit between roughly 330 and 25 degrees in CIE LCh.
+    expect(hue >= 330 || hue <= 25, `chart-1 is at ${hue.toFixed(0)} degrees, expected the OLF pink family`).toBe(true)
   })
 })

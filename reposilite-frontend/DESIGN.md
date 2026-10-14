@@ -144,34 +144,46 @@ at 135 degrees: `#f7931d`, `#ec008b`, `#91268f`, `#2a388f`. Use it for brand are
 
 ## Charts
 
-Series colours are a dedicated palette, not MD3 roles. The roles of the copper seed sit too
-close together (primary, tertiary and secondary are all brown-orange) to tell apart as
-series, so the chart tokens are eight hues chosen to differ from one another.
+Series colours are a dedicated palette, not MD3 roles. The seed's roles sit too close together
+to tell apart as series, so the chart tokens are eight hues spaced about 45 degrees apart on
+the colour wheel. The first series is the OLF pink itself, and the others are the orange,
+gold, green, teal, cyan, blue and violet families that sit beside it.
 
 Each token is a CSS custom property, `--md-ext-color-chart-1` to `-8`, in `color.css`:
 light values on `:root`, dark values on `.dark`. They have no Tailwind utility, because a
 chart reads them through `src/store/palette.js` (`categorical()`), not through a class.
 
-Generation: each source hue was harmonised toward `#B5651D` with
-`Blend.harmonize` from `@material/material-color-utilities`, then tone 40 (light) and tone
-80 (dark) were taken from the `TonalPalette` of the harmonised colour. The generator ran as
-a throwaway script outside the project; the library is not a project dependency.
+Generation: each hue was harmonised toward `#ec008b` with `Blend.harmonize` from
+`@material/material-color-utilities`, then tone 40 (light) and tone 80 (dark) were taken from
+its `TonalPalette`. The first series is the seed itself. Harmonising pulls each hue a few
+degrees toward the pink, so the hue markers were placed before harmonising to land on their
+names. The generator ran as a throwaway script outside the project, and the library is not a
+project dependency. The hue search was run over a pool of hue markers, and the eight that
+maximised the smallest colour difference were kept.
 
 | Series | Token | Hue (harmonised, HCT) | Light (tone 40) | Dark (tone 80) | Light contrast on `surface` | Dark contrast on `surface` |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `chart-1` | blue, 255 | `#1261a2` | `#a0c9ff` | 6.14:1 | 10.84:1 |
-| 2 | `chart-2` | orange, 45 | `#9f4200` | `#ffb692` | 6.15:1 | 10.90:1 |
-| 3 | `chart-3` | teal, 186 | `#006a60` | `#77d7c9` | 6.19:1 | 10.89:1 |
-| 4 | `chart-4` | magenta, 340 | `#9a3787` | `#fface7` | 6.11:1 | 10.86:1 |
-| 5 | `chart-5` | green, 130 | `#446900` | `#a4d657` | 6.12:1 | 10.88:1 |
-| 6 | `chart-6` | violet, 300 | `#6b47bb` | `#d0bcff` | 6.16:1 | 10.87:1 |
-| 7 | `chart-7` | gold, 90 | `#755b00` | `#e9c255` | 6.15:1 | 10.86:1 |
-| 8 | `chart-8` | red, 20 | `#a83639` | `#ffb3b0` | 6.15:1 | 10.87:1 |
+| 1 | `chart-1` | pink, 357 | `#b8006b` | `#ffb0cc` | 6.16:1 | 10.91:1 |
+| 2 | `chart-2` | cyan, 240 | `#006590` | `#88ceff` | 6.14:1 | 10.90:1 |
+| 3 | `chart-3` | gold, 75 | `#815500` | `#feba50` | 6.20:1 | 10.93:1 |
+| 4 | `chart-4` | green, 120 | `#566500` | `#bad14d` | 6.15:1 | 10.90:1 |
+| 5 | `chart-5` | teal, 195 | `#006a68` | `#69d8d5` | 6.14:1 | 10.96:1 |
+| 6 | `chart-6` | orange, 47 | `#9c4504` | `#ffb690` | 6.13:1 | 10.93:1 |
+| 7 | `chart-7` | blue, 280 | `#4253c3` | `#bbc3ff` | 6.15:1 | 10.94:1 |
+| 8 | `chart-8` | violet, 315 | `#8040ad` | `#e3b5ff` | 6.16:1 | 10.90:1 |
 
-Light `surface` is `#fff8f5`, dark `surface` is `#19120d`. Every series clears 3:1 on
-both. Between the series, the smallest CIE76 difference is 28 in light and 17 in dark.
-Series are assigned in the order above, and every pair is checked, adjacent or not. A legend
-still needs its labels, because colour alone does not identify a series for everyone.
+Light `surface` is `#fff8f8`, dark `surface` is `#161213`. Every series clears 3:1 on both,
+and on `surface-container-highest` as well, since the test checks it. Between the series,
+the smallest CIE76 difference is 21 in light (orange, series 6, and gold, series 3) and 19 in
+dark (cyan, series 2, and blue, series 7). The previous copper palette managed 28 and 17.
+Series are assigned in the order above, and every pair is checked, adjacent or not. Orange is
+series 6 rather than 2, because in dark mode a pale pink and a pale peach read as one series.
+Cyan takes series 2, so the first three series (pink, cyan and gold) stay apart in both themes. A legend still needs its labels, because colour
+alone does not identify a series for everyone.
+
+The colour tests in `src/styles/md3/color.test.js` hold the rules above: 3:1 on the surfaces,
+15 CIE76 units between any two series, and a pink first series. `src/store/palette.test.js`
+checks that the palette reads the eight tokens that `color.css` defines.
 
 Charts use these colours for marks only. Text on a chart uses `chrome()` roles.
 

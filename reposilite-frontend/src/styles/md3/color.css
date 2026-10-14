@@ -292,32 +292,33 @@
 }
 
 /*
- * Series colours for the charts: eight hues that stay apart from one another, harmonised
- * toward the copper seed with Blend.harmonize. Light uses tone 40 and dark uses tone 80 of
- * each harmonised hue's tonal palette. src/store/palette.js reads them by name, in order.
+ * Series colours for the charts: eight hues spaced about 45 degrees apart, so that the series
+ * stay apart from one another. The first series is the OLF pink itself. Each other hue was
+ * harmonised toward #ec008b with Blend.harmonize, and the light values take tone 40 and the
+ * dark values tone 80 of its tonal palette. src/store/palette.js reads them by name, in order.
  * Generated once with a throwaway script; the values here are the source of truth. They are
- * not role colours, so they have no Tailwind utility.
+ * not role colours, so they have no Tailwind utility. DESIGN.md has the table.
  */
 :root {
-  --md-ext-color-chart-1: #1261a2;
-  --md-ext-color-chart-2: #9f4200;
-  --md-ext-color-chart-3: #006a60;
-  --md-ext-color-chart-4: #9a3787;
-  --md-ext-color-chart-5: #446900;
-  --md-ext-color-chart-6: #6b47bb;
-  --md-ext-color-chart-7: #755b00;
-  --md-ext-color-chart-8: #a83639;
+  --md-ext-color-chart-1: #b8006b;
+  --md-ext-color-chart-2: #006590;
+  --md-ext-color-chart-3: #815500;
+  --md-ext-color-chart-4: #566500;
+  --md-ext-color-chart-5: #006a68;
+  --md-ext-color-chart-6: #9c4504;
+  --md-ext-color-chart-7: #4253c3;
+  --md-ext-color-chart-8: #8040ad;
 }
 
 .dark {
-  --md-ext-color-chart-1: #a0c9ff;
-  --md-ext-color-chart-2: #ffb692;
-  --md-ext-color-chart-3: #77d7c9;
-  --md-ext-color-chart-4: #fface7;
-  --md-ext-color-chart-5: #a4d657;
-  --md-ext-color-chart-6: #d0bcff;
-  --md-ext-color-chart-7: #e9c255;
-  --md-ext-color-chart-8: #ffb3b0;
+  --md-ext-color-chart-1: #ffb0cc;
+  --md-ext-color-chart-2: #88ceff;
+  --md-ext-color-chart-3: #feba50;
+  --md-ext-color-chart-4: #bad14d;
+  --md-ext-color-chart-5: #69d8d5;
+  --md-ext-color-chart-6: #ffb690;
+  --md-ext-color-chart-7: #bbc3ff;
+  --md-ext-color-chart-8: #e3b5ff;
 }
 
 /*

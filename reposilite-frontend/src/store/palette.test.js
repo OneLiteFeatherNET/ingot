@@ -15,7 +15,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { categorical, chrome, STATUS } from './palette'
+
+const stylesheet = readFileSync(resolve(process.cwd(), 'src/styles/md3/color.css'), 'utf8')
 
 const root = () => document.documentElement
 
@@ -26,6 +30,12 @@ const setRole = (name, value) => root().style.setProperty(name, value)
 const CHART_VALUES = ['#100001', '#100002', '#100003', '#100004', '#100005', '#100006', '#100007', '#100008']
 
 describe('palette', () => {
+  it('reads the same number of series that color.css defines, so no chart token goes unused', () => {
+    const defined = new Set([...stylesheet.matchAll(/--md-ext-color-chart-(\d+)\s*:/g)].map((match) => match[1]))
+
+    expect(defined.size, 'color.css should define one chart token per categorical series').toBe(CHART_VALUES.length)
+  })
+
   beforeEach(() => {
     CHART_VALUES.forEach((value, index) => setRole(`--md-ext-color-chart-${index + 1}`, value))
     setRole('--md-sys-color-on-surface', '#404040')
