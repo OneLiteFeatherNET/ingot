@@ -218,6 +218,11 @@ Emits `update:modelValue`. Slots: `leading-icon`, `trailing-icon` (both decorati
 The label floats through the peer pattern, and that pattern needs the input's placeholder
 to be a space. A real `placeholder` is therefore not supported.
 
+Attributes that are not props are forwarded to the `<input>`, where the browser enforces
+them. That covers `min`, `max`, `step`, `inputmode`, `pattern`, `maxlength` and `spellcheck`,
+for example `<MdTextField type="date" :min="today" />`. `class` and `style` stay on the
+wrapper that holds the field, so layout classes do not end up on the input.
+
 ### MdChip
 
 Props:
