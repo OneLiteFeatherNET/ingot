@@ -15,6 +15,7 @@
   -->
 
 <script setup>
+import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
 
 defineProps({
@@ -31,12 +32,22 @@ defineProps({
     type: Boolean,
     default: false
   },
+  /**
+   * The request behind the card failed. Shown in place of the plot with a retry, which is a
+   * different thing from "nothing to draw": a failure must not read as an empty instance.
+   */
+  error: {
+    type: String,
+    default: ''
+  },
   /** Shown instead of the plot when there is genuinely nothing to draw. */
   emptyMessage: {
     type: String,
     default: ''
   }
 })
+
+const emit = defineEmits(['retry'])
 </script>
 
 <template>
@@ -60,6 +71,22 @@ defineProps({
       v-if="loading"
       class="skeleton-bars h-[220px] w-full rounded-corner-small bg-surface-container-high"
     />
+
+    <div
+      v-else-if="error"
+      role="alert"
+      class="flex h-[220px] flex-col items-center justify-center gap-3 px-6 text-center"
+    >
+      <p class="md-body-medium text-on-surface">
+        {{ error }}
+      </p>
+      <MdButton
+        variant="tonal"
+        @click="emit('retry')"
+      >
+        Retry
+      </MdButton>
+    </div>
 
     <!--
       An empty state says which switch produces the emptiness. A blank rectangle leaves the
