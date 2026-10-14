@@ -10,6 +10,12 @@ const props = defineProps({
 
 const showFactoryReset = ref(false)
 
+// The scrim is the MD3 role colour at 32%. The modal's own stylesheet paints the overlay in a
+// fixed black, so the colour goes in as an inline style that wins over it.
+const overlayStyle = {
+  backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)'
+}
+
 /*
  * The reset saves at once to every instance, so the dialog states that plainly. The callback
  * runs the save; the dialog closes and the result shows in the settings action bar.
@@ -32,7 +38,7 @@ export default {
       v-model="showFactoryReset"
       v-bind="$attrs"
       teleport-to="body"
-      overlay-class="bg-scrim/40"
+      :overlay-style="overlayStyle"
       class="flex min-h-full items-center justify-center p-4"
     >
       <!-- The role sits on the card: the modal root always carries role="dialog" of its own. -->
