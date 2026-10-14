@@ -24,7 +24,7 @@ import MdChip from '../md/MdChip.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 
-const { levels, log, logMessage, filter, clearLog } = useLog()
+const { levels, log, hasLines, logMessage, filter, addSeparator } = useLog()
 
 const {
   onOpen, onMessage, onClose, onError,
@@ -44,7 +44,11 @@ const scrollToEnd = () => {
 }
 
 const setupConnection = () => {
-  onOpen.value = () => clearLog()
+  // A reconnect keeps what was already printed. The gap is marked rather than hidden, so the
+  // reader can tell output that came before the drop from output after it.
+  onOpen.value = () => {
+    if (hasLines.value) addSeparator('Reconnected')
+  }
   onMessage.value = message => {
     logMessage(message)
     nextTick(() => scrollToEnd())
@@ -169,12 +173,22 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
         class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono text-xs text-on-surface"
         aria-live="polite"
       >
-        <p
+        <template
           v-for="entry in log"
           :key="entry.id"
-          class="whitespace-nowrap"
-          v-html="entry.message"
-        />
+        >
+          <p
+            v-if="entry.kind === 'separator'"
+            class="whitespace-normal py-1 font-sans text-on-surface-variant"
+          >
+            {{ entry.message }}
+          </p>
+          <p
+            v-else
+            class="whitespace-nowrap"
+            v-html="entry.message"
+          />
+        </template>
 
         <!--
           whitespace-normal on each of these: the panel around them keeps pre-wrap so log
