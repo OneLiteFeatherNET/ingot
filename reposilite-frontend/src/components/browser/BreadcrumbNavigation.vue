@@ -47,7 +47,7 @@ const breadcrumbs = computed(() => {
   >
     <router-link
       to="/"
-      class="md-state-layer md-focus-ring rounded-corner-small px-2 py-1 text-on-surface-variant hover:text-primary"
+      class="md-state-layer md-focus-ring inline-flex min-h-12 items-center rounded-corner-small px-2 py-1 text-on-surface-variant hover:text-primary"
     >
       Index of
     </router-link>

@@ -63,7 +63,7 @@ const selectConfiguration = (configuration) =>
         {{ configuration.name }}
         <span
           aria-hidden="true"
-          class="absolute inset-x-2 bottom-0 h-[3px] rounded-t-corner-extra-small transition-colors duration-(--md-sys-motion-duration-short3)"
+          class="absolute inset-x-2 bottom-0 h-[3px] rounded-t-[3px] transition-colors duration-(--md-sys-motion-duration-short3)"
           :class="configuration.name === selectedTab ? 'bg-primary' : 'bg-transparent'"
         />
       </button>

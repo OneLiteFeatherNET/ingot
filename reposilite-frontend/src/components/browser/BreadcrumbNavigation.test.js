@@ -55,6 +55,14 @@ describe('BreadcrumbNavigation', () => {
     expect(parent.attributes('data-variant'), 'the parent control is an MD3 icon button').toBe('standard')
   })
 
+  it('gives the Index of link a 48px touch target', async () => {
+    wrapper = await mountBreadcrumb()
+    const index = wrapper.findAll('a').find(link => link.text() === 'Index of')
+
+    expect(index.classes(), 'the link is at least 48px tall').toContain('min-h-12')
+    expect(index.classes(), 'the text stays centred in the taller target').toContain('items-center')
+  })
+
   it('shows the current directory as text rather than as a link', async () => {
     wrapper = await mountBreadcrumb()
     const current = wrapper.find('[aria-current="page"]')

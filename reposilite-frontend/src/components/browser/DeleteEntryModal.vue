@@ -66,7 +66,7 @@ const scope = computed(() =>
       v-if="isOpen"
       :model-value="isOpen"
       teleport-to="body"
-      :overlay-class="'vfm__overlay bg-scrim/40!'"
+      :overlay-class="'vfm__overlay bg-scrim/32!'"
       class="flex items-center justify-center p-4"
       @update:model-value="(open) => { if (!open) close() }"
     >

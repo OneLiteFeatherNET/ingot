@@ -129,6 +129,87 @@ describe('DetailedListEntry appearance', () => {
 
     expect(size, 'the size is rendered as its own element').toBeDefined()
     expect(size.element.parentElement.textContent, 'the size shares the row with the name').toContain('example-1.0.jar')
-    expect(size.classes(), 'the size uses the small body style').toContain('md-body-small')
+    expect(size.classes(), 'the size uses the label-small style').toContain('md-label-small')
+  })
+})
+
+describe('DetailedListEntry md3 list spec', () => {
+  const folder = { name: 'releases', type: 'DIRECTORY' }
+
+  const mountRow = (overrides = {}, file = jar) => {
+    const wrapper = mount(DetailedListEntry, {
+      props: {
+        file,
+        qualifier: { path: 'releases/net/example' },
+        url: 'https://repo.example/releases/net/example/example-1.0.jar',
+        to: '/releases/net/example/example-1.0.jar',
+        openDeleteEntryModal: () => {},
+        compactMode: false,
+        ...overrides
+      },
+      global: { stubs: { 'router-link': RouterLinkStub } }
+    })
+    mounted.push(wrapper)
+    return wrapper
+  }
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('gives a one-line row a 56px minimum height', () => {
+    const wrapper = mountRow({ compactMode: true })
+
+    expect(wrapper.classes(), 'one-line list items are 56px tall').toContain('min-h-14')
+  })
+
+  it('gives a two-line row a 72px minimum height', () => {
+    const wrapper = mountRow({ compactMode: false })
+
+    expect(wrapper.classes(), 'two-line list items are 72px tall').toContain('min-h-18')
+  })
+
+  it('uses 16px horizontal padding in both densities', () => {
+    expect(mountRow({ compactMode: true }).classes(), 'compact rows pad 16px on each side').toContain('px-4')
+    expect(mountRow({ compactMode: false }).classes(), 'default rows pad 16px on each side').toContain('px-4')
+  })
+
+  it('draws a folder icon in the on-surface-variant role, not primary', () => {
+    const icon = mountRow({}, folder).find('svg')
+
+    expect(icon.classes(), 'the folder icon uses the variant role').toContain('text-on-surface-variant')
+    expect(icon.classes(), 'the folder icon is not primary').not.toContain('text-primary')
+  })
+
+  it('gives a repository link a 48px touch target', () => {
+    const link = mountRow({}, folder).find('a')
+
+    expect(link.classes(), 'the link box is at least 48px tall, not the 24px text line').toContain('min-h-12')
+  })
+
+  it('gives a file link a 48px touch target', () => {
+    const link = mountRow().find('a')
+
+    expect(link.classes(), 'the link box is at least 48px tall').toContain('min-h-12')
+  })
+
+  it('draws a file icon in the on-surface-variant role', () => {
+    const icon = mountRow().find('svg')
+
+    expect(icon.classes(), 'the file icon uses the variant role').toContain('text-on-surface-variant')
+  })
+
+  it('sets the trailing size in the label-small style', () => {
+    const wrapper = mountRow({ compactMode: true })
+    const size = wrapper.findAll('span').find(span => span.text() === prettyBytes(jar.contentLength))
+
+    expect(size.classes(), 'the trailing size uses label-small').toContain('md-label-small')
+    expect(size.classes(), 'the trailing size is on-surface-variant').toContain('text-on-surface-variant')
+  })
+
+  it('sets the file name in the body-large style', () => {
+    const name = mountRow().findAll('span').find(span => span.text() === jar.name)
+
+    expect(name.classes(), 'the headline uses body-large').toContain('md-body-large')
   })
 })

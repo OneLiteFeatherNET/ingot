@@ -143,7 +143,7 @@ const entryUrl = (file) =>
     />
     <ul
       class="rounded-corner-medium bg-surface-container-low"
-      :class="compactMode ? 'p-1' : 'p-2 divide-y divide-outline-variant'"
+      :class="compactMode ? 'p-1' : 'p-2 [&>li+li]:after:absolute [&>li+li]:after:inset-x-4 [&>li+li]:after:top-0 [&>li+li]:after:h-px [&>li+li]:after:bg-outline-variant'"
     >
       <template
         v-for="(entry, index) in displayedEntries"
@@ -151,8 +151,8 @@ const entryUrl = (file) =>
       >
         <li
           v-if="entry.__skeleton"
-          class="flex items-center gap-4 rounded-corner-medium px-4"
-          :class="compactMode ? 'min-h-12' : 'min-h-16'"
+          class="relative flex items-center gap-4 rounded-corner-medium px-4"
+          :class="compactMode ? 'min-h-14' : 'min-h-18'"
         >
           <span class="size-6 shrink-0 rounded-full bg-surface-container-high skeleton-bars" />
           <span
