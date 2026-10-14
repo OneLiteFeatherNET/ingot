@@ -143,7 +143,7 @@ const uploadFiles = () => {
         <div class="-mt-2 pb-2">
           <div v-for="file in files" :key="file.name" class="pt-1 px-6 flex">
             <span @click="removeFile(file)" class="pt-[0.2125rem]">
-              <CloseIcon class="h-5 pb-1 text-purple-400" />
+              <CloseIcon class="h-5 pb-1 text-primary" />
             </span>
             <span class="px-2">{{file.name}}</span>
           </div>
@@ -186,15 +186,15 @@ const uploadFiles = () => {
           @click.prevent="uploadFiles"
           class="
             border text-sm py-1.5 h-9 px-4 mt-2 border-dashed rounded
-            bg-gray-50  border-gray-400 hover:transition-colors hover:duration-200 hover:bg-purple-500 hover:text-white
-            dark:bg-black dark:border-gray-700 dark:text-white dark:hover:transition-colors dark:hover:duration-200 dark:hover:bg-purple-700
+            bg-gray-50  border-gray-400 hover:transition-colors hover:duration-200 hover:bg-primary hover:text-on-primary
+            dark:bg-black dark:border-gray-700 dark:text-white dark:hover:transition-colors dark:hover:duration-200 dark:hover:bg-primary
           "
         >
           <span>Upload files </span>
-          <span class="font-bold text-purple-400">↝</span>
+          <span class="font-bold text-primary">↝</span>
         </button>
       </div>
-      <span v-if="!pathMatchesPom" class="px-6 text-yellow-500">⚠ Warning: Path does not match artifact coordinates</span>
+      <span v-if="!pathMatchesPom" class="px-6 text-warning">⚠ Warning: Path does not match artifact coordinates</span>
     </div>
   </div>
 </template>

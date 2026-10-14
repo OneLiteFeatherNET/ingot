@@ -100,8 +100,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', measurePanel))
  * hollow marker and muted text, whatever its level.
  */
 const ENABLED_LEVEL_COLOURS = {
-  Warn: 'text-yellow-700 dark:text-yellow-500',
-  Error: 'text-red-700 dark:text-red-400'
+  Warn: 'text-warning',
+  Error: 'text-error'
 }
 
 const chipClasses = (level) =>
@@ -183,7 +183,7 @@ const chipClasses = (level) =>
             stays visible above.
           </p>
           <button
-            class="mt-3 rounded-md bg-blue-700 px-3 py-2 font-medium text-white hover:bg-blue-800"
+            class="mt-3 rounded-md bg-primary px-3 py-2 font-medium text-on-primary hover:bg-primary/90"
             @click="setupConnection()"
           >
             Reconnect

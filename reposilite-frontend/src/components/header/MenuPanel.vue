@@ -66,7 +66,7 @@ const themeLabel = computed(() => ({
     </div>
     <button
       type="button"
-      class="default-button flex h-[35px] w-[40px] items-center justify-center rounded-full"
+      class="cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500 flex h-[35px] w-[40px] items-center justify-center rounded-full"
       :aria-label="themeLabel"
       :title="themeLabel"
       @click="toggleTheme()"

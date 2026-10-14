@@ -64,12 +64,12 @@ export default {
         <div>
           <h1 class="font-bold px-16">
             Do you want to delete 
-            <span class="text-red-700">
+            <span class="text-error">
               {{ '/' + value.path + '/' + value.file }}
             </span>
           </h1>
           <div class="flex flex-row justify-evenly pt-4">
-            <button @click="deleteAndClose()" class="px-12 py-1 rounded-full bg-red-500">Confirm</button>
+            <button @click="deleteAndClose()" class="px-12 py-1 rounded-full bg-error text-on-error">Confirm</button>
             <button @click="close()" class="px-12 py-1 rounded-full bg-gray-200 dark:bg-gray-600">Cancel</button>
           </div>
         </div>

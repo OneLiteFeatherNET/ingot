@@ -156,7 +156,7 @@ const runConfirm = (token) => {
         @cancel="close"
       />
 
-      <div v-if="secret" class="border-b border-gray-200 bg-blue-50 px-4.5 py-3 text-blue-900 dark:border-gray-800 dark:bg-blue-900 dark:text-blue-100">
+      <div v-if="secret" class="border-b border-gray-200 bg-primary-container px-4.5 py-3 text-on-primary-container dark:border-gray-800">
         New secret for <strong>{{ secret.name }}</strong>: <code class="px-1 font-mono">{{ secret.value }}</code> — copy it now.
         <button type="button" class="ml-2 underline" @click="secret = null">
           Dismiss
@@ -217,7 +217,7 @@ const runConfirm = (token) => {
           <TokenRow
             v-if="!isOpen(`newroute:${tid(token)}`)"
             indent
-            class="cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+            class="cursor-pointer text-primary hover:text-primary/80"
             @click="addRoute(token)"
           >
             <span class="whitespace-nowrap">+ Add route</span>

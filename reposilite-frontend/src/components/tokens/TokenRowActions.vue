@@ -41,7 +41,7 @@ defineEmits(['edit', 'regenerate', 'revoke', 'confirm', 'cancel'])
   <template v-if="confirmAction">
     <button
       type="button"
-      class="text-xs font-medium text-red-600 dark:text-red-400"
+      class="text-xs font-medium text-error"
       @click="$emit('confirm')"
     >
       {{ confirmAction === 'revoke' ? 'Revoke' : 'Regenerate' }}

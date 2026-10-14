@@ -36,7 +36,7 @@ defineProps({
     :class="[
       small ? 'h-8 px-3' : 'h-9 px-3.5',
       primary
-        ? 'bg-blue-700 font-medium text-white hover:bg-blue-800'
+        ? 'bg-primary font-medium text-on-primary hover:bg-primary/90'
         : 'border border-gray-300 dark:border-gray-700'
     ]"
   >

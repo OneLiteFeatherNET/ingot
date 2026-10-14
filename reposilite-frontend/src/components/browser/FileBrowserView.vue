@@ -120,7 +120,7 @@ const toggleCompactMode = () => {
 const MenuButton = (_, context) => {
   return (
     <div class="w-9 mx-2">
-      <div class="bg-white dark:bg-gray-900 pl-2 pt-[0.325rem] pb-1 pr-2 cursor-pointer rounded-full default-button">
+      <div class="pl-2 pt-[0.325rem] pb-1 pr-2 rounded-full cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
         {context.slots.default()}
       </div>
     </div>
@@ -146,7 +146,7 @@ const MenuButton = (_, context) => {
               <AdjustmentsModal>
                 <template v-slot:button>
                   <div class="w-9">
-                    <div class="bg-white dark:bg-gray-900 pl-2 pt-[0.325rem] pb-1 pr-2 cursor-pointer rounded-full default-button">
+                    <div class="pl-2 pt-[0.325rem] pb-1 pr-2 rounded-full cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
                       <AdjustmentsIcon class="pr-[0.225rem]" />
                     </div>
                   </div>

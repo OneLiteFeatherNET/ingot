@@ -15,6 +15,7 @@
   -->
 
 <script setup>
+import { watchEffect } from 'vue'
 import { useHead } from '@unhead/vue'
 import { useSession } from "./store/session"
 import useTheme from "./store/theme"
@@ -27,10 +28,13 @@ const { initializeSession } = useSession()
 const { qualifier } = useQualifier()
 
 useHead({
-  title, 
+  title,
   description
 })
 fetchColorMode()
+// The dark token set is keyed on `.dark`. The class is mirrored onto the document root so
+// that the body, and any overscroll beyond the app, follow the theme as well.
+watchEffect(() => document.documentElement.classList.toggle('dark', theme.isDark))
 initializeSession().catch(() => {})
 </script>
 

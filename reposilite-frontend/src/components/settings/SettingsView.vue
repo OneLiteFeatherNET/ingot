@@ -173,7 +173,7 @@ const formsConfiguration = {
   @apply mx-2 rounded text-sm px-4 text-white py-2;
 }
 #configuration-state .changed {
-  @apply bg-blue-700! cursor-pointer!;
+  @apply bg-primary! text-on-primary! cursor-pointer!;
 }
 #configuration-state .forbidden {
   @apply bg-gray-500! cursor-not-allowed!;

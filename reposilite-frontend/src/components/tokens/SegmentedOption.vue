@@ -29,7 +29,7 @@ defineProps({
     type="button"
     :aria-pressed="on"
     class="h-8 border-r border-gray-300 px-3 text-xs last:border-r-0 dark:border-gray-700"
-    :class="on ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-400'"
+    :class="on ? 'bg-primary text-on-primary' : 'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-400'"
   >
     <slot />
   </button>

@@ -90,7 +90,7 @@ export default {
 
           <p
             v-if="failure"
-            class="pt-3 text-left text-sm text-red-600 dark:text-red-400"
+            class="pt-3 text-left text-sm text-error"
             role="alert"
           >
             {{ failure }}
@@ -99,14 +99,14 @@ export default {
           <button
             type="submit"
             :disabled="busy"
-            class="mt-4 cursor-pointer rounded-md bg-blue-700 py-2 font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-700/60"
+            class="mt-4 cursor-pointer rounded-md bg-primary py-2 font-medium text-on-primary hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/60"
           >
             {{ busy ? 'Signing in...' : 'Sign in' }}
           </button>
 
           <button
             type="button"
-            class="pt-3 text-xs text-blue-600 dark:text-blue-300"
+            class="pt-3 text-xs text-primary"
             @click="close()"
           >
             Back to index

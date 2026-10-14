@@ -70,7 +70,7 @@ const defaultMode = computed(() => !props.compactMode)
           v-if="file.hasOwnProperty('contentLength') && isHumanReadable" 
           :title="`Click to view ${file.name} file content in a new tab`"
           id="view-button"
-          class="px-1 mr-6 pt-[0.1rem] rounded-full text-purple-300 hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900" 
+          class="px-1 mr-6 pt-[0.1rem] rounded-full text-primary hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900" 
           @click.left.prevent="openUrl(url)"
           v-on:click.stop
         />
@@ -78,14 +78,14 @@ const defaultMode = computed(() => !props.compactMode)
           v-if="isJavaDocsAvailable()"
           :title="`Click to view ${file.name} javadocs in a new tab`"
           id="javadoc-button"
-          class="px-1 mr-6 pt-[0.1rem] rounded-full text-purple-300 hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900"
+          class="px-1 mr-6 pt-[0.1rem] rounded-full text-primary hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900"
           @click.left.prevent="openUrl(getJavaDocsUrl())"
           v-on:click.stop
         />
         <TrashIcon
           v-if="qualifier.path.length > 1 && hasPermissionTo(`/${qualifier.path}`, 'route:write')"
           id="delete-button"
-          class="px-1 mr-6 pt-[0.1rem] rounded-full text-purple-300 hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900"
+          class="px-1 mr-6 pt-[0.1rem] rounded-full text-primary hover:transition-colors hover:duration-200 hover:bg-gray-100 dark:hover:bg-gray-900"
           @click.left.prevent="openDeleteEntryModal(file.name)"
           v-on:click.stop
         />
@@ -104,12 +104,12 @@ const defaultMode = computed(() => !props.compactMode)
 }
 
 .default-entry {
-  @apply flex flex-row justify-between mb-1.5 py-3 rounded-3xl default-button max-sm:rounded-xl;
+  @apply flex flex-row justify-between mb-1.5 py-3 rounded-3xl cursor-pointer bg-surface-container-low transition-colors duration-500 max-sm:rounded-xl;
 }
 .compact-entry {
   @apply rounded-lg inline-block w-full flex;
-  @apply hover:transition-colors hover:duration-200 hover:bg-purple-400 hover:text-white;
-  @apply dark:text-white dark:hover:transition-colors dark:hover:duration-200 dark:hover:bg-purple-600;
+  @apply hover:transition-colors hover:duration-200 hover:bg-primary hover:text-on-primary;
+  @apply dark:text-white dark:hover:transition-colors dark:hover:duration-200 dark:hover:bg-primary;
 }
 
 .default-icon {

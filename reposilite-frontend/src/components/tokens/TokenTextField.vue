@@ -46,7 +46,7 @@ defineProps({
   <input
     v-model="model"
     :type="type"
-    class="h-8 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 placeholder-gray-500 outline-none focus:border-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
+    class="h-8 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 placeholder-gray-500 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
     :class="[grow ? 'min-w-48 flex-1' : '', mono ? 'font-mono' : '']"
   >
 </template>

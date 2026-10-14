@@ -175,7 +175,7 @@ dialog::backdrop {
   background-color: rgba(0, 0, 0, 0.5);
 }
 button {
-  @apply bg-blue-700 mx-2 rounded text-sm h-9 px-4 text-white;
+  @apply bg-primary mx-2 rounded text-sm h-9 px-4 text-on-primary;
 }
 .tabs {
   @apply cursor-pointer!;

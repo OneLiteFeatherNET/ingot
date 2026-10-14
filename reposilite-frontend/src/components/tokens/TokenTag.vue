@@ -28,7 +28,7 @@ defineProps({
   <span
     class="whitespace-nowrap rounded-full px-1.5 py-0.5 text-[0.7rem]"
     :class="accent
-      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+      ? 'bg-primary-container text-on-primary-container'
       : 'bg-gray-150 text-gray-600 dark:bg-gray-800 dark:text-gray-400'"
   >
     <slot />

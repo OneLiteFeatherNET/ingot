@@ -43,9 +43,9 @@ defineProps({
     type="button"
     :aria-label="label"
     :title="label"
-    class="inline-flex h-7 w-7 items-center justify-center rounded-md ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 [&>svg]:size-4"
+    class="inline-flex h-7 w-7 items-center justify-center rounded-md ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-primary [&>svg]:size-4"
     :class="destructive
-      ? 'text-gray-600 ring-gray-300 hover:bg-red-50 hover:text-red-600 hover:ring-red-400 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-red-900/40 dark:hover:text-red-400 dark:hover:ring-red-700'
+      ? 'text-gray-600 ring-gray-300 hover:bg-error-container hover:text-on-error-container hover:ring-error dark:text-gray-300 dark:ring-gray-700'
       : 'text-gray-500 ring-transparent hover:bg-gray-150 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'"
   >
     <slot />

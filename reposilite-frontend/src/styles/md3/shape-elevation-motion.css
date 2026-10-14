@@ -1,0 +1,94 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * MD3 shape, elevation and motion tokens, with the Tailwind names they are exposed as.
+ *
+ *   --md-sys-shape-corner-<step>    -> rounded-corner-<step>
+ *   --md-sys-elevation-level<n>     -> shadow-elevation-<n>   (n = 0 to 5)
+ *   --md-sys-motion-easing-<name>   -> ease-md-<name>
+ *   --md-sys-motion-duration-<name> -> duration-md-<name>
+ */
+
+:root {
+  /* Shape: corner radii. "full" is a pill or circle, whatever the element size. */
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 9999px;
+
+  /*
+   * Elevation: each level is a key shadow plus an ambient shadow, as in the MD3 spec. The
+   * same shadows are used in both themes. MD3 would lighten a dark surface instead of
+   * shadowing it; that refinement is left to the views that need it.
+   */
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 1px rgb(0 0 0 / 0.15);
+  --md-sys-elevation-level2: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 2px 6px 2px rgb(0 0 0 / 0.15);
+  --md-sys-elevation-level3: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 4px 8px 3px rgb(0 0 0 / 0.15);
+  --md-sys-elevation-level4: 0 2px 3px 0 rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15);
+  --md-sys-elevation-level5: 0 4px 4px 0 rgb(0 0 0 / 0.3), 0 8px 12px 6px rgb(0 0 0 / 0.15);
+
+  /* Motion: easing curves from the MD3 motion system. */
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* Motion: durations. Short for state changes, medium for small movement, long for large. */
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 100ms;
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium3: 350ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-long1: 450ms;
+  --md-sys-motion-duration-long2: 500ms;
+  --md-sys-motion-duration-long3: 550ms;
+  --md-sys-motion-duration-long4: 600ms;
+}
+
+@theme inline {
+  --radius-corner-none: var(--md-sys-shape-corner-none);
+  --radius-corner-extra-small: var(--md-sys-shape-corner-extra-small);
+  --radius-corner-small: var(--md-sys-shape-corner-small);
+  --radius-corner-medium: var(--md-sys-shape-corner-medium);
+  --radius-corner-large: var(--md-sys-shape-corner-large);
+  --radius-corner-extra-large: var(--md-sys-shape-corner-extra-large);
+  --radius-corner-full: var(--md-sys-shape-corner-full);
+
+  --shadow-elevation-0: var(--md-sys-elevation-level0);
+  --shadow-elevation-1: var(--md-sys-elevation-level1);
+  --shadow-elevation-2: var(--md-sys-elevation-level2);
+  --shadow-elevation-3: var(--md-sys-elevation-level3);
+  --shadow-elevation-4: var(--md-sys-elevation-level4);
+  --shadow-elevation-5: var(--md-sys-elevation-level5);
+
+  --ease-md-standard: var(--md-sys-motion-easing-standard);
+  --ease-md-standard-decelerate: var(--md-sys-motion-easing-standard-decelerate);
+  --ease-md-standard-accelerate: var(--md-sys-motion-easing-standard-accelerate);
+  --ease-md-emphasized: var(--md-sys-motion-easing-emphasized);
+  --ease-md-emphasized-decelerate: var(--md-sys-motion-easing-emphasized-decelerate);
+  --ease-md-emphasized-accelerate: var(--md-sys-motion-easing-emphasized-accelerate);
+
+}

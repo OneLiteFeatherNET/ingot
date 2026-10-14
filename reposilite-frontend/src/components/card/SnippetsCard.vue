@@ -152,8 +152,8 @@ const selectTab = (tab) =>
             @click="copy"
             class="absolute top-2 right-2 z-10 flex items-center cursor-pointer select-none rounded-md p-1 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
           >
-            <span v-if="copied" class="text-ssm font-normal text-green-500 mr-1.5">Copied</span>
-            <CopiedIcon v-if="copied" class="text-green-500" />
+            <span v-if="copied" class="text-ssm font-normal text-success mr-1.5">Copied</span>
+            <CopiedIcon v-if="copied" class="text-success" />
             <CopyIcon v-else />
           </span>
           <div class="card-editor overflow-auto font-mono text-ssm h-29 relative py-3 px-4 rounded-lg bg-gray-100 dark:bg-gray-800">

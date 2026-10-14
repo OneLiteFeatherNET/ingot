@@ -69,7 +69,7 @@ const renderers = markRaw([
 const configurationStyles = mergeStyles(defaultStyles, {
   control: {
     description: 'pl-[0.45em] text-sm italic',
-    error: 'text-red-500 px-2 font-bold',
+    error: 'text-error px-2 font-bold',
     input: 'mx-2 rounded',
     select: 'mx-2 rounded pr-8 text-sm h-9 px-4 text-black',
     wrapper: 'flex py-2'
@@ -84,7 +84,7 @@ const configurationStyles = mergeStyles(defaultStyles, {
     /* No padding, because a fieldset carries the list and its legend holds the add button. */
     root: 'flex flex-col flex-wrap h-full gap-4 p-0',
     legend: 'flex flex-row-reverse gap-2 w-full mb-0',
-    addButton: 'rounded-full h-6 w-6 leading-6 bg-blue-700 ml-auto text-white z-1',
+    addButton: 'rounded-full h-6 w-6 leading-6 bg-primary ml-auto text-on-primary z-1',
     label: 'font-bold',
     /* Spelled out because the defaults leave this one unset, unlike every other key here. */
     description: 'description pl-[0.45em] text-sm italic',

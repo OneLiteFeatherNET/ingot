@@ -75,6 +75,6 @@ const dates = computed(() =>
   >
     <span>{{ age }}</span>
     <span class="text-gray-400 dark:text-gray-500">·</span>
-    <span :class="expired ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'">{{ expiry }}</span>
+    <span :class="expired ? 'text-error' : 'text-gray-600 dark:text-gray-300'">{{ expiry }}</span>
   </span>
 </template>
