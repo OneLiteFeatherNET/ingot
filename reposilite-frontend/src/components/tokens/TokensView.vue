@@ -258,7 +258,7 @@ const runConfirm = (token) => {
         </MdButton>
         <MdButton
           variant="text"
-          class="text-error!"
+          error
           @click="discardAndContinue"
         >
           Discard changes

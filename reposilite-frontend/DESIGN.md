@@ -197,9 +197,16 @@ file with a unit test next to it. None of them has runtime dependencies beyond V
 
 Props:
 
-- `variant`: `'filled'` (default), `'tonal'`, `'outlined'`, `'text'`, `'elevated'`, `'error'`.
-  `error` is a filled destructive action (`bg-error`, `text-on-error`), for the confirming
-  step of a delete or revoke. It counts as a filled button for the one-per-view rule
+- `variant`: `'filled'` (default), `'tonal'`, `'outlined'`, `'text'`, `'elevated'`. A
+  filled button is the primary action, and there is one per view
+- `error`: boolean. The one way to make a destructive action (delete, revoke, discard).
+  It recolours the chosen variant with the error roles: filled uses `bg-error` and
+  `text-on-error`, tonal `error-container`, outlined `border-error` and `text-error`, text
+  and elevated `text-error`. Disabled buttons keep the disabled colours. Pair it with
+  `variant="text"` for a low-emphasis destructive action, or with the default filled variant
+  for the confirming step, which counts as the view's filled button
+- `variant="error"`: compatibility alias for a filled button with `error`. New code uses
+  `error`
 - `href`: string. When set, the root is an `<a>`, otherwise a `<button>`
 - `disabled`: boolean. A button gets the `disabled` attribute; an anchor gets
   `aria-disabled="true"` and loses its `href`

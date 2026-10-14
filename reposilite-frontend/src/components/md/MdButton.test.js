@@ -71,6 +71,50 @@ describe('MdButton', () => {
     expect(wrapper.classes()).toContain('text-on-error')
   })
 
+  it('uses the error text role for a text button with the error prop', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'text', error: true }, slots: { default: 'Revoke' } })
+
+    expect(wrapper.classes()).toContain('text-error')
+    expect(wrapper.classes()).not.toContain('text-primary')
+  })
+
+  it('uses the error outline and text role for an outlined button with the error prop', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'outlined', error: true }, slots: { default: 'Delete' } })
+
+    expect(wrapper.classes()).toContain('border-error')
+    expect(wrapper.classes()).toContain('text-error')
+    expect(wrapper.classes()).not.toContain('border-outline')
+  })
+
+  it('uses the error roles for a filled button with the error prop', () => {
+    const wrapper = mount(MdButton, { props: { error: true }, slots: { default: 'Delete' } })
+
+    expect(wrapper.classes()).toContain('bg-error')
+    expect(wrapper.classes()).toContain('text-on-error')
+  })
+
+  it('keeps the error variant as an alias for the filled error button', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'error' }, slots: { default: 'Revoke' } })
+
+    expect(wrapper.classes()).toContain('bg-error')
+    expect(wrapper.classes()).toContain('text-on-error')
+    expect(wrapper.attributes('data-variant')).toBe('error')
+  })
+
+  it('does not apply error colours to a text button without the error prop', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'text' }, slots: { default: 'Cancel' } })
+
+    expect(wrapper.classes()).toContain('text-primary')
+    expect(wrapper.classes()).not.toContain('text-error')
+  })
+
+  it('shows the disabled colours instead of the error colours when disabled', () => {
+    const wrapper = mount(MdButton, { props: { variant: 'text', error: true, disabled: true }, slots: { default: 'Revoke' } })
+
+    expect(wrapper.classes()).not.toContain('text-error')
+    expect(wrapper.classes()).toContain('text-on-surface/38')
+  })
+
   it('reports the variant through data-variant', () => {
     const wrapper = mount(MdButton, { props: { variant: 'outlined' }, slots: { default: 'Save' } })
 

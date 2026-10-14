@@ -46,7 +46,7 @@ defineEmits(['edit', 'regenerate', 'revoke', 'confirm', 'cancel'])
     <MdButton
       v-if="confirmAction === 'revoke'"
       variant="text"
-      class="text-error!"
+      error
       @click="$emit('confirm')"
     >
       Revoke

@@ -489,12 +489,13 @@ describe('TokensView', () => {
       expect(buttonWithText(wrapper, 'Keep editing').attributes('data-variant')).toBe('tonal')
     })
 
-    it('makes discard changes a text button in the error colour', async () => {
+    it('makes discard changes a text button with the error role', async () => {
       await unsavedDraft()
 
       const discard = buttonWithText(wrapper, 'Discard changes')
       expect(discard.attributes('data-variant')).toBe('text')
-      expect(discard.classes()).toContain('text-error!')
+      expect(discard.classes()).toContain('text-error')
+      expect(discard.classes()).not.toContain('text-primary')
     })
 
     it('makes cancel the tonal action of the revoke confirmation', async () => {
@@ -506,7 +507,7 @@ describe('TokensView', () => {
       expect(buttonWithText(wrapper, 'Cancel').attributes('data-variant')).toBe('tonal')
     })
 
-    it('makes revoke a text button in the error colour', async () => {
+    it('makes revoke a text button with the error role', async () => {
       session.client = fakeClient({ list: vi.fn(() => Promise.resolve({ data: [token('a')] })) })
       wrapper = await mountView({ now: NOW })
       await flushPromises()
@@ -514,7 +515,8 @@ describe('TokensView', () => {
 
       const revoke = buttonWithText(wrapper, 'Revoke')
       expect(revoke.attributes('data-variant')).toBe('text')
-      expect(revoke.classes()).toContain('text-error!')
+      expect(revoke.classes()).toContain('text-error')
+      expect(revoke.classes()).not.toContain('text-primary')
     })
   })
 })

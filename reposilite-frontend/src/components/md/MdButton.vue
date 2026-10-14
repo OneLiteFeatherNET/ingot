@@ -21,6 +21,9 @@ import { computed } from 'vue'
  * Material Design 3 button. Renders an anchor when `href` is set, so a control that
  * navigates stays a link for keyboard users, middle click and assistive technology.
  * Use one `filled` button per view as the primary action.
+ *
+ * Destructive actions set `error` (the one documented way). It recolours any variant with
+ * the error roles. `variant="error"` is a compatibility alias for a filled error button.
  */
 const props = defineProps({
   variant: {
@@ -39,43 +42,55 @@ const props = defineProps({
   type: {
     type: String,
     default: 'button'
+  },
+  error: {
+    type: Boolean,
+    default: false
   }
 })
 
 const VARIANTS = {
   filled: {
     base: 'bg-primary text-on-primary',
+    error: 'bg-error text-on-error',
     disabled: 'bg-on-surface/12 text-on-surface/38'
   },
   tonal: {
     base: 'bg-secondary-container text-on-secondary-container',
+    error: 'bg-error-container text-on-error-container',
     disabled: 'bg-on-surface/12 text-on-surface/38'
   },
   outlined: {
     base: 'border border-outline bg-transparent text-primary',
+    error: 'border border-error bg-transparent text-error',
     disabled: 'border border-on-surface/12 bg-transparent text-on-surface/38'
   },
   text: {
     base: 'bg-transparent text-primary',
+    error: 'bg-transparent text-error',
     disabled: 'bg-transparent text-on-surface/38'
   },
   elevated: {
     base: 'bg-surface-container-low text-primary shadow-elevation-1',
+    error: 'bg-surface-container-low text-error shadow-elevation-1',
     disabled: 'bg-on-surface/12 text-on-surface/38 shadow-none'
-  },
-  error: {
-    base: 'bg-error text-on-error',
-    disabled: 'bg-on-surface/12 text-on-surface/38'
   }
 }
 
 const tag = computed(() => (props.href ? 'a' : 'button'))
 
+// `variant="error"` is the compatibility alias for a filled error button.
+const resolvedVariant = computed(() => (props.variant === 'error' ? 'filled' : props.variant))
+const isError = computed(() => props.error || props.variant === 'error')
+
 const classes = computed(() => {
-  const variant = VARIANTS[props.variant] ?? VARIANTS.filled
+  const variant = VARIANTS[resolvedVariant.value] ?? VARIANTS.filled
+  let tone = variant.base
+  if (props.disabled) tone = variant.disabled
+  else if (isError.value) tone = variant.error
   return [
     'md-state-layer md-focus-ring relative inline-flex min-h-12 items-center justify-center gap-2 rounded-corner-full px-6 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
-    props.disabled ? variant.disabled : variant.base
+    tone
   ]
 })
 </script>
