@@ -25,14 +25,10 @@ defineProps({
 </script>
 
 <template>
-  <!--
-    No `indent-6` here, unlike TokenRow: text-indent inherits into the inputs and pushes
-    their value 24px away from the caret, which is the one place the Windi behaviour was
-    plainly an accident rather than a layout.
-  -->
+  <!-- An editor sits on a raised surface, so it reads as the open part of the list. -->
   <div
-    class="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gray-100 py-3 dark:border-gray-800 dark:bg-gray-900"
-    :class="indent ? 'pl-9.5 pr-4.5' : 'px-4.5'"
+    class="flex flex-wrap items-center gap-3 border-b border-outline-variant bg-surface-container-high py-4"
+    :class="indent ? 'pl-12 pr-4' : 'px-4'"
   >
     <slot />
   </div>

@@ -1,35 +1,35 @@
 <!--
-  ~ Copyright (c) 2026 OneLiteFeather
-  ~
-  ~ Licensed under the Apache License, Version 2.0 (the "License");
-  ~ you may not use this file except in compliance with the License.
-  ~ You may obtain a copy of the License at
-  ~
-  ~     http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS,
-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
+  - Copyright (c) 2026 OneLiteFeather
+  -
+  - Licensed under the Apache License, Version 2.0 (the "License");
+  - you may not use this file except in compliance with the License.
+  - You may obtain a copy of the License at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
   -->
 
 <script setup>
-import ActionButton from './ActionButton.vue'
+import MdButton from '../md/MdButton.vue'
+import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from './SegmentedControl.vue'
 import SegmentedOption from './SegmentedOption.vue'
 import TokenFormRow from './TokenFormRow.vue'
-import TokenTextField from './TokenTextField.vue'
 
 const description = defineModel('description', { type: String, default: '' })
 const manager = defineModel('manager', { type: Boolean, default: false })
 const expiry = defineModel('expiry', { type: String, default: '' })
 
 defineProps({
-  /** Today, in the format the date input speaks. Nothing expires in the past. */
-  minExpiry: {
+  /** Set by the view when the chosen date is in the past. Text fields cannot enforce a minimum. */
+  expiryError: {
     type: String,
-    required: true
+    default: ''
   }
 })
 
@@ -38,22 +38,51 @@ defineEmits(['submit', 'cancel'])
 
 <template>
   <TokenFormRow>
-    <TokenTextField v-model="description" name="description" grow placeholder="Description" />
+    <div class="min-w-48 flex-1">
+      <MdTextField
+        v-model="description"
+        name="description"
+        label="Description"
+        variant="outlined"
+      />
+    </div>
     <SegmentedControl label="Token permissions">
-      <SegmentedOption :on="manager" @click="manager = !manager">
+      <SegmentedOption
+        :on="manager"
+        @click="manager = !manager"
+      >
         manager
       </SegmentedOption>
     </SegmentedControl>
-    <span class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">expires</span>
-    <TokenTextField v-model="expiry" type="date" :min="minExpiry" />
-    <ActionButton v-if="expiry" small @click="expiry = ''">
-      clear
-    </ActionButton>
-    <ActionButton primary small @click="$emit('submit')">
+    <div class="w-48">
+      <MdTextField
+        v-model="expiry"
+        name="expires"
+        label="Expires on"
+        type="date"
+        variant="outlined"
+        :error="!!expiryError"
+        :error-text="expiryError"
+      />
+    </div>
+    <MdButton
+      v-if="expiry"
+      variant="text"
+      @click="expiry = ''"
+    >
+      Clear expiry
+    </MdButton>
+    <MdButton
+      variant="tonal"
+      @click="$emit('submit')"
+    >
       Save
-    </ActionButton>
-    <ActionButton small @click="$emit('cancel')">
+    </MdButton>
+    <MdButton
+      variant="text"
+      @click="$emit('cancel')"
+    >
       Cancel
-    </ActionButton>
+    </MdButton>
   </TokenFormRow>
 </template>

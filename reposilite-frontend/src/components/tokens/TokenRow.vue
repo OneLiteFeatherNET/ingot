@@ -42,19 +42,13 @@ defineProps({
 </script>
 
 <template>
-  <!--
-    The text-indent is not decoration, it is restored behaviour: Windi shipped an `indent`
-    utility of its own, so every element carrying this component's `indent` class silently
-    picked up `text-indent: 1.5rem` on top of the padding. Tailwind spells that utility
-    `indent-6` and never matched the bare name, which moved these rows 24px to the left.
-    Whether these rows want two separate indents at all is a question for the redesign.
-  -->
+  <!-- A list item on the list surface. Indented rows sit under the token they belong to. -->
   <div
-    class="group flex min-h-12 flex-wrap items-center gap-2 border-b border-gray-200 py-2 transition-colors dark:border-gray-800"
+    class="group flex min-h-12 flex-wrap items-center gap-2 border-b border-outline-variant py-2 transition-colors"
     :class="[
-      indent ? 'pl-9.5 pr-4.5 indent-6' : 'px-4.5',
-      hoverable ? 'hover:bg-gray-50 dark:hover:bg-gray-900' : '',
-      highlighted ? 'bg-gray-100 dark:bg-gray-900' : ''
+      indent ? 'pl-12 pr-4' : 'px-4',
+      hoverable ? 'hover:bg-surface-container' : '',
+      highlighted ? 'bg-surface-container-high' : ''
     ]"
   >
     <slot />

@@ -69,15 +69,27 @@ const expiry = computed(() => {
 </script>
 
 <template>
-  <span class="whitespace-nowrap font-semibold text-gray-800 dark:text-gray-100">{{ token.name }}</span>
-  <TokenTag>{{ token.identifier.type.toLowerCase() }}</TokenTag>
-  <TokenTag v-if="tokenIsManager(token)" accent>
-    manager
-  </TokenTag>
-  <span class="min-w-0 flex-1 truncate text-gray-500 dark:text-gray-500">{{ token.description }}</span>
-  <span class="inline-flex w-full flex-wrap items-center gap-x-2 text-xs text-gray-500 sm:w-auto sm:whitespace-nowrap dark:text-gray-400">
-    <span>{{ age }}</span>
-    <span class="text-gray-400 dark:text-gray-500">·</span>
-    <span :class="expired ? 'text-error' : 'text-gray-600 dark:text-gray-300'">{{ expiry }}</span>
-  </span>
+  <div class="flex min-w-0 flex-1 flex-col gap-1">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="md-title-medium truncate text-on-surface">{{ token.name }}</span>
+      <TokenTag>{{ token.identifier.type.toLowerCase() }}</TokenTag>
+      <TokenTag
+        v-if="tokenIsManager(token)"
+        accent
+      >
+        manager
+      </TokenTag>
+    </div>
+    <p
+      v-if="token.description"
+      class="md-body-medium truncate text-on-surface-variant"
+    >
+      {{ token.description }}
+    </p>
+    <p class="md-body-small flex flex-wrap items-center gap-x-2 text-on-surface-variant">
+      <span>{{ age }}</span>
+      <span aria-hidden="true">·</span>
+      <span :class="expired ? 'text-error' : ''">{{ expiry }}</span>
+    </p>
+  </div>
 </template>

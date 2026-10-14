@@ -21,14 +21,16 @@ import { useTokens, checkRouteDraft, validateTokenName, isDraftDirty } from '../
 import { property } from '../../helpers/vue-extensions'
 import PencilIcon from '../icons/PencilIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
+import MdButton from '../md/MdButton.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
-import ActionButton from './ActionButton.vue'
-import IconButton from './IconButton.vue'
+import MdTextField from '../md/MdTextField.vue'
 import RouteEditor from './RouteEditor.vue'
 import TokenCreateForm from './TokenCreateForm.vue'
 import TokenMetaForm from './TokenMetaForm.vue'
 import TokenRow from './TokenRow.vue'
 import TokenRowActions from './TokenRowActions.vue'
+import TokenSecretBanner from './TokenSecretBanner.vue'
 import TokenSummary from './TokenSummary.vue'
 
 const props = defineProps({
@@ -56,6 +58,7 @@ const draft = ref({})
 const baseline = ref({})
 const routeError = ref(null)
 const createError = ref('')
+const expiryError = ref('')
 const confirming = ref(null)
 // The action the user asked for while a draft still had unsaved changes. Null when nothing waits.
 const pendingAction = ref(null)
@@ -77,19 +80,20 @@ const toDateInput = (value) => {
   const pad = (n) => String(n).padStart(2, '0')
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
 }
-const minExpiry = () => toDateInput(Date.now())
 const routeLabel = (route) => [route.read && 'read', route.write && 'write'].filter(Boolean).join(' · ')
 
 const close = () => {
   editing.value = null
   routeError.value = null
   createError.value = ''
+  expiryError.value = ''
 }
 
 const startEditor = (key, initial) => {
   confirming.value = null
   routeError.value = null
   createError.value = ''
+  expiryError.value = ''
   editing.value = key
   draft.value = { ...initial }
   baseline.value = { ...initial }
@@ -119,8 +123,15 @@ const editToken = (token) => {
     expiresAt: toDateInput(token.expiresAt)
   }))
 }
-const saveToken = (token) =>
+
+const saveToken = (token) => {
+  const expiryChanged = draft.value.expiresAt !== baseline.value.expiresAt
+  if (expiryChanged && draft.value.expiresAt && draft.value.expiresAt < toDateInput(Date.now())) {
+    expiryError.value = 'Choose today or a later date, or clear the expiry.'
+    return
+  }
   saveTokenMeta(token, draft.value).then(ok => { if (ok) close() })
+}
 
 const openRoute = (token, route) => startEditor(`route:${tid(token)}:${route.path}`, {
   path: route.path, read: route.read, write: route.write, original: route.path
@@ -139,7 +150,7 @@ const persistRoute = (token) => {
     return
   }
   if (!draft.value.read && !draft.value.write) {
-    routeError.value = { message: 'Select read, write or both' }
+    routeError.value = { message: 'Select read, write or both', field: 'access' }
     return
   }
   saveRoute(token, { path: check.path, read: draft.value.read, write: draft.value.write }, draft.value.original)
@@ -182,46 +193,66 @@ const runConfirm = (token) => {
 
 <template>
   <div class="container mx-auto px-15 pb-12 pt-7 max-sm:px-4">
-    <div class="pb-7">
-      <p>Generate and revoke access tokens used to authenticate with this Ingot instance.</p>
-      <p class="text-sm text-gray-500">
+    <div class="flex flex-col gap-1 pb-7">
+      <p class="md-body-large text-on-surface-variant">
+        Generate and revoke access tokens used to authenticate with this Ingot instance.
+      </p>
+      <p class="md-body-medium text-on-surface-variant">
         A token's secret is shown only once, at the moment it is generated.
       </p>
     </div>
 
-    <!-- The card draws the closing line itself, so the last row inside it drops its own. -->
-    <div class="overflow-hidden rounded-lg bg-white text-sm text-gray-600 [&>*:last-child]:border-b-0 dark:border dark:border-gray-800 dark:bg-transparent dark:text-gray-300">
-      <div class="flex items-center gap-3 border-b border-gray-200 bg-white px-3.5 py-3.5 dark:border-gray-800 dark:bg-transparent">
-        <div class="flex h-9 flex-1 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 dark:border-gray-700 dark:bg-gray-800">
-          <svg viewBox="0 0 24 24" class="h-4 w-4 flex-shrink-0 text-gray-400">
-            <path
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          <input
+    <div class="overflow-hidden rounded-corner-large bg-surface-container-low [&>*:last-child]:border-b-0">
+      <div class="flex flex-wrap items-center gap-3 border-b border-outline-variant px-4 py-4">
+        <div class="min-w-60 flex-1">
+          <MdTextField
             v-model="query"
-            aria-label="Search tokens and routes"
-            placeholder="Search tokens, routes…"
-            class="flex-1 bg-transparent text-gray-700 placeholder-gray-500 outline-none dark:text-gray-200 dark:placeholder-gray-400"
+            label="Search tokens and routes"
+            variant="outlined"
           >
+            <template #leading-icon>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M21 21l-4.3-4.3m1.3-5.2a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </template>
+          </MdTextField>
         </div>
-        <ActionButton primary @click="startCreate">
+        <MdButton
+          variant="filled"
+          @click="startCreate"
+        >
           + Generate token
-        </ActionButton>
+        </MdButton>
       </div>
 
-      <div v-if="pendingAction" role="group" aria-label="Unsaved changes" class="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-gray-100 px-4.5 py-3 dark:border-gray-800 dark:bg-gray-900">
-        <span>You have unsaved changes. Discard them to continue?</span>
-        <ActionButton small @click="discardAndContinue">
+      <div
+        v-if="pendingAction"
+        role="group"
+        aria-label="Unsaved changes"
+        class="flex flex-wrap items-center gap-3 border-b border-outline-variant bg-surface-container-high px-4 py-3"
+      >
+        <span class="md-body-medium text-on-surface">You have unsaved changes. Discard them to continue?</span>
+        <MdButton
+          variant="text"
+          class="text-error!"
+          @click="discardAndContinue"
+        >
           Discard changes
-        </ActionButton>
-        <ActionButton small @click="keepEditing">
+        </MdButton>
+        <MdButton
+          variant="tonal"
+          @click="keepEditing"
+        >
           Keep editing
-        </ActionButton>
+        </MdButton>
       </div>
 
       <TokenCreateForm
@@ -233,31 +264,45 @@ const runConfirm = (token) => {
         @cancel="close"
       />
 
-      <div v-if="secret" role="status" class="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-primary-container px-4.5 py-3 text-on-primary-container dark:border-gray-800">
-        New secret for <strong>{{ secret.name }}</strong>: <code class="px-1 font-mono">{{ secret.value }}</code>.
-        You won't see this secret again.
-        <button type="button" class="ml-2 underline" @click="dismissSecret">
-          Dismiss
-        </button>
-      </div>
+      <TokenSecretBanner
+        v-if="secret"
+        :name="secret.name"
+        :value="secret.value"
+        @dismiss="dismissSecret"
+      />
 
-      <div v-if="loading" class="border-b border-gray-200 dark:border-gray-800">
-        <MdLinearProgress indeterminate label="Loading tokens" />
-      </div>
+      <MdLinearProgress
+        v-if="loading"
+        indeterminate
+        label="Loading tokens"
+      />
 
-      <div v-if="loadError" role="alert" class="flex flex-wrap items-center gap-3 border-b border-gray-200 px-4.5 py-4 text-error dark:border-gray-800">
-        <span>Could not load tokens: {{ loadError }}</span>
-        <ActionButton small @click="fetchTokens">
+      <div
+        v-if="loadError"
+        role="alert"
+        class="flex flex-wrap items-center gap-3 border-b border-outline-variant px-4 py-4"
+      >
+        <span class="md-body-medium text-error">Could not load tokens: {{ loadError }}</span>
+        <MdButton
+          variant="tonal"
+          @click="fetchTokens"
+        >
           Retry
-        </ActionButton>
+        </MdButton>
       </div>
 
-      <div v-else-if="!loaded" class="px-4.5 py-10 text-center text-gray-500 dark:text-gray-400">
+      <div
+        v-else-if="!loaded"
+        class="md-body-medium px-4 py-12 text-center text-on-surface-variant"
+      >
         Loading tokens…
       </div>
 
       <template v-else>
-        <template v-for="token in filtered" :key="tid(token)">
+        <template
+          v-for="token in filtered"
+          :key="tid(token)"
+        >
           <TokenRow :highlighted="isOpen(`token:${tid(token)}`)">
             <TokenSummary :token="token" />
             <template #actions>
@@ -278,34 +323,58 @@ const runConfirm = (token) => {
             v-model:description="draft.description"
             v-model:manager="draft.manager"
             v-model:expiry="draft.expiresAt"
-            :min-expiry="minExpiry()"
+            :expiry-error="expiryError"
             @submit="saveToken(token)"
             @cancel="close"
           />
 
-          <TokenRow v-if="tokenIsManager(token)" indent :hoverable="false" class="text-gray-500 dark:text-gray-500">
-            Full access to all repositories
+          <TokenRow
+            v-if="tokenIsManager(token)"
+            indent
+            :hoverable="false"
+          >
+            <span class="md-body-small text-on-surface-variant">Full access to all repositories</span>
           </TokenRow>
-          <TokenRow v-if="tokenIsManager(token) && groupRoutes(token).length" indent :hoverable="false" class="text-gray-500 dark:text-gray-500">
-            Inactive while the token has manager access. The routes below apply again once manager is turned off.
+          <TokenRow
+            v-if="tokenIsManager(token) && groupRoutes(token).length"
+            indent
+            :hoverable="false"
+          >
+            <span class="md-body-small text-on-surface-variant">
+              Inactive while the token has manager access. The routes below apply again once manager is turned off.
+            </span>
           </TokenRow>
 
-          <template v-for="route in groupRoutes(token)" :key="route.path">
+          <template
+            v-for="route in groupRoutes(token)"
+            :key="route.path"
+          >
             <TokenRow
               indent
               reveal-actions-on-hover
               :highlighted="isOpen(`route:${tid(token)}:${route.path}`)"
-              :class="tokenIsManager(token) ? 'text-gray-500 dark:text-gray-500' : ''"
             >
-              <span class="whitespace-nowrap font-mono text-gray-700 dark:text-gray-200">{{ route.path }}</span>
-              <span class="truncate text-gray-500 dark:text-gray-500">{{ routeLabel(route) }}</span>
+              <span
+                class="whitespace-nowrap font-mono md-body-large"
+                :class="tokenIsManager(token) ? 'text-on-surface-variant' : 'text-on-surface'"
+              >{{ route.path }}</span>
+              <span class="md-body-small truncate text-on-surface-variant">{{ routeLabel(route) }}</span>
               <template #actions>
-                <IconButton :label="`Edit route ${route.path}`" @click="editRoute(token, route)">
+                <MdIconButton
+                  :aria-label="`Edit route ${route.path}`"
+                  :title="`Edit route ${route.path}`"
+                  @click="editRoute(token, route)"
+                >
                   <PencilIcon />
-                </IconButton>
-                <IconButton destructive :label="`Remove route ${route.path}`" @click="removeRoute(token, route.path)">
+                </MdIconButton>
+                <MdIconButton
+                  class="text-error!"
+                  :aria-label="`Remove route ${route.path}`"
+                  :title="`Remove route ${route.path}`"
+                  @click="removeRoute(token, route.path)"
+                >
                   <TrashIcon />
-                </IconButton>
+                </MdIconButton>
               </template>
             </TokenRow>
             <RouteEditor
@@ -321,14 +390,16 @@ const runConfirm = (token) => {
             />
           </template>
 
-          <TokenRow v-if="!isOpen(`newroute:${tid(token)}`)" indent>
-            <button
-              type="button"
-              class="whitespace-nowrap text-primary hover:text-primary/80"
+          <TokenRow
+            v-if="!isOpen(`newroute:${tid(token)}`)"
+            indent
+          >
+            <MdButton
+              variant="text"
               @click="addRoute(token)"
             >
               + Add route
-            </button>
+            </MdButton>
           </TokenRow>
           <RouteEditor
             v-else
@@ -336,7 +407,6 @@ const runConfirm = (token) => {
             v-model:read="draft.read"
             v-model:write="draft.write"
             submit-label="Add"
-            placeholder="/releases/com/example/artifact"
             :error="routeError"
             @submit="persistRoute(token)"
             @cancel="close"
@@ -344,7 +414,10 @@ const runConfirm = (token) => {
           />
         </template>
 
-        <div v-if="!filtered.length" class="px-4.5 py-10 text-center text-gray-500 dark:text-gray-400">
+        <div
+          v-if="!filtered.length"
+          class="md-body-large px-4 py-12 text-center text-on-surface-variant"
+        >
           {{ query ? `No tokens match “${query}”.` : 'No access tokens yet. Generate one to get started.' }}
         </div>
       </template>

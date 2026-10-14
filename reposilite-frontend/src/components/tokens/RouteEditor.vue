@@ -15,29 +15,27 @@
   -->
 
 <script setup>
-import ActionButton from './ActionButton.vue'
+import { computed } from 'vue'
+import MdButton from '../md/MdButton.vue'
+import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from './SegmentedControl.vue'
 import SegmentedOption from './SegmentedOption.vue'
 import TokenFormRow from './TokenFormRow.vue'
-import TokenTextField from './TokenTextField.vue'
 
 const path = defineModel('path', { type: String, default: '' })
 const read = defineModel('read', { type: Boolean, default: false })
 const write = defineModel('write', { type: Boolean, default: false })
 
-defineProps({
-  /** Adding a route and editing one differ in this word and in the placeholder alone. */
+const props = defineProps({
+  /** Adding a route and editing one differ in this word alone. */
   submitLabel: {
     type: String,
     required: true
   },
-  placeholder: {
-    type: String,
-    default: null
-  },
   /**
-   * `{ message, existing }` after a failed check. When `existing` is set, the editor offers to
-   * open the route that already has this path.
+   * `{ message, field, existing }` after a failed check. A `field` of `access` marks a problem
+   * with read and write rather than with the path. `existing` is the route that already has
+   * this path, and makes the editor offer to open it.
    */
   error: {
     type: Object,
@@ -46,41 +44,63 @@ defineProps({
 })
 
 defineEmits(['submit', 'cancel', 'edit-existing'])
+
+const pathError = computed(() => !!props.error && props.error.field !== 'access')
 </script>
 
 <template>
   <TokenFormRow indent>
-    <TokenTextField
-      v-model="path"
-      name="route-path"
-      grow
-      mono
-      :placeholder="placeholder"
-    />
+    <div class="min-w-48 flex-1">
+      <MdTextField
+        v-model="path"
+        name="route-path"
+        label="Route path"
+        variant="outlined"
+        :supporting-text="pathError ? '' : 'Starts with a slash, for example /releases/com/example/artifact'"
+        :error="pathError"
+        :error-text="pathError ? error.message : ''"
+        @keyup.enter="$emit('submit')"
+      />
+    </div>
     <SegmentedControl label="Route access">
-      <SegmentedOption :on="read" @click="read = !read">
+      <SegmentedOption
+        :on="read"
+        @click="read = !read"
+      >
         read
       </SegmentedOption>
-      <SegmentedOption :on="write" @click="write = !write">
+      <SegmentedOption
+        :on="write"
+        @click="write = !write"
+      >
         write
       </SegmentedOption>
     </SegmentedControl>
-    <ActionButton primary small @click="$emit('submit')">
+    <MdButton
+      variant="tonal"
+      @click="$emit('submit')"
+    >
       {{ submitLabel }}
-    </ActionButton>
-    <ActionButton small @click="$emit('cancel')">
+    </MdButton>
+    <MdButton
+      variant="text"
+      @click="$emit('cancel')"
+    >
       Cancel
-    </ActionButton>
-    <p v-if="error" role="alert" class="basis-full text-xs text-error">
+    </MdButton>
+    <MdButton
+      v-if="error?.existing"
+      variant="text"
+      @click="$emit('edit-existing')"
+    >
+      Edit existing route
+    </MdButton>
+    <p
+      v-if="error && !pathError"
+      role="alert"
+      class="md-body-small basis-full px-4 text-error"
+    >
       {{ error.message }}
-      <button
-        v-if="error.existing"
-        type="button"
-        class="ml-1 underline"
-        @click="$emit('edit-existing')"
-      >
-        Edit existing route
-      </button>
     </p>
   </TokenFormRow>
 </template>

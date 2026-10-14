@@ -15,7 +15,8 @@
   -->
 
 <script setup>
-import IconButton from './IconButton.vue'
+import MdButton from '../md/MdButton.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import PencilIcon from '../icons/PencilIcon.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
@@ -39,37 +40,52 @@ defineEmits(['edit', 'regenerate', 'revoke', 'confirm', 'cancel'])
 
 <template>
   <template v-if="confirmAction">
-    <span class="text-xs text-gray-600 dark:text-gray-300">
+    <span class="md-body-small max-w-xs text-on-surface-variant">
       {{ confirmAction === 'revoke' ? 'Revoking cannot be undone.' : 'The old secret stops working immediately.' }}
     </span>
-    <button
-      type="button"
-      class="text-xs font-medium text-error"
+    <MdButton
+      v-if="confirmAction === 'revoke'"
+      class="bg-error! text-on-error!"
       @click="$emit('confirm')"
     >
-      {{ confirmAction === 'revoke' ? 'Revoke' : 'Regenerate' }}
-    </button>
-    <button
-      type="button"
-      class="text-xs text-gray-500 dark:text-gray-400"
+      Revoke
+    </MdButton>
+    <MdButton
+      v-else
+      variant="tonal"
+      @click="$emit('confirm')"
+    >
+      Regenerate
+    </MdButton>
+    <MdButton
+      variant="text"
       @click="$emit('cancel')"
     >
       Cancel
-    </button>
+    </MdButton>
   </template>
   <template v-else>
-    <IconButton :label="`Edit token ${name}`" @click="$emit('edit')">
+    <MdIconButton
+      :aria-label="`Edit token ${name}`"
+      :title="`Edit token ${name}`"
+      @click="$emit('edit')"
+    >
       <PencilIcon />
-    </IconButton>
-    <IconButton :label="`Regenerate the secret of token ${name}`" @click="$emit('regenerate')">
+    </MdIconButton>
+    <MdIconButton
+      :aria-label="`Regenerate the secret of token ${name}`"
+      :title="`Regenerate the secret of token ${name}`"
+      @click="$emit('regenerate')"
+    >
       <RefreshIcon />
-    </IconButton>
-    <IconButton
-      destructive
-      :label="`Revoke token ${name}`"
+    </MdIconButton>
+    <MdIconButton
+      class="text-error!"
+      :aria-label="`Revoke token ${name}`"
+      :title="`Revoke token ${name}`"
       @click="$emit('revoke')"
     >
       <TrashIcon />
-    </IconButton>
+    </MdIconButton>
   </template>
 </template>
