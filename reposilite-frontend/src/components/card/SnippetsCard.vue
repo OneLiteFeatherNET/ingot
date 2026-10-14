@@ -175,7 +175,7 @@ const selectTab = (tab) =>
           >
             <div
               v-if="!loading"
-              class="absolute top-2 right-2 z-10 flex items-center gap-1"
+              class="absolute top-2 right-2 flex items-center gap-1"
             >
               <span
                 v-if="copyState === 'copied'"

@@ -65,6 +65,7 @@ const scope = computed(() =>
     <VueFinalModal
       v-if="isOpen"
       :model-value="isOpen"
+      teleport-to="body"
       :overlay-class="'vfm__overlay bg-scrim/40!'"
       class="flex items-center justify-center p-4"
       @update:model-value="(open) => { if (!open) close() }"

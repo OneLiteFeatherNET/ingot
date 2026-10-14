@@ -37,6 +37,7 @@ const titleId = useId()
     </MdIconButton>
     <VueFinalModal
       v-model="showAdjustments"
+      teleport-to="body"
       :overlay-class="'vfm__overlay bg-scrim/40!'"
       class="flex items-center justify-center p-4"
     >
