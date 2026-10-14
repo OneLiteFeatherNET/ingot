@@ -22,6 +22,7 @@ import useTheme from "./store/theme"
 import useQualifier from "./store/qualifier"
 import usePlaceholders from './store/placeholders'
 import { createErrorToast, errorMessage } from './helpers/toast'
+import MdSnackbar from './components/md/MdSnackbar.vue'
 
 const { title, description, icpLicense, privacyPolicy } = usePlaceholders()
 const { theme, fetchColorMode } = useTheme()
@@ -48,6 +49,7 @@ initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${
         class="router-view-full"
         :qualifier="qualifier"
       />
+      <MdSnackbar />
       <div
         v-if="icpLicense || privacyPolicy"
         class="absolute h-8 pb-2 w-full text-center md-label-medium text-on-surface-variant"

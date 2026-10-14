@@ -1,13 +1,32 @@
-import { createToast } from 'mosha-vue-toastify'
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { snackbar } from '../store/snackbar'
 
 /*
- * Bottom right, and in one place. The library defaults to the top right corner, which is
- * exactly where the header keeps the account name and the logout button: while a toast was
- * up, logging out was not clickable. Callers used to reach for `createToast` directly and
- * pick a corner each, so a single login attempt could put its success message in one corner
- * and its failure in another.
+ * The notifications of the dashboard. They are shown by MdSnackbar, which is mounted once in
+ * App.vue, so every caller shares one queue and one place on screen: bottom centre, or
+ * bottom left on wide screens. Only one notice is visible at a time; the others wait.
+ *
+ * Each helper takes a message and an optional `{ action: { label, onClick }, duration }`.
+ * A duration of `null` keeps the notice until it is dismissed. Success and info notices
+ * leave by themselves, warnings and errors stay.
  */
-const options = (type) => ({ type, position: 'bottom-right' })
+const show = (tone) => (message, options = {}) =>
+  snackbar.enqueue({ message, tone, ...options })
 
 /**
  * The readable part of a failed request.
@@ -24,17 +43,13 @@ const errorMessage = (error) =>
   error?.message ||
   `${error}`
 
-const createInfoToast = (message) =>
-  createToast(message, options('info'))
+const createInfoToast = show('info')
 
-const createSuccessToast = (message) =>
-  createToast(message, options('success'))
+const createSuccessToast = show('success')
 
-const createWarningToast = (message) =>
-  createToast(message, options('warning'))
+const createWarningToast = show('warning')
 
-const createErrorToast = (message) =>
-  createToast(message, options('danger'))
+const createErrorToast = show('error')
 
 export {
   createInfoToast,
