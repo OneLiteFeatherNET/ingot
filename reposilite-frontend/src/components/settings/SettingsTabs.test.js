@@ -76,4 +76,33 @@ describe('SettingsTabs', () => {
 
     expect(tabButtons(wrapper).map(tab => tab.text())).toEqual(['Maven', 'Ingot', 'CDN'])
   })
+
+  it('sizes the primary indicator to its label, inside the label box', () => {
+    const wrapper = mountTabs({ modelValue: 'ingot' })
+
+    const indicator = tabButtons(wrapper)[1].find('[aria-hidden="true"]')
+    const label = tabButtons(wrapper)[1].find('span')
+
+    expect(indicator.element.parentElement, 'the indicator is a child of the label box').toBe(label.element)
+    expect(indicator.classes(), 'the primary indicator is 3px tall with a 3px top radius').toEqual(
+      expect.arrayContaining(['h-[3px]', 'rounded-t-[3px]'])
+    )
+  })
+
+  it('draws the secondary indicator across the full tab', () => {
+    const wrapper = mountTabs({ modelValue: 'ingot', variant: 'secondary' })
+
+    const indicator = tabButtons(wrapper)[1].find('[aria-hidden="true"]')
+
+    expect(indicator.element.parentElement, 'the indicator is a child of the tab').toBe(tabButtons(wrapper)[1].element)
+    expect(indicator.classes(), 'the secondary indicator is 2px tall').toContain('h-0.5')
+  })
+
+  it('gives secondary tabs the 48px minimum height', () => {
+    const wrapper = mountTabs({ variant: 'secondary' })
+
+    const heights = tabButtons(wrapper).map(tab => tab.classes())
+
+    heights.forEach(classes => expect(classes, 'each secondary tab is at least 48px tall').toContain('min-h-12'))
+  })
 })

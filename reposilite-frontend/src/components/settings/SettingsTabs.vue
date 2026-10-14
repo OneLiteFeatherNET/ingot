@@ -15,8 +15,6 @@
   -->
 
 <script setup>
-import { computed } from 'vue'
-
 /*
  * Material Design 3 tab row. `primary` tabs are the top level of the settings view; `secondary`
  * tabs nest inside a renderer. The row only draws the bar: the caller renders the panel of the
@@ -69,13 +67,14 @@ const onKeydown = (event, index) => {
 const tabClasses = (tab) => [
   'md-state-layer md-focus-ring relative inline-flex min-w-0 flex-col items-center justify-center rounded-t-(--md-sys-shape-corner-small) px-4',
   'transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
-  props.variant === 'primary' ? 'min-h-12' : 'min-h-10',
+  'min-h-12',
   isSelected(tab) ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
 ]
 
-const indicatorClasses = computed(() => props.variant === 'primary'
-  ? 'absolute inset-x-4 bottom-0 h-[3px] rounded-t-[3px] bg-primary'
-  : 'absolute inset-x-0 bottom-0 h-0.5 bg-primary')
+// The primary indicator sits inside the label box, so it is as wide as the label. The secondary
+// indicator spans the whole tab.
+const primaryIndicatorClasses = 'absolute inset-x-0 bottom-0 h-[3px] rounded-t-[3px] bg-primary'
+const secondaryIndicatorClasses = 'absolute inset-x-0 bottom-0 h-0.5 bg-primary'
 </script>
 
 <template>
@@ -95,11 +94,18 @@ const indicatorClasses = computed(() => props.variant === 'primary'
       @click="select(index)"
       @keydown="onKeydown($event, index)"
     >
-      <span class="md-title-small max-w-full [overflow-wrap:anywhere]">{{ tab.label }}</span>
+      <span class="relative flex max-w-full flex-1 items-center md-title-small [overflow-wrap:anywhere]">
+        {{ tab.label }}
+        <span
+          v-if="variant === 'primary' && isSelected(tab)"
+          aria-hidden="true"
+          :class="primaryIndicatorClasses"
+        />
+      </span>
       <span
-        v-if="isSelected(tab)"
+        v-if="variant === 'secondary' && isSelected(tab)"
         aria-hidden="true"
-        :class="indicatorClasses"
+        :class="secondaryIndicatorClasses"
       />
     </button>
   </div>
