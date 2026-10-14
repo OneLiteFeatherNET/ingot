@@ -16,6 +16,7 @@
 
 import { ref } from "vue"
 import { createURL } from '../client'
+import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
 import { useSession } from "../session.js"
 
@@ -63,9 +64,18 @@ export default function useConsole() {
   }
 
   const execute = () => {
-    addCommandToHistory(command.value)
-    client.value.console.execute(command.value)
+    const sent = command.value
+    addCommandToHistory(sent)
     command.value = ''
+
+    return client.value.console.execute(sent)
+      .catch(error => {
+        console.error(error)
+        // The text goes back so it can be fixed and sent again, unless the reader has already
+        // started typing the next command, which must not be overwritten.
+        if (command.value === '') command.value = sent
+        createErrorToast(`Command not sent: ${errorMessage(error)}`)
+      })
   }
 
   const previousCommand = () =>
