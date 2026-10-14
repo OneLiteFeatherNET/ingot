@@ -118,7 +118,14 @@ const onFileClick = (event) => {
       </span>
     </a>
 
-    <div class="relative z-10 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+    <!--
+      Hidden until the row is hovered, focused or touched, but never display: none. A keyboard
+      user tabs into these buttons, and a touch screen has no hover to reveal them with.
+    -->
+    <div
+      data-row-actions
+      class="relative z-10 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
+    >
       <MdIconButton
         v-if="canViewContent"
         :aria-label="`View ${file.name} in a new tab`"
