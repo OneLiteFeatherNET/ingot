@@ -17,6 +17,25 @@
 import axios from "axios"
 import usePlaceholders from "./placeholders"
 
+// Told once that the server rejected the credentials of a request. The session registers
+// itself here, because this module cannot import the session without a cycle.
+let onUnauthorized = () => {}
+
+const setUnauthorizedHandler = (handler) => {
+  onUnauthorized = handler
+}
+
+// A 401 means the credentials were rejected. Every other failure passes through untouched,
+// and the error is always rethrown so that each caller still sees its own failure.
+const handleResponseError = (error) => {
+  if (error?.response?.status === 401) {
+    onUnauthorized(error)
+  }
+  return Promise.reject(error)
+}
+
+axios.interceptors.response.use(response => response, handleResponseError)
+
 // Read per call rather than once at import. This module is imported while the settings
 // are still being fetched, so capturing the base url here would freeze the fallback in
 // place and break any deployment mounted under a sub path.
@@ -187,5 +206,7 @@ const createClient = (defaultName, defaultSecret) => {
 
 export {
   createURL,
-  createClient
+  createClient,
+  setUnauthorizedHandler,
+  handleResponseError
 }

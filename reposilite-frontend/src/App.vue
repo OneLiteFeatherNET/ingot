@@ -21,6 +21,7 @@ import { useSession } from "./store/session"
 import useTheme from "./store/theme"
 import useQualifier from "./store/qualifier"
 import usePlaceholders from './store/placeholders'
+import { createErrorToast, errorMessage } from './helpers/toast'
 
 const { title, description, icpLicense, privacyPolicy } = usePlaceholders()
 const { theme, fetchColorMode } = useTheme()
@@ -35,7 +36,9 @@ fetchColorMode()
 // The dark token set is keyed on `.dark`. The class is mirrored onto the document root so
 // that the body, and any overscroll beyond the app, follow the theme as well.
 watchEffect(() => document.documentElement.classList.toggle('dark', theme.isDark))
-initializeSession().catch(() => {})
+// A rejected stored secret is already handled by the session. Anything else means the
+// server could not be asked, and the page should say so instead of quietly showing nothing.
+initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${errorMessage(error)}`))
 </script>
 
 <template>
