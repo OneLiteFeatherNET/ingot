@@ -125,12 +125,17 @@ const toggleCompactMode = () => {
 </script>
 
 <template>
-  <div class="container relative mx-auto mb-12 min-h-[320px]">
-    <div class="lg:absolute pt-13 -top-5 right-8">
+  <!--
+    The same container as the header, so both share one content width. Below lg the details
+    card stacks above the listing, as before. From lg the listing takes the free column and the
+    details card sits in a fixed-width column beside it, with the same 24px gap in both axes.
+  -->
+  <div class="container mx-auto mb-12 grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start">
+    <div class="min-w-0 lg:col-start-2 lg:row-start-1">
       <Card :qualifier="qualifier" />
     </div>
-    <div class="lg:max-w-2/5 xl:max-w-1/2">
-      <div class="flex items-center justify-between gap-2 pt-7">
+    <div class="min-w-0">
+      <div class="flex items-center justify-between gap-2">
         <Breadcrumb :parent-path="parentPath" />
         <div class="flex shrink-0 items-center gap-1">
           <MdIconButton
