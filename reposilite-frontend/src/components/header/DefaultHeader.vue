@@ -18,20 +18,13 @@
 import usePlaceholders from '../../store/placeholders'
 import MenuPanel from './MenuPanel.vue'
 
-defineProps({
-  logoClickCallback: {
-    type: Function,
-    required: false
-  }
-})
-
 const { title } = usePlaceholders()
 </script>
 
 <template>
   <header class="bg-gray-100 dark:bg-black dark:text-white">
     <div class="container mx-auto flex flex-row py-10 justify-between max-sm:pb-2 max-sm:pt-5 max-sm:px-5 max-sm:justify-start">
-      <h1 @click="logoClickCallback" class="text-xl font-medium py-1 max-sm:w-1/2">
+      <h1 class="text-xl font-medium py-1 max-sm:w-1/2">
         <router-link :to="'/'">{{ title }}</router-link>
       </h1>
       <MenuPanel class="mt-0.5"/>

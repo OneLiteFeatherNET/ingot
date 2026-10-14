@@ -15,14 +15,15 @@
   -->
 
 <script setup>
-import { computed, ref, watchEffect, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../store/session'
-import useQualifier from '../store/qualifier'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
 import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
 import {Tabs, Tab, TabPanels, TabPanel} from 'vue3-tabs'
 import { property } from '../helpers/vue-extensions'
+import { TABS, visibleTabs, resolveTab, withTab, tabLabel } from './index-tabs'
 
 const ConsoleView = defineAsyncComponent(() => import('../components/console/ConsoleView.vue'))
 const DashboardView = defineAsyncComponent(() => import('../components/dashboard/DashboardView.vue'))
@@ -33,42 +34,35 @@ defineProps({
   qualifier: property(Object, true)
 })
 
-const listOfTabs = [
-  { name: 'Overview', manager: false },
-  { name: 'Dashboard', manager: true },
-  { name: 'Tokens', manager: true },
-  { name: 'Console', manager: true },
-  { name: 'Settings', manager: true },
-]
-
+const route = useRoute()
+const router = useRouter()
 const { isManager } = useSession()
-const { redirectTo } = useQualifier()
 
-const menuTabs = computed(() => {
-  return listOfTabs
-    .filter(entry => !entry?.manager || isManager.value)
-    .map(entry => entry.name)
-})
+// The section lives in the URL, so the back button and deep links work. A manager tab that
+// is named but not visible to this user shows Overview instead. Switching to Overview keeps
+// the repository path already in the URL, which is how the browsed path comes back.
+const activeKey = computed(() => resolveTab(route.query.tab, isManager.value))
 
-const selectedTab = ref(localStorage.getItem('selectedTab') || 'Overview')
-
-watchEffect(() => {
-  localStorage.setItem('selectedTab', selectedTab.value)
-})
-
-const createTabClick = (newTab) => {
-  if (newTab == 'Overview') {
-    redirectTo('/')
+const selectTab = (label) => {
+  const key = TABS.find(tab => tab.label === label)?.key
+  if (key) {
+    router.push({ path: route.path, query: withTab(route.query, key) })
   }
 }
 
-const selectHomepage = () => 
-  selectedTab.value = 'Overview'
+const menuTabs = computed(() =>
+  visibleTabs(isManager.value).map(tab => tab.label)
+)
+
+const selectedTab = computed({
+  get: () => tabLabel(activeKey.value),
+  set: selectTab
+})
 </script>
 
 <template>
   <div>
-    <DefaultHeader :logoClickCallback="selectHomepage" />
+    <DefaultHeader />
     <div class="bg-gray-100 dark:bg-black overflow-y-visible">
       <!--
         The bar scrolls sideways when it runs out of room. Every tab used to be pinned to a
@@ -78,7 +72,6 @@ const selectHomepage = () =>
       <div class="tab-bar container mx-auto overflow-x-auto max-sm:px-0">
         <Tabs
           v-model="selectedTab"
-          @update:modelValue="createTabClick"
         >
           <Tab
             v-for="(tab, i) in menuTabs"
