@@ -35,7 +35,7 @@ const scrolled = computed(() => y.value > 0)
     :class="scrolled ? 'bg-surface-container' : 'bg-surface'"
   >
     <!-- The top app bar: the title on the left, the account and theme actions on the right. -->
-    <div class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2 max-sm:px-5">
+    <div class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2">
       <h1 class="md-title-large min-w-0 truncate">
         <router-link
           :to="'/'"

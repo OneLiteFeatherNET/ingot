@@ -51,3 +51,28 @@ describe('shared container gutter', () => {
     expect(globalStyles).not.toContain('px-10 max-sm:px-4')
   })
 })
+
+/*
+ * Every view and the header take their side margins from the shared .container rule. A view
+ * that sets its own px-* utility would win over the layered rule and break the 16px / 24px
+ * window margins, so no container may carry one.
+ */
+describe('views use the shared window margins', () => {
+  const containerFiles = [
+    '../../components/header/DefaultHeader.vue',
+    '../../components/console/ConsoleView.vue',
+    '../../components/dashboard/DashboardView.vue',
+    '../../components/tokens/TokensView.vue',
+    '../../components/settings/SettingsView.vue'
+  ]
+
+  it.each(containerFiles)('%s does not override the container gutter', (file) => {
+    const source = readFileSync(fileURLToPath(new URL(file, import.meta.url)), 'utf8')
+    const containerClasses = [...source.matchAll(/class="([^"]*(?<![-\w])container(?![-\w])[^"]*)"/g)].map(match => match[1])
+
+    expect(containerClasses.length, 'the file must still have a container element').toBeGreaterThan(0)
+    for (const classes of containerClasses) {
+      expect(classes, 'a px-* utility would override the shared margins').not.toMatch(/(^|[\s:])(?:[\w-]+:)*px-\d+/)
+    }
+  })
+})

@@ -141,7 +141,7 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
 </script>
 
 <template>
-  <div class="container mx-auto px-15 pt-7 pb-12 max-sm:px-4">
+  <div class="container mx-auto pt-7 pb-12">
     <div class="flex w-full flex-col gap-3 pb-3 xl:flex-row xl:items-start xl:justify-between">
       <div class="w-full xl:mr-5 xl:w-1/2">
         <MdTextField

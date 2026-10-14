@@ -107,7 +107,7 @@ const formsConfiguration = {
 </script>
 
 <template>
-  <div class="settings-view container mx-auto pt-7 px-15 pb-4">
+  <div class="settings-view container mx-auto pt-7 pb-4">
     <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-start md:justify-between">
       <div class="flex flex-col gap-1 max-w-prose">
         <p class="md-body-large text-on-surface-variant">

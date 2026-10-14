@@ -202,7 +202,7 @@ const runConfirm = (token) => {
 </script>
 
 <template>
-  <div class="container mx-auto px-15 pb-12 pt-7 max-sm:px-4">
+  <div class="container mx-auto pb-12 pt-7">
     <div class="flex flex-col gap-1 pb-7">
       <p class="md-body-large text-on-surface-variant">
         Generate and revoke access tokens used to authenticate with this Ingot instance.

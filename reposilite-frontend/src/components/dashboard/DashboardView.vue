@@ -29,7 +29,7 @@ import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
   unmounting rather than by checking which tab is selected.
 -->
 <template>
-  <div class="container mx-auto px-15 pt-7 pb-12 max-sm:px-4">
+  <div class="container mx-auto pt-7 pb-12">
     <section aria-labelledby="instance-status-heading">
       <h2
         id="instance-status-heading"
