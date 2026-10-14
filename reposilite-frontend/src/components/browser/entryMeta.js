@@ -19,6 +19,20 @@ import prettyBytes from 'pretty-bytes'
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
 /*
+ * The size of a file as shown in a row. Directories and files of unknown length have none,
+ * rather than a size of zero bytes.
+ */
+const describeSize = (file) => {
+  if (file?.type === 'DIRECTORY') {
+    return ''
+  }
+
+  return typeof file?.contentLength === 'number' && file.contentLength >= 0
+    ? prettyBytes(file.contentLength)
+    : ''
+}
+
+/*
  * The supporting line of a file row: its size and when it was last modified. Directories
  * carry neither, so their line is empty. Unknown values are left out rather than shown as
  * zero bytes or the epoch.
@@ -30,8 +44,9 @@ const describeEntry = (file) => {
 
   const parts = []
 
-  if (typeof file?.contentLength === 'number' && file.contentLength >= 0) {
-    parts.push(prettyBytes(file.contentLength))
+  const size = describeSize(file)
+  if (size) {
+    parts.push(size)
   }
 
   if (file?.lastModifiedTime) {
@@ -45,5 +60,6 @@ const describeEntry = (file) => {
 }
 
 export {
+  describeSize,
   describeEntry
 }

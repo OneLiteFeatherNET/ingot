@@ -23,7 +23,7 @@ import { property } from '../../helpers/vue-extensions'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import BrowserIcon from './BrowserIcon.vue'
-import { describeEntry } from './entryMeta'
+import { describeEntry, describeSize } from './entryMeta'
 
 /*
  * One row of the listing. The row is a list item; its name is the link, stretched over the
@@ -53,6 +53,14 @@ const isHumanReadable = computed(() =>
 const canViewContent = computed(() => Object.hasOwn(props.file, 'contentLength') && isHumanReadable.value)
 const canDelete = computed(() => props.qualifier.path.length > 1 && hasPermissionTo(`/${props.qualifier.path}`, 'route:write'))
 const meta = computed(() => describeEntry(props.file))
+const size = computed(() => describeSize(props.file))
+
+// Compact rows put name and size on one line; default rows stack the size and date under the name.
+const textClass = computed(() =>
+  props.compactMode
+    ? 'flex min-w-0 flex-1 items-center gap-4'
+    : 'flex min-w-0 flex-1 flex-col'
+)
 
 const openUrl = (url) =>
   window.open(url, '_blank')
@@ -99,8 +107,15 @@ const onFileClick = (event) => {
         name="folder"
         class="text-primary"
       />
-      <span class="flex min-w-0 flex-1 flex-col">
-        <span class="md-body-large truncate">{{ file.name }}</span>
+      <span :class="textClass">
+        <span
+          class="md-body-large truncate"
+          :class="compactMode ? 'min-w-0 flex-1' : ''"
+        >{{ file.name }}</span>
+        <span
+          v-if="compactMode && size"
+          class="shrink-0 md-body-small text-on-surface-variant"
+        >{{ size }}</span>
         <span
           v-if="!compactMode && meta"
           class="md-body-medium text-on-surface-variant"
@@ -119,19 +134,26 @@ const onFileClick = (event) => {
         name="file"
         class="text-on-surface-variant"
       />
-      <span class="flex min-w-0 flex-1 flex-col">
-        <span class="md-body-large truncate">{{ file.name }}</span>
+      <span :class="textClass">
+        <span
+          class="md-body-large truncate"
+          :class="compactMode ? 'min-w-0 flex-1' : ''"
+        >{{ file.name }}</span>
+        <span
+          v-if="compactMode && size"
+          class="shrink-0 md-body-small text-on-surface-variant"
+        >{{ size }}</span>
         <span
           v-if="!compactMode && meta"
           class="md-body-medium text-on-surface-variant"
         >{{ meta }}</span>
-        <MdLinearProgress
-          v-if="busy"
-          indeterminate
-          :label="`Downloading ${file.name}`"
-          class="mt-2"
-        />
       </span>
+      <MdLinearProgress
+        v-if="busy"
+        indeterminate
+        :label="`Downloading ${file.name}`"
+        :class="compactMode ? 'absolute inset-x-3 bottom-0' : 'absolute inset-x-4 bottom-0'"
+      />
     </a>
 
     <!--

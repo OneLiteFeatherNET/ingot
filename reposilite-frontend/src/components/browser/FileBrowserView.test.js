@@ -191,3 +191,29 @@ describe('FileBrowserView empty directories', () => {
     expect(wrapper.text(), 'an empty directory says so').toContain('Directory is empty')
   })
 })
+
+describe('FileBrowserView toolbar', () => {
+  beforeEach(() => {
+    sessionState.details.value = { routes: [] }
+    sessionState.client.value = clientWithDetails(() => new Promise(() => {}))
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('gives the view-mode control a tooltip as well as a name', () => {
+    const wrapper = mountView()
+    const toggle = wrapper.find('button[aria-label="Compact list"]')
+
+    expect(toggle.exists(), 'the view-mode control is a named button').toBe(true)
+    expect(toggle.attributes('title'), 'hovering the control names it').toBe('Compact list')
+  })
+
+  it('gives the adjustments control a tooltip as well as a name', () => {
+    const wrapper = mountView()
+    const adjustments = wrapper.find('button[aria-label="File browser adjustments"]')
+
+    expect(adjustments.attributes('title'), 'hovering the control names it').toBe('File browser adjustments')
+  })
+})

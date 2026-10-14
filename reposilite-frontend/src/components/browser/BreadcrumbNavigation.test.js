@@ -14,29 +14,49 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import BreadcrumbNavigation from './BreadcrumbNavigation.vue'
 
-vi.mock('vue-router', () => ({
-  useRoute: () => ({ path: '/releases/net/example' })
-}))
-
-const mountBreadcrumb = () =>
-  mount(BreadcrumbNavigation, {
-    props: { parentPath: '/releases/net' },
-    global: { stubs: { 'router-link': RouterLinkStub } }
+// A real router on memory history: the parent control is a router link, and the tests check
+// what it actually resolves to.
+const mountBreadcrumb = async (path = '/releases/net/example') => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }]
   })
+  await router.push(path)
+  await router.isReady()
+
+  return mount(BreadcrumbNavigation, {
+    props: { parentPath: '/releases/net' },
+    global: { plugins: [router] }
+  })
+}
 
 describe('BreadcrumbNavigation', () => {
-  it('names the parent link for assistive technology', () => {
-    const wrapper = mountBreadcrumb()
+  let wrapper
+
+  beforeEach(() => {
+    wrapper?.unmount()
+  })
+
+  it('names the parent link for assistive technology', async () => {
+    wrapper = await mountBreadcrumb()
 
     expect(wrapper.find('a[aria-label="Parent directory"]').exists(), 'the icon-only parent link has a name').toBe(true)
   })
 
-  it('shows the current directory as text rather than as a link', () => {
-    const wrapper = mountBreadcrumb()
+  it('presents the parent control as an icon button', async () => {
+    wrapper = await mountBreadcrumb()
+    const parent = wrapper.find('[aria-label="Parent directory"]')
+
+    expect(parent.attributes('data-variant'), 'the parent control is an MD3 icon button').toBe('standard')
+  })
+
+  it('shows the current directory as text rather than as a link', async () => {
+    wrapper = await mountBreadcrumb()
     const current = wrapper.find('[aria-current="page"]')
 
     expect(current.exists(), 'the current directory is marked as the current page').toBe(true)
@@ -44,10 +64,16 @@ describe('BreadcrumbNavigation', () => {
     expect(current.element.tagName, 'the current crumb is not a link').not.toBe('A')
   })
 
-  it('links every ancestor directory', () => {
-    const wrapper = mountBreadcrumb()
+  it('links every ancestor directory', async () => {
+    wrapper = await mountBreadcrumb()
     const linkTexts = wrapper.findAll('a').map(link => link.text())
 
     expect(linkTexts, 'the ancestors are still reachable').toEqual(expect.arrayContaining(['/', 'releases/', 'net/']))
+  })
+
+  it('resolves the parent control to the parent directory', async () => {
+    wrapper = await mountBreadcrumb()
+
+    expect(wrapper.find('[aria-label="Parent directory"]').attributes('href'), 'the parent link goes one level up').toBe('/releases/net')
   })
 })

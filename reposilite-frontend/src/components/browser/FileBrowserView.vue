@@ -24,8 +24,7 @@ import Card from '../card/SnippetsCard.vue'
 import Breadcrumb from './BreadcrumbNavigation.vue'
 import FileList from './FileList.vue'
 import BrowserUpload from './FileUpload.vue'
-import ViewGrid from '../icons/ViewGrid.vue'
-import ViewList from '../icons/ViewList.vue'
+import BrowserIcon from './BrowserIcon.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { property } from '../../helpers/vue-extensions'
 import { errorMessage } from '../../helpers/toast'
@@ -137,11 +136,11 @@ const toggleCompactMode = () => {
           <MdIconButton
             toggle
             aria-label="Compact list"
+            title="Compact list"
             :selected="fileBrowserCompactMode"
             @click="toggleCompactMode()"
           >
-            <ViewGrid v-if="fileBrowserCompactMode" />
-            <ViewList v-else />
+            <BrowserIcon name="list" />
           </MdIconButton>
           <AdjustmentsModal />
         </div>

@@ -16,6 +16,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, RouterLinkStub } from '@vue/test-utils'
+import prettyBytes from 'pretty-bytes'
 import DetailedListEntry from './DetailedListEntry.vue'
 
 vi.mock('../../store/session', async () => {
@@ -83,5 +84,51 @@ describe('DetailedListEntry row actions', () => {
     const wrapper = mountRow()
 
     expect(actionsOf(wrapper).classes(), 'coarse pointers have no hover, so the actions stay visible').toContain('[@media(pointer:coarse)]:opacity-100')
+  })
+})
+
+describe('DetailedListEntry appearance', () => {
+  const mountWith = (overrides = {}) => {
+    const wrapper = mount(DetailedListEntry, {
+      props: {
+        file: jar,
+        qualifier: { path: 'releases/net/example' },
+        url: 'https://repo.example/releases/net/example/example-1.0.jar',
+        to: '/releases/net/example/example-1.0.jar',
+        openDeleteEntryModal: () => {},
+        compactMode: false,
+        ...overrides
+      },
+      global: { stubs: { 'router-link': RouterLinkStub } }
+    })
+    mounted.push(wrapper)
+    return wrapper
+  }
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('draws the file and folder icons as graphics, not emoji', () => {
+    const wrapper = mountWith()
+
+    expect(wrapper.text(), 'no emoji circles in the row').not.toMatch(/[⚪⚫]/)
+    expect(wrapper.find('svg').exists(), 'the row carries an icon graphic').toBe(true)
+  })
+
+  it('does not fill the row with the primary colour on hover', () => {
+    const wrapper = mountWith({ compactMode: true })
+
+    expect(wrapper.classes(), 'hover is a state layer, not a solid primary fill').not.toContain('bg-primary')
+    expect(wrapper.classes(), 'the row uses the state layer for hover').toContain('md-state-layer')
+  })
+
+  it('shows the size on the same line as the name in compact mode', () => {
+    const wrapper = mountWith({ compactMode: true })
+    const size = wrapper.findAll('span').find(span => span.text() === prettyBytes(jar.contentLength))
+
+    expect(size, 'the size is rendered as its own element').toBeDefined()
+    expect(size.element.parentElement.textContent, 'the size shares the row with the name').toContain('example-1.0.jar')
+    expect(size.classes(), 'the size uses the small body style').toContain('md-body-small')
   })
 })

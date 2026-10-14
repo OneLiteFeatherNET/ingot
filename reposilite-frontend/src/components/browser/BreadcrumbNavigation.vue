@@ -18,6 +18,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { property } from '../../helpers/vue-extensions'
+import MdIconButton from '../md/MdIconButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
 
 defineProps({
@@ -70,12 +71,21 @@ const breadcrumbs = computed(() => {
         </router-link>
       </li>
     </ol>
+    <!-- The icon button is the link itself, so a click still navigates through the router. -->
     <router-link
+      v-slot="{ href, navigate }"
       :to="parentPath"
-      aria-label="Parent directory"
-      class="md-state-layer md-focus-ring ml-1 inline-flex size-12 items-center justify-center rounded-corner-full text-on-surface-variant"
+      custom
     >
-      <BrowserIcon name="arrowUp" />
+      <MdIconButton
+        :href="href"
+        aria-label="Parent directory"
+        title="Parent directory"
+        class="ml-1"
+        @click="navigate"
+      >
+        <BrowserIcon name="arrowUp" />
+      </MdIconButton>
     </router-link>
   </nav>
 </template>

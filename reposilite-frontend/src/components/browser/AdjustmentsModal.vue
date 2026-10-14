@@ -18,7 +18,7 @@
 import { ref, useId } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { useAdjustments } from '../../store/adjustments'
-import AdjustmentsIcon from '../icons/AdjustmentsIcon.vue'
+import BrowserIcon from './BrowserIcon.vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 
@@ -31,9 +31,10 @@ const titleId = useId()
   <div>
     <MdIconButton
       aria-label="File browser adjustments"
+      title="File browser adjustments"
       @click="showAdjustments = true"
     >
-      <AdjustmentsIcon />
+      <BrowserIcon name="tune" />
     </MdIconButton>
     <VueFinalModal
       v-model="showAdjustments"
