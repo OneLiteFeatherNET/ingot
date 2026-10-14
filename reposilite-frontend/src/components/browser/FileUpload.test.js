@@ -128,3 +128,40 @@ describe('FileUpload controls', () => {
     expect(remove.exists(), 'every remove control says which file it removes').toBe(true)
   })
 })
+
+describe('FileUpload keyboard access', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  const chooseButton = () =>
+    wrapper.findAll('button').find(button => button.text() === 'Choose files')
+
+  const hiddenInput = () => wrapper.find('input[type="file"]').element
+
+  it('offers a Choose files button that a keyboard user can reach', async () => {
+    await mountUpload()
+
+    const button = chooseButton()
+
+    expect(button, 'the drop zone needs a real button to open the picker').toBeDefined()
+    expect(button.element.tabIndex, 'the button is in the tab order').toBeGreaterThanOrEqual(0)
+    expect(button.attributes('disabled'), 'the button is enabled').toBeUndefined()
+  })
+
+  it('opens the file picker when Choose files is pressed', async () => {
+    await mountUpload()
+    const picker = vi.spyOn(hiddenInput(), 'click').mockImplementation(() => {})
+
+    chooseButton().trigger('click')
+
+    expect(picker, 'the hidden file input is clicked').toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the hidden file input out of the tab order', async () => {
+    await mountUpload()
+
+    expect(hiddenInput().tabIndex, 'the input must not take a focus stop without a visible focus ring').toBe(-1)
+  })
+})

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed, onMounted, watchEffect } from 'vue'
 import { createSuccessToast, createErrorToast, errorMessage } from '../../helpers/toast'
 import { createUploadQueue } from './uploadQueue'
 import { useSession } from '../../store/session'
@@ -91,6 +91,22 @@ const STATUS_LABELS = {
 const statusLabel = (name) =>
   STATUS_LABELS[queue.state.statuses[name]] ?? 'Ready to upload'
 
+// The drop zone is the vue-upload-component, which renders a hidden file input and a label
+// that covers the zone for mouse users. The button below is the keyboard route to the picker.
+const upload = ref(null)
+const pickerInput = () => upload.value?.$el?.querySelector('input[type="file"]')
+const choosePicker = () => pickerInput()?.click()
+
+// The input stays in the DOM for the component to work, but a focus stop on an invisible
+// element would strand keyboard users, so it leaves the tab order. The button is the stop.
+onMounted(() => {
+  const input = pickerInput()
+  if (input) {
+    input.tabIndex = -1
+    input.setAttribute('aria-hidden', 'true')
+  }
+})
+
 const uploadFiles = () => {
   if (uploading.value) {
     return
@@ -163,12 +179,24 @@ const uploadFiles = () => {
         </p>
         <template v-else>
           <p class="md-title-medium text-on-surface">
-            Drop files here, or click to choose them
+            Drop files here, or choose them
           </p>
           <p class="md-body-medium text-on-surface-variant">
             Whole directories work too. Nothing is sent until you confirm.
           </p>
         </template>
+        <!--
+          Sits above the component's label overlay (z-10), so the button stays clickable and
+          keeps its hover state for mouse users too.
+        -->
+        <MdButton
+          variant="tonal"
+          class="relative z-10 mt-2"
+          :disabled="uploading"
+          @click.prevent="choosePicker"
+        >
+          Choose files
+        </MdButton>
       </div>
     </FileUpload>
 
