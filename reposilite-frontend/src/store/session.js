@@ -15,7 +15,8 @@
  */
 
 import { computed, ref, watchEffect } from "vue"
-import { createClient } from './client'
+import { createClient, setUnauthorizedHandler } from './client'
+import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
 
 const token = ref({
   name: localStorage.getItem('token-name') || '',
@@ -57,7 +58,7 @@ watchEffect(() => {
 const defaultDetails = undefined
 const details = ref(defaultDetails)
 
-const logout = () => {
+const clearSession = () => {
   setToken('', '')
   details.value = undefined
 }
@@ -71,8 +72,43 @@ const login = (name, secret) =>
       details.value = response.data
     })
 
+// The sign in dialog shows this under the fields. A rejected pair is the one case worth
+// naming, because "Request failed with status 401" tells the user nothing they can act on.
+const loginFailureMessage = (error) =>
+  error?.response?.status === 401
+    ? 'Name or secret is incorrect'
+    : errorMessage(error)
+
+const logout = () => {
+  clearSession()
+  createInfoToast('Signed out')
+}
+
+// The server rejected the credentials of a request made while signed in. Once the session
+// is cleared, every later rejection in the same burst finds nobody signed in and does
+// nothing, so the user sees exactly one notice.
+const expireSession = () => {
+  if (!isLogged.value) {
+    return
+  }
+  clearSession()
+  createWarningToast('Session expired, please sign in again')
+}
+
 const client = computed(() => createClient(token.value.name, token.value.secret))
-const initializeSession = () => login(token.value.name, token.value.secret)
+
+// A rejected secret stays useless on every later visit, so it is forgotten here. A server
+// that cannot be reached at all says nothing about the credentials and keeps them.
+const initializeSession = () =>
+  login(token.value.name, token.value.secret)
+    .catch(error => {
+      if (error?.response?.status === 401) {
+        clearSession()
+        return
+      }
+      throw error
+    })
+
 const isLogged = computed(() => details.value !== undefined)
 
 const isManager = computed(() => {
@@ -90,12 +126,15 @@ const hasPermissionTo = (path, permission) => {
     ?.find(route => path.startsWith(route.path) && route.permission.identifier === permission) !== undefined
 }
 
+setUnauthorizedHandler(expireSession)
+
 export function useSession() {
   return {
     token,
     details,
     login,
     logout,
+    loginFailureMessage,
     isLogged,
     client,
     isManager,
@@ -103,3 +142,5 @@ export function useSession() {
     initializeSession
   }
 }
+
+export { loginFailureMessage }

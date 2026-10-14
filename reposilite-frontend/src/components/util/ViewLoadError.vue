@@ -1,5 +1,5 @@
 <!--
-  - Copyright (c) 2023 dzikoysk
+  - Copyright (c) 2026 OneLiteFeather
   -
   - Licensed under the Apache License, Version 2.0 (the "License");
   - you may not use this file except in compliance with the License.
@@ -14,8 +14,27 @@
   - limitations under the License.
   -->
 
+<script setup>
+import MdButton from '../md/MdButton.vue'
+
+// A failed chunk stays failed for the life of the page, so the only way to retry it is to
+// load the page again.
+const reload = () => window.location.reload()
+</script>
+
 <template>
-  <div class="mx-2 py-1.5 rounded-full font-bold px-6 text-sm max-h-[35px] min-w-[93px] cursor-pointer bg-surface-container-low hover:bg-surface-container-high transition-colors duration-500">
-    <slot/>
+  <div
+    class="container mx-auto flex flex-col items-start gap-4 py-8"
+    role="alert"
+  >
+    <p class="md-body-large text-on-surface">
+      This view could not be loaded.
+    </p>
+    <MdButton
+      variant="tonal"
+      @click="reload()"
+    >
+      Reload
+    </MdButton>
   </div>
 </template>

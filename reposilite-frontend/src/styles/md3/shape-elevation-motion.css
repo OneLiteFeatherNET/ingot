@@ -45,6 +45,13 @@
   --md-sys-elevation-level4: 0 2px 3px 0 rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15);
   --md-sys-elevation-level5: 0 4px 4px 0 rgb(0 0 0 / 0.3), 0 8px 12px 6px rgb(0 0 0 / 0.15);
 
+  /*
+   * Stacking order for dialogs. Page content can be positioned with a z-index of its own
+   * (a copy button, a sticky header), and a dialog without one would paint under it. Every
+   * vue-final-modal root takes this value through the rule in src/style.css.
+   */
+  --md-sys-z-dialog: 1000;
+
   /* Motion: easing curves from the MD3 motion system. */
   --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
