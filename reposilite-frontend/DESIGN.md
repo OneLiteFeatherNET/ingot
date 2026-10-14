@@ -170,12 +170,14 @@ exist. Prefer the `rounded-corner-*` names in new code.
 ## State layers and focus
 
 - `md-state-layer` adds a translucent overlay in the element's own text colour
-  (`currentColor`). Hover is 8%, focus-visible and pressed are 10%. Add `is-dragged` for
-  the 16% dragged state. The element needs a border radius, which it can inherit.
+  (`currentColor`). Hover is 8%, focus-visible and pressed are 12%, and the dragged
+  state (`is-dragged`) is 16%. These are the MD3 state opacities (`md-sys-state`). The
+  element needs a border radius, which it can inherit.
 - The overlay is a `::before` pseudo-element. Do not give the element its own `::before`.
 - Hover only applies on devices that can hover. Disabled elements and
   `aria-disabled="true"` get no overlay.
-- `md-focus-ring` draws a 2px `primary` outline on `:focus-visible`, offset by 2px.
+- `md-focus-ring` draws the MD3 focus ring on `:focus-visible`: a 3px outline in the
+  `secondary` role, drawn 2px outside the element's edge (`outline-offset: 2px`).
 
 ## Motion
 

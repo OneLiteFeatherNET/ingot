@@ -18,7 +18,7 @@
  * State layers. Interactive elements get a translucent overlay in the colour of their own
  * content (currentColor), which is what MD3 calls a state layer:
  *
- *   hover 8%   focus 10%   pressed 10%   dragged 16%
+ *   hover 8%   focus 12%   pressed 12%   dragged 16%
  *
  * Usage: add `md-state-layer` to an element that has a border radius and a text colour.
  * The overlay is a ::before pseudo-element that sits above the element's background and
@@ -54,11 +54,11 @@
   }
 
   .md-state-layer:focus-visible {
-    --md-state-opacity: 0.1;
+    --md-state-opacity: 0.12;
   }
 
   .md-state-layer:active {
-    --md-state-opacity: 0.1;
+    --md-state-opacity: 0.12;
   }
 
   .md-state-layer.is-dragged {
@@ -72,11 +72,12 @@
   }
 
   /*
-   * Keyboard focus indicator. Shown only for :focus-visible, so a mouse click does not leave
-   * a ring behind. The offset keeps the ring clear of the element's own edge.
+   * Keyboard focus indicator, the MD3 focus ring: 3px, in the secondary role, drawn 2px
+   * outside the element's edge. Shown only for :focus-visible, so a mouse click does not
+   * leave a ring behind.
    */
   .md-focus-ring:focus-visible {
-    outline: 2px solid var(--md-sys-color-primary);
+    outline: 3px solid var(--md-sys-color-secondary);
     outline-offset: 2px;
   }
 
