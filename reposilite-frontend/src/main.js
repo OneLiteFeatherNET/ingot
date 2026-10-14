@@ -24,7 +24,6 @@ import router from './router'
 import { loadFrontendSettings } from './store/placeholders'
 
 import './style.css'
-import 'mosha-vue-toastify/dist/style.css'
 import 'vue-final-modal/style.css'
 
 const app = createApp(App)
