@@ -19,6 +19,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
 import useLog from '../../store/console/log'
 import useConsole from '../../store/console/connection'
+import { openLogin } from '../../store/login'
 import { isNearBottom } from './scroll'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
@@ -33,6 +34,7 @@ const {
   close,
   status,
   failure,
+  sessionExpired,
   command,
   execute,
   previousCommand,
@@ -202,6 +204,13 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
               stays visible below.
             </p>
           </div>
+          <MdButton
+            v-if="sessionExpired"
+            variant="filled"
+            @click="openLogin()"
+          >
+            Sign in
+          </MdButton>
           <MdButton
             variant="tonal"
             @click="setupConnection()"

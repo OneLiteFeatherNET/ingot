@@ -15,16 +15,18 @@
  */
 
 /*
- * Colours for everything the dashboard plots, read from the Material Design 3 roles.
+ * Colours for everything the dashboard plots, read from the Material Design 3 roles and the
+ * chart tokens.
  *
  * Canvas cannot resolve a `var(...)` reference, so the charts need the concrete value of
  * each role. It is read from the root element on every call, which means a theme switch
  * (which rewrites the role values under `.dark`) is picked up by the next render, with no
  * second copy of the scheme to keep in step.
  *
- * The categorical order is part of the data: the first series takes the first role. The
- * roles lead with the three seed-derived hues (primary, tertiary, secondary) and then step
- * into their on-container tones, which stay distinct from one another in both themes.
+ * The categorical order is part of the data: the first series takes the first chart token.
+ * The chart tokens are a dedicated set of eight hues, harmonised toward the seed, and are
+ * not derived from the MD3 roles: the roles of a copper seed sit too close together to tell
+ * series apart. See DESIGN.md, the chart section.
  */
 
 const FALLBACK = 'CanvasText'
@@ -39,16 +41,7 @@ const readVariable = (name) => {
 
 const role = (name) => readVariable(`--md-sys-color-${name}`)
 
-const CATEGORICAL_ROLES = [
-  'primary',
-  'tertiary',
-  'secondary',
-  'on-primary-container',
-  'on-tertiary-container',
-  'on-secondary-container',
-  'outline',
-  'on-surface-variant'
-]
+const CHART_SERIES = 8
 
 /**
  * Reserved for state, never for a series. Each one is paired with a word in the interface
@@ -63,7 +56,8 @@ export const STATUS = {
 }
 
 /** Resolved colours for the categorical series, in the order they are assigned. */
-export const categorical = () => CATEGORICAL_ROLES.map(role)
+export const categorical = () =>
+  Array.from({ length: CHART_SERIES }, (_, index) => readVariable(`--md-ext-color-chart-${index + 1}`))
 
 /** Axis, grid, label and tooltip colours. Deliberately recessive: the data is the ink. */
 export const chrome = () => ({

@@ -84,6 +84,39 @@ Status colours that MD3 does not define. Use them for text only:
 Use the `error` roles for failures. `success` and `warning` are for confirmations and
 non-fatal notices only.
 
+## Charts
+
+Series colours are a dedicated palette, not MD3 roles. The roles of the copper seed sit too
+close together (primary, tertiary and secondary are all brown-orange) to tell apart as
+series, so the chart tokens are eight hues chosen to differ from one another.
+
+Each token is a CSS custom property, `--md-ext-color-chart-1` to `-8`, in `color.css`:
+light values on `:root`, dark values on `.dark`. They have no Tailwind utility, because a
+chart reads them through `src/store/palette.js` (`categorical()`), not through a class.
+
+Generation: each source hue was harmonised toward `#B5651D` with
+`Blend.harmonize` from `@material/material-color-utilities`, then tone 40 (light) and tone
+80 (dark) were taken from the `TonalPalette` of the harmonised colour. The generator ran as
+a throwaway script outside the project; the library is not a project dependency.
+
+| Series | Token | Hue (harmonised, HCT) | Light (tone 40) | Dark (tone 80) | Light contrast on `surface` | Dark contrast on `surface` |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `chart-1` | blue, 255 | `#1261a2` | `#a0c9ff` | 6.14:1 | 10.84:1 |
+| 2 | `chart-2` | orange, 45 | `#9f4200` | `#ffb692` | 6.15:1 | 10.90:1 |
+| 3 | `chart-3` | teal, 186 | `#006a60` | `#77d7c9` | 6.19:1 | 10.89:1 |
+| 4 | `chart-4` | magenta, 340 | `#9a3787` | `#fface7` | 6.11:1 | 10.86:1 |
+| 5 | `chart-5` | green, 130 | `#446900` | `#a4d657` | 6.12:1 | 10.88:1 |
+| 6 | `chart-6` | violet, 300 | `#6b47bb` | `#d0bcff` | 6.16:1 | 10.87:1 |
+| 7 | `chart-7` | gold, 90 | `#755b00` | `#e9c255` | 6.15:1 | 10.86:1 |
+| 8 | `chart-8` | red, 20 | `#a83639` | `#ffb3b0` | 6.15:1 | 10.87:1 |
+
+Light `surface` is `#fff8f5`, dark `surface` is `#19120d`. Every series clears 3:1 on
+both. Between the series, the smallest CIE76 difference is 28 in light and 17 in dark.
+Series are assigned in the order above, and every pair is checked, adjacent or not. A legend
+still needs its labels, because colour alone does not identify a series for everyone.
+
+Charts use these colours for marks only. Text on a chart uses `chrome()` roles.
+
 ## Typography
 
 Font stack: `"Roboto Flex", Roboto, system-ui, sans-serif`. It is exposed as
