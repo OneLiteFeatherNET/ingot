@@ -48,26 +48,6 @@
   --text-xm--line-height: 0.75rem;
   --text-ssm: 0.8rem;
   --text-ssm--line-height: 1.15rem;
-
-  /*
-   * `gray` deliberately carries the neutral ramp, not Tailwind's own gray, which is
-   * blue-tinted. 125 and 150 fill the gap between 100 and 200. Still used in 37 files; the
-   * surface-container-* roles replace it, and views move over one at a time. Remove the
-   * ramp only once nothing references it.
-   */
-  --color-gray-50: #fafafa;
-  --color-gray-100: #f5f5f5;
-  --color-gray-125: #efefef;
-  --color-gray-150: #ececec;
-  --color-gray-200: #e5e5e5;
-  --color-gray-300: #d4d4d4;
-  --color-gray-400: #a3a3a3;
-  --color-gray-500: #737373;
-  --color-gray-600: #525252;
-  --color-gray-700: #404040;
-  --color-gray-800: #262626;
-  --color-gray-900: #171717;
-  --color-gray-950: #0a0a0a;
 }
 
 @layer base {
@@ -130,12 +110,12 @@
 }
 
 /*
- * Outside any layer, on purpose. `.active` has to outrank the indicator colour vue3-tabs
- * ships in its own stylesheet, and layered rules lose to unlayered ones whatever their
- * specificity. No utility competes with these on the same element.
+ * Outside any layer, on purpose. The active tab indicator of vue3-tabs is painted in its own
+ * stylesheet with a selector of specificity (0,2,0). `:root .active` matches that, and an
+ * unlayered rule beats a layered one, so the role colour wins in both themes.
  */
-.active {
-  @apply dark:border-white;
+:root .active {
+  border-color: var(--md-sys-color-on-surface);
 }
 
 .router-view-full {

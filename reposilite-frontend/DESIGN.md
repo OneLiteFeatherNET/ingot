@@ -16,8 +16,10 @@ Source files:
 
 ## Rules for contributors
 
-- **Use roles, never raw hex.** Write `bg-surface-container` and `text-on-surface`, not
-  `#fff` or `bg-gray-900`. Role colours switch between light and dark on their own.
+- **Use roles, never raw hex.** Write `bg-surface-container` and `text-on-surface`, not a
+  hex value or a Tailwind palette shade. Role colours switch between light and dark on
+  their own. (This file is scanned for class names too, so palette examples here would
+  generate utilities.)
 - **Do not write `dark:` variants for role colours.** `text-on-surface` already is the right
   colour in both themes. `dark:` is for the few cases that are not role colours.
 - **Surfaces use `surface-container-*`.** Pick the step by emphasis, from least to most:
@@ -256,11 +258,6 @@ Renders `role="progressbar"` with `aria-valuenow` as a percentage.
 
 These are deliberately left for the views that own them:
 
-- The `gray` ramp in `src/style.css` is still used in 37 files (about 280 occurrences).
-  Move a view to the surface and outline roles, then remove the ramp when nothing
-  references it.
-- Views still use Tailwind's default `white` and `black` in places, and the app wrapper
-  still paints `dark:bg-black`. They render correctly; they are not yet on the roles.
 - The `container` class keeps the shared page gutter (`px-10`, `px-2` below 640px). It is
   layout, not colour, and the layout work decides its final form.
 - The section tabs on the index page are primary tabs built in `src/pages/IndexPage.vue`
