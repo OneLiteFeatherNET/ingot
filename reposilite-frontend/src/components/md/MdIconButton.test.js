@@ -106,13 +106,32 @@ describe('MdIconButton', () => {
     expect(wrapper.classes()).not.toContain('bg-error')
   })
 
-  it('keeps a 48px square touch target', () => {
+  it('is a 40px square container and state layer', () => {
     const wrapper = mount(MdIconButton, {
       attrs: { 'aria-label': 'Close' },
       slots: { default: () => h('svg') }
     })
 
-    expect(wrapper.classes()).toContain('h-12')
-    expect(wrapper.classes()).toContain('w-12')
+    expect(wrapper.classes()).toContain('h-10')
+    expect(wrapper.classes()).toContain('w-10')
+    expect(wrapper.classes()).not.toContain('h-12')
+  })
+
+  it('sizes the icon to 24px inside the 40px container', () => {
+    const wrapper = mount(MdIconButton, {
+      attrs: { 'aria-label': 'Close' },
+      slots: { default: () => h('svg') }
+    })
+
+    expect(wrapper.classes()).toContain('[&>svg]:size-6')
+  })
+
+  it('marks the root with the touch target class that widens the hit area to 48px', () => {
+    const wrapper = mount(MdIconButton, {
+      attrs: { 'aria-label': 'Close' },
+      slots: { default: () => h('svg') }
+    })
+
+    expect(wrapper.classes()).toContain('md-touch-target')
   })
 })

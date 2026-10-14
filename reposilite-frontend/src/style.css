@@ -25,6 +25,7 @@
 @import "./styles/md3/typography.css";
 @import "./styles/md3/shape-elevation-motion.css";
 @import "./styles/md3/state-layer.css";
+@import "./styles/md3/touch-target.css";
 
 @plugin "@tailwindcss/forms";
 

@@ -89,7 +89,7 @@ const classes = computed(() => {
   if (props.disabled) tone = variant.disabled
   else if (isError.value) tone = variant.error
   return [
-    'md-state-layer md-focus-ring relative inline-flex min-h-12 items-center justify-center gap-2 rounded-corner-full px-6 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
+    'md-state-layer md-focus-ring md-touch-target relative inline-flex h-10 items-center justify-center gap-2 rounded-corner-full pr-6 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
     tone
   ]
 })
@@ -103,7 +103,7 @@ const classes = computed(() => {
     :disabled="tag === 'button' ? disabled : undefined"
     :aria-disabled="tag === 'a' && disabled ? 'true' : undefined"
     :data-variant="variant"
-    :class="classes"
+    :class="[classes, $slots.icon ? 'pl-4' : 'pl-6']"
   >
     <span
       v-if="$slots.icon"

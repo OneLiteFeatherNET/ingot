@@ -101,7 +101,7 @@ const classes = computed(() => {
     state = props.selected ? variant.on : variant.off
   }
   return [
-    'md-state-layer md-focus-ring relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard [&>svg]:size-6',
+    'md-state-layer md-focus-ring md-touch-target relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard [&>svg]:size-6',
     state
   ]
 })

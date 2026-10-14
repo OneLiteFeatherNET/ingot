@@ -30,8 +30,11 @@ Source files:
 - **One filled button per view**, as the primary action. Everything else is `tonal`,
   `outlined` or `text`.
 - **Every icon-only control has an `aria-label`.** `MdIconButton` warns without one.
-- **Touch targets are at least 48px.** The primitives already do this; a custom control
-  needs `min-h-12` (48px) or larger.
+- **Visual size and touch target are separate.** MD3 sizes a control by what it shows
+  (a 40px button, a 40px icon button, a 32px chip) and gives it a touch target of at least
+  48 by 48px, which may be larger than the control. A custom control that needs a touch
+  target adds `md-touch-target` (see Touch target below). Do not make a visible control
+  48px tall just to reach the minimum.
 - **Focusable custom controls use `md-focus-ring`** (or the `:focus-visible` outline that
   it sets). Do not remove outlines without replacing them.
 - **Interactive elements add `md-state-layer`** to get hover, focus and pressed overlays
@@ -179,6 +182,18 @@ exist. Prefer the `rounded-corner-*` names in new code.
 - `md-focus-ring` draws the MD3 focus ring on `:focus-visible`: a 3px outline in the
   `secondary` role, drawn 2px outside the element's edge (`outline-offset: 2px`).
 
+## Touch target
+
+Visual size and hit area are separate, as in MD3 and material-web:
+
+- A button is a 40px container, a standard or filled icon button is 40 by 40 px with a
+  24px icon, and a chip is 32px. The visual size is what a control shows.
+- `md-touch-target` gives the element a hit area of at least 48 by 48 px. It is an
+  invisible box centred on the element, drawn with `::after` (`min-width` and
+  `min-height` 48px). It takes no space and paints nothing.
+- The element needs `position: relative`, which the primitives set. `::before` stays
+  reserved for the state layer, so the two never clash.
+
 ## Motion
 
 Easing (`ease-md-*`): `standard`, `standard-decelerate`, `standard-accelerate`,
@@ -216,6 +231,9 @@ Props:
 
 Slots: `default` (the label), `icon` (decorative, hidden from assistive technology).
 
+The container is 40px tall with 24px horizontal padding, or 16px on the leading edge when
+an icon is present. The touch target is 48px (see Touch target).
+
 Listeners such as `@click` pass through to the root element.
 
 ### MdIconButton
@@ -231,7 +249,8 @@ Props:
 
 Requires `aria-label`. Without it the component logs a `console.warn` on mount.
 
-Slot: `default` (the icon). The root is 48 by 48 px.
+Slot: `default` (the icon). The container and state layer are 40 by 40 px, the icon is
+24px, and the touch target is 48 by 48 px.
 
 ### MdCard
 
@@ -275,7 +294,8 @@ Props:
 - `href`: string. For `assist` only: renders an `<a>`
 - `disabled`: boolean
 
-Slots: `default` (the label), `icon`.
+Slots: `default` (the label), `icon`. The chip container is 32px tall, and its touch target
+is 48px (see Touch target).
 
 ### MdNavigationBar
 
