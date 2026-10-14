@@ -64,10 +64,13 @@ const token = (name, overrides = {}) => ({
 const readRoute = (path) => ({ path, permission: { identifier: 'route:read' } })
 
 // Fresh modules per test: the token store is a shared singleton, and each test needs its own.
-const mountView = async () => {
+const mountView = async (props = {}) => {
   const { default: TokensView } = await import('./TokensView.vue')
-  return mount(TokensView, { props: { selectedTab: 'Tokens' } })
+  return mount(TokensView, { props: { selectedTab: 'Tokens', ...props } })
 }
+
+// Fixed reference time for the expiry tests: 2026-06-15 at noon UTC. The view must not read the system clock.
+const NOW = Date.UTC(2026, 5, 15, 12)
 
 const buttonWithText = (wrapper, text) =>
   wrapper.findAll('button').find(button => button.text() === text)
@@ -382,6 +385,136 @@ describe('TokensView', () => {
       await clickButton(wrapper, '+ Generate token')
 
       expect(wrapper.text()).toMatch(/survive a restart/i)
+    })
+  })
+
+  describe('expiry date', () => {
+    const editExpiry = async (date) => {
+      const client = fakeClient({ list: vi.fn(() => Promise.resolve({ data: [token('a')] })) })
+      session.client = client
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+      await wrapper.find('[aria-label="Edit token a"]').trigger('click')
+      await wrapper.find('input[name="expires"]').setValue(date)
+      await clickButton(wrapper, 'Save')
+      await flushPromises()
+      return client
+    }
+
+    it('rejects a date before today with an inline error', async () => {
+      const client = await editExpiry('2026-06-14')
+
+      expect(wrapper.text()).toContain('Choose today or a later date')
+      expect(client.tokens.update).not.toHaveBeenCalled()
+    })
+
+    it('accepts today as the expiry date', async () => {
+      const client = await editExpiry('2026-06-15')
+
+      expect(wrapper.text()).not.toContain('Choose today or a later date')
+      expect(client.tokens.update).toHaveBeenCalledTimes(1)
+    })
+
+    it('accepts a future expiry date', async () => {
+      const client = await editExpiry('2026-07-01')
+
+      expect(wrapper.text()).not.toContain('Choose today or a later date')
+      expect(client.tokens.update).toHaveBeenCalledTimes(1)
+    })
+
+    it('offers today as the earliest date in the picker', async () => {
+      session.client = fakeClient({ list: vi.fn(() => Promise.resolve({ data: [token('a')] })) })
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+      await wrapper.find('[aria-label="Edit token a"]').trigger('click')
+
+      expect(wrapper.find('input[name="expires"]').attributes('min')).toBe('2026-06-15')
+    })
+  })
+
+  describe('row actions', () => {
+    const tokenWithRoute = () => fakeClient({
+      list: vi.fn(() => Promise.resolve({ data: [token('a', { routes: [readRoute('/x')] })] }))
+    })
+
+    it('renders the edit, regenerate and revoke actions of a token row', async () => {
+      session.client = tokenWithRoute()
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+
+      for (const label of ['Edit token a', 'Regenerate the secret of token a', 'Revoke token a']) {
+        expect(wrapper.find(`[aria-label="${label}"]`).exists(), label).toBe(true)
+      }
+    })
+
+    it('makes the token row actions focusable buttons', async () => {
+      session.client = tokenWithRoute()
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+
+      for (const label of ['Edit token a', 'Regenerate the secret of token a', 'Revoke token a']) {
+        const element = wrapper.find(`[aria-label="${label}"]`).element
+        expect(element.tagName, label).toBe('BUTTON')
+        expect(element.disabled, label).toBe(false)
+        expect(element.tabIndex, label).toBeGreaterThanOrEqual(0)
+      }
+    })
+
+    it('renders the route row actions in the DOM as focusable buttons', async () => {
+      session.client = tokenWithRoute()
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+
+      const edit = wrapper.find('[aria-label="Edit route /x"]').element
+      expect(edit.tagName).toBe('BUTTON')
+      expect(edit.disabled).toBe(false)
+    })
+  })
+
+  describe('confirmation buttons', () => {
+    const unsavedDraft = async () => {
+      session.client = fakeClient({
+        list: vi.fn(() => Promise.resolve({ data: [token('a', { description: 'old' }), token('b')] }))
+      })
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+      await wrapper.find('[aria-label="Edit token a"]').trigger('click')
+      await wrapper.find('input[name="description"]').setValue('changed')
+      await wrapper.find('[aria-label="Edit token b"]').trigger('click')
+    }
+
+    it('makes keep editing the tonal action of the unsaved-changes notice', async () => {
+      await unsavedDraft()
+
+      expect(buttonWithText(wrapper, 'Keep editing').attributes('data-variant')).toBe('tonal')
+    })
+
+    it('makes discard changes a text button in the error colour', async () => {
+      await unsavedDraft()
+
+      const discard = buttonWithText(wrapper, 'Discard changes')
+      expect(discard.attributes('data-variant')).toBe('text')
+      expect(discard.classes()).toContain('text-error')
+    })
+
+    it('makes cancel the tonal action of the revoke confirmation', async () => {
+      session.client = fakeClient({ list: vi.fn(() => Promise.resolve({ data: [token('a')] })) })
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+      await wrapper.find('[aria-label="Revoke token a"]').trigger('click')
+
+      expect(buttonWithText(wrapper, 'Cancel').attributes('data-variant')).toBe('tonal')
+    })
+
+    it('makes revoke a text button in the error colour', async () => {
+      session.client = fakeClient({ list: vi.fn(() => Promise.resolve({ data: [token('a')] })) })
+      wrapper = await mountView({ now: NOW })
+      await flushPromises()
+      await wrapper.find('[aria-label="Revoke token a"]').trigger('click')
+
+      const revoke = buttonWithText(wrapper, 'Revoke')
+      expect(revoke.attributes('data-variant')).toBe('text')
+      expect(revoke.classes()).toContain('text-error')
     })
   })
 })
