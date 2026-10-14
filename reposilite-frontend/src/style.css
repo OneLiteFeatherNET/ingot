@@ -34,8 +34,7 @@
  * choice next to `auto`. See src/store/theme.js and src/App.vue.
  *
  * `:is` and not the more common `:where`, because `:where` contributes no specificity. A
- * `dark:` utility then loses to any third-party rule written with two classes, and the
- * dashboard has those: vue3-tabs styles its own indicator that way.
+ * `dark:` utility then loses to any third-party rule written with two classes.
  */
 @custom-variant dark (&:is(.dark, .dark *));
 
@@ -107,15 +106,6 @@
   .container {
     @apply px-10 max-sm:px-2;
   }
-}
-
-/*
- * Outside any layer, on purpose. The active tab indicator of vue3-tabs is painted in its own
- * stylesheet with a selector of specificity (0,2,0). `:root .active` matches that, and an
- * unlayered rule beats a layered one, so the role colour wins in both themes.
- */
-:root .active {
-  border-color: var(--md-sys-color-on-surface);
 }
 
 .router-view-full {
