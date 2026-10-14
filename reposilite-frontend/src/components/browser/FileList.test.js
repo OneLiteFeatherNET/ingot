@@ -186,3 +186,13 @@ describe('FileList downloads', () => {
     expect(wrapper.find('[role="progressbar"]').exists(), 'a finished download leaves no progress behind').toBe(false)
   })
 })
+
+describe('FileList container', () => {
+  it('gives the list the medium corner radius so it matches the repository details card', () => {
+    const wrapper = mountList({ files: { list: [jar], error: false } })
+
+    const list = wrapper.find('ul')
+    expect(list.classes(), 'the list uses the card radius').toContain('rounded-corner-medium')
+    expect(list.classes(), 'the list no longer uses the 28px radius').not.toContain('rounded-corner-extra-large')
+  })
+})

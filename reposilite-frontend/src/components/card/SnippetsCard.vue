@@ -142,9 +142,9 @@ const selectTab = (tab) =>
 </script>
 
 <template>
-  <!-- Filled, like the file listing beside it: a tonal surface, not a floating card. -->
+  <!-- Outlined on the surface: the file listing beside it is the tonal block, this card the quiet frame. -->
   <MdCard
-    variant="filled"
+    variant="outlined"
     class="w-full"
   >
     <div class="px-2 pb-2">

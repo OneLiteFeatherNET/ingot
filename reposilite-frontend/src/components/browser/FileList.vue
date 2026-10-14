@@ -142,7 +142,7 @@ const entryUrl = (file) =>
       :close="closeDeleteModal"
     />
     <ul
-      class="rounded-corner-extra-large bg-surface-container-low"
+      class="rounded-corner-medium bg-surface-container-low"
       :class="compactMode ? 'p-1' : 'p-2 divide-y divide-outline-variant'"
     >
       <template

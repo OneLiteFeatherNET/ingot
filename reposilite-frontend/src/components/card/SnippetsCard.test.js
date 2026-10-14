@@ -98,3 +98,16 @@ describe('SnippetsCard copy action', () => {
     expect(wrapper.text(), 'the user is told how to finish the copy').toContain('Ctrl+C')
   })
 })
+
+describe('SnippetsCard surface', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('renders the details as an outlined card on the surface', async () => {
+    await mountCard()
+
+    expect(wrapper.find('[data-variant]').attributes('data-variant')).toBe('outlined')
+  })
+})
