@@ -21,92 +21,124 @@
  * the input.
  */
 
-const MAX_TEAM_DEPTH = 5
+// The longest chain of parent steps above a team, as in the backend (TeamHierarchy.MAX_DEPTH).
+const MAX_TEAM_DEPTH = 8
+
+// The longest node, as in the backend (NodePattern.MAX_LENGTH).
+const MAX_NODE_LENGTH = 255
 
 const AREAS = ["settings", "users", "teams", "tokens", "maintenance", "audit", "console", "dashboard"]
 const ACTIONS = ["read", "deploy", "delete", "manage"]
 
+// The node that makes a subject an instance admin (the backend stores the instance role as this node).
+const INSTANCE_ADMIN_NODE = "ingot.admin.*"
+
 const SOURCE = {
-  USER: "USER", TEAM: "TEAM", INHERITED_TEAM: "INHERITED_TEAM", LEGACY: "LEGACY", DEFAULT: "DEFAULT", TOKEN: "TOKEN",
+  USER: "USER", TEAM: "TEAM", INHERITED_TEAM: "INHERITED_TEAM", DEFAULT: "DEFAULT", TOKEN: "TOKEN",
 }
 
-const SEGMENT = /^(\*|[A-Za-z0-9_-]+)$/
-const WILDCARD_HINT = "Segments may only hold letters, digits, '_' and '-', and a '*' must be a whole segment"
-const REPOSITORY_HINT = `Use ingot.repository.<repository>.<${ACTIONS.join("|")}>`
-const ADMIN_HINT = `Use ingot.admin.<${AREAS.join("|")}|*>`
-const SHAPE_HINT = "Use *, ingot.admin.<area> or ingot.repository.<repository>.<action>"
+const REPOSITORY_PREFIX = "ingot.repository."
+const ADMIN_PREFIX = "ingot.admin."
 
 // ---------------------------------------------------------------- grammar
 
-/** The problems of a node as a list of messages. An empty list means the node is valid. */
-const validateNode = (node) => {
-  if (typeof node !== "string" || node.trim() === "") return ["Node is required"]
-  if (node !== node.trim()) return ["Node must not start or end with a space"]
-  const segments = node.split(".")
-  if (segments.some(segment => !SEGMENT.test(segment))) return [WILDCARD_HINT]
-  if (node === "*") return []
-  if (segments[0] !== "ingot") return [SHAPE_HINT]
-  if (segments[1] === "admin") {
-    if (segments.length !== 3) return [ADMIN_HINT]
-    return segments[2] === "*" || AREAS.includes(segments[2]) ? [] : [`Unknown admin area '${segments[2]}'. ${ADMIN_HINT}`]
-  }
-  if (segments[1] === "repository") {
-    if (segments.length !== 4) return [REPOSITORY_HINT]
-    return segments[3] === "*" || ACTIONS.includes(segments[3]) ? [] : [`Unknown action '${segments[3]}'. ${REPOSITORY_HINT}`]
-  }
-  return [SHAPE_HINT]
-}
-
-/** WILDCARD, STATIC (admin area) or REPOSITORY (a literal repository). Only meaningful for a valid node. */
-const kindOf = (node) => {
-  const segments = node.split(".")
-  if (node === "*" || segments.includes("*") && segments[1] === "admin") return "WILDCARD"
-  if (segments[1] === "admin") return "STATIC"
-  return segments[2] === "*" || segments[3] === "*" ? "WILDCARD" : "REPOSITORY"
-}
+// Whitespace as Kotlin sees it (Character.isWhitespace or isSpaceChar), and the ISO control characters.
+const WHITESPACE_OR_CONTROL = /[\p{Z}\u0000-\u001f\u007f-\u009f]/u
 
 /**
- * Checks a list of { node, allowed } entries. Returns the cleaned entries and the problems as
- * [{ node, message }]. A node that is listed twice is a problem, so that the list stays unambiguous.
+ * Parses a node as NodePattern.parse does, in the same order of checks and with the same messages. Returns
+ * { problem } for an invalid node, otherwise { kind, repository, action, area } where kind is EVERYTHING,
+ * REPOSITORY or ADMIN and the parts that do not belong to the kind are null.
+ */
+const parseNode = (text) => {
+  if (text.length === 0) return { problem: "The node is empty" }
+  if (text.length > MAX_NODE_LENGTH) return { problem: `The node '${text.slice(0, 40)}...' is longer than ${MAX_NODE_LENGTH} characters` }
+  if (WHITESPACE_OR_CONTROL.test(text)) return { problem: `The node '${text}' contains whitespace or control characters` }
+  if (text.startsWith("-")) {
+    return { problem: `The node '${text}' starts with '-', negation is stored as allowed false and not in the name` }
+  }
+  if (text === "*") return { kind: "EVERYTHING", repository: null, action: null, area: null }
+  if (text.startsWith(REPOSITORY_PREFIX)) {
+    const rest = text.slice(REPOSITORY_PREFIX.length)
+    const split = rest.lastIndexOf(".")
+    if (split <= 0) {
+      return { problem: `The repository node '${text}' needs a repository and an action, for example ingot.repository.releases.read` }
+    }
+    const repository = rest.slice(0, split)
+    const action = rest.slice(split + 1)
+    if (action !== "*" && !ACTIONS.includes(action)) {
+      return { problem: `The action '${action}' of '${text}' is unknown, supported: ${ACTIONS.join(", ")} or *` }
+    }
+    if (repository !== "*" && (repository.includes("*") || repository.split(".").some(part => part === ""))) {
+      return { problem: `The repository '${repository}' of '${text}' is invalid, a wildcard must be the whole repository segment` }
+    }
+    return { kind: "REPOSITORY", repository, action, area: null }
+  }
+  if (text.startsWith(ADMIN_PREFIX)) {
+    const area = text.slice(ADMIN_PREFIX.length)
+    if (area !== "*" && !AREAS.includes(area)) {
+      return { problem: `The admin area '${area}' of '${text}' is unknown, supported: ${AREAS.join(", ")} or *` }
+    }
+    return { kind: "ADMIN", repository: null, action: null, area }
+  }
+  return { problem: `The node '${text}' is unknown, nodes start with 'ingot.repository.' or 'ingot.admin.', or are '*'` }
+}
+
+/** The reason a node is not valid, or null when it is valid (NodePattern.problemOf). */
+const problemOf = (text) => parseNode(text).problem ?? null
+
+/**
+ * Checks a list of { node, allowed } entries the way the backend does (IdentityFacade.parseNodes): every invalid node
+ * is reported in one message, then a node listed twice. Returns { entries } with the cleaned entries, or { message }
+ * with the text of the 400. An entry that is not { node: text, allowed: boolean } cannot be read at all.
  */
 const validateEntries = (entries) => {
-  if (!Array.isArray(entries)) return { entries: [], problems: [{ node: null, message: "Nodes must be a list of { node, allowed }" }] }
-  const problems = []
-  const seen = new Set()
-  const cleaned = []
-  for (const entry of entries) {
-    const candidate = entry && typeof entry === "object" ? entry : {}
-    const shown = typeof candidate.node === "string" ? candidate.node : null
-    const nodeProblems = validateNode(candidate.node)
-    nodeProblems.forEach(message => problems.push({ node: shown, message }))
-    if (typeof candidate.allowed !== "boolean") problems.push({ node: shown, message: "allowed must be true or false" })
-    if (nodeProblems.length === 0 && seen.has(candidate.node)) problems.push({ node: shown, message: "Node is listed twice" })
-    if (nodeProblems.length === 0 && typeof candidate.allowed === "boolean" && !seen.has(candidate.node)) {
-      cleaned.push({ node: candidate.node, allowed: candidate.allowed })
-    }
-    if (nodeProblems.length === 0) seen.add(candidate.node)
-  }
-  return { entries: cleaned, problems }
+  if (!Array.isArray(entries)) return { message: "Failed to read body" }
+  const unreadable = entries.some(entry =>
+    !entry || typeof entry !== "object" || typeof entry.node !== "string" || typeof entry.allowed !== "boolean")
+  if (unreadable) return { message: "Failed to read body" }
+  const problems = entries.map(entry => problemOf(entry.node)).filter(problem => problem !== null)
+  if (problems.length > 0) return { message: `Invalid permission nodes: ${problems.join("; ")}` }
+  const counts = new Map()
+  entries.forEach(entry => counts.set(entry.node, (counts.get(entry.node) ?? 0) + 1))
+  const duplicates = [...counts].filter(([, count]) => count > 1).map(([node]) => node).sort()
+  if (duplicates.length > 0) return { message: `Nodes listed twice: ${duplicates.join(", ")}` }
+  return { entries: entries.map(entry => ({ node: entry.node, allowed: entry.allowed })) }
 }
 
 // ---------------------------------------------------------------- matching
 
-/** A pattern matches a node when it is '*' alone, or has as many segments and each equals or is '*'. */
+/**
+ * A pattern covers a requested node as NodePattern.matches does: '*' covers everything, a repository pattern covers a
+ * repository node of the same repository (or any, for '*') and action, an admin pattern an admin node of the same area.
+ * A requested node is concrete, so a '*' in it is a literal. A node that does not parse matches nothing.
+ */
 const matches = (pattern, node) => {
-  if (pattern === "*") return true
-  const patternSegments = pattern.split(".")
-  const nodeSegments = node.split(".")
-  return patternSegments.length === nodeSegments.length &&
-    patternSegments.every((segment, index) => segment === "*" || segment === nodeSegments[index])
+  const own = parseNode(pattern)
+  const request = parseNode(node)
+  if (own.problem || request.problem) return false
+  if (own.kind === "EVERYTHING") return true
+  if (own.kind === "REPOSITORY") {
+    return request.kind === "REPOSITORY" &&
+      (own.repository === "*" || own.repository === request.repository) &&
+      (own.action === "*" || own.action === request.action)
+  }
+  return request.kind === "ADMIN" && (own.area === "*" || own.area === request.area)
 }
 
-/** The number of literal segments of a pattern. '*' alone has none. */
-const specificity = (pattern) => pattern === "*" ? 0 : pattern.split(".").filter(segment => segment !== "*").length
+/** The literal parts of a pattern (NodePattern.specificity): 0 for '*', 2 plus one per literal part otherwise. */
+const specificity = (pattern) => {
+  const own = parseNode(pattern)
+  if (own.problem) return 0
+  if (own.kind === "EVERYTHING") return 0
+  if (own.kind === "REPOSITORY") return 2 + (own.repository !== "*" ? 1 : 0) + (own.action !== "*" ? 1 : 0)
+  return 2 + (own.area !== "*" ? 1 : 0)
+}
 
 // ---------------------------------------------------------------- evaluation
 
-const HIGHER_LABEL = { USER: "User node", TEAM: "Team node", INHERITED_TEAM: "Inherited team node", LEGACY: "Legacy grant" }
-const LOWER_LABEL = { TEAM: "team node", INHERITED_TEAM: "inherited team node", LEGACY: "legacy grant" }
+const HIGHER_LABEL = { USER: "User node", TEAM: "Team node", INHERITED_TEAM: "Inherited team node" }
+const LOWER_LABEL = { TEAM: "team node", INHERITED_TEAM: "inherited team node" }
 
 const REASON = {
   tie: "Deny wins on tie",
@@ -170,7 +202,7 @@ const decideLayer = (candidates) => {
   return { winner: deciding[0], verdict, deciding, tie, outranked, best, top }
 }
 
-/** Evaluates the matches of the user, team, inherited team and legacy layers for a node. */
+/** Evaluates the matches of the user, team and inherited team layers for a node. */
 const evaluatePrincipal = ({ node, user, memberTeams, teams }) => {
   const inherited = ancestorsOf(memberTeams, teams)
   const maxDistance = inherited.reduce((most, entry) => Math.max(most, entry.distance), 0)
@@ -185,22 +217,17 @@ const evaluatePrincipal = ({ node, user, memberTeams, teams }) => {
         .flatMap(entry => candidatesOf(SOURCE.INHERITED_TEAM, entry.team.name, entry.team.nodes, node, distance)),
     })
   }
-  const legacySubject = user.instanceRole ? user.name : memberTeams.find(team => team.instanceRole)?.name
-  layers.push({
-    source: SOURCE.LEGACY,
-    candidates: legacySubject === undefined ? [] : [{ source: SOURCE.LEGACY, subject: legacySubject, node: "*", allowed: true, depth: 0, specificity: 0 }],
-  })
-  return decideLayers(layers)
+  return decideLayers(layers, node)
 }
 
 /** The first layer with a candidate decides; every candidate of every layer gets a trace entry. */
-const decideLayers = (layers) => {
+const decideLayers = (layers, requested) => {
   const deciding = layers.findIndex(layer => layer.candidates.length > 0)
   const trace = []
   if (deciding < 0) {
     return {
-      decision: { source: SOURCE.DEFAULT, subject: null, node: null, allowed: false, depth: null },
-      trace: [{ source: SOURCE.DEFAULT, subject: null, node: null, allowed: false, matched: true, reason: REASON.default }],
+      decision: { source: SOURCE.DEFAULT, subject: null, node: requested, allowed: false, depth: 0 },
+      trace: [{ source: SOURCE.DEFAULT, subject: null, node: null, allowed: false, matched: true, reason: REASON.default, depth: 0 }],
     }
   }
   const layer = layers[deciding]
@@ -232,12 +259,12 @@ const decideLayers = (layers) => {
 }
 
 const entryOf = (candidate, matched, reason) =>
-  ({ source: candidate.source, subject: candidate.subject, node: candidate.node, allowed: candidate.allowed, matched, reason })
+  ({ source: candidate.source, subject: candidate.subject, node: candidate.node, allowed: candidate.allowed, matched, reason, depth: candidate.depth })
 
 /**
  * Evaluates a node for a principal.
- *   user:        { name, nodes, instanceRole }
- *   memberTeams: the teams the principal belongs to ({ name, nodes, parents, instanceRole })
+ *   user:        { name, nodes }
+ *   memberTeams: the teams the principal belongs to ({ name, nodes, parents })
  *   teams:       every team, to follow the parents
  *   token:       null, or { name, nodes }. A token without nodes does not narrow.
  * Returns { allowed, decision, trace }.
@@ -254,8 +281,8 @@ const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) =>
   }
   const result = decideLayer(candidates)
   if (result === null) {
-    const decision = { source: SOURCE.TOKEN, subject: token.name, node: null, allowed: false, depth: 0 }
-    const entry = { source: SOURCE.TOKEN, subject: token.name, node: null, allowed: false, matched: true, reason: REASON.tokenDenied }
+    const decision = { source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0 }
+    const entry = { source: SOURCE.TOKEN, subject: token.name, node: null, allowed: false, matched: true, reason: REASON.tokenDenied, depth: 0 }
     return { allowed: false, decision, trace: [...principal.trace, entry] }
   }
   const tokenReason = result.verdict ? REASON.tokenAllowed : REASON.tokenDeniedExplicit
@@ -267,101 +294,111 @@ const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) =>
   })
   const decision = result.verdict
     ? principal.decision
-    : { source: SOURCE.TOKEN, subject: token.name, node: result.winner.node, allowed: false, depth: 0 }
+    : { source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0 }
   return { allowed: result.verdict, decision, trace: [...principal.trace, ...entries] }
 }
 
-/** True when every admin area is allowed in the evaluation. */
-const holdsEveryArea = (context) =>
-  AREAS.every(area => evaluate({ ...context, node: `ingot.admin.${area}`, token: null }).allowed)
+/** Whether the evaluation allows the instance admin node (the instance role, directly or through teams). */
+const isInstanceAdmin = (context) => evaluate({ ...context, node: INSTANCE_ADMIN_NODE }).allowed
 
-/** The nodes of a list for which the evaluation allows. */
-const allowedNodes = (nodes, context) => nodes.filter(node => evaluate({ ...context, node, token: null }).allowed)
+/**
+ * The node patterns the subject is allowed, as PermissionEvaluator.effectiveNodes: every distinct rule pattern of the
+ * subject's own nodes, its teams and the teams they inherit, and the node list of the token when it narrows, each one
+ * decided as if it were requested, sorted. The catalog is not expanded.
+ */
+const effectiveNodes = (context) => {
+  const { user, memberTeams = [], teams = [], token = null } = context
+  const narrowing = token && token.nodes && token.nodes.length > 0 ? token : null
+  const patterns = [
+    ...(user.nodes ?? []),
+    ...memberTeams.flatMap(team => team.nodes ?? []),
+    ...ancestorsOf(memberTeams, teams).flatMap(entry => entry.team.nodes ?? []),
+    ...(narrowing ? narrowing.nodes : []),
+  ].map(entry => entry.node)
+  return [...new Set(patterns)]
+    .filter(pattern => evaluate({ ...context, node: pattern }).allowed)
+    .sort()
+}
 
 // ---------------------------------------------------------------- team parents
 
-/** The longest chain of parent steps above a team, following the given graph. */
-const heightOf = (name, graph, visiting = new Set()) => {
-  const key = name.toLowerCase()
-  if (visiting.has(key)) return 0
-  const team = graph.find(other => same(other.name, name))
-  if (!team || (team.parents ?? []).length === 0) return 0
-  visiting.add(key)
-  const height = 1 + Math.max(...team.parents.map(parent => heightOf(parent, graph, visiting)))
-  visiting.delete(key)
-  return height
-}
-
-/** The path of team names from `from` upwards to `to` through the parents, or null. */
-const pathUp = (from, to, graph, visited = new Set()) => {
-  if (same(from, to)) return [to]
-  if (visited.has(from.toLowerCase())) return null
-  visited.add(from.toLowerCase())
-  const team = graph.find(other => same(other.name, from))
-  for (const parent of team?.parents ?? []) {
-    const rest = pathUp(parent, to, graph, visited)
-    if (rest) return [from, ...rest]
+/**
+ * The first problem of the parent graph, as TeamHierarchy.problemOf finds it: the teams are visited by id, each one
+ * walks up its parents (also by id), a team met again on the walk is a cycle, and a team whose chain is longer than
+ * MAX_TEAM_DEPTH is too deep. The graph is a list of { id, name, parents } with the parents as names.
+ */
+const hierarchyProblem = (graph) => {
+  const idOf = (name) => graph.find(team => same(team.name, name))?.id
+  const parentIds = (team) => (team.parents ?? []).map(idOf).filter(id => id !== undefined)
+  const byId = new Map(graph.map(team => [team.id, team]))
+  const depths = new Map()
+  const onPath = new Set()
+  const depthOf = (id) => {
+    if (depths.has(id)) {
+      const known = depths.get(id)
+      return known > MAX_TEAM_DEPTH ? { tooDeep: id, depth: known } : null
+    }
+    if (onPath.has(id)) return { cycle: id }
+    onPath.add(id)
+    let depth = 0
+    for (const parent of [...parentIds(byId.get(id))].sort((left, right) => left - right)) {
+      const problem = depthOf(parent)
+      if (problem) return problem
+      depth = Math.max(depth, depths.get(parent) + 1)
+    }
+    onPath.delete(id)
+    depths.set(id, depth)
+    return depth > MAX_TEAM_DEPTH ? { tooDeep: id, depth } : null
+  }
+  for (const id of [...byId.keys()].sort((left, right) => left - right)) {
+    const problem = depthOf(id)
+    if (problem) return problem
   }
   return null
 }
 
 /**
- * Checks new parents for a team against the graph of all teams ({ name, parents }). Returns null when
- * they are fine, or { status: 409, message } for a cycle or for a chain deeper than MAX_TEAM_DEPTH.
+ * Checks new parents for a team against the graph of all teams ({ id, name, parents }). Returns null when they are
+ * fine, or { status: 409, message } for a cycle or for a chain deeper than MAX_TEAM_DEPTH, with the backend's text.
  */
 const checkParents = (graph, teamName, newParents) => {
-  for (const parent of newParents) {
-    const path = pathUp(parent, teamName, graph)
-    if (path) {
-      return {
-        status: 409,
-        message: `Adding ${parent} as a parent of ${teamName} would create a cycle: ${[teamName, ...path].join(" -> ")}`,
-      }
+  const changed = graph.map(team => same(team.name, teamName) ? { ...team, parents: newParents } : team)
+  const problem = hierarchyProblem(changed)
+  if (!problem) return null
+  const nameOf = (id) => changed.find(team => team.id === id)?.name ?? `team #${id}`
+  if (problem.cycle !== undefined) {
+    return {
+      status: 409,
+      message: `Inheritance of '${nameOf(problem.cycle)}' would form a cycle: a team cannot inherit from itself, directly or through its parents`,
     }
   }
-  const changed = graph.map(team => same(team.name, teamName) ? { ...team, parents: newParents } : team)
-  const deepest = Math.max(0, ...changed.map(team => heightOf(team.name, changed)))
-  if (deepest > MAX_TEAM_DEPTH) {
-    return { status: 409, message: `Inheritance deeper than ${MAX_TEAM_DEPTH} levels is not allowed` }
+  return {
+    status: 409,
+    message: `Inheritance of '${nameOf(problem.tooDeep)}' would be ${problem.depth} levels deep, the limit is ${MAX_TEAM_DEPTH} levels`,
   }
-  return null
 }
 
 // ---------------------------------------------------------------- catalog and templates
 
-const AREA_DESCRIPTIONS = {
-  settings: "Change the instance settings",
-  users: "Manage users and machine principals",
-  teams: "Manage teams and their access",
-  tokens: "Manage the access tokens of other principals",
-  maintenance: "Run maintenance and cleanup",
-  audit: "Read the audit log",
-  console: "Use the console",
-  dashboard: "Open the admin dashboard",
-}
-
-const ACTION_DESCRIPTIONS = {
-  read: "Read artifacts from",
-  deploy: "Deploy artifacts to",
-  delete: "Delete artifacts from",
-  manage: "Manage the settings of",
-}
-
-/** Every node a person can pick: the wildcards, the admin areas and the actions of each repository. */
+/**
+ * Every node a person can pick, as IdentityFacade.nodeCatalog lists it: the admin areas, the two wildcards, then each
+ * repository (sorted) with its actions and its action wildcard, then the action of every repository. Kept when the node
+ * starts with the prefix; an empty or absent prefix keeps all.
+ */
 const buildCatalog = (repositories, prefix = "") => {
   const entries = [
-    { node: "*", description: "Everything", kind: "WILDCARD" },
-    { node: "ingot.admin.*", description: "Every admin area", kind: "WILDCARD" },
-    { node: "ingot.repository.*.*", description: "Every action on every repository", kind: "WILDCARD" },
-    ...AREAS.map(area => ({ node: `ingot.admin.${area}`, description: AREA_DESCRIPTIONS[area], kind: "STATIC" })),
-    ...[...repositories].sort().flatMap(repository =>
-      ACTIONS.map(action => ({
-        node: `ingot.repository.${repository}.${action}`,
-        description: `${ACTION_DESCRIPTIONS[action]} ${repository}`,
-        kind: "REPOSITORY",
-      }))),
+    ...AREAS.map(area => ({ node: `ingot.admin.${area}`, description: `Administer ${area}`, kind: "STATIC" })),
+    { node: "ingot.admin.*", description: "Every administrative area, as the instance administrator", kind: "WILDCARD" },
+    { node: "*", description: "Everything: every repository action and every administrative area", kind: "WILDCARD" },
+    ...[...repositories].sort().flatMap(repository => [
+      ...ACTIONS.map(action => ({
+        node: `ingot.repository.${repository}.${action}`, description: `${action} on repository ${repository}`, kind: "REPOSITORY",
+      })),
+      { node: `ingot.repository.${repository}.*`, description: `Every action on repository ${repository}`, kind: "REPOSITORY" },
+    ]),
+    ...ACTIONS.map(action => ({ node: `ingot.repository.*.${action}`, description: `${action} on every repository`, kind: "WILDCARD" })),
   ]
-  return entries.filter(entry => entry.node.startsWith(prefix ?? ""))
+  return entries.filter(entry => !prefix || entry.node.startsWith(prefix))
 }
 
 const repositoryNode = (action) => `ingot.repository.{repository}.${action}`
@@ -370,7 +407,7 @@ const TEMPLATES = [
   { id: "read", label: "Read", nodes: [repositoryNode("read")] },
   { id: "deploy", label: "Deploy", nodes: [repositoryNode("read"), repositoryNode("deploy")] },
   { id: "maintain", label: "Maintain", nodes: [repositoryNode("read"), repositoryNode("deploy"), repositoryNode("delete")] },
-  { id: "admin", label: "Repository admin", nodes: [repositoryNode("read"), repositoryNode("deploy"), repositoryNode("delete"), repositoryNode("manage")] },
+  { id: "admin", label: "Admin", nodes: [repositoryNode("read"), repositoryNode("deploy"), repositoryNode("delete"), repositoryNode("manage")] },
   { id: "instance-admin", label: "Instance admin", nodes: ["ingot.admin.*"] },
 ]
 
@@ -378,8 +415,8 @@ const TEMPLATES = [
 const templates = () => TEMPLATES.map(template => ({ ...template, nodes: [...template.nodes] }))
 
 module.exports = {
-  MAX_TEAM_DEPTH, AREAS, ACTIONS, SOURCE,
-  validateNode, validateEntries, kindOf, matches, specificity,
-  evaluate, holdsEveryArea, allowedNodes, ancestorsOf,
+  MAX_TEAM_DEPTH, MAX_NODE_LENGTH, AREAS, ACTIONS, SOURCE, INSTANCE_ADMIN_NODE,
+  problemOf, validateEntries, matches, specificity,
+  evaluate, isInstanceAdmin, effectiveNodes, ancestorsOf,
   checkParents, buildCatalog, templates,
 }

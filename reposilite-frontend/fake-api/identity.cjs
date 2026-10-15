@@ -45,7 +45,8 @@ const MAX_TEAM_NAME_LENGTH = 320
 const LAST_ADMIN_MESSAGE = "The last instance admin cannot be disabled, demoted or deleted."
 const PRIVATE_TEAM_PREFIX = "machine:"
 
-const ROLES = ["READ", "DEPLOY", "MAINTAIN", "ADMIN"]
+// The roles a person can assign to a team (Role.ASSIGNABLE). The legacy roles exist on private teams only.
+const ASSIGNABLE_ROLES = ["READ", "DEPLOY", "MAINTAIN", "ADMIN"]
 const ROLE_ACTIONS = {
   READ: ["READ"],
   DEPLOY: ["READ", "WRITE"],
@@ -54,9 +55,20 @@ const ROLE_ACTIONS = {
   LEGACY_READ: ["READ"],
   LEGACY_WRITE: ["WRITE", "DELETE"],
 }
+const ROLES = Object.keys(ROLE_ACTIONS)
 const ALL_ACTIONS = ["READ", "WRITE", "DELETE", "MANAGE_REPOSITORY", "INSTANCE_ADMIN"]
 // Token scopes are actions, as in the backend (spec 2.1 and O-8). Roles such as DEPLOY are not scopes.
 const SCOPE_NAMES = ALL_ACTIONS
+// The node a scope becomes (ScopeRules.nodeOf): a token with scopes carries these nodes.
+const SCOPE_NODES = {
+  READ: "ingot.repository.*.read",
+  WRITE: "ingot.repository.*.deploy",
+  DELETE: "ingot.repository.*.delete",
+  MANAGE_REPOSITORY: "ingot.repository.*.manage",
+  INSTANCE_ADMIN: nodeLogic.INSTANCE_ADMIN_NODE,
+}
+const nodesOfScopes = (scopes) =>
+  ALL_ACTIONS.filter(scope => scopes.includes(scope)).map(scope => ({ node: SCOPE_NODES[scope], allowed: true }))
 
 // ---------------------------------------------------------------- state
 
@@ -85,17 +97,33 @@ const refreshSessions = new Map()
 let setupRequired = SETUP_MODE
 let repositoriesOf = () => []
 
+// The backend lists the nodes of a subject sorted by their text.
+const sortNodes = (entries) => [...entries].sort((left, right) => left.node < right.node ? -1 : left.node > right.node ? 1 : 0)
+
+// The instance role is the node ingot.admin.* allowed on the subject itself (IdentityStore.grantInstanceRole).
+// A holder here is a principal or a team; the role is a view of its node list and not a flag of its own.
+const holdsInstanceRole = (holder) => holder.nodes.some(entry => entry.node === nodeLogic.INSTANCE_ADMIN_NODE && entry.allowed)
+
+// The node list with the instance role set or removed. Granting writes the node as allowed, also over a denial;
+// revoking deletes the node whatever its value.
+const withInstanceRole = (entries, value) => {
+  const others = entries.filter(entry => entry.node !== nodeLogic.INSTANCE_ADMIN_NODE)
+  return sortNodes(value ? [...others, { node: nodeLogic.INSTANCE_ADMIN_NODE, allowed: true }] : others)
+}
+
+// instanceRole is a shortcut for the seed and the setup: it adds the instance admin node to the node list.
 const addPrincipal = ({ kind, name, displayName, disabled = false, createdAt = nowIso(), password = null, instanceRole = false, lastSeenAt = null, nodes = [] }) => {
   const principal = {
     id: nextId(), kind, name, displayName: displayName || name, disabled,
-    createdAt, lastSeenAt, password, mustChangePassword: false, instanceRole, tokens: [], nodes,
+    createdAt, lastSeenAt, password, mustChangePassword: false, tokens: [],
+    nodes: instanceRole ? withInstanceRole(nodes, true) : sortNodes(nodes),
   }
   principals.push(principal)
   return principal
 }
 
 const addTeam = ({ name, description = "", externalRef = null, members = [], grants = [], instanceRole = false, nodes = [], parents = [] }) => {
-  const team = { id: nextId(), name, description, externalRef, members, grants, instanceRole, nodes, parents }
+  const team = { id: nextId(), name, description, externalRef, members, grants, nodes: instanceRole ? withInstanceRole(nodes, true) : sortNodes(nodes), parents }
   teams.push(team)
   return team
 }
@@ -103,7 +131,9 @@ const addTeam = ({ name, description = "", externalRef = null, members = [], gra
 const addToken = (principal, { name, description = "", createdAt = today(), expiresAt = null, scopes = null, secret, legacyRoutes = [], lastUsedAt = null, lastUsedIp = null, nodes = [] }) => {
   const id = 1000 + nextId()
   const token = {
-    id, name, description, createdAt, expiresAt, scopes, lastUsedAt, lastUsedIp, nodes,
+    id, name, description, createdAt, expiresAt, scopes, lastUsedAt, lastUsedIp,
+    // A token with scopes carries the nodes the scopes stand for, as the backend stores them with the token.
+    nodes: nodes.length === 0 && scopes ? nodesOfScopes(scopes) : nodes,
     secret: secret || nextBearerSecret(id), legacyRoutes,
   }
   principal.tokens.push(token)
@@ -212,14 +242,29 @@ const findToken = (name) => {
 
 const teamsOf = (principal) => teams.filter(team => team.members.some(member => same(member.principal, principal.name)))
 const publicTeamNamesOf = (principal) => teamsOf(principal).filter(team => !isPrivateTeam(team)).map(team => team.name).sort()
-const isInstanceAdmin = (principal) => principal.instanceRole || teamsOf(principal).some(team => team.instanceRole)
+
+// The instance admin is decided by the evaluator for the node ingot.admin.*: through the nodes of the principal, of
+// its teams and of the teams they inherit, narrowed by the token when one is given. A disabled principal is none.
+const isInstanceAdmin = (principal, token = null) =>
+  !principal.disabled && nodeLogic.isInstanceAdmin(contextOf(principal, token))
+
+// The rules that confer the instance admin: the admin node itself and the star node (as the backend simulates a loss).
+const withoutAdminNodes = (entries) =>
+  entries.filter(entry => !(entry.allowed && (entry.node === nodeLogic.INSTANCE_ADMIN_NODE || entry.node === "*")))
 
 // How many enabled principals are instance admins, as if the given change had been made already.
-const activeAdminCount = ({ removed, disabled, demoted, removedTeam, demotedTeam } = {}) =>
-  principals.filter(principal =>
-    principal !== removed && principal !== disabled && !principal.disabled &&
-    ((principal.instanceRole && principal !== demoted) ||
-      teamsOf(principal).some(team => team.instanceRole && team !== removedTeam && team !== demotedTeam))).length
+const activeAdminCount = ({ removed, disabled, demoted, removedTeam, demotedTeam } = {}) => {
+  const remaining = teams
+    .filter(team => team !== removedTeam)
+    .map(team => team === demotedTeam ? { ...team, nodes: withoutAdminNodes(team.nodes) } : team)
+  return principals
+    .filter(principal => principal !== removed && principal !== disabled && !principal.disabled)
+    .filter(principal => nodeLogic.isInstanceAdmin({
+      user: { name: principal.name, nodes: principal === demoted ? withoutAdminNodes(principal.nodes) : principal.nodes },
+      memberTeams: remaining.filter(team => team.members.some(member => same(member.principal, principal.name))),
+      teams: remaining,
+    })).length
+}
 
 // True when the change takes away the last instance admin that exists now.
 const leavesNoAdmin = (change) => activeAdminCount() > 0 && activeAdminCount(change) === 0
@@ -248,76 +293,94 @@ const appliesTo = (grant, repository) => grant.repository === null || same(grant
 // ---------------------------------------------------------------- permission nodes
 
 // The data the evaluator reads, for a principal (optionally with one of its tokens) and for a team.
+// The token decides under the name of its owner, as the backend names the subject of a token decision.
 const contextOf = (principal, token = null) => ({
-  user: { name: principal.name, nodes: principal.nodes, instanceRole: principal.instanceRole },
+  user: { name: principal.name, nodes: principal.nodes },
   memberTeams: teamsOf(principal),
   teams,
-  token: token && token.nodes.length > 0 ? { name: token.name, nodes: token.nodes } : null,
+  token: token && token.nodes.length > 0 ? { name: principal.name, nodes: token.nodes } : null,
 })
 
+// A team on its own: its nodes and the nodes of the teams it inherits, without any principal or token.
 const teamContext = (team) => ({
-  user: { name: team.name, nodes: [], instanceRole: false },
+  user: { name: team.name, nodes: [] },
   memberTeams: [team],
   teams,
   token: null,
 })
 
-const isNodeAdmin = (principal) => isInstanceAdmin(principal) || nodeLogic.holdsEveryArea(contextOf(principal))
+const isTeamAdmin = (team) => nodeLogic.isInstanceAdmin(teamContext(team))
 
 const catalogNodes = (prefix = "") => nodeLogic.buildCatalog(repositoriesOf().map(repository => repository.id), prefix)
 
-// The catalog nodes (literal and wildcard) that the evaluator allows for the principal.
-const effectiveNodes = (principal) =>
-  nodeLogic.allowedNodes(catalogNodes().map(entry => entry.node), contextOf(principal))
+// The distinct rule patterns the evaluator allows for the principal, sorted (PermissionEvaluator.effectiveNodes).
+// The catalog is not expanded: a subject with "ingot.admin.*" gets that pattern and not the eight areas.
+const effectiveNodes = (principal, token = null) =>
+  principal.disabled ? [] : nodeLogic.effectiveNodes(contextOf(principal, token))
 
 // ---------------------------------------------------------------- views
 
 const principalDto = (principal) => ({
   id: principal.id, kind: principal.kind, name: principal.name, displayName: principal.displayName,
   disabled: principal.disabled, createdAt: principal.createdAt, lastSeenAt: principal.lastSeenAt,
-  nodeCount: principal.nodes.length, isAdmin: isNodeAdmin(principal),
 })
 
 // A list row: the flat principal and the summaries a list shows, so that no detail is read per row.
-// instanceAdmin is the role however it is held, instanceRole the direct role (as in the detail).
-// A user can sign in with the local provider while it has a password; a machine never can.
+// instanceAdmin is the role held directly or through a team, instanceRole the direct role (as in the detail).
+// isAdmin is the evaluated instance admin, also through inherited teams. A user can sign in with the local
+// provider while it has a password; a machine never can.
 const principalListItem = (principal) => ({
   ...principalDto(principal),
-  instanceAdmin: isInstanceAdmin(principal),
-  instanceRole: principal.instanceRole,
+  instanceAdmin: holdsInstanceRole(principal) || teamsOf(principal).some(holdsInstanceRole),
+  instanceRole: holdsInstanceRole(principal),
   tokenCount: principal.tokens.length,
   providers: principal.kind === "USER" && principal.password ? ["local"] : [],
+  nodeCount: principal.nodes.length,
+  isAdmin: isInstanceAdmin(principal),
 })
 
 const tokenDto = (token) => ({
   name: token.name, description: token.description, createdAt: token.createdAt,
   expiresAt: token.expiresAt, scopes: token.scopes, lastUsedAt: token.lastUsedAt, lastUsedIp: token.lastUsedIp,
-  nodes: token.nodes.map(entry => ({ ...entry })),
+  // A token that does not narrow its owner has no node list.
+  nodes: token.nodes.length > 0 ? token.nodes.map(entry => ({ ...entry })) : null,
 })
 
 const principalDetail = (principal) => ({
-  ...principalDto(principal),
+  principal: principalDto(principal),
   teams: publicTeamNamesOf(principal),
-  instanceRole: principal.instanceRole,
+  instanceRole: holdsInstanceRole(principal),
   tokens: principal.tokens.map(tokenDto),
+  nodes: principal.nodes.map(entry => ({ ...entry })),
+  nodeCount: principal.nodes.length,
+  isAdmin: isInstanceAdmin(principal),
 })
 
 const teamDto = (team) => ({
   name: team.name, description: team.description, externalRef: team.externalRef,
   memberCount: team.members.length, grantCount: team.grants.length,
-  instanceAdmin: team.instanceRole,
-  nodeCount: team.nodes.length, isAdmin: team.instanceRole || nodeLogic.holdsEveryArea(teamContext(team)),
+  instanceAdmin: holdsInstanceRole(team),
+  nodeCount: team.nodes.length, isAdmin: isTeamAdmin(team),
 })
 
+// Null sorts before a text, as Kotlin's compareBy does for nullable keys.
+const compareNullable = (left, right) =>
+  left === right ? 0 : left === null ? -1 : right === null ? 1 : left < right ? -1 : 1
+
 const teamDetail = (team) => ({
-  ...teamDto(team),
+  name: team.name, description: team.description, externalRef: team.externalRef,
   members: [...team.members]
-    .sort((left, right) => left.principal.localeCompare(right.principal))
+    .sort((left, right) => compareNullable(left.principal, right.principal))
     .map(member => ({ principal: member.principal, kind: findPrincipal(member.principal)?.kind ?? "USER", source: member.source })),
-  grants: team.grants.map(grant => ({ repository: grant.repository, pathPrefix: grant.pathPrefix, role: grant.role })),
-  instanceRole: team.instanceRole,
-  parents: [...team.parents],
-  children: teams.filter(other => other.parents.some(parent => same(parent, team.name))).map(other => other.name).sort(),
+  grants: team.grants
+    .map(grant => ({ repository: grant.repository, pathPrefix: grant.pathPrefix, role: grant.role }))
+    .sort((left, right) =>
+      compareNullable(left.repository, right.repository) || compareNullable(left.pathPrefix, right.pathPrefix) || compareNullable(left.role, right.role)),
+  instanceRole: holdsInstanceRole(team),
+  nodes: team.nodes.map(entry => ({ ...entry })),
+  parents: [...team.parents].sort(),
+  nodeCount: team.nodes.length,
+  isAdmin: isTeamAdmin(team),
 })
 
 // What a legacy route looks like in /api/tokens, for the main file to merge into its own list.
@@ -363,12 +426,8 @@ const accessEntries = (repository) =>
 
 // ---------------------------------------------------------------- http helpers
 
-const fail = (res, status, message, problems) =>
-  res.status(status).send(problems === undefined ? { status, message } : { status, message, problems })
-
-// A 400 for invalid permission nodes: every problem with its node, the first one as the message.
-const failProblems = (res, problems) =>
-  fail(res, 400, problems.length === 1 ? problems[0].message : `${problems.length} permission nodes are invalid`, problems)
+// Every error body is { status, message } and nothing else, as the backend sends it.
+const fail = (res, status, message) => res.status(status).send({ status, message })
 
 // A hash of the body, without the times that change on a read or a sign-in, so that signing in does
 // not make every open editor stale. The tag is quoted, as the header requires.
@@ -491,8 +550,8 @@ const resolveBearer = (req, secret) => {
   token.lastUsedIp = req.ip || null
   // The server records the use on the principal as well, which is what a machine list row shows.
   principal.lastSeenAt = token.lastUsedAt
-  const scoped = token.scopes === null || token.scopes.includes("INSTANCE_ADMIN")
-  return { via: "bearer", principal, admin: isInstanceAdmin(principal) && scoped }
+  // The token narrows its owner by its node list, so a token without the admin node is no admin.
+  return { via: "bearer", principal, admin: isInstanceAdmin(principal, token) }
 }
 
 const resolveActor = (req) => {
@@ -700,7 +759,8 @@ identity.use((req, res, next) => {
     if (!req.actor.principal) return fail(res, 401, "Invalid credentials")
     return next()
   }
-  if (!req.actor.admin) return fail(res, 403, "Requires an instance admin")
+  // The permission check answers every signed-in caller for its own principal; it decides for others itself.
+  if (!req.actor.admin && req.path !== "/check") return fail(res, 403, "Requires an instance admin")
   next()
 })
 
@@ -747,14 +807,20 @@ const createToken = (req, res, principal, status) => {
   if (expiry.problem) return fail(res, 400, expiry.problem)
   const scopes = parseScopes(body.scopes)
   if (scopes.problem) return fail(res, 400, scopes.problem)
+  // Without nodes the scopes become the node list of the token (ScopeRules.nodesOf), added by addToken.
+  let tokenNodes = []
+  if (body.nodes !== undefined && body.nodes !== null) {
+    if (Array.isArray(body.nodes) && body.nodes.length === 0) return fail(res, 400, "Nodes cannot be empty, omit them for an unrestricted token")
+    const parsed = nodeLogic.validateEntries(body.nodes)
+    if (parsed.message) return fail(res, 400, parsed.message)
+    tokenNodes = parsed.entries
+  }
   if (body.secret !== undefined && (typeof body.secret !== "string" || body.secret.trim() === "")) {
     return fail(res, 400, "Secret cannot be blank")
   }
-  const tokenNodes = body.nodes === undefined ? { entries: [], problems: [] } : nodeLogic.validateEntries(body.nodes)
-  if (tokenNodes.problems.length > 0) return failProblems(res, tokenNodes.problems)
   const token = addToken(principal, {
     name, description: typeof body.description === "string" ? body.description : "",
-    expiresAt: expiry.expiresAt, scopes: scopes.scopes, secret: body.secret, nodes: tokenNodes.entries,
+    expiresAt: expiry.expiresAt, scopes: scopes.scopes, secret: body.secret, nodes: tokenNodes,
   })
   reply(res, { token: tokenDto(token), secret: token.secret }, status)
 }
@@ -830,7 +896,7 @@ identity.patch("/principals/:name", withPrincipal((req, res, principal) => {
     else fields.push("disabled")
     if (body.disabled) record(req, "PRINCIPAL_DISABLED", principalTarget(principal))
   }
-  if (fields.length > 0) record(req, "PRINCIPAL_UPDATED", { ...principalTarget(principal), fields })
+  if (fields.length > 0) record(req, "PRINCIPAL_UPDATED", { ...principalTarget(principal), changed: fields })
   reply(res, principalDetail(principal))
 }))
 
@@ -860,10 +926,10 @@ identity.post("/principals/:name/password", withPrincipal((req, res, principal) 
 
 const setInstanceAdmin = (value) => withPrincipal((req, res, principal) => {
   if (!requirePrecondition(req, res, principalDetail(principal), `Principal '${principal.name}'`)) return
-  if (!value && principal.instanceRole && leavesNoAdmin({ demoted: principal })) return fail(res, 409, LAST_ADMIN_MESSAGE)
-  if (principal.instanceRole !== value) {
-    principal.instanceRole = value
-    record(req, value ? "INSTANCE_ADMIN_GRANTED" : "INSTANCE_ADMIN_REVOKED", principalTarget(principal))
+  if (!value && holdsInstanceRole(principal) && leavesNoAdmin({ demoted: principal })) return fail(res, 409, LAST_ADMIN_MESSAGE)
+  if (holdsInstanceRole(principal) !== value) {
+    principal.nodes = withInstanceRole(principal.nodes, value)
+    record(req, value ? "INSTANCE_ADMIN_GRANTED" : "INSTANCE_ADMIN_REVOKED", { principal: principal.name })
   }
   reply(res, principalDetail(principal))
 })
@@ -931,13 +997,13 @@ identity.patch("/teams/:name", withTeam((req, res, team) => {
       fields.push("externalRef")
     }
   }
-  if (fields.length > 0) record(req, "TEAM_UPDATED", { team: team.name, fields })
+  if (fields.length > 0) record(req, "TEAM_UPDATED", { team: team.name, changed: fields })
   reply(res, teamDetail(team))
 }))
 
 identity.delete("/teams/:name", withTeam((req, res, team) => {
   if (!requirePrecondition(req, res, teamDetail(team), `Team '${team.name}'`)) return
-  if (team.instanceRole && leavesNoAdmin({ removedTeam: team })) return fail(res, 409, LAST_ADMIN_MESSAGE)
+  if (leavesNoAdmin({ removedTeam: team })) return fail(res, 409, LAST_ADMIN_MESSAGE)
   teams = teams.filter(entry => entry !== team)
   for (const other of teams) other.parents = other.parents.filter(parent => !same(parent, team.name))
   record(req, "TEAM_DELETED", { team: team.name })
@@ -961,8 +1027,8 @@ identity.put("/teams/:name/members", withTeam((req, res, team) => {
   const before = team.members.map(member => member.principal)
   team.members = [...kept, ...manual]
   const after = team.members.map(member => member.principal)
-  const membersAdded = after.filter(name => !before.some(other => same(other, name)))
-  const membersRemoved = before.filter(name => !after.some(other => same(other, name)))
+  const membersAdded = after.filter(name => !before.some(other => same(other, name))).sort()
+  const membersRemoved = before.filter(name => !after.some(other => same(other, name))).sort()
   if (membersAdded.length > 0 || membersRemoved.length > 0) {
     record(req, "TEAM_MEMBERSHIP_CHANGED", { team: team.name, added: membersAdded, removed: membersRemoved })
   }
@@ -973,32 +1039,39 @@ identity.put("/teams/:name/grants", withTeam((req, res, team) => {
   if (!requirePrecondition(req, res, teamDetail(team), `Team '${team.name}'`)) return
   const { grants } = bodyOf(req)
   if (!Array.isArray(grants)) return fail(res, 400, "Grants are required, send an empty list to remove all grants")
+  const supported = ASSIGNABLE_ROLES.join(", ")
   const parsed = []
   for (const entry of grants) {
     const grant = entry && typeof entry === "object" ? entry : {}
     const role = typeof grant.role === "string" ? grant.role.toUpperCase() : undefined
-    if (!ROLES.includes(role)) return fail(res, 400, `Unknown role '${grant.role}', supported: ${ROLES.join(", ")}`)
+    if (!ROLES.includes(role)) return fail(res, 400, `Unknown role '${grant.role}', supported: ${supported}`)
+    if (!ASSIGNABLE_ROLES.includes(role)) return fail(res, 400, `Role ${role} cannot be assigned, supported: ${supported}`)
     const repository = typeof grant.repository === "string" && grant.repository.trim() ? grant.repository.trim() : null
     if (repository !== null && repository.includes("/")) return fail(res, 400, `Repository '${repository}' must not contain '/'`)
-    parsed.push({ repository, pathPrefix: normalizePrefix(grant.pathPrefix), role })
+    const pathPrefix = normalizePrefix(grant.pathPrefix)
+    if (pathPrefix === null) {
+      return fail(res, 400, "A grant names a path. Repository-wide access is granted with permission nodes, see /api/identity/teams/{name}/nodes")
+    }
+    if (role === "ADMIN") return fail(res, 400, "ADMIN applies to a whole repository, grant it with permission nodes")
+    parsed.push({ repository, pathPrefix, role })
   }
-  const describe = (grant) => `${grant.repository ?? "all repositories"}${grant.pathPrefix ? "/" + grant.pathPrefix : ""} (${grant.role})`
-  const before = team.grants.map(describe)
+  const describe = (grant) => `repository=${grant.repository ?? "*"} path=${grant.pathPrefix ?? "*"} role=${grant.role}`
+  const before = new Set(team.grants.map(describe))
   team.grants = parsed
-  const after = team.grants.map(describe)
-  const grantsAdded = after.filter(entry => !before.includes(entry))
-  const grantsRemoved = before.filter(entry => !after.includes(entry))
-  if (grantsAdded.length > 0 || grantsRemoved.length > 0) {
-    record(req, "TEAM_GRANTS_CHANGED", { team: team.name, grantsAdded, grantsRemoved })
+  const after = new Set(team.grants.map(describe))
+  const added = [...after].filter(entry => !before.has(entry)).sort()
+  const removed = [...before].filter(entry => !after.has(entry)).sort()
+  if (added.length > 0 || removed.length > 0) {
+    record(req, "TEAM_GRANTS_CHANGED", { team: team.name, added, removed })
   }
   reply(res, teamDetail(team))
 }))
 
 const setTeamInstanceAdmin = (value) => withTeam((req, res, team) => {
   if (!requirePrecondition(req, res, teamDetail(team), `Team '${team.name}'`)) return
-  if (!value && team.instanceRole && leavesNoAdmin({ demotedTeam: team })) return fail(res, 409, LAST_ADMIN_MESSAGE)
-  if (team.instanceRole !== value) {
-    team.instanceRole = value
+  if (!value && holdsInstanceRole(team) && leavesNoAdmin({ demotedTeam: team })) return fail(res, 409, LAST_ADMIN_MESSAGE)
+  if (holdsInstanceRole(team) !== value) {
+    team.nodes = withInstanceRole(team.nodes, value)
     record(req, value ? "INSTANCE_ADMIN_GRANTED" : "INSTANCE_ADMIN_REVOKED", { team: team.name })
   }
   reply(res, teamDetail(team))
@@ -1010,30 +1083,35 @@ identity.delete("/teams/:name/instance-admin", setTeamInstanceAdmin(false))
 
 const nodesBody = (holder) => ({ nodes: holder.nodes.map(entry => ({ ...entry })) })
 
-// Replaces the direct nodes of a principal or a team, with the same ETag handling as the grants.
-const putNodes = (label, action, details) => (req, res, holder) => {
+// Replaces the direct nodes of a principal or a team, with the same ETag handling as the grants. A list that
+// changes nothing (the same node=allowed pairs) writes nothing and records no event.
+const putNodes = (label, subjectKey, details) => (req, res, holder) => {
   if (!requirePrecondition(req, res, nodesBody(holder), label(holder))) return
-  const { entries, problems } = nodeLogic.validateEntries(bodyOf(req).nodes)
-  if (problems.length > 0) return failProblems(res, problems)
-  const describe = (entry) => `${entry.node} (${entry.allowed ? "allow" : "deny"})`
-  const before = holder.nodes.map(describe)
-  holder.nodes = entries
-  const after = holder.nodes.map(describe)
-  const nodesAdded = after.filter(entry => !before.includes(entry))
-  const nodesRemoved = before.filter(entry => !after.includes(entry))
-  if (nodesAdded.length > 0 || nodesRemoved.length > 0) record(req, action, { ...details(holder), nodesAdded, nodesRemoved })
+  const { nodes } = bodyOf(req)
+  if (nodes === undefined || nodes === null) return fail(res, 400, "Nodes are required, send an empty list to remove all nodes")
+  const parsed = nodeLogic.validateEntries(nodes)
+  if (parsed.message) return fail(res, 400, parsed.message)
+  const describe = (entry) => `${entry.node}=${entry.allowed ? "allowed" : "denied"}`
+  const before = new Set(holder.nodes.map(describe))
+  const after = new Set(parsed.entries.map(describe))
+  const added = [...after].filter(entry => !before.has(entry)).sort()
+  const removed = [...before].filter(entry => !after.has(entry)).sort()
+  if (added.length > 0 || removed.length > 0) {
+    holder.nodes = sortNodes(parsed.entries)
+    record(req, "NODES_CHANGED", { [subjectKey]: holder.name, added, removed, ...details(holder) })
+  }
   reply(res, nodesBody(holder))
 }
 
 identity.get("/principals/:name/nodes", withPrincipal((req, res, principal) => reply(res, nodesBody(principal))))
 identity.put("/principals/:name/nodes", withPrincipal((req, res, principal) =>
-  putNodes(holder => `Principal '${holder.name}'`, "PRINCIPAL_NODES_CHANGED", principalTarget)(req, res, principal)))
+  putNodes(holder => `Principal '${holder.name}'`, "principal", holder => ({ kind: holder.kind }))(req, res, principal)))
 
 identity.get("/teams/:name/nodes", withTeam((req, res, team) => reply(res, nodesBody(team))))
 identity.put("/teams/:name/nodes", withTeam((req, res, team) =>
-  putNodes(holder => `Team '${holder.name}'`, "TEAM_NODES_CHANGED", holder => ({ team: holder.name }))(req, res, team)))
+  putNodes(holder => `Team '${holder.name}'`, "team", () => ({}))(req, res, team)))
 
-const parentsBody = (team) => ({ parents: [...team.parents] })
+const parentsBody = (team) => ({ parents: [...team.parents].sort() })
 
 identity.get("/teams/:name/parents", withTeam((req, res, team) => reply(res, parentsBody(team))))
 
@@ -1041,21 +1119,23 @@ identity.put("/teams/:name/parents", withTeam((req, res, team) => {
   if (!requirePrecondition(req, res, parentsBody(team), `Team '${team.name}'`)) return
   const { parents } = bodyOf(req)
   if (!Array.isArray(parents)) return fail(res, 400, "Parents are required, send an empty list to remove all parents")
+  if (parents.some(entry => typeof entry !== "string")) return fail(res, 400, "Failed to read body")
+  const duplicates = [...new Set(parents.filter((entry, index) => parents.indexOf(entry) !== index))].sort()
+  if (duplicates.length > 0) return fail(res, 400, `Parents listed twice: ${duplicates.join(", ")}`)
   const resolved = []
   for (const entry of parents) {
-    if (typeof entry !== "string") return fail(res, 400, "A parent must be a team name")
     const parent = findPublicTeam(entry)
-    if (!parent) return fail(res, 404, `Team '${entry}' not found`)
-    if (!resolved.includes(parent.name)) resolved.push(parent.name)
+    if (!parent) return fail(res, 400, `Unknown team '${entry}' as parent, parents must be existing teams`)
+    resolved.push(parent.name)
   }
-  const problem = nodeLogic.checkParents(teams.map(entry => ({ name: entry.name, parents: entry.parents })), team.name, resolved)
+  const problem = nodeLogic.checkParents(teams.map(entry => ({ id: entry.id, name: entry.name, parents: entry.parents })), team.name, resolved)
   if (problem) return fail(res, problem.status, problem.message)
   const before = team.parents
   team.parents = resolved
-  const parentsAdded = resolved.filter(name => !before.includes(name))
-  const parentsRemoved = before.filter(name => !resolved.includes(name))
-  if (parentsAdded.length > 0 || parentsRemoved.length > 0) {
-    record(req, "TEAM_PARENTS_CHANGED", { team: team.name, parentsAdded, parentsRemoved })
+  const added = resolved.filter(name => !before.includes(name)).sort()
+  const removed = before.filter(name => !resolved.includes(name)).sort()
+  if (added.length > 0 || removed.length > 0) {
+    record(req, "TEAM_UPDATED", { team: team.name, changed: ["parents"], added, removed })
   }
   reply(res, parentsBody(team))
 }))
@@ -1066,17 +1146,30 @@ identity.get("/nodes/catalog", (req, res) =>
 identity.get("/nodes/templates", (req, res) => reply(res, { templates: nodeLogic.templates() }))
 
 identity.get("/check", (req, res) => {
-  const { principal: principalName, node, token: tokenName } = req.query
-  const problems = nodeLogic.validateNode(node)
-  if (problems.length > 0) return failProblems(res, problems.map(message => ({ node: typeof node === "string" ? node : null, message })))
-  const principal = typeof principalName === "string" && principalName !== "" ? findPrincipal(principalName) : undefined
+  const text = (value) => typeof value === "string" ? value : ""
+  const principalName = text(req.query.principal)
+  const node = text(req.query.node)
+  const tokenName = typeof req.query.token === "string" ? req.query.token : undefined
+  if (principalName.trim() === "") return fail(res, 400, "The query parameter 'principal' is required")
+  if (node.trim() === "") return fail(res, 400, "The query parameter 'node' is required")
+  if (node.includes("*")) return fail(res, 400, `The node to check must be concrete, without wildcards: '${node}'`)
+  const problem = nodeLogic.problemOf(node)
+  if (problem) return fail(res, 400, `Invalid permission node: ${problem}`)
+  if (!req.actor.admin && req.actor.principal?.name !== principalName) {
+    return fail(res, 403, "Only instance admins can check the nodes of other principals")
+  }
+  const principal = findPrincipal(principalName)
   if (!principal) return fail(res, 404, "Principal not found")
   let token = null
-  if (tokenName !== undefined && tokenName !== "") {
-    token = publicTokenFields(principal, String(tokenName))
+  if (tokenName !== undefined) {
+    token = publicTokenFields(principal, tokenName)
     if (!token) return fail(res, 404, "Token not found")
   }
-  reply(res, nodeLogic.evaluate({ ...contextOf(principal, token), node }))
+  // A disabled principal is denied everything and has no candidates to show.
+  const evaluation = principal.disabled
+    ? { allowed: false, decision: { source: nodeLogic.SOURCE.DEFAULT, subject: null, node, allowed: false, depth: 0 }, trace: [] }
+    : nodeLogic.evaluate({ ...contextOf(principal, token), node })
+  reply(res, { principal: principal.name, node, allowed: evaluation.allowed, decision: evaluation.decision, trace: evaluation.trace })
 })
 
 // ---- access on a repository

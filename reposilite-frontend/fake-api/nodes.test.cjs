@@ -27,8 +27,8 @@ const nodes = require("./nodes.cjs")
 
 const allow = (node) => ({ node, allowed: true })
 const deny = (node) => ({ node, allowed: false })
-const user = (entries = [], extra = {}) => ({ name: "alice", nodes: entries, instanceRole: false, ...extra })
-const team = (name, entries = [], parents = [], extra = {}) => ({ name, nodes: entries, parents, instanceRole: false, ...extra })
+const user = (entries = [], extra = {}) => ({ name: "alice", nodes: entries, ...extra })
+const team = (name, entries = [], parents = [], extra = {}) => ({ name, nodes: entries, parents, ...extra })
 
 const check = (node, { entries, memberTeams = [], teams, token = null, ...userExtra } = {}) =>
   nodes.evaluate({ node, user: user(entries, userExtra), memberTeams, teams: teams ?? memberTeams, token })
@@ -36,67 +36,111 @@ const check = (node, { entries, memberTeams = [], teams, token = null, ...userEx
 const READ = "ingot.repository.private.read"
 
 describe("grammar", () => {
-  for (const valid of ["*", "ingot.admin.settings", "ingot.admin.*", "ingot.repository.releases.deploy", "ingot.repository.*.read", "ingot.repository.my-repo_2.*", "ingot.repository.*.*"]) {
+  for (const valid of [
+    "*", "ingot.admin.settings", "ingot.admin.*", "ingot.repository.releases.deploy", "ingot.repository.*.read",
+    "ingot.repository.my-repo_2.*", "ingot.repository.*.*", "ingot.repository.my.repo.read",
+  ]) {
     it(`accepts ${valid}`, () => {
-      assert.deepEqual(nodes.validateNode(valid), [])
+      assert.equal(nodes.problemOf(valid), null)
     })
   }
 
-  it("rejects a partial wildcard such as ingot.re*", () => {
-    assert.equal(nodes.validateNode("ingot.re*").length, 1)
+  it("reads a repository with dots by splitting at the last dot", () => {
+    assert.equal(nodes.matches("ingot.repository.my.repo.read", "ingot.repository.my.repo.read"), true)
+  })
+
+  it("lets a repository wildcard match a repository with dots", () => {
+    assert.equal(nodes.matches("ingot.repository.*.read", "ingot.repository.my.repo.read"), true)
+  })
+
+  it("rejects an empty node", () => {
+    assert.equal(nodes.problemOf(""), "The node is empty")
+  })
+
+  it("rejects a node that is too long and shows its first 40 characters", () => {
+    const long = `ingot.admin.${"a".repeat(300)}`
+    assert.equal(nodes.problemOf(long), `The node '${long.slice(0, 40)}...' is longer than 255 characters`)
+  })
+
+  it("accepts a node of exactly the maximum length", () => {
+    const prefix = "ingot.repository."
+    const node = `${prefix}${"a".repeat(255 - prefix.length - ".read".length)}.read`
+    assert.deepEqual([node.length, nodes.problemOf(node)], [255, null])
+  })
+
+  it("rejects whitespace", () => {
+    assert.equal(nodes.problemOf("ingot.admin.users "), "The node 'ingot.admin.users ' contains whitespace or control characters")
+  })
+
+  it("rejects a control character", () => {
+    assert.equal(nodes.problemOf("ingot.admin.\u0007users"), "The node 'ingot.admin.\u0007users' contains whitespace or control characters")
+  })
+
+  it("rejects a leading minus and says how a denial is stored", () => {
+    assert.equal(nodes.problemOf("-ingot.admin.users"), "The node '-ingot.admin.users' starts with '-', negation is stored as allowed false and not in the name")
+  })
+
+  it("rejects a node outside the known prefixes", () => {
+    assert.equal(nodes.problemOf("other.admin.settings"), "The node 'other.admin.settings' is unknown, nodes start with 'ingot.repository.' or 'ingot.admin.', or are '*'")
+  })
+
+  it("rejects a repository node without a repository and an action", () => {
+    assert.equal(nodes.problemOf("ingot.repository.releases"), "The repository node 'ingot.repository.releases' needs a repository and an action, for example ingot.repository.releases.read")
+  })
+
+  it("rejects an unknown repository action", () => {
+    assert.equal(nodes.problemOf("ingot.repository.releases.write"), "The action 'write' of 'ingot.repository.releases.write' is unknown, supported: read, deploy, delete, manage or *")
+  })
+
+  it("rejects a partial wildcard in the repository", () => {
+    assert.equal(nodes.problemOf("ingot.repository.rel*.read"), "The repository 'rel*' of 'ingot.repository.rel*.read' is invalid, a wildcard must be the whole repository segment")
+  })
+
+  it("rejects an empty part in the repository", () => {
+    assert.match(nodes.problemOf("ingot.repository.a..b.read"), /^The repository 'a\.\.b' of /)
   })
 
   it("rejects an unknown admin area", () => {
-    assert.match(nodes.validateNode("ingot.admin.billing")[0], /Unknown admin area 'billing'/)
+    assert.equal(nodes.problemOf("ingot.admin.billing"), "The admin area 'billing' of 'ingot.admin.billing' is unknown, supported: settings, users, teams, tokens, maintenance, audit, console, dashboard or *")
   })
 
-  it("rejects an unknown repository action with the hint for the shape", () => {
-    assert.match(nodes.validateNode("ingot.repository.releases.write")[0], /Use ingot.repository.<repository>.<read\|deploy\|delete\|manage>/)
+  it("checks the length before the whitespace", () => {
+    assert.match(nodes.problemOf(` ${"a".repeat(300)}`), /is longer than 255 characters$/)
   })
 
-  it("rejects a repository node without an action", () => {
-    assert.deepEqual(nodes.validateNode("ingot.repository.releases"), ["Use ingot.repository.<repository>.<read|deploy|delete|manage>"])
-  })
-
-  it("rejects a node outside the ingot namespace", () => {
-    assert.equal(nodes.validateNode("other.admin.settings").length, 1)
-  })
-
-  it("rejects an empty segment", () => {
-    assert.equal(nodes.validateNode("ingot..settings").length, 1)
-  })
-
-  it("rejects a blank node", () => {
-    assert.deepEqual(nodes.validateNode("  "), ["Node is required"])
-  })
-
-  it("reports each invalid entry with its node", () => {
-    const { problems } = nodes.validateEntries([allow("ingot.re*"), allow("ingot.admin.users")])
-    assert.deepEqual(problems.map(problem => problem.node), ["ingot.re*"])
-  })
-
-  it("reports a missing allowed flag", () => {
-    const { problems } = nodes.validateEntries([{ node: "ingot.admin.users" }])
-    assert.equal(problems[0].message, "allowed must be true or false")
-  })
-
-  it("reports a node that is listed twice", () => {
-    const { problems } = nodes.validateEntries([allow("ingot.admin.users"), deny("ingot.admin.users")])
-    assert.equal(problems[0].message, "Node is listed twice")
-  })
-
-  it("returns the cleaned entries of a valid list", () => {
-    const { entries, problems } = nodes.validateEntries([allow("ingot.admin.users")])
-    assert.deepEqual([entries, problems], [[allow("ingot.admin.users")], []])
+  it("checks the whitespace before the leading minus", () => {
+    assert.match(nodes.problemOf("- x"), /contains whitespace or control characters$/)
   })
 })
 
-describe("kind", () => {
-  it("calls a literal repository node REPOSITORY", () => assert.equal(nodes.kindOf("ingot.repository.releases.read"), "REPOSITORY"))
-  it("calls an admin area STATIC", () => assert.equal(nodes.kindOf("ingot.admin.audit"), "STATIC"))
-  it("calls the admin wildcard WILDCARD", () => assert.equal(nodes.kindOf("ingot.admin.*"), "WILDCARD"))
-  it("calls a repository wildcard WILDCARD", () => assert.equal(nodes.kindOf("ingot.repository.*.read"), "WILDCARD"))
-  it("calls a lone star WILDCARD", () => assert.equal(nodes.kindOf("*"), "WILDCARD"))
+describe("node lists", () => {
+  it("lists every invalid node in one message, in list order", () => {
+    const { message } = nodes.validateEntries([allow("ingot.re*"), allow("ingot.admin.users"), allow("-x")])
+    assert.equal(message, "Invalid permission nodes: The node 'ingot.re*' is unknown, nodes start with 'ingot.repository.' or 'ingot.admin.', or are '*'; The node '-x' starts with '-', negation is stored as allowed false and not in the name")
+  })
+
+  it("lists a node that is listed twice, sorted and comma separated", () => {
+    const { message } = nodes.validateEntries([allow("ingot.admin.users"), allow("ingot.admin.audit"), deny("ingot.admin.users"), deny("ingot.admin.audit")])
+    assert.equal(message, "Nodes listed twice: ingot.admin.audit, ingot.admin.users")
+  })
+
+  it("checks invalid nodes before duplicates", () => {
+    const { message } = nodes.validateEntries([allow("x"), allow("x")])
+    assert.match(message, /^Invalid permission nodes: /)
+  })
+
+  it("cannot read an entry without the allowed flag", () => {
+    assert.equal(nodes.validateEntries([{ node: "ingot.admin.users" }]).message, "Failed to read body")
+  })
+
+  it("cannot read a list that is no list", () => {
+    assert.equal(nodes.validateEntries("ingot.admin.users").message, "Failed to read body")
+  })
+
+  it("returns the cleaned entries of a valid list", () => {
+    const { entries, message } = nodes.validateEntries([{ ...allow("ingot.admin.users"), extra: 1 }])
+    assert.deepEqual([entries, message], [[allow("ingot.admin.users")], undefined])
+  })
 })
 
 describe("matching", () => {
@@ -104,16 +148,24 @@ describe("matching", () => {
     assert.equal(nodes.matches("*", READ), true)
   })
 
-  it("lets a trailing star match one segment", () => {
+  it("lets an area wildcard match an area", () => {
     assert.equal(nodes.matches("ingot.admin.*", "ingot.admin.users"), true)
   })
 
-  it("does not let a trailing star match a node with more segments", () => {
+  it("does not let an area wildcard match a repository node", () => {
     assert.equal(nodes.matches("ingot.admin.*", "ingot.repository.private.read"), false)
   })
 
   it("does not match a different literal", () => {
     assert.equal(nodes.matches("ingot.repository.releases.read", READ), false)
+  })
+
+  it("does not let a repository wildcard match an admin node", () => {
+    assert.equal(nodes.matches("ingot.repository.*.*", "ingot.admin.users"), false)
+  })
+
+  it("counts a repository with dots as one literal part", () => {
+    assert.equal(nodes.specificity("ingot.repository.my.repo.read"), 4)
   })
 
   it("counts the literal segments as specificity", () => {
@@ -194,31 +246,40 @@ describe("evaluation", () => {
 
   it("denies by default when no node matches", () => {
     const result = check(READ, { entries: [allow("ingot.admin.users")] })
-    assert.deepEqual(result.decision, { source: "DEFAULT", subject: null, node: null, allowed: false, depth: null })
+    assert.deepEqual(result.decision, { source: "DEFAULT", subject: null, node: READ, allowed: false, depth: 0 })
   })
 
   it("explains the default with the contract phrase", () => {
     assert.equal(check(READ).trace[0].reason, "No node matches, denied by default")
   })
 
-  it("allows everything for a legacy instance admin without nodes", () => {
+  it("does not allow anything for a subject without nodes, whatever the old role flag says", () => {
     const result = check(READ, { instanceRole: true })
-    assert.deepEqual([result.allowed, result.decision.source], [true, "LEGACY"])
+    assert.deepEqual([result.allowed, result.decision.source], [false, "DEFAULT"])
   })
 
-  it("allows everything for a member of a legacy admin team", () => {
-    const result = check(READ, { memberTeams: [team("root", [], [], { instanceRole: true })] })
-    assert.deepEqual([result.decision.source, result.decision.subject], ["LEGACY", "root"])
-  })
-
-  it("lets a team node beat the legacy grant", () => {
-    const result = check(READ, { instanceRole: true, memberTeams: [team("dev", [deny(READ)])] })
-    assert.deepEqual([result.allowed, result.trace[0].reason], [false, "Team node beats legacy grant"])
+  it("allows everything for the star node", () => {
+    const result = check(READ, { entries: [allow("*")] })
+    assert.deepEqual([result.allowed, result.decision.source, result.decision.node], [true, "USER", "*"])
   })
 
   it("lists matches of lower layers in the trace", () => {
-    const result = check(READ, { entries: [allow(READ)], memberTeams: [team("dev", [deny(READ)])], instanceRole: true })
-    assert.deepEqual(result.trace.map(entry => entry.source), ["USER", "TEAM", "LEGACY"])
+    const parent = team("parent", [allow("*")])
+    const child = team("child", [deny(READ)], ["parent"])
+    const result = check(READ, { entries: [allow(READ)], memberTeams: [child], teams: [child, parent] })
+    assert.deepEqual(result.trace.map(entry => entry.source), ["USER", "TEAM", "INHERITED_TEAM"])
+  })
+
+  it("gives every trace entry the depth of its layer", () => {
+    const parent = team("parent", [allow("*")])
+    const child = team("child", [deny(READ)], ["parent"])
+    const result = check(READ, { entries: [allow(READ)], memberTeams: [child], teams: [child, parent] })
+    assert.deepEqual(result.trace.map(entry => entry.depth), [0, 0, 1])
+  })
+
+  it("carries exactly the fields of the contract in a trace entry", () => {
+    const result = check(READ, { entries: [allow(READ)] })
+    assert.deepEqual(Object.keys(result.trace[0]).sort(), ["allowed", "depth", "matched", "node", "reason", "source", "subject"])
   })
 
   it("does not count a team reachable at distance zero as inherited", () => {
@@ -280,84 +341,157 @@ describe("token narrowing", () => {
 })
 
 describe("team parents", () => {
-  const graph = (...pairs) => pairs.map(([name, ...parents]) => ({ name, parents }))
+  // Ids follow the order of the pairs, as the ids of created teams do.
+  const graph = (...pairs) => pairs.map(([name, ...parents], index) => ({ id: index + 1, name, parents }))
+  const cycle = (name) => `Inheritance of '${name}' would form a cycle: a team cannot inherit from itself, directly or through its parents`
 
   it("accepts a parent that creates no cycle", () => {
     assert.equal(nodes.checkParents(graph(["ops"], ["developers"]), "ops", ["developers"]), null)
   })
 
-  it("detects a cycle and names the path", () => {
+  it("detects a cycle and names the first team that meets itself", () => {
     const problem = nodes.checkParents(graph(["ops", "developers"], ["developers"]), "developers", ["ops"])
-    assert.deepEqual(problem, {
-      status: 409,
-      message: "Adding ops as a parent of developers would create a cycle: developers -> ops -> developers",
-    })
+    assert.deepEqual(problem, { status: 409, message: cycle("ops") })
   })
 
   it("detects a team that would become its own parent", () => {
-    assert.match(nodes.checkParents(graph(["ops"]), "ops", ["ops"]).message, /would create a cycle: ops -> ops$/)
+    assert.deepEqual(nodes.checkParents(graph(["ops"]), "ops", ["ops"]), { status: 409, message: cycle("ops") })
   })
 
   it("detects a cycle through several levels", () => {
     const problem = nodes.checkParents(graph(["a", "b"], ["b", "c"], ["c"]), "c", ["a"])
-    assert.match(problem.message, /c -> a -> b -> c$/)
+    assert.equal(problem.status, 409)
+    assert.match(problem.message, /would form a cycle/)
   })
 
   // A chain t0 -> t1 -> ... where each team has the next one as parent.
-  const chain = (length) => Array.from({ length }, (_, index) => ({ name: `t${index}`, parents: index < length - 1 ? [`t${index + 1}`] : [] }))
+  const chain = (length) => Array.from({ length }, (_, index) => ({ id: index + 1, name: `t${index}`, parents: index < length - 1 ? [`t${index + 1}`] : [] }))
 
-  it("allows an inheritance depth of 5", () => {
-    const teams = chain(6)
-    teams[0] = { name: "t0", parents: [] }
+  it("allows an inheritance depth of 8", () => {
+    const teams = chain(9)
+    teams[0] = { ...teams[0], parents: [] }
     assert.equal(nodes.checkParents(teams, "t0", ["t1"]), null)
   })
 
-  it("rejects an inheritance depth of 6", () => {
-    const teams = chain(7)
-    teams[0] = { name: "t0", parents: [] }
-    assert.deepEqual(nodes.checkParents(teams, "t0", ["t1"]), { status: 409, message: "Inheritance deeper than 5 levels is not allowed" })
+  it("rejects an inheritance depth of 9 and names the team and the depth", () => {
+    const teams = chain(10)
+    teams[0] = { ...teams[0], parents: [] }
+    assert.deepEqual(nodes.checkParents(teams, "t0", ["t1"]), {
+      status: 409,
+      message: "Inheritance of 't0' would be 9 levels deep, the limit is 8 levels",
+    })
   })
 
   it("counts the depth of descendants when a parent is added above them", () => {
-    const teams = [...chain(7).slice(1), { name: "top", parents: [] }]
-    assert.equal(nodes.checkParents(teams, "t6", ["top"])?.status, 409)
+    const teams = [...chain(11).slice(1), { id: 99, name: "top", parents: [] }]
+    assert.equal(nodes.checkParents(teams, "t10", ["top"])?.status, 409)
   })
 })
 
 describe("admin detection", () => {
-  it("holds every area with the admin wildcard", () => {
+  it("is an instance admin with the admin node", () => {
     const context = { user: user([allow("ingot.admin.*")]), memberTeams: [], teams: [] }
-    assert.equal(nodes.holdsEveryArea(context), true)
+    assert.equal(nodes.isInstanceAdmin(context), true)
   })
 
-  it("does not hold every area when one is denied", () => {
-    const context = { user: user([allow("ingot.admin.*"), deny("ingot.admin.audit")]), memberTeams: [], teams: [] }
-    assert.equal(nodes.holdsEveryArea(context), false)
+  it("is an instance admin through the star node", () => {
+    const context = { user: user([allow("*")]), memberTeams: [], teams: [] }
+    assert.equal(nodes.isInstanceAdmin(context), true)
+  })
+
+  it("is no instance admin with every area allowed one by one", () => {
+    const context = { user: user(nodes.AREAS.map(area => allow(`ingot.admin.${area}`))), memberTeams: [], teams: [] }
+    assert.equal(nodes.isInstanceAdmin(context), false)
+  })
+
+  it("is an instance admin through a team", () => {
+    const context = { user: user(), memberTeams: [team("root", [allow("ingot.admin.*")])], teams: [team("root", [allow("ingot.admin.*")])] }
+    assert.equal(nodes.isInstanceAdmin(context), true)
+  })
+
+  it("is no instance admin when a token without the admin node narrows the owner", () => {
+    const context = { user: user([allow("ingot.admin.*")]), memberTeams: [], teams: [], token: { name: "t", nodes: [allow("ingot.repository.*.read")] } }
+    assert.equal(nodes.isInstanceAdmin(context), false)
+  })
+
+  it("is no instance admin when the admin node is denied directly", () => {
+    const context = { user: user([deny("ingot.admin.*")]), memberTeams: [team("root", [allow("ingot.admin.*")])], teams: [] }
+    assert.equal(nodes.isInstanceAdmin(context), false)
+  })
+})
+
+describe("effective nodes", () => {
+  it("lists the allowed rule patterns and does not expand the catalog", () => {
+    const context = { user: user([allow("ingot.admin.*")]), memberTeams: [], teams: [] }
+    assert.deepEqual(nodes.effectiveNodes(context), ["ingot.admin.*"])
+  })
+
+  it("leaves out a pattern that is denied", () => {
+    const context = { user: user([allow(READ), deny("ingot.repository.releases.read")]), memberTeams: [], teams: [] }
+    assert.deepEqual(nodes.effectiveNodes(context), [READ])
+  })
+
+  it("lists each pattern once and sorted, from the user, the teams and the inherited teams", () => {
+    const parent = team("parent", [allow("ingot.admin.audit"), allow(READ)])
+    const child = team("child", [allow("ingot.admin.users")], ["parent"])
+    const context = { user: user([allow(READ)]), memberTeams: [child], teams: [child, parent] }
+    assert.deepEqual(nodes.effectiveNodes(context), ["ingot.admin.audit", "ingot.admin.users", READ])
+  })
+
+  it("leaves out a pattern the token does not allow", () => {
+    const context = { user: user([allow(READ), allow("ingot.admin.users")]), memberTeams: [], teams: [], token: { name: "t", nodes: [allow(READ)] } }
+    assert.deepEqual(nodes.effectiveNodes(context), [READ])
+  })
+
+  it("is empty without any node", () => {
+    assert.deepEqual(nodes.effectiveNodes({ user: user(), memberTeams: [], teams: [] }), [])
   })
 })
 
 describe("catalog", () => {
   const catalog = nodes.buildCatalog(["releases", "private"])
 
-  it("starts with the three wildcards", () => {
-    assert.deepEqual(catalog.slice(0, 3).map(entry => entry.node), ["*", "ingot.admin.*", "ingot.repository.*.*"])
+  it("lists the areas, the two wildcards, each sorted repository and the action wildcards in that order", () => {
+    const expected = [
+      ...nodes.AREAS.map(area => `ingot.admin.${area}`),
+      "ingot.admin.*",
+      "*",
+      ...["private", "releases"].flatMap(repository => [...nodes.ACTIONS.map(action => `ingot.repository.${repository}.${action}`), `ingot.repository.${repository}.*`]),
+      ...nodes.ACTIONS.map(action => `ingot.repository.*.${action}`),
+    ]
+    assert.deepEqual(catalog.map(entry => entry.node), expected)
   })
 
-  it("lists every admin area", () => {
-    assert.equal(catalog.filter(entry => entry.kind === "STATIC").length, nodes.AREAS.length)
+  it("describes the entries as the backend does", () => {
+    const byNode = Object.fromEntries(catalog.map(entry => [entry.node, entry]))
+    assert.deepEqual(
+      [byNode["ingot.admin.audit"], byNode["ingot.admin.*"], byNode["*"], byNode["ingot.repository.private.deploy"], byNode["ingot.repository.private.*"], byNode["ingot.repository.*.manage"]],
+      [
+        { node: "ingot.admin.audit", description: "Administer audit", kind: "STATIC" },
+        { node: "ingot.admin.*", description: "Every administrative area, as the instance administrator", kind: "WILDCARD" },
+        { node: "*", description: "Everything: every repository action and every administrative area", kind: "WILDCARD" },
+        { node: "ingot.repository.private.deploy", description: "deploy on repository private", kind: "REPOSITORY" },
+        { node: "ingot.repository.private.*", description: "Every action on repository private", kind: "REPOSITORY" },
+        { node: "ingot.repository.*.manage", description: "manage on every repository", kind: "WILDCARD" },
+      ],
+    )
   })
 
-  it("lists the four actions of each repository", () => {
-    assert.equal(catalog.filter(entry => entry.kind === "REPOSITORY").length, 8)
+  it("has no entry for every action on every repository", () => {
+    assert.equal(catalog.some(entry => entry.node === "ingot.repository.*.*"), false)
   })
 
-  it("filters by prefix", () => {
+  it("filters by prefix with startsWith", () => {
     const filtered = nodes.buildCatalog(["releases"], "ingot.repository.releases")
-    assert.deepEqual(filtered.map(entry => entry.node), ["read", "deploy", "delete", "manage"].map(action => `ingot.repository.releases.${action}`))
+    assert.deepEqual(filtered.map(entry => entry.node), [...["read", "deploy", "delete", "manage"].map(action => `ingot.repository.releases.${action}`), "ingot.repository.releases.*"])
+  })
+
+  it("keeps everything for an empty prefix", () => {
+    assert.deepEqual(nodes.buildCatalog(["releases", "private"], ""), catalog)
   })
 
   it("lists only valid nodes", () => {
-    assert.deepEqual(catalog.filter(entry => nodes.validateNode(entry.node).length > 0), [])
+    assert.deepEqual(catalog.filter(entry => nodes.problemOf(entry.node) !== null), [])
   })
 
   it("is the same on every call", () => {
@@ -368,6 +502,10 @@ describe("catalog", () => {
 describe("templates", () => {
   it("lists the five templates in order", () => {
     assert.deepEqual(nodes.templates().map(template => template.id), ["read", "deploy", "maintain", "admin", "instance-admin"])
+  })
+
+  it("labels the templates as the backend does", () => {
+    assert.deepEqual(nodes.templates().map(template => template.label), ["Read", "Deploy", "Maintain", "Admin", "Instance admin"])
   })
 
   it("keeps the repository placeholder for the client", () => {
