@@ -370,6 +370,27 @@ them. That covers `min`, `max`, `step`, `inputmode`, `pattern`, `maxlength` and 
 for example `<MdTextField type="date" :min="today" />`. `class` and `style` stay on the
 wrapper that holds the field, so layout classes do not end up on the input.
 
+### MdSelect
+
+An outlined select for a fixed set of values. It is a native `<select>`, so the browser
+supplies the keyboard and the mobile picker.
+
+Props:
+
+- `modelValue`: string, for `v-model`. Matches the `value` of one option
+- `label`: string, required. The label always floats on the top edge of the 56px field
+- `options`: array of `{ value, label }`, required
+- `supportingText`: string, shown under the field
+- `error`: boolean. Sets `aria-invalid="true"`, switches the field to the error colours and
+  shows `errorText` in place of `supportingText`
+- `errorText`: string
+- `id`: optional. Generated when not given
+- `disabled`, `required`: passed to the `<select>`
+
+Emits `update:modelValue` with the value of the chosen option as text. The settings form
+maps that text back to the enum value it stands for. Attributes that are not props go to the
+`<select>`; `class` and `style` stay on the wrapper.
+
 ### MdChip
 
 Props:
