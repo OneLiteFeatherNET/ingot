@@ -369,8 +369,10 @@ Today's behaviour is pinned as it is (test `TemporaryTokenNameCollisionTest`):
 - A legacy token whose name is taken case-insensitively by another principal is migrated with the
   principal name `name-<tokenId>` and a warning. Its token name is kept, so authentication is
   unchanged. This can only happen on databases with case-sensitive collations.
-- Creating a legacy token whose name is held by a `USER` principal fails with 409 and a clear
-  message. No such principal exists before phase 1.
+- Creating a legacy token reuses the machine principal of exactly the same name (a token that was
+  revoked and created again). A principal whose name differs only in case, or that is a `USER`
+  principal, refuses the creation with 409 and a clear message. Attaching the token to the
+  other principal would hand it that principal's rights. No such principal exists before phase 1.
 
 ### 6.5 Unchanged surfaces
 
