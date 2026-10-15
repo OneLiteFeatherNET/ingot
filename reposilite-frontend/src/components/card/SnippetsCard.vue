@@ -177,13 +177,8 @@ const selectTab = (tab) =>
             <!-- Stacked above the code block, which is a later sibling and would otherwise paint over it. -->
             <div
               v-if="!loading"
-              class="absolute top-2 right-2 z-10 flex items-center gap-1"
+              class="absolute top-2 right-2 z-10"
             >
-              <span
-                v-if="copyState === 'copied'"
-                role="status"
-                class="md-label-medium text-success"
-              >Copied</span>
               <MdIconButton
                 aria-label="Copy snippet"
                 @click="copy"
@@ -191,9 +186,10 @@ const selectTab = (tab) =>
                 <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
               </MdIconButton>
             </div>
+            <!-- The right padding keeps wrapped lines clear of the copy button. -->
             <div
               ref="codeBlock"
-              class="card-editor max-w-full overflow-auto font-mono md-body-small h-29 relative py-3 pl-4 pr-14 rounded-corner-medium bg-surface-container-highest text-on-surface"
+              class="card-editor max-w-full overflow-auto font-mono md-body-small min-h-29 relative py-3 pl-4 pr-14 rounded-corner-medium bg-surface-container-highest text-on-surface"
             >
               <div
                 v-if="loading"
@@ -238,6 +234,14 @@ const selectTab = (tab) =>
                 </template>
               </template>
             </div>
+            <!-- Below the snippet, so a status line never sits over a wrapped line of it. -->
+            <p
+              v-if="copyState === 'copied'"
+              role="status"
+              class="mt-2 md-body-small text-success"
+            >
+              Copied
+            </p>
             <p
               v-if="copyState === 'selected'"
               role="status"
@@ -286,11 +290,12 @@ const selectTab = (tab) =>
 }
 
 /*
- * A snippet line is never wrapped. The block is as wide as its longest line, so the editor
- * scrolls sideways and the card keeps its column.
+ * A long snippet line wraps at the editor's edge, with its indentation kept, so every tag stays
+ * readable without a sideways scrollbar. Wrapping is only how the text is drawn: the copy action
+ * reads the text content, which is the snippet as written, one line per line.
  */
 .card-editor > pre {
-  width: max-content;
-  min-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 </style>

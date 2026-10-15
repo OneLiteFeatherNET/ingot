@@ -119,4 +119,41 @@ describe('SnippetsCard surface', () => {
     expect(editor.classes()).toContain('md-body-small')
     expect(editor.classes()).not.toContain('text-ssm')
   })
+
+  it('keeps the right padding that clears the copy button from wrapped lines', async () => {
+    await mountCard()
+
+    expect(wrapper.find('.card-editor').classes()).toContain('pr-14')
+  })
+})
+
+describe('SnippetsCard snippet text', () => {
+  afterEach(() => {
+    delete navigator.clipboard
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('copies the long url line whole, however the editor wraps it on screen', async () => {
+    const clipboard = { writeText: vi.fn(() => Promise.resolve()) }
+    withClipboard(clipboard)
+    await mountCard()
+
+    await copyButton().trigger('click')
+    await flushPromises()
+
+    const [copied] = clipboard.writeText.mock.calls[0]
+    expect(copied.split('\n'), 'the url element is one line of the copied text').toContainEqual(expect.stringMatching(/^\s*<url>.*<\/url>$/))
+  })
+
+  it('shows the copy status below the snippet, not over its text', async () => {
+    withClipboard({ writeText: vi.fn(() => Promise.resolve()) })
+    await mountCard()
+
+    await copyButton().trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.card-editor [role="status"]').exists(), 'no status line sits inside the editor').toBe(false)
+    expect(wrapper.find('[role="status"]').text()).toBe('Copied')
+  })
 })
