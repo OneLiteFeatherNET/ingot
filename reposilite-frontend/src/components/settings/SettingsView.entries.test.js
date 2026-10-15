@@ -140,7 +140,7 @@ const typeInto = async (input, value) => {
 }
 const variantSelect = () => wrapper.find('select[id="#/properties/storageProvider-variant"]')
 const confirmVariantSwitch = async () => {
-  const yes = [...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Yes')
+  const yes = [...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Switch')
   yes.click()
   await flushPromises()
 }
@@ -161,11 +161,7 @@ describe('SettingsView storage variant', () => {
     expect(repositoryIds(store), 'the entry keeps its address through a variant switch').toEqual(['releases', 'snapshots'])
   })
 
-  // Known defect, outside this change: OneOfRenderer writes the branch default at this.path, which is
-  // the parent's data path (the whole entry), not its own control path (storageProvider). The fix is
-  // one line there (this.control.path). Until it lands, the assertion below fails, and it.fails keeps
-  // the suite green while documenting it. Flip it to a plain it() with the fix.
-  it.fails('keeps the other fields of the entry when its storage variant is switched (known OneOfRenderer defect)', async () => {
+  it('keeps the other fields of the entry when its storage variant is switched', async () => {
     const { store } = await mountEntries()
 
     await variantSelect().setValue('0')
