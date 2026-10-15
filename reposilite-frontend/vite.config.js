@@ -20,6 +20,23 @@ import vueJsx from "@vitejs/plugin-vue-jsx"
 import tailwindcss from "@tailwindcss/vite"
 import { visualizer } from "rollup-plugin-visualizer"
 
+/*
+ * With history routing an address such as /settings/maven/repositories/x is a directory
+ * deeper than the mount point. The script and style URLs the build emits are absolute
+ * (VITE_BASE_PATH is "." at the root, which becomes /./assets/...), but index.html also has
+ * relative references, the favicon among them, and those would resolve below the deep address
+ * and miss. The base element anchors every such reference at the mount point, whatever the
+ * address is. Only the production build carries it: the dev server serves from its root.
+ */
+const mountPoint = () => ({
+  name: 'ingot-mount-point',
+  apply: 'build',
+  transformIndexHtml: {
+    order: 'pre',
+    handler: (html) => html.replace('<head>', '<head>\n    <base href="{{REPOSILITE.BASE_PATH}}" />'),
+  },
+})
+
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
@@ -30,6 +47,7 @@ export default defineConfig({
     vueJsx(),
     tailwindcss(),
     visualizer(),
+    mountPoint(),
   ],
   // Served by the server itself, the placeholder is substituted on the way out and the
   // asset URLs come out right. Served by anything else nothing substitutes it, and since
