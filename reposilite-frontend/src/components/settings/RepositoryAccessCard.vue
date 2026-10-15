@@ -83,6 +83,10 @@ watch(
 )
 
 const isMachineTeam = (team) => String(team).startsWith('machine:')
+const hasTeam = (via) => via?.team != null && via.team !== ''
+const teamlessLabel = (via) => (via?.source === 'INSTANCE_ROLE' ? 'Instance role' : 'Instance admin')
+const viaOf = (entry) => (Array.isArray(entry?.via) ? entry.via : [])
+const hasTeamlessVia = (entry) => viaOf(entry).some(via => !hasTeam(via))
 const roleLabel = (role) => ROLES.find(entry => entry.value === role)?.label ?? role
 
 const visibility = computed(() => VISIBILITY_LABELS[access.value?.visibility] ?? access.value?.visibility ?? '')
@@ -187,19 +191,23 @@ const entries = computed(() => access.value?.entries ?? [])
 
         <ul class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-on-surface-variant">
           <li
-            v-if="entry.instanceAdmin"
+            v-if="entry.instanceAdmin && !hasTeamlessVia(entry)"
             data-test="via-instance-admin"
           >
             Via instance admin
           </li>
           <li
-            v-for="(via, index) in entry.via"
-            :key="`${via.team}:${via.role}:${via.pathPrefix ?? ''}:${index}`"
+            v-for="(via, index) in viaOf(entry)"
+            :key="`${via.team ?? via.source ?? ''}:${via.role ?? ''}:${via.pathPrefix ?? ''}:${index}`"
             data-test="via"
             class="flex flex-wrap items-center gap-x-2"
           >
             <span
-              v-if="isMachineTeam(via.team)"
+              v-if="!hasTeam(via)"
+              data-test="via-team"
+            >{{ teamlessLabel(via) }}</span>
+            <span
+              v-else-if="isMachineTeam(via.team)"
               data-test="via-team"
             >Machine account grant</span>
             <router-link
@@ -210,8 +218,12 @@ const entries = computed(() => access.value?.entries ?? [])
             >
               {{ via.team }}
             </router-link>
-            <span data-test="via-role">{{ roleLabel(via.role) }}</span>
             <span
+              v-if="hasTeam(via)"
+              data-test="via-role"
+            >{{ roleLabel(via.role) }}</span>
+            <span
+              v-if="hasTeam(via)"
               data-test="via-prefix"
               class="break-all"
             >{{ pathPrefixLabel(via.pathPrefix) }}</span>

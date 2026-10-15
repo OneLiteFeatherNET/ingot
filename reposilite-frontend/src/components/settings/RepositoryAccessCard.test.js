@@ -181,6 +181,94 @@ describe('RepositoryAccessCard', () => {
     })
   })
 
+  describe('a via entry that has no team', () => {
+    const entryWith = (via, extra = {}) => ({
+      repository: 'releases',
+      visibility: 'PRIVATE',
+      entries: [{
+        principal: 'root',
+        kind: 'USER',
+        disabled: false,
+        instanceAdmin: true,
+        effective: ['READ', 'WRITE', 'INSTANCE_ADMIN'],
+        via,
+        ...extra
+      }]
+    })
+
+    it('shows "Instance admin" instead of a team link for the instance admin source', async () => {
+      install({ access: entryWith([{ source: 'INSTANCE_ADMIN', team: null, role: null, pathPrefix: null }]) })
+      wrapper = await mountCard()
+
+      const via = row('root').get('[data-test="via"]')
+
+      expect(via.get('[data-test="via-team"]').text()).toBe('Instance admin')
+      expect(via.find('a').exists(), 'there is no team page to link to').toBe(false)
+    })
+
+    it('shows "Instance role" when the source says so', async () => {
+      install({ access: entryWith([{ source: 'INSTANCE_ROLE', team: null, role: null, pathPrefix: null }]) })
+      wrapper = await mountCard()
+
+      expect(row('root').get('[data-test="via"] [data-test="via-team"]').text()).toBe('Instance role')
+    })
+
+    it('shows "Instance admin" for a team-less entry without a source', async () => {
+      install({ access: entryWith([{ team: null, role: null, pathPrefix: null }]) })
+      wrapper = await mountCard()
+
+      expect(row('root').get('[data-test="via"] [data-test="via-team"]').text()).toBe('Instance admin')
+    })
+
+    it('draws neither a role nor a path prefix for it', async () => {
+      install({ access: entryWith([{ source: 'INSTANCE_ADMIN', team: null, role: null, pathPrefix: null }]) })
+      wrapper = await mountCard()
+
+      const via = row('root').get('[data-test="via"]')
+
+      expect(via.find('[data-test="via-role"]').exists()).toBe(false)
+      expect(via.find('[data-test="via-prefix"]').exists()).toBe(false)
+    })
+
+    it('does not repeat "Via instance admin" next to the team-less entry', async () => {
+      install({ access: entryWith([{ source: 'INSTANCE_ADMIN', team: null, role: null, pathPrefix: null }]) })
+      wrapper = await mountCard()
+
+      expect(row('root').find('[data-test="via-instance-admin"]').exists()).toBe(false)
+    })
+
+    it('keeps the team links of the other entries of the same principal', async () => {
+      install({
+        access: entryWith([
+          { source: 'TEAM', team: 'developers', role: 'DEPLOY', pathPrefix: null },
+          { source: 'INSTANCE_ADMIN', team: null, role: null, pathPrefix: null }
+        ])
+      })
+      wrapper = await mountCard()
+
+      expect(row('root').findAll('[data-test="via"] a').map(link => link.attributes('href'))).toEqual(['/access/teams/developers'])
+      expect(row('root').findAll('[data-test="via"]')).toHaveLength(2)
+    })
+  })
+
+  it('still renders an entry whose via is missing', async () => {
+    const entry = { principal: 'alice', kind: 'USER', disabled: false, instanceAdmin: false, effective: ['READ'] }
+    install({ access: { repository: 'releases', visibility: 'PUBLIC', entries: [entry] } })
+    wrapper = await mountCard()
+
+    expect(row('alice').get('[data-test="principal"]').text()).toBe('alice')
+    expect(row('alice').findAll('[data-test="via"]')).toHaveLength(0)
+  })
+
+  it('still renders an entry whose via is null and whose effective list is missing', async () => {
+    const entry = { principal: 'alice', kind: 'USER', disabled: false, instanceAdmin: true, via: null }
+    install({ access: { repository: 'releases', visibility: 'PUBLIC', entries: [entry] } })
+    wrapper = await mountCard()
+
+    expect(row('alice').get('[data-test="via-instance-admin"]').text()).toBe('Via instance admin')
+    expect(row('alice').findAll('[data-test="action"]')).toHaveLength(0)
+  })
+
   it('says that no one has access through identity grants when there are no entries', async () => {
     install({ access: { repository: 'releases', visibility: 'PUBLIC', entries: [] } })
     wrapper = await mountCard()
