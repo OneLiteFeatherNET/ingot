@@ -27,6 +27,8 @@ export const DEFAULT_TITLE = 'Ingot Repository'
 export const DEFAULT_LOGO = 'https://avatars.githubusercontent.com/u/103827826'
 
 const DISMISSED_KEY = 'ingot.gettingStarted.dismissed'
+// The public repository ids an admin confirmed, per browser. See `isPublicReviewDone`.
+export const PUBLIC_REVIEW_KEY = 'ingot.checklist.publicReview'
 
 const isCustomRepository = (repository) => !DEFAULT_REPOSITORY_IDS.includes(repository.id)
 
@@ -42,14 +44,35 @@ const isCustomLogo = (url) => {
   return text !== '' && logoWithoutQuery(text) !== DEFAULT_LOGO
 }
 
+// The public repositories, sorted by id so the review lists them the same way every time.
+export const publicRepositories = (repositories) => (repositories ?? [])
+  .filter(repository => repository.visibility === 'PUBLIC')
+  .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+
+export const publicRepositoryIds = (repositories) => publicRepositories(repositories).map(repository => repository.id)
+
+/*
+ * Done when nothing is public. Otherwise done only when the admin confirmed exactly the current public
+ * set: a repository that became public, or a new public one, brings the step back. `acknowledged` is the
+ * stored id list, or null when nothing was stored.
+ */
+export const isPublicReviewDone = (repositories, acknowledged) => {
+  const publicIds = publicRepositoryIds(repositories)
+  if (publicIds.length === 0) return true
+  if (!Array.isArray(acknowledged) || acknowledged.length !== publicIds.length) return false
+  const confirmed = [...acknowledged].sort()
+  return publicIds.every((id, index) => id === confirmed[index])
+}
+
 const hasWriteRoute = (token) => (token.routes ?? []).some(route => route.permission?.identifier === 'route:write')
 
 /*
  * The four steps, each with what it asks the admin to do next. A null input means that its data has
  * not arrived yet, which is never shown as done. `repositories` is the saved maven list, `tokens` the
- * token list and `frontend` the saved frontend settings.
+ * token list, `frontend` the saved frontend settings and `acknowledgedPublic` the confirmed public ids.
+ * An action either routes to a place (`to`) or opens a dialog by name (`dialog`).
  */
-export const checklistItems = ({ repositories, tokens, frontend }) => [
+export const checklistItems = ({ repositories, tokens, frontend, acknowledgedPublic = null }) => [
   {
     key: 'repository',
     title: 'Create your first repository',
@@ -83,11 +106,11 @@ export const checklistItems = ({ repositories, tokens, frontend }) => [
   {
     key: 'public-review',
     title: 'Review public repositories',
-    description: 'Public repositories are open to everyone. Check that each one should be.',
-    done: repositories !== null && repositories.some(repository => repository.visibility === 'PUBLIC' && isCustomRepository(repository)),
+    description: 'Public repositories are open to everyone. Confirm that each one should be.',
+    done: repositories !== null && isPublicReviewDone(repositories, acknowledgedPublic),
     action: {
-      label: 'Open repositories',
-      to: { name: 'settings', params: { domain: 'maven' } }
+      label: 'Review',
+      dialog: 'public-repositories'
     }
   }
 ]
@@ -120,5 +143,24 @@ export const dismissChecklist = (storage = browserStorage()) => {
     storage?.setItem(DISMISSED_KEY, '1')
   } catch {
     // Nothing else depends on the flag, so a failed write only means the checklist shows again.
+  }
+}
+
+// The confirmed set is read and written per browser. A missing or broken store reads as nothing confirmed,
+// so the step stays to do and the admin is asked again instead of being told it is done.
+export const readAcknowledgedPublicIds = (storage = browserStorage()) => {
+  try {
+    const value = JSON.parse(storage?.getItem(PUBLIC_REVIEW_KEY) ?? 'null')
+    return Array.isArray(value) && value.every(id => typeof id === 'string') ? value : null
+  } catch {
+    return null
+  }
+}
+
+export const saveAcknowledgedPublicIds = (ids, storage = browserStorage()) => {
+  try {
+    storage?.setItem(PUBLIC_REVIEW_KEY, JSON.stringify([...ids].sort()))
+  } catch {
+    // Without the stored set the step shows as to do again, which is the safe direction.
   }
 }

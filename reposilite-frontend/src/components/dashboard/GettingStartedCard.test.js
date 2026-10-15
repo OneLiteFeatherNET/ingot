@@ -43,7 +43,7 @@ const MAVEN_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { id: { type: 'string' }, visibility: { type: 'string' } },
+        properties: { id: { type: 'string' }, visibility: { type: 'string' }, description: { type: 'string' } },
         additionalProperties: false
       }
     }
@@ -56,17 +56,17 @@ const FRONTEND_SCHEMA = {
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
+const DEFAULT_REPOSITORIES = [
+  { id: 'releases', visibility: 'PUBLIC', description: 'Release artifacts' },
+  { id: 'snapshots', visibility: 'PUBLIC', description: 'Snapshot artifacts' },
+  { id: 'private', visibility: 'PRIVATE', description: '' },
+  { id: 'mirror', visibility: 'PUBLIC', description: 'Mirror of upstream' }
+]
+
 // A server where the default repositories exist, one public team repository and a read-only token.
-const fakeClient = ({ failDomains = false } = {}) => {
+const fakeClient = ({ failDomains = false, repositories = DEFAULT_REPOSITORIES } = {}) => {
   const state = {
-    maven: {
-      repositories: [
-        { id: 'releases', visibility: 'PUBLIC' },
-        { id: 'snapshots', visibility: 'PUBLIC' },
-        { id: 'private', visibility: 'PRIVATE' },
-        { id: 'mirror', visibility: 'PUBLIC' }
-      ]
-    },
+    maven: { repositories: clone(repositories) },
     frontend: { title: 'Ingot Repository', organizationLogo: 'https://avatars.githubusercontent.com/u/103827826' }
   }
   const schemas = { maven: MAVEN_SCHEMA, frontend: FRONTEND_SCHEMA }
@@ -103,7 +103,8 @@ const mountCard = async ({ client = fakeClient() } = {}) => {
     routes: [
       { path: '/', component: { render: () => null } },
       { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-      { name: 'token', path: '/tokens/:name', component: { render: () => null } }
+      { name: 'token', path: '/tokens/:name', component: { render: () => null } },
+      { path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
     ]
   })
   await router.push('/')
@@ -135,7 +136,7 @@ describe('GettingStartedCard', () => {
     expect($('li[data-state="done"] [data-step-action="repository"]')).not.toBeNull()
     expect($('li[data-state="open"] [data-step-action="branding"]')).not.toBeNull()
     expect($('li[data-state="open"] [data-step-action="deploy-token"]')).not.toBeNull()
-    expect(document.body.textContent).toContain('2 of 4 steps done')
+    expect(document.body.textContent).toContain('1 of 4 steps done')
   })
 
   it('sends each open step to the place that completes it', async () => {
@@ -171,5 +172,66 @@ describe('GettingStartedCard', () => {
 
     expect($('[role="alert"]').textContent).toContain('Some steps could not be checked')
     expect($('[data-step-action]')).toBeNull()
+  })
+
+  describe('public repository review', () => {
+    const reviewStep = () => $('li [data-step-action="public-review"]')?.closest('li')
+    const openReview = () => $('[data-step-action="public-review"]').click()
+    // The first text of each row is the repository id.
+    const dialogIds = () => [...document.querySelectorAll('[role="dialog"] li')].map(row => row.querySelector('span').textContent.trim())
+
+    it('is to do with a Review action while a public repository is not yet confirmed', async () => {
+      await mountCard()
+
+      expect(reviewStep().dataset.state).toBe('open')
+      expect($('[data-step-action="public-review"]').textContent.trim()).toBe('Review')
+      expect($('[data-step-action="public-review"]').getAttribute('href'), 'the review opens a dialog, it does not navigate').toBeNull()
+    })
+
+    it('lists every public repository in the review, sorted by id', async () => {
+      await mountCard()
+      openReview()
+      await flushPromises()
+
+      expect(dialogIds()).toEqual(['mirror', 'releases', 'snapshots'])
+    })
+
+    it('marks the step done once the admin confirms the list, and remembers it in this browser', async () => {
+      await mountCard()
+      openReview()
+      await flushPromises()
+
+      const looksRight = [...document.querySelectorAll('[role="dialog"] button')].find(button => button.textContent.trim() === 'Looks right')
+      looksRight.click()
+      await flushPromises()
+
+      expect(reviewStep().dataset.state).toBe('done')
+      expect(document.body.textContent).toContain('2 of 4 steps done')
+      expect(JSON.parse(localStorage.getItem('ingot.checklist.publicReview'))).toEqual(['mirror', 'releases', 'snapshots'])
+    })
+
+    it('stays confirmed on the next visit when the public set has not changed', async () => {
+      localStorage.setItem('ingot.checklist.publicReview', JSON.stringify(['mirror', 'releases', 'snapshots']))
+      await mountCard()
+
+      expect(reviewStep().dataset.state).toBe('done')
+    })
+
+    it('is to do again when a repository became public after the confirmation', async () => {
+      localStorage.setItem('ingot.checklist.publicReview', JSON.stringify(['mirror', 'releases']))
+      await mountCard()
+
+      expect(reviewStep().dataset.state, 'snapshots is public but was never confirmed').toBe('open')
+    })
+
+    it('is done straight away when no repository is public', async () => {
+      await mountCard({
+        client: fakeClient({
+          repositories: [{ id: 'releases', visibility: 'PRIVATE' }, { id: 'mirror', visibility: 'PRIVATE' }]
+        })
+      })
+
+      expect(reviewStep().dataset.state).toBe('done')
+    })
   })
 })

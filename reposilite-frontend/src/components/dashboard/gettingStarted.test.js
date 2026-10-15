@@ -22,7 +22,13 @@ import {
   dismissChecklist,
   DEFAULT_REPOSITORY_IDS,
   DEFAULT_TITLE,
-  DEFAULT_LOGO
+  DEFAULT_LOGO,
+  PUBLIC_REVIEW_KEY,
+  isPublicReviewDone,
+  publicRepositories,
+  publicRepositoryIds,
+  readAcknowledgedPublicIds,
+  saveAcknowledgedPublicIds
 } from './gettingStarted'
 
 const DEFAULT_REPOS = [
@@ -90,10 +96,19 @@ describe('getting started checklist', () => {
     expect(doneOf(itemsFor({ frontend: { ...CUSTOMISED, title: '  ' } }), 'branding')).toBe(false)
   })
 
-  it('marks the public review step done when a public repository outside the defaults exists', () => {
+  it('keeps the public review step open while a public repository is not yet acknowledged', () => {
     expect(doneOf(itemsFor(), 'public-review')).toBe(false)
-    const repositories = [...DEFAULT_REPOS, { id: 'mirror', visibility: 'PUBLIC' }]
+    expect(doneOf(itemsFor({ acknowledgedPublic: ['releases', 'snapshots'] }), 'public-review')).toBe(true)
+  })
+
+  it('marks the public review step done when no repository is public', () => {
+    const repositories = [{ id: 'team', visibility: 'PRIVATE' }]
     expect(doneOf(itemsFor({ repositories }), 'public-review')).toBe(true)
+  })
+
+  it('opens the review dialog from the public review step instead of a route', () => {
+    const step = itemsFor().find(item => item.key === 'public-review')
+    expect(step.action).toEqual({ label: 'Review', dialog: 'public-repositories' })
   })
 
   it('reports nothing as done while the settings and tokens have not loaded', () => {
@@ -106,12 +121,92 @@ describe('getting started checklist', () => {
     expect(byKey.repository).toEqual({ name: 'settings', params: { domain: 'maven' }, query: { new: 'repository' } })
     expect(byKey['deploy-token']).toEqual({ name: 'token', params: { name: 'new' } })
     expect(byKey.branding).toEqual({ name: 'settings', params: { domain: 'frontend' } })
-    expect(byKey['public-review']).toEqual({ name: 'settings', params: { domain: 'maven' } })
   })
 
   it('counts the done steps for the progress line', () => {
     const items = itemsFor({ repositories: [...DEFAULT_REPOS, { id: 'team', visibility: 'PRIVATE' }], frontend: CUSTOMISED })
     expect(checklistProgress(items)).toEqual({ done: 2, total: 4 })
+  })
+})
+
+describe('public repository review', () => {
+  const PUBLIC_A = { id: 'mirror', visibility: 'PUBLIC', description: 'Mirror of upstream' }
+  const PUBLIC_B = { id: 'alpha', visibility: 'PUBLIC', description: '' }
+  const PRIVATE = { id: 'private', visibility: 'PRIVATE' }
+
+  it('lists the public repositories sorted by id, whatever order the server sends them in', () => {
+    expect(publicRepositories([PRIVATE, PUBLIC_A, PUBLIC_B]).map(repository => repository.id)).toEqual(['alpha', 'mirror'])
+  })
+
+  it('does not change the repository list it was given', () => {
+    const repositories = [PUBLIC_A, PUBLIC_B]
+    publicRepositories(repositories)
+    expect(repositories.map(repository => repository.id)).toEqual(['mirror', 'alpha'])
+  })
+
+  it('counts the default repositories when they are public', () => {
+    expect(publicRepositoryIds(DEFAULT_REPOS)).toEqual(['releases', 'snapshots'])
+  })
+
+  it('is done when nothing is public, whatever was acknowledged before', () => {
+    expect(isPublicReviewDone([PRIVATE], null)).toBe(true)
+    expect(isPublicReviewDone([PRIVATE], ['mirror'])).toBe(true)
+    expect(isPublicReviewDone([], [])).toBe(true)
+  })
+
+  it('is to do while a public repository has not been acknowledged', () => {
+    expect(isPublicReviewDone([PUBLIC_A], null)).toBe(false)
+    expect(isPublicReviewDone([PUBLIC_A], [])).toBe(false)
+  })
+
+  it('is done when the acknowledged set equals the current public set, regardless of order', () => {
+    expect(isPublicReviewDone([PUBLIC_A, PUBLIC_B], ['mirror', 'alpha'])).toBe(true)
+    expect(isPublicReviewDone([PUBLIC_A, PUBLIC_B], ['alpha', 'mirror'])).toBe(true)
+  })
+
+  it('returns to to do when a repository becomes public after the acknowledgement', () => {
+    const becamePublic = [PUBLIC_A, { id: 'private', visibility: 'PUBLIC' }]
+    expect(isPublicReviewDone(becamePublic, ['mirror'])).toBe(false)
+  })
+
+  it('returns to to do when a new public repository is added after the acknowledgement', () => {
+    expect(isPublicReviewDone([PUBLIC_A, PUBLIC_B], ['mirror'])).toBe(false)
+  })
+
+  it('returns to to do when an acknowledged repository is no longer public', () => {
+    expect(isPublicReviewDone([PUBLIC_A], ['mirror', 'alpha'])).toBe(false)
+  })
+})
+
+describe('public repository acknowledgement storage', () => {
+  it('uses the agreed localStorage key', () => {
+    expect(PUBLIC_REVIEW_KEY).toBe('ingot.checklist.publicReview')
+  })
+
+  it('reads nothing when no set was saved', () => {
+    expect(readAcknowledgedPublicIds(memoryStorage())).toBeNull()
+  })
+
+  it('saves the ids sorted and reads them back', () => {
+    const storage = memoryStorage()
+    saveAcknowledgedPublicIds(['mirror', 'alpha'], storage)
+    expect(readAcknowledgedPublicIds(storage)).toEqual(['alpha', 'mirror'])
+  })
+
+  it('ignores a stored value that is not a list of ids', () => {
+    const storage = memoryStorage()
+    storage.setItem(PUBLIC_REVIEW_KEY, '{"alpha":true}')
+    expect(readAcknowledgedPublicIds(storage)).toBeNull()
+    storage.setItem(PUBLIC_REVIEW_KEY, 'not json')
+    expect(readAcknowledgedPublicIds(storage)).toBeNull()
+  })
+
+  it('treats unreadable storage as nothing acknowledged', () => {
+    expect(readAcknowledgedPublicIds(memoryStorage({ broken: true }))).toBeNull()
+  })
+
+  it('does not throw when the acknowledgement cannot be written', () => {
+    expect(() => saveAcknowledgedPublicIds(['alpha'], memoryStorage({ broken: true }))).not.toThrow()
   })
 })
 

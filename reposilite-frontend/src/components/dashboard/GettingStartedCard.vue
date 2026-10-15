@@ -22,7 +22,17 @@ import { tokenStoreKey, useTokens } from '../../store/tokens'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
-import { checklistItems, checklistProgress, dismissChecklist, isChecklistDismissed } from './gettingStarted'
+import PublicRepositoriesDialog from './PublicRepositoriesDialog.vue'
+import {
+  checklistItems,
+  checklistProgress,
+  dismissChecklist,
+  isChecklistDismissed,
+  publicRepositories,
+  publicRepositoryIds,
+  readAcknowledgedPublicIds,
+  saveAcknowledgedPublicIds
+} from './gettingStarted'
 
 /*
  * The setup checklist for administrators, at the top of the dashboard. It reads the saved settings
@@ -42,6 +52,10 @@ const dismiss = () => {
   dismissed.value = true
 }
 
+// The public repository ids the admin confirmed in this browser, and whether the review dialog is open.
+const acknowledgedPublic = ref(readAcknowledgedPublicIds())
+const reviewOpen = ref(false)
+
 // Null until the data it stands for has arrived. The checklist waits for all three before it draws.
 const repositories = computed(() => {
   const saved = configuration.savedConfiguration('maven')
@@ -53,8 +67,10 @@ const tokens = computed(() => (tokenStore.loaded.value ? tokenStore.tokens.value
 const items = computed(() => checklistItems({
   repositories: repositories.value,
   tokens: tokens.value,
-  frontend: frontend.value
+  frontend: frontend.value,
+  acknowledgedPublic: acknowledgedPublic.value
 }))
+const publicRepos = computed(() => publicRepositories(repositories.value))
 const loaded = computed(() => repositories.value !== null && frontend.value !== null && tokens.value !== null)
 const progress = computed(() => checklistProgress(items.value))
 const failure = computed(() => configuration.loadError.value || tokenStore.loadError.value || '')
@@ -62,8 +78,24 @@ const statusText = computed(() => (progress.value.done === progress.value.total
   ? 'All steps are done.'
   : `${progress.value.done} of ${progress.value.total} steps done.`))
 
-const hrefOf = (item) => router.resolve(item.action.to).href
-const go = (item) => router.push(item.action.to)
+const hrefOf = (item) => (item.action.to ? router.resolve(item.action.to).href : undefined)
+
+// A step either opens its dialog or goes to the place that completes it.
+const activate = (item) => {
+  if (item.action.dialog === 'public-repositories') {
+    reviewOpen.value = true
+    return
+  }
+  router.push(item.action.to)
+}
+
+// The confirmed set is the public ids as they are at this moment, so a later change brings the step back.
+const confirmPublicReview = () => {
+  const ids = publicRepositoryIds(repositories.value)
+  saveAcknowledgedPublicIds(ids)
+  acknowledgedPublic.value = ids
+  reviewOpen.value = false
+}
 
 onMounted(() => {
   if (!isManager.value || dismissed.value) return
@@ -150,7 +182,7 @@ onMounted(() => {
             :data-step-action="item.key"
             :variant="item.done ? 'text' : 'tonal'"
             :href="hrefOf(item)"
-            @click.prevent="go(item)"
+            @click.prevent="activate(item)"
           >
             {{ item.action.label }}
           </MdButton>
@@ -162,6 +194,13 @@ onMounted(() => {
       >
         Checking the setup
       </p>
+
+      <PublicRepositoriesDialog
+        v-if="loaded"
+        v-model="reviewOpen"
+        :repositories="publicRepos"
+        @confirm="confirmPublicReview"
+      />
     </section>
   </MdCard>
 </template>
