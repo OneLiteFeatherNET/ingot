@@ -30,6 +30,7 @@ import com.reposilite.web.api.ReposiliteRoutes
 import io.javalin.community.routing.Route
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.PUT
+import io.javalin.http.Header
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
@@ -108,11 +109,13 @@ internal class SettingsEndpoints(
     )
     private val getConfiguration = ReposiliteRoute<Any>("/api/settings/domain/{name}", GET) {
         managerOnly {
-            response = sharedConfigurationFacade.getSettingsReference<SharedSettings>(requireParameter("name"))
-                ?.let { reference ->
-                    val settings = reference.get()
+            response = sharedConfigurationFacade.getDomainSnapshot<SharedSettings>(requireParameter("name"))
+                ?.let { snapshot ->
+                    // The tag describes the stored settings, so it is still valid when secrets are hidden from the body
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    val settings = snapshot.settings
                     if (hideSecrets.get()) {
-                        SettingsSecrets.mask(reference.type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings))
+                        SettingsSecrets.mask(settings.javaClass, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings))
                     } else {
                         settings
                     }
@@ -139,16 +142,25 @@ internal class SettingsEndpoints(
     private val updateConfiguration = ReposiliteRoute<Any>("/api/settings/domain/{name}", PUT) {
         managerOnly {
             with(requireParameter("name")) {
-                response = ctx.body()
-                    .takeIf { it.isNotEmpty() }
+                val body = ctx.body()
+                val reference = body.takeIf { it.isNotEmpty() }
                     ?.let { sharedConfigurationFacade.getSettingsReference<SharedSettings>(this) }
-                    ?.let { reference ->
-                        if (hideSecrets.get()) {
-                            updateHidingSecrets(this, reference, ctx.body())
-                        } else {
-                            sharedConfigurationFacade.updateSharedSettings(this, ctx.bodyAsClass(reference.type))
-                                ?.mapErr { badRequest(it.toString()) }
+
+                response = reference
+                    ?.let { settingsReference ->
+                        // Without If-Match the write is unconditional, as it always was. The precondition and the write share one lock.
+                        sharedConfigurationFacade.updateDomain<SharedSettings>(this, ctx.header(Header.IF_MATCH)) { current ->
+                            if (hideSecrets.get()) {
+                                restoreSecrets(this, settingsReference, body, current)
+                            } else {
+                                val incoming: SharedSettings = ctx.bodyAsClass(settingsReference.type)
+                                incoming.asSuccess()
+                            }
                         }
+                    }
+                    ?.map { snapshot ->
+                        ctx.header(Header.ETAG, snapshot.etag)
+                        snapshot.settings
                     }
                     ?: badRequestError("Body is empty")
             }
@@ -159,29 +171,27 @@ internal class SettingsEndpoints(
      * Restores the placeholders of the incoming document from the stored settings before the update. A placeholder without a stored
      * counterpart is rejected instead of being written as a literal value.
      */
-    private fun updateHidingSecrets(
+    private fun restoreSecrets(
         name: String,
         reference: SharedSettingsReference<SharedSettings>,
-        body: String
-    ): Result<out Any, ErrorResponse> {
+        body: String,
+        stored: SharedSettings,
+    ): Result<SharedSettings, ErrorResponse> {
         val incoming = runCatching { DEFAULT_OBJECT_MAPPER.readTree(body) }.getOrNull()
             ?: return badRequest("Body is not a valid JSON document").asError()
 
         val restored = SettingsSecrets.restore(
             type = reference.type,
             incoming = incoming,
-            stored = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
+            stored = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(stored)
         )
         if (restored.isErr) {
             return badRequest(restored.error).asError()
         }
 
-        val settings = runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(restored.get(), reference.type) as SharedSettings }
+        return runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(restored.get(), reference.type) as SharedSettings }
             .getOrElse { return badRequest("Body does not match the settings of '$name': ${it.message}").asError() }
-
-        return sharedConfigurationFacade.updateSharedSettings(name, settings)
-            ?.mapErr { badRequest(it.toString()) }
-            ?: badRequestError("Unknown settings domain '$name'")
+            .asSuccess()
     }
 
     override val routes = routes(listConfigurations, getConfiguration, updateConfiguration, getSchema)

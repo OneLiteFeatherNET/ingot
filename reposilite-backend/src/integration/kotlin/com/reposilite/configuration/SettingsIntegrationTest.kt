@@ -34,6 +34,7 @@ import com.reposilite.statistics.application.StatisticsSettings
 import com.reposilite.web.application.WebSettings
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
+import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import kong.unirest.core.Unirest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -179,6 +180,102 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
         assertSuccessResponse(OK, response) {
             assertThat(it.ldap.searchUserPassword).isEqualTo("ldap-secret")
         }
+    }
+
+    private fun currentEntityTag(domain: String): String {
+        val (name, secret) = useDefaultManagementToken()
+        return Unirest.get("$base/api/settings/domain/$domain")
+            .basicAuth(name, secret)
+            .asString()
+            .headers
+            .getFirst("ETag")
+    }
+
+    @Test
+    fun `should return an entity tag with the settings domain`() {
+        // when: a settings domain is requested
+        val etag = currentEntityTag("web")
+
+        // then: the response carries a strong entity tag
+        assertThat(etag).matches("\"[0-9a-f]{64}\"")
+    }
+
+    @Test
+    fun `should accept a write that carries the current entity tag and return the new one`() {
+        // given: the entity tag of the current state
+        val (name, secret) = useDefaultManagementToken()
+        val current = currentEntityTag("web")
+
+        // when: the domain is written with that tag
+        val updateResponse = Unirest.put("$base/api/settings/domain/web")
+            .basicAuth(name, secret)
+            .header("If-Match", current)
+            .body(WebSettings(forwardedIp = "conditional"))
+            .asEmpty()
+
+        // then: the write is applied and the response carries the tag of the stored state
+        assertSuccessResponse(OK, updateResponse)
+        val newTag = updateResponse.headers.getFirst("ETag")
+        assertThat(newTag).isNotEqualTo(current)
+        assertThat(currentEntityTag("web")).isEqualTo(newTag)
+    }
+
+    @Test
+    fun `should reject a write with a stale entity tag and name the domain`() {
+        // given: an entity tag read before another admin saves the domain
+        val (name, secret) = useDefaultManagementToken()
+        val stale = currentEntityTag("web")
+        val otherAdminResponse = Unirest.put("$base/api/settings/domain/web")
+            .basicAuth(name, secret)
+            .body(WebSettings(forwardedIp = "other-admin"))
+            .asEmpty()
+        assertSuccessResponse(OK, otherAdminResponse)
+
+        // when: the stale write arrives
+        val response = Unirest.put("$base/api/settings/domain/web")
+            .basicAuth(name, secret)
+            .header("If-Match", stale)
+            .body(WebSettings(forwardedIp = "overwrite"))
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: it is rejected with 412 and the error names the domain
+        assertErrorResponse(PRECONDITION_FAILED, response)
+        assertThat(response.body.message).contains("web")
+
+        // then: the other admin's change is still stored
+        val stored = Unirest.get("$base/api/settings/domain/web")
+            .basicAuth(name, secret)
+            .asJacksonObject(WebSettings::class)
+        assertSuccessResponse(OK, stored) { assertThat(it.forwardedIp).isEqualTo("other-admin") }
+    }
+
+    @Test
+    fun `should expose the entity tag header to cross-origin clients`() {
+        // given: a cross-origin dashboard served from another origin
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: a domain is requested with an origin header
+        val response = Unirest.get("$base/api/settings/domain/web")
+            .basicAuth(name, secret)
+            .header("Origin", "https://dashboard.example.org")
+            .asString()
+
+        // then: the browser is allowed to read the ETag header
+        assertSuccessResponse(OK, response)
+        assertThat(response.headers.getFirst("Access-Control-Expose-Headers")).containsIgnoringCase("ETag")
+    }
+
+    @Test
+    fun `should allow if-match in cross-origin preflight requests`() {
+        // when: a browser asks whether a cross-origin PUT with If-Match is allowed
+        val preflight = Unirest.options("$base/api/settings/domain/web")
+            .header("Origin", "https://dashboard.example.org")
+            .header("Access-Control-Request-Method", "PUT")
+            .header("Access-Control-Request-Headers", "authorization,content-type,if-match")
+            .asEmpty()
+
+        // then: the If-Match header is allowed
+        assertThat(preflight.headers.getFirst("Access-Control-Allow-Headers")).containsIgnoringCase("if-match")
     }
 
     @Test
