@@ -233,6 +233,25 @@ internal class LegacyAccessTokenMigrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["sqlite --temporary", "h2 --temporary"])
+    fun `a token imported after the migration becomes a machine principal and keeps its hash`(databaseConfiguration: String) {
+        withLegacyDatabase(databaseConfiguration) { database ->
+            // given: a migrated database, and a Reposilite 2 token written to tokens.json and imported with token-import
+            seedLegacyTokens(database)
+            LegacyAccessTokenMigration(database, journalist).migrate()
+            val imported = AccessToken(name = "v2-bot", encryptedSecret = "\$2a\$10\$emGPCUwsR650EJYNrjy/tucpi2rA0O2oYTT87OYQU9bSodGlNrI.q")
+
+            // when: the import saves it through the identity repository, as the console command does
+            IdentityAccessTokenRepository(IdentityStore(database, clock)).saveAccessToken(imported)
+
+            // then: it is a machine principal with its BCrypt hash unchanged, so no later start can leave it unusable
+            val store = IdentityStore(database, clock)
+            assertThat(store.findPrincipal("v2-bot")?.kind?.name).describedAs("principal of the imported token").isEqualTo("MACHINE")
+            assertThat(store.findToken("v2-bot")?.secretHash).describedAs("hash of the imported token").isEqualTo(imported.encryptedSecret)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["sqlite --temporary", "h2 --temporary"])
     fun `a token revoked after the migration does not come back on the next start`(databaseConfiguration: String) {
         withLegacyDatabase(databaseConfiguration) { database ->
             // given: a migrated database in which the new version has revoked a token that still exists in the legacy tables
