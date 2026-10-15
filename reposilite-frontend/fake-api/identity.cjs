@@ -29,6 +29,7 @@ const express = require("express")
 const { basicAuth } = require("./extensions.cjs")
 const audit = require("./audit.cjs")
 const loginProviders = require("./login-providers.cjs")
+const nodeLogic = require("./nodes.cjs")
 
 const SETUP_MODE = process.env.INGOT_FAKE_SETUP === "1"
 const SETUP_CODE = "fake-setup-123456"
@@ -84,25 +85,25 @@ const refreshSessions = new Map()
 let setupRequired = SETUP_MODE
 let repositoriesOf = () => []
 
-const addPrincipal = ({ kind, name, displayName, disabled = false, createdAt = nowIso(), password = null, instanceRole = false, lastSeenAt = null }) => {
+const addPrincipal = ({ kind, name, displayName, disabled = false, createdAt = nowIso(), password = null, instanceRole = false, lastSeenAt = null, nodes = [] }) => {
   const principal = {
     id: nextId(), kind, name, displayName: displayName || name, disabled,
-    createdAt, lastSeenAt, password, mustChangePassword: false, instanceRole, tokens: [],
+    createdAt, lastSeenAt, password, mustChangePassword: false, instanceRole, tokens: [], nodes,
   }
   principals.push(principal)
   return principal
 }
 
-const addTeam = ({ name, description = "", externalRef = null, members = [], grants = [], instanceRole = false }) => {
-  const team = { id: nextId(), name, description, externalRef, members, grants, instanceRole }
+const addTeam = ({ name, description = "", externalRef = null, members = [], grants = [], instanceRole = false, nodes = [], parents = [] }) => {
+  const team = { id: nextId(), name, description, externalRef, members, grants, instanceRole, nodes, parents }
   teams.push(team)
   return team
 }
 
-const addToken = (principal, { name, description = "", createdAt = today(), expiresAt = null, scopes = null, secret, legacyRoutes = [], lastUsedAt = null, lastUsedIp = null }) => {
+const addToken = (principal, { name, description = "", createdAt = today(), expiresAt = null, scopes = null, secret, legacyRoutes = [], lastUsedAt = null, lastUsedIp = null, nodes = [] }) => {
   const id = 1000 + nextId()
   const token = {
-    id, name, description, createdAt, expiresAt, scopes, lastUsedAt, lastUsedIp,
+    id, name, description, createdAt, expiresAt, scopes, lastUsedAt, lastUsedIp, nodes,
     secret: secret || nextBearerSecret(id), legacyRoutes,
   }
   principal.tokens.push(token)
@@ -113,12 +114,17 @@ const addToken = (principal, { name, description = "", createdAt = today(), expi
 //   admin (instance admin, the only one), alice (USER), bob (USER, disabled), ci-bot (MACHINE, token
 //   "ci-bot" with legacy routes, private team machine:ci-bot), team deployers (alice, ci-bot; DEPLOY on
 //   releases and READ on every repository), team docs-sync (alice via SYNC, bob manual; READ on
-//   private/docs). The last-used times are fixed (the fake's "today" is 2026-10-15): admin and alice
+//   private/docs), team developers (alice; may deploy to and read releases, may not read private; no
+//   parent), team ops (admin; may use the maintenance area; parent developers), and a direct node on
+//   alice that lets her read private although developers deny it. The last-used times are fixed (the fake's "today" is 2026-10-15): admin and alice
 //   were seen, bob never; token ci-bot was used two days ago from 192.0.2.10, alice-laptop yesterday
 //   from 198.51.100.7, alice-cli never.
 const seed = () => {
   addPrincipal({ kind: "USER", name: "admin", displayName: "Administrator", createdAt: "2026-10-01T09:00:00Z", password: "admin-password-12", instanceRole: true, lastSeenAt: "2026-10-15T08:05:00Z" })
-  const alice = addPrincipal({ kind: "USER", name: "alice", displayName: "Alice Example", createdAt: "2026-10-02T09:00:00Z", password: "alice-password-12", lastSeenAt: "2026-10-14T17:30:00Z" })
+  const alice = addPrincipal({
+    kind: "USER", name: "alice", displayName: "Alice Example", createdAt: "2026-10-02T09:00:00Z", password: "alice-password-12", lastSeenAt: "2026-10-14T17:30:00Z",
+    nodes: [{ node: "ingot.repository.private.read", allowed: true }],
+  })
   addPrincipal({ kind: "USER", name: "bob", displayName: "Bob Example", createdAt: "2026-10-03T09:00:00Z", password: "bob-password-12", disabled: true })
   const ciBot = addPrincipal({ kind: "MACHINE", name: "ci-bot", displayName: "CI bot", createdAt: "2026-10-04T09:00:00Z", lastSeenAt: "2026-10-13T08:15:00Z" })
   addToken(ciBot, {
@@ -160,6 +166,23 @@ const seed = () => {
     externalRef: "idp:group/docs",
     members: [{ principal: "alice", source: "SYNC" }, { principal: "bob", source: "MANUAL" }],
     grants: [{ repository: "private", pathPrefix: "docs", role: "READ" }],
+  })
+  addTeam({
+    name: "developers",
+    description: "Works on the releases repository",
+    members: [{ principal: "alice", source: "MANUAL" }],
+    nodes: [
+      { node: "ingot.repository.releases.deploy", allowed: true },
+      { node: "ingot.repository.releases.read", allowed: true },
+      { node: "ingot.repository.private.read", allowed: false },
+    ],
+  })
+  addTeam({
+    name: "ops",
+    description: "Runs the instance, inherits from developers",
+    members: [{ principal: "admin", source: "MANUAL" }],
+    nodes: [{ node: "ingot.admin.maintenance", allowed: true }],
+    parents: ["developers"],
   })
 }
 
@@ -222,11 +245,37 @@ const grantsOf = (principal) =>
 
 const appliesTo = (grant, repository) => grant.repository === null || same(grant.repository, repository)
 
+// ---------------------------------------------------------------- permission nodes
+
+// The data the evaluator reads, for a principal (optionally with one of its tokens) and for a team.
+const contextOf = (principal, token = null) => ({
+  user: { name: principal.name, nodes: principal.nodes, instanceRole: principal.instanceRole },
+  memberTeams: teamsOf(principal),
+  teams,
+  token: token && token.nodes.length > 0 ? { name: token.name, nodes: token.nodes } : null,
+})
+
+const teamContext = (team) => ({
+  user: { name: team.name, nodes: [], instanceRole: false },
+  memberTeams: [team],
+  teams,
+  token: null,
+})
+
+const isNodeAdmin = (principal) => isInstanceAdmin(principal) || nodeLogic.holdsEveryArea(contextOf(principal))
+
+const catalogNodes = (prefix = "") => nodeLogic.buildCatalog(repositoriesOf().map(repository => repository.id), prefix)
+
+// The catalog nodes (literal and wildcard) that the evaluator allows for the principal.
+const effectiveNodes = (principal) =>
+  nodeLogic.allowedNodes(catalogNodes().map(entry => entry.node), contextOf(principal))
+
 // ---------------------------------------------------------------- views
 
 const principalDto = (principal) => ({
   id: principal.id, kind: principal.kind, name: principal.name, displayName: principal.displayName,
   disabled: principal.disabled, createdAt: principal.createdAt, lastSeenAt: principal.lastSeenAt,
+  nodeCount: principal.nodes.length, isAdmin: isNodeAdmin(principal),
 })
 
 // A list row: the flat principal and the summaries a list shows, so that no detail is read per row.
@@ -243,6 +292,7 @@ const principalListItem = (principal) => ({
 const tokenDto = (token) => ({
   name: token.name, description: token.description, createdAt: token.createdAt,
   expiresAt: token.expiresAt, scopes: token.scopes, lastUsedAt: token.lastUsedAt, lastUsedIp: token.lastUsedIp,
+  nodes: token.nodes.map(entry => ({ ...entry })),
 })
 
 const principalDetail = (principal) => ({
@@ -256,6 +306,7 @@ const teamDto = (team) => ({
   name: team.name, description: team.description, externalRef: team.externalRef,
   memberCount: team.members.length, grantCount: team.grants.length,
   instanceAdmin: team.instanceRole,
+  nodeCount: team.nodes.length, isAdmin: team.instanceRole || nodeLogic.holdsEveryArea(teamContext(team)),
 })
 
 const teamDetail = (team) => ({
@@ -265,6 +316,8 @@ const teamDetail = (team) => ({
     .map(member => ({ principal: member.principal, kind: findPrincipal(member.principal)?.kind ?? "USER", source: member.source })),
   grants: team.grants.map(grant => ({ repository: grant.repository, pathPrefix: grant.pathPrefix, role: grant.role })),
   instanceRole: team.instanceRole,
+  parents: [...team.parents],
+  children: teams.filter(other => other.parents.some(parent => same(parent, team.name))).map(other => other.name).sort(),
 })
 
 // What a legacy route looks like in /api/tokens, for the main file to merge into its own list.
@@ -310,7 +363,12 @@ const accessEntries = (repository) =>
 
 // ---------------------------------------------------------------- http helpers
 
-const fail = (res, status, message) => res.status(status).send({ status, message })
+const fail = (res, status, message, problems) =>
+  res.status(status).send(problems === undefined ? { status, message } : { status, message, problems })
+
+// A 400 for invalid permission nodes: every problem with its node, the first one as the message.
+const failProblems = (res, problems) =>
+  fail(res, 400, problems.length === 1 ? problems[0].message : `${problems.length} permission nodes are invalid`, problems)
 
 // A hash of the body, without the times that change on a read or a sign-in, so that signing in does
 // not make every open editor stale. The tag is quoted, as the header requires.
@@ -486,6 +544,7 @@ const meBody = (actor) => {
     teams: publicTeamNamesOf(principal),
     grants: grants.map(grant => ({ team: grant.team, repository: grant.repository, pathPrefix: grant.pathPrefix, role: grant.role })),
     instanceAdmin: actor.admin,
+    nodes: effectiveNodes(principal),
   }
   if (principal.mustChangePassword) body.mustChangePassword = true
   return body
@@ -500,6 +559,7 @@ const decorateTokenMe = (body) => {
     teams: admin ? publicTeamNamesOf(admin) : [],
     grants: admin ? grantsOf(admin).map(grant => ({ team: grant.team, repository: grant.repository, pathPrefix: grant.pathPrefix, role: grant.role })) : [],
     instanceAdmin: true,
+    nodes: admin ? effectiveNodes(admin) : ["*"],
   }
 }
 
@@ -690,9 +750,11 @@ const createToken = (req, res, principal, status) => {
   if (body.secret !== undefined && (typeof body.secret !== "string" || body.secret.trim() === "")) {
     return fail(res, 400, "Secret cannot be blank")
   }
+  const tokenNodes = body.nodes === undefined ? { entries: [], problems: [] } : nodeLogic.validateEntries(body.nodes)
+  if (tokenNodes.problems.length > 0) return failProblems(res, tokenNodes.problems)
   const token = addToken(principal, {
     name, description: typeof body.description === "string" ? body.description : "",
-    expiresAt: expiry.expiresAt, scopes: scopes.scopes, secret: body.secret,
+    expiresAt: expiry.expiresAt, scopes: scopes.scopes, secret: body.secret, nodes: tokenNodes.entries,
   })
   reply(res, { token: tokenDto(token), secret: token.secret }, status)
 }
@@ -877,6 +939,7 @@ identity.delete("/teams/:name", withTeam((req, res, team) => {
   if (!requirePrecondition(req, res, teamDetail(team), `Team '${team.name}'`)) return
   if (team.instanceRole && leavesNoAdmin({ removedTeam: team })) return fail(res, 409, LAST_ADMIN_MESSAGE)
   teams = teams.filter(entry => entry !== team)
+  for (const other of teams) other.parents = other.parents.filter(parent => !same(parent, team.name))
   record(req, "TEAM_DELETED", { team: team.name })
   noContent(res)
 }))
@@ -942,6 +1005,79 @@ const setTeamInstanceAdmin = (value) => withTeam((req, res, team) => {
 })
 identity.put("/teams/:name/instance-admin", setTeamInstanceAdmin(true))
 identity.delete("/teams/:name/instance-admin", setTeamInstanceAdmin(false))
+
+// ---- permission nodes
+
+const nodesBody = (holder) => ({ nodes: holder.nodes.map(entry => ({ ...entry })) })
+
+// Replaces the direct nodes of a principal or a team, with the same ETag handling as the grants.
+const putNodes = (label, action, details) => (req, res, holder) => {
+  if (!requirePrecondition(req, res, nodesBody(holder), label(holder))) return
+  const { entries, problems } = nodeLogic.validateEntries(bodyOf(req).nodes)
+  if (problems.length > 0) return failProblems(res, problems)
+  const describe = (entry) => `${entry.node} (${entry.allowed ? "allow" : "deny"})`
+  const before = holder.nodes.map(describe)
+  holder.nodes = entries
+  const after = holder.nodes.map(describe)
+  const nodesAdded = after.filter(entry => !before.includes(entry))
+  const nodesRemoved = before.filter(entry => !after.includes(entry))
+  if (nodesAdded.length > 0 || nodesRemoved.length > 0) record(req, action, { ...details(holder), nodesAdded, nodesRemoved })
+  reply(res, nodesBody(holder))
+}
+
+identity.get("/principals/:name/nodes", withPrincipal((req, res, principal) => reply(res, nodesBody(principal))))
+identity.put("/principals/:name/nodes", withPrincipal((req, res, principal) =>
+  putNodes(holder => `Principal '${holder.name}'`, "PRINCIPAL_NODES_CHANGED", principalTarget)(req, res, principal)))
+
+identity.get("/teams/:name/nodes", withTeam((req, res, team) => reply(res, nodesBody(team))))
+identity.put("/teams/:name/nodes", withTeam((req, res, team) =>
+  putNodes(holder => `Team '${holder.name}'`, "TEAM_NODES_CHANGED", holder => ({ team: holder.name }))(req, res, team)))
+
+const parentsBody = (team) => ({ parents: [...team.parents] })
+
+identity.get("/teams/:name/parents", withTeam((req, res, team) => reply(res, parentsBody(team))))
+
+identity.put("/teams/:name/parents", withTeam((req, res, team) => {
+  if (!requirePrecondition(req, res, parentsBody(team), `Team '${team.name}'`)) return
+  const { parents } = bodyOf(req)
+  if (!Array.isArray(parents)) return fail(res, 400, "Parents are required, send an empty list to remove all parents")
+  const resolved = []
+  for (const entry of parents) {
+    if (typeof entry !== "string") return fail(res, 400, "A parent must be a team name")
+    const parent = findPublicTeam(entry)
+    if (!parent) return fail(res, 404, `Team '${entry}' not found`)
+    if (!resolved.includes(parent.name)) resolved.push(parent.name)
+  }
+  const problem = nodeLogic.checkParents(teams.map(entry => ({ name: entry.name, parents: entry.parents })), team.name, resolved)
+  if (problem) return fail(res, problem.status, problem.message)
+  const before = team.parents
+  team.parents = resolved
+  const parentsAdded = resolved.filter(name => !before.includes(name))
+  const parentsRemoved = before.filter(name => !resolved.includes(name))
+  if (parentsAdded.length > 0 || parentsRemoved.length > 0) {
+    record(req, "TEAM_PARENTS_CHANGED", { team: team.name, parentsAdded, parentsRemoved })
+  }
+  reply(res, parentsBody(team))
+}))
+
+identity.get("/nodes/catalog", (req, res) =>
+  reply(res, { nodes: catalogNodes(typeof req.query.prefix === "string" ? req.query.prefix : "") }))
+
+identity.get("/nodes/templates", (req, res) => reply(res, { templates: nodeLogic.templates() }))
+
+identity.get("/check", (req, res) => {
+  const { principal: principalName, node, token: tokenName } = req.query
+  const problems = nodeLogic.validateNode(node)
+  if (problems.length > 0) return failProblems(res, problems.map(message => ({ node: typeof node === "string" ? node : null, message })))
+  const principal = typeof principalName === "string" && principalName !== "" ? findPrincipal(principalName) : undefined
+  if (!principal) return fail(res, 404, "Principal not found")
+  let token = null
+  if (tokenName !== undefined && tokenName !== "") {
+    token = publicTokenFields(principal, String(tokenName))
+    if (!token) return fail(res, 404, "Token not found")
+  }
+  reply(res, nodeLogic.evaluate({ ...contextOf(principal, token), node }))
+})
 
 // ---- access on a repository
 
