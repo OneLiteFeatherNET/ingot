@@ -139,15 +139,20 @@ const isSelected = (item) => item.key === props.selectedKey
       v-if="items.length > 0"
       class="flex flex-col gap-1"
     >
+      <!--
+        The item is one block: the selection colour, the state layer and the tag chips all belong to the
+        <li>. The button inside it holds the id and the supporting line, and is the part that selects.
+      -->
       <li
         v-for="item in items"
         :key="item.key"
-        class="flex flex-col"
+        class="md-state-layer rounded-corner-large"
+        :class="isSelected(item) ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
       >
         <button
           type="button"
-          class="md-state-layer md-focus-ring relative flex min-h-14 w-full flex-col justify-center rounded-corner-large px-4 py-2 text-left"
-          :class="isSelected(item) ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+          class="md-focus-ring-inset relative flex w-full min-w-0 flex-col gap-1 rounded-corner-large px-4 pt-3 text-left"
+          :class="item.tags.length > 0 ? 'pb-0' : 'pb-3'"
           :aria-current="isSelected(item) ? 'true' : undefined"
           @click="emit('select', item.address)"
         >
@@ -163,7 +168,8 @@ const isSelected = (item) => item.key === props.selectedKey
           </span>
           <span
             v-else-if="item.summary"
-            class="line-clamp-2 md-body-medium"
+            :title="item.summary"
+            class="block truncate md-body-medium"
             :class="isSelected(item) ? 'text-on-secondary-container' : 'text-on-surface-variant'"
           >
             {{ item.summary }}
@@ -171,7 +177,7 @@ const isSelected = (item) => item.key === props.selectedKey
         </button>
         <div
           v-if="item.tags.length > 0"
-          class="flex flex-wrap gap-1 px-4 pb-2"
+          class="flex flex-wrap gap-2 px-4 pb-3 pt-2"
         >
           <MdChip
             v-for="tag in item.tags"

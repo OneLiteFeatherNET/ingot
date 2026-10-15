@@ -267,3 +267,50 @@ describe('EntryList keys', () => {
     expect(wrapper.findAll('li')).toHaveLength(3)
   })
 })
+
+describe('EntryList item layout', () => {
+  const layoutSchema = {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      description: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } }
+    }
+  }
+  const layoutEntries = [
+    { id: 'releases', description: 'Released artifacts with a supporting line that is much too long to fit on one line of the list', tags: ['team-core', 'public'] },
+    { id: 'archive', description: 'Old builds' }
+  ]
+
+  const mountLayout = (selectedKey = null) => {
+    wrapper = mount(EntryList, {
+      props: { entries: layoutEntries, keys: ['entry-1', 'entry-2'], selectedKey, itemSchema: layoutSchema, collectionTitle: 'Repositories', noun: 'repository' },
+      attachTo: document.body
+    })
+    return wrapper
+  }
+
+  it('draws the tag chips inside the item element, not beside it', () => {
+    mountLayout()
+
+    const item = wrapper.findAll('li')[0]
+    expect(item.findAll('[data-test="tag-chip"]').map(chip => chip.text())).toEqual(['team-core', 'public'])
+  })
+
+  it('gives the selection colour to the whole item, chips included', () => {
+    mountLayout('entry-1')
+
+    const selected = wrapper.findAll('li')[0]
+    expect(selected.classes()).toContain('bg-secondary-container')
+    expect(selected.find('[data-test="tag-chip"]').exists()).toBe(true)
+    expect(wrapper.findAll('li')[1].classes()).not.toContain('bg-secondary-container')
+  })
+
+  it('clamps the supporting line to one line and keeps the full text as its title', () => {
+    mountLayout()
+
+    const summary = wrapper.findAll('li')[0].find('button').findAll('span')[1]
+    expect(summary.classes()).toContain('truncate')
+    expect(summary.attributes('title')).toBe(layoutEntries[0].description)
+  })
+})
