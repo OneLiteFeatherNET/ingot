@@ -33,6 +33,7 @@ const ROUTES = [
   // `new` is reserved: it opens the create form rather than a token of that name.
   { name: 'token', path: '/tokens/:name', meta: { section: 'tokens', manager: true } },
   { name: 'console', path: '/console', meta: { section: 'console', manager: true } },
+  { name: 'maintenance', path: '/maintenance', meta: { section: 'maintenance', manager: true } },
   { name: 'settings', path: '/settings/:domain?', meta: { section: 'settings', manager: true } },
   {
     name: 'settings-entry',

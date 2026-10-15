@@ -48,6 +48,7 @@ describe('route to section mapping', () => {
     ['/tokens', 'tokens'],
     ['/tokens/ci-bot', 'tokens'],
     ['/console', 'console'],
+    ['/maintenance', 'maintenance'],
     ['/settings', 'settings'],
     ['/settings/maven', 'settings'],
     ['/settings/maven/repositories/releases', 'settings'],

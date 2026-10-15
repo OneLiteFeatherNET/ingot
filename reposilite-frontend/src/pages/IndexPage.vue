@@ -31,6 +31,7 @@ import OverviewIcon from '../components/icons/OverviewIcon.vue'
 import DashboardIcon from '../components/icons/DashboardIcon.vue'
 import TokensIcon from '../components/icons/TokensIcon.vue'
 import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
+import CleaningIcon from '../components/icons/CleaningIcon.vue'
 import SettingsIcon from '../components/icons/SettingsIcon.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
 import { property } from '../helpers/vue-extensions'
@@ -51,6 +52,7 @@ const lazyView = (loader) => defineAsyncComponent({
 })
 
 const ConsoleView = lazyView(() => import('../components/console/ConsoleView.vue'))
+const MaintenanceView = lazyView(() => import('../components/maintenance/MaintenanceView.vue'))
 const DashboardView = lazyView(() => import('../components/dashboard/DashboardView.vue'))
 const TokensView = lazyView(() => import('../components/tokens/TokensView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
@@ -61,6 +63,7 @@ const SECTION_ICONS = {
   dashboard: DashboardIcon,
   tokens: TokensIcon,
   console: ConsoleIcon,
+  maintenance: CleaningIcon,
   settings: SettingsIcon,
 }
 
@@ -259,6 +262,7 @@ const activeLabel = computed(() => sectionLabel(section.value))
         @update:level="setConsoleLevel"
         @update:search="setConsoleSearch"
       />
+      <MaintenanceView v-else-if="section === 'maintenance'" />
       <SettingsView
         v-else-if="section === 'settings'"
         :selected-tab="activeLabel"

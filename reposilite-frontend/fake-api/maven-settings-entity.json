@@ -1,6 +1,31 @@
 {
   "repositories": [
     {
+      "id": "snapshots",
+      "visibility": "PUBLIC",
+      "redeployment": true,
+      "preserveSnapshots": false,
+      "storageProvider": { "type": "s3", "bucketName": "test" },
+      "proxied": []
+    },
+    {
+      "id": "mirror-cache",
+      "visibility": "PUBLIC",
+      "redeployment": false,
+      "preserveSnapshots": false,
+      "storageProvider": { "type": "s3", "bucketName": "test" },
+      "proxied": [
+        {
+          "reference": "https://repo.maven.apache.org/maven2",
+          "store": true,
+          "allowedGroups": [],
+          "connectTimeout": 3,
+          "readTimeout": 15,
+          "httpProxy": ""
+        }
+      ]
+    },
+    {
       "id": "releases",
       "visibility": "PUBLIC",
       "description": "Released artifacts for the public.",

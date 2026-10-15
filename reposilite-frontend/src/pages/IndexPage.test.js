@@ -74,6 +74,7 @@ vi.mock('../components/overview/RepositoryOverview.vue', sectionStub('Repository
 vi.mock('../components/dashboard/DashboardView.vue', sectionStub('DashboardStub', 'dashboard'))
 vi.mock('../components/tokens/TokensView.vue', sectionStub('TokensStub', 'tokens'))
 vi.mock('../components/console/ConsoleView.vue', sectionStub('ConsoleStub', 'console'))
+vi.mock('../components/maintenance/MaintenanceView.vue', sectionStub('MaintenanceStub', 'maintenance'))
 vi.mock('../components/settings/SettingsView.vue', sectionStub('SettingsStub', 'settings'))
 
 const QUALIFIER = { path: '', watchable: 0 }
@@ -116,7 +117,7 @@ const chooseLink = async (wrapper, label) => {
 
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
-const SECTION_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console', 'Settings']
+const SECTION_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Settings']
 
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
@@ -160,6 +161,7 @@ describe('IndexPage section from the route', () => {
     ['/tokens', 'tokens'],
     ['/tokens/ci-bot', 'tokens'],
     ['/console', 'console'],
+    ['/maintenance', 'maintenance'],
     ['/settings', 'settings'],
     ['/settings/maven/repositories/releases', 'settings'],
   ])('shows the section of %s for a manager', async (url, section) => {

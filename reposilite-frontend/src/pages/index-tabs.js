@@ -25,6 +25,7 @@ const SECTIONS = [
   { key: 'dashboard', label: 'Dashboard', manager: true, route: 'dashboard' },
   { key: 'tokens', label: 'Tokens', manager: true, route: 'tokens' },
   { key: 'console', label: 'Console', manager: true, route: 'console' },
+  { key: 'maintenance', label: 'Maintenance', manager: true, route: 'maintenance' },
   { key: 'settings', label: 'Settings', manager: true, route: 'settings' },
 ]
 

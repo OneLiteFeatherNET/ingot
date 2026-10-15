@@ -21,6 +21,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('axios', () => ({
   default: {
     get: vi.fn(),
+    post: vi.fn(),
     interceptors: { response: { use: vi.fn() } }
   }
 }))
@@ -92,5 +93,54 @@ describe('client repositories call', () => {
     await createClient().maven.repositories({ q: 'nightly builds', tags: ['team-core', 'ci'] })
 
     expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories\?q=nightly\+builds&tag=team-core&tag=ci$/)
+  })
+})
+
+describe('maintenance endpoints', () => {
+  let axios
+  let client
+
+  beforeEach(async () => {
+    vi.resetModules()
+    axios = (await import('axios')).default
+    axios.get.mockReset()
+    axios.post.mockReset()
+    client = await import('./client')
+  })
+
+  it('reads the storage figures from the storage endpoint', () => {
+    client.createClient('ci', 'secret').maven.storage()
+
+    expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/maven\/storage$/)
+  })
+
+  it('asks for a storage refresh with a POST to the refresh endpoint', () => {
+    client.createClient('ci', 'secret').maven.refreshStorage()
+
+    expect(axios.post.mock.calls[0][0]).toMatch(/\/api\/maven\/storage\/refresh$/)
+  })
+
+  it('posts a dry run to the policy it names, with the id escaped', () => {
+    client.createClient('ci', 'secret').cleanup.dryRun('weekly snapshots')
+
+    expect(axios.post.mock.calls[0][0]).toMatch(/\/api\/cleanup\/policies\/weekly%20snapshots\/dry-run$/)
+  })
+
+  it('posts a run to the policy it names', () => {
+    client.createClient('ci', 'secret').cleanup.run('snapshots-weekly')
+
+    expect(axios.post.mock.calls[0][0]).toMatch(/\/api\/cleanup\/policies\/snapshots-weekly\/run$/)
+  })
+
+  it('lists every run when no policy is named', () => {
+    client.createClient('ci', 'secret').cleanup.runs()
+
+    expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/cleanup\/runs$/)
+  })
+
+  it('lists the runs of one policy when it is named', () => {
+    client.createClient('ci', 'secret').cleanup.runs('snapshots-weekly')
+
+    expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/cleanup\/runs\?policy=snapshots-weekly$/)
   })
 })

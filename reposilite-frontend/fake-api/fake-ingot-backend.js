@@ -229,6 +229,124 @@ const statisticsSeries = [
   }
 ]
 
+// Storage and cleanup. The real server leaves null fields out of its JSON, and the stub does the
+// same (omitNulls), so the dashboard's reading of missing fields is exercised as well.
+const omitNulls = (value) =>
+  Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== null && entry !== undefined))
+
+const MIB = 1024 * 1024
+const GIB = 1024 * MIB
+
+let storageState = {
+  computedAt: "2026-10-15T09:30:00Z",
+  computing: false,
+  repositories: [
+    { id: "releases", usedBytes: Math.round(2.1 * GIB), quota: "10GB", quotaBytes: 10 * GIB, fileCount: 1834 },
+    { id: "snapshots", usedBytes: 640 * MIB, quota: "100%", quotaBytes: GIB, fileCount: 977 },
+    { id: "mirror-cache", usedBytes: Math.round(3.4 * GIB), quota: null, quotaBytes: null, fileCount: 9120 },
+  ],
+}
+
+const storageBody = () =>
+  omitNulls({
+    computedAt: storageState.computedAt,
+    computing: storageState.computing,
+    totalBytes: storageState.repositories.reduce((sum, row) => sum + row.usedBytes, 0),
+    repositories: storageState.repositories.map(omitNulls),
+  })
+
+// Computing takes a few seconds, so the dashboard's progress state and its polling are visible.
+const startStorageComputation = () => {
+  if (storageState.computing) return
+  storageState.computing = true
+  setTimeout(() => {
+    storageState.computing = false
+    storageState.computedAt = new Date().toISOString()
+  }, 3000)
+}
+
+const cleanupSchema = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Cleanup",
+  "description": "Cleanup policies that delete artifacts on demand or on a schedule",
+  "properties": {
+    "policies": {
+      "type": "array",
+      "title": "Policies",
+      "items": {
+        "type": "object",
+        "title": "Policy",
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "enabled": { "type": "boolean", "title": "Enabled" },
+          "repositories": { "type": "array", "title": "Repositories", "items": { "type": "string" } },
+          "scope": { "type": "string", "title": "Scope", "enum": ["SNAPSHOTS", "RELEASES", "MIRROR_CACHE"] },
+          "keepLatest": { "type": "integer", "title": "Keep latest", "minimum": 1 },
+          "olderThanDays": { "type": "integer", "title": "Older than days", "minimum": 1 },
+          "notDownloadedForDays": { "type": "integer", "title": "Not downloaded for days", "minimum": 1 },
+          "groupFilter": { "type": "string", "title": "Group filter" },
+          "schedule": { "type": "string", "title": "Schedule" },
+        },
+        "required": ["id"],
+      },
+    },
+  },
+}
+
+let cleanupDomain = {
+  policies: [
+    { id: "snapshots-weekly", enabled: false, repositories: ["snapshots"], scope: "SNAPSHOTS", keepLatest: 3, olderThanDays: 30, notDownloadedForDays: null, groupFilter: "", schedule: "manual" },
+    { id: "mirror-cache-nightly", enabled: true, repositories: ["mirror-cache"], scope: "MIRROR_CACHE", keepLatest: null, olderThanDays: null, notDownloadedForDays: 60, groupFilter: "net/onelitefeather/.*", schedule: "03:30" },
+    { id: "releases-yearly", enabled: false, repositories: ["releases"], scope: "RELEASES", keepLatest: null, olderThanDays: 365, notDownloadedForDays: null, groupFilter: null, schedule: "manual" },
+  ],
+}
+
+// What a dry run of each policy would delete. A policy without an entry deletes nothing.
+const PREVIEWS = {
+  "snapshots-weekly": {
+    deletions: [
+      { repository: "snapshots", path: "net/x/app/1.0-SNAPSHOT", version: "1.0-SNAPSHOT", sizeBytes: 1024, reason: "beyond the newest 3 versions; older than 30 days" },
+      { repository: "snapshots", path: "net/x/app/1.1-SNAPSHOT", version: "1.1-SNAPSHOT", sizeBytes: 1024, reason: "beyond the newest 3 versions; older than 30 days" },
+    ],
+    warnings: [],
+  },
+  "mirror-cache-nightly": {
+    deletions: [
+      { repository: "mirror-cache", path: "net/onelitefeather/lib/2.3.0", version: "2.3.0", sizeBytes: 524288, reason: "not downloaded for 60 days" },
+    ],
+    warnings: ["repository 'mirror-cache' has no mirror that stores artifacts"],
+  },
+  "releases-yearly": {
+    deletions: [],
+    warnings: ["repository 'releases' has no mirror that stores artifacts"],
+  },
+}
+
+let runSequence = 4
+let cleanupRuns = [
+  { id: 1, policyId: "mirror-cache-nightly", trigger: "SCHEDULED", startedAt: "2026-10-15T03:30:00Z", finishedAt: "2026-10-15T03:30:09Z", status: "SUCCEEDED", deletedCount: 412, deletedBytes: 1181116006, failures: [] },
+  { id: 2, policyId: "snapshots-weekly", trigger: "MANUAL", startedAt: "2026-10-14T16:00:00Z", finishedAt: "2026-10-14T16:00:04Z", status: "PARTIAL", deletedCount: 2, deletedBytes: 2048, failures: ["net/x/app/0.9-SNAPSHOT: the file is locked by an upload"] },
+  { id: 3, policyId: "snapshots-weekly", trigger: "MANUAL", startedAt: "2026-10-08T16:00:00Z", finishedAt: "2026-10-08T16:00:15Z", status: "FAILED", deletedCount: 0, deletedBytes: 0, failures: ["The storage backend did not answer within 15 seconds", "Retry the run once the backend is reachable"] },
+  { id: 4, policyId: "releases-yearly", trigger: "MANUAL", startedAt: "2026-10-01T11:20:00Z", finishedAt: "2026-10-01T11:20:02Z", status: "SUCCEEDED", deletedCount: 0, deletedBytes: 0, failures: [] },
+]
+
+const policyNotFound = (res) => res.status(404).send({ status: 404, message: "Policy not found" })
+
+const findPolicy = (id) => cleanupDomain.policies.find(policy => policy.id === id)
+
+const previewOf = (policy) => {
+  const sample = PREVIEWS[policy.id] ?? { deletions: [], warnings: [] }
+  return {
+    policyId: policy.id,
+    evaluatedAt: new Date().toISOString(),
+    count: sample.deletions.length,
+    totalBytes: sample.deletions.reduce((sum, row) => sum + row.sizeBytes, 0),
+    deletions: sample.deletions,
+    warnings: sample.warnings,
+  }
+}
+
 application
   .get("/", (req, res) => res.send("Ingot stub API"))
   .use((req, res, next) => {
@@ -244,7 +362,57 @@ application
   .use(express.text())
   .use(bodyParser.raw({ limit: '100mb', extended: true }))
   .use(bodyParser.json())
-  .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend']))
+  .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend', 'cleanup']))
+  .get('/api/settings/schema/cleanup', (req, res) => res.send(cleanupSchema))
+  .get('/api/settings/domain/cleanup', (req, res) => res.send(omitNulls({ policies: cleanupDomain.policies.map(omitNulls) })))
+  .put('/api/settings/domain/cleanup', (req, res) => {
+    cleanupDomain = { policies: (req.body.policies ?? []).map(policy => ({ ...policy })) }
+    res.send("")
+  })
+  .get('/api/maven/storage', (req, res) => {
+    authorized(req, () => res.send(storageBody()), () => invalidCredentials(res))
+  })
+  .post('/api/maven/storage/refresh', (req, res) => {
+    authorized(req, () => {
+      startStorageComputation()
+      res.status(202).send(storageBody())
+    }, () => invalidCredentials(res))
+  })
+  .post('/api/cleanup/policies/:id/dry-run', (req, res) => {
+    authorized(req, () => {
+      const policy = findPolicy(req.params.id)
+      policy ? res.send(previewOf(policy)) : policyNotFound(res)
+    }, () => invalidCredentials(res))
+  })
+  .post('/api/cleanup/policies/:id/run', (req, res) => {
+    authorized(req, () => {
+      const policy = findPolicy(req.params.id)
+      if (!policy) return policyNotFound(res)
+      const preview = previewOf(policy)
+      const run = {
+        id: ++runSequence,
+        policyId: policy.id,
+        trigger: "MANUAL",
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        status: "SUCCEEDED",
+        deletedCount: preview.count,
+        deletedBytes: preview.totalBytes,
+        failures: [],
+      }
+      cleanupRuns = [run, ...cleanupRuns]
+      res.send(omitNulls(run))
+    }, () => invalidCredentials(res))
+  })
+  .get('/api/cleanup/runs', (req, res) => {
+    authorized(req, () => {
+      const runs = cleanupRuns
+        .filter(run => !req.query.policy || run.policyId === req.query.policy)
+        .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+        .slice(0, req.query.policy ? 20 : undefined)
+      res.send(runs.map(omitNulls))
+    }, () => invalidCredentials(res))
+  })
   .get('/api/settings/schema/maven', (req, res) => res.send(mavenSettingsSchema))
   .get('/api/settings/domain/maven', (req, res) => res.send(mavenSettingsEntity))
   // Overview of the repositories. Anonymous callers see PUBLIC repositories; signed-in callers

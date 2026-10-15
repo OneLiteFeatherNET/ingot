@@ -177,6 +177,30 @@ const createClient = (defaultName, defaultSecret) => {
         return axios.delete(createURL(`/${gav}`), {
           ...defaultAuthorization(),
         })
+      },
+      storage() {
+        return get("/api/maven/storage")
+      },
+      refreshStorage() {
+        return axios.post(createURL("/api/maven/storage/refresh"), {}, {
+          ...defaultAuthorization(),
+        })
+      }
+    },
+    cleanup: {
+      dryRun(policyId) {
+        return axios.post(createURL(`/api/cleanup/policies/${encodeURIComponent(policyId)}/dry-run`), {}, {
+          ...defaultAuthorization(),
+        })
+      },
+      run(policyId) {
+        return axios.post(createURL(`/api/cleanup/policies/${encodeURIComponent(policyId)}/run`), {}, {
+          ...defaultAuthorization(),
+        })
+      },
+      runs(policyId) {
+        const query = policyId ? `?policy=${encodeURIComponent(policyId)}` : ""
+        return get(`/api/cleanup/runs${query}`)
       }
     },
     settings: {

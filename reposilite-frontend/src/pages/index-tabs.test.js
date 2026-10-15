@@ -25,7 +25,7 @@ describe('visibleSections', () => {
 
   it('offers every section to a manager, in the order of the navigation', () => {
     expect(visibleSections(true).map(section => section.label))
-      .toEqual(['Overview', 'Dashboard', 'Tokens', 'Console', 'Settings'])
+      .toEqual(['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Settings'])
   })
 })
 
@@ -41,7 +41,20 @@ describe('section table', () => {
   it('marks exactly the manager sections as manager only', () => {
     const managerOnly = SECTIONS.filter(section => section.manager).map(section => section.key)
 
-    expect(managerOnly).toEqual(['dashboard', 'tokens', 'console', 'settings'])
+    expect(managerOnly).toEqual(['dashboard', 'tokens', 'console', 'maintenance', 'settings'])
+  })
+
+  it('places the maintenance section between console and settings, which stays last', () => {
+    const keys = SECTIONS.map(section => section.key)
+
+    expect(keys.slice(-3)).toEqual(['console', 'maintenance', 'settings'])
+  })
+
+  it('guards the maintenance route with the manager permission', () => {
+    const route = ROUTES.find(entry => entry.name === 'maintenance')
+
+    expect(route?.path).toBe('/maintenance')
+    expect(route?.meta).toEqual({ section: 'maintenance', manager: true })
   })
 })
 
