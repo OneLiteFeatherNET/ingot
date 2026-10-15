@@ -16,6 +16,7 @@
 
 package com.reposilite.token
 
+import at.favre.lib.crypto.bcrypt.BCrypt
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -32,6 +33,26 @@ internal class AccessTokenSecurityProviderTest {
     fun `should not match incorrect secret`() {
         val encoded = AccessTokenSecurityProvider.encodeSecret("correct-password")
         assertThat(AccessTokenSecurityProvider.matches(encoded, "wrong-password")).isFalse
+    }
+
+    @Test
+    fun `accepts a bcrypt hash produced by another implementation`() {
+        // The published OpenBSD vector for "U*U" at cost 5, which is how a token written by a Reposilite 2 install is hashed.
+        val reference = "\$2a\$05\$CCCCCCCCCCCCCCCCCCCCC.E5YPO9kmyuRGyh0XouQYb4YMJKvyOeW"
+
+        assertThat(AccessTokenSecurityProvider.matches(reference, "U*U")).isTrue
+    }
+
+    @Test
+    fun `reads the 2a hashes of a reposilite 2 tokens dat file as valid bcrypt`() {
+        // Hash taken verbatim from the migration plugin's tokens.dat fixture. Its plaintext is unknown, so the test asserts the
+        // format is accepted: a wrong secret must be a plain mismatch, not a malformed hash.
+        val legacyHash = "\$2a\$10\$emGPCUwsR650EJYNrjy/tucpi2rA0O2oYTT87OYQU9bSodGlNrI.q"
+
+        val result = BCrypt.verifyer(BCrypt.Version.VERSION_2A).verify("not-the-secret".toCharArray(), legacyHash.toCharArray())
+
+        assertThat(result.validFormat).describedAs("format of a 2.x hash").isTrue
+        assertThat(result.verified).describedAs("wrong secret").isFalse
     }
 
     @Test
