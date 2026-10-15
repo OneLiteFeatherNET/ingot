@@ -19,6 +19,7 @@ import { computed } from 'vue'
 import { STATUS } from '../../store/palette'
 import LinkIcon from '../icons/LinkIcon.vue'
 import MdCard from '../md/MdCard.vue'
+import StatusLabel from './StatusLabel.vue'
 
 const props = defineProps({
   label: {
@@ -122,14 +123,11 @@ const meterColor = computed(() => {
 
     <p
       v-if="status"
-      class="flex items-center gap-1.5 pt-1.5 md-body-small text-on-surface-variant"
+      class="pt-1.5 md-body-small text-on-surface-variant"
     >
-      <span
-        class="size-2 shrink-0 rounded-corner-full"
-        :style="{ backgroundColor: STATUS[status] }"
-        aria-hidden="true"
-      />
-      {{ statusLabel }}
+      <StatusLabel :color="STATUS[status]">
+        {{ statusLabel }}
+      </StatusLabel>
     </p>
   </MdCard>
 </template>

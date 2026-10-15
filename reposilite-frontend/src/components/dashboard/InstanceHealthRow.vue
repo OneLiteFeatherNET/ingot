@@ -19,6 +19,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { STATUS } from '../../store/palette'
 import { useSession } from '../../store/session'
 import { describeHealth, findIntegrations, toAnswer } from './instanceHealth'
+import StatusLabel from './StatusLabel.vue'
 
 // Health moves as often as the status tiles it sits under, so it is polled on the same beat.
 const POLL_INTERVAL_MS = 5000
@@ -80,18 +81,18 @@ onBeforeUnmount(() => {
   <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 px-1">
     <div
       role="status"
-      class="flex flex-wrap items-start gap-x-2 md-body-medium text-on-surface"
+      class="flex flex-wrap items-center gap-x-2 md-body-medium text-on-surface"
     >
-      <span
-        class="mt-1.5 size-2.5 shrink-0 rounded-corner-full"
-        :style="{ backgroundColor: DOT_COLORS[indicator.state] }"
-        aria-hidden="true"
-      />
-      <span class="md-label-large">{{ indicator.label }}</span>
+      <StatusLabel
+        :color="DOT_COLORS[indicator.state]"
+        class="md-label-large"
+      >
+        {{ indicator.label }}
+      </StatusLabel>
       <span
         v-for="line in indicator.details"
         :key="line"
-        class="block w-full pl-4.5 md-body-small text-on-surface-variant"
+        class="block w-full pl-3.5 md-body-small text-on-surface-variant"
       >
         {{ line }}
       </span>
