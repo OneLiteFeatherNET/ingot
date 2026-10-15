@@ -70,6 +70,19 @@ internal class DashboardPathsTest {
     }
 
     @Test
+    fun `should warn about a repository named after the maintenance route like any other dashboard route`() {
+        // when: a repository with the id of the maintenance route is checked
+        val warning = DashboardPaths.reservedRepositoryWarnings(listOf("maintenance")).single()
+
+        // then: the warning names the maintenance route and the browse path that reaches the repository from the dashboard
+        assertThat(warning)
+            .describedAs("warning text for the maintenance route")
+            .contains("'/maintenance'")
+            .contains("'/browse/maintenance'")
+            .contains("top-level browser navigation")
+    }
+
+    @Test
     fun `should keep the server segment warning for a repository that collides with the api`() {
         // when: the warning for a repository that collides with the API is built
         val warning = DashboardPaths.reservedRepositoryWarnings(listOf("api")).single()
