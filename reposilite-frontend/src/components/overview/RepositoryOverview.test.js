@@ -169,6 +169,31 @@ describe('RepositoryOverview list', () => {
   })
 })
 
+describe('RepositoryOverview layout', () => {
+  it('lists a repository once when the backend answers its id twice', async () => {
+    const duplicated = [
+      { id: 'snapshots', visibility: 'PUBLIC', description: '', tags: [] },
+      { id: 'snapshots', visibility: 'PUBLIC', description: 'Nightly builds.', tags: ['ci'] },
+      { id: 'releases', visibility: 'PUBLIC', description: '', tags: [] }
+    ]
+    await mountAt('/', { answer: answerWith(duplicated) })
+
+    expect(rowIds()).toEqual(['releases', 'snapshots'])
+    expect(rowFor('snapshots').find('[data-test="repository-description"]').exists(), 'the first answer for an id is the one shown').toBe(false)
+  })
+
+  it('counts each repository once, although the backend answered its id twice', async () => {
+    const duplicated = [
+      { id: 'snapshots', visibility: 'PUBLIC', description: '', tags: [] },
+      { id: 'snapshots', visibility: 'PUBLIC', description: '', tags: [] }
+    ]
+    await mountAt('/', { answer: answerWith(duplicated) })
+
+    expect(wrapper.find('[role="status"]').text()).toBe('1 repositories')
+  })
+
+})
+
 describe('RepositoryOverview search', () => {
   it('matches the id, the description and the tags as the user types', async () => {
     await mountAt('/')

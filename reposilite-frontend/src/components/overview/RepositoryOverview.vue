@@ -73,6 +73,16 @@ const normalise = (repository) => ({
   tags: Array.isArray(repository.tags) ? repository.tags : []
 })
 
+// A repository is one row whatever the answer says: the first entry for an id is kept, so the
+// key of each row is unique and the count is the number of repositories.
+const uniqueById = (list) => {
+  const byId = new Map()
+  for (const repository of list.map(normalise)) {
+    if (!byId.has(repository.id)) byId.set(repository.id, repository)
+  }
+  return [...byId.values()]
+}
+
 /*
  * Asks for the list once the session is known, and again when it changes, because a sign in can show
  * more repositories. A response that arrives after a newer request has started is dropped.
@@ -85,7 +95,7 @@ const load = async () => {
   try {
     const { data } = await client.value.maven.repositories()
     if (current !== latestRequest) return
-    repositories.value = (data.repositories ?? []).map(normalise)
+    repositories.value = uniqueById(data.repositories ?? [])
     unsupported.value = false
   } catch (error) {
     if (current !== latestRequest) return
