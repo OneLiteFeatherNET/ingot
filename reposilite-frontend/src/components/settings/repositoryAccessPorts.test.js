@@ -31,14 +31,17 @@ const TEAM = {
 }
 
 // A fake identity client. Every call is recorded by vi.fn, so a test reads the requests back.
-const fakeIdentity = ({ team = TEAM, etag = '"5"' } = {}) => {
+const fakeIdentity = ({ team = TEAM, nodes = [], etag = '"5"' } = {}) => {
   const tokens = { create: vi.fn(async () => ({ data: { token: { name: 'team-deploy' }, secret: 'secret-1' } })) }
   return {
     teams: {
       get: vi.fn(async () => ({ data: team, headers: { etag } })),
       create: vi.fn(async () => ({ data: { name: 'new-team' } })),
-      setGrants: vi.fn(async () => ({ data: team })),
       setMembers: vi.fn(async () => ({ data: team }))
+    },
+    nodes: {
+      get: vi.fn(async () => ({ data: { nodes }, headers: { etag } })),
+      set: vi.fn(async () => ({ data: { nodes } }))
     },
     principals: { create: vi.fn(async () => ({ data: { name: 'team-deploy' } })) },
     principalTokens: vi.fn(() => tokens),
@@ -57,50 +60,83 @@ describe('create the team', () => {
 })
 
 describe('grant the team', () => {
-  it('sends the repository, no path prefix and the chosen role, with the entity tag of the team', async () => {
-    const identity = fakeIdentity({ team: { ...TEAM, grants: [] } })
+  it('writes the nodes of the role on the repository, with the entity tag of the team', async () => {
+    const identity = fakeIdentity({ nodes: [] })
 
     await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'MAINTAIN' })
 
-    expect(identity.teams.setGrants).toHaveBeenCalledWith(
+    expect(identity.nodes.set).toHaveBeenCalledWith(
+      'teams',
       'developers',
-      [{ repository: 'team', pathPrefix: null, role: 'MAINTAIN' }],
+      [
+        { node: 'ingot.repository.team.read', allowed: true },
+        { node: 'ingot.repository.team.deploy', allowed: true },
+        { node: 'ingot.repository.team.delete', allowed: true }
+      ],
       '"5"'
     )
   })
 
-  it('keeps the grants the team already has and appends the new one last', async () => {
-    const identity = fakeIdentity()
+  it('never writes a repository-wide grant on the grants endpoint', async () => {
+    const identity = fakeIdentity({ nodes: [] })
 
     await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
 
-    const [, grants] = identity.teams.setGrants.mock.calls[0]
-    expect(grants).toEqual([
-      { repository: null, pathPrefix: null, role: 'READ' },
-      { repository: 'releases', pathPrefix: 'com/example', role: 'DEPLOY' },
-      { repository: 'team', pathPrefix: null, role: 'DEPLOY' }
+    expect(identity.teams.setGrants, 'the server refuses a grant without a path').toBeUndefined()
+  })
+
+  it('keeps the nodes the team has and appends the new ones last', async () => {
+    const identity = fakeIdentity({ nodes: [{ node: 'ingot.repository.releases.read', allowed: true }] })
+
+    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
+
+    const [, , nodes] = identity.nodes.set.mock.calls[0]
+    expect(nodes).toEqual([
+      { node: 'ingot.repository.releases.read', allowed: true },
+      { node: 'ingot.repository.team.read', allowed: true },
+      { node: 'ingot.repository.team.deploy', allowed: true }
     ])
   })
 
-  it('reads the team before it writes, so the write carries a current tag', async () => {
-    const identity = fakeIdentity()
-    const order = []
-    identity.teams.get.mockImplementation(async () => { order.push('get'); return { data: TEAM, headers: { etag: '"7"' } } })
-    identity.teams.setGrants.mockImplementation(async () => { order.push('setGrants') })
-
-    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'READ' })
-
-    expect(order).toEqual(['get', 'setGrants'])
-    expect(identity.teams.setGrants.mock.calls[0][2]).toBe('"7"')
-  })
-
-  it('does not write again when the team already has exactly this grant, so a retry is harmless', async () => {
-    const team = { ...TEAM, grants: [{ repository: 'team', pathPrefix: null, role: 'DEPLOY' }] }
-    const identity = fakeIdentity({ team })
+  it('switches a denied node of the role to allowed in place', async () => {
+    const identity = fakeIdentity({
+      nodes: [
+        { node: 'ingot.repository.team.read', allowed: true },
+        { node: 'ingot.repository.team.deploy', allowed: false }
+      ]
+    })
 
     await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
 
-    expect(identity.teams.setGrants).not.toHaveBeenCalled()
+    expect(identity.nodes.set.mock.calls[0][2]).toEqual([
+      { node: 'ingot.repository.team.read', allowed: true },
+      { node: 'ingot.repository.team.deploy', allowed: true }
+    ])
+  })
+
+  it('reads the team nodes before it writes, so the write carries a current tag', async () => {
+    const identity = fakeIdentity()
+    const order = []
+    identity.nodes.get.mockImplementation(async () => { order.push('get'); return { data: { nodes: [] }, headers: { etag: '"7"' } } })
+    identity.nodes.set.mockImplementation(async () => { order.push('set') })
+
+    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'READ' })
+
+    expect(order).toEqual(['get', 'set'])
+    expect(identity.nodes.set.mock.calls[0][3]).toBe('"7"')
+  })
+
+  it('does not write again when the team already allows every node of the role, so a retry is harmless', async () => {
+    const identity = fakeIdentity({
+      nodes: [
+        { node: 'ingot.repository.team.read', allowed: true },
+        { node: 'ingot.repository.team.deploy', allowed: true }
+      ]
+    })
+
+    await createAccessPorts(identity).grantTeam('developers', { repository: 'team', role: 'DEPLOY' })
+
+    expect(identity.nodes.set).not.toHaveBeenCalled()
   })
 })
 

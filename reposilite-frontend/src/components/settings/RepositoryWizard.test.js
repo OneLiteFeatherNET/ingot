@@ -74,6 +74,7 @@ const fakeIdentity = () => {
           { principal: 'bob', kind: 'USER', source: 'SYNC' }
         ],
         grants: [{ repository: null, pathPrefix: null, role: 'READ' }],
+        nodes: [],
         instanceRole: false
       }
     },
@@ -87,7 +88,7 @@ const fakeIdentity = () => {
       list: vi.fn(async () => ({ data: Object.values(state.teams).map(team => ({ name: team.name })) })),
       get: vi.fn(async (name) => ({ data: clone(state.teams[name]), headers: { etag: '"1"' } })),
       create: vi.fn(async (body) => {
-        state.teams[body.name] = { name: body.name, members: [], grants: [], instanceRole: false }
+        state.teams[body.name] = { name: body.name, members: [], grants: [], nodes: [], instanceRole: false }
         return { data: clone(state.teams[body.name]) }
       }),
       setGrants: vi.fn(async (name, grants) => {
@@ -101,6 +102,13 @@ const fakeIdentity = () => {
           ...members.map(principal => ({ principal, kind: 'USER', source: 'MANUAL' }))
         ]
         return { data: clone(team) }
+      })
+    },
+    nodes: {
+      get: vi.fn(async (kind, name) => ({ data: { nodes: clone(state.teams[name].nodes) }, headers: { etag: '"1"' } })),
+      set: vi.fn(async (kind, name, nodes) => {
+        state.teams[name].nodes = clone(nodes)
+        return { data: { nodes: clone(nodes) } }
       })
     },
     principals: {
@@ -390,7 +398,7 @@ describe('RepositoryWizard review', () => {
     expect(document.body.textContent).toContain('Filesystem, quota 100%')
     expect(document.body.textContent).toContain('Team "developers" gets the Deploy role on team')
     expect(client.settings.update).not.toHaveBeenCalled()
-    expect(client.identity.teams.setGrants).not.toHaveBeenCalled()
+    expect(client.identity.nodes.set).not.toHaveBeenCalled()
     expect(client.identity.principals.create).not.toHaveBeenCalled()
   })
 
@@ -415,14 +423,19 @@ describe('RepositoryWizard create sequence', () => {
     await click('#wizard-create')
 
     expect(client.state.maven.repositories.map(repo => repo.id)).toEqual(['releases', 'team'])
-    expect(client.identity.teams.setGrants).toHaveBeenCalledWith(
+    expect(client.identity.nodes.set).toHaveBeenCalledWith(
+      'teams',
       'developers',
       [
-        { repository: null, pathPrefix: null, role: 'READ' },
-        { repository: 'team', pathPrefix: null, role: 'MAINTAIN' }
+        { node: 'ingot.repository.team.read', allowed: true },
+        { node: 'ingot.repository.team.deploy', allowed: true },
+        { node: 'ingot.repository.team.delete', allowed: true }
       ],
       '"1"'
     )
+    expect(client.identity.state.teams.developers.grants, 'the path-less grant is no longer written').toEqual([
+      { repository: null, pathPrefix: null, role: 'READ' }
+    ])
   })
 
   it('creates a new team before it is granted', async () => {
@@ -435,9 +448,11 @@ describe('RepositoryWizard create sequence', () => {
 
     expect(client.identity.teams.create).toHaveBeenCalledWith({ name: 'team-team' })
     expect(client.identity.teams.create.mock.invocationCallOrder[0])
-      .toBeLessThan(client.identity.teams.setGrants.mock.invocationCallOrder[0])
-    expect(client.identity.state.teams['team-team'].grants)
-      .toEqual([{ repository: 'team', pathPrefix: null, role: 'DEPLOY' }])
+      .toBeLessThan(client.identity.nodes.set.mock.invocationCallOrder[0])
+    expect(client.identity.state.teams['team-team'].nodes).toEqual([
+      { node: 'ingot.repository.team.read', allowed: true },
+      { node: 'ingot.repository.team.deploy', allowed: true }
+    ])
   })
 
   it('creates the machine account, adds it to the team keeping the manual members, and creates its token', async () => {
@@ -466,7 +481,7 @@ describe('RepositoryWizard create sequence', () => {
 
     const order = [
       client.settings.update,
-      client.identity.teams.setGrants,
+      client.identity.nodes.set,
       client.identity.principals.create,
       client.identity.teams.setMembers,
       client.identity.machineTokens.create
@@ -535,7 +550,7 @@ describe('RepositoryWizard create sequence', () => {
 
     expect($('[data-step="settings"]').dataset.state).toBe('failed')
     expect($('[data-step="grant"]').dataset.state).toBe('pending')
-    expect(client.identity.teams.setGrants).not.toHaveBeenCalled()
+    expect(client.identity.nodes.set).not.toHaveBeenCalled()
     expect(document.body.textContent).toContain('409 conflict')
   })
 
@@ -551,7 +566,7 @@ describe('RepositoryWizard create sequence', () => {
   })
 
   it('keeps a saved repository when the wizard is cancelled after an access step failed', async () => {
-    client.identity.teams.setGrants.mockRejectedValueOnce(new Error('412 precondition failed'))
+    client.identity.nodes.set.mockRejectedValueOnce(new Error('412 precondition failed'))
     await mountWizard()
     await reachReview()
     await click('#wizard-create')

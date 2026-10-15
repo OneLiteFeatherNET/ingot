@@ -48,4 +48,16 @@ const applyTemplate = (template, repository, existing) => {
   return { added, skipped }
 }
 
-export { PLACEHOLDER, applyTemplate, fillTemplate, needsRepository }
+// The actions a repository role grants, as the server's migration and its node templates write them.
+const ROLE_ACTIONS = {
+  READ: ['read'],
+  DEPLOY: ['read', 'deploy'],
+  MAINTAIN: ['read', 'deploy', 'delete'],
+  ADMIN: ['read', 'deploy', 'delete', 'manage']
+}
+
+/** The nodes a repository role grants on one repository. The server refuses a repository-wide grant, so this is the write. */
+const repositoryRoleNodes = (role, repository) =>
+  (ROLE_ACTIONS[role] ?? []).map(action => `ingot.repository.${repository}.${action}`)
+
+export { PLACEHOLDER, ROLE_ACTIONS, applyTemplate, fillTemplate, needsRepository, repositoryRoleNodes }

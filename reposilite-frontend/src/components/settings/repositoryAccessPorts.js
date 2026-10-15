@@ -16,7 +16,8 @@
 
 import { etagOf } from '../../store/client'
 import { buildCreateBody as buildPrincipalBody } from '../access/accessPrincipals'
-import { grantPayload, manualMembers, teamDetailOf } from '../access/accessTeams'
+import { manualMembers, teamDetailOf } from '../access/accessTeams'
+import { repositoryRoleNodes } from '../access/nodes/nodeTemplates'
 import { buildCreateBody as buildTokenBody } from '../identity/identityTokens'
 
 /*
@@ -41,15 +42,26 @@ export const createAccessPorts = (identity) => {
       await identity.teams.create({ name })
     },
 
-    /* Appends { repository, pathPrefix: null, role } to the grants the team has. */
+    /*
+     * Grants the role on the repository as permission nodes: the nodes the role needs are added to the
+     * node list of the team, and a denied one is switched to allowed. The server refuses a repository-wide
+     * grant on the grants endpoint, so this is the only write for a role. A team that holds the nodes
+     * already is not written again.
+     */
     async grantTeam(team, { repository, role }) {
-      const { detail, etag } = await readTeam(team)
-      const existing = detail.grants.map(grantPayload)
-      const added = grantPayload({ repository, pathPrefix: null, role })
-      const present = existing.some(grant =>
-        grant.repository === added.repository && grant.pathPrefix === added.pathPrefix && grant.role === added.role)
-      if (present) return
-      await identity.teams.setGrants(team, [...existing, added], etag)
+      const response = await identity.nodes.get('teams', team)
+      const etag = etagOf(response)
+      const existing = (response.data?.nodes ?? []).map(entry => ({ node: entry.node, allowed: entry.allowed === true }))
+      const wanted = repositoryRoleNodes(role, repository)
+      const allowedNow = new Set(existing.filter(entry => entry.allowed).map(entry => entry.node))
+      const missing = wanted.filter(node => !allowedNow.has(node))
+      if (missing.length === 0) return
+
+      const missingSet = new Set(missing)
+      const listed = new Set(existing.map(entry => entry.node))
+      const kept = existing.map(entry => ({ node: entry.node, allowed: missingSet.has(entry.node) ? true : entry.allowed }))
+      const added = missing.filter(node => !listed.has(node)).map(node => ({ node, allowed: true }))
+      await identity.nodes.set('teams', team, [...kept, ...added], etag)
     },
 
     async createMachine(name) {
