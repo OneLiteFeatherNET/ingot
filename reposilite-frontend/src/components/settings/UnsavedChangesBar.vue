@@ -38,7 +38,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['save', 'discard'])
+const emit = defineEmits(['save', 'discard', 'review'])
 
 const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? 'change' : 'changes'}`)
 </script>
@@ -51,7 +51,14 @@ const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? '
   >
     <div class="min-w-0 md-body-large">
       <p class="text-on-surface">
-        {{ countText }}
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          class="md-state-layer relative -mx-2 rounded-corner-small px-2 py-1 text-left text-primary underline decoration-1 underline-offset-4"
+          @click="emit('review')"
+        >
+          {{ countText }}
+        </button>
         <span
           v-if="saving"
           class="text-on-surface-variant"

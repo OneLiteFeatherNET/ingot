@@ -30,6 +30,8 @@ import { collectionsOf, entryLayout, idText, validateNewId } from './collections
 import { barClearance } from './barClearance'
 import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
+import SettingsReviewSheet from './SettingsReviewSheet.vue'
+import { diffSettings, revertChange as revertDraftChange } from './settingsDiff'
 import { property } from '../../helpers/vue-extensions'
 
 /*
@@ -245,6 +247,34 @@ const save = () => store.saveConfiguration()
 const discard = () => store.discardChanges()
 const factoryReset = () => store.factoryReset()
 
+/*
+ * The review lists the same changes the bar counts: the saved state against the draft, per domain.
+ * Revert puts one change back to its saved value in the draft, and nothing reaches the server until Save.
+ */
+const reviewOpen = ref(false)
+const changes = computed(() => diffSettings(
+  settingsByDomain(domains.value, snapshots.value),
+  settingsByDomain(domains.value, configurations.value),
+  store.schemas.value
+))
+const countOfChanges = computed(() => (changes.value.length > 0 ? changes.value.length : changeCount.value))
+
+const revertChange = (change) => {
+  const domain = change.domain
+  store.setDomainData(domain, revertDraftChange(configurations.value[domain], snapshots.value[domain], change))
+  store.validateDomain(domain)
+}
+
+const discardAll = () => {
+  discard()
+  reviewOpen.value = false
+}
+
+// The sheet closes only when the save went through; a refused save keeps the changes on screen.
+const saveFromReview = async () => {
+  if (await store.saveConfiguration()) reviewOpen.value = false
+}
+
 /* JsonForms configuration */
 const formsConfiguration = {
   showUnfocusedDescription: true
@@ -391,13 +421,25 @@ watch(
       class="sticky bottom-0 z-10 mt-6 max-[599px]:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]"
     >
       <UnsavedChangesBar
-        :count="changeCount"
+        :count="countOfChanges"
         :invalid="invalidDomains.length > 0"
         :saving="saving"
         @save="save"
         @discard="discard"
+        @review="reviewOpen = true"
       />
     </div>
+
+    <SettingsReviewSheet
+      :open="reviewOpen"
+      :changes="changes"
+      :invalid="invalidDomains.length > 0"
+      :saving="saving"
+      @update:open="reviewOpen = $event"
+      @revert="revertChange"
+      @discard="discardAll"
+      @save="saveFromReview"
+    />
   </div>
 </template>
 

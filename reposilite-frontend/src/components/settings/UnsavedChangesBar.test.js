@@ -76,4 +76,12 @@ describe('UnsavedChangesBar', () => {
     expect(buttonNamed(wrapper, 'Save').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('Saving')
   })
+
+  it('opens the review of the changes when the count is pressed', async () => {
+    const wrapper = mountBar({ count: 3 })
+
+    await wrapper.findAll('button').find(button => button.text().includes('3 unsaved changes')).trigger('click')
+
+    expect(wrapper.emitted('review')).toEqual([[]])
+  })
 })
