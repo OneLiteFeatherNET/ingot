@@ -26,6 +26,7 @@ import com.reposilite.maven.api.Versioning
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.maven.specification.MavenSpecification
 import com.reposilite.storage.api.toLocation
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import panda.std.ResultAssertions.assertOk
@@ -90,6 +91,43 @@ internal class PreservedBuildsListenerTest : MavenSpecification() {
             ).map { it.toLocation() },
             assertOk(repository.storageProvider.getFiles(versionId))
         )
+    }
+
+    @Test
+    fun `should keep every entry of the deployed build even when its file is not stored yet`() {
+        // given: build 2 is stored, build 3 is listed as deployed but its jar has not been stored yet
+        val artifactId = "artifact"
+        val versionId = "group/$artifactId/1.0.0-R0.1-SNAPSHOT".toLocation()
+        val prefix = "$versionId/$artifactId-1.0.0-R0.1"
+        addFileToRepository(FileSpec(repositoryName, "$prefix-20220101.213701-2.jar", "two"))
+        mavenFacade.saveMetadata(
+            SaveMetadataRequest(
+                repository = mavenFacade.getRepository(repositoryName)!!,
+                gav = versionId,
+                metadata = Metadata(
+                    artifactId = artifactId,
+                    versioning = Versioning(
+                        snapshot = Snapshot(timestamp = "20220101.213703", buildNumber = 3),
+                        _snapshotVersions = listOf(
+                            SnapshotVersion(extension = "jar", value = "1.0.0-R0.1-20220101.213701-2", updated = "20220101213701"),
+                            SnapshotVersion(extension = "jar", value = "1.0.0-R0.1-20220101.213703-3", updated = "20220101213703"),
+                        ),
+                    )
+                )
+            )
+        )
+
+        // when: the metadata of build 3 is deployed
+        val repository = mavenFacade.getRepository(repositoryName)!!
+        preservedBuildsListener.onCall(DeployEvent(repository, "$versionId/maven-metadata.xml".toLocation(), "junit@localhost"))
+
+        // then: the entry of the stored build 2 is dropped, while the entry of build 3 stays
+        val versioning = mavenFacade.findMetadata(repository, versionId).get().versioning
+        assertThat(versioning?.snapshotVersions.orEmpty().map { it.value })
+            .`as`("snapshot versions after deploying build 3")
+            .containsExactly("1.0.0-R0.1-20220101.213703-3")
+        assertThat(versioning?.snapshot).`as`("snapshot element after deploying build 3")
+            .isEqualTo(Snapshot(timestamp = "20220101.213703", buildNumber = 3))
     }
 
 }

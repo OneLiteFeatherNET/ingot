@@ -110,6 +110,10 @@ class MavenFacade internal constructor(
     fun findMetadata(repository: Repository, gav: Location): Result<Metadata, ErrorResponse> =
         metadataService.findMetadata(repository, gav)
 
+    /** Brings the version-level metadata of a SNAPSHOT directory in line with the files stored there, see [MetadataService.reconcileSnapshotVersion]. */
+    internal fun reconcileSnapshotVersion(repository: Repository, versionDirectory: Location) =
+        metadataService.reconcileSnapshotVersion(repository, versionDirectory)
+
     fun findVersions(lookupRequest: VersionLookupRequest): Result<VersionsResponse, ErrorResponse> =
         repositorySecurityProvider.canAccessResource(lookupRequest.accessToken, lookupRequest.repository, lookupRequest.gav)
             .flatMap { metadataService.findVersions(lookupRequest.repository, lookupRequest.gav, lookupRequest.filter, lookupRequest.sorted) }

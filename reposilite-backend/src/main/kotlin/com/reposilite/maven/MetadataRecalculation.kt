@@ -96,6 +96,12 @@ private fun SnapshotVersion.build(): SnapshotBuild? =
         ?.let { SnapshotBuild(timestamp = it.groupValues[1], buildNumber = it.groupValues[2].toInt()) }
 
 /**
+ * Whether this entry describes the build that [snapshot] names. Without a [snapshot] no entry matches.
+ */
+internal fun SnapshotVersion.isBuildOf(snapshot: Snapshot?): Boolean =
+    snapshot != null && build()?.let { it.timestamp == snapshot.timestamp && it.buildNumber == snapshot.buildNumber } == true
+
+/**
  * Keeps the `<snapshot>` element while one of the remaining entries still belongs to its build.
  * Otherwise it points at the newest remaining build, or disappears when no entry is left.
  */
@@ -105,10 +111,7 @@ private fun Snapshot?.recomputedFor(entries: List<SnapshotVersion>): Snapshot? {
     }
 
     val current = this
-    val isStillReferenced = current != null && entries.any { entry ->
-        entry.build()?.let { it.timestamp == current.timestamp && it.buildNumber == current.buildNumber } == true
-    }
-    if (isStillReferenced) {
+    if (entries.any { it.isBuildOf(current) }) {
         return current
     }
 

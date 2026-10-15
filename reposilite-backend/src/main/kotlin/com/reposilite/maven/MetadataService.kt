@@ -52,6 +52,10 @@ import java.time.Clock
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
+/** The version-level metadata file and its checksum files, as named in a directory. */
+internal val versionMetadataFiles: List<String> =
+    listOf(METADATA_FILE) + Checksum.entries.map { "$METADATA_FILE.${it.extension}" }
+
 internal class MetadataService(
     private val repositorySecurityProvider: RepositorySecurityProvider,
     private val clock: Clock,
@@ -227,11 +231,38 @@ internal class MetadataService(
         writeMetadata(repository, artifactDirectory, updated, "Removed $version from maven-metadata.xml of $artifactDirectory in ${repository.name}")
     }
 
-    private fun pruneSnapshotMetadata(repository: Repository, versionDirectory: Location) {
+    /**
+     * Brings the version-level metadata of a SNAPSHOT directory in line with the files stored there. The preserved builds
+     * listener calls it after it has removed old builds from a repository that does not preserve snapshots.
+     *
+     * The entries of the build named by `<snapshot>` are kept even when their files are not stored yet, because the metadata
+     * may list an entry before its file has arrived. The checksums of the metadata are rewritten
+     * whenever they do not describe the stored metadata: a client sends the checksums of its own content right after the
+     * metadata, so they can describe content that has been reconciled in the meantime.
+     *
+     * Proxied repositories are left alone, like in [reconcileAfterDelete]. Failures are logged, never thrown, because the
+     * client's upload has already been stored at this point.
+     */
+    fun reconcileSnapshotVersion(repository: Repository, versionDirectory: Location) {
+        if (repository.mirrorHosts.isNotEmpty()) {
+            return
+        }
+
+        try {
+            pruneSnapshotMetadata(repository, versionDirectory, keepNewestBuild = true)
+            syncMetadataChecksums(repository, versionDirectory)
+        } catch (exception: Exception) {
+            logger.warn("METADATA | Cannot reconcile snapshot metadata of $versionDirectory in ${repository.name}: ${exception.message}")
+        }
+    }
+
+    private fun pruneSnapshotMetadata(repository: Repository, versionDirectory: Location, keepNewestBuild: Boolean = false) {
         val metadata = readMetadata(repository, versionDirectory) ?: return
         val artifactId = metadata.artifactId ?: return
+        val newestBuild = metadata.versioning?.snapshot.takeIf { keepNewestBuild }
         val missing = metadata.versioning?.snapshotVersions.orEmpty().filter { entry ->
-            snapshotFileName(artifactId, entry)?.let { !repository.storageProvider.exists(versionDirectory.resolve(it)) } == true
+            !entry.isBuildOf(newestBuild) &&
+                snapshotFileName(artifactId, entry)?.let { !repository.storageProvider.exists(versionDirectory.resolve(it)) } == true
         }
         if (missing.isEmpty()) {
             return
@@ -239,6 +270,32 @@ internal class MetadataService(
 
         val updated = metadata.pruneSnapshotVersions(isPresent = { it !in missing }, lastUpdated = lastUpdatedTimestamp(clock))
         writeMetadata(repository, versionDirectory, updated, "Removed ${missing.size} snapshot entries from maven-metadata.xml of $versionDirectory in ${repository.name}")
+    }
+
+    /**
+     * Rewrites the checksums of the stored version-level metadata when any of them does not describe its content.
+     */
+    private fun syncMetadataChecksums(repository: Repository, versionDirectory: Location) {
+        val storage = repository.storageProvider
+        val metadataFile = versionDirectory.resolve(METADATA_FILE)
+        val stored = storage.getFile(metadataFile)
+        if (!stored.isOk) {
+            return
+        }
+
+        val content = stored.get().use { it.readBytes() }
+        val isStale = Checksum.entries.any { checksum ->
+            val checksumFile = metadataFile.resolveSibling("$METADATA_FILE.${checksum.extension}")
+            val current = storage.getFile(checksumFile).map { it.use { data -> data.readBytes().decodeToString() } }
+            !current.isOk || current.get() != checksum.generate(content.inputStream())
+        }
+        if (!isStale) {
+            return
+        }
+
+        repository.writeFileChecksums(metadataFile, content)
+            .peek { repository.resolutionCache?.invalidate(metadataFile) }
+            .onError { logger.warn("METADATA | Cannot rewrite checksums of $metadataFile in ${repository.name}: ${it.message}") }
     }
 
     private fun isListedVersion(repository: Repository, artifactDirectory: Location, version: String): Boolean =
@@ -255,7 +312,7 @@ internal class MetadataService(
 
     private fun deleteMetadataFiles(repository: Repository, directory: Location) {
         val storage = repository.storageProvider
-        (listOf(METADATA_FILE) + Checksum.entries.map { "$METADATA_FILE.${it.extension}" })
+        versionMetadataFiles
             .map { directory.resolve(it) }
             .filter { storage.exists(it) }
             .forEach { file -> storage.removeFile(file).onError { logger.warn("METADATA | Cannot delete $file: ${it.message}") } }
