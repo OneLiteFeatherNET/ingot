@@ -154,6 +154,48 @@ internal class IdentityAdminIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `the principal list rows carry the summaries a list needs and stay flat`() {
+        // given: a machine principal with a token that is an instance admin through a team
+        createPrincipal("ci-bot")
+        post(identity("/principals/ci-bot/tokens")).basicAuth(admin.first, admin.second).body(mapOf("name" to "ci-token")).asString()
+        post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "operators")).asString()
+        put(identity("/teams/operators/members")).basicAuth(admin.first, admin.second).body(mapOf("members" to listOf("ci-bot"))).asString()
+        put(identity("/teams/operators/instance-admin")).basicAuth(admin.first, admin.second).asString()
+
+        // when
+        val listed = get(identity("/principals?kind=MACHINE")).basicAuth(admin.first, admin.second).asJacksonObject(JsonNode::class)
+
+        // then: the row is flat and answers what a list shows, without a request per row
+        val row = listed.body.single { it.get("name").asText() == "ci-bot" }
+        assertThat(row.has("principal")).describedAs("nested principal in a list row").isFalse
+        assertThat(row.get("instanceAdmin").asBoolean()).describedAs("instance admin through the team").isTrue
+        assertThat(row.get("instanceRole").asBoolean()).describedAs("direct instance role").isFalse
+        assertThat(row.get("tokenCount").asInt()).describedAs("token count").isEqualTo(1)
+        assertThat(row.get("providers").isArray).describedAs("providers is an array").isTrue
+        assertThat(row.get("providers")).describedAs("providers of a machine principal").isEmpty()
+    }
+
+    @Test
+    fun `the team list rows carry counts and the instance role`() {
+        // given: a team with a member, a grant and the instance role
+        createPrincipal("ci-bot")
+        post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "operators")).asString()
+        put(identity("/teams/operators/members")).basicAuth(admin.first, admin.second).body(mapOf("members" to listOf("ci-bot"))).asString()
+        put(identity("/teams/operators/grants")).basicAuth(admin.first, admin.second)
+            .body(mapOf("grants" to listOf(mapOf("repository" to "releases", "role" to "READ")))).asString()
+        put(identity("/teams/operators/instance-admin")).basicAuth(admin.first, admin.second).asString()
+
+        // when
+        val listed = get(identity("/teams")).basicAuth(admin.first, admin.second).asJacksonObject(JsonNode::class)
+
+        // then
+        val row = listed.body.single { it.get("name").asText() == "operators" }
+        assertThat(row.get("memberCount").asInt()).describedAs("member count").isEqualTo(1)
+        assertThat(row.get("grantCount").asInt()).describedAs("grant count").isEqualTo(1)
+        assertThat(row.get("instanceAdmin").asBoolean()).describedAs("instance role of the team").isTrue
+    }
+
+    @Test
     fun `a stale entity tag refuses a change of team members`() {
         // given: a team read once, then changed
         createPrincipal("ci-bot")

@@ -406,18 +406,32 @@ failed.
 
 | Method | Path                                             | Body / result                                                                 |
 |--------|--------------------------------------------------|-------------------------------------------------------------------------------|
-| GET    | `/api/identity/principals?kind=USER\|MACHINE`    | `[PrincipalDto]`                                                              |
+| GET    | `/api/identity/principals?kind=USER\|MACHINE`    | `[PrincipalSummaryDto]`: the list row, flat, with the summaries a list shows    |
 | POST   | `/api/identity/principals`                       | body `{kind, name, displayName?, disabled?}` -> `PrincipalDetailDto`, 201      |
 | GET    | `/api/identity/principals/{name}`                | `PrincipalDetailDto` (teams, instanceRole, tokens without secrets)            |
 | PATCH  | `/api/identity/principals/{name}`                | body `{displayName?, disabled?}` -> `PrincipalDetailDto`                     |
 | DELETE | `/api/identity/principals/{name}`                | deletes the principal, its tokens, memberships, instance role and private team |
 
 ```
-PrincipalDto       { id, kind, name, displayName, disabled, createdAt, lastSeenAt }
-PrincipalDetailDto { ...PrincipalDto, teams: [name], instanceRole: Boolean,
-                     tokens: [TokenDto] }
-TokenDto           { name, description, createdAt, expiresAt, scopes: [Action] | null, lastUsedAt, lastUsedIp }
+PrincipalDto        { id, kind, name, displayName, disabled, createdAt, lastSeenAt }
+PrincipalSummaryDto { ...PrincipalDto, instanceAdmin: Boolean, instanceRole: Boolean, tokenCount: Int,
+                      providers: [String] }
+PrincipalDetailDto  { principal: PrincipalDto, teams: [name], instanceRole: Boolean,
+                      tokens: [TokenDto] }
+TokenDto            { name, description, createdAt, expiresAt, scopes: [Action] | null, lastUsedAt, lastUsedIp }
 ```
+
+A list row is flat and answers everything a list shows, so that a client reads the list once and never the detail of
+each row. `instanceAdmin` is true when the principal holds the instance role directly or is a member of a team that holds
+it (the rule the access evaluation uses). `instanceRole` is the direct role only, the same value as in the detail; the
+actions on a principal (section 7.4) can grant and revoke only that one. `tokenCount` is the
+number of persistent tokens of the principal. `providers` names the login providers the principal can sign in with, by
+the provider ids of `/api/auth/providers`: a USER with a stored password has `["local"]`, a USER without one has `[]`, and
+a MACHINE principal always has `[]`, because machines authenticate with tokens only. The server reads the tokens,
+memberships, instance roles and credentials of all principals in one query each, not once per row.
+
+The detail nests the `PrincipalDto` fields in `principal`, next to the lists of the detail. This is the shape on
+the wire; an earlier draft of this section wrote the detail flat. Clients read both.
 
 ### 7.2 Tokens of a principal
 
@@ -435,7 +449,7 @@ there too (with an empty legacy rights list).
 
 | Method | Path                                      | Body / result                                                                    |
 |--------|-------------------------------------------|----------------------------------------------------------------------------------|
-| GET    | `/api/identity/teams`                     | `[TeamDto]` with `memberCount`, `grantCount`; private teams are excluded          |
+| GET    | `/api/identity/teams`                     | `[TeamDto]` with `memberCount`, `grantCount`, `instanceAdmin`; private teams are excluded |
 | POST   | `/api/identity/teams`                     | body `{name, description?, externalRef?}` -> `TeamDetailDto`, 201                |
 | GET    | `/api/identity/teams/{name}`              | `TeamDetailDto` with members and grants                                           |
 | PATCH  | `/api/identity/teams/{name}`              | body `{description?, externalRef?}` -> `TeamDetailDto`                           |
@@ -444,10 +458,14 @@ there too (with an empty legacy rights list).
 | PUT    | `/api/identity/teams/{name}/grants`       | body `{grants: [{repository?, pathPrefix?, role}]}`: replaces all grants of the team |
 
 ```
-TeamDto       { name, description, externalRef, memberCount, grantCount }
-TeamDetailDto { ...TeamDto, members: [{principal, kind, source}],
+TeamDto       { name, description, externalRef, memberCount, grantCount, instanceAdmin: Boolean }
+TeamDetailDto { name, description, externalRef, members: [{principal, kind, source}],
                 grants: [{repository, pathPrefix, role}], instanceRole: Boolean }
 ```
+
+A list row carries the counts and the instance role, so a client reads the list once. `instanceAdmin` of a row is the
+`instanceRole` of the detail of the same team. The detail lists its members and grants and does not repeat the counts.
+The server counts members and grants of all teams in one query each, not once per row.
 
 Rules: `role` in a grant is `READ`, `DEPLOY`, `MAINTAIN` or `ADMIN` (400 for legacy roles);
 `repository` is null for "every repository"; `pathPrefix` is normalized (leading and trailing

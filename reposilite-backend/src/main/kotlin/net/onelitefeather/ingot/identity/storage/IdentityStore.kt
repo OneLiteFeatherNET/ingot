@@ -46,6 +46,7 @@ import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -207,6 +208,12 @@ class IdentityStore(
             TeamMemberTable.selectAll().where { TeamMemberTable.teamId eq teamId }.map { it.toMembership() }
         }
 
+    /** Every membership of every team, read in one query. */
+    fun listAllMemberships(): List<MembershipRecord> =
+        transaction(database) {
+            TeamMemberTable.selectAll().map { it.toMembership() }
+        }
+
     fun membershipsOf(principalId: Int): List<MembershipRecord> =
         transaction(database) {
             TeamMemberTable.selectAll().where { TeamMemberTable.principalId eq principalId }.map { it.toMembership() }
@@ -253,6 +260,14 @@ class IdentityStore(
     fun listGrants(teamId: Int): List<GrantRecord> =
         transaction(database) {
             TeamGrantTable.selectAll().where { TeamGrantTable.teamId eq teamId }.map { it.toGrant() }
+        }
+
+    /** The number of grants of every team that has any, read in one query. */
+    fun countGrantsByTeam(): Map<Int, Int> =
+        transaction(database) {
+            TeamGrantTable.select(TeamGrantTable.teamId)
+                .groupingBy { it[TeamGrantTable.teamId].value }
+                .eachCount()
         }
 
     fun addGrant(teamId: Int, repository: String?, pathPrefix: String?, role: Role): GrantRecord =
@@ -346,6 +361,14 @@ class IdentityStore(
 
     // tokens
 
+    /** The number of tokens of every principal that has any, read in one query. */
+    fun countTokensByPrincipal(): Map<Int, Int> =
+        transaction(database) {
+            PrincipalTokenTable.select(PrincipalTokenTable.principalId)
+                .groupingBy { it[PrincipalTokenTable.principalId].value }
+                .eachCount()
+        }
+
     fun createToken(
         principalId: Int,
         name: String,
@@ -427,6 +450,16 @@ class IdentityStore(
 
     fun countTokens(): Long =
         transaction(database) { PrincipalTokenTable.selectAll().count() }
+
+    // login credentials
+
+    /** The principals that have a local credential (a password), read in one query. */
+    fun listPrincipalIdsWithLocalCredential(): Set<Int> =
+        transaction(database) {
+            LocalCredentialTable.select(LocalCredentialTable.principalId)
+                .map { it[LocalCredentialTable.principalId].value }
+                .toSet()
+        }
 
     // effective access
 

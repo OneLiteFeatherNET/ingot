@@ -30,6 +30,27 @@ data class PrincipalDto(
     val lastSeenAt: Instant?,
 )
 
+/**
+ * A principal as a list row shows it: the fields of [PrincipalDto] flat, plus the summaries a row needs so that a client
+ * does not read the detail of every principal. [instanceAdmin] is true for the direct role and for the role through a
+ * team. [instanceRole] is the direct role only, as in the detail, because
+ * the actions on a principal can grant and revoke only that one. [providers] names the login providers the principal can sign in with: `local` for a user with a password, empty
+ * for everyone else, machine principals always.
+ */
+data class PrincipalSummaryDto(
+    val id: Int,
+    val kind: String,
+    val name: String,
+    val displayName: String,
+    val disabled: Boolean,
+    val createdAt: Instant,
+    val lastSeenAt: Instant?,
+    val instanceAdmin: Boolean,
+    val instanceRole: Boolean,
+    val tokenCount: Int,
+    val providers: List<String>,
+)
+
 data class PrincipalDetailDto(
     val principal: PrincipalDto,
     val teams: List<String>,
@@ -59,6 +80,7 @@ data class TeamDto(
     val externalRef: String?,
     val memberCount: Int,
     val grantCount: Int,
+    val instanceAdmin: Boolean,
 )
 
 data class TeamDetailDto(

@@ -49,7 +49,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         summary = "Lists the principals (users and machine accounts). Note: Requires Manager",
         methods = [HttpMethod.GET],
     )
-    val listPrincipals = ReposiliteRoute<Collection<PrincipalDto>>("/api/identity/principals", GET) {
+    val listPrincipals = ReposiliteRoute<Collection<PrincipalSummaryDto>>("/api/identity/principals", GET) {
         managerOnly {
             response = identity.listPrincipals(queryParameter("kind"))
         }

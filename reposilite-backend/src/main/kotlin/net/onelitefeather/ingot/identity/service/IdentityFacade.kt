@@ -54,6 +54,7 @@ import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.MemberDto
 import net.onelitefeather.ingot.identity.api.PrincipalDetailDto
 import net.onelitefeather.ingot.identity.api.PrincipalDto
+import net.onelitefeather.ingot.identity.api.PrincipalSummaryDto
 import net.onelitefeather.ingot.identity.api.RepositoryAccessDto
 import net.onelitefeather.ingot.identity.api.TeamDetailDto
 import net.onelitefeather.ingot.identity.api.TeamDto
@@ -62,6 +63,7 @@ import net.onelitefeather.ingot.identity.api.UpdatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.UpdateTeamRequest
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import net.onelitefeather.ingot.identity.login.BearerSecret
+import net.onelitefeather.ingot.identity.login.LocalLoginProvider
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -119,9 +121,9 @@ class IdentityFacade(
 
     // principals
 
-    fun listPrincipals(kind: String?): IdentityResult<List<PrincipalDto>> {
+    fun listPrincipals(kind: String?): IdentityResult<List<PrincipalSummaryDto>> {
         val filter = if (kind == null) null else parseKind(kind) ?: return badRequestError("Unknown principal kind '$kind', supported: USER, MACHINE")
-        return store.listPrincipals(filter).map { it.toDto() }.asSuccess()
+        return summarise(store.listPrincipals(filter)).asSuccess()
     }
 
     fun createPrincipal(request: CreatePrincipalRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
@@ -237,19 +239,23 @@ class IdentityFacade(
 
     // teams
 
-    fun listTeams(): IdentityResult<List<TeamDto>> =
-        store.listTeams()
-            .filterNot { it.isPrivate }
-            .map { team ->
-                TeamDto(
-                    name = team.name,
-                    description = team.description,
-                    externalRef = team.externalRef,
-                    memberCount = store.listMemberships(team.id).size,
-                    grantCount = store.listGrants(team.id).size,
-                )
-            }
-            .asSuccess()
+    /** The teams with their counts, read in a fixed number of queries however many teams there are. */
+    fun listTeams(): IdentityResult<List<TeamDto>> {
+        val teams = store.listTeams().filterNot { it.isPrivate }
+        val members = store.listAllMemberships().groupingBy { it.teamId }.eachCount()
+        val grants = store.countGrantsByTeam()
+        val roleTeams = store.listInstanceRoleTeamIds()
+        return teams.map { team ->
+            TeamDto(
+                name = team.name,
+                description = team.description,
+                externalRef = team.externalRef,
+                memberCount = members[team.id] ?: 0,
+                grantCount = grants[team.id] ?: 0,
+                instanceAdmin = team.id in roleTeams,
+            )
+        }.asSuccess()
+    }
 
     fun createTeam(request: CreateTeamRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         // The reserved prefix is checked first: it is a conflict with the private teams, not a malformed name.
@@ -579,6 +585,34 @@ class IdentityFacade(
         createdAt = createdAt,
         lastSeenAt = lastSeenAt,
     )
+
+    /**
+     * The list rows of the given principals. The tokens, the memberships, the instance roles and the credentials are read
+     * once for all of them, so the number of queries does not grow with the number of principals. An instance admin is a
+     * principal with the direct role or a member of a team that holds it, the rule the access evaluation uses.
+     */
+    private fun summarise(principals: List<PrincipalRecord>): List<PrincipalSummaryDto> {
+        val tokens = store.countTokensByPrincipal()
+        val directRoles = store.listInstanceRolePrincipalIds()
+        val roleTeams = store.listInstanceRoleTeamIds()
+        val throughTeam = store.listAllMemberships().filter { it.teamId in roleTeams }.map { it.principalId }.toSet()
+        val withPassword = store.listPrincipalIdsWithLocalCredential()
+        return principals.map { principal ->
+            PrincipalSummaryDto(
+                id = principal.id,
+                kind = principal.kind.name,
+                name = principal.name,
+                displayName = principal.displayName,
+                disabled = principal.disabled,
+                createdAt = principal.createdAt,
+                lastSeenAt = principal.lastSeenAt,
+                instanceAdmin = principal.id in directRoles || principal.id in throughTeam,
+                instanceRole = principal.id in directRoles,
+                tokenCount = tokens[principal.id] ?: 0,
+                providers = if (principal.kind == PrincipalKind.USER && principal.id in withPassword) listOf(LocalLoginProvider.ID) else emptyList(),
+            )
+        }
+    }
 
     private fun TokenRecord.toDto() = TokenDto(
         name = name,
