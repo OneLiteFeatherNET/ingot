@@ -242,3 +242,50 @@ describe('session shared across tabs', () => {
     expect(axios.get.mock.calls.length, 'an unrelated key must not trigger a sign in').toBe(callsBefore)
   })
 })
+
+describe('whenSessionKnown', () => {
+  it('resolves at once when nothing is stored, without asking the server', async () => {
+    const { axios, session } = await loadSession()
+
+    await expect(session.whenSessionKnown()).resolves.toBeUndefined()
+    expect(axios.get, 'an anonymous session is known without a request').not.toHaveBeenCalled()
+  })
+
+  it('settles once the startup check has found a signed in user', async () => {
+    const { axios, store, session } = await loadSession({ storedName: 'alice', storedSecret: 'secret' })
+    axios.get.mockResolvedValue({ data: SIGNED_IN_DETAILS })
+
+    const known = session.whenSessionKnown()
+    const startup = store.initializeSession()
+    await known
+
+    expect(store.isLogged.value, 'the answer is in place by the time the session counts as known').toBe(true)
+    await startup
+  })
+
+  it('still settles when the server cannot be reached, so a route is not left waiting forever', async () => {
+    const { axios, store, session } = await loadSession({ storedName: 'alice', storedSecret: 'secret' })
+    axios.get.mockRejectedValue(new Error('Network Error'))
+
+    const known = session.whenSessionKnown()
+    await expect(store.initializeSession()).rejects.toThrow('Network Error')
+
+    await expect(known).resolves.toBeUndefined()
+  })
+
+  it('waits on the same flag that the views read, so there is one notion of known', async () => {
+    const { axios, store, session } = await loadSession({ storedName: 'alice', storedSecret: 'secret' })
+    axios.get.mockResolvedValue({ data: SIGNED_IN_DETAILS })
+    let known = false
+    session.whenSessionKnown().then(() => { known = true })
+
+    expect(store.sessionReady.value, 'the flag stays false until the check answers').toBe(false)
+    expect(known, 'the router waits while the flag is false').toBe(false)
+
+    await store.initializeSession()
+    await flushPromises()
+
+    expect(store.sessionReady.value).toBe(true)
+    expect(known).toBe(true)
+  })
+})

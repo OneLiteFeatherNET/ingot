@@ -19,6 +19,7 @@ import { ref, computed, watch } from 'vue'
 import { createErrorToast } from '../../helpers/toast'
 import { useTokens, checkRouteDraft, validateTokenName, isDraftDirty } from '../../store/tokens'
 import { property } from '../../helpers/vue-extensions'
+import { editorFromToken, tokenFromEditor } from '../../router/url-state'
 import PencilIcon from '../icons/PencilIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
 import MdButton from '../md/MdButton.vue'
@@ -36,6 +37,21 @@ import TokenSummary from './TokenSummary.vue'
 const props = defineProps({
   selectedTab: property(String, true),
   /**
+   * The search text, as the address holds it. The view reports a change through update:search.
+   */
+  search: {
+    type: String,
+    default: ''
+  },
+  /**
+   * The token whose editor the address names: a token name, `new` for the create form, or null
+   * for the list. Reported through update:openToken when the editor opens or closes.
+   */
+  openToken: {
+    type: String,
+    default: null
+  },
+  /**
    * The reference time in epoch milliseconds, used to judge expiry dates. The view leaves it out and
    * gets the current time; tests pass a fixed value so that the result does not depend on the day it runs.
    */
@@ -44,6 +60,8 @@ const props = defineProps({
     default: undefined
   }
 })
+
+const emit = defineEmits(['update:search', 'update:openToken'])
 
 const currentMs = () => props.now ?? Date.now()
 
@@ -62,7 +80,16 @@ watch(
   { immediate: true }
 )
 
-const query = ref('')
+// The search box keeps its own text while it is typed in, and reports every change upwards.
+// The address catches up through the router; the box follows the address when it moves on its own.
+const query = ref(props.search)
+watch(() => props.search, (search) => {
+  if (search !== query.value) query.value = search
+})
+watch(query, (text) => {
+  if (text !== props.search) emit('update:search', text)
+})
+
 const editing = ref(null)
 const draft = ref({})
 const baseline = ref({})
@@ -124,14 +151,16 @@ const discardAndContinue = () => {
 }
 const keepEditing = () => { pendingAction.value = null }
 
+const tokenDraft = (token) => ({
+  description: token.description || '',
+  manager: tokenIsManager(token),
+  expiresAt: toDateInput(token.expiresAt)
+})
+
 const editToken = (token) => {
   const key = `token:${tid(token)}`
   if (isOpen(key)) { guard(close); return }
-  guard(() => startEditor(key, {
-    description: token.description || '',
-    manager: tokenIsManager(token),
-    expiresAt: toDateInput(token.expiresAt)
-  }))
+  guard(() => startEditor(key, tokenDraft(token)))
 }
 
 const saveToken = (token) => {
@@ -199,6 +228,40 @@ const runConfirm = (token) => {
   else regenerateSecret(token.name)
     .catch(error => createErrorToast(errorMessage(error)))
 }
+
+/*
+ * The address and the open editor agree. A change of the editor is reported as the token it
+ * belongs to, and a change of the address opens that token's editor. A route editor belongs to
+ * its token, so the address keeps the token while the route is edited.
+ */
+watch(editing, (key) => {
+  const name = tokenFromEditor(key)
+  if (name !== props.openToken) emit('update:openToken', name)
+})
+
+// The editor for the token the address names. A token can only be opened once the list has
+// arrived, so an address that is opened before the list waits for it. A name that matches no
+// token opens nothing and leaves the list as it is.
+const openFromAddress = () => {
+  const wanted = props.openToken
+  if (tokenFromEditor(editing.value) === wanted) return
+  if (wanted === null) {
+    close()
+    return
+  }
+  if (wanted === 'new') {
+    startEditor(editorFromToken('new'), { name: '', type: 'PERSISTENT' })
+    return
+  }
+  const token = tokens.value.find(entry => entry.name === wanted)
+  if (token) {
+    startEditor(editorFromToken(wanted), tokenDraft(token))
+  } else if (loaded.value) {
+    close()
+  }
+}
+
+watch([loaded, () => props.openToken], openFromAddress, { immediate: true })
 </script>
 
 <template>

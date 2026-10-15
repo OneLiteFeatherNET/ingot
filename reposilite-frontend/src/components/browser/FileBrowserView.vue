@@ -18,7 +18,6 @@
 import { computed, ref, watch } from 'vue'
 import { useAdjustments } from '../../store/adjustments'
 import { useSession } from '../../store/session'
-import useQualifier from '../../store/qualifier'
 import AdjustmentsModal from './AdjustmentsModal.vue'
 import Card from '../card/SnippetsCard.vue'
 import Breadcrumb from './BreadcrumbNavigation.vue'
@@ -34,12 +33,10 @@ const props = defineProps({
   qualifier: property(Object, true)
 })
 
-const parentPath = ref('')
 const files = ref({})
 const loading = ref(true)
 const { details, client, hasPermissionTo, sessionReady } = useSession()
 const { applyAdjustments, countHiddenFiles } = useAdjustments()
-const { getParentPath } = useQualifier()
 
 const processedFiles = computed(() => ({
   ...files.value,
@@ -71,7 +68,6 @@ watch(
 
     const qualifier = props.qualifier.path
     const isStale = () => qualifier !== props.qualifier.path
-    parentPath.value = getParentPath()
     loading.value = true
 
     client.value.maven.details(qualifier)
@@ -142,7 +138,7 @@ const toggleCompactMode = () => {
     </div>
     <div class="min-w-0">
       <div class="flex items-center justify-between gap-2">
-        <Breadcrumb :parent-path="parentPath" />
+        <Breadcrumb :path="qualifier.path" />
         <div class="flex shrink-0 items-center gap-1">
           <MdIconButton
             toggle
@@ -162,7 +158,6 @@ const toggleCompactMode = () => {
         :compact-mode="fileBrowserCompactMode"
         :loading="loading"
         :hidden-count="hiddenCount"
-        :parent-path="parentPath"
         @retry="retry"
       />
       <BrowserUpload

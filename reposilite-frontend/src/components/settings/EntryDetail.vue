@@ -40,6 +40,12 @@ const props = defineProps({
     type: Object,
     default: null
   },
+  // Where the not-found pane leads: the list of the domain. Given as a link, so it can be opened
+  // in a new tab; the click itself is handled by the page and goes through the router.
+  backHref: {
+    type: String,
+    default: undefined
+  },
   renderers: {
     type: Array,
     required: true
@@ -74,7 +80,8 @@ const onChange = (event) => emit('change', event.data)
     <MdButton
       variant="text"
       type="button"
-      @click="emit('back')"
+      :href="backHref"
+      @click.prevent="emit('back')"
     >
       {{ backLabel }}
     </MdButton>

@@ -79,3 +79,5 @@ export default function useLog() {
     clearLog
   }
 }
+
+export { levelNames }

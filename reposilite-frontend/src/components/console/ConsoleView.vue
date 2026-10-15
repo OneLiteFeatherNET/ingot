@@ -15,18 +15,60 @@
   -->
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSession } from '../../store/session'
-import useLog from '../../store/console/log'
+import useLog, { levelNames } from '../../store/console/log'
 import useConsole from '../../store/console/connection'
 import { openLogin } from '../../store/login'
 import { isNearBottom } from './scroll'
+import { enabledFromLevelParam, levelParam } from '../../router/url-state'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 
+const props = defineProps({
+  /**
+   * The levels the address shows, as a comma list. Absent means every level is shown.
+   */
+  level: {
+    type: String,
+    default: undefined
+  },
+  /**
+   * The text the output is filtered by.
+   */
+  search: {
+    type: String,
+    default: ''
+  }
+})
+
+const emit = defineEmits(['update:level', 'update:search'])
+
 const { levels, log, hasLines, logMessage, filter, addSeparator } = useLog()
+
+// The address and the switches agree. Whenever the address changes, the switches and the
+// filter take its values; whenever a switch or the filter changes, the address is told.
+const applyAddress = () => {
+  const shown = enabledFromLevelParam(props.level, levelNames)
+  levelNames.forEach(name => {
+    levels[name].enabled = shown.includes(name)
+  })
+  filter.value = props.search
+}
+watch(() => [props.level, props.search], applyAddress, { immediate: true })
+
+const shownLevels = () => levelNames.filter(name => levels[name].enabled)
+
+watch(
+  () => [levelNames.map(name => levels[name].enabled).join(), filter.value],
+  () => {
+    const level = levelParam(shownLevels(), levelNames)
+    if (level !== props.level) emit('update:level', level)
+    if (filter.value !== props.search) emit('update:search', filter.value)
+  }
+)
 
 const {
   onOpen, onMessage, onClose, onError,
@@ -156,14 +198,14 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
         class="flex w-full flex-row flex-wrap items-center gap-2 xl:w-1/2 xl:justify-end"
       >
         <MdChip
-          v-for="level in levels"
-          :key="level.name"
+          v-for="entry in levels"
+          :key="entry.name"
           variant="filter"
-          :selected="level.enabled"
-          @click="level.enabled = !level.enabled"
+          :selected="entry.enabled"
+          @click="entry.enabled = !entry.enabled"
         >
-          {{ level.name }}
-          <span class="tabular-nums">{{ level.count }}</span>
+          {{ entry.name }}
+          <span class="tabular-nums">{{ entry.count }}</span>
         </MdChip>
       </div>
     </div>

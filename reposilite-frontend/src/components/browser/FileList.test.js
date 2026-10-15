@@ -83,19 +83,19 @@ describe('FileList missing directory', () => {
   })
 
   it('offers to go to the parent directory', async () => {
-    const wrapper = mountList({ parentPath: '/releases/net', files: { list: [], error: 'not-found' } })
+    const wrapper = mountList({ files: { list: [], error: 'not-found' } })
 
     await buttonWithText(wrapper, 'Go to parent').trigger('click')
 
-    expect(routerPush).toHaveBeenCalledWith('/releases/net')
+    expect(routerPush, 'the parent is the browse route of the directory above').toHaveBeenCalledWith({ name: 'browse', params: { qualifier: 'releases/net' } })
   })
 
   it('offers to go to the repository root', async () => {
-    const wrapper = mountList({ parentPath: '/releases/net', files: { list: [], error: 'not-found' } })
+    const wrapper = mountList({ files: { list: [], error: 'not-found' } })
 
     await buttonWithText(wrapper, 'Go to repository root').trigger('click')
 
-    expect(routerPush, 'the root is the first segment of the browsed path').toHaveBeenCalledWith('/releases')
+    expect(routerPush, 'the root is the first segment of the browsed path').toHaveBeenCalledWith({ name: 'browse', params: { qualifier: 'releases' } })
   })
 
   it('offers no navigation for a failure that is not a missing directory', () => {

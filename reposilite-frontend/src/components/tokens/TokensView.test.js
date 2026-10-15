@@ -519,4 +519,92 @@ describe('TokensView', () => {
       expect(revoke.classes()).not.toContain('text-primary')
     })
   })
+
+  describe('address', () => {
+    const tokensWith = (...names) =>
+      fakeClient({ list: vi.fn(() => Promise.resolve({ data: names.map(name => token(name)) })) })
+
+    it('shows the search text it was given', async () => {
+      session.client = tokensWith('ci', 'deploy')
+      wrapper = await mountView({ search: 'ci' })
+      await flushPromises()
+
+      expect(wrapper.find('input').element.value).toBe('ci')
+    })
+
+    it('reports a typed search so the address can hold it', async () => {
+      session.client = tokensWith('ci')
+      wrapper = await mountView()
+      await flushPromises()
+
+      await wrapper.find('input').setValue('ci')
+
+      expect(wrapper.emitted('update:search')?.at(-1)).toEqual(['ci'])
+    })
+
+    it('follows the search text when the address changes it on its own', async () => {
+      session.client = tokensWith('ci')
+      wrapper = await mountView({ search: '' })
+      await flushPromises()
+
+      await wrapper.setProps({ search: 'deploy' })
+
+      expect(wrapper.find('input').element.value).toBe('deploy')
+    })
+
+    it('opens the editor of the token the address names once the list has arrived', async () => {
+      session.client = tokensWith('ci-bot')
+      wrapper = await mountView({ openToken: 'ci-bot' })
+      await flushPromises()
+
+      expect(wrapper.text(), 'the editor of the named token is on screen').toContain('Expires on')
+      expect(wrapper.emitted('update:openToken'), 'opening from the address needs no report back').toBeUndefined()
+    })
+
+    it('reports the token whose editor the user opens', async () => {
+      session.client = tokensWith('ci-bot')
+      wrapper = await mountView()
+      await flushPromises()
+
+      await wrapper.find('[aria-label="Edit token ci-bot"]').trigger('click')
+
+      expect(wrapper.emitted('update:openToken')?.at(-1)).toEqual(['ci-bot'])
+    })
+
+    it('reports the create form as new', async () => {
+      session.client = tokensWith('ci-bot')
+      wrapper = await mountView()
+      await flushPromises()
+
+      await clickButton(wrapper, '+ Generate token')
+
+      expect(wrapper.emitted('update:openToken')?.at(-1)).toEqual(['new'])
+    })
+
+    it('reports that no editor is open once the editor closes', async () => {
+      session.client = tokensWith('ci-bot')
+      wrapper = await mountView({ openToken: 'ci-bot' })
+      await flushPromises()
+
+      await clickButton(wrapper, 'Cancel')
+
+      expect(wrapper.emitted('update:openToken')?.at(-1)).toEqual([null])
+    })
+
+    it('opens the create form for the reserved name new', async () => {
+      session.client = tokensWith('ci-bot')
+      wrapper = await mountView({ openToken: 'new' })
+      await flushPromises()
+
+      expect(wrapper.text(), 'the create form is on screen').toContain('Token name')
+    })
+
+    it('does not report back a token it opened because the address named it', async () => {
+      session.client = tokensWith('ci-bot')
+      wrapper = await mountView({ openToken: 'ci-bot' })
+      await flushPromises()
+
+      expect(wrapper.emitted('update:openToken')).toBeUndefined()
+    })
+  })
 })

@@ -15,47 +15,23 @@
  */
 
 /*
- * The main sections of the index page. The selected section lives in the `tab` query
- * parameter, so the back button and deep links work and nothing has to be remembered in
- * the browser. Overview is the default and carries no parameter at all.
+ * The sections the navigation offers. Which section a route belongs to is written in the
+ * route table (src/router/routes.js); this table says what each section is called, which
+ * route its link opens and whether a visitor has to be a manager to see it.
  */
 
-const OVERVIEW = 'overview'
-
-const TABS = [
-  { key: 'overview', label: 'Overview', manager: false },
-  { key: 'dashboard', label: 'Dashboard', manager: true },
-  { key: 'tokens', label: 'Tokens', manager: true },
-  { key: 'console', label: 'Console', manager: true },
-  { key: 'settings', label: 'Settings', manager: true },
+const SECTIONS = [
+  { key: 'overview', label: 'Overview', manager: false, route: 'overview' },
+  { key: 'dashboard', label: 'Dashboard', manager: true, route: 'dashboard' },
+  { key: 'tokens', label: 'Tokens', manager: true, route: 'tokens' },
+  { key: 'console', label: 'Console', manager: true, route: 'console' },
+  { key: 'settings', label: 'Settings', manager: true, route: 'settings' },
 ]
 
-const visibleTabs = (isManager) =>
-  TABS.filter(tab => !tab.manager || isManager)
+const visibleSections = (isManager) =>
+  SECTIONS.filter(section => !section.manager || isManager)
 
-/*
- * The section to show for a query value. A tab the user may not see, an unknown name and a
- * repeated parameter all fall back to Overview, so the page never shows an empty section.
- */
-const resolveTab = (queryValue, isManager) => {
-  if (typeof queryValue !== 'string') {
-    return OVERVIEW
-  }
-  return visibleTabs(isManager).some(tab => tab.key === queryValue) ? queryValue : OVERVIEW
-}
+const sectionLabel = (key) =>
+  SECTIONS.find(section => section.key === key)?.label ?? key
 
-/* A copy of the route query with the tab set, or with the tab removed for Overview. */
-const withTab = (query, key) => {
-  const next = { ...query }
-  if (key === OVERVIEW) {
-    delete next.tab
-  } else {
-    next.tab = key
-  }
-  return next
-}
-
-const tabLabel = (key) =>
-  TABS.find(tab => tab.key === key)?.label ?? key
-
-export { TABS, OVERVIEW, visibleTabs, resolveTab, withTab, tabLabel }
+export { SECTIONS, visibleSections, sectionLabel }

@@ -16,8 +16,8 @@
 
 <script setup>
 import download from 'downloadjs'
-import { useRoute } from 'vue-router'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
+import { browseLocation, childPath, parentPathOf } from '../../router/paths'
 import { createURL } from '../../store/client'
 import { useSession } from '../../store/session'
 import DetailedListEntry from './DetailedListEntry.vue'
@@ -34,13 +34,14 @@ const props = defineProps({
   files: property(Object, true),
   compactMode: property(Boolean, true),
   loading: property(Boolean, true),
-  hiddenCount: property(Number, false),
-  parentPath: property(String, false)
+  hiddenCount: property(Number, false)
 })
 
 const router = useRouter()
-// The first segment of the browsed path is the repository itself.
-const repositoryRoot = computed(() => `/${props.qualifier.path.split('/')[0]}`)
+// The not-found actions go to the directory above the one that is missing, and to the first
+// segment of the browsed path, which is the repository itself.
+const parentLocation = computed(() => browseLocation(parentPathOf(props.qualifier.path)))
+const repositoryLocation = computed(() => browseLocation(props.qualifier.path.split('/')[0]))
 
 const emit = defineEmits(['retry'])
 
@@ -99,7 +100,6 @@ const displayedEntries = computed(() =>
     : (props.files.list ?? [])
 )
 
-const route = useRoute()
 const { client, token } = useSession()
 
 // Only a signed-in request needs the page to fetch the file; anonymous links go straight to it.
@@ -112,7 +112,7 @@ const isDownloading = (file) => downloading[file.name] === true
 
 const downloadHandler = (file) => {
   downloading[file.name] = true
-  client.value.maven.download(route.path.substring(1) + '/' + file.name)
+  client.value.maven.download(childPath(props.qualifier.path, file.name))
     .then(response => download(response.data, file.name, response.headers['content-type']))
     .catch(error => createErrorToast(`Cannot download file: ${errorMessage(error)}`))
     .finally(() => {
@@ -131,11 +131,13 @@ const openDeleteModal = (entry) => {
 const closeDeleteModal = () =>
   (deleteModalValue.value = undefined)
 
-const append = (path, pathToAppend) =>
-  path + (path.endsWith('/') ? '' : '/') + pathToAppend
+// Directories open in the browser, so their links are routes; files are served by the
+// repository itself, so their links are plain URLs.
+const directoryLocation = (file) =>
+  browseLocation(childPath(props.qualifier.path, file.name))
 
 const entryUrl = (file) =>
-  createURL(`${route.path}/${file.name}`)
+  createURL(`/${childPath(props.qualifier.path, file.name)}`)
 </script>
 
 <template>
@@ -171,7 +173,7 @@ const entryUrl = (file) =>
           v-else
           :file="entry"
           :qualifier="qualifier"
-          :to="append(route.path, entry.name)"
+          :to="directoryLocation(entry)"
           :url="entryUrl(entry)"
           :open-delete-entry-modal="openDeleteModal"
           :compact-mode="compactMode"
@@ -233,13 +235,13 @@ const entryUrl = (file) =>
       >
         <MdButton
           variant="tonal"
-          @click="router.push(parentPath || '/')"
+          @click="router.push(parentLocation)"
         >
           Go to parent
         </MdButton>
         <MdButton
           variant="tonal"
-          @click="router.push(repositoryRoot)"
+          @click="router.push(repositoryLocation)"
         >
           Go to repository root
         </MdButton>

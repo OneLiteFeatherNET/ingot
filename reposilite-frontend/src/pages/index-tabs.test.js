@@ -15,54 +15,42 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { resolveTab, withTab, tabLabel } from './index-tabs'
+import { SECTIONS, visibleSections, sectionLabel } from './index-tabs'
+import { ROUTES } from '../router/routes'
 
-describe('resolveTab', () => {
-  it('falls back to overview when no tab is requested', () => {
-    expect(resolveTab(undefined, true)).toBe('overview')
+describe('visibleSections', () => {
+  it('offers only overview to a visitor who is not a manager', () => {
+    expect(visibleSections(false).map(section => section.key)).toEqual(['overview'])
   })
 
-  it('selects a manager tab named in the query when the user is a manager', () => {
-    expect(resolveTab('dashboard', true)).toBe('dashboard')
-  })
-
-  it('falls back to overview for a manager tab when the user is not a manager', () => {
-    expect(resolveTab('dashboard', false)).toBe('overview')
-  })
-
-  it('falls back to overview for a tab name that does not exist', () => {
-    expect(resolveTab('unknown', true)).toBe('overview')
-  })
-
-  it('ignores a repeated tab parameter and falls back to overview', () => {
-    expect(resolveTab(['dashboard', 'tokens'], true)).toBe('overview')
-  })
-
-  it('selects overview when the query names it explicitly', () => {
-    expect(resolveTab('overview', false)).toBe('overview')
+  it('offers every section to a manager, in the order of the navigation', () => {
+    expect(visibleSections(true).map(section => section.label))
+      .toEqual(['Overview', 'Dashboard', 'Tokens', 'Console', 'Settings'])
   })
 })
 
-describe('withTab', () => {
-  it('adds the tab to the query and keeps the other parameters', () => {
-    expect(withTab({ q: 'x' }, 'tokens')).toEqual({ q: 'x', tab: 'tokens' })
+describe('section table', () => {
+  it('names a route for every section, and that route exists', () => {
+    const routeNames = new Set(ROUTES.map(route => route.name))
+
+    for (const section of SECTIONS) {
+      expect(routeNames.has(section.route), `the section ${section.key} links to a route that exists`).toBe(true)
+    }
   })
 
-  it('removes the tab from the query when overview is selected', () => {
-    expect(withTab({ q: 'x', tab: 'tokens' }, 'overview')).toEqual({ q: 'x' })
-  })
+  it('marks exactly the manager sections as manager only', () => {
+    const managerOnly = SECTIONS.filter(section => section.manager).map(section => section.key)
 
-  it('does not change the query it was given', () => {
-    const query = { tab: 'tokens' }
-
-    withTab(query, 'console')
-
-    expect(query).toEqual({ tab: 'tokens' })
+    expect(managerOnly).toEqual(['dashboard', 'tokens', 'console', 'settings'])
   })
 })
 
-describe('tabLabel', () => {
-  it('returns the label the tab shows and the views expect', () => {
-    expect(tabLabel('settings')).toBe('Settings')
+describe('sectionLabel', () => {
+  it('returns the label the navigation and the views expect', () => {
+    expect(sectionLabel('settings')).toBe('Settings')
+  })
+
+  it('returns the key when the section is unknown', () => {
+    expect(sectionLabel('unknown')).toBe('unknown')
   })
 })

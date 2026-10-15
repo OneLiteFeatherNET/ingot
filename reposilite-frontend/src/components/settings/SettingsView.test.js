@@ -15,9 +15,9 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { ref } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createRouter, useRoute, useRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
 
@@ -199,23 +199,14 @@ describe('SettingsView collections', () => {
     const { router } = await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'ghost' } })
 
     expect(wrapper.text()).toContain('Repository not found')
-    await pressButton('Back to repositories')
+    const back = wrapper.findAll('a').find(link => link.text() === 'Back to repositories')
+    expect(back?.attributes('href'), 'the not-found link goes to the settings route of the domain').toBe('/settings/maven')
+
+    await back.trigger('click')
+    await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('settings')
     expect(router.currentRoute.value.params.domain).toBe('maven')
-  })
-
-  it('selects an entry in the view itself when the router has no entry route yet', async () => {
-    const plainRouter = createRouter({
-      history: createMemoryHistory(),
-      routes: [{ name: 'Index', path: '/:qualifier(.*)', component: { render: () => null } }]
-    })
-    await mountSettings({ router: plainRouter })
-
-    await itemButtons()[1].trigger('click')
-    await flushPromises()
-
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
   })
 
   it('adds a new entry, selects it and replaces the address with the new entry', async () => {
@@ -273,5 +264,123 @@ describe('SettingsView unsaved changes', () => {
     await mountSettings({ store, props: { domain: 'maven', collection: 'repositories', entry: 'releases' } })
 
     expect(wrapper.text()).toContain('1 unsaved change')
+  })
+})
+
+describe('SettingsView driven by the router', () => {
+  // The page as IndexPage runs it: the route params go in as props, and a domain the view reports
+  // is written back with a replace. The view keeps no selection of its own.
+  const RouteHost = defineComponent({
+    setup() {
+      const route = useRoute()
+      const router = useRouter()
+      return () => h(SettingsView, {
+        selectedTab: 'Settings',
+        domain: route.params.domain,
+        collection: route.params.collection,
+        entry: route.params.entry,
+        'onUpdate:domain': (domain) => router.replace({ name: 'settings', params: { domain } })
+      })
+    }
+  })
+
+  // The paths are visited in order, so the history holds them the way a user would have made them.
+  const mountAt = async (paths) => {
+    const router = namedRouter()
+    for (const path of paths) {
+      await router.push(path)
+    }
+    await router.isReady()
+    const store = await loadedStore()
+    wrapper = mount(RouteHost, {
+      global: {
+        plugins: [router],
+        provide: { [configurationStoreKey]: store }
+      }
+    })
+    await flushPromises()
+    return { router, store }
+  }
+
+  const clickButtonText = async (text) => {
+    await wrapper.findAll('button').find(button => button.text() === text).trigger('click')
+    await flushPromises()
+  }
+
+  it('selects the entry the address names when the page is opened', async () => {
+    await mountAt(['/settings/maven/repositories/snapshots'])
+
+    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
+  })
+
+  it('pushes the address of an entry that is selected', async () => {
+    const { router } = await mountAt(['/', '/settings/maven'])
+
+    await itemButtons()[0].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/maven/repositories/releases')
+    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('releases')
+  })
+
+  it('returns to the previous selection with the back button', async () => {
+    const { router } = await mountAt(['/', '/settings/maven/repositories/releases'])
+    await itemButtons()[1].trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
+
+    router.back()
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/maven/repositories/releases')
+    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('releases')
+  })
+
+  it('writes the domain into an address that names none, without adding a history entry', async () => {
+    const { router } = await mountAt(['/', '/settings'])
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
+    router.back()
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath, 'the address was replaced, so back leaves the settings page').toBe('/')
+  })
+
+  it('writes a domain picked in the tabs into the address without adding a history entry', async () => {
+    const { router } = await mountAt(['/', '/settings/maven'])
+    await wrapper.findAll('[role="tab"]').find(tab => tab.text() === 'Ingot').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
+    router.back()
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('corrects an address that names a domain the server does not have, once, to the first domain', async () => {
+    const { router } = await mountAt(['/', '/settings/ghost'])
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
+    expect(itemIds(), 'the first domain is the one on screen').toEqual(['releases', 'snapshots'])
+  })
+
+  it('leads the not-found pane back to the domain list through the router', async () => {
+    const { router } = await mountAt(['/', '/settings/maven/repositories/ghost'])
+    expect(wrapper.text()).toContain('Repository not found')
+
+    await wrapper.findAll('a').find(link => link.text() === 'Back to repositories').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
+  })
+
+  it('returns to the domain list when the selected entry is deleted', async () => {
+    const { router, store } = await mountAt(['/', '/settings/maven/repositories/snapshots'])
+    await clickButtonText('Delete repository')
+    await typeIn('#delete-entry-confirm-input', 'snapshots')
+    document.getElementById('delete-entry-confirm').click()
+    await flushPromises()
+
+    expect(repositoryIds(store)).toEqual(['releases'])
+    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
   })
 })

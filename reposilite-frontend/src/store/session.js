@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { computed, ref, watchEffect } from "vue"
+import { computed, ref, watch, watchEffect } from "vue"
 import { createClient, setUnauthorizedHandler } from './client'
 import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
 
@@ -31,8 +31,10 @@ watchEffect(() => {
   localStorage.setItem('token-secret', token.value.secret)
 })
 
-// False only while stored credentials are being checked. A listing that is requested before
-// the answer is known would be requested again once the answer arrives.
+// The one notion of "the session is known". False only while stored credentials are being
+// checked: a listing requested before the answer is known would be requested again once it
+// arrives, and a route that needs a manager must not decide before then. Views read the flag
+// as a ref; the router waits for it through whenSessionKnown().
 const sessionReady = ref(!(token.value.name && token.value.secret))
 
 /**
@@ -123,6 +125,20 @@ const initializeSession = () => {
     })
 }
 
+// Resolves once sessionReady is true, which is at once when nothing is stored. The watcher is
+// stopped as soon as it has fired, so a settled wait holds no listener.
+const whenSessionKnown = () => new Promise(resolve => {
+  if (sessionReady.value) {
+    resolve()
+    return
+  }
+  const stop = watch(sessionReady, ready => {
+    if (!ready) return
+    stop()
+    resolve()
+  }, { flush: 'sync' })
+})
+
 // The session is shared by all tabs of the browser: a login or a logout in one tab is followed
 // by the others. Each tab writes the same two keys, so the handler only reacts to changes of
 // those keys and only acts when the stored session differs from the one held here.
@@ -195,4 +211,4 @@ export function useSession() {
   }
 }
 
-export { loginFailureMessage, stopSharingSession }
+export { loginFailureMessage, stopSharingSession, whenSessionKnown }

@@ -40,6 +40,10 @@ const props = defineProps({
     type: String,
     default: null
   },
+  backHref: {
+    type: String,
+    default: undefined
+  },
   renderers: {
     type: Array,
     required: true
@@ -106,6 +110,7 @@ const hasSelection = computed(() => props.selectedId !== null)
           :key="selectedId"
           :collection="collection"
           :entry="selectedEntry"
+          :back-href="backHref"
           :renderers="renderers"
           :validator="validator"
           @change="emit('change', { index: selectedIndex, entry: $event })"

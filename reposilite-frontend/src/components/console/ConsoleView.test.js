@@ -241,4 +241,66 @@ describe('ConsoleView', () => {
       expect(buttonLabelled(wrapper, 'Sign in'), 'a server that cannot be reached is not an expired session').toBeUndefined()
     })
   })
+
+  describe('address', () => {
+    const mountWith = async (props = {}) => {
+      const { default: ConsoleView } = await import('./ConsoleView.vue')
+      wrapper = mount(ConsoleView, { props, attachTo: document.body })
+      return wrapper
+    }
+
+    // The level chips are the only checkable buttons on the view, and each names its level.
+    const levelChips = (view) =>
+      view.findAll('button').filter(button => button.attributes('aria-checked') !== undefined)
+    const shownLevelNames = (view) =>
+      levelChips(view)
+        .filter(chip => chip.attributes('aria-checked') === 'true')
+        .map(chip => chip.text().replace(/\d+/g, '').trim())
+
+    it('shows only the levels the address names', async () => {
+      await mountWith({ level: 'info,error' })
+
+      expect(shownLevelNames(wrapper)).toEqual(['Info', 'Error'])
+    })
+
+    it('shows every level when the address names none of them', async () => {
+      await mountWith({})
+
+      expect(shownLevelNames(wrapper)).toEqual(['Other', 'Trace', 'Debug', 'Info', 'Warn', 'Error'])
+    })
+
+    it('shows no level at all when the address lists none', async () => {
+      await mountWith({ level: '' })
+
+      expect(shownLevelNames(wrapper)).toEqual([])
+    })
+
+    it('filters the output by the text the address holds', async () => {
+      await mountWith({ search: 'boom' })
+
+      expect(wrapper.find('input').element.value).toBe('boom')
+    })
+
+    it('reports a switched level so the address can hold it', async () => {
+      await mountWith({})
+
+      await levelChips(wrapper).find(chip => chip.text().startsWith('Info')).trigger('click')
+
+      expect(wrapper.emitted('update:level')?.at(-1)).toEqual(['other,trace,debug,warn,error'])
+    })
+
+    it('reports the filter text as it is typed', async () => {
+      await mountWith({})
+
+      await wrapper.find('input').setValue('boom')
+
+      expect(wrapper.emitted('update:search')?.at(-1)).toEqual(['boom'])
+    })
+
+    it('does not report the address back when it set the level itself', async () => {
+      await mountWith({ level: 'info' })
+
+      expect(wrapper.emitted('update:level')).toBeUndefined()
+    })
+  })
 })

@@ -19,7 +19,7 @@ import { createHead } from '@unhead/vue/client'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
 import App from './App.vue'
-import router from './router'
+import { createIngotRouter } from './router'
 import { loadFrontendSettings } from './store/placeholders'
 
 import './style.css'
@@ -35,13 +35,13 @@ app.config.globalProperties.drop = (path) =>
     .slice(0, -1)
     .join('/')
 
-// The settings have to be in hand before anything reads them, and the API client reads
-// them at module scope. When this dashboard is served by the server itself they are already
+// The settings have to be in hand before anything reads them, and the router takes its base
+// path from them. When this dashboard is served by the server itself they are already
 // substituted into the bundle and this resolves immediately.
 loadFrontendSettings().then(() => {
   app
     .use(createHead())
     .use(VueAxios, axios)
-    .use(router)
+    .use(createIngotRouter())
     .mount('#app')
 })

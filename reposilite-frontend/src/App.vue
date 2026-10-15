@@ -24,13 +24,13 @@ import usePlaceholders from './store/placeholders'
 import { createErrorToast, errorMessage } from './helpers/toast'
 import MdSnackbar from './components/md/MdSnackbar.vue'
 
-const { title, description, icpLicense, privacyPolicy } = usePlaceholders()
+const { description, icpLicense, privacyPolicy } = usePlaceholders()
 const { theme, fetchColorMode } = useTheme()
 const { initializeSession } = useSession()
 const { qualifier } = useQualifier()
 
+// The document title belongs to the router now: it names the section or the browsed path.
 useHead({
-  title,
   description
 })
 fetchColorMode()

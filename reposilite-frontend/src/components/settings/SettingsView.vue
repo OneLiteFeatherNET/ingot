@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, inject, provide, reactive, watch } from 'vue'
+import { computed, inject, provide, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { JsonForms } from '@jsonforms/vue'
 import download from 'downloadjs'
@@ -29,13 +29,16 @@ import { collectionsOf, entryLayout } from './collections'
 import { property } from '../../helpers/vue-extensions'
 
 /*
- * The routes are `settings` (/settings/:domain?) and `settings-entry` (/settings/:domain/:collection/:entry).
- * When they exist, the address decides what is shown and each selection is pushed or replaced
- * through the router. Until they exist, the view keeps the selection itself, so the page works
- * under the current router too.
+ * The address decides what is shown. `settings` (/settings/:domain?) names the domain, and
+ * `settings-entry` (/settings/:domain/:collection/:entry) also names an entry of one collection.
+ * The page passes the route params in as props; the view keeps no selection of its own.
+ * Selecting an entry, or going back to the list, is pushed, so the back button returns to the
+ * previous selection. A new entry replaces the address, because the one just created is the place
+ * to be. The domain on screen is reported with update:domain, and the page writes it to the address.
  */
 const props = defineProps({
   selectedTab: property(String, true),
+  // The address: the domain on screen, and for an entry the collection and the entry in it.
   domain: {
     type: String,
     default: undefined
@@ -49,6 +52,8 @@ const props = defineProps({
     default: undefined
   }
 })
+
+const emit = defineEmits(['update:domain'])
 
 const { store: sharedStore, renderers, configurationStyles } = useConfiguration()
 const store = inject(configurationStoreKey, null) ?? sharedStore
@@ -70,15 +75,10 @@ const {
   invalidDomains
 } = store
 
-const hasRoute = (name) => Boolean(router?.hasRoute?.(name))
-const routed = computed(() => hasRoute('settings-entry'))
-
-/* Selection kept by the view itself, used only while the address does not carry one. */
-const localSelection = reactive({})
-
+// The domain on screen is the one the store holds. The address sets it, and the tabs set it;
+// the watchers below keep the address and the store in step, so there is one place it lives.
 const activeDomain = computed(() => {
-  const requested = routed.value ? props.domain : store.selectedDomain.value
-  if (domains.value.includes(requested)) return requested
+  if (domains.value.includes(store.selectedDomain.value)) return store.selectedDomain.value
   return domains.value[0]
 })
 
@@ -89,10 +89,7 @@ const activeCollections = computed(() => (activeDomain.value ? collectionsFor(ac
 
 const entriesOf = (domain, collection) => configurations.value[domain]?.[collection.key] ?? []
 
-const selectedIdFor = (collection) => {
-  if (routed.value) return props.collection === collection.key ? (props.entry ?? null) : null
-  return localSelection[collection.key] ?? null
-}
+const selectedIdFor = (collection) => (props.collection === collection.key ? (props.entry ?? null) : null)
 
 /*
  * The fields of a domain that are not collections, as one generated form. Most domains have none
@@ -111,30 +108,38 @@ const domainForm = computed(() => {
   return { schema: fieldSchema, layout: entryLayout(fieldSchema, { exclude: [] }) }
 })
 
+// The address names the domain on screen. A domain that is not in the address is written there.
+watch(
+  () => props.domain,
+  (domain) => {
+    if (domain) store.selectedDomain.value = domain
+  },
+  { immediate: true }
+)
+
+// Reports the domain on screen whenever it differs from the address: when a tab is picked, when the
+// address names none or one the server does not have, or once the list has arrived. The page answers
+// with a replace, after which the two agree and nothing is reported again, so there is no loop.
+watch([activeDomain, () => props.domain], ([domain, requested]) => {
+  if (domain && domain !== requested) emit('update:domain', domain)
+}, { immediate: true })
+
 const selectDomain = (domain) => {
   store.selectedDomain.value = domain
-  if (hasRoute('settings')) router.push({ name: 'settings', params: { domain } })
 }
 
 const selectEntry = (collection, id) => {
-  localSelection[collection.key] = id
-  if (hasRoute('settings-entry')) {
-    router.push({ name: 'settings-entry', params: { domain: activeDomain.value, collection: collection.key, entry: id } })
-  }
+  router.push({ name: 'settings-entry', params: { domain: activeDomain.value, collection: collection.key, entry: id } })
 }
 
-const backToList = (collection) => {
-  localSelection[collection.key] = null
-  if (hasRoute('settings')) router.push({ name: 'settings', params: { domain: activeDomain.value } })
+const backToList = () => {
+  router.push({ name: 'settings', params: { domain: activeDomain.value } })
 }
 
 const createEntry = (collection, id) => {
   const domain = activeDomain.value
   store.addEntry(domain, collection.key, { id })
-  localSelection[collection.key] = id
-  if (hasRoute('settings-entry')) {
-    router.replace({ name: 'settings-entry', params: { domain, collection: collection.key, entry: id } })
-  }
+  router.replace({ name: 'settings-entry', params: { domain, collection: collection.key, entry: id } })
 }
 
 const updateEntry = (collection, { index, entry }) => {
@@ -143,9 +148,14 @@ const updateEntry = (collection, { index, entry }) => {
 
 const deleteEntry = (collection, index) => {
   store.removeEntry(activeDomain.value, collection.key, index)
-  localSelection[collection.key] = null
-  if (hasRoute('settings')) router.replace({ name: 'settings', params: { domain: activeDomain.value } })
+  router.replace({ name: 'settings', params: { domain: activeDomain.value } })
 }
+
+// The not-found pane of an entry links to the list of its domain. It is a real link, so it can be
+// opened in a new tab; a plain click is taken by the view and pushed through the router instead.
+const backHref = computed(() => (activeDomain.value
+  ? router.resolve({ name: 'settings', params: { domain: activeDomain.value } }).href
+  : undefined))
 
 const onDomainChange = (domain, event) => {
   store.setDomainData(domain, event.data)
@@ -252,10 +262,11 @@ watch(
           :collection="list"
           :entries="entriesOf(activeDomain, list)"
           :selected-id="selectedIdFor(list)"
+          :back-href="backHref"
           :renderers="renderers"
           :validator="store.configurationValidator"
           @select="selectEntry(list, $event)"
-          @back="backToList(list)"
+          @back="backToList"
           @create="createEntry(list, $event)"
           @change="updateEntry(list, $event)"
           @delete="deleteEntry(list, $event)"

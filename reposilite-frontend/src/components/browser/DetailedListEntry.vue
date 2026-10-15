@@ -34,7 +34,8 @@ const props = defineProps({
   file: property(Object, true),
   qualifier: property(Object, true),
   url: property(String, false),
-  to: property(String, false),
+  // A router location, for a directory: the row is a link into the browser.
+  to: property(Object, false),
   openDeleteEntryModal: property(Function, true),
   compactMode: property(Boolean, true),
   signedIn: property(Boolean, false),

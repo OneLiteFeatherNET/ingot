@@ -17,20 +17,22 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { ROUTES } from '../../router/routes'
 import BreadcrumbNavigation from './BreadcrumbNavigation.vue'
 
-// A real router on memory history: the parent control is a router link, and the tests check
-// what it actually resolves to.
-const mountBreadcrumb = async (path = '/releases/net/example') => {
+// The crumbs are router links into the real route table, so the tests check the URLs that
+// the links actually resolve to.
+const mountBreadcrumb = async (path = 'releases/net/example') => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }]
+    routes: ROUTES.map(route => ({ ...route, component: { render: () => null } }))
   })
-  await router.push(path)
+  // The page being shown is the browse URL of the path, as it is in the application.
+  await router.push(`/browse/${path}`)
   await router.isReady()
 
   return mount(BreadcrumbNavigation, {
-    props: { parentPath: '/releases/net' },
+    props: { path },
     global: { plugins: [router] }
   })
 }
@@ -92,7 +94,7 @@ describe('BreadcrumbNavigation', () => {
 
   it('keeps a long directory name on one line with an ellipsis and its full name in the title', async () => {
     const segment = '80-db1-bba-b9621f618-a-very-long-directory-name'
-    wrapper = await mountBreadcrumb(`/filled/${segment}`)
+    wrapper = await mountBreadcrumb(`filled/${segment}`)
     const current = wrapper.find('[aria-current="page"]')
 
     expect(current.classes(), 'the long name is cut with an ellipsis, not wrapped or cut in the middle').toContain('truncate')
@@ -100,15 +102,36 @@ describe('BreadcrumbNavigation', () => {
   })
 
   it('gives every ancestor crumb its full name as a title', async () => {
-    wrapper = await mountBreadcrumb('/releases/net/example')
+    wrapper = await mountBreadcrumb('releases/net/example')
     const ancestors = wrapper.findAll('ol a')
 
     expect(ancestors.map(link => link.attributes('title'))).toEqual(['/', 'releases', 'net'])
   })
 
+  it('points each ancestor crumb at its browse URL', async () => {
+    wrapper = await mountBreadcrumb()
+    const net = wrapper.findAll('ol a').find(link => link.text() === 'net/')
+
+    expect(net.attributes('href'), 'the crumb links to the browse URL of its directory').toBe('/browse/releases/net')
+  })
+
+  it('points the root crumb at overview', async () => {
+    wrapper = await mountBreadcrumb()
+    const root = wrapper.findAll('a').find(link => link.text() === '/')
+
+    expect(root.attributes('href')).toBe('/')
+  })
+
   it('resolves the parent control to the parent directory', async () => {
     wrapper = await mountBreadcrumb()
 
-    expect(wrapper.find('[aria-label="Parent directory"]').attributes('href'), 'the parent link goes one level up').toBe('/releases/net')
+    expect(wrapper.find('[aria-label="Parent directory"]').attributes('href'), 'the parent link goes one level up')
+      .toBe('/browse/releases/net')
+  })
+
+  it('resolves the parent of a top level directory to overview', async () => {
+    wrapper = await mountBreadcrumb('releases')
+
+    expect(wrapper.find('[aria-label="Parent directory"]').attributes('href')).toBe('/')
   })
 })
