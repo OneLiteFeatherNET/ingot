@@ -75,6 +75,11 @@ dependencies {
     val bcrypt = "0.10.2"
     implementation("at.favre.lib:bcrypt:$bcrypt")
 
+    // Argon2id for local login passwords. Declared explicitly although bcrypt already brings the same version in: the
+    // login code calls it directly, so it must not depend on a transitive version that another library could change.
+    val bouncyCastle = "1.84"
+    implementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastle")
+
     val expressible = "1.3.6"
     api("org.panda-lang:expressible:$expressible")
     api("org.panda-lang:expressible-kt:$expressible")

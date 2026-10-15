@@ -15,3 +15,4 @@ com.reposilite.token.application.AccessTokenPlugin
 com.reposilite.web.application.WebPlugin
 com.reposilite.cleanup.application.CleanupPlugin
 com.reposilite.audit.application.AuditPlugin
+net.onelitefeather.ingot.identity.login.application.LoginPlugin
