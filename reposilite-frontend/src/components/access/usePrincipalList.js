@@ -16,38 +16,23 @@
 
 import { ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
-import { detailOf } from './accessPrincipals'
 
 /*
- * The principals of one kind for a list page. The list endpoint answers with the facts every
- * row needs; the instance admin role, the teams and the tokens (and with them the last use of a
- * machine account) are only in the detail, so the details are read once the list is on screen
- * and the rows fill in as they arrive. A detail that cannot be read leaves its row without those
- * facts rather than failing the page.
+ * The principals of one kind for a list page. One request answers for every row: the list items
+ * carry the facts a row shows (the instance admin flags, the token count, the login providers and
+ * the last seen time), so no detail is read per row. The detail of a principal is read by the
+ * detail view alone, when its row is opened.
  *
- * `getApi` returns { list(kind), get(name) } of the identity client. A load that is overtaken by
- * a newer one is dropped, so the page always shows the answer to the last question.
+ * `getApi` returns { list(kind) } of the identity client. A load that is overtaken by a newer one
+ * is dropped, so the page always shows the answer to the last question.
  */
 export function usePrincipalList(kind, getApi) {
   const principals = ref([])
-  const details = ref({})
   const loaded = ref(false)
   const loading = ref(false)
   const loadError = ref('')
 
   let latest = 0
-
-  const readDetails = async (api, list, request) => {
-    const answers = await Promise.allSettled(list.map(principal => api.get(principal.name)))
-    if (request !== latest) return
-    const next = {}
-    answers.forEach((answer, index) => {
-      if (answer.status === 'fulfilled') {
-        next[list[index].name] = detailOf(answer.value.data)
-      }
-    })
-    details.value = next
-  }
 
   const load = async () => {
     const request = ++latest
@@ -59,8 +44,6 @@ export function usePrincipalList(kind, getApi) {
       if (request !== latest) return
       principals.value = response.data ?? []
       loaded.value = true
-      loading.value = false
-      await readDetails(api, principals.value, request)
     } catch (error) {
       if (request === latest) loadError.value = errorMessage(error)
     } finally {
@@ -68,5 +51,5 @@ export function usePrincipalList(kind, getApi) {
     }
   }
 
-  return { principals, details, loaded, loading, loadError, load }
+  return { principals, loaded, loading, loadError, load }
 }

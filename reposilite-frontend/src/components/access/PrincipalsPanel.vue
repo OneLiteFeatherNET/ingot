@@ -25,7 +25,7 @@ import NewMachineDialog from './NewMachineDialog.vue'
 import NewUserDialog from './NewUserDialog.vue'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import PrincipalDetail from './PrincipalDetail.vue'
-import { filterPrincipals, isInstanceAdmin, newestLastUsed, seenLabel, usedLabel } from './accessPrincipals'
+import { filterPrincipals, seenLabel, usedLabel } from './accessPrincipals'
 import { usePrincipalList } from './usePrincipalList'
 
 /*
@@ -75,7 +75,7 @@ const COPY = computed(() => (isMachine.value
     detail: 'access-user'
   }))
 
-const { principals, details, loaded, loadError, load } = usePrincipalList(props.kind, () => api.value)
+const { principals, loaded, loadError, load } = usePrincipalList(props.kind, () => api.value)
 
 const query = ref('')
 const newOpen = ref(false)
@@ -88,16 +88,16 @@ const toggleMenu = (name, open) => {
 
 onMounted(load)
 
+// Everything a row shows comes from its list item. A machine account counts as used when it last
+// authenticated, which the server records as the last seen time of the principal.
 const rows = computed(() => filterPrincipals(principals.value, query.value).map(principal => {
-  const detail = details.value[principal.name]
-  const activity = isMachine.value
-    ? usedLabel(detail ? newestLastUsed(detail.tokens) : null)
-    : seenLabel(principal.lastSeenAt ?? null)
+  const activity = isMachine.value ? usedLabel(principal.lastSeenAt ?? null) : seenLabel(principal.lastSeenAt ?? null)
   const prefix = isMachine.value ? 'Last used' : 'Last sign-in'
   return {
     principal,
-    detail,
-    admin: isInstanceAdmin(detail),
+    // The chip shows the role however it is held. The menu offers to change the direct role only.
+    admin: principal.instanceAdmin === true,
+    directAdmin: (principal.instanceRole ?? principal.instanceAdmin) === true,
     activity,
     // "Last sign-in 3 days ago", or the bare "Never signed in".
     activityText: activity.title ? `${prefix} ${activity.text}` : activity.text,
@@ -234,7 +234,7 @@ const deleted = (principal) => {
           <PrincipalActionsMenu
             class="mr-1 mt-1"
             :principal="row.principal"
-            :instance-admin="row.admin"
+            :instance-admin="row.directAdmin"
             :api="api"
             @changed="load()"
             @deleted="deleted"

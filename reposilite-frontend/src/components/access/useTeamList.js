@@ -18,32 +18,20 @@ import { ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 
 /*
- * The teams for the list page. The list endpoint answers with the facts of a row (name,
- * description, counts). Whether a team holds the instance admin role is only certain in the
- * detail, so a team whose list entry does not say is read once the list is on screen, and its
- * chip fills in as the answer arrives. A detail that cannot be read leaves its row without the
- * chip rather than failing the page.
+ * The teams for the list page. One request answers for every row: the list items carry the facts
+ * a row shows (description, member and grant counts, whether the team holds the instance admin
+ * role), so no detail is read per team. The detail of a team is read by the detail view alone,
+ * when its row is opened.
  *
- * `getApi` returns { list(), get(name) } of the teams client. A load that is overtaken by a newer
- * one is dropped, so the page always shows the answer to the last question.
+ * `getApi` returns { list() } of the teams client. A load that is overtaken by a newer one is
+ * dropped, so the page always shows the answer to the last question.
  */
 export function useTeamList(getApi) {
   const teams = ref([])
-  const instanceAdmins = ref({})
   const loaded = ref(false)
   const loadError = ref('')
 
   let latest = 0
-
-  const readAdmins = async (api, list, request) => {
-    const answers = await Promise.allSettled(list.map(team => api.get(team.name)))
-    if (request !== latest) return
-    const next = {}
-    answers.forEach((answer, index) => {
-      if (answer.status === 'fulfilled') next[list[index].name] = answer.value.data?.instanceRole === true
-    })
-    instanceAdmins.value = next
-  }
 
   const load = async () => {
     const request = ++latest
@@ -54,15 +42,13 @@ export function useTeamList(getApi) {
       if (request !== latest) return
       teams.value = response.data ?? []
       loaded.value = true
-      const unknown = teams.value.filter(team => typeof team.instanceRole !== 'boolean')
-      await readAdmins(api, unknown, request)
     } catch (error) {
       if (request === latest) loadError.value = errorMessage(error)
     }
   }
 
-  const isInstanceAdmin = (team) =>
-    typeof team.instanceRole === 'boolean' ? team.instanceRole : instanceAdmins.value[team.name] === true
+  /** Whether the team holds the instance admin role. A list item without the field counts as not holding it. */
+  const isInstanceAdmin = (team) => team?.instanceAdmin === true || team?.instanceRole === true
 
   return { teams, loaded, loadError, load, isInstanceAdmin }
 }

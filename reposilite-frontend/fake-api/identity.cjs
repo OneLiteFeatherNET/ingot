@@ -228,6 +228,17 @@ const principalDto = (principal) => ({
   disabled: principal.disabled, createdAt: principal.createdAt, lastSeenAt: principal.lastSeenAt,
 })
 
+// A list row: the flat principal and the summaries a list shows, so that no detail is read per row.
+// instanceAdmin is the role however it is held, instanceRole the direct role (as in the detail).
+// A user can sign in with the local provider while it has a password; a machine never can.
+const principalListItem = (principal) => ({
+  ...principalDto(principal),
+  instanceAdmin: isInstanceAdmin(principal),
+  instanceRole: principal.instanceRole,
+  tokenCount: principal.tokens.length,
+  providers: principal.kind === "USER" && principal.password ? ["local"] : [],
+})
+
 const tokenDto = (token) => ({
   name: token.name, description: token.description, createdAt: token.createdAt,
   expiresAt: token.expiresAt, scopes: token.scopes, lastUsedAt: token.lastUsedAt, lastUsedIp: token.lastUsedIp,
@@ -243,6 +254,7 @@ const principalDetail = (principal) => ({
 const teamDto = (team) => ({
   name: team.name, description: team.description, externalRef: team.externalRef,
   memberCount: team.members.length, grantCount: team.grants.length,
+  instanceAdmin: team.instanceRole,
 })
 
 const teamDetail = (team) => ({
@@ -418,6 +430,8 @@ const resolveBearer = (req, secret) => {
   if (token.expiresAt && Date.parse(token.expiresAt) <= Date.now()) return null
   token.lastUsedAt = nowIso()
   token.lastUsedIp = req.ip || null
+  // The server records the use on the principal as well, which is what a machine list row shows.
+  principal.lastSeenAt = token.lastUsedAt
   const scoped = token.scopes === null || token.scopes.includes("INSTANCE_ADMIN")
   return { via: "bearer", principal, admin: isInstanceAdmin(principal) && scoped }
 }
@@ -707,7 +721,7 @@ identity.get("/principals", (req, res) => {
   reply(res, [...principals]
     .filter(principal => kind === undefined || principal.kind === String(kind).toUpperCase())
     .sort((left, right) => left.name.localeCompare(right.name))
-    .map(principalDto))
+    .map(principalListItem))
 })
 
 identity.post("/principals", (req, res) => {

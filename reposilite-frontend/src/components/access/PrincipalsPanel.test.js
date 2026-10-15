@@ -20,6 +20,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import { setClock, resetClock } from '../../helpers/clock'
+import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 
 // The session is replaced by a ref of the client, so each test decides what the server answers.
@@ -45,13 +46,15 @@ const makeRouter = async (url) => {
   return router
 }
 
-const ALICE = { id: 2, kind: 'USER', name: 'alice', displayName: 'Alice Example', disabled: false, createdAt: '2026-10-02T09:00:00Z', lastSeenAt: '2026-10-12T12:00:00Z' }
-const BOB = { id: 3, kind: 'USER', name: 'bob', displayName: 'Robert Builder', disabled: true, createdAt: '2026-10-03T09:00:00Z', lastSeenAt: null }
-const ADMIN = { id: 1, kind: 'USER', name: 'admin', displayName: 'Administrator', disabled: false, createdAt: '2026-10-01T09:00:00Z', lastSeenAt: '2026-10-15T08:00:00Z' }
+// The list items as the server answers them: the flat principal and the summaries a row shows.
+const ALICE = { id: 2, kind: 'USER', name: 'alice', displayName: 'Alice Example', disabled: false, createdAt: '2026-10-02T09:00:00Z', lastSeenAt: '2026-10-12T12:00:00Z', instanceAdmin: false, instanceRole: false, tokenCount: 0, providers: ['local'] }
+const BOB = { id: 3, kind: 'USER', name: 'bob', displayName: 'Robert Builder', disabled: true, createdAt: '2026-10-03T09:00:00Z', lastSeenAt: null, instanceAdmin: false, instanceRole: false, tokenCount: 0, providers: ['local'] }
+const ADMIN = { id: 1, kind: 'USER', name: 'admin', displayName: 'Administrator', disabled: false, createdAt: '2026-10-01T09:00:00Z', lastSeenAt: '2026-10-15T08:00:00Z', instanceAdmin: true, instanceRole: true, tokenCount: 0, providers: ['local'] }
 
-const CI = { id: 4, kind: 'MACHINE', name: 'ci-bot', displayName: 'CI bot', disabled: false, createdAt: '2026-10-04T09:00:00Z', lastSeenAt: null }
-const IDLE = { id: 5, kind: 'MACHINE', name: 'idle-bot', displayName: '', disabled: false, createdAt: '2026-10-04T09:00:00Z', lastSeenAt: null }
+const CI = { id: 4, kind: 'MACHINE', name: 'ci-bot', displayName: 'CI bot', disabled: false, createdAt: '2026-10-04T09:00:00Z', lastSeenAt: '2026-10-14T12:00:00Z', instanceAdmin: false, instanceRole: false, tokenCount: 3, providers: [] }
+const IDLE = { id: 5, kind: 'MACHINE', name: 'idle-bot', displayName: '', disabled: false, createdAt: '2026-10-04T09:00:00Z', lastSeenAt: null, instanceAdmin: false, instanceRole: false, tokenCount: 1, providers: [] }
 
+// What the detail view reads when a row is opened. The list never asks for it.
 const DETAILS = {
   alice: { ...ALICE, teams: [], instanceRole: false, tokens: [] },
   bob: { ...BOB, teams: [], instanceRole: false, tokens: [] },
@@ -133,6 +136,38 @@ describe('PrincipalsPanel', () => {
 
       expect(principals.list).toHaveBeenCalledWith('USER')
       expect(usernames()).toEqual(['admin', 'alice', 'bob'])
+    })
+
+    it('reads the list in one request and no detail of any row', async () => {
+      await mountPanel({ kind: 'USER' })
+
+      expect(principals.list, 'one list request').toHaveBeenCalledTimes(1)
+      expect(principals.get, 'no per-row detail request').not.toHaveBeenCalled()
+    })
+
+    it('shows the instance admin chip of a user who holds the role through a team only', async () => {
+      principals.list.mockResolvedValue({ data: [{ ...ALICE, instanceAdmin: true, instanceRole: false }] })
+
+      await mountPanel({ kind: 'USER' })
+
+      expect(rowOf('alice').find('[data-test="admin-badge"]').exists(), 'the list item says instanceAdmin').toBe(true)
+    })
+
+    it('hands the actions menu the direct role and not the role held through a team', async () => {
+      principals.list.mockResolvedValue({ data: [{ ...ALICE, instanceAdmin: true, instanceRole: false }, ADMIN] })
+
+      await mountPanel({ kind: 'USER' })
+
+      const menus = wrapper.findAllComponents(PrincipalActionsMenu)
+      expect(menus.map(menu => menu.props('instanceAdmin')), 'alice holds it through a team, admin directly').toEqual([false, true])
+    })
+
+    it('shows no instance admin chip when the list item lacks the flags', async () => {
+      principals.list.mockResolvedValue({ data: [{ id: 2, kind: 'USER', name: 'alice', displayName: 'Alice Example', disabled: false, createdAt: '2026-10-02T09:00:00Z', lastSeenAt: null }] })
+
+      await mountPanel({ kind: 'USER' })
+
+      expect(rowOf('alice').find('[data-test="admin-badge"]').exists()).toBe(false)
     })
 
     it('lifts the row of an open actions menu above the rows that follow it', async () => {
@@ -264,7 +299,14 @@ describe('PrincipalsPanel', () => {
       expect(usernames()).toEqual(['ci-bot', 'idle-bot'])
     })
 
-    it('shows the newest last use among the tokens of a machine account', async () => {
+    it('reads the list in one request and no detail of any machine account', async () => {
+      await mountPanel({ kind: 'MACHINE' }, '/access/machines')
+
+      expect(principals.list, 'one list request').toHaveBeenCalledTimes(1)
+      expect(principals.get, 'no per-row detail request').not.toHaveBeenCalled()
+    })
+
+    it('shows the last use of a machine account from the last seen time of its list item', async () => {
       await mountPanel({ kind: 'MACHINE' }, '/access/machines')
 
       const activity = rowOf('ci-bot').find('[data-test="activity"]')
@@ -273,7 +315,7 @@ describe('PrincipalsPanel', () => {
       expect(activity.attributes('title')).toBe('2026-10-14 12:00 UTC')
     })
 
-    it('says that a machine account without a used token was never used', async () => {
+    it('says that a machine account that was never seen was never used', async () => {
       await mountPanel({ kind: 'MACHINE' }, '/access/machines')
 
       expect(rowOf('idle-bot').find('[data-test="activity"]').text()).toBe('Never used')

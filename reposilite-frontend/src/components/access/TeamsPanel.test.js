@@ -39,9 +39,9 @@ const TeamDetailStub = {
 }
 
 const TEAMS = [
-  { name: 'developers', description: 'Everyone who writes code', externalRef: null, memberCount: 4, grantCount: 2 },
-  { name: 'admins', description: 'Runs the instance', externalRef: null, memberCount: 1, grantCount: 0 },
-  { name: 'release', description: 'Ships the artifacts', externalRef: 'idp:release', memberCount: 1, grantCount: 1 }
+  { name: 'developers', description: 'Everyone who writes code', externalRef: null, memberCount: 4, grantCount: 2, instanceAdmin: false },
+  { name: 'admins', description: 'Runs the instance', externalRef: null, memberCount: 1, grantCount: 0, instanceAdmin: true },
+  { name: 'release', description: 'Ships the artifacts', externalRef: 'idp:release', memberCount: 1, grantCount: 1, instanceAdmin: false }
 ]
 
 describe('TeamsPanel', () => {
@@ -113,12 +113,19 @@ describe('TeamsPanel', () => {
     expect(row('developers').find('[data-test="admin-badge"]').exists()).toBe(false)
   })
 
-  it('takes the instance admin role from the list entry when it carries it', async () => {
-    teams.list.mockResolvedValue({ data: [{ ...TEAMS[0], instanceRole: true }] })
+  it('reads the list in one request and no detail of any team', async () => {
     await mountPanel()
 
-    expect(row('developers').find('[data-test="admin-badge"]').exists()).toBe(true)
-    expect(teams.get, 'no detail request for an entry that already says').not.toHaveBeenCalled()
+    expect(teams.list, 'one list request').toHaveBeenCalledTimes(1)
+    expect(teams.get, 'no per-row detail request').not.toHaveBeenCalled()
+  })
+
+  it('shows no instance admin chip when the list entry lacks the flag', async () => {
+    teams.list.mockResolvedValue({ data: [{ name: 'developers', description: '', externalRef: null, memberCount: 4, grantCount: 2 }] })
+    await mountPanel()
+
+    expect(row('developers').find('[data-test="admin-badge"]').exists()).toBe(false)
+    expect(teams.get, 'a missing flag is not looked up').not.toHaveBeenCalled()
   })
 
   it('filters by name', async () => {
