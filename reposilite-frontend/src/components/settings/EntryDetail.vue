@@ -21,6 +21,7 @@ import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DeleteEntryDialog from './DeleteEntryDialog.vue'
+import RepositoryAccessCard from './RepositoryAccessCard.vue'
 import { entryLayout, idText, validateNewId } from './collections'
 
 /*
@@ -59,6 +60,11 @@ const props = defineProps({
   backHref: {
     type: String,
     default: undefined
+  },
+  // True for the repositories of the maven domain: the pane then shows who has access, below the form.
+  showAccess: {
+    type: Boolean,
+    default: false
   },
   renderers: {
     type: Array,
@@ -176,6 +182,11 @@ const onChange = (event) => {
       :ajv="validator"
       :config="formConfiguration"
       @change="onChange"
+    />
+
+    <RepositoryAccessCard
+      v-if="showAccess && idText(entry)"
+      :repository="idText(entry)"
     />
 
     <section

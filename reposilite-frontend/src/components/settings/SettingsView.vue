@@ -161,9 +161,9 @@ const backToList = () => {
  */
 const wizardOpen = ref(false)
 const openRepositoryWizard = () => { wizardOpen.value = true }
-const guidedCreateFor = (collection) => (activeDomain.value === 'maven' && collection.key === 'repositories'
-  ? openRepositoryWizard
-  : null)
+const isRepositoryList = (collection) => activeDomain.value === 'maven' && collection.key === 'repositories'
+
+const guidedCreateFor = (collection) => (isRepositoryList(collection) ? openRepositoryWizard : null)
 
 watch([() => route.query.new, activeDomain], ([requested, domain]) => {
   if (requested !== 'repository' || domain !== 'maven') return
@@ -482,6 +482,7 @@ watch(
           :renderers="renderers"
           :validator="store.configurationValidator"
           :guided-create="guidedCreateFor(list)"
+          :show-access="isRepositoryList(list)"
           @select="selectEntry(list, $event)"
           @back="backToList"
           @create="createEntry(list, $event)"

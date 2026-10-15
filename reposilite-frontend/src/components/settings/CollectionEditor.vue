@@ -66,6 +66,11 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  // True for the repositories: the detail then shows who has access to the selected one.
+  showAccess: {
+    type: Boolean,
+    default: false
+  },
   // A guided flow that replaces the id dialog of "New entry", or null for the plain dialog. See guidedCreate.js.
   guidedCreate: {
     type: Function,
@@ -156,6 +161,7 @@ watch([addresses, () => props.keys], () => {
           :back-href="backHref"
           :renderers="renderers"
           :validator="validator"
+          :show-access="showAccess"
           @change="emit('change', { index: selectedIndex, entry: $event })"
           @delete="emit('delete', selectedIndex)"
           @back="emit('back')"
