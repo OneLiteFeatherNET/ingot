@@ -23,6 +23,8 @@ import com.reposilite.audit.application.AuditSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.plugin.api.Facade
+import com.reposilite.scheduling.ScheduledJobClaims
+import com.reposilite.scheduling.utcDayKey
 import panda.std.reactive.Reference
 import java.time.Clock
 
@@ -38,6 +40,7 @@ class AuditFacade(
     private val repository: AuditRepository,
     private val settings: Reference<AuditSettings>,
     private val clock: Clock,
+    private val claims: ScheduledJobClaims = ScheduledJobClaims.Unshared,
 ) : Facade, Journalist {
 
     private data class FailureKey(val name: String, val address: String?)
@@ -149,6 +152,11 @@ class AuditFacade(
     fun purgeExpired(): Long {
         val retentionDays = settings.get().retentionDays
         if (retentionDays <= 0) {
+            return 0
+        }
+
+        if (!claims.claim(utcDayKey("audit-purge", clock))) {
+            logger.debug("AUDIT | Retention purge of today is claimed by another instance, skipping")
             return 0
         }
 

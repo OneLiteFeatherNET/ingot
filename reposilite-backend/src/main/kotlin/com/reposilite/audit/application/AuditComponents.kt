@@ -22,6 +22,8 @@ import com.reposilite.audit.infrastructure.InMemoryAuditRepository
 import com.reposilite.audit.infrastructure.SqlAuditRepository
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.api.PluginComponents
+import com.reposilite.scheduling.ScheduledJobClaims
+import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import org.jetbrains.exposed.v1.jdbc.Database
 import panda.std.reactive.Reference
 import java.time.Clock
@@ -39,12 +41,20 @@ class AuditComponents(
             else -> SqlAuditRepository(database)
         }
 
-    fun auditFacade(repository: AuditRepository = auditRepository()): AuditFacade =
+    /** Without a database there is no other instance to share the retention purge with, so the purge is not claimed. */
+    private fun purgeClaims(): ScheduledJobClaims =
+        database?.let { SqlScheduledJobClaims(it, clock) } ?: ScheduledJobClaims.Unshared
+
+    fun auditFacade(
+        repository: AuditRepository = auditRepository(),
+        claims: ScheduledJobClaims = purgeClaims(),
+    ): AuditFacade =
         AuditFacade(
             journalist = journalist,
             repository = repository,
             settings = settings,
             clock = clock,
+            claims = claims,
         )
 
 }
