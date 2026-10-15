@@ -558,6 +558,82 @@ Accessibility: errors are `role="alert"`, everything else is `role="status"` wit
 
 Do not show a success notice for something the header already confirms, such as a sign-in.
 
+### MdRadio
+
+Props:
+
+- `value`: required. The value of this radio
+- `name`: required. Radios that share a `name` form one group. The name is required so that
+  no radio is left out of its group by accident
+- `modelValue`: the value of the group, for `v-model`. The radio is checked when it equals
+  `value`
+- `disabled`: boolean
+- `card`: boolean. Makes the whole option one clickable card (see below)
+- `id`: optional. Generated when not given
+
+Emits `update:modelValue` with its own `value` when it is chosen. Attributes that are not props,
+such as `aria-describedby`, go to the input. `class` and `style` stay on the root, so a
+consumer can give the card its border and colours.
+
+Usage, as a group inside a `<fieldset>` with a `<legend>`:
+
+```vue
+<fieldset>
+  <legend class="md-title-medium">Who can read it</legend>
+  <MdRadio
+    v-for="option in options"
+    :key="option.value"
+    v-model="visibility"
+    name="visibility"
+    :value="option.value"
+  >
+    {{ option.label }}
+  </MdRadio>
+</fieldset>
+```
+
+Keyboard: the group gets one tab stop. Down and Right move to the next option, Up and Left to
+the previous one, both wrap, and disabled options are skipped. The focus follows the selection.
+The component handles the arrow keys itself, so every browser behaves the same and the default
+is prevented.
+
+Focus: the focus ring is shown only for keyboard focus, as a 3px outline in the secondary role
+around the circle. In the card variant it goes around the whole card instead. A pointer click
+leaves no ring behind.
+
+### MdRadio card variant
+
+`card` makes the whole option one clickable target. The root becomes a `<label>` around the
+input, so a click on the card, on its text or on its empty area selects the option. Use it for
+option cards with an explanation, such as visibility or access choices. Without `card`, only the
+label text and the circle select the option.
+
+The card gives its own look through classes on the root. The chosen card uses the
+`secondary-container` background and `on-secondary-container` text, with a 1px `primary`
+border. An unchosen card has an `outline-variant` border and `on-surface` text:
+
+```vue
+<MdRadio
+  v-for="option in options"
+  :key="option.value"
+  v-model="visibility"
+  name="visibility"
+  :value="option.value"
+  card
+  class="rounded-corner-medium border p-3"
+  :class="visibility === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
+>
+  <span class="flex min-w-0 flex-col gap-0.5">
+    <span class="md-title-small">{{ option.label }}</span>
+    <span class="md-body-medium">{{ option.who }}</span>
+  </span>
+</MdRadio>
+```
+
+The circle stays at the top left of the card. The slot content sits to its right. A disabled
+card has a `not-allowed` cursor and dims its text; it cannot be chosen. The keyboard focus ring
+is drawn around the whole card.
+
 ## Known gaps
 
 None at present. Gaps that are deliberately left for the views that own them are listed here.
