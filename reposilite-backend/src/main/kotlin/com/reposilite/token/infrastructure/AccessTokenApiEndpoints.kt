@@ -36,6 +36,7 @@ import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.PATCH
 import io.javalin.community.routing.Route.POST
 import io.javalin.community.routing.Route.PUT
+import io.javalin.http.Header
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.bodyAsClass
 import io.javalin.openapi.HttpMethod
@@ -70,9 +71,12 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     )
     val findToken = ReposiliteRoute<AccessTokenDetailsDto>("/api/tokens/{name}", GET) {
         authenticated {
-            response = accessTokenFacade.getAccessToken(requireParameter("name"))
-                ?.takeIf { isManager().isOk || name == it.name }
-                ?.let { accessTokenFacade.getAccessTokenDetails(it) }
+            response = accessTokenFacade.getAccessTokenSnapshot(requireParameter("name"))
+                ?.takeIf { isManager().isOk || name == it.value.name }
+                ?.let { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    snapshot.value
+                }
                 ?.asSuccess()
                 ?: FORBIDDEN.toErrorResult("You must be the token owner or a manager to access this.")
         }
@@ -98,8 +102,8 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
                 .filter({ request -> request.routes.all { route -> route.permissions.all { RoutePermission.findRoutePermissionByShortcut(it).isOk }}}) {
                     unknownRouteError()
                 }
-                .map { request ->
-                    accessTokenFacade.createAccessToken(
+                .flatMap { request ->
+                    accessTokenFacade.upsertAccessToken(
                         CreateAccessTokenRequest(
                             type = request.type,
                             secret = request.secret,
@@ -109,8 +113,13 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
                             routes = toRequestRoutes(request.routes),
                             expiresAt = request.expiresAt,
                             description = request.description,
-                        )
+                        ),
+                        ifMatch = ctx.header(Header.IF_MATCH),
                     )
+                }
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    snapshot.value
                 }
         }
     }
@@ -146,8 +155,13 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
                             routes = request.routes?.let { toRequestRoutes(it) },
                             expiresAt = request.expiresAt,
                             updateExpiresAt = expiresAtProvided,
-                        )
+                        ),
+                        ifMatch = ctx.header(Header.IF_MATCH),
                     )
+                }
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    snapshot.value
                 }
         }
     }

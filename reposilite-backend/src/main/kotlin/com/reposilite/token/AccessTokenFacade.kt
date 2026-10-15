@@ -15,10 +15,13 @@
  */
 package com.reposilite.token
 
+import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.plugin.api.Facade
+import com.reposilite.shared.EntityTag
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.AccessTokenSecurityProvider.generateSecret
@@ -32,11 +35,20 @@ import com.reposilite.token.api.SecretType
 import com.reposilite.token.api.SecretType.ENCRYPTED
 import com.reposilite.token.api.SecretType.RAW
 import com.reposilite.token.api.UpdateAccessTokenRequest
+import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.letIf
 import java.nio.file.Path
 import java.time.LocalDate
+
+/**
+ * Stored state of a token together with the entity tag that identifies exactly that state.
+ */
+data class AccessTokenSnapshot<T>(
+    val value: T,
+    val etag: String,
+)
 
 class AccessTokenFacade internal constructor(
     private val journalist: Journalist,
@@ -45,7 +57,15 @@ class AccessTokenFacade internal constructor(
     private val exportService: ExportService
 ) : Facade, Journalist {
 
-    fun createAccessToken(request: CreateAccessTokenRequest): CreateAccessTokenResponse {
+    /**
+     * Serializes the conditional writes of this instance, so a precondition is checked against the state it writes.
+     */
+    private val mutationLock = Any()
+
+    fun createAccessToken(request: CreateAccessTokenRequest): CreateAccessTokenResponse =
+        storeAccessToken(request).response
+
+    private fun storeAccessToken(request: CreateAccessTokenRequest): StoredAccessToken {
         val existingToken = request.type.getRepository().findAccessTokenByName(request.name)
         val oppositeToken = request.type.getOppositeRepository().findAccessTokenByName(request.name)
 
@@ -56,7 +76,7 @@ class AccessTokenFacade internal constructor(
                 ENCRYPTED -> secret
             }
 
-        val createdToken =
+        val savedToken =
             request.type.getRepository()
                 .saveAccessToken(
                     AccessToken(
@@ -68,37 +88,111 @@ class AccessTokenFacade internal constructor(
                         expiresAt = request.expiresAt,
                     )
                 )
-                .toDto()
         oppositeToken?.let { request.type.getOppositeRepository().deleteAccessToken(it.identifier) }
 
         val routes = syncPermissionsAndRoutes(
-            identifier = createdToken.identifier,
+            identifier = savedToken.identifier,
             permissions = request.permissions,
             routeRequests = request.routes
         )
 
-        return CreateAccessTokenResponse(
-            accessToken = createdToken,
-            permissions = request.permissions,
-            secret = secret,
-            routes = routes
+        return StoredAccessToken(
+            token = savedToken,
+            response = CreateAccessTokenResponse(
+                accessToken = savedToken.toDto(),
+                permissions = request.permissions,
+                secret = secret,
+                routes = routes
+            )
         )
     }
 
-    fun updateAccessToken(name: String, request: UpdateAccessTokenRequest): Result<AccessTokenDetailsDto, ErrorResponse> {
-        val existing = getAccessToken(name) ?: return notFoundError("Token not found")
-        val raw = getRawAccessTokenById(existing.identifier) ?: return notFoundError("Token not found")
+    private data class StoredAccessToken(
+        val token: AccessToken,
+        val response: CreateAccessTokenResponse,
+    )
 
-        val updated = raw.identifier.type.getRepository()
-            .saveAccessToken(raw.copy(
-                description = request.description ?: raw.description,
-                expiresAt = if (request.updateExpiresAt) request.expiresAt else raw.expiresAt,
-            ))
-            .toDto()
+    /**
+     * Creates or replaces the token with the given name. When [ifMatch] is present the write is applied only while the entity tag
+     * still describes the stored token, a missing token never matches.
+     */
+    fun upsertAccessToken(request: CreateAccessTokenRequest, ifMatch: String? = null): Result<AccessTokenSnapshot<CreateAccessTokenResponse>, ErrorResponse> {
+        synchronized(mutationLock) {
+            val existing = findRawAccessTokenByName(request.name)
+            if (!EntityTag.matches(ifMatch, existing?.let { snapshotOf(it).etag })) {
+                return preconditionFailed(request.name)
+            }
 
-        syncPermissionsAndRoutes(updated.identifier, request.permissions, request.routes)
+            val stored = storeAccessToken(request)
+            return AccessTokenSnapshot(stored.response, snapshotOf(stored.token).etag).asSuccess()
+        }
+    }
 
-        return getAccessTokenDetails(updated).asSuccess()
+    /**
+     * Updates the metadata of the token with the given name. When [ifMatch] is present the update is applied only while the entity
+     * tag still describes the stored token.
+     */
+    fun updateAccessToken(
+        name: String,
+        request: UpdateAccessTokenRequest,
+        ifMatch: String? = null,
+    ): Result<AccessTokenSnapshot<AccessTokenDetailsDto>, ErrorResponse> {
+        synchronized(mutationLock) {
+            val existing = findRawAccessTokenByName(name) ?: return notFoundError("Token not found")
+            if (!EntityTag.matches(ifMatch, snapshotOf(existing).etag)) {
+                return preconditionFailed(name)
+            }
+
+            val updated = existing.identifier.type.getRepository()
+                .saveAccessToken(existing.copy(
+                    description = request.description ?: existing.description,
+                    expiresAt = if (request.updateExpiresAt) request.expiresAt else existing.expiresAt,
+                ))
+
+            syncPermissionsAndRoutes(updated.identifier, request.permissions, request.routes)
+
+            return snapshotOf(updated).asSuccess()
+        }
+    }
+
+    /**
+     * Details of the token with the given name together with the entity tag of its stored state.
+     */
+    fun getAccessTokenSnapshot(name: String): AccessTokenSnapshot<AccessTokenDetailsDto>? {
+        synchronized(mutationLock) {
+            return findRawAccessTokenByName(name)?.let { snapshotOf(it) }
+        }
+    }
+
+    private fun findRawAccessTokenByName(name: String): AccessToken? =
+        temporaryRepository.findAccessTokenByName(name) ?: persistentRepository.findAccessTokenByName(name)
+
+    private fun <V> preconditionFailed(name: String): Result<V, ErrorResponse> =
+        errorResponse(PRECONDITION_FAILED, "Token '$name' has been changed since it was read, reload it and try again")
+
+    /**
+     * Built from the stored token itself rather than looked up again, since a lookup evicts expired tokens and a token
+     * updated to a past expiry must still yield its details. The entity tag covers everything a client can change through
+     * the API, the stored secret hash included, so regenerating a secret also invalidates earlier tags. The raw secret is
+     * never part of it.
+     */
+    private fun snapshotOf(raw: AccessToken): AccessTokenSnapshot<AccessTokenDetailsDto> {
+        val permissions = getPermissions(raw.identifier)
+        val routes = getRoutes(raw.identifier)
+        val fingerprint = mapOf(
+            "identifier" to raw.identifier,
+            "name" to raw.name,
+            "createdAt" to raw.createdAt,
+            "description" to raw.description,
+            "expiresAt" to raw.expiresAt,
+            "encryptedSecret" to raw.encryptedSecret,
+            "permissions" to permissions.map { it.identifier }.sorted(),
+            "routes" to routes.map { "${it.permission.identifier}:${it.path}" }.sorted(),
+        )
+        return AccessTokenSnapshot(
+            value = AccessTokenDetailsDto.of(raw.toDto(), permissions, routes),
+            etag = EntityTag.of(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(fingerprint)),
+        )
     }
 
     private fun syncPermissionsAndRoutes(
