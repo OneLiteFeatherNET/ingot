@@ -19,9 +19,15 @@ import { mount, flushPromises } from '@vue/test-utils'
 import AppearancePreview from './AppearancePreview.vue'
 import { buildThemeCss } from '../../theme/runtime'
 
+// The preview loads the colour generator with a dynamic import, which flushPromises does not wait for.
+const settle = async () => {
+  await vi.dynamicImportSettled()
+  await flushPromises()
+}
+
 const mountPreview = async (appearance) => {
   const wrapper = mount(AppearancePreview, { props: { appearance } })
-  await flushPromises()
+  await settle()
   return wrapper
 }
 
@@ -51,7 +57,7 @@ describe('AppearancePreview', () => {
     const wrapper = await mountPreview({ seedColor: '#006a6a' })
 
     await wrapper.setProps({ appearance: { seedColor: '#8a1c1c' } })
-    await flushPromises()
+    await settle()
 
     expect(swatch(wrapper, 'primary')).toBe(generatedLight('#8a1c1c', 'primary'))
   })
