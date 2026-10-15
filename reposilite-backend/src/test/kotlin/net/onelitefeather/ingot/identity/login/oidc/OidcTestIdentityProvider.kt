@@ -88,6 +88,9 @@ internal class OidcTestIdentityProvider(private val clock: Clock) : AutoCloseabl
 
     var githubTeams: String = """[{"slug":"platform","organization":{"login":"acme"}}]"""
 
+    /** When set, the teams are served page by page: page n is element n-1, and a page past the end is empty. */
+    var githubTeamPages: List<String>? = null
+
     /** The authorization header of every GitHub API request, in arrival order. */
     val githubAuthorizations: MutableList<String?> = CopyOnWriteArrayList()
 
@@ -115,7 +118,11 @@ internal class OidcTestIdentityProvider(private val clock: Clock) : AutoCloseabl
             githubAuthorizations.add(exchange.requestHeaders.getFirst("Authorization"))
             when (exchange.requestURI.path) {
                 "/github/api/user" -> respond(exchange, 200, githubUser)
-                "/github/api/user/teams" -> respond(exchange, 200, githubTeams)
+                "/github/api/user/teams" -> {
+                    val pages = githubTeamPages
+                    val page = exchange.requestURI.query.orEmpty().split('&').firstOrNull { it.startsWith("page=") }?.removePrefix("page=")?.toIntOrNull() ?: 1
+                    respond(exchange, 200, if (pages == null) githubTeams else pages.getOrNull(page - 1) ?: "[]")
+                }
                 "/github/api/user/emails" -> respond(exchange, 200, githubEmails)
                 else -> respond(exchange, 404, "{}")
             }

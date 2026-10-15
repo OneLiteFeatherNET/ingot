@@ -87,7 +87,7 @@ internal class GitHubLogin(
         val subject = user.get("id")?.asText()?.takeIf { it.isNotBlank() } ?: throw OidcUnavailableException("GitHub user has no id")
         val login = user.text("login") ?: throw OidcUnavailableException("GitHub user has no login")
         val email = user.text("email") ?: primaryEmail(accessToken)
-        val teams = getJson("${endpoints.api}/user/teams?per_page=100", accessToken)
+        val teams = allTeams(accessToken)
         val groups = teams.flatMap { team ->
             val org = team.path("organization").path("login").asText()
             val slug = team.path("slug").asText()
@@ -100,6 +100,20 @@ internal class GitHubLogin(
             email = email,
             groups = groups,
         )
+    }
+
+    /**
+     * Every team of the user, page by page. A short page ends the listing. The listing is never cut short: a user with more
+     * teams than [MAX_PAGES] pages fails the login, because a partial list would drop the synchronised memberships of the rest.
+     */
+    private fun allTeams(accessToken: String): List<JsonNode> {
+        val teams = mutableListOf<JsonNode>()
+        for (page in 1..MAX_PAGES) {
+            val batch = getJson("${endpoints.api}/user/teams?per_page=$PAGE_SIZE&page=$page", accessToken).toList()
+            teams.addAll(batch)
+            if (batch.size < PAGE_SIZE) return teams
+        }
+        throw OidcUnavailableException("GitHub lists more teams than the login reads")
     }
 
     private fun primaryEmail(accessToken: String): String? =
@@ -128,6 +142,9 @@ internal class GitHubLogin(
 /** A text field of a JSON object, or `null` when it is missing, JSON null or blank. `asText()` would turn null into "null". */
 private fun JsonNode.text(field: String): String? =
     get(field)?.takeIf { it.isTextual }?.textValue()?.takeIf { it.isNotBlank() }
+
+private const val PAGE_SIZE = 100
+private const val MAX_PAGES = 50
 
 /** Thrown when a provider refuses the authorization code. The login fails with `token_exchange_failed`. */
 internal class TokenRefusedException : RuntimeException("the token endpoint refused the code")

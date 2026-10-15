@@ -110,6 +110,21 @@ internal class GitHubLoginTest {
         }
     }
 
+    @Test
+    fun `every page of teams is read, so that no membership is dropped for a user with many teams`() {
+        // given: a full first page of 100 teams, and one team on the second page
+        val fullPage = (1..100).joinToString(prefix = "[", postfix = "]") {
+            """{"slug":"team-$it","organization":{"login":"acme"}}"""
+        }
+        stub.githubTeamPages = listOf(fullPage, """[{"slug":"last","organization":{"login":"globex"}}]""")
+
+        // when
+        val groups = login.profile("gho_test").groups
+
+        // then
+        assertThat(groups).contains("globex/last", "acme/team-100")
+    }
+
     private fun endpointsOf(stub: OidcTestIdentityProvider) = GitHubEndpoints(
         authorize = "${stub.issuer}/github/authorize",
         token = "${stub.issuer}/github/token",
