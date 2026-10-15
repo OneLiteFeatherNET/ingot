@@ -96,16 +96,35 @@ data class OidcProviderSettings(
 
 /**
  * The enabled external providers of the login settings, read on every call so that a change applies at once. Entries with
- * an id that is not a slug are ignored, and so is every entry after the first one with the same id.
+ * an id that is not a slug, an empty id or an id that an earlier entry already has are skipped. An enabled entry that
+ * lacks a field it needs is not announced. Each of these is reported through [warn] with its reason: once at [report],
+ * and after that again only when the list of problems changes, so a settings change is logged and a steady state is not.
  */
-class OidcProviderCatalog internal constructor(private val settings: Reference<LoginSettings>) {
+class OidcProviderCatalog internal constructor(
+    private val settings: Reference<LoginSettings>,
+    private val warn: (String) -> Unit = {},
+) {
+
+    private val lock = Any()
+    private var reported: List<String> = emptyList()
+
+    /** Logs the problems of the current entries, unless they were logged already. */
+    fun report() {
+        val problems = problemsOf(settings.get().oidcProviders)
+        val changed = synchronized(lock) {
+            (problems != reported).also { if (it) reported = problems }
+        }
+        if (changed) problems.forEach(warn)
+    }
 
     /** Enabled providers in the order of the settings. */
-    fun enabled(): List<OidcProviderSettings> =
-        settings.get().oidcProviders
+    fun enabled(): List<OidcProviderSettings> {
+        report()
+        return settings.get().oidcProviders
             .filter { it.id.matches(OidcProviderSettings.SLUG) }
             .distinctBy { it.id }
             .filter { it.enabled }
+    }
 
     /** The enabled provider with [id], or `null` when there is none. */
     fun find(id: String): OidcProviderSettings? =
@@ -114,5 +133,21 @@ class OidcProviderCatalog internal constructor(private val settings: Reference<L
     /** The enabled providers that are usable: the ones that are announced on the login page. */
     fun announced(): List<OidcProviderSettings> =
         enabled().filter { it.missingField() == null }
+
+    private fun problemsOf(entries: List<OidcProviderSettings>): List<String> {
+        val seen = mutableSetOf<String>()
+        return entries.mapIndexedNotNull { index, entry ->
+            val position = "oidcProviders[$index]"
+            val missing = entry.missingField()
+            when {
+                entry.id.isEmpty() -> "$position skipped: the id is empty"
+                !entry.id.matches(OidcProviderSettings.SLUG) ->
+                    "$position skipped: the id \"${entry.id}\" is not a slug (lowercase letters, digits and dashes, at most 64 characters)"
+                !seen.add(entry.id) -> "$position skipped: the id \"${entry.id}\" is already used by an earlier entry"
+                entry.enabled && missing != null -> "$position is enabled but not announced: $missing is missing"
+                else -> null
+            }
+        }
+    }
 
 }

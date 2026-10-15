@@ -55,7 +55,7 @@ class LoginPlugin : ReposilitePlugin() {
         val clock = Clock.systemUTC()
         val loginSettings = facade<SharedConfigurationFacade>().getDomainSettings<LoginSettings>()
         val audit: (AuditEvent) -> Unit = { auditExtensions.emitEvent(it) }
-        val oidcCatalog = OidcProviderCatalog(loginSettings)
+        val oidcCatalog = OidcProviderCatalog(loginSettings, warn = { logger.warn(it) })
 
         // The signing key is shared by every instance of the database, exactly like the ETag key: the first instance
         // that starts generates it, and the others read it back. The external login state cookie is sealed with a key
@@ -165,6 +165,8 @@ class LoginPlugin : ReposilitePlugin() {
 
         // Shown once per start, and only while no user exists: the setup code is the way into an empty instance.
         event { _: ReposiliteInitializeEvent ->
+            // Skipped provider entries are named once per start, with their reason, before anything else is logged.
+            oidcCatalog.report()
             loginFacade.issueSetupCode()?.let { code ->
                 logger.info("")
                 logger.info("--- First administrator")
