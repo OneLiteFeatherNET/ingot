@@ -8,6 +8,7 @@ import { defaultStyles, mergeStyles, vanillaRenderers } from '@dzikoysk/vue-vani
 import { default as ObjectRenderer, tester as objectTester } from '../components/renderers/ObjectRenderer.vue'
 import { default as AllOfRenderer, tester as allOfTester } from '../components/renderers/AllOfRenderer.vue'
 import { default as ArrayListRenderer, tester as arrayListTester } from '../components/renderers/ArrayListRenderer.vue'
+import { settingsTabDomains } from '../components/settings/accessDomains'
 import { default as OneOfRenderer, tester as oneOfTester } from '../components/renderers/OneOfRenderer.vue'
 import { default as ConstantRenderer, tester as constantTester } from '../components/renderers/ConstantRenderer.vue'
 import { default as OptionalRenderer, tester as optionalTester } from '../components/renderers/OptionalRenderer.vue'
@@ -151,7 +152,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
       loaded.forEach(({ domain, configuration, etag }) => {
         setSavedState(domain, withDefaults(domain, cloneJson(configuration)), etag)
       })
-      if (!domainNames.includes(selectedDomain.value)) selectedDomain.value = domainNames[0]
+      if (!domainNames.includes(selectedDomain.value)) selectedDomain.value = settingsTabDomains(domainNames)[0] ?? domainNames[0]
       secretsHidden.value = serverHidesSecrets() === true
 
       loadError.value = null

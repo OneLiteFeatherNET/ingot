@@ -23,6 +23,8 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import SettingsTabs from './SettingsTabs.vue'
+import AccessDomainCard from './AccessDomainCard.vue'
+import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoryWizard from './RepositoryWizard.vue'
@@ -95,15 +97,20 @@ const {
 
 // The domain on screen is the one the store holds. The address sets it, and the tabs set it;
 // the watchers below keep the address and the store in step, so there is one place it lives.
+// The tabs leave out the domains that are edited under Access. Opened by address, such a domain shows its card.
+const tabDomains = computed(() => settingsTabDomains(domains.value))
+
 const activeDomain = computed(() => {
   if (domains.value.includes(store.selectedDomain.value)) return store.selectedDomain.value
-  return domains.value[0]
+  return tabDomains.value[0] ?? domains.value[0]
 })
 
-const domainTabs = computed(() => domains.value.map(domain => ({ key: domain, label: store.titleOf(domain) })))
+const domainTabs = computed(() => tabDomains.value.map(domain => ({ key: domain, label: store.titleOf(domain) })))
 
 const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
-const activeCollections = computed(() => (activeDomain.value ? collectionsFor(activeDomain.value) : []))
+const activeCollections = computed(() => (activeDomain.value && !isAccessDomain(activeDomain.value)
+  ? collectionsFor(activeDomain.value)
+  : []))
 
 const entriesOf = (domain, collection) => configurations.value[domain]?.[collection.key] ?? []
 
@@ -441,7 +448,7 @@ watch(
 
     <template v-if="activeDomain">
       <SettingsTabs
-        v-if="domains.length > 1"
+        v-if="tabDomains.length > 1"
         :model-value="activeDomain"
         label="Configuration domains"
         variant="secondary"
@@ -449,7 +456,7 @@ watch(
         @update:model-value="selectDomain"
       />
       <h2
-        v-else
+        v-else-if="!isAccessDomain(activeDomain)"
         class="md-title-large text-on-surface"
       >
         {{ store.titleOf(activeDomain) }}
@@ -459,8 +466,13 @@ watch(
         role="tabpanel"
         class="mt-6 flex flex-col gap-8"
       >
+        <AccessDomainCard
+          v-if="isAccessDomain(activeDomain)"
+          :domain="activeDomain"
+          :title="store.titleOf(activeDomain)"
+        />
         <JsonForms
-          v-if="domainForm && configurations[activeDomain]"
+          v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
           :key="`domain-fields:${activeDomain}`"
           :config="formsConfiguration"
           :data="configurations[activeDomain]"

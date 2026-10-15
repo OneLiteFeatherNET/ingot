@@ -58,6 +58,22 @@ const loadedStore = async (client = fakeClient()) => {
 }
 
 describe('configuration store', () => {
+  it('selects the first settings tab by default, never the domain that is managed under Access', async () => {
+    const server = { login: { ldap: {} }, maven: { name: 'server-maven' } }
+    const client = {
+      settings: {
+        domains: async () => ({ data: ['login', 'maven'] }),
+        schema: async (domain) => ({ data: { ...SCHEMA, title: domain } }),
+        fetch: async (domain) => ({ data: { ...server[domain] } }),
+        update: async () => ({ data: {} })
+      }
+    }
+
+    const store = await loadedStore(client)
+
+    expect(store.selectedDomain.value).toBe('maven')
+  })
+
   it('keeps the edited values dirty when saving fails', async () => {
     const client = fakeClient({ update: async () => { throw new Error('connection refused') } })
     const store = await loadedStore(client)

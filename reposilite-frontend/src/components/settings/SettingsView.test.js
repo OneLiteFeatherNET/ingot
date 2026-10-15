@@ -96,6 +96,8 @@ const namedRouter = () => createRouter({
   routes: [
     { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
     { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
+    { name: 'access-sso', path: '/access/sso', component: { render: () => null } },
+    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } },
     { name: 'home', path: '/', component: { render: () => null } }
   ]
 })
@@ -156,6 +158,28 @@ describe('SettingsView page', () => {
 
     expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
     expect(wrapper.get('h2').text()).toBe('Maven')
+  })
+
+  it('does not offer the login domain as a tab, because it is edited under Access', async () => {
+    const store = await loadedStore()
+    store.domains.value = ['login', 'maven', 'ingot']
+    store.schemas.value.login = { title: 'Login' }
+    await mountSettings({ store })
+
+    expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+  })
+
+  it('shows the login domain as a card with links to its pages under Access when it is opened', async () => {
+    const store = await loadedStore()
+    store.domains.value = ['login', 'maven', 'ingot']
+    store.schemas.value.login = { title: 'Login' }
+    store.selectedDomain.value = 'login'
+    await mountSettings({ store })
+
+    expect(wrapper.find('[data-test="access-domain"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Login is managed under Access')
+    const hrefs = wrapper.findAll('[data-test="access-domain"] a').map(link => link.attributes('href'))
+    expect(hrefs).toEqual(['/access/sso', '/access/ldap'])
   })
 
   it('shows one secondary tab per domain when there is more than one', async () => {
