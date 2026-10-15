@@ -18,6 +18,7 @@
 import InstanceStatusPanel from './InstanceStatusPanel.vue'
 import ResourceTrends from './ResourceTrends.vue'
 import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
+import GettingStartedCard from './GettingStartedCard.vue'
 </script>
 
 <!--
@@ -30,6 +31,8 @@ import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
 -->
 <template>
   <div class="container mx-auto pt-7 pb-12">
+    <GettingStartedCard class="mb-6" />
+
     <section aria-labelledby="instance-status-heading">
       <h2
         id="instance-status-heading"

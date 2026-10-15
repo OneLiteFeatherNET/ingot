@@ -407,6 +407,9 @@ export const createConfigurationStore = (client) => {
     validity.value[domain] = valid
   }
 
+  /* What the server last confirmed for a domain, or undefined before it has loaded. Unsaved edits never show here. */
+  const savedConfiguration = (domain) => snapshots.value[domain]
+
   return {
     domains,
     schemas,
@@ -432,6 +435,7 @@ export const createConfigurationStore = (client) => {
     factoryReset,
     setDomainData,
     setValidity,
+    savedConfiguration,
     validateDomain,
     entryKeysOf,
     setEntry,
