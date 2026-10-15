@@ -16,6 +16,7 @@
 
 package com.reposilite.frontend.infrastructure
 
+import com.reposilite.frontend.DashboardPaths
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.frontend.Source
 import com.reposilite.shared.ErrorResponse
@@ -28,6 +29,7 @@ import com.reposilite.storage.inputStream
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import io.javalin.community.routing.Route.GET
+import io.javalin.community.routing.Route.HEAD
 import io.javalin.http.ContentType
 import io.javalin.http.Context
 import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
@@ -79,11 +81,11 @@ internal class ResourcesFrontendHandler(
     private val resourcesDirectory: String
 ) : FrontendHandler(frontendFacade, failureFacade) {
 
-    private val defaultHandler = ReposiliteRoute<InputStream>("/", GET) {
+    private val defaultHandler = ReposiliteRoute<InputStream>("/", GET, HEAD) {
         response = respondWithBundledResource(ctx, "index.html")
     }
 
-    private val indexHandler = ReposiliteRoute<InputStream>("/index.html", GET) {
+    private val indexHandler = ReposiliteRoute<InputStream>("/index.html", GET, HEAD) {
         response = respondWithBundledResource(ctx, "index.html")
     }
 
@@ -91,12 +93,20 @@ internal class ResourcesFrontendHandler(
         response = respondWithBundledResource(ctx, "assets/${ctx.pathParam("path")}")
     }
 
+    // Javalin answers a HEAD request with the first HEAD endpoint that matches, so every app route needs
+    // HEAD as well. Without it, HEAD on /settings/... would reach the Maven route for a repository "settings".
+    private val appRoutes = DashboardPaths.APP_ROUTES.map { path ->
+        ReposiliteRoute<InputStream>(path, GET, HEAD) {
+            response = respondWithBundledResource(ctx, "index.html")
+        }
+    }
+
     private fun respondWithBundledResource(ctx: Context, uri: String): Result<InputStream, ErrorResponse> =
         respondWithResource(ctx, uri) {
             FrontendFacade::class.java.getResourceAsStream("/$resourcesDirectory/$uri") ?: "".toByteArray().inputStream()
         }
 
-    override val routes = routes(defaultHandler, indexHandler, assetsHandler)
+    override val routes = routes(defaultHandler, indexHandler, assetsHandler, *appRoutes.toTypedArray())
 
 }
 

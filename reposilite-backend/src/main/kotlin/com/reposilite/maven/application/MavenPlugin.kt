@@ -19,6 +19,7 @@ package com.reposilite.maven.application
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.console.api.CommandsSetupEvent
+import com.reposilite.frontend.DashboardPaths
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.PreservedBuildsListener
@@ -36,6 +37,7 @@ import com.reposilite.plugin.reposilite
 import com.reposilite.shared.http.HttpRemoteClientProvider
 import com.reposilite.web.api.RoutingSetupEvent
 import java.time.Clock
+import panda.std.reactive.computed
 
 @Plugin(
     name = "maven",
@@ -46,6 +48,7 @@ internal class MavenPlugin : ReposilitePlugin() {
 
     override fun initialize(): MavenFacade {
         val sharedConfigurationFacade = facade<SharedConfigurationFacade>()
+        val mavenSettings = sharedConfigurationFacade.getDomainSettings<MavenSettings>()
 
         val mavenFacade =
             MavenComponents(
@@ -60,7 +63,7 @@ internal class MavenPlugin : ReposilitePlugin() {
                 accessTokenFacade = facade(),
                 statisticsFacade = facade(),
                 ioService = reposilite().ioService,
-                mavenSettings = sharedConfigurationFacade.getDomainSettings<MavenSettings>(),
+                mavenSettings = mavenSettings,
                 frontendSettings = sharedConfigurationFacade.getDomainSettings<FrontendSettings>()
             ).mavenFacade()
 
@@ -68,6 +71,10 @@ internal class MavenPlugin : ReposilitePlugin() {
         logger.info("--- Repositories")
         mavenFacade.getRepositories().forEach { logger.info("+ ${it.name} (${it.visibility.toString().lowercase()})") }
         logger.info("${mavenFacade.getRepositories().size} repositories have been found")
+
+        // Checked at startup and again on every settings change, so an id added at runtime is reported as well.
+        warnAboutReservedRepositoryIds(mavenSettings.get())
+        computed(mavenSettings) { warnAboutReservedRepositoryIds(mavenSettings.get()) }
 
         event { event: RoutingSetupEvent ->
             val localConfiguration = facade<LocalConfiguration>()
@@ -89,6 +96,11 @@ internal class MavenPlugin : ReposilitePlugin() {
         }
 
         return mavenFacade
+    }
+
+    private fun warnAboutReservedRepositoryIds(settings: MavenSettings) {
+        DashboardPaths.reservedRepositoryWarnings(settings.repositories.map { it.id })
+            .forEach { logger.warn(it) }
     }
 
 }
