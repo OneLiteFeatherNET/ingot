@@ -15,19 +15,20 @@
   -->
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { STATUS } from '../../store/palette'
 import { useSession } from '../../store/session'
-import { describeHealth, findIntegrations, toAnswer } from './instanceHealth'
+import { describeHealth, integrationsOf, toAnswer } from './instanceHealth'
 import StatusLabel from './StatusLabel.vue'
 
 // Health moves as often as the status tiles it sits under, so it is polled on the same beat.
 const POLL_INTERVAL_MS = 5000
 
-const { client } = useSession()
+const { client, isManager } = useSession()
 const health = ref(null)
 const integrations = ref([])
 let timer = null
+
 
 const indicator = computed(() => health.value ?? {
   state: 'pending',
@@ -48,15 +49,19 @@ const refreshHealth = () =>
       health.value = describeHealth(answer)
     })
 
-// Probed once per visit: the integrations do not come and go while the page is open, and a
-// probe is a request to a plugin that may not even exist.
-const probeIntegrations = () =>
-  findIntegrations(
-    (endpoint) => client.value.status.probe(endpoint),
-    (endpoint) => client.value.status.url(endpoint)
-  ).then(found => {
+// Only managers probe, and only managers get links: the integrations are administration tools,
+// and a probe is a request to a plugin that may not even exist. Probed once per session, see above.
+const probeIntegrations = () => {
+  if (!isManager.value) {
+    integrations.value = []
+    return
+  }
+  integrationsOf(client.value).then(found => {
     integrations.value = found
   })
+}
+
+watch([client, isManager], probeIntegrations)
 
 const onVisibilityChange = () => {
   if (!document.hidden) refreshHealth()

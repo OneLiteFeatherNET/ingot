@@ -21,7 +21,7 @@ import InstanceHealthRow from './InstanceHealthRow.vue'
 
 // The row reads the session for its client. The client is replaced, so the test never reaches
 // the network or the real token.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted(() => ({ client: null, isManager: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
 
 const SWAGGER_PAGE = '<!doctype html><html><body><div id="swagger-ui"></div></body></html>'
@@ -48,6 +48,8 @@ const mountRow = () => {
 
 describe('InstanceHealthRow', () => {
   beforeEach(() => {
+    // Every test starts as a manager, the case that shows the integrations at all.
+    session.isManager = ref(true)
     // Only the poll interval is faked, as in the status panel. Nothing fires during a test.
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -111,5 +113,55 @@ describe('InstanceHealthRow', () => {
     await flushPromises()
 
     expect(wrapper.find('nav').exists(), 'the integrations row is left out entirely').toBe(false)
+  })
+
+  it('never probes the integrations for a signed-in user who is not a manager', async () => {
+    const probe = vi.fn(probeAnswers({}))
+    session.isManager = ref(false)
+    session.client = ref(clientWith({ probe }))
+    mountRow()
+    await flushPromises()
+
+    expect(probe, 'a non-manager must not even ask whether the integrations exist').not.toHaveBeenCalled()
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(wrapper.text(), 'the health indicator is still shown to everyone').toContain('Healthy')
+  })
+
+  it('probes the integrations with the session client, so the credentials go along', async () => {
+    const probe = vi.fn(probeAnswers({
+      '/swagger': { status: 200, contentType: 'text/html', body: SWAGGER_PAGE }
+    }))
+    session.client = ref(clientWith({ probe }))
+    mountRow()
+    await flushPromises()
+
+    expect(probe.mock.calls.map(([endpoint]) => endpoint).sort()).toEqual(['/metrics', '/swagger'])
+  })
+
+  it('probes once per client, so remounting the row on the same session asks again for nothing', async () => {
+    const probe = vi.fn(probeAnswers({}))
+    session.client = ref(clientWith({ probe }))
+    mountRow()
+    await flushPromises()
+    wrapper.unmount()
+    wrapper = undefined
+
+    mountRow()
+    await flushPromises()
+
+    expect(probe, 'two integrations, probed once in total').toHaveBeenCalledTimes(2)
+  })
+
+  it('links metrics when the endpoint answers 401 to the probe', async () => {
+    session.client = ref(clientWith({
+      probe: probeAnswers({
+        '/swagger': { status: 200, contentType: 'text/html', body: SWAGGER_PAGE },
+        '/metrics': { status: 401, contentType: 'text/plain', body: '' }
+      })
+    }))
+    mountRow()
+    await flushPromises()
+
+    expect(wrapper.findAll('nav a').map(link => link.text())).toEqual(['API docs', 'Metrics'])
   })
 })

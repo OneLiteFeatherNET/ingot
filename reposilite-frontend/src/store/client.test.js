@@ -144,3 +144,35 @@ describe('maintenance endpoints', () => {
     expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/cleanup\/runs\?policy=snapshots-weekly$/)
   })
 })
+
+describe('status probe', () => {
+  let axios
+  let client
+
+  beforeEach(async () => {
+    vi.resetModules()
+    axios = (await import('axios')).default
+    axios.get.mockReset()
+    axios.get.mockResolvedValue({ status: 401, headers: {}, data: '' })
+    client = await import('./client')
+  })
+
+  it('sends the session credentials, so a protected integration can answer 200', () => {
+    client.createClient('ci', 'secret').status.probe('/metrics')
+
+    expect(axios.get.mock.calls[0][1].headers.Authorization, 'the probe must authenticate like every other call')
+      .toBe(`xBasic ${btoa('ci:secret')}`)
+  })
+
+  it('sends no credentials when nobody is signed in', () => {
+    client.createClient('', '').status.probe('/metrics')
+
+    expect(axios.get.mock.calls[0][1].headers, 'an anonymous probe carries no authorization header').toBeUndefined()
+  })
+
+  it('treats any status as an answer, so a 401 does not reach the error path', () => {
+    client.createClient('ci', 'secret').status.probe('/metrics')
+
+    expect(axios.get.mock.calls[0][1].validateStatus(401)).toBe(true)
+  })
+})

@@ -64,8 +64,8 @@ const isHtml = (contentType) =>
  * unknown path is HTML too.
  *
  * Metrics: the Prometheus plugin serves /metrics by default (reposilite.prometheus.path can move
- * it, and the dashboard cannot know that). The endpoint is protected, so an anonymous probe
- * answers 401, which still means the endpoint is there.
+ * it, and the dashboard cannot know that). The probe carries the session's credentials; a 401 or
+ * 403 still means the endpoint is there, only refusing this caller.
  */
 export const INTEGRATIONS = [
   {
@@ -76,7 +76,7 @@ export const INTEGRATIONS = [
   {
     label: 'Metrics',
     endpoint: '/metrics',
-    responds: (answer) => (answer.status === 200 || answer.status === 401) && !isHtml(answer.contentType)
+    responds: (answer) => [200, 401, 403].includes(answer.status) && !isHtml(answer.contentType)
   }
 ]
 
@@ -94,4 +94,20 @@ export const findIntegrations = async (probe, url) => {
     }
   }))
   return found.filter(Boolean)
+}
+
+// The probes of each client, remembered at module level. A client is rebuilt when the token changes,
+// so a new sign in probes again, while a dashboard that is left and opened again does not repeat them.
+// Keyed by the client object, so an entry never outlives the client it belongs to.
+const probedClients = new WeakMap()
+
+/** The integrations of a client, probed at most once per client object. */
+export const integrationsOf = (client) => {
+  if (!probedClients.has(client)) {
+    probedClients.set(client, findIntegrations(
+      (endpoint) => client.status.probe(endpoint),
+      (endpoint) => client.status.url(endpoint)
+    ))
+  }
+  return probedClients.get(client)
 }

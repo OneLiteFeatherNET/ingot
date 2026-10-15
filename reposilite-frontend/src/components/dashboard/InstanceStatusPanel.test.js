@@ -21,8 +21,10 @@ import InstanceStatusPanel from './InstanceStatusPanel.vue'
 
 // The panel reads the session for its client and raises a toast on failure. Both are
 // replaced, so the test never touches the network, the real token or the toast container.
-const session = vi.hoisted(() => ({ client: null }))
+const session = vi.hoisted(() => ({ client: null, isManager: null }))
 vi.mock('../../store/session', () => ({ useSession: () => session }))
+// The health row under the tiles reads the manager flag, so the panel's session carries one.
+session.isManager = ref(true)
 vi.mock('../../helpers/toast', () => ({ createErrorToast: vi.fn() }))
 
 const INSTANCE = {

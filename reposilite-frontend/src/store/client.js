@@ -106,10 +106,15 @@ const createClient = (defaultName, defaultSecret) => {
       health() {
         return get("/api/status/health")
       },
-      // Anonymous on purpose: an integration is probed the way a stranger would reach it, and a
-      // 401 or 404 is an answer rather than an error. The reply is cut down to what the probe reads.
+      // Sent with the session's credentials, like every other call of this client, so a protected
+      // integration answers 200 instead of a 401 the browser logs on every visit. A 401, 403 or 404
+      // is still an answer rather than an error. The reply is cut down to what the probe reads.
       probe(endpoint) {
-        return axios.get(createURL(endpoint), { validateStatus: () => true, responseType: "text" })
+        return axios.get(createURL(endpoint), {
+          ...defaultAuthorization(),
+          validateStatus: () => true,
+          responseType: "text",
+        })
           .then(response => ({
             status: response.status,
             contentType: response.headers?.["content-type"] ?? "",
