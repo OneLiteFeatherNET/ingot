@@ -46,10 +46,35 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
     private val loginFacade: LoginFacade
         get() = useFacade()
 
+    /** The cookie values of one browser session, as the login response sets them. */
+    private data class Session(val session: String, val refresh: String, val csrf: String)
+
     private fun login(body: String) =
         http.post("$base/api/auth/login")
             .header("Content-Type", "application/json")
             .body(body)
+
+    private fun cookieValue(headers: List<String>, name: String): String =
+        headers.single { it.startsWith("$name=") }.substringAfter("=").substringBefore(";")
+
+    private fun loginSession(username: String): Session {
+        loginFacade.createUser(username, username, password)
+        val headers = login("""{"provider":"local","username":"$username","password":"$password"}""")
+            .asJacksonObject(LoginResponse::class)
+            .headers
+            .get("Set-Cookie")
+        return Session(
+            session = cookieValue(headers, "ingot_session"),
+            refresh = cookieValue(headers, "ingot_refresh"),
+            csrf = cookieValue(headers, "ingot_csrf"),
+        )
+    }
+
+    /** A renewal as the browser sends it: the refresh cookie, the csrf cookie and the header that echoes it. */
+    private fun renew(refresh: String, csrf: String) =
+        http.post("$base/api/auth/refresh")
+            .header("Cookie", "ingot_refresh=$refresh; ingot_csrf=$csrf")
+            .header("X-CSRF-Token", csrf)
 
     @Test
     fun `publishes the local password provider`() {
@@ -109,21 +134,6 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
         assertErrorResponse(FORBIDDEN, response)
     }
 
-    private fun cookieValue(headers: List<String>, name: String): String =
-        headers.single { it.startsWith("$name=") }.substringAfter("=").substringBefore(";")
-
-    private fun loginSession(username: String): Triple<String, String, String> {
-        loginFacade.createUser(username, username, password)
-        val response = login("""{"provider":"local","username":"$username","password":"$password"}""")
-            .asJacksonObject(LoginResponse::class)
-        val headers = response.headers.get("Set-Cookie")
-        return Triple(
-            cookieValue(headers, "ingot_session"),
-            cookieValue(headers, "ingot_refresh"),
-            cookieValue(headers, "ingot_csrf"),
-        )
-    }
-
     @Test
     fun `sets the session cookies HttpOnly where they must be and readable where they must be`() {
         // given: a user with a password
@@ -143,11 +153,11 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
     @Test
     fun `authenticates a request with the session cookie`() {
         // given: a logged in user
-        val (session) = loginSession("erin-session")
+        val session = loginSession("erin-session")
 
         // when: the current user is requested with the session cookie only
         val response = http.get("$base/api/auth/me")
-            .header("Cookie", "ingot_session=$session")
+            .header("Cookie", "ingot_session=${session.session}")
             .asString()
 
         // then: the request is served as that user
@@ -158,58 +168,107 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
     @Test
     fun `renews the session and rotates the refresh token`() {
         // given: a logged in user
-        val (_, refresh) = loginSession("frank-session")
+        val session = loginSession("frank-session")
 
         // when: the session is renewed with the refresh cookie
-        val response = http.post("$base/api/auth/refresh")
-            .header("Cookie", "ingot_refresh=$refresh")
-            .asJacksonObject(SessionResponse::class)
+        val response = renew(session.refresh, session.csrf).asJacksonObject(SessionResponse::class)
 
-        // then: a new refresh token is issued in place of the old one
-        assertSuccessResponse(OK, response) { session ->
-            assertThat(session.principal.name).isEqualTo("frank-session")
+        // then: the principal is reported, and a new refresh token replaces the old one
+        assertSuccessResponse(OK, response) { renewed ->
+            assertThat(renewed.principal.name).isEqualTo("frank-session")
         }
-        assertThat(cookieValue(response.headers.get("Set-Cookie"), "ingot_refresh")).isNotEqualTo(refresh)
+        assertThat(cookieValue(response.headers.get("Set-Cookie"), "ingot_refresh")).isNotEqualTo(session.refresh)
     }
 
     @Test
     fun `revokes the session when a spent refresh token is replayed`() {
         // given: a session that has been renewed once, so its first refresh token is spent
-        val (_, first) = loginSession("gina-session")
-        val renewed = http.post("$base/api/auth/refresh")
-            .header("Cookie", "ingot_refresh=$first")
-            .asJacksonObject(SessionResponse::class)
+        val first = loginSession("gina-session")
+        val renewed = renew(first.refresh, first.csrf).asJacksonObject(SessionResponse::class)
         val second = cookieValue(renewed.headers.get("Set-Cookie"), "ingot_refresh")
+        val secondCsrf = cookieValue(renewed.headers.get("Set-Cookie"), "ingot_csrf")
 
         // when: the spent token is replayed
-        val replay = http.post("$base/api/auth/refresh")
-            .header("Cookie", "ingot_refresh=$first")
-            .asString()
+        val replay = renew(first.refresh, first.csrf).asString()
 
         // then: the replay is refused, and the token the legitimate client holds is revoked as well
         assertThat(replay.status).describedAs("replay body: ${replay.body}").isEqualTo(UNAUTHORIZED.code)
-        val current = http.post("$base/api/auth/refresh")
-            .header("Cookie", "ingot_refresh=$second")
-            .asJacksonObject(ErrorResponse::class)
-        assertErrorResponse(UNAUTHORIZED, current)
+        val current = renew(second, secondCsrf).asString()
+        assertThat(current.status).describedAs("current body: ${current.body}").isEqualTo(UNAUTHORIZED.code)
     }
 
     @Test
     fun `logout revokes the refresh token`() {
         // given: a logged in user
-        val (_, refresh) = loginSession("hugo-session")
+        val session = loginSession("hugo-session")
 
         // when: the user logs out and the old refresh token is presented afterwards
         val logout = http.post("$base/api/auth/logout")
-            .header("Cookie", "ingot_refresh=$refresh")
+            .header("Cookie", "ingot_refresh=${session.refresh}; ingot_csrf=${session.csrf}")
+            .header("X-CSRF-Token", session.csrf)
             .asString()
-        val afterLogout = http.post("$base/api/auth/refresh")
-            .header("Cookie", "ingot_refresh=$refresh")
-            .asJacksonObject(ErrorResponse::class)
+        val afterLogout = renew(session.refresh, session.csrf).asJacksonObject(ErrorResponse::class)
 
         // then: the logout succeeds and the token no longer renews anything
         assertThat(logout.status).isEqualTo(OK.code)
         assertErrorResponse(UNAUTHORIZED, afterLogout)
+    }
+
+    @Test
+    fun `refuses a cookie logout without the csrf header and keeps the session`() {
+        // given: a logged in user
+        val session = loginSession("ivan-csrf")
+
+        // when: the logout carries the cookies but not the header that echoes the csrf cookie
+        val logout = http.post("$base/api/auth/logout")
+            .header("Cookie", "ingot_refresh=${session.refresh}; ingot_csrf=${session.csrf}")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the request is refused, and the refresh token still renews the session
+        assertErrorResponse(FORBIDDEN, logout)
+        val renewed = renew(session.refresh, session.csrf).asJacksonObject(SessionResponse::class)
+        assertSuccessResponse(OK, renewed) { renewedSession -> assertThat(renewedSession.principal.name).isEqualTo("ivan-csrf") }
+    }
+
+    @Test
+    fun `refuses a cookie logout with a forged csrf header`() {
+        // given: a logged in user
+        val session = loginSession("judy-csrf")
+
+        // when: the header carries a value other than the csrf cookie
+        val logout = http.post("$base/api/auth/logout")
+            .header("Cookie", "ingot_refresh=${session.refresh}; ingot_csrf=${session.csrf}")
+            .header("X-CSRF-Token", "forged-value")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the request is refused
+        assertErrorResponse(FORBIDDEN, logout)
+    }
+
+    @Test
+    fun `accepts a cookie logout that echoes the csrf cookie in the header`() {
+        // given: a logged in user
+        val session = loginSession("kate-csrf")
+
+        // when: the logout echoes the csrf cookie
+        val logout = http.post("$base/api/auth/logout")
+            .header("Cookie", "ingot_refresh=${session.refresh}; ingot_csrf=${session.csrf}")
+            .header("X-CSRF-Token", session.csrf)
+            .asString()
+
+        // then: the logout succeeds
+        assertThat(logout.status).isEqualTo(OK.code)
+    }
+
+    @Test
+    fun `does not ask for the csrf header of a basic authenticated request`() {
+        // when: a request authenticated by Basic authentication, with no cookies, changes state
+        val response = http.post("$base/api/auth/logout")
+            .basicAuth("nobody", "no-secret")
+            .asString()
+
+        // then: the csrf check does not apply, so the logout is served
+        assertThat(response.status).isEqualTo(OK.code)
     }
 
     @Test

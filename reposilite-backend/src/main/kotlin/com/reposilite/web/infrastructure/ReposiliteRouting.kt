@@ -26,8 +26,11 @@ import io.javalin.http.Context
 import io.javalin.http.ExceptionHandler
 import io.javalin.http.Handler
 import io.javalin.http.Header
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
 import io.javalin.util.javalinLazy
+import com.reposilite.shared.toErrorResponse
+import net.onelitefeather.ingot.identity.session.CsrfPolicy
 
 typealias ReposiliteRouting = DslRouting<ReposiliteConfiguration, ReposiliteDslRoute, ReposiliteScope, Unit>
 typealias ReposiliteDslRoute = DslRoute<ContextDsl<*>, Unit>
@@ -51,6 +54,17 @@ class ReposiliteDsl(
         exceptionRouteFactory.invoke(handler)
 
 }
+
+private fun Context.csrfRequest(): CsrfPolicy.Request =
+    CsrfPolicy.Request(
+        method = method().name,
+        path = path(),
+        hasAuthorizationHeader = header(Header.AUTHORIZATION) != null,
+        sessionCookie = cookie(SessionCookies.SESSION),
+        refreshCookie = cookie(SessionCookies.REFRESH),
+        csrfCookie = cookie(SessionCookies.CSRF),
+        csrfHeader = header(SessionCookies.CSRF_HEADER),
+    )
 
 fun createReposiliteDsl(
     journalist: Journalist,
@@ -96,6 +110,11 @@ fun createReposiliteDsl(
         routeFactory = { route ->
             Handler { ctx ->
                 try {
+                    if (CsrfPolicy.violation(ctx.csrfRequest())) {
+                        ctx.status(FORBIDDEN)
+                        ctx.response(FORBIDDEN.toErrorResponse("Cookie request refused: the X-CSRF-Token header does not match the session"))
+                        return@Handler
+                    }
                     val dsl = ctx.toDslContext()
                     route.handler(dsl)
                     dsl.consumeResponse()
