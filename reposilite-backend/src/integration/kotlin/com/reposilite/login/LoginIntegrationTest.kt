@@ -81,14 +81,31 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
             .header("X-CSRF-Token", csrf)
 
     @Test
-    fun `publishes the local password provider`() {
+    fun `announces setup instead of the local provider on an empty instance`() {
+        // when: the login providers are requested on an instance without any user
+        val response = http.get("$base/api/auth/providers").asJacksonObject(LoginProvidersResponse::class)
+
+        // then: no password provider is listed, because there is no account to log in with yet, and setup is required
+        assertSuccessResponse(OK, response) { providers ->
+            assertThat(providers.providers).isEmpty()
+            assertThat(providers.setupRequired).isTrue()
+            assertThat(providers.tokenLogin).isTrue()
+        }
+    }
+
+    @Test
+    fun `publishes the local password provider once a user exists`() {
+        // given: a user exists, so the local provider has an account to check
+        loginFacade.createUser("dave-login", "Dave", password)
+
         // when: the login providers are requested without any credentials
         val response = http.get("$base/api/auth/providers").asJacksonObject(LoginProvidersResponse::class)
 
-        // then: the local provider is announced with its label, and token login stays available
+        // then: the local provider is announced with its label, setup is no longer required, and token login stays available
         assertSuccessResponse(OK, response) { providers ->
             assertThat(providers.providers.map { it.id to it.type }).containsExactly("local" to "LOCAL")
             assertThat(providers.providers.single().label).isEqualTo("Username and password")
+            assertThat(providers.setupRequired).isFalse()
             assertThat(providers.tokenLogin).isTrue()
         }
     }
