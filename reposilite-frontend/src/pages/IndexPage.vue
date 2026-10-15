@@ -179,7 +179,12 @@ const activeLabel = computed(() => sectionLabel(section.value))
       width, the header included.
     -->
     <DefaultHeader />
-    <div class="overflow-auto">
+    <!--
+      Clips wide content at the sides without making this box a scroll container. overflow-auto
+      would make it one, and then a sticky element inside it (the settings action bar) is pinned to
+      a box that never scrolls, so it leaves the window.
+    -->
+    <div class="overflow-x-clip">
       <NotFoundView v-if="route.name === 'not-found'" />
       <section
         v-else-if="!sectionAllowed"
