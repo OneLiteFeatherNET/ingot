@@ -65,7 +65,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val createPrincipal = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals", POST) {
         managerOnly {
             response = readBody<CreatePrincipalRequest>()
-                .flatMap { request -> identity.createPrincipal(request) }
+                .flatMap { request -> identity.createPrincipal(request, actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -101,7 +101,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val updatePrincipal = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}", PATCH) {
         managerOnly {
             response = readBody<UpdatePrincipalRequest>()
-                .flatMap { request -> identity.updatePrincipal(requireParameter("name"), request, ctx.header(Header.IF_MATCH)) }
+                .flatMap { request -> identity.updatePrincipal(requireParameter("name"), request, ctx.header(Header.IF_MATCH), actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -118,7 +118,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val deletePrincipal = ReposiliteRoute<Unit>("/api/identity/principals/{name}", DELETE) {
         managerOnly {
-            response = identity.deletePrincipal(requireParameter("name"), ctx.header(Header.IF_MATCH))
+            response = identity.deletePrincipal(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
         }
     }
 
@@ -188,7 +188,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val createTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams", POST) {
         managerOnly {
             response = readBody<CreateTeamRequest>()
-                .flatMap { request -> identity.createTeam(request) }
+                .flatMap { request -> identity.createTeam(request, actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -224,7 +224,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val updateTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}", PATCH) {
         managerOnly {
             response = readBody<UpdateTeamRequest>()
-                .flatMap { request -> identity.updateTeam(requireParameter("name"), request, ctx.header(Header.IF_MATCH)) }
+                .flatMap { request -> identity.updateTeam(requireParameter("name"), request, ctx.header(Header.IF_MATCH), actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -241,7 +241,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val deleteTeam = ReposiliteRoute<Unit>("/api/identity/teams/{name}", DELETE) {
         managerOnly {
-            response = identity.deleteTeam(requireParameter("name"), ctx.header(Header.IF_MATCH))
+            response = identity.deleteTeam(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
         }
     }
 
@@ -256,7 +256,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val replaceMembers = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/members", PUT) {
         managerOnly {
             response = readBody<ReplaceMembersRequest>()
-                .flatMap { request -> identity.replaceMembers(requireParameter("name"), request.members, ctx.header(Header.IF_MATCH)) }
+                .flatMap { request -> identity.replaceMembers(requireParameter("name"), request.members, ctx.header(Header.IF_MATCH), actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -275,7 +275,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val replaceGrants = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/grants", PUT) {
         managerOnly {
             response = readBody<ReplaceGrantsRequest>()
-                .flatMap { request -> identity.replaceGrants(requireParameter("name"), request.grants, ctx.header(Header.IF_MATCH)) }
+                .flatMap { request -> identity.replaceGrants(requireParameter("name"), request.grants, ctx.header(Header.IF_MATCH), actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -292,7 +292,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val grantPrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", PUT) {
         managerOnly {
-            response = identity.grantPrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+            response = identity.grantPrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -309,7 +309,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val revokePrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", DELETE) {
         managerOnly {
-            response = identity.revokePrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+            response = identity.revokePrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -326,7 +326,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val grantTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", PUT) {
         managerOnly {
-            response = identity.grantTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+            response = identity.grantTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -343,7 +343,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     )
     val revokeTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", DELETE) {
         managerOnly {
-            response = identity.revokeTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+            response = identity.revokeTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value

@@ -16,6 +16,18 @@
 package net.onelitefeather.ingot.identity.service
 
 import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditAction.INSTANCE_ADMIN_GRANTED
+import com.reposilite.audit.api.AuditAction.INSTANCE_ADMIN_REVOKED
+import com.reposilite.audit.api.AuditAction.PRINCIPAL_CREATED
+import com.reposilite.audit.api.AuditAction.PRINCIPAL_DELETED
+import com.reposilite.audit.api.AuditAction.PRINCIPAL_DISABLED
+import com.reposilite.audit.api.AuditAction.PRINCIPAL_UPDATED
+import com.reposilite.audit.api.AuditAction.TEAM_CREATED
+import com.reposilite.audit.api.AuditAction.TEAM_DELETED
+import com.reposilite.audit.api.AuditAction.TEAM_GRANTS_CHANGED
+import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
+import com.reposilite.audit.api.AuditAction.TEAM_UPDATED
 import com.reposilite.audit.api.AuditAction.TOKEN_CREATED
 import com.reposilite.audit.api.AuditAction.TOKEN_DELETED
 import com.reposilite.audit.api.AuditActor
@@ -111,7 +123,7 @@ class IdentityFacade(
         return store.listPrincipals(filter).map { it.toDto() }.asSuccess()
     }
 
-    fun createPrincipal(request: CreatePrincipalRequest): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
+    fun createPrincipal(request: CreatePrincipalRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
         val kind = request.kind?.let { parseKind(it) } ?: return badRequestError("Principal kind must be USER or MACHINE")
         val name = validateName(request.name, MAX_NAME_LENGTH) ?: return badRequestError(nameProblem(request.name, MAX_NAME_LENGTH, "Principal name"))
         if (store.findPrincipal(name) != null) return errorResponse(CONFLICT, "Principal '$name' already exists")
@@ -123,13 +135,19 @@ class IdentityFacade(
             val team = store.createTeam(privateTeamName(principal.name), "Private team of machine principal ${principal.name}", externalRef = null)
             team?.let { store.addMember(it.id, principal.id, TeamMemberSource.MANUAL) }
         }
+        audit(PRINCIPAL_CREATED, actor, mapOf("principal" to principal.name, "kind" to principal.kind.name))
         return snapshotOf(principal).asSuccess()
     }
 
     fun getPrincipal(name: String): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> =
         principalNamed(name)?.let { snapshotOf(it).asSuccess() } ?: notFoundError("Principal not found")
 
-    fun updatePrincipal(name: String, request: UpdatePrincipalRequest, ifMatch: String?): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
+    fun updatePrincipal(
+        name: String,
+        request: UpdatePrincipalRequest,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
         val principal = principalNamed(name) ?: return notFoundError("Principal not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
 
@@ -138,16 +156,27 @@ class IdentityFacade(
         if (request.disabled == true) adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return it }
         store.updatePrincipal(principal.id, request.displayName, request.disabled)
         if (disabledChanged) invalidateTokensOf(principal)
+
+        // Disabling has its own event. Everything else that changed is listed by field name.
+        val disabledNow = disabledChanged && request.disabled == true
+        if (disabledNow) audit(PRINCIPAL_DISABLED, actor, mapOf("principal" to principal.name))
+        val changed = listOfNotNull(
+            "displayName".takeIf { request.displayName != null && request.displayName != principal.displayName },
+            "disabled".takeIf { disabledChanged && !disabledNow },
+        )
+        if (changed.isNotEmpty()) audit(PRINCIPAL_UPDATED, actor, mapOf("principal" to principal.name, "changed" to changed))
         return snapshotOf(principalNamed(name)!!).asSuccess()
     }
 
-    fun deletePrincipal(name: String, ifMatch: String?): IdentityResult<Unit> {
+    fun deletePrincipal(name: String, ifMatch: String?, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<Unit> {
         val principal = principalNamed(name) ?: return notFoundError("Principal not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
         adminGuard<Unit>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return it }
 
+        val tokenNames = store.tokensOf(principal.id).map { it.name }
         invalidateTokensOf(principal)
         store.deletePrincipal(principal)
+        audit(PRINCIPAL_DELETED, actor, mapOf("principal" to principal.name, "kind" to principal.kind.name, "tokens" to tokenNames))
         return Unit.asSuccess()
     }
 
@@ -213,7 +242,7 @@ class IdentityFacade(
             }
             .asSuccess()
 
-    fun createTeam(request: CreateTeamRequest): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+    fun createTeam(request: CreateTeamRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         // The reserved prefix is checked first: it is a conflict with the private teams, not a malformed name.
         if (request.name?.trim()?.startsWith("machine:", ignoreCase = true) == true) {
             return errorResponse(CONFLICT, "Team names starting with 'machine:' are reserved")
@@ -224,67 +253,102 @@ class IdentityFacade(
 
         val team = store.createTeam(name, request.description.orEmpty(), request.externalRef?.takeIf { it.isNotBlank() })
             ?: return errorResponse(CONFLICT, "Team '$name' already exists")
+        audit(TEAM_CREATED, actor, mapOf("team" to team.name))
         return snapshotOf(team).asSuccess()
     }
 
     fun getTeam(name: String): IdentityResult<IdentitySnapshot<TeamDetailDto>> =
         publicTeam(name)?.let { snapshotOf(it).asSuccess() } ?: notFoundError("Team not found")
 
-    fun updateTeam(name: String, request: UpdateTeamRequest, ifMatch: String?): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+    fun updateTeam(
+        name: String,
+        request: UpdateTeamRequest,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
 
         store.updateTeam(team.id, request.description, request.externalRef, updateExternalRef = request.externalRef != null)
+        val changed = listOfNotNull(
+            "description".takeIf { request.description != null && request.description != team.description },
+            "externalRef".takeIf { request.externalRef != null && request.externalRef != team.externalRef },
+        )
+        if (changed.isNotEmpty()) audit(TEAM_UPDATED, actor, mapOf("team" to team.name, "changed" to changed))
         return snapshotOf(publicTeam(name)!!).asSuccess()
     }
 
-    fun deleteTeam(name: String, ifMatch: String?): IdentityResult<Unit> {
+    fun deleteTeam(name: String, ifMatch: String?, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<Unit> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
         adminGuard<Unit>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return it }
 
         invalidateTeamMembers(team)
         store.deleteTeam(team.id)
+        audit(TEAM_DELETED, actor, mapOf("team" to team.name))
         return Unit.asSuccess()
     }
 
     /** Replaces the MANUAL members. SYNC members are not touched, the synchronisation owns them. */
-    fun replaceMembers(name: String, members: List<String>?, ifMatch: String?): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+    fun replaceMembers(
+        name: String,
+        members: List<String>?,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
         if (members == null) return badRequestError("Members are required, send an empty list to remove all manual members")
 
-        val principalIds = members.map { memberName ->
-            principalNamed(memberName)?.id ?: return badRequestError("Unknown principal '$memberName'")
-        }.toSet()
+        val principals = members.map { memberName ->
+            principalNamed(memberName) ?: return badRequestError("Unknown principal '$memberName'")
+        }
+        val principalIds = principals.map { it.id }.toSet()
         val dropped = store.listMemberships(team.id)
             .filter { it.source == TeamMemberSource.MANUAL && it.principalId !in principalIds }
             .map { team.id to it.principalId }
             .toSet()
         adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(membershipsLost = dropped))?.let { return it }
 
+        val manualBefore = manualMemberNames(team)
         invalidateTeamMembers(team)
         store.replaceManualMembers(team.id, principalIds)
         invalidateTeamMembers(team)
+
+        val manualAfter = principals.map { it.name }.toSet()
+        val added = (manualAfter - manualBefore).sorted()
+        val removed = (manualBefore - manualAfter).sorted()
+        if (added.isNotEmpty() || removed.isNotEmpty()) {
+            audit(TEAM_MEMBERSHIP_CHANGED, actor, mapOf("team" to team.name, "added" to added, "removed" to removed))
+        }
         return snapshotOf(team).asSuccess()
     }
 
     // instance role
 
     /** Grants the instance role to a principal. Granting it again changes nothing and keeps the entity tag. */
-    fun grantPrincipalInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
+    fun grantPrincipalInstanceAdmin(
+        name: String,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
         val principal = principalNamed(name) ?: return notFoundError("Principal not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
 
         if (!store.hasDirectInstanceRole(principal.id)) {
             store.grantInstanceRole(principalId = principal.id, teamId = null)
             invalidateTokensOf(principal)
+            audit(INSTANCE_ADMIN_GRANTED, actor, mapOf("principal" to principal.name))
         }
         return snapshotOf(principalNamed(name)!!).asSuccess()
     }
 
     /** Removes the instance role of a principal, unless that leaves no usable instance admin (see [adminGuard]). */
-    fun revokePrincipalInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
+    fun revokePrincipalInstanceAdmin(
+        name: String,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
         val principal = principalNamed(name) ?: return notFoundError("Principal not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
 
@@ -292,24 +356,34 @@ class IdentityFacade(
             adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalRoleLost = setOf(principal.id)))?.let { return it }
             store.revokeInstanceRole(principalId = principal.id, teamId = null)
             invalidateTokensOf(principal)
+            audit(INSTANCE_ADMIN_REVOKED, actor, mapOf("principal" to principal.name))
         }
         return snapshotOf(principalNamed(name)!!).asSuccess()
     }
 
     /** Grants the instance role to a team: every member with a usable token becomes an instance admin. */
-    fun grantTeamInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+    fun grantTeamInstanceAdmin(
+        name: String,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
 
         if (!store.listInstanceRoleTeamIds().contains(team.id)) {
             store.grantInstanceRole(principalId = null, teamId = team.id)
             invalidateTeamMembers(team)
+            audit(INSTANCE_ADMIN_GRANTED, actor, mapOf("team" to team.name))
         }
         return snapshotOf(publicTeam(name)!!).asSuccess()
     }
 
     /** Removes the instance role of a team, unless that leaves no usable instance admin (see [adminGuard]). */
-    fun revokeTeamInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+    fun revokeTeamInstanceAdmin(
+        name: String,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
 
@@ -317,12 +391,18 @@ class IdentityFacade(
             adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return it }
             store.revokeInstanceRole(principalId = null, teamId = team.id)
             invalidateTeamMembers(team)
+            audit(INSTANCE_ADMIN_REVOKED, actor, mapOf("team" to team.name))
         }
         return snapshotOf(publicTeam(name)!!).asSuccess()
     }
 
     /** Replaces every grant of the team. Legacy roles are not assignable: only private teams carry them. */
-    fun replaceGrants(name: String, grants: List<GrantRequest>?, ifMatch: String?): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+    fun replaceGrants(
+        name: String,
+        grants: List<GrantRequest>?,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
         if (grants == null) return badRequestError("Grants are required, send an empty list to remove all grants")
@@ -334,8 +414,17 @@ class IdentityFacade(
             if (repository != null && repository.contains('/')) return badRequestError("Repository '$repository' must not contain '/'")
             Triple(repository, normalizePrefix(request.pathPrefix), role)
         }
+        val before = store.listGrants(team.id).map { describeGrant(it.repository, it.pathPrefix, it.role.name) }.toSet()
+        val after = parsed.map { (repository, pathPrefix, role) -> describeGrant(repository, pathPrefix, role.name) }.toSet()
+
         store.replaceGrants(team.id, parsed)
         invalidateTeamMembers(team)
+
+        val added = (after - before).sorted()
+        val removed = (before - after).sorted()
+        if (added.isNotEmpty() || removed.isNotEmpty()) {
+            audit(TEAM_GRANTS_CHANGED, actor, mapOf("team" to team.name, "added" to added, "removed" to removed))
+        }
         return snapshotOf(team).asSuccess()
     }
 
@@ -396,6 +485,20 @@ class IdentityFacade(
             store.findPrincipalById(membership.principalId)?.let { invalidateTokensOf(it) }
         }
     }
+
+    /** Records an administrative change. The details name what changed; they never carry a secret. */
+    private fun audit(action: AuditAction, actor: AuditActor, details: Map<String, Any?>) {
+        extensions.emitEvent(AuditEvent(action = action, actor = actor, details = details))
+    }
+
+    private fun manualMemberNames(team: TeamRecord): Set<String> =
+        store.listMemberships(team.id)
+            .filter { it.source == TeamMemberSource.MANUAL }
+            .mapNotNull { store.findPrincipalById(it.principalId)?.name }
+            .toSet()
+
+    private fun describeGrant(repository: String?, pathPrefix: String?, role: String): String =
+        "repository=${repository ?: "*"} path=${pathPrefix ?: "*"} role=$role"
 
     /**
      * Refuses a change that would take the instance role away from the last usable instance admin. A usable admin is an
