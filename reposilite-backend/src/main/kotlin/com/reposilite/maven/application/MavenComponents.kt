@@ -58,7 +58,7 @@ internal class MavenComponents(
         RepositorySecurityProvider(accessTokenFacade)
 
     private fun metadataService(): MetadataService =
-        MetadataService(securityProvider())
+        MetadataService(securityProvider(), clock, journalist)
 
     private fun mirrorService(): MirrorService =
         MirrorService(

@@ -65,6 +65,7 @@ class MavenFacade internal constructor(
 
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
         repositoryService.deleteFile(deleteRequest)
+            .peek { metadataService.reconcileAfterDelete(deleteRequest.repository, deleteRequest.gav) }
 
     fun saveMetadata(saveMetadataRequest: SaveMetadataRequest): Result<Metadata, ErrorResponse> =
         metadataService.saveMetadata(saveMetadataRequest)
