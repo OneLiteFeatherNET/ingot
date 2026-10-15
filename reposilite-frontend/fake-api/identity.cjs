@@ -27,6 +27,7 @@
 const crypto = require("crypto")
 const express = require("express")
 const { basicAuth } = require("./extensions.cjs")
+const audit = require("./audit.cjs")
 
 const SETUP_MODE = process.env.INGOT_FAKE_SETUP === "1"
 const SETUP_CODE = "fake-setup-123456"
@@ -39,6 +40,7 @@ const REFRESH_TTL_MS = 8 * 60 * 60 * 1000
 const MIN_PASSWORD_LENGTH = 12
 const MAX_NAME_LENGTH = 255
 const MAX_TEAM_NAME_LENGTH = 320
+const LAST_ADMIN_MESSAGE = "The last instance admin cannot be disabled, demoted or deleted."
 const PRIVATE_TEAM_PREFIX = "machine:"
 
 const ROLES = ["READ", "DEPLOY", "MAINTAIN", "ADMIN"]
@@ -73,10 +75,10 @@ const refreshSessions = new Map()
 let setupRequired = SETUP_MODE
 let repositoriesOf = () => []
 
-const addPrincipal = ({ kind, name, displayName, disabled = false, createdAt = nowIso(), password = null, instanceRole = false }) => {
+const addPrincipal = ({ kind, name, displayName, disabled = false, createdAt = nowIso(), password = null, instanceRole = false, lastSeenAt = null }) => {
   const principal = {
     id: nextId(), kind, name, displayName: displayName || name, disabled,
-    createdAt, lastSeenAt: null, password, mustChangePassword: false, instanceRole, tokens: [],
+    createdAt, lastSeenAt, password, mustChangePassword: false, instanceRole, tokens: [],
   }
   principals.push(principal)
   return principal
@@ -88,9 +90,9 @@ const addTeam = ({ name, description = "", externalRef = null, members = [], gra
   return team
 }
 
-const addToken = (principal, { name, description = "", createdAt = today(), expiresAt = null, scopes = null, secret, legacyRoutes = [] }) => {
+const addToken = (principal, { name, description = "", createdAt = today(), expiresAt = null, scopes = null, secret, legacyRoutes = [], lastUsedAt = null, lastUsedIp = null }) => {
   const token = {
-    id: 1000 + nextId(), name, description, createdAt, expiresAt, scopes, lastUsedAt: null,
+    id: 1000 + nextId(), name, description, createdAt, expiresAt, scopes, lastUsedAt, lastUsedIp,
     secret: secret || nextSecret("ingot-fake-secret"), legacyRoutes,
   }
   principal.tokens.push(token)
@@ -98,23 +100,30 @@ const addToken = (principal, { name, description = "", createdAt = today(), expi
 }
 
 // Without INGOT_FAKE_SETUP the instance is already set up and holds this small seed:
-//   admin (instance admin), alice (USER), bob (USER, disabled), ci-bot (MACHINE, token "ci-bot" with
-//   legacy routes, private team machine:ci-bot), team deployers (alice, ci-bot; DEPLOY on releases
-//   and READ on every repository), team docs-sync (alice via SYNC, bob manual; READ on private/docs).
+//   admin (instance admin, the only one), alice (USER), bob (USER, disabled), ci-bot (MACHINE, token
+//   "ci-bot" with legacy routes, private team machine:ci-bot), team deployers (alice, ci-bot; DEPLOY on
+//   releases and READ on every repository), team docs-sync (alice via SYNC, bob manual; READ on
+//   private/docs). The last-used times are fixed (the fake's "today" is 2026-10-15): admin and alice
+//   were seen, bob never; token ci-bot was used two days ago from 192.0.2.10, alice-laptop yesterday
+//   from 198.51.100.7, alice-cli never.
 const seed = () => {
-  addPrincipal({ kind: "USER", name: "admin", displayName: "Administrator", createdAt: "2026-10-01T09:00:00Z", password: "admin-password-12", instanceRole: true })
-  addPrincipal({ kind: "USER", name: "alice", displayName: "Alice Example", createdAt: "2026-10-02T09:00:00Z", password: "alice-password-12" })
+  addPrincipal({ kind: "USER", name: "admin", displayName: "Administrator", createdAt: "2026-10-01T09:00:00Z", password: "admin-password-12", instanceRole: true, lastSeenAt: "2026-10-15T08:05:00Z" })
+  const alice = addPrincipal({ kind: "USER", name: "alice", displayName: "Alice Example", createdAt: "2026-10-02T09:00:00Z", password: "alice-password-12", lastSeenAt: "2026-10-14T17:30:00Z" })
   addPrincipal({ kind: "USER", name: "bob", displayName: "Bob Example", createdAt: "2026-10-03T09:00:00Z", password: "bob-password-12", disabled: true })
-  const ciBot = addPrincipal({ kind: "MACHINE", name: "ci-bot", displayName: "CI bot", createdAt: "2026-10-04T09:00:00Z" })
+  const ciBot = addPrincipal({ kind: "MACHINE", name: "ci-bot", displayName: "CI bot", createdAt: "2026-10-04T09:00:00Z", lastSeenAt: "2026-10-13T08:15:00Z" })
   addToken(ciBot, {
     name: "ci-bot",
     description: "Migrated from the legacy access tokens",
     createdAt: "2026-10-04",
+    lastUsedAt: "2026-10-13T08:15:00Z",
+    lastUsedIp: "192.0.2.10",
     legacyRoutes: [
       { path: "/releases/com/example", shortcut: "r" },
       { path: "/snapshots", shortcut: "w" },
     ],
   })
+  addToken(alice, { name: "alice-laptop", description: "Work laptop", createdAt: "2026-10-05", scopes: ["READ", "WRITE"], lastUsedAt: "2026-10-14T17:25:00Z", lastUsedIp: "198.51.100.7" })
+  addToken(alice, { name: "alice-cli", description: "Never used yet", createdAt: "2026-10-06", scopes: ["READ"] })
   addTeam({
     name: PRIVATE_TEAM_PREFIX + "ci-bot",
     description: "Private team of machine principal ci-bot",
@@ -170,6 +179,22 @@ const teamsOf = (principal) => teams.filter(team => team.members.some(member => 
 const publicTeamNamesOf = (principal) => teamsOf(principal).filter(team => !isPrivateTeam(team)).map(team => team.name).sort()
 const isInstanceAdmin = (principal) => principal.instanceRole || teamsOf(principal).some(team => team.instanceRole)
 
+// How many enabled principals are instance admins, as if the given change had been made already.
+const activeAdminCount = ({ removed, disabled, demoted, removedTeam, demotedTeam } = {}) =>
+  principals.filter(principal =>
+    principal !== removed && principal !== disabled && !principal.disabled &&
+    ((principal.instanceRole && principal !== demoted) ||
+      teamsOf(principal).some(team => team.instanceRole && team !== removedTeam && team !== demotedTeam))).length
+
+// True when the change takes away the last instance admin that exists now.
+const leavesNoAdmin = (change) => activeAdminCount() > 0 && activeAdminCount(change) === 0
+
+// Identity changes are audited like the other mutations of the fake, as the signed-in admin.
+const record = (req, action, details) =>
+  audit.recordEvent({ action, actor: req.actor?.principal?.name ?? "admin", actorAddress: "10.0.0.2", details })
+
+const principalTarget = (principal) => ({ principal: principal.name, kind: principal.kind })
+
 const grantsOf = (principal) =>
   teamsOf(principal).flatMap(team => team.grants.map(grant => ({ team: team.name, ...grant })))
 
@@ -184,7 +209,7 @@ const principalDto = (principal) => ({
 
 const tokenDto = (token) => ({
   name: token.name, description: token.description, createdAt: token.createdAt,
-  expiresAt: token.expiresAt, scopes: token.scopes, lastUsedAt: token.lastUsedAt,
+  expiresAt: token.expiresAt, scopes: token.scopes, lastUsedAt: token.lastUsedAt, lastUsedIp: token.lastUsedIp,
 })
 
 const principalDetail = (principal) => ({
@@ -255,7 +280,7 @@ const fail = (res, status, message) => res.status(status).send({ status, message
 
 // A hash of the body, without the times that change on a read or a sign-in, so that signing in does
 // not make every open editor stale. The tag is quoted, as the header requires.
-const VOLATILE_FIELDS = new Set(["lastSeenAt", "lastUsedAt"])
+const VOLATILE_FIELDS = new Set(["lastSeenAt", "lastUsedAt", "lastUsedIp"])
 const etagOf = (body) =>
   `"${crypto.createHash("sha1").update(JSON.stringify(body, (key, value) => VOLATILE_FIELDS.has(key) ? undefined : value)).digest("hex").slice(0, 20)}"`
 
@@ -602,6 +627,7 @@ const rotateToken = (res, principal, name) => {
   if (!token) return fail(res, 404, "Token not found")
   token.secret = nextSecret("ingot-fake-secret")
   token.lastUsedAt = null
+  token.lastUsedIp = null
   reply(res, { token: tokenDto(token), secret: token.secret })
 }
 
@@ -642,6 +668,7 @@ identity.post("/principals", (req, res) => {
       members: [{ principal: name, source: "MANUAL" }],
     })
   }
+  record(req, "PRINCIPAL_CREATED", principalTarget(principal))
   reply(res, principalDetail(principal), 201)
 })
 
@@ -654,20 +681,30 @@ identity.patch("/principals/:name", withPrincipal((req, res, principal) => {
     return fail(res, 400, "Display name cannot be blank")
   }
   if (body.disabled !== undefined && typeof body.disabled !== "boolean") return fail(res, 400, "disabled must be true or false")
-  if (body.displayName !== undefined) principal.displayName = body.displayName.trim()
-  if (body.disabled !== undefined) {
+  if (body.disabled === true && leavesNoAdmin({ disabled: principal })) return fail(res, 409, LAST_ADMIN_MESSAGE)
+  const fields = []
+  if (body.displayName !== undefined && body.displayName.trim() !== principal.displayName) {
+    principal.displayName = body.displayName.trim()
+    fields.push("displayName")
+  }
+  if (body.disabled !== undefined && body.disabled !== principal.disabled) {
     principal.disabled = body.disabled
     if (body.disabled) dropSessionsOf(principal.name)
+    else fields.push("disabled")
+    if (body.disabled) record(req, "PRINCIPAL_DISABLED", principalTarget(principal))
   }
+  if (fields.length > 0) record(req, "PRINCIPAL_UPDATED", { ...principalTarget(principal), fields })
   reply(res, principalDetail(principal))
 }))
 
 identity.delete("/principals/:name", withPrincipal((req, res, principal) => {
   if (!requirePrecondition(req, res, principalDetail(principal), `Principal '${principal.name}'`)) return
+  if (leavesNoAdmin({ removed: principal })) return fail(res, 409, LAST_ADMIN_MESSAGE)
   dropSessionsOf(principal.name)
   principals = principals.filter(entry => entry !== principal)
   teams = teams.filter(team => !(isPrivateTeam(team) && same(team.name, PRIVATE_TEAM_PREFIX + principal.name)))
   for (const team of teams) team.members = team.members.filter(member => !same(member.principal, principal.name))
+  record(req, "PRINCIPAL_DELETED", principalTarget(principal))
   noContent(res)
 }))
 
@@ -680,12 +717,17 @@ identity.post("/principals/:name/password", withPrincipal((req, res, principal) 
   principal.password = password
   principal.mustChangePassword = true
   dropSessionsOf(principal.name)
+  record(req, "PRINCIPAL_UPDATED", { ...principalTarget(principal), fields: ["password"] })
   noContent(res)
 }))
 
 const setInstanceAdmin = (value) => withPrincipal((req, res, principal) => {
   if (!requirePrecondition(req, res, principalDetail(principal), `Principal '${principal.name}'`)) return
-  principal.instanceRole = value
+  if (!value && principal.instanceRole && leavesNoAdmin({ demoted: principal })) return fail(res, 409, LAST_ADMIN_MESSAGE)
+  if (principal.instanceRole !== value) {
+    principal.instanceRole = value
+    record(req, value ? "INSTANCE_ADMIN_GRANTED" : "INSTANCE_ADMIN_REVOKED", principalTarget(principal))
+  }
   reply(res, principalDetail(principal))
 })
 identity.put("/principals/:name/instance-admin", setInstanceAdmin(true))
@@ -727,6 +769,7 @@ identity.post("/teams", (req, res) => {
     name, description: typeof body.description === "string" ? body.description : "",
     externalRef: typeof body.externalRef === "string" && body.externalRef.trim() ? body.externalRef.trim() : null,
   })
+  record(req, "TEAM_CREATED", { team: team.name })
   reply(res, teamDetail(team), 201)
 })
 
@@ -739,14 +782,27 @@ identity.patch("/teams/:name", withTeam((req, res, team) => {
   if (body.externalRef !== undefined && body.externalRef !== null && typeof body.externalRef !== "string") {
     return fail(res, 400, "externalRef must be text")
   }
-  if (body.description !== undefined) team.description = body.description
-  if (body.externalRef !== undefined) team.externalRef = body.externalRef && body.externalRef.trim() ? body.externalRef.trim() : null
+  const fields = []
+  if (body.description !== undefined && body.description !== team.description) {
+    team.description = body.description
+    fields.push("description")
+  }
+  if (body.externalRef !== undefined) {
+    const externalRef = body.externalRef && body.externalRef.trim() ? body.externalRef.trim() : null
+    if (externalRef !== team.externalRef) {
+      team.externalRef = externalRef
+      fields.push("externalRef")
+    }
+  }
+  if (fields.length > 0) record(req, "TEAM_UPDATED", { team: team.name, fields })
   reply(res, teamDetail(team))
 }))
 
 identity.delete("/teams/:name", withTeam((req, res, team) => {
   if (!requirePrecondition(req, res, teamDetail(team), `Team '${team.name}'`)) return
+  if (team.instanceRole && leavesNoAdmin({ removedTeam: team })) return fail(res, 409, LAST_ADMIN_MESSAGE)
   teams = teams.filter(entry => entry !== team)
+  record(req, "TEAM_DELETED", { team: team.name })
   noContent(res)
 }))
 
@@ -764,7 +820,14 @@ identity.put("/teams/:name/members", withTeam((req, res, team) => {
   const manual = resolved
     .filter(name => !kept.some(member => same(member.principal, name)))
     .map(name => ({ principal: name, source: "MANUAL" }))
+  const before = team.members.map(member => member.principal)
   team.members = [...kept, ...manual]
+  const after = team.members.map(member => member.principal)
+  const membersAdded = after.filter(name => !before.some(other => same(other, name)))
+  const membersRemoved = before.filter(name => !after.some(other => same(other, name)))
+  if (membersAdded.length > 0 || membersRemoved.length > 0) {
+    record(req, "TEAM_MEMBERSHIP_CHANGED", { team: team.name, membersAdded, membersRemoved })
+  }
   reply(res, teamDetail(team))
 }))
 
@@ -781,13 +844,25 @@ identity.put("/teams/:name/grants", withTeam((req, res, team) => {
     if (repository !== null && repository.includes("/")) return fail(res, 400, `Repository '${repository}' must not contain '/'`)
     parsed.push({ repository, pathPrefix: normalizePrefix(grant.pathPrefix), role })
   }
+  const describe = (grant) => `${grant.repository ?? "all repositories"}${grant.pathPrefix ? "/" + grant.pathPrefix : ""} (${grant.role})`
+  const before = team.grants.map(describe)
   team.grants = parsed
+  const after = team.grants.map(describe)
+  const grantsAdded = after.filter(entry => !before.includes(entry))
+  const grantsRemoved = before.filter(entry => !after.includes(entry))
+  if (grantsAdded.length > 0 || grantsRemoved.length > 0) {
+    record(req, "TEAM_GRANTS_CHANGED", { team: team.name, grantsAdded, grantsRemoved })
+  }
   reply(res, teamDetail(team))
 }))
 
 const setTeamInstanceAdmin = (value) => withTeam((req, res, team) => {
   if (!requirePrecondition(req, res, teamDetail(team), `Team '${team.name}'`)) return
-  team.instanceRole = value
+  if (!value && team.instanceRole && leavesNoAdmin({ demotedTeam: team })) return fail(res, 409, LAST_ADMIN_MESSAGE)
+  if (team.instanceRole !== value) {
+    team.instanceRole = value
+    record(req, value ? "INSTANCE_ADMIN_GRANTED" : "INSTANCE_ADMIN_REVOKED", { team: team.name })
+  }
   reply(res, teamDetail(team))
 })
 identity.put("/teams/:name/instance-admin", setTeamInstanceAdmin(true))

@@ -27,6 +27,9 @@ const MAX_LIMIT = 200
 const ACTIONS = [
   'ARTIFACT_DEPLOYED', 'ARTIFACT_DELETED', 'SETTINGS_CHANGED', 'TOKEN_CREATED', 'TOKEN_DELETED',
   'TOKEN_SECRET_REGENERATED', 'TOKEN_ROUTES_CHANGED', 'LOGIN_FAILED', 'CLEANUP_RUN',
+  'PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED',
+  'TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_DELETED', 'TEAM_MEMBERSHIP_CHANGED', 'TEAM_GRANTS_CHANGED',
+  'INSTANCE_ADMIN_GRANTED', 'INSTANCE_ADMIN_REVOKED',
 ]
 
 // Each template is one kind of event, with the values a real event of that kind would carry.
@@ -43,6 +46,26 @@ const TEMPLATES = [
   () => ({ action: 'CLEANUP_RUN', actor: 'system', actorAddress: null, repository: 'mirror-cache', path: null, details: { runId: 'sample-nightly', policy: 'mirror-cache-nightly', scope: 'MIRROR_CACHE', trigger: 'SCHEDULED', status: 'SUCCEEDED', deletedCount: 42, deletedBytes: 21504000 }, success: true, occurrences: 1 }),
 ]
 
+// The identity events. They are kept apart from the templates above: the sample picks those by a
+// stride over their count, and a longer list would make the stride skip most of them. A principal
+// target carries principal and kind, a team target carries team, as the token events carry token.
+const admin = (action, details) => ({ action, actor: 'admin', actorAddress: '10.0.0.2', repository: null, path: null, details, success: true, occurrences: 1 })
+const IDENTITY_EVENTS = [
+  { hoursAgo: 2, ...admin('PRINCIPAL_CREATED', { principal: 'carol', kind: 'USER' }) },
+  { hoursAgo: 3, ...admin('PRINCIPAL_UPDATED', { principal: 'alice', kind: 'USER', fields: ['displayName'] }) },
+  { hoursAgo: 5, ...admin('PRINCIPAL_DISABLED', { principal: 'bob', kind: 'USER' }) },
+  { hoursAgo: 26, ...admin('PRINCIPAL_DELETED', { principal: 'old-ci', kind: 'MACHINE' }) },
+  { hoursAgo: 30, ...admin('PRINCIPAL_CREATED', { principal: 'ci-bot', kind: 'MACHINE' }) },
+  { hoursAgo: 48, ...admin('TEAM_CREATED', { team: 'deployers' }) },
+  { hoursAgo: 49, ...admin('TEAM_GRANTS_CHANGED', { team: 'deployers', grantsAdded: ['releases (DEPLOY)', 'all repositories (READ)'], grantsRemoved: [] }) },
+  { hoursAgo: 50, ...admin('TEAM_MEMBERSHIP_CHANGED', { team: 'deployers', membersAdded: ['alice', 'ci-bot'], membersRemoved: [] }) },
+  { hoursAgo: 72, ...admin('TEAM_UPDATED', { team: 'docs-sync', fields: ['description', 'externalRef'] }) },
+  { hoursAgo: 96, ...admin('TEAM_DELETED', { team: 'interns' }) },
+  { hoursAgo: 120, ...admin('INSTANCE_ADMIN_GRANTED', { principal: 'admin', kind: 'USER' }) },
+  { hoursAgo: 121, ...admin('INSTANCE_ADMIN_GRANTED', { team: 'platform' }) },
+  { hoursAgo: 144, ...admin('INSTANCE_ADMIN_REVOKED', { principal: 'carol', kind: 'USER' }) },
+]
+
 const buildSample = (now) => {
   const events = []
   for (let index = 0; index < 96; index++) {
@@ -56,6 +79,9 @@ const buildSample = (now) => {
       ...template(version),
     })
   }
+  IDENTITY_EVENTS.forEach(({ hoursAgo, ...event }, offset) => {
+    events.push({ id: events.length + 1, timestamp: new Date(now - hoursAgo * HOUR_MS - offset * 60 * 1000).toISOString(), ...event })
+  })
   return events.sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp) || right.id - left.id)
 }
 
@@ -66,7 +92,7 @@ const includesText = (event, needle) =>
     .some(value => (value || '').toLowerCase().includes(needle))
 
 const matches = (event, filters) => {
-  if (filters.action && event.action !== filters.action) return false
+  if (filters.actions.length > 0 && !filters.actions.includes(event.action)) return false
   if (filters.actor && event.actor !== filters.actor) return false
   if (filters.repository && event.repository !== filters.repository) return false
   const time = Date.parse(event.timestamp)
@@ -84,7 +110,7 @@ const parseInstant = (value) => {
 
 /** Reads the filters the way the backend does. Unknown actions and malformed times are ignored here. */
 const readFilters = (params) => ({
-  action: ACTIONS.includes(params.action) ? params.action : '',
+  actions: (params.action || '').split(',').map(name => name.trim()).filter(name => ACTIONS.includes(name)),
   actor: (params.actor || '').trim(),
   repository: (params.repository || '').trim(),
   text: (params.q || '').trim().toLowerCase(),
