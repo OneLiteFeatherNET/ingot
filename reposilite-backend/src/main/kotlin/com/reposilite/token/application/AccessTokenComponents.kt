@@ -21,6 +21,7 @@ import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.shared.EntityTagSigner
 import com.reposilite.token.AccessTokenFacade
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenRepository
 import com.reposilite.token.ExportService
 import com.reposilite.token.infrastructure.InMemoryAccessTokenRepository
@@ -64,6 +65,7 @@ class AccessTokenComponents(
         exportService: ExportService = exportService(),
         extensions: Extensions = Extensions(journalist),
         entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
+        bcryptStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH,
     ): AccessTokenFacade =
         AccessTokenFacade(
             journalist = journalist,
@@ -72,6 +74,7 @@ class AccessTokenComponents(
             exportService = exportService,
             extensions = extensions,
             entityTags = entityTags,
+            bcryptStrength = bcryptStrength,
         )
 
 }

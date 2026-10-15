@@ -26,6 +26,7 @@ import com.reposilite.audit.api.AuditEvent
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.EventListener
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.AccessTokenType.PERSISTENT
@@ -51,7 +52,8 @@ internal class AccessTokenAuditTest {
     private val facade: AccessTokenFacade = AccessTokenComponents(journalist, database = null).accessTokenFacade(
         extensions = Extensions(journalist).also { extensions ->
             extensions.registerEvent(AuditEvent::class.java, EventListener { emitted += it })
-        }
+        },
+        bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH,
     )
 
     private val admin = AuditActor.named("admin", "10.0.0.2")

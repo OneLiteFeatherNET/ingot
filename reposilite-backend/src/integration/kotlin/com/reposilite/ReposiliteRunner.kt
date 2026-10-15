@@ -26,6 +26,7 @@ import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.storage.StorageProviderSettings
+import com.reposilite.token.AccessTokenSecurityProvider
 import io.javalin.util.JavalinBindException
 import net.dzikoysk.cdn.KCdnFactory
 import net.dzikoysk.cdn.source.Source
@@ -82,6 +83,7 @@ internal abstract class ReposiliteRunner {
         parameters.testEnv = true
         parameters.port = 10000 + 2 * ThreadLocalRandom.current().nextInt(30_000 / 2)
         parameters.database = _database
+        parameters.tokenHashStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH
         parameters.run()
         overrideParameters(parameters)
 

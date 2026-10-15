@@ -47,6 +47,7 @@ import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.RepositoryDirectoryInfo
 import com.reposilite.storage.api.toLocation
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenPermission
 import com.reposilite.token.AccessTokenType.TEMPORARY
@@ -103,7 +104,7 @@ internal abstract class MavenSpecification {
     private val accessTokenFacade = AccessTokenComponents(
         journalist = logger,
         database = null
-    ).accessTokenFacade()
+    ).accessTokenFacade(bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH)
 
     private val authenticationFacade = AuthenticationComponents(
         journalist = logger,

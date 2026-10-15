@@ -88,6 +88,7 @@ class AccessTokenFacade internal constructor(
     private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
     private val subjectSource: AccessSubjectSource? = persistentRepository as? AccessSubjectSource,
     private val usageSource: TokenUsageSource? = persistentRepository as? TokenUsageSource,
+    private val bcryptStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH,
 ) : Facade, Journalist {
 
     /**
@@ -130,7 +131,7 @@ class AccessTokenFacade internal constructor(
         val secret = request.secret ?: generateSecret()
         val encodedSecret =
             when (request.secretType) {
-                RAW -> AccessTokenSecurityProvider.encodeSecret(secret)
+                RAW -> AccessTokenSecurityProvider.encodeSecret(secret, bcryptStrength)
                 ENCRYPTED -> secret
             }
 
@@ -569,7 +570,7 @@ class AccessTokenFacade internal constructor(
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
     ): Result<String, ErrorResponse> {
         val rawSecret = secret ?: generateSecret()
-        val encodedSecret = rawSecret.letIf(secretType == RAW) { AccessTokenSecurityProvider.encodeSecret(it) } // encode if not already encoded
+        val encodedSecret = rawSecret.letIf(secretType == RAW) { AccessTokenSecurityProvider.encodeSecret(it, bcryptStrength) } // encode if not already encoded
 
         val token = getRawAccessTokenById(accessTokenDto.identifier) ?: return notFoundError("Token not found")
         token.copy(encryptedSecret = encodedSecret).let { it.identifier.type.getRepository().saveAccessToken(it) }

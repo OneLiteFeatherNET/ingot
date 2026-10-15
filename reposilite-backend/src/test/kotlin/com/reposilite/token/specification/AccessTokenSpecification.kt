@@ -19,6 +19,7 @@ package com.reposilite.token.specification
 import com.reposilite.journalist.backend.AggregatedLogger
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.journalist.backend.PrintStreamLogger
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.ExportService
@@ -35,7 +36,13 @@ internal abstract class AccessTokenSpecification {
 
     @TempDir
     lateinit var workingDirectory: Path
-    var accessTokenFacade: AccessTokenFacade = AccessTokenFacade(logger, InMemoryAccessTokenRepository(), InMemoryAccessTokenRepository(), ExportService())
+    var accessTokenFacade: AccessTokenFacade = AccessTokenFacade(
+        logger,
+        InMemoryAccessTokenRepository(),
+        InMemoryAccessTokenRepository(),
+        ExportService(),
+        bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH,
+    )
 
     fun createToken(name: String): CreateAccessTokenResponse =
         accessTokenFacade.createAccessToken(CreateAccessTokenRequest(TEMPORARY, name))

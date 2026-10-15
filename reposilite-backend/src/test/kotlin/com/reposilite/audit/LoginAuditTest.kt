@@ -26,6 +26,7 @@ import com.reposilite.auth.api.Credentials
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.EventListener
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.api.CreateAccessTokenRequest
 import com.reposilite.token.application.AccessTokenComponents
@@ -38,7 +39,8 @@ internal class LoginAuditTest {
     private val journalist = InMemoryLogger()
     private val emitted = mutableListOf<AuditEvent>()
     private val extensions = Extensions(journalist).also { it.registerEvent(AuditEvent::class.java, EventListener { event -> emitted += event }) }
-    private val accessTokenFacade = AccessTokenComponents(journalist, database = null).accessTokenFacade()
+    private val accessTokenFacade = AccessTokenComponents(journalist, database = null)
+        .accessTokenFacade(bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH)
     private val authenticationFacade = AuthenticationFacade(
         journalist = journalist,
         authenticators = TreeSet(Authenticator.priorityComparator).apply { add(BasicAuthenticator(accessTokenFacade)) },

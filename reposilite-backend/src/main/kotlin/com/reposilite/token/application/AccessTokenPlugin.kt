@@ -62,6 +62,7 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
         ).accessTokenFacade(
             extensions = extensions(),
             entityTags = entityTags,
+            bcryptStrength = parameters().tokenHashStrength,
         )
 
         // The identity administration needs the identity tables, which exist only with a database.

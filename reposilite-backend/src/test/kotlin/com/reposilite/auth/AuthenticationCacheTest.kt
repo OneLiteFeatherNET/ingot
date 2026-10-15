@@ -5,6 +5,7 @@ import com.reposilite.auth.api.Credentials
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.unauthorized
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.AccessTokenType.TEMPORARY
@@ -34,6 +35,7 @@ internal class AuthenticationCacheTest {
         temporaryRepository = InMemoryAccessTokenRepository(clock),
         persistentRepository = InMemoryAccessTokenRepository(clock),
         exportService = ExportService(),
+        bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH,
     )
     private val spy = AuthenticatorSpy(BasicAuthenticator(tokens, clock))
     private val authentication = AuthenticationFacade(
