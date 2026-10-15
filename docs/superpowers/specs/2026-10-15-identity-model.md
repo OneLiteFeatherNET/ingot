@@ -573,3 +573,28 @@ Required:
 - O-8 Scope names are the action names. A UI for scopes is not part of phase 1.
 - O-9 `expiresAt` and `disabled` for USER principals are stored but not used before login
   providers exist.
+
+## 12. Implementation status and deviations (phase 1)
+
+Recorded after the implementation, so that the spec and the code agree.
+
+- Sections 3 to 7 are implemented as written, with these exceptions:
+  - Create and delete responses use HTTP 200 with a body, like the token API. The spec's 201 and 204 are not used.
+  - No endpoint assigns the instance role to a team or to a principal. The role is read in the
+    DTOs (`instanceRole`) and reaches principals through the legacy manager token permission. Assignment
+    through the API is open point O-10.
+  - `last_used_at`, `last_used_ip` and `principal.last_seen_at` are not written yet (section 8.2). The
+    columns exist. The entity tags leave them out, so a read never changes a tag.
+  - Identity admin changes do not emit audit events, except token creation and deletion, which reuse the
+    token audit actions. Open point O-7 stands.
+- The migration lives in `LegacyAccessTokenMigration`, and its version constant is
+  `MIGRATION_ACCESS_TOKENS = "001-access-tokens"`. The separate `IdentityMigrations.kt` of section 9 was not created.
+- A machine principal created through the identity API gets its private team at once, as a machine principal
+  created by a legacy token does (section 8.3).
+- Section 6.4 is amended in this document: a legacy token whose name clashes case-insensitively with a
+  machine principal, or with a user, is refused rather than attached.
+- Tests cover the store, the migration, the evaluator, the legacy parity matrix, the `--token` pin and the
+  identity service. The HTTP layer has no direct test in phase 1. It is covered by the service tests and by
+  compilation.
+- O-10 Instance role assignment for principals and teams through the identity API: phase 2, together with the
+  login providers that make USER principals usable.
