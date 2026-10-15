@@ -23,12 +23,16 @@ import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.api.AccessTokenDto
 import panda.std.Result
 import panda.std.asSuccess
+import java.time.Clock
 
-internal class BasicAuthenticator(private val accessTokenFacade: AccessTokenFacade) : Authenticator {
+internal class BasicAuthenticator(
+    private val accessTokenFacade: AccessTokenFacade,
+    private val clock: Clock = Clock.systemUTC(),
+) : Authenticator {
 
     override fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
         accessTokenFacade.getAccessToken(credentials.name)
-            ?.takeIf { !it.isExpired() && accessTokenFacade.secretMatches(it.identifier, credentials.secret) }
+            ?.takeIf { !it.isExpired(clock) && accessTokenFacade.secretMatches(it.identifier, credentials.secret) }
             ?.asSuccess()
             ?: unauthorizedError("Invalid authorization credentials")
 

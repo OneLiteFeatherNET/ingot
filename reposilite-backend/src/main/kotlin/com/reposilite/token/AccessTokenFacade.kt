@@ -48,6 +48,7 @@ import panda.std.asSuccess
 import panda.std.letIf
 import java.nio.file.Path
 import java.time.LocalDate
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Stored state of a token together with the entity tag that identifies exactly that state.
@@ -60,7 +61,8 @@ data class AccessTokenSnapshot<T>(
 /**
  * Access tokens and their rights. Every change that an operator can make emits an [AuditEvent];
  * the methods that take an [actor] record who asked for it, and the rest record the system.
- * Secrets are never part of an event.
+ * Secrets are never part of an event. Every change also notifies the listeners registered with
+ * [onTokenChanged], so that state derived from a token can be dropped at once.
  */
 class AccessTokenFacade internal constructor(
     private val journalist: Journalist,
@@ -74,6 +76,21 @@ class AccessTokenFacade internal constructor(
      * Serializes the conditional writes of this instance, so a precondition is checked against the state it writes.
      */
     private val mutationLock = Any()
+
+    private val changeListeners = CopyOnWriteArrayList<(String) -> Unit>()
+
+    /**
+     * Registers a callback that receives the name of every token whose stored state changed on this instance, and the old
+     * name of a renamed token. The callback runs after the change has been written. Other instances of a cluster are not
+     * notified.
+     */
+    fun onTokenChanged(listener: (tokenName: String) -> Unit) {
+        changeListeners.add(listener)
+    }
+
+    private fun tokenChanged(vararg names: String) {
+        names.forEach { name -> changeListeners.forEach { it(name) } }
+    }
 
     fun createAccessToken(request: CreateAccessTokenRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): CreateAccessTokenResponse =
         storeAccessToken(request, actor).response
@@ -109,6 +126,7 @@ class AccessTokenFacade internal constructor(
             permissions = request.permissions,
             routeRequests = request.routes
         )
+        tokenChanged(request.name)
 
         extensions.emitEvent(
             AuditEvent(
@@ -179,6 +197,7 @@ class AccessTokenFacade internal constructor(
                 ))
 
             syncPermissionsAndRoutes(updated.identifier, request.permissions, request.routes)
+            tokenChanged(updated.name)
             recordAccessChanges(actor, updated.name, before, snapshotAccess(updated.identifier))
 
             return snapshotOf(updated).asSuccess()
@@ -346,9 +365,12 @@ class AccessTokenFacade internal constructor(
             ?.let { AccessTokenSecurityProvider.matches(it.encryptedSecret, secret) }
             ?: false
 
-    fun addPermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission, actor: AuditActor = AuditActor.SYSTEM_ACTOR): AccessTokenPermission =
-        identifier.type.getRepository().addPermission(identifier, permission)
-            .also { emitRightsChanged(actor, nameOf(identifier), permissionsAdded = listOf(permission)) }
+    fun addPermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission, actor: AuditActor = AuditActor.SYSTEM_ACTOR): AccessTokenPermission {
+        val granted = identifier.type.getRepository().addPermission(identifier, permission)
+        tokenChanged(nameOf(identifier))
+        emitRightsChanged(actor, nameOf(identifier), permissionsAdded = listOf(permission))
+        return granted
+    }
 
     fun hasPermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission): Boolean =
         identifier.type.getRepository().findAccessTokenPermissionsById(identifier).contains(permission)
@@ -365,43 +387,53 @@ class AccessTokenFacade internal constructor(
 
     fun deletePermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission, actor: AuditActor = AuditActor.SYSTEM_ACTOR) {
         identifier.type.getRepository().deletePermission(identifier, permission)
+        tokenChanged(nameOf(identifier))
         emitRightsChanged(actor, nameOf(identifier), permissionsRemoved = listOf(permission))
     }
 
     fun getPermissions(identifier: AccessTokenIdentifier): Set<AccessTokenPermission> =
         identifier.type.getRepository().findAccessTokenPermissionsById(identifier)
 
-    fun addRoute(identifier: AccessTokenIdentifier, route: Route, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Route =
-        identifier.type.getRepository().addRoute(identifier, route)
-            .also { emitRightsChanged(actor, nameOf(identifier), routesAdded = listOf(route)) }
+    fun addRoute(identifier: AccessTokenIdentifier, route: Route, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Route {
+        val added = identifier.type.getRepository().addRoute(identifier, route)
+        tokenChanged(nameOf(identifier))
+        emitRightsChanged(actor, nameOf(identifier), routesAdded = listOf(route))
+        return added
+    }
 
     fun deleteRoute(identifier: AccessTokenIdentifier, route: Route, actor: AuditActor = AuditActor.SYSTEM_ACTOR) {
         identifier.type.getRepository().deleteRoute(identifier, route)
+        tokenChanged(nameOf(identifier))
         emitRightsChanged(actor, nameOf(identifier), routesRemoved = listOf(route))
     }
 
     fun deleteRoutesByPath(identifier: AccessTokenIdentifier, path: String, actor: AuditActor = AuditActor.SYSTEM_ACTOR) {
         val removed = getRoutes(identifier).filter { it.path == path }
         identifier.type.getRepository().deleteRoutesByPath(identifier, path)
+        tokenChanged(nameOf(identifier))
         emitRightsChanged(actor, nameOf(identifier), routesRemoved = removed)
     }
 
     fun getRoutes(id: AccessTokenIdentifier): Set<Route> =
         id.type.getRepository().findAccessTokenRoutesById(id)
 
-    fun updateToken(updatedToken: AccessTokenDto): AccessTokenDto? =
-        getRawAccessTokenById(updatedToken.identifier)
-            ?.copy(
+    fun updateToken(updatedToken: AccessTokenDto): AccessTokenDto? {
+        val existing = getRawAccessTokenById(updatedToken.identifier) ?: return null
+        val saved = existing.identifier.type.getRepository().saveAccessToken(
+            existing.copy(
                 name = updatedToken.name,
                 createdAt = updatedToken.createdAt,
                 description = updatedToken.description
             )
-            ?.let { it.identifier.type.getRepository().saveAccessToken(it) }
-            ?.toDto()
+        )
+        tokenChanged(existing.name, saved.name)
+        return saved.toDto()
+    }
 
     fun deleteToken(id: AccessTokenIdentifier, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Result<Unit, ErrorResponse> {
         val token = getRawAccessTokenById(id) ?: return notFoundError("Token not found")
         token.identifier.type.getRepository().deleteAccessToken(token.identifier)
+        tokenChanged(token.name)
         extensions.emitEvent(AuditEvent(action = TOKEN_DELETED, actor = actor, details = mapOf("token" to token.name)))
         return Unit.asSuccess()
     }
@@ -417,6 +449,7 @@ class AccessTokenFacade internal constructor(
 
         val token = getRawAccessTokenById(accessTokenDto.identifier) ?: return notFoundError("Token not found")
         token.copy(encryptedSecret = encodedSecret).let { it.identifier.type.getRepository().saveAccessToken(it) }
+        tokenChanged(token.name)
 
         // The event names the token only. The secret itself is never part of an audit record.
         extensions.emitEvent(AuditEvent(action = TOKEN_SECRET_REGENERATED, actor = actor, details = mapOf("token" to token.name)))

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonFormat
 import com.reposilite.token.AccessTokenType.PERSISTENT
 import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.token.application.AccessTokenPlugin.Companion.MAX_TOKEN_NAME
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 
@@ -49,8 +50,8 @@ data class AccessToken(
         check(!name.contains(":")) { "Access token name cannot contain ':' character" }
     }
 
-    fun isExpired(): Boolean =
-        expiresAt != null && Instant.now().isAfter(expiresAt)
+    fun isExpired(clock: Clock = Clock.systemUTC()): Boolean =
+        expiresAt != null && Instant.now(clock).isAfter(expiresAt)
 
     fun toDto(): AccessTokenDto =
         AccessTokenDto(

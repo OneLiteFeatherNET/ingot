@@ -37,7 +37,9 @@ import com.reposilite.token.api.AccessTokenDto
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
+import java.time.Clock
 import java.util.SortedSet
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit.HOURS
 import java.util.concurrent.TimeUnit.MINUTES
 
@@ -52,8 +54,15 @@ class AuthenticationFacade(
     private val accessTokenFacade: AccessTokenFacade,
     private val bruteForceProtectionSettings: Reference<BruteForceProtectionSettings> = Reference.reference(BruteForceProtectionSettings()),
     private val extensions: Extensions = Extensions(journalist),
+    private val clock: Clock = Clock.systemUTC(),
 ) : Journalist, Facade {
 
+    /**
+     * Successful authentications, keyed by the presented credentials. An entry is only a shortcut: every change of its token
+     * made on this instance drops the entries of that token at once (see [forgetCachedCredentials]), and every hit is checked
+     * against the expiry of the token. Other instances of a cluster are not told about a change, so their entries can keep
+     * working for up to one minute after the change was made elsewhere.
+     */
     private val authenticationCache: Cache<Credentials, AccessTokenDto> =
         CacheBuilder
             .newBuilder()
@@ -62,6 +71,13 @@ class AuthenticationFacade(
             .expireAfterAccess(1, MINUTES)
             .build()
 
+    /**
+     * Guards the pairing of a cache write with the generation it was computed under, so that a result read before a
+     * change cannot be cached after that change dropped the entries.
+     */
+    private val cacheLock = Any()
+    private val tokenGeneration = AtomicLong()
+
     private val failedAttempts: Cache<String, FailedAttempt> by lazy {
         CacheBuilder
             .newBuilder()
@@ -69,6 +85,10 @@ class AuthenticationFacade(
             .expireAfterWrite(1, HOURS)
             .build()
         }
+
+    init {
+        accessTokenFacade.onTokenChanged { forgetCachedCredentials(it) }
+    }
 
     fun registerAuthenticator(authenticator: Authenticator) {
         this.authenticators.add(authenticator)
@@ -80,9 +100,9 @@ class AuthenticationFacade(
             return unauthorizedError("Invalid authorization credentials")
         }
 
+        val generation = tokenGeneration.get()
         val result =
-            authenticationCache
-                .getIfPresent(credentials)
+            cachedAuthentication(credentials)
                 ?.asSuccess()
                 ?: authenticators
                     .asSequence()
@@ -93,7 +113,7 @@ class AuthenticationFacade(
                             .onError { logger.debug("${credentials.name}@${credentials.ip} failed to authenticate with ${authenticator.realm()} realm due to $it") }
                     }
                     .firstOrNull { it.isOk }
-                    ?.peek { authenticationCache.put(credentials, it) }
+                    ?.peek { cacheAuthentication(credentials, it, generation) }
                 ?: unauthorizedError("Invalid authorization credentials")
 
         trackBruteForceAttempt(ip = credentials.ip, success = result.isOk)
@@ -101,6 +121,34 @@ class AuthenticationFacade(
             recordRejectedLogin(credentials)
         }
         return result
+    }
+
+    private fun cachedAuthentication(credentials: Credentials): AccessTokenDto? {
+        val cached = authenticationCache.getIfPresent(credentials) ?: return null
+        if (cached.isExpired(clock)) {
+            authenticationCache.invalidate(credentials)
+            return null
+        }
+        return cached
+    }
+
+    private fun cacheAuthentication(credentials: Credentials, accessToken: AccessTokenDto, generation: Long) {
+        synchronized(cacheLock) {
+            if (tokenGeneration.get() == generation) {
+                authenticationCache.put(credentials, accessToken)
+            }
+        }
+    }
+
+    /**
+     * Called after every change of a token. Drops the cached credentials of that name, whichever secret or address they
+     * were presented with, and bumps the generation so that an authentication still in flight is not cached.
+     */
+    private fun forgetCachedCredentials(tokenName: String) {
+        synchronized(cacheLock) {
+            tokenGeneration.incrementAndGet()
+            authenticationCache.asMap().keys.removeIf { it.name == tokenName }
+        }
     }
 
     /**
