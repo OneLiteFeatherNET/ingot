@@ -15,10 +15,18 @@
   -->
 
 <script setup>
+import { computed } from 'vue'
 import GlobeIcon from '../icons/GlobeIcon.vue'
 import usePlaceholders from '../../store/placeholders'
+import useTheme from '../../store/theme'
+import { useAppearance } from '../../store/appearance'
+import { logoFor } from '../../theme/settings'
 
 const { description, organizationWebsite, organizationLogo } = usePlaceholders()
+const { theme } = useTheme()
+const appearance = useAppearance()
+// The operator's dark logo, when one is set, replaces the logo in the dark theme only.
+const logo = computed(() => logoFor(appearance, organizationLogo, theme.isDark))
 </script>
 
 <template>
@@ -36,7 +44,7 @@ const { description, organizationWebsite, organizationLogo } = usePlaceholders()
       <img
         class="size-32 shrink-0 rounded-corner-full border-2 border-outline-variant md:size-40"
         alt=""
-        :src="organizationLogo"
+        :src="logo"
       >
       <div class="flex min-w-0 flex-col items-center gap-3 text-center md:items-start md:text-left">
         <div

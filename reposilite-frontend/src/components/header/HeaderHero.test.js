@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import HeaderHero from './HeaderHero.vue'
+import useTheme from '../../store/theme'
+import { setAppearance } from '../../store/appearance'
 
 describe('HeaderHero', () => {
   it('draws exactly one OneLiteFeather brand bar in the hero', () => {
@@ -35,5 +37,27 @@ describe('HeaderHero', () => {
     const bar = mount(HeaderHero).find('.olf-brand-bar')
 
     expect(bar.attributes('aria-hidden'), 'the brand bar carries no information, so it is hidden').toBe('true')
+  })
+})
+
+describe('HeaderHero logo', () => {
+  const logoSource = (wrapper) => wrapper.find('img').attributes('src')
+
+  afterEach(() => {
+    setAppearance({})
+    useTheme().theme.isDark = false
+  })
+
+  it('shows the dark logo in the dark theme when the operator set one', () => {
+    setAppearance({ logoDark: 'https://example.org/logo-dark.svg' })
+    useTheme().theme.isDark = true
+
+    expect(logoSource(mount(HeaderHero)), 'the dark theme takes the dark logo').toBe('https://example.org/logo-dark.svg')
+  })
+
+  it('keeps the organisation logo in the light theme', () => {
+    setAppearance({ logoDark: 'https://example.org/logo-dark.svg' })
+
+    expect(logoSource(mount(HeaderHero)), 'the light theme keeps the regular logo').not.toBe('https://example.org/logo-dark.svg')
   })
 })

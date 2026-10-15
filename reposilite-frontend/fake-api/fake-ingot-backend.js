@@ -403,6 +403,18 @@ application
         "{{REPOSILITE.ICP_LICENSE}}": "\u56fdICP\u5907000000000\u53f7",
         "{{REPOSILITE.PRIVACY_POLICY}}": "https://example.com/privacy",
         "{{REPOSILITE.JAVADOC_SUFFIXES}}": "-javadoc.jar,-groovydoc.jar"
+      },
+      // Empty means not set: the default OneLiteFeather theme stays in place.
+      appearance: {
+        seedColor: "",
+        schemeVariant: "VIBRANT",
+        primaryColor: "",
+        secondaryColor: "",
+        tertiaryColor: "",
+        errorColor: "",
+        logoDark: "",
+        favicon: "",
+        footerText: ""
       }
     })
   )

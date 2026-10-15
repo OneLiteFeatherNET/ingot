@@ -21,10 +21,13 @@ import { useSession } from "./store/session"
 import useTheme from "./store/theme"
 import useQualifier from "./store/qualifier"
 import usePlaceholders from './store/placeholders'
+import { useAppearance } from './store/appearance'
 import { createErrorToast, errorMessage } from './helpers/toast'
 import MdSnackbar from './components/md/MdSnackbar.vue'
+import SiteFooter from './components/footer/SiteFooter.vue'
 
 const { description, icpLicense, privacyPolicy } = usePlaceholders()
+const appearance = useAppearance()
 const { theme, fetchColorMode } = useTheme()
 const { initializeSession } = useSession()
 const { qualifier } = useQualifier()
@@ -49,6 +52,7 @@ initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${
         class="router-view-full"
         :qualifier="qualifier"
       />
+      <SiteFooter :text="appearance.footerText" />
       <MdSnackbar />
       <div
         v-if="icpLicense || privacyPolicy"

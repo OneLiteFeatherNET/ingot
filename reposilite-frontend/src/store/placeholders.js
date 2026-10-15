@@ -30,6 +30,8 @@
  * did would be rewritten by the substitution as well, including the table of fallbacks.
  */
 
+import { setAppearance } from './appearance'
+
 const FALLBACKS = {
   'REPOSILITE.BASE_PATH': '/',
   'REPOSILITE.ID': 'ingot-repository',
@@ -81,11 +83,15 @@ export async function loadFrontendSettings() {
     if (!response.ok) {
       throw new Error(`${response.status} ${response.statusText}`)
     }
-    fetched = (await response.json()).placeholders
+    const settings = await response.json()
+    fetched = settings.placeholders
+    // An older server sends no appearance block, which means the default theme.
+    setAppearance(settings.appearance)
   } catch (error) {
     // Rendering with fallbacks beats not rendering: the dashboard still works, it just
     // shows generic branding. Say why rather than failing silently.
     console.error('Could not load the frontend settings, falling back to defaults:', error)
+    setAppearance(undefined)
   }
 }
 

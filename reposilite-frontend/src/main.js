@@ -21,6 +21,7 @@ import VueAxios from 'vue-axios'
 import App from './App.vue'
 import { createIngotRouter } from './router'
 import { loadFrontendSettings } from './store/placeholders'
+import { applyAppearance } from './store/appearance'
 
 import './style.css'
 import 'vue-final-modal/style.css'
@@ -38,7 +39,10 @@ app.config.globalProperties.drop = (path) =>
 // The settings have to be in hand before anything reads them, and the router takes its base
 // path from them. When this dashboard is served by the server itself they are already
 // substituted into the bundle and this resolves immediately.
-loadFrontendSettings().then(() => {
+loadFrontendSettings().then(async () => {
+  // The operator's colours and icon go in before the first render, so the page never paints
+  // the default theme first.
+  await applyAppearance()
   app
     .use(createHead())
     .use(VueAxios, axios)

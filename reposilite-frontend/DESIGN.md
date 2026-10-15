@@ -145,6 +145,30 @@ at 135 degrees: `#f7931d`, `#ec008b`, `#91268f`, `#2a388f`. Use it for brand are
   colours drop background images.
 - The feather logo is never recoloured, shadowed or tilted. Nothing in this file touches it.
 
+### Operator branding
+
+An operator can set a seed colour in the server settings (`appearance.seedColor`). Empty
+means the static theme above, unchanged. A seed generates the complete MD3 scheme at runtime
+with `@material/material-color-utilities` (pinned, see `package.json`) and writes it into one
+`<style id="ingot-theme">`, with the same selectors as `color.css`: `:root` for light, `.dark`
+for dark, and the `prefers-contrast: more` block for both high contrast schemes.
+
+- `schemeVariant` selects the scheme (`TONAL_SPOT`, `VIBRANT` (default), `EXPRESSIVE`,
+  `NEUTRAL`, `FIDELITY`, `CONTENT`, `MONOCHROME`). `primaryColor`, `secondaryColor`,
+  `tertiaryColor` and `errorColor` replace the palette of their role; they need a seed.
+- Invalid hex values and unknown variants are ignored with a `console.warn`.
+- Series 1 to 3 of the chart palette follow primary, tertiary and secondary. The brand
+  gradient runs from primary to tertiary. Series 4 to 8 keep their static values. The
+  neutrals of a generated theme come from the seed's hue, not from the near-neutral override
+  described above.
+- `logoDark` replaces the logo in the dark theme, `favicon` replaces the icon, and
+  `footerText` is shown as plain text in the footer. `theme-color` is updated when present.
+- The generator is a separate chunk, loaded only when a seed is set (about 20 KB gzipped), so
+  the default theme does not pay for it. Validation lives in `src/theme/settings.js`, and the
+  generator in `src/theme/runtime.js`.
+- Development: `?theme-seed=%23006a6a` previews a seed without changing the settings. It is
+  read only when `import.meta.env.DEV` is true.
+
 ## Charts
 
 Series colours are a dedicated palette, not MD3 roles. The seed's roles sit too close together
