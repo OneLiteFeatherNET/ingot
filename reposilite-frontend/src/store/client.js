@@ -147,6 +147,15 @@ const createClient = (defaultName, defaultSecret) => {
   const ifMatch = (etag) =>
     etag ? { "If-Match": etag } : {}
 
+  // The request options of a write that carries the entity tag it was based on.
+  const conditional = (etag) => ({
+    headers: {
+      "Content-Type": "application/json",
+      ...ifMatch(etag),
+      ...defaultAuthorization().headers,
+    },
+  })
+
   const get = (endpoint, credentials) =>
     axios.get(createURL(endpoint), {
       ...(credentials || defaultAuthorization()),
@@ -265,6 +274,45 @@ const createClient = (defaultName, defaultSecret) => {
             ...defaultAuthorization(),
           })
         },
+      },
+      // The teams, for an instance admin. get() resolves with the ETag header; every write below
+      // takes it back as `etag` and sends it as If-Match (no tag, no header: an unconditional write).
+      teams: {
+        list() {
+          return get("/api/identity/teams")
+        },
+        get(name) {
+          return get(`/api/identity/teams/${encodeURIComponent(name)}`)
+        },
+        create(body) {
+          return axios.post(createURL("/api/identity/teams"), body, { ...defaultAuthorization() })
+        },
+        update(name, body, etag) {
+          return axios.patch(createURL(`/api/identity/teams/${encodeURIComponent(name)}`), body, conditional(etag))
+        },
+        remove(name) {
+          return axios.delete(createURL(`/api/identity/teams/${encodeURIComponent(name)}`), {
+            ...defaultAuthorization(),
+          })
+        },
+        // Replaces the MANUAL memberships; the server keeps the SYNC rows.
+        setMembers(name, members, etag) {
+          return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/members`), { members }, conditional(etag))
+        },
+        // Replaces all grants: [{ repository, pathPrefix, role }].
+        setGrants(name, grants, etag) {
+          return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/grants`), { grants }, conditional(etag))
+        },
+        grantInstanceAdmin(name, etag) {
+          return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/instance-admin`), {}, conditional(etag))
+        },
+        revokeInstanceAdmin(name, etag) {
+          return axios.delete(createURL(`/api/identity/teams/${encodeURIComponent(name)}/instance-admin`), conditional(etag))
+        },
+      },
+      // Who can reach a repository and through which team: { repository, visibility, entries }.
+      repositoryAccess(repository) {
+        return get(`/api/identity/repositories/${encodeURIComponent(repository)}/access`)
       },
     },
     console: {

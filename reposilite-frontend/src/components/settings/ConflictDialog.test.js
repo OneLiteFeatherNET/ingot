@@ -65,6 +65,14 @@ describe('ConflictDialog', () => {
     expect(button(wrapper, 'Reload and discard my changes')).toBeDefined()
   })
 
+  it('names a team that changed elsewhere and offers no review', () => {
+    const wrapper = mountDialog({ kind: 'team', name: 'developers' })
+
+    expect(wrapper.text()).toContain('Team changed elsewhere')
+    expect(wrapper.text()).toContain('developers')
+    expect(button(wrapper, 'Review')).toBeUndefined()
+  })
+
   it('emits review when the user asks to review the settings', async () => {
     const wrapper = mountDialog(settingsConflict())
 

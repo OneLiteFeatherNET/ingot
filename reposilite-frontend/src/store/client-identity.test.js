@@ -205,4 +205,101 @@ describe('client identity namespace', () => {
       )
     })
   })
+  describe('teams', () => {
+    it('lists the teams', () => {
+      identity.teams.list()
+
+      expect(axios.get).toHaveBeenCalledWith(expect.stringMatching(/\/api\/identity\/teams$/), expect.anything())
+    })
+
+    it('reads one team by its encoded name', () => {
+      identity.teams.get('release team')
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/release%20team$/),
+        expect.anything()
+      )
+    })
+
+    it('creates a team with the body it is given', () => {
+      identity.teams.create({ name: 'qa', description: 'Testers' })
+
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams$/),
+        { name: 'qa', description: 'Testers' },
+        expect.anything()
+      )
+    })
+
+    it('patches a team and sends the entity tag as If-Match', () => {
+      identity.teams.update('qa', { description: 'x', externalRef: null }, '"3"')
+
+      expect(axios.patch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/qa$/),
+        { description: 'x', externalRef: null },
+        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+      )
+    })
+
+    it('deletes a team by its encoded name', () => {
+      identity.teams.remove('qa')
+
+      expect(axios.delete).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/qa$/),
+        expect.anything()
+      )
+    })
+
+    it('replaces the members with a PUT of {members} and If-Match', () => {
+      identity.teams.setMembers('qa', ['alice'], '"3"')
+
+      expect(axios.put).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/qa\/members$/),
+        { members: ['alice'] },
+        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+      )
+    })
+
+    it('replaces the grants with a PUT of {grants} and If-Match', () => {
+      const grants = [{ repository: null, pathPrefix: null, role: 'READ' }]
+
+      identity.teams.setGrants('qa', grants, '"3"')
+
+      expect(axios.put).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/qa\/grants$/),
+        { grants },
+        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+      )
+    })
+
+    it('grants the instance admin role with a PUT and If-Match', () => {
+      identity.teams.grantInstanceAdmin('qa', '"3"')
+
+      expect(axios.put).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/qa\/instance-admin$/),
+        {},
+        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+      )
+    })
+
+    it('revokes the instance admin role with a DELETE and If-Match', () => {
+      identity.teams.revokeInstanceAdmin('qa', '"3"')
+
+      expect(axios.delete).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/qa\/instance-admin$/),
+        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+      )
+    })
+  })
+
+  describe('repositoryAccess', () => {
+    it('reads who has access to a repository by its encoded name', () => {
+      identity.repositoryAccess('my repo')
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/repositories\/my%20repo\/access$/),
+        expect.anything()
+      )
+    })
+  })
 })

@@ -28,7 +28,8 @@ const confirmingOverwrite = ref(false)
 watch(() => props.conflict, () => { confirmingOverwrite.value = false })
 
 const isSettings = computed(() => props.conflict?.kind === 'settings')
-const title = computed(() => isSettings.value ? 'Settings changed elsewhere' : 'Token changed elsewhere')
+const TITLES = { settings: 'Settings changed elsewhere', team: 'Team changed elsewhere' }
+const title = computed(() => TITLES[props.conflict?.kind] ?? 'Token changed elsewhere')
 
 // The scrim is the MD3 role colour at 32%, set inline because the modal paints a fixed black overlay.
 const overlayStyle = {
@@ -70,6 +71,10 @@ const onOpenChange = (open) => {
         <p v-if="isSettings">
           The settings of <strong class="text-on-surface">{{ conflict.title }}</strong> were saved by someone else after you
           loaded them. Your changes have not been saved.
+        </p>
+        <p v-else-if="conflict.kind === 'team'">
+          The team <strong class="text-on-surface">{{ conflict.name }}</strong> was changed by someone else after you
+          loaded it. Your change has not been saved.
         </p>
         <p v-else>
           The token <strong class="text-on-surface">{{ conflict.name }}</strong> was changed by someone else after you

@@ -18,6 +18,7 @@
 import { useRouter } from 'vue-router'
 import SettingsTabs from '../settings/SettingsTabs.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
+import TeamsPanel from './TeamsPanel.vue'
 
 /*
  * The Access section for instance admins: users, machine accounts and teams, as tabs. The tab
@@ -85,23 +86,10 @@ const select = (key) => router.push({ name: `access-${key}` })
         kind="MACHINE"
         :name="name"
       />
-      <section
+      <TeamsPanel
         v-else
-        class="flex flex-col gap-2 rounded-corner-large bg-surface-container-low px-4 py-6"
-        aria-labelledby="teams-title"
-        data-test="teams"
-      >
-        <h3
-          id="teams-title"
-          class="md-title-large text-on-surface"
-        >
-          Teams
-        </h3>
-        <p class="md-body-medium text-on-surface-variant">
-          Teams group users and machine accounts and give them roles on repositories.
-          Managing teams is not available in this version yet.
-        </p>
-      </section>
+        :name="name"
+      />
     </div>
   </section>
 </template>

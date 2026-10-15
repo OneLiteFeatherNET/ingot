@@ -37,6 +37,7 @@ describe('AccessView', () => {
   let wrapper
   let router
   let principals
+  let teams
 
   const mountView = async (props, url = '/access/users') => {
     router = createRouter({
@@ -56,7 +57,11 @@ describe('AccessView', () => {
       list: vi.fn().mockResolvedValue({ data: [] }),
       get: vi.fn()
     }
-    holder.session = { client: ref({ identity: { principals } }) }
+    teams = {
+      list: vi.fn().mockResolvedValue({ data: [] }),
+      get: vi.fn()
+    }
+    holder.session = { client: ref({ identity: { principals, teams } }) }
   })
 
   afterEach(() => {
@@ -108,10 +113,16 @@ describe('AccessView', () => {
     expect(router.currentRoute.value.name).toBe('access-teams')
   })
 
-  it('shows the Teams tab as an entry with a note, not as an empty page', async () => {
+  it('lists the teams on the teams tab', async () => {
     await mountView({ tab: 'teams' }, '/access/teams')
 
-    expect(wrapper.find('[data-test="teams"]').text()).toContain('Teams group users and machine accounts')
-    expect(principals.list, 'the team page loads no principals').not.toHaveBeenCalled()
+    expect(teams.list).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-test="teams"]').exists()).toBe(true)
+  })
+
+  it('loads no principals for the teams tab', async () => {
+    await mountView({ tab: 'teams' }, '/access/teams')
+
+    expect(principals.list, 'the team list needs no principals').not.toHaveBeenCalled()
   })
 })
