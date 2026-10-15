@@ -182,7 +182,7 @@ internal class IdentityAdminIntegrationTest : ReposiliteSpecification() {
         post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "operators")).asString()
         put(identity("/teams/operators/members")).basicAuth(admin.first, admin.second).body(mapOf("members" to listOf("ci-bot"))).asString()
         put(identity("/teams/operators/grants")).basicAuth(admin.first, admin.second)
-            .body(mapOf("grants" to listOf(mapOf("repository" to "releases", "role" to "READ")))).asString()
+            .body(mapOf("grants" to listOf(mapOf("repository" to "releases", "pathPrefix" to "com", "role" to "READ")))).asString()
         put(identity("/teams/operators/instance-admin")).basicAuth(admin.first, admin.second).asString()
 
         // when
