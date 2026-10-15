@@ -219,7 +219,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
           v-if="shownTags.length > 0"
           role="group"
           aria-label="Filter by tag"
-          class="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          class="-mx-4 -mt-2 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <MdChip
             v-for="tag in shownTags"

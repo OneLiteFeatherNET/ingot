@@ -192,6 +192,13 @@ describe('RepositoryOverview layout', () => {
     expect(wrapper.find('[role="status"]').text()).toBe('1 repositories')
   })
 
+  it('gives the chip row vertical padding and a negative top margin, so its focus rings and touch targets are not clipped', async () => {
+    await mountAt('/')
+
+    const row = wrapper.find('[role="group"][aria-label="Filter by tag"]')
+    expect(row.classes()).toEqual(expect.arrayContaining(['overflow-x-auto', 'pt-2', 'pb-2', '-mt-2']))
+  })
+
 })
 
 describe('RepositoryOverview search', () => {
