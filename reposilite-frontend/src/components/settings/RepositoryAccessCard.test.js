@@ -136,7 +136,7 @@ describe('RepositoryAccessCard', () => {
     })
 
     it('shows the effective actions as chips', () => {
-      expect(row('alice').findAll('[data-test="action"]').map(chip => chip.text())).toEqual(['READ', 'WRITE'])
+      expect(row('alice').findAll('[data-test="action"]').map(chip => chip.text())).toEqual(['Read', 'Write'])
     })
 
     it('marks a disabled principal', () => {
@@ -172,7 +172,19 @@ describe('RepositoryAccessCard', () => {
 
       expect(admin.get('[data-test="instance-admin"]').text()).toBe('Instance admin')
       expect(admin.get('[data-test="via-instance-admin"]').text()).toBe('Via instance admin')
-      expect(admin.findAll('[data-test="action"]').map(chip => chip.text())).toContain('INSTANCE_ADMIN')
+    })
+
+    it('shows plain labels for the effective actions and never the raw action names', () => {
+      const labels = row('root').findAll('[data-test="action"]').map(chip => chip.text())
+
+      expect(labels).toEqual(['Read', 'Write', 'Delete', 'Manage repository', 'Instance admin'])
+    })
+
+    it('shows an action it has no label for as it is', async () => {
+      install({ access: { ...ACCESS, entries: [{ ...ACCESS.entries[0], effective: ['READ', 'AUDIT'] }] } })
+      wrapper = await mountCard()
+
+      expect(row('alice').findAll('[data-test="action"]').map(chip => chip.text())).toEqual(['Read', 'AUDIT'])
     })
 
     it('does not mark a principal that is no instance admin', () => {

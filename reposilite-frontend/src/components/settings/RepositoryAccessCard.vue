@@ -46,6 +46,15 @@ const allowed = computed(() => isManager?.value === true)
 
 const VISIBILITY_LABELS = { PUBLIC: 'Public', HIDDEN: 'Hidden', PRIVATE: 'Private' }
 const KIND_LABELS = { USER: 'User', MACHINE: 'Machine' }
+// The effective actions come as backend names; an unknown one is shown as it is.
+const ACTION_LABELS = {
+  READ: 'Read',
+  WRITE: 'Write',
+  DELETE: 'Delete',
+  MANAGE_REPOSITORY: 'Manage repository',
+  INSTANCE_ADMIN: 'Instance admin'
+}
+const actionLabel = (action) => ACTION_LABELS[action] ?? action
 
 const access = ref(null)
 const status = ref('loading')
@@ -185,7 +194,7 @@ const entries = computed(() => access.value?.entries ?? [])
             :key="action"
             data-test="action"
           >
-            {{ action }}
+            {{ actionLabel(action) }}
           </TokenTag>
         </div>
 
