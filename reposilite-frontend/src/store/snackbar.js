@@ -75,9 +75,14 @@ export function createSnackbarQueue({ timers = systemTimers } = {}) {
 
   /**
    * Adds a notice to the queue and returns its id. It is shown at once when nothing else is
-   * on screen, otherwise after the notices ahead of it have been dismissed.
+   * on screen, otherwise after the notices ahead of it have been dismissed. A notice without
+   * text is ignored and yields `null`.
    */
   function enqueue({ message, tone = 'info', action = null, duration }) {
+    // A notice without text would be an empty bar on screen. Nothing is shown for it.
+    if (!message || !String(message).trim()) {
+      return null
+    }
     const last = entries.value[entries.value.length - 1]
     if (last && last.message === message && last.tone === tone) {
       // A repeat of the notice on screen gets a fresh timer; a repeat of a waiting notice is

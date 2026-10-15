@@ -22,6 +22,35 @@ import { createSnackbarQueue, AUTO_DISMISS_MS } from './snackbar'
 const ERROR_MS = 10000
 const WARNING_MS = 6000
 
+describe('snackbar notices without text', () => {
+  it('never shows a notice whose message is empty', () => {
+    const queue = createSnackbarQueue()
+
+    queue.enqueue({ message: '', tone: 'info' })
+
+    expect(queue.current.value, 'an empty bar must not be drawn over the page').toBeNull()
+    expect(queue.entries.value).toHaveLength(0)
+  })
+
+  it('never shows a notice whose message is only whitespace or missing', () => {
+    const queue = createSnackbarQueue()
+
+    queue.enqueue({ message: '   ', tone: 'error' })
+    queue.enqueue({ tone: 'warning' })
+
+    expect(queue.entries.value, 'blank notices are dropped, not queued').toHaveLength(0)
+  })
+
+  it('keeps a real notice that follows an empty one', () => {
+    const queue = createSnackbarQueue()
+
+    queue.enqueue({ message: '', tone: 'info' })
+    queue.enqueue({ message: 'Signed out', tone: 'info' })
+
+    expect(queue.current.value?.message).toBe('Signed out')
+  })
+})
+
 // Each test builds its own queue and its own fake clock, so no state or timer carries over.
 describe('snackbar queue', () => {
   let queue

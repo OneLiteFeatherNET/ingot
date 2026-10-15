@@ -18,7 +18,9 @@
  * The height of the bottom navigation bar, without the device's safe area. The page publishes
  * it as the CSS variable --app-bottom-bar-height on the document root, so that fixed overlays
  * such as the snackbar can sit above the bar. Whether the bar is on screen at the current
- * width is left to CSS: the overlay only reads the variable below 600px.
+ * width is left to CSS. Below 600px the overlay lifts above the bar by this height. From 600px
+ * the navigation rail takes its place at the left, and it is as wide as this height, so the
+ * overlay steps right by the same amount.
  */
 export const BOTTOM_BAR_HEIGHT = 80
 

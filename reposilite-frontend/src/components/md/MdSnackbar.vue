@@ -41,7 +41,7 @@ const isError = computed(() => current.value?.tone === 'error')
 
 <template>
   <div
-    class="pointer-events-none fixed inset-x-4 bottom-4 max-[600px]:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))] z-[1100] flex justify-center md:inset-x-auto md:bottom-6 md:left-6 md:justify-start"
+    class="pointer-events-none fixed inset-x-4 bottom-4 max-[600px]:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))] z-[1100] flex justify-center min-[600px]:inset-x-auto min-[600px]:bottom-6 min-[600px]:left-[calc(var(--app-bottom-bar-height,0px)+1.5rem)] min-[600px]:justify-start"
   >
     <Transition name="md-snackbar">
       <div
