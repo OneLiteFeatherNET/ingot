@@ -18,10 +18,11 @@
 import { and, isIntegerControl, isNumberControl, isStringControl, isEnumControl, not, or, rankWith } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { descriptionText } from './description.js'
+import { isSensitive } from './sensitive.js'
 
 /*
  * Outlined text field for a string, a number or an integer. It replaces the vanilla input for
@@ -42,15 +43,13 @@ export default {
     const path = computed(() => input.control.value.path)
     const numeric = computed(() => ['number', 'integer'].includes(input.control.value.schema?.type))
 
-    // A secret is a string whose property key names a secret or a password, or one in the password
-    // format. It is masked until the user reveals it with the toggle in the trailing icon.
-    const secret = computed(() => {
-      if (numeric.value) return false
-      const key = String(path.value ?? '').split('.').pop()
-      return input.control.value.schema?.format === 'password' || /secret|password/i.test(key)
-    })
+    // A secret is a string whose key or schema marks it as one (see sensitive.js). It is masked until
+    // the user reveals it with the toggle in the trailing icon.
+    const secret = computed(() => !numeric.value && isSensitive(path.value, input.control.value.schema))
     const revealed = ref(false)
     const toggleReveal = () => { revealed.value = !revealed.value }
+    // Another entry, or another variant, is another value: it starts masked again.
+    watch(path, () => { revealed.value = false })
     const inputType = computed(() => {
       if (secret.value && !revealed.value) return 'password'
       return numeric.value ? 'number' : 'text'
@@ -96,6 +95,8 @@ export default {
     :label="control.label"
     variant="outlined"
     :type="inputType"
+    :autocomplete="secret ? 'new-password' : undefined"
+    :spellcheck="secret ? 'false' : undefined"
     :supporting-text="descriptionText(control.description)"
     :error="Boolean(control.errors)"
     :error-text="control.errors || ''"

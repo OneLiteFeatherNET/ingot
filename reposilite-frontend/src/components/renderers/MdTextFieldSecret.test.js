@@ -105,6 +105,64 @@ describe('MdTextFieldRenderer secrets', () => {
     expect(toggleOf(wrapper).element.closest('[aria-hidden="true"]')).toBeNull()
   })
 
+  it('masks an access key and an endpoint with the same toggle', () => {
+    for (const key of ['accessKey', 'endpoint']) {
+      const wrapper = mountField(key, { type: 'string' }, { [key]: 'value' })
+
+      expect(wrapper.find('input').attributes('type'), key).toBe('password')
+      expect(toggleOf(wrapper).exists(), key).toBe(true)
+    }
+  })
+
+  it('leaves the bucket, the region and the id visible', () => {
+    for (const key of ['bucketName', 'region', 'id']) {
+      const wrapper = mountField(key, { type: 'string' }, { [key]: 'value' })
+
+      expect(wrapper.find('input').attributes('type'), key).toBe('text')
+    }
+  })
+
+  it('asks the browser not to fill a masked secret', () => {
+    const wrapper = mountField('secretKey', { type: 'string' })
+
+    expect(wrapper.find('input').attributes('autocomplete')).toBe('new-password')
+  })
+
+  it('turns off spellcheck for a masked secret', () => {
+    const wrapper = mountField('secretKey', { type: 'string' })
+
+    expect(wrapper.find('input').attributes('spellcheck')).toBe('false')
+  })
+
+  it('leaves autocomplete and spellcheck alone for an ordinary string', () => {
+    const wrapper = mountField('bucket', { type: 'string' }, { bucket: 'releases' })
+
+    expect(wrapper.find('input').attributes('autocomplete')).toBeUndefined()
+    expect(wrapper.find('input').attributes('spellcheck')).not.toBe('false')
+  })
+
+  it('masks again when the control is bound to another property', async () => {
+    const schema = { type: 'object', properties: { secretKey: { type: 'string' }, accessKey: { type: 'string' } } }
+    const data = { secretKey: 'hunter2', accessKey: 'AKIA' }
+    const wrapper = mount(JsonForms, {
+      props: {
+        data,
+        schema,
+        uischema: { type: 'Control', scope: '#/properties/secretKey', label: 'Field' },
+        renderers,
+        config: { showUnfocusedDescription: true },
+        ajv: markRaw(createAjv({ useDefaults: true }))
+      }
+    })
+    await wrapper.find('button[aria-label="Show secret"]').trigger('click')
+    expect(wrapper.find('input').attributes('type')).toBe('text')
+
+    await wrapper.setProps({ uischema: { type: 'Control', scope: '#/properties/accessKey', label: 'Field' } })
+
+    expect(wrapper.find('input').attributes('type')).toBe('password')
+    expect(wrapper.find('button[aria-label="Show secret"]').exists()).toBe(true)
+  })
+
   it('still writes the typed secret into the data', async () => {
     const wrapper = mountField('secretKey', { type: 'string' })
 
