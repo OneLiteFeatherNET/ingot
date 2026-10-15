@@ -18,6 +18,7 @@ import { describe, it, expect } from 'vitest'
 import {
   createTokenStore,
   normalizeRoutePath,
+  repositoryOfRoutePath,
   checkRouteDraft,
   validateTokenName,
   isDraftDirty
@@ -177,6 +178,18 @@ describe('one-time secret', () => {
     store.dismissSecret()
 
     expect(store.secret.value).toBeNull()
+  })
+})
+
+describe('repository of a route path', () => {
+  it('is the first segment of the path, which names the repository', () => {
+    expect(repositoryOfRoutePath('/releases/com/example')).toBe('releases')
+    expect(repositoryOfRoutePath('snapshots')).toBe('snapshots')
+  })
+
+  it('is empty for the root path and for a blank path', () => {
+    expect(repositoryOfRoutePath('/')).toBe('')
+    expect(repositoryOfRoutePath('  ')).toBe('')
   })
 })
 

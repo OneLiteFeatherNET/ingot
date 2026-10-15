@@ -50,6 +50,10 @@ export const normalizeRoutePath = (path) => {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
 }
 
+/** The repository a route path belongs to: its first segment, or '' for the root and for a blank path. */
+export const repositoryOfRoutePath = (path) =>
+  normalizeRoutePath(path).split('/').filter(segment => segment !== '')[0] ?? ''
+
 /**
  * Checks the route draft against the routes the token already has. The route being edited is
  * passed as `original` and is not counted as a conflict with itself.

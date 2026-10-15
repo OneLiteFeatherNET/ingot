@@ -15,9 +15,10 @@
   -->
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { createErrorToast } from '../../helpers/toast'
 import { useTokens, checkRouteDraft, validateTokenName, isDraftDirty } from '../../store/tokens'
+import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { property } from '../../helpers/vue-extensions'
 import { editorFromToken, tokenFromEditor } from '../../router/url-state'
 import PencilIcon from '../icons/PencilIcon.vue'
@@ -70,6 +71,23 @@ const {
   fetchTokens, createToken, saveTokenMeta, saveRoute, removeRoute, deleteToken, regenerateSecret,
   groupRoutes, tokenIsManager, toMs, errorMessage
 } = useTokens()
+
+const configuration = inject(configurationStoreKey, null) ?? useConfiguration().store
+
+/*
+ * The repositories the route picker offers: the ones the server has saved, so a route never points at
+ * a repository that only exists as a draft. Null until the settings have loaded.
+ */
+const repositoryIds = computed(() => {
+  const saved = configuration.savedConfiguration('maven')
+  return saved ? (saved.repositories ?? []).map(repository => repository.id) : null
+})
+
+// The saved settings are fetched the first time a route is edited. Once they are loaded they are not
+// fetched again here, so an edit in progress in the settings page is never replaced.
+const loadRepositories = () => {
+  if (configuration.domains.value.length === 0) configuration.fetchConfiguration()
+}
 
 watch(
   () => props.selectedTab,
@@ -175,8 +193,14 @@ const saveToken = (token) => {
 const openRoute = (token, route) => startEditor(`route:${tid(token)}:${route.path}`, {
   path: route.path, read: route.read, write: route.write, original: route.path
 })
-const editRoute = (token, route) => guard(() => openRoute(token, route))
-const addRoute = (token) => guard(() => startEditor(`newroute:${tid(token)}`, { path: '', read: true, write: false }))
+const editRoute = (token, route) => {
+  loadRepositories()
+  guard(() => openRoute(token, route))
+}
+const addRoute = (token) => {
+  loadRepositories()
+  guard(() => startEditor(`newroute:${tid(token)}`, { path: '', read: true, write: false }))
+}
 
 const persistRoute = (token) => {
   const check = checkRouteDraft(token, draft.value)
@@ -460,6 +484,7 @@ watch([loaded, () => props.openToken], openFromAddress, { immediate: true })
               v-model:read="draft.read"
               v-model:write="draft.write"
               submit-label="Save"
+              :repositories="repositoryIds"
               :error="routeError"
               @submit="persistRoute(token)"
               @cancel="close"
@@ -484,6 +509,7 @@ watch([loaded, () => props.openToken], openFromAddress, { immediate: true })
             v-model:read="draft.read"
             v-model:write="draft.write"
             submit-label="Add"
+            :repositories="repositoryIds"
             :error="routeError"
             @submit="persistRoute(token)"
             @cancel="close"

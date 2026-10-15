@@ -15,12 +15,14 @@
   -->
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from './SegmentedControl.vue'
 import SegmentedOption from './SegmentedOption.vue'
 import TokenFormRow from './TokenFormRow.vue'
+import { normalizeRoutePath, repositoryOfRoutePath } from '../../store/tokens'
 
 const path = defineModel('path', { type: String, default: '' })
 const read = defineModel('read', { type: Boolean, default: false })
@@ -40,25 +42,107 @@ const props = defineProps({
   error: {
     type: Object,
     default: null
+  },
+  /**
+   * The ids of the repositories the server has saved, or null while they are not known. The picker
+   * offers exactly these, so a route cannot name a repository that does not exist.
+   */
+  repositories: {
+    type: Array,
+    default: null
   }
 })
 
 defineEmits(['submit', 'cancel', 'edit-existing'])
 
-const pathError = computed(() => !!props.error && props.error.field !== 'access')
+// A value no repository id can take (ids allow no tilde), so it cannot clash with one.
+const CUSTOM = '~custom'
+
+/*
+ * The path is a repository only when it is exactly "/<id>" for a saved id. Anything below a repository,
+ * or a name that is not saved, is a custom path, typed in full. The choice the user makes wins over
+ * the path, so the field does not change its mode while the user is typing into it.
+ */
+const chosenCustom = ref(null)
+
+const isRepositoryPath = (value) => {
+  const repository = repositoryOfRoutePath(value)
+  return repository !== '' &&
+    normalizeRoutePath(value) === `/${repository}` &&
+    (props.repositories ?? []).includes(repository)
+}
+
+const custom = computed(() => chosenCustom.value ?? (path.value !== '' && !isRepositoryPath(path.value)))
+
+const choice = computed(() => (custom.value ? CUSTOM : repositoryOfRoutePath(path.value)))
+
+const choiceOptions = computed(() => [
+  ...(choice.value === '' ? [{ value: '', label: 'Choose a repository' }] : []),
+  ...(props.repositories ?? []).map(id => ({ value: id, label: id })),
+  { value: CUSTOM, label: 'Custom path' }
+])
+
+const choose = (value) => {
+  if (value === '') return
+  if (value === CUSTOM) {
+    chosenCustom.value = true
+    return
+  }
+  chosenCustom.value = false
+  path.value = `/${value}`
+}
+
+const typePath = (value) => {
+  chosenCustom.value = true
+  path.value = value
+}
+
+// The path field is shown for a custom path, and always when the repositories are not known.
+const showPathField = computed(() => custom.value || props.repositories === null)
+
+// A check failed on the path itself, which shows on the field. Otherwise the message is shown below.
+const pathError = computed(() => !!props.error && props.error.field !== 'access' && showPathField.value)
+
+/*
+ * A custom path whose first segment is no saved repository matches nothing, so the editor says so. It
+ * stays a warning, not an error: the list may be out of date, and the route can still be saved.
+ */
+const warning = computed(() => {
+  if (!custom.value || props.repositories === null) return ''
+  const repository = repositoryOfRoutePath(path.value)
+  if (repository === '' || props.repositories.includes(repository)) return ''
+  return `There is no repository "${repository}". A route to a missing repository matches nothing.`
+})
 </script>
 
 <template>
   <TokenFormRow indent>
-    <div class="min-w-48 flex-1">
+    <div
+      v-if="repositories !== null"
+      class="min-w-48 flex-1"
+    >
+      <MdSelect
+        name="route-repository"
+        label="Repository"
+        :model-value="choice"
+        :options="choiceOptions"
+        supporting-text="Pick a saved repository, or a custom path below one."
+        @update:model-value="choose"
+      />
+    </div>
+    <div
+      v-if="showPathField"
+      class="min-w-48 flex-1"
+    >
       <MdTextField
-        v-model="path"
         name="route-path"
         label="Route path"
         variant="outlined"
+        :model-value="path"
         :supporting-text="pathError ? '' : 'Starts with a slash, for example /releases/com/example/artifact'"
         :error="pathError"
         :error-text="pathError ? error.message : ''"
+        @update:model-value="typePath"
         @keyup.enter="$emit('submit')"
       />
     </div>
@@ -95,6 +179,13 @@ const pathError = computed(() => !!props.error && props.error.field !== 'access'
     >
       Edit existing route
     </MdButton>
+    <p
+      v-if="warning"
+      role="status"
+      class="md-body-small basis-full px-4 text-warning"
+    >
+      {{ warning }}
+    </p>
     <p
       v-if="error && !pathError"
       role="alert"
