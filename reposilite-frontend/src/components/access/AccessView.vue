@@ -61,7 +61,6 @@ const ALL_TABS = [
   { key: 'ldap', label: 'LDAP', nodes: [INSTANCE_ADMIN_NODE] },
   { key: 'check', label: 'Check', nodes: ACCESS_NODES }
 ]
-]
 const TABS = computed(() => ALL_TABS.filter(tab => tab.nodes.some(node => can(node))))
 
 const select = (key) => router.push({ name: `access-${key}` })
