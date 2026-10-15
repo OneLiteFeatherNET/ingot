@@ -20,6 +20,7 @@ import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import {
   NODES,
   TEAM,
+  answer,
   confirm,
   confirmDialog,
   failure,
@@ -116,7 +117,7 @@ describe('TeamDetail', () => {
       await mountDetail()
 
       await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
-      await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+      await wrapper.find('[data-test="permission-nodes"]').findAll('button').find(button => button.text() === 'Save').trigger('click')
       await flushPromises()
 
       expect(nodes.set).toHaveBeenCalledWith(
@@ -133,7 +134,7 @@ describe('TeamDetail', () => {
       teams.get.mockClear()
 
       await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
-      await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+      await wrapper.find('[data-test="permission-nodes"]').findAll('button').find(button => button.text() === 'Save').trigger('click')
       await flushPromises()
 
       expect(teams.get).toHaveBeenCalledTimes(1)
@@ -166,6 +167,110 @@ describe('TeamDetail', () => {
       await wrapper.find('[data-test="edit-details"]').trigger('click')
 
       expect(wrapper.find('[data-test="save-details"]').attributes('data-variant')).toBe('tonal')
+    })
+  })
+
+  describe('inheritance', () => {
+    const TREE = {
+      ops: { parents: ['developers'], nodes: [{ node: 'ingot.admin.maintenance', allowed: true }] },
+      developers: { parents: ['staff'], nodes: [{ node: 'ingot.repository.releases.read', allowed: true }] },
+      staff: { parents: [], nodes: [{ node: 'ingot.admin.dashboard', allowed: false }] }
+    }
+
+    const arrangeOps = (tree = TREE) => {
+      teams.get.mockResolvedValue({
+        data: { ...TEAM, name: 'ops', parents: tree.ops.parents, children: ['release', 'qa'] },
+        headers: { etag: '"5"' }
+      })
+      teams.parents.mockImplementation(async (name) => answer({ parents: [...tree[name].parents] }, '"p1"'))
+      nodes.get.mockImplementation(async (kind, name) => answer({ nodes: tree[name].nodes.map(entry => ({ ...entry })) }, '"n1"'))
+    }
+
+    const openOps = async () => {
+      arrangeOps()
+      await mountDetail('ops')
+    }
+
+    const inheritedRows = () => wrapper.findAll('[data-test="inherited-row"]').map(row => ({
+      node: row.attributes('data-node'),
+      source: row.find('[data-test="inherited-source"]').text()
+    }))
+
+    it('shows the nodes of the parent as one level up and of the grandparent as two levels up', async () => {
+      await openOps()
+
+      expect(inheritedRows()).toEqual([
+        { node: 'ingot.repository.releases.read', source: 'from team developers, 1 level up' },
+        { node: 'ingot.admin.dashboard', source: 'from team staff, 2 levels up' }
+      ])
+    })
+
+    it('does not list the nodes of the team itself as inherited', async () => {
+      await openOps()
+
+      expect(inheritedRows().map(row => row.node)).not.toContain('ingot.admin.maintenance')
+      expect(wrapper.findAll('[data-test="node-row"]')).toHaveLength(1)
+    })
+
+    it('shows no inherited section for a team without parents', async () => {
+      await mountDetail()
+
+      expect(wrapper.find('[data-test="inherited-section"]').exists()).toBe(false)
+    })
+
+    it('warns about an ancestor that cannot be read and still shows the page', async () => {
+      arrangeOps()
+      nodes.get.mockImplementation(async (kind, name) => {
+        if (name === 'staff') throw failure(500, 'Store unavailable')
+        return answer({ nodes: TREE[name].nodes }, '"n1"')
+      })
+      await mountDetail('ops')
+
+      expect(wrapper.find('[data-test="inherited-warning"]').text())
+        .toBe('Could not read the nodes of team staff: Store unavailable')
+      expect(inheritedRows().map(row => row.source)).toEqual(['from team developers, 1 level up'])
+      expect(wrapper.find('#team-title').text()).toBe('ops')
+    })
+
+    it('shows the parents card with the parents of the team', async () => {
+      await openOps()
+
+      const card = wrapper.find('[data-test="team-parents"]')
+
+      expect(card.find('h4').text()).toBe('Inherits from')
+      expect(card.findAll('[data-test="parent"]').map(chip => chip.text())).toEqual(['developers'])
+    })
+
+    it('shows the child teams from the detail as links', async () => {
+      await openOps()
+
+      expect(wrapper.findAll('[data-test="child-team"]').map(link => link.attributes('href')))
+        .toEqual(['/access/teams/release', '/access/teams/qa'])
+    })
+
+    it('shows the empty state of the child teams for a team nobody inherits from', async () => {
+      await mountDetail()
+
+      expect(wrapper.find('[data-test="children-empty"]').exists()).toBe(true)
+    })
+
+    it('reads the team again and tells the page after the parents were saved', async () => {
+      await openOps()
+      teams.get.mockClear()
+
+      await wrapper.find('button[aria-label="Remove developers"]').trigger('click')
+      await wrapper.find('[data-test="save-parents"]').trigger('click')
+      await flushPromises()
+
+      expect(teams.setParents).toHaveBeenCalledWith('ops', [], '"p1"')
+      expect(teams.get).toHaveBeenCalledTimes(1)
+      expect(wrapper.emitted('changed')).toHaveLength(1)
+    })
+
+    it('keeps the parents save tonal so the node editor save is the filled button', async () => {
+      await mountDetail()
+
+      expect(wrapper.find('[data-test="save-parents"]').attributes('data-variant')).toBe('tonal')
     })
   })
 

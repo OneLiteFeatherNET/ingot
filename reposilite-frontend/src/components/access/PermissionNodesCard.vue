@@ -21,6 +21,8 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import NodeEditor from './nodes/NodeEditor.vue'
 import { permissionNodesApi } from './nodes/permissionNodesApi'
+import { teamParentsApi } from './nodes/teamParentsApi'
+import { useInheritedNodes } from './nodes/useInheritedNodes'
 import { usePermissionNodes } from './nodes/usePermissionNodes'
 
 /*
@@ -31,6 +33,11 @@ import { usePermissionNodes } from './nodes/usePermissionNodes'
  * Props:
  *   subjectKind  principal or team
  *   name         the user, machine account or team
+ *   inheritFrom  the teams whose nodes apply to the subject without being its own: the teams of a
+ *                principal, the parents of a team. Their ancestors are read as well, and all of
+ *                it is shown read only under the editor.
+ *   inheritDepth the depth of the inheritFrom teams: 0 for the teams a principal belongs to, 1
+ *                for the parents of a team
  * Emits saved after the nodes were written, so the page can read the subject again (a badge such
  * as instance admin may depend on its nodes).
  */
@@ -43,6 +50,14 @@ const props = defineProps({
   name: {
     type: String,
     required: true
+  },
+  inheritFrom: {
+    type: Array,
+    default: () => []
+  },
+  inheritDepth: {
+    type: Number,
+    default: 1
   }
 })
 
@@ -57,6 +72,11 @@ const nodes = usePermissionNodes(
 )
 const { draft, saved, status, failure, saving, rowErrors, formError, conflict, catalog, templates } = nodes
 
+const inherited = useInheritedNodes(
+  () => ({ teams: props.inheritFrom, depth: props.inheritDepth }),
+  () => teamParentsApi(client.value)
+)
+
 const loading = computed(() => status.value === 'loading')
 const missing = computed(() => status.value === 'missing')
 const failed = computed(() => status.value === 'error')
@@ -70,6 +90,13 @@ watch(() => [props.subjectKind, props.name], () => {
   nodes.reset()
   nodes.load()
 })
+
+// The inherited nodes follow the teams they come from, and the subject.
+watch(
+  () => JSON.stringify([props.subjectKind, props.name, props.inheritDepth, props.inheritFrom]),
+  () => inherited.load(),
+  { immediate: true }
+)
 
 // A rejected write is reported as a toast unless the editor already shows it on the rows.
 const settle = (result) => {
@@ -137,6 +164,8 @@ const overwrite = async () => settle(await nodes.overwriteConflict())
       :catalog="catalog"
       :templates="templates"
       :conflict="conflict"
+      :inherited="inherited.entries.value"
+      :inherited-warnings="inherited.warnings.value"
       @update:nodes="nodes.setDraft"
       @save="save()"
       @discard="nodes.discard()"

@@ -321,6 +321,13 @@ const createClient = (defaultName, defaultSecret) => {
         revokeInstanceAdmin(name, etag) {
           return axios.delete(createURL(`/api/identity/teams/${encodeURIComponent(name)}/instance-admin`), conditional(etag))
         },
+        // The parent teams a team inherits from. parents() resolves with the ETag header; setParents() sends it back as If-Match.
+        parents(name) {
+          return get(`/api/identity/teams/${encodeURIComponent(name)}/parents`)
+        },
+        setParents(name, parents, etag) {
+          return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/parents`), { parents }, conditional(etag))
+        },
       },
       // The permission nodes of a principal or a team (kind is "principals" or "teams"). get() resolves
       // with the ETag header; set() sends it back as If-Match. The catalog and the templates feed the editor.

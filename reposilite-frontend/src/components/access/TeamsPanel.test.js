@@ -39,9 +39,9 @@ const TeamDetailStub = {
 }
 
 const TEAMS = [
-  { name: 'developers', description: 'Everyone who writes code', externalRef: null, memberCount: 4, grantCount: 2, instanceAdmin: false },
-  { name: 'admins', description: 'Runs the instance', externalRef: null, memberCount: 1, grantCount: 0, instanceAdmin: true },
-  { name: 'release', description: 'Ships the artifacts', externalRef: 'idp:release', memberCount: 1, grantCount: 1, instanceAdmin: false }
+  { name: 'developers', description: 'Everyone who writes code', externalRef: null, memberCount: 4, nodeCount: 2, instanceAdmin: false },
+  { name: 'admins', description: 'Runs the instance', externalRef: null, memberCount: 1, nodeCount: 0, instanceAdmin: true },
+  { name: 'release', description: 'Ships the artifacts', externalRef: 'idp:release', memberCount: 1, nodeCount: 1, instanceAdmin: false }
 ]
 
 describe('TeamsPanel', () => {
@@ -93,11 +93,11 @@ describe('TeamsPanel', () => {
     expect(names()).toEqual(['developers', 'admins', 'release'])
   })
 
-  it('shows the member count and the grant count of a team', async () => {
+  it('shows the member count and the node count of a team', async () => {
     await mountPanel()
 
-    expect(row('developers').find('[data-test="counts"]').text()).toBe('4 members, 2 grants')
-    expect(row('release').find('[data-test="counts"]').text()).toBe('1 member, 1 grant')
+    expect(row('developers').find('[data-test="counts"]').text()).toBe('4 members, 2 nodes')
+    expect(row('release').find('[data-test="counts"]').text()).toBe('1 member, 1 node')
   })
 
   it('shows the description of a team', async () => {
@@ -121,7 +121,7 @@ describe('TeamsPanel', () => {
   })
 
   it('shows no instance admin chip when the list entry lacks the flag', async () => {
-    teams.list.mockResolvedValue({ data: [{ name: 'developers', description: '', externalRef: null, memberCount: 4, grantCount: 2 }] })
+    teams.list.mockResolvedValue({ data: [{ name: 'developers', description: '', externalRef: null, memberCount: 4, nodeCount: 2 }] })
     await mountPanel()
 
     expect(row('developers').find('[data-test="admin-badge"]').exists()).toBe(false)

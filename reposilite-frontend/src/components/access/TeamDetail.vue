@@ -26,14 +26,17 @@ import ConflictDialog from '../settings/ConflictDialog.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
 import PermissionNodesCard from './PermissionNodesCard.vue'
+import TeamChildrenCard from './TeamChildrenCard.vue'
 import TeamLegacyGrants from './TeamLegacyGrants.vue'
 import TeamMembersCard from './TeamMembersCard.vue'
+import TeamParentsCard from './TeamParentsCard.vue'
 import { manualMembers } from './accessTeams'
 import { useTeamDetail } from './useTeamDetail'
 
 /*
  * The detail of one team: the header (name, description, external reference, the instance admin
- * switch and the delete action), the members, the permission nodes and the legacy role grants
+ * switch and the delete action), the members, the parent teams it inherits from, the child teams,
+ * the permission nodes (with the nodes inherited from the ancestors) and the legacy role grants
  * (read only).
  *
  * Every write sends the entity tag of the detail as If-Match. A 412 opens the conflict dialog.
@@ -95,6 +98,12 @@ const setMembers = (names) => commit(etag => api.value.setMembers(props.name, na
 // The nodes have an entity tag of their own: after a save the team is read again, so the instance
 // admin badge and the counts follow.
 const nodesSaved = () => {
+  team.load()
+  emit('changed')
+}
+
+// New parents change what the team inherits and, through the entity tag, the detail: read it again.
+const parentsSaved = () => {
   team.load()
   emit('changed')
 }
@@ -365,9 +374,16 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
         :principals-error="principalsError"
         :commit="setMembers"
       />
+      <TeamParentsCard
+        :name="name"
+        @saved="parentsSaved()"
+      />
+      <TeamChildrenCard :names="detail.children" />
       <PermissionNodesCard
         subject-kind="team"
         :name="name"
+        :inherit-from="detail.parents"
+        :inherit-depth="1"
         @saved="nodesSaved()"
       />
       <TeamLegacyGrants :grants="detail.grants" />

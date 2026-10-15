@@ -58,7 +58,7 @@ const count = (value, noun) => `${value ?? 0} ${noun}${value === 1 ? '' : 's'}`
 const rows = computed(() => filterTeams(teams.value, query.value).map(team => ({
   team,
   admin: isInstanceAdmin(team),
-  counts: `${count(team.memberCount, 'member')}, ${count(team.grantCount, 'grant')}`,
+  counts: `${count(team.memberCount, 'member')}, ${count(team.nodeCount, 'node')}`,
   href: router.resolve({ name: 'access-team', params: { name: team.name } }).href
 })))
 

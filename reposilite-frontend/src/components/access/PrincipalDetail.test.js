@@ -21,7 +21,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import { setClock, resetClock } from '../../helpers/clock'
 import PrincipalDetail from './PrincipalDetail.vue'
-import { NODES, makeNodesApi } from './teamTestKit'
+import { NODES, answer, failure, makeNodesApi } from './teamTestKit'
 
 // The session is replaced by a ref of the client, so each test decides what the server answers.
 const holder = vi.hoisted(() => ({ session: null }))
@@ -72,6 +72,13 @@ const CI = {
   tokens: [{ name: 'deploy', lastUsedAt: '2026-10-14T12:00:00Z', lastUsedIp: '192.0.2.10' }]
 }
 
+// The team tree behind the principals: developers inherits from staff, release stands alone.
+const TEAM_TREE = {
+  developers: { parents: ['staff'], nodes: [{ node: 'ingot.repository.releases.read', allowed: true }] },
+  release: { parents: [], nodes: [{ node: 'ingot.repository.releases.deploy', allowed: true }] },
+  staff: { parents: [], nodes: [{ node: 'ingot.admin.dashboard', allowed: false }] }
+}
+
 const LEGACY_TOKEN = {
   name: 'ci-bot',
   routes: [
@@ -87,6 +94,7 @@ describe('PrincipalDetail', () => {
   let tokensApi
   let legacyGet
   let nodes
+  let teams
 
   const mountDetail = async (props) => {
     const router = await makeRouter()
@@ -111,9 +119,15 @@ describe('PrincipalDetail', () => {
     }
     legacyGet = vi.fn().mockResolvedValue({ data: LEGACY_TOKEN })
     nodes = makeNodesApi()
+    nodes.get.mockImplementation(async (kind, name) => answer({
+      nodes: (kind === 'teams' ? TEAM_TREE[name].nodes : NODES).map(entry => ({ ...entry }))
+    }, '"n1"'))
+    teams = {
+      parents: vi.fn(async (name) => answer({ parents: [...TEAM_TREE[name].parents] }, '"p1"'))
+    }
     holder.session = {
       client: ref({
-        identity: { principals, principalTokens: vi.fn(() => tokensApi), nodes },
+        identity: { principals, principalTokens: vi.fn(() => tokensApi), nodes, teams },
         tokens: { get: legacyGet }
       })
     }
@@ -360,6 +374,65 @@ describe('PrincipalDetail', () => {
           .toBe("This token's rights come from the teams of this machine account.")
         expect(wrapper.find('[data-test="legacy-grants"]').exists()).toBe(false)
       })
+    })
+  })
+
+  describe('inherited nodes', () => {
+    const inheritedRows = () => wrapper.findAll('[data-test="inherited-row"]').map(row => ({
+      node: row.attributes('data-node'),
+      source: row.find('[data-test="inherited-source"]').text(),
+      state: row.find('[data-test="inherited-state"]').text()
+    }))
+
+    it('shows the nodes of the teams of a user as from the team, with the ancestors one level up', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(inheritedRows()).toEqual([
+        { node: 'ingot.repository.releases.read', source: 'from team developers', state: 'Allowed' },
+        { node: 'ingot.repository.releases.deploy', source: 'from team release', state: 'Allowed' },
+        { node: 'ingot.admin.dashboard', source: 'from team staff, 1 level up', state: 'Denied' }
+      ])
+    })
+
+    it('shows the same for a machine account', async () => {
+      await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
+
+      expect(inheritedRows().map(row => row.source)).toEqual(['from team developers', 'from team staff, 1 level up'])
+    })
+
+    it('takes the teams from the detail of the principal and reads each team and its parents', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(nodes.get).toHaveBeenCalledWith('teams', 'developers')
+      expect(nodes.get).toHaveBeenCalledWith('teams', 'release')
+      expect(nodes.get).toHaveBeenCalledWith('teams', 'staff')
+      expect(teams.parents).toHaveBeenCalledWith('developers')
+    })
+
+    it('keeps the direct nodes apart from the inherited ones', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.findAll('[data-test="node-row"]')).toHaveLength(NODES.length)
+    })
+
+    it('shows no inherited section for a principal without teams', async () => {
+      principals.get.mockResolvedValue({ data: { ...ALICE, teams: [] }, headers: { etag: '"1"' } })
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.find('[data-test="inherited-section"]').exists()).toBe(false)
+    })
+
+    it('warns about a team that cannot be read and still shows the page and the other teams', async () => {
+      nodes.get.mockImplementation(async (kind, name) => {
+        if (kind === 'teams' && name === 'release') throw failure(404, "Team 'release' not found")
+        return answer({ nodes: kind === 'teams' ? TEAM_TREE[name].nodes : NODES }, '"n1"')
+      })
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.find('[data-test="inherited-warning"]').text())
+        .toBe("Could not read the nodes of team release: Team 'release' not found")
+      expect(inheritedRows().map(row => row.source)).toEqual(['from team developers', 'from team staff, 1 level up'])
+      expect(wrapper.find('#principal-title').text()).toBe('Alice Example')
     })
   })
 })

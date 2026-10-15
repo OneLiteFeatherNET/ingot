@@ -33,6 +33,11 @@ defineProps({
   direct: {
     type: Array,
     default: () => []
+  },
+  /** One line for each team whose nodes could not be read. */
+  warnings: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -75,7 +80,19 @@ const regionId = `inherited-${useId()}`
       <p class="md-body-medium text-on-surface-variant">
         These nodes come from teams and cannot be changed here. A direct node that matches the same permission decides first.
       </p>
-      <ul class="flex flex-col divide-y divide-outline-variant rounded-corner-medium border border-outline-variant">
+      <p
+        v-for="warning in warnings"
+        :key="warning"
+        role="alert"
+        class="md-body-medium text-warning"
+        data-test="inherited-warning"
+      >
+        {{ warning }}
+      </p>
+      <ul
+        v-if="inherited.length > 0"
+        class="flex flex-col divide-y divide-outline-variant rounded-corner-medium border border-outline-variant"
+      >
         <li
           v-for="entry in inherited"
           :key="`${entry.source}:${entry.subject}:${entry.node}`"

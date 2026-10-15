@@ -542,6 +542,20 @@ describe('NodeEditor', () => {
 
       expect(wrapper.find('[data-test="inherited-section"]').exists()).toBe(false)
     })
+
+    it('shows a warning line for a team that could not be read', () => {
+      mountEditor({ inherited: INHERITED(), inheritedWarnings: ['Could not read the nodes of team staff: Boom'] })
+
+      expect(wrapper.find('[data-test="inherited-warning"]').text()).toBe('Could not read the nodes of team staff: Boom')
+      expect(wrapper.findAll('[data-test="inherited-row"]')).toHaveLength(INHERITED().length)
+    })
+
+    it('shows the section for a warning alone, when no inherited node could be read', () => {
+      mountEditor({ inherited: [], inheritedWarnings: ['Could not read the nodes of team staff: Boom'] })
+
+      expect(wrapper.find('[data-test="inherited-section"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="inherited-warning"]').exists()).toBe(true)
+    })
   })
 
   describe('unsaved changes', () => {

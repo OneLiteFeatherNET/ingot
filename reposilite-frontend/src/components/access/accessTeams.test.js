@@ -30,9 +30,9 @@ import {
 } from './accessTeams'
 
 const TEAMS = [
-  { name: 'developers', description: 'Everyone who writes code', memberCount: 4, grantCount: 2 },
-  { name: 'release', description: 'Ships the artifacts', memberCount: 1, grantCount: 1 },
-  { name: 'ops', description: null, memberCount: 0, grantCount: 0 }
+  { name: 'developers', description: 'Everyone who writes code', memberCount: 4, nodeCount: 2 },
+  { name: 'release', description: 'Ships the artifacts', memberCount: 1, nodeCount: 1 },
+  { name: 'ops', description: null, memberCount: 0, nodeCount: 0 }
 ]
 
 describe('filterTeams', () => {
@@ -172,5 +172,15 @@ describe('validateTeamName', () => {
 describe('teamDetailOf', () => {
   it('fills the lists a sparse answer leaves out', () => {
     expect(teamDetailOf({ name: 'qa' })).toMatchObject({ members: [], grants: [], instanceRole: false })
+  })
+
+
+  it('fills the parents and the children a sparse answer leaves out', () => {
+    expect(teamDetailOf({ name: 'qa' })).toMatchObject({ parents: [], children: [] })
+  })
+
+  it('keeps the parents and the children the server sent', () => {
+    expect(teamDetailOf({ name: 'ops', parents: ['developers'], children: ['qa'] }))
+      .toMatchObject({ parents: ['developers'], children: ['qa'] })
   })
 })

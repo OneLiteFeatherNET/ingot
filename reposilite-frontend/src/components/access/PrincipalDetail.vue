@@ -281,6 +281,8 @@ const admin = computed(() => isInstanceAdmin(detail.value))
       <PermissionNodesCard
         subject-kind="principal"
         :name="name"
+        :inherit-from="detail.teams"
+        :inherit-depth="0"
         @saved="changed()"
       />
 

@@ -32,8 +32,10 @@ const TEAM = {
   description: 'Everyone who writes code',
   externalRef: null,
   memberCount: 3,
-  grantCount: 2,
+  nodeCount: 2,
   instanceRole: false,
+  parents: [],
+  children: [],
   members: [
     { principal: 'alice', kind: 'USER', source: 'MANUAL' },
     { principal: 'bob', kind: 'USER', source: 'SYNC' },
@@ -73,7 +75,9 @@ const makeTeamsApi = (team = TEAM) => ({
     ]
   })),
   grantInstanceAdmin: vi.fn(async () => answer({ ...team, instanceRole: true })),
-  revokeInstanceAdmin: vi.fn(async () => answer({ ...team, instanceRole: false }))
+  revokeInstanceAdmin: vi.fn(async () => answer({ ...team, instanceRole: false })),
+  parents: vi.fn(async () => answer({ parents: [...(team.parents ?? [])] }, '"p1"')),
+  setParents: vi.fn(async (name, parents) => answer({ parents }, '"p2"'))
 })
 
 const NODES = [

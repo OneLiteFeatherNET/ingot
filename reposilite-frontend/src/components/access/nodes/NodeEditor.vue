@@ -56,6 +56,11 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  /** One line for each team whose nodes could not be read. */
+  inheritedWarnings: {
+    type: Array,
+    default: () => []
+  },
   /** Messages the server gave for rows, by node text. */
   rowErrors: {
     type: Object,
@@ -251,9 +256,10 @@ const stateWord = (allowed) => (allowed ? 'Allow' : 'Deny')
       />
 
       <NodeInheritedSection
-        v-if="inherited.length > 0"
+        v-if="inherited.length > 0 || inheritedWarnings.length > 0"
         :inherited="inherited"
         :direct="nodes"
+        :warnings="inheritedWarnings"
       />
     </template>
 
