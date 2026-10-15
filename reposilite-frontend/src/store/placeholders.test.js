@@ -189,3 +189,22 @@ describe('resolveMountPath', () => {
     expect(placeholders.resolveMountPath('{{REPOSILITE.BASE_PATH}}', '/ingot/')).toBe('/ingot/')
   })
 })
+
+describe('organization website', () => {
+  it('uses the website the settings configure', async () => {
+    respondWith(settingsResponse({ organizationWebsite: 'https://github.com/OneLiteFeatherNET' }))
+
+    await placeholders.loadFrontendSettings({ mountPath: '/' })
+
+    expect(placeholders.default().organizationWebsite).toBe('https://github.com/OneLiteFeatherNET')
+  })
+
+  it('is empty, not the dashboard address, when the settings cannot be had', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+
+    await placeholders.loadFrontendSettings({ mountPath: '/' })
+
+    expect(placeholders.default().organizationWebsite).toBe('')
+  })
+})

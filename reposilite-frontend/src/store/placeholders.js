@@ -161,9 +161,9 @@ export default function usePlaceholders() {
     .split(',')
     .filter(suffix => suffix.length > 0)
 
-  const organizationWebsite =
-    read('{{REPOSILITE.ORGANIZATION_WEBSITE}}', 'REPOSILITE.ORGANIZATION_WEBSITE') ||
-    location.protocol + '//' + location.host + basePath
+  // An unset website stays empty, so the hero shows no link. It must not fall back to the address of
+  // this dashboard: that is where a settings request that failed or came late would point the link.
+  const organizationWebsite = read('{{REPOSILITE.ORGANIZATION_WEBSITE}}', 'REPOSILITE.ORGANIZATION_WEBSITE')
 
   const productionUrl =
     window.location.protocol + '//' + location.host + basePath
