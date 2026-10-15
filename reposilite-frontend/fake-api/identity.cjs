@@ -64,6 +64,14 @@ const nextId = () => ++sequence
 let secretCounter = 0
 const nextSecret = (prefix) => `${prefix}-${String(++secretCounter).padStart(6, "0")}`
 
+// Token secrets look like ingot_<token id>_<24 letters and digits>. The characters come from a
+// hash of a counter (no underscore, so the secret splits cleanly), so a run always hands out the same secrets in the same order.
+let bearerCounter = 0
+const nextBearerSecret = (tokenId) => {
+  const random = crypto.createHash("sha256").update(`ingot-fake-bearer-${++bearerCounter}`).digest("base64url").replace(/-/g, "x").replace(/_/g, "y").slice(0, 24)
+  return `ingot_${tokenId}_${random}`
+}
+
 const nowIso = () => new Date().toISOString()
 const today = () => nowIso().slice(0, 10)
 
@@ -91,9 +99,10 @@ const addTeam = ({ name, description = "", externalRef = null, members = [], gra
 }
 
 const addToken = (principal, { name, description = "", createdAt = today(), expiresAt = null, scopes = null, secret, legacyRoutes = [], lastUsedAt = null, lastUsedIp = null }) => {
+  const id = 1000 + nextId()
   const token = {
-    id: 1000 + nextId(), name, description, createdAt, expiresAt, scopes, lastUsedAt, lastUsedIp,
-    secret: secret || nextSecret("ingot-fake-secret"), legacyRoutes,
+    id, name, description, createdAt, expiresAt, scopes, lastUsedAt, lastUsedIp,
+    secret: secret || nextBearerSecret(id), legacyRoutes,
   }
   principal.tokens.push(token)
   return token
@@ -113,6 +122,8 @@ const seed = () => {
   const ciBot = addPrincipal({ kind: "MACHINE", name: "ci-bot", displayName: "CI bot", createdAt: "2026-10-04T09:00:00Z", lastSeenAt: "2026-10-13T08:15:00Z" })
   addToken(ciBot, {
     name: "ci-bot",
+    // The legacy token keeps the secret it had before the bearer format existed.
+    secret: "ingot-fake-secret-000001",
     description: "Migrated from the legacy access tokens",
     createdAt: "2026-10-04",
     lastUsedAt: "2026-10-13T08:15:00Z",
@@ -191,7 +202,17 @@ const leavesNoAdmin = (change) => activeAdminCount() > 0 && activeAdminCount(cha
 
 // Identity changes are audited like the other mutations of the fake, as the signed-in admin.
 const record = (req, action, details) =>
-  audit.recordEvent({ action, actor: req.actor?.principal?.name ?? "admin", actorAddress: "10.0.0.2", details })
+  audit.recordEvent({
+    action, actor: req.actor?.principal?.name ?? "admin", actorKind: req.actor?.principal?.kind ?? "USER",
+    actorAddress: "10.0.0.2", details,
+  })
+
+// Session events name the principal they are about, which is not always the caller (a failed login
+// has none yet), so they take the actor explicitly.
+const recordSession = (action, name, details, extra = {}) =>
+  audit.recordEvent({
+    action, actor: name, actorKind: findPrincipal(name)?.kind ?? null, actorAddress: "10.0.0.2", details, ...extra,
+  })
 
 const principalTarget = (principal) => ({ principal: principal.name, kind: principal.kind })
 
@@ -381,8 +402,30 @@ const dropSessionsOf = (name) => {
 
 // Who is calling: a live cookie session, or the fake's one fixed Basic credential, which the other
 // routes of the fake accept as well and which counts as an instance admin.
+const bearerSecret = (req) => {
+  const match = /^Bearer\s+(\S+)\s*$/i.exec(req.headers.authorization || "")
+  return match ? match[1] : undefined
+}
+
+// A bearer token acts as its principal. Its scopes narrow what the principal may do, and a token
+// past its expiry is refused. Only the identity routes read this actor; the other routes of the
+// fake keep to the Basic credential.
+const resolveBearer = (req, secret) => {
+  const found = principals.flatMap(principal => principal.tokens.map(token => ({ principal, token })))
+    .find(entry => entry.token.secret === secret)
+  if (!found || found.principal.disabled) return null
+  const { principal, token } = found
+  if (token.expiresAt && Date.parse(token.expiresAt) <= Date.now()) return null
+  token.lastUsedAt = nowIso()
+  token.lastUsedIp = req.ip || null
+  const scoped = token.scopes === null || token.scopes.includes("INSTANCE_ADMIN")
+  return { via: "bearer", principal, admin: isInstanceAdmin(principal) && scoped }
+}
+
 const resolveActor = (req) => {
   if (req.headers.authorization) {
+    const secret = bearerSecret(req)
+    if (secret !== undefined) return resolveBearer(req, secret)
     const [login, password] = basicAuth(req)
     return login === "name" && password === "secret"
       ? { via: "token", principal: findPrincipal("admin") ?? null, admin: true }
@@ -497,15 +540,30 @@ router.get("/api/auth/providers", (req, res) => {
 
 router.get("/api/auth/oidc/login", (req, res) => fail(res, 404, "The example provider is not configured"))
 
+const MAX_FAILED_LOGINS = 5
+const LOGIN_RETRY_AFTER_SECONDS = 900
+const failedLogins = new Map()
+
 router.post("/api/auth/login", (req, res) => {
   const { provider, username, password } = bodyOf(req)
   if (provider !== "local") return fail(res, 400, "Unknown provider, supported: local")
   const principal = typeof username === "string" ? findPrincipal(username) : undefined
+  const attempted = typeof username === "string" ? username.trim().toLowerCase() : ""
   if (!principal || principal.password === null || principal.password !== password) {
+    // Throttling: a counter per username and a fixed Retry-After, no timers. The fake has no clock
+    // to wait out, so a correct password is the way out of the lock; it resets the counter below.
+    if ((failedLogins.get(attempted) ?? 0) >= MAX_FAILED_LOGINS) {
+      res.setHeader("Retry-After", String(LOGIN_RETRY_AFTER_SECONDS))
+      return fail(res, 429, "Too many failed attempts")
+    }
+    failedLogins.set(attempted, (failedLogins.get(attempted) ?? 0) + 1)
+    recordSession("LOGIN_FAILED", String(username ?? "").trim() || "unknown", { provider: "local" }, { success: false })
     return fail(res, 401, "Invalid credentials")
   }
+  failedLogins.delete(attempted)
   if (principal.disabled) return fail(res, 403, "This account is disabled")
   principal.lastSeenAt = nowIso()
+  recordSession("LOGIN_SUCCEEDED", principal.name, { provider: "local" })
   res.send(startSession(res, principal))
 })
 
@@ -525,6 +583,7 @@ router.post("/api/auth/refresh", (req, res) => {
 })
 
 router.post("/api/auth/logout", (req, res) => {
+  if (req.actor?.via === "cookie") recordSession("LOGOUT", req.actor.principal.name, null)
   clearSession(req, res)
   noContent(res)
 })
@@ -546,6 +605,7 @@ router.post("/api/auth/setup", (req, res) => {
   })
   admin.lastSeenAt = nowIso()
   setupRequired = false
+  recordSession("SETUP_COMPLETED", admin.name, { principal: admin.name, kind: "USER" })
   res.send(startSession(res, admin))
 })
 
@@ -585,6 +645,7 @@ identity.post("/me/password", (req, res) => {
   }
   principal.password = newPassword
   principal.mustChangePassword = false
+  record(req, "PASSWORD_CHANGED", principalTarget(principal))
   noContent(res)
 })
 
@@ -625,7 +686,7 @@ const createToken = (req, res, principal, status) => {
 const rotateToken = (res, principal, name) => {
   const token = publicTokenFields(principal, name)
   if (!token) return fail(res, 404, "Token not found")
-  token.secret = nextSecret("ingot-fake-secret")
+  token.secret = nextBearerSecret(token.id)
   token.lastUsedAt = null
   token.lastUsedIp = null
   reply(res, { token: tokenDto(token), secret: token.secret })
@@ -717,7 +778,7 @@ identity.post("/principals/:name/password", withPrincipal((req, res, principal) 
   principal.password = password
   principal.mustChangePassword = true
   dropSessionsOf(principal.name)
-  record(req, "PRINCIPAL_UPDATED", { ...principalTarget(principal), fields: ["password"] })
+  record(req, "PASSWORD_RESET", principalTarget(principal))
   noContent(res)
 }))
 

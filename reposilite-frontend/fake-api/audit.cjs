@@ -30,7 +30,14 @@ const ACTIONS = [
   'PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED',
   'TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_DELETED', 'TEAM_MEMBERSHIP_CHANGED', 'TEAM_GRANTS_CHANGED',
   'INSTANCE_ADMIN_GRANTED', 'INSTANCE_ADMIN_REVOKED',
+  'LOGIN_SUCCEEDED', 'LOGOUT', 'SESSION_REFRESH_REUSE_DETECTED', 'SETUP_COMPLETED',
+  'PASSWORD_CHANGED', 'PASSWORD_RESET',
 ]
+
+// The actors of the sample are principals, so their rows carry the kind (USER or MACHINE) the UI
+// links by. A name that is no principal (the system, a made-up login name) has no kind.
+const ACTOR_KINDS = { admin: 'USER', alice: 'USER', bob: 'USER', carol: 'USER', 'ci-bot': 'MACHINE', 'ci-deployer': 'MACHINE' }
+const withActorKind = (event) => ({ ...event, actorKind: event.actorKind !== undefined ? event.actorKind : (ACTOR_KINDS[event.actor] ?? null) })
 
 // Each template is one kind of event, with the values a real event of that kind would carry.
 const TEMPLATES = [
@@ -50,7 +57,15 @@ const TEMPLATES = [
 // stride over their count, and a longer list would make the stride skip most of them. A principal
 // target carries principal and kind, a team target carries team, as the token events carry token.
 const admin = (action, details) => ({ action, actor: 'admin', actorAddress: '10.0.0.2', repository: null, path: null, details, success: true, occurrences: 1 })
+const by = (actor, action, details, extra = {}) => ({ action, actor, actorAddress: '10.0.0.2', repository: null, path: null, details, success: true, occurrences: 1, ...extra })
 const IDENTITY_EVENTS = [
+  { hoursAgo: 1, ...by('alice', 'LOGIN_SUCCEEDED', { provider: 'local' }, { actorAddress: '198.51.100.7' }) },
+  { hoursAgo: 4, ...by('alice', 'LOGOUT', null, { actorAddress: '198.51.100.7' }) },
+  { hoursAgo: 6, ...by('alice', 'LOGIN_FAILED', { provider: 'local' }, { actorAddress: '198.51.100.7', success: false, occurrences: 2 }) },
+  { hoursAgo: 8, ...by('alice', 'SESSION_REFRESH_REUSE_DETECTED', { principal: 'alice', kind: 'USER', provider: 'local' }, { actorAddress: '203.0.113.99', success: false }) },
+  { hoursAgo: 10, ...by('alice', 'PASSWORD_CHANGED', { principal: 'alice', kind: 'USER' }, { actorAddress: '198.51.100.7' }) },
+  { hoursAgo: 12, ...by('admin', 'PASSWORD_RESET', { principal: 'bob', kind: 'USER' }) },
+  { hoursAgo: 168, ...by('admin', 'SETUP_COMPLETED', { principal: 'admin', kind: 'USER' }) },
   { hoursAgo: 2, ...admin('PRINCIPAL_CREATED', { principal: 'carol', kind: 'USER' }) },
   { hoursAgo: 3, ...admin('PRINCIPAL_UPDATED', { principal: 'alice', kind: 'USER', fields: ['displayName'] }) },
   { hoursAgo: 5, ...admin('PRINCIPAL_DISABLED', { principal: 'bob', kind: 'USER' }) },
@@ -76,11 +91,11 @@ const buildSample = (now) => {
     events.push({
       id: index + 1,
       timestamp: new Date(now - hoursAgo * HOUR_MS - (index % 5) * 60 * 1000).toISOString(),
-      ...template(version),
+      ...withActorKind(template(version)),
     })
   }
   IDENTITY_EVENTS.forEach(({ hoursAgo, ...event }, offset) => {
-    events.push({ id: events.length + 1, timestamp: new Date(now - hoursAgo * HOUR_MS - offset * 60 * 1000).toISOString(), ...event })
+    events.push({ id: events.length + 1, timestamp: new Date(now - hoursAgo * HOUR_MS - offset * 60 * 1000).toISOString(), ...withActorKind(event) })
   })
   return events.sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp) || right.id - left.id)
 }
@@ -158,7 +173,7 @@ const exportCsv = (params) => {
 /** Adds an event the stub API has just produced, such as a manual cleanup run, as the newest row. */
 const recordEvent = (event) => {
   const id = Math.max(0, ...SAMPLE.map(entry => entry.id)) + 1
-  SAMPLE.unshift({ actorAddress: null, repository: null, path: null, details: null, success: true, occurrences: 1, ...event, id, timestamp: new Date().toISOString() })
+  SAMPLE.unshift({ actorAddress: null, repository: null, path: null, details: null, success: true, occurrences: 1, ...withActorKind(event), id, timestamp: new Date().toISOString() })
 }
 
 module.exports = { queryEvents, exportCsv, recordEvent, ACTIONS }
