@@ -47,12 +47,6 @@ const ACCESS_OPTIONS = [
 
 const DEFAULT_ACCESS = 'all'
 
-// The backend actions a token may be narrowed to. DEPLOY is a team role, not a scope.
-const SCOPE_OPTIONS = [
-  { action: 'READ', label: 'Read' },
-  { action: 'WRITE', label: 'Write' }
-]
-
 const MAX_NAME_LENGTH = 255
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -184,7 +178,6 @@ export {
   DEFAULT_EXPIRY,
   EXPIRY_PRESETS,
   MAX_NAME_LENGTH,
-  SCOPE_OPTIONS,
   buildCreateBody,
   customDateLimits,
   expiresAtFor,

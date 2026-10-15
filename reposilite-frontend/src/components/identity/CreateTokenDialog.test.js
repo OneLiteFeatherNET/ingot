@@ -45,7 +45,7 @@ const pick = async (label) => {
   await flushPromises()
 }
 
-const check = async (id) => {
+const choose = async (id) => {
   field(id).click()
   await flushPromises()
 }
@@ -110,30 +110,39 @@ describe('CreateTokenDialog', () => {
     expect(api.create.mock.calls[0][0].expiresAt).toBe(expiresAt)
   })
 
-  it('sends the exact body with the description and the checked scopes', async () => {
+  it('sends the exact body with the description and the expiry', async () => {
     type('create-token-name', ' laptop ')
     type('create-token-description', 'my laptop')
-    await check('create-token-scope-read')
-    await check('create-token-scope-write')
     await submit()
 
     expect(api.create).toHaveBeenCalledWith({
       name: 'laptop',
       description: 'my laptop',
       expiresAt: '2026-09-13T12:00:00.000Z',
-      scopes: ['READ', 'WRITE']
+      scopes: null
     })
   })
 
-  it('sends scopes as null when no box is checked', async () => {
+  it('defaults access to the same rights as the owner teams, which narrows nothing', async () => {
     type('create-token-name', 'laptop')
     await submit()
 
-    expect(api.create).toHaveBeenCalledWith({
-      name: 'laptop',
-      expiresAt: '2026-09-13T12:00:00.000Z',
-      scopes: null
-    })
+    expect(field('create-token-access-all').checked, 'same as my teams is the default').toBe(true)
+    expect(api.create.mock.calls[0][0].scopes, 'full access sends no narrowing').toBeNull()
+  })
+
+  it('narrows a read only token to READ', async () => {
+    type('create-token-name', 'ci')
+    await choose('create-token-access-read')
+    await submit()
+
+    expect(field('create-token-access-read').checked, 'read only is the chosen access').toBe(true)
+    expect(api.create.mock.calls[0][0].scopes).toEqual(['READ'])
+  })
+
+  it('shows what each access choice allows, beside its radio', () => {
+    expect(dialog().querySelector('#create-token-access-all-help').textContent.trim()).toBe('Everything your teams allow')
+    expect(dialog().querySelector('#create-token-access-read-help').textContent.trim()).toBe('Download artifacts, no deploy')
   })
 
   it('hands the new token and its secret to the parent and closes', async () => {

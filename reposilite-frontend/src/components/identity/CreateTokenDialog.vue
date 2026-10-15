@@ -18,19 +18,20 @@
 import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
-import MdCheckbox from '../md/MdCheckbox.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
 import SegmentedOption from '../tokens/SegmentedOption.vue'
 import DialogShell from './DialogShell.vue'
 import {
+  ACCESS_OPTIONS,
+  DEFAULT_ACCESS,
   DEFAULT_EXPIRY,
   EXPIRY_PRESETS,
-  SCOPE_OPTIONS,
   buildCreateBody,
   customDateLimits,
   expiresAtFor,
   formatExpiryDate,
+  scopesFor,
   validateCustomDate,
   validateTokenName
 } from './identityTokens'
@@ -50,7 +51,8 @@ import {
  *
  * The expiry preset becomes a date at the moment of sending, counted from the injected clock.
  * Create stays disabled until the name is valid and, for a custom date, the date is too.
- * No checked scope means no narrowing (scopes null). A failure stays inside the dialog.
+ * Access maps to scopes: "Same as my teams" sends no narrowing (scopes null), "Read only"
+ * sends READ. A failure stays inside the dialog.
  */
 const props = defineProps({
   modelValue: {
@@ -75,7 +77,7 @@ const name = ref('')
 const description = ref('')
 const preset = ref(DEFAULT_EXPIRY)
 const customDate = ref('')
-const scopes = ref([])
+const access = ref(DEFAULT_ACCESS)
 const submitted = ref(false)
 const busy = ref(false)
 const failure = ref(null)
@@ -103,7 +105,7 @@ const reset = () => {
   description.value = ''
   preset.value = DEFAULT_EXPIRY
   customDate.value = ''
-  scopes.value = []
+  access.value = DEFAULT_ACCESS
   submitted.value = false
   busy.value = false
   failure.value = null
@@ -111,12 +113,6 @@ const reset = () => {
 
 const close = () => {
   emit('update:modelValue', false)
-}
-
-const toggleScope = (action, checked) => {
-  scopes.value = checked
-    ? SCOPE_OPTIONS.map(option => option.action).filter(candidate => candidate === action || scopes.value.includes(candidate))
-    : scopes.value.filter(candidate => candidate !== action)
 }
 
 const submit = async () => {
@@ -132,7 +128,7 @@ const submit = async () => {
       description: description.value,
       preset: preset.value,
       customDate: customDate.value,
-      scopes: scopes.value
+      scopes: scopesFor(access.value)
     }))
     emit('created', response.data)
     close()
@@ -218,24 +214,34 @@ const submit = async () => {
         </p>
       </div>
 
-      <fieldset class="flex flex-col gap-1 border-0 p-0">
+      <fieldset class="flex flex-col gap-2 border-0 p-0">
         <legend class="md-label-large text-on-surface-variant">
-          Limit to
+          Access
         </legend>
-        <div class="flex flex-wrap gap-x-6">
-          <MdCheckbox
-            v-for="option in SCOPE_OPTIONS"
-            :id="`create-token-scope-${option.action.toLowerCase()}`"
-            :key="option.action"
-            :model-value="scopes.includes(option.action)"
-            @update:model-value="toggleScope(option.action, $event)"
+        <label
+          v-for="option in ACCESS_OPTIONS"
+          :key="option.key"
+          class="flex cursor-pointer items-start gap-3"
+        >
+          <input
+            :id="`create-token-access-${option.key}`"
+            v-model="access"
+            type="radio"
+            name="create-token-access"
+            :value="option.key"
+            :aria-describedby="`create-token-access-${option.key}-help`"
+            class="mt-1 size-5 shrink-0 accent-primary"
           >
-            {{ option.label }}
-          </MdCheckbox>
-        </div>
-        <p class="md-body-small text-on-surface-variant">
-          Check nothing to give the token all rights of your teams.
-        </p>
+          <span class="flex flex-col">
+            <span class="md-body-large text-on-surface">{{ option.label }}</span>
+            <span
+              :id="`create-token-access-${option.key}-help`"
+              class="md-body-small text-on-surface-variant"
+            >
+              {{ option.help }}
+            </span>
+          </span>
+        </label>
       </fieldset>
 
       <p
