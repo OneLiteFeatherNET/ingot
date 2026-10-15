@@ -60,6 +60,20 @@ data class LoginResponse(
     val expiresAt: Instant,
 )
 
+/** `GET /api/auth/setup`. True while no user exists and the first administrator can be created. */
+@JsonSchema(requireNonNulls = false)
+data class SetupStatusResponse(
+    val required: Boolean,
+)
+
+@JsonSchema(requireNonNulls = false)
+data class SetupRequest(
+    val setupCode: String? = null,
+    val username: String? = null,
+    val password: String? = null,
+    val displayName: String? = null,
+)
+
 /** Result of a renewed session, `POST /api/auth/refresh`. */
 @JsonSchema(requireNonNulls = false)
 data class SessionResponse(

@@ -28,6 +28,7 @@ import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.api.LoginProvidersResponse
 import net.onelitefeather.ingot.identity.login.api.LoginResponse
 import net.onelitefeather.ingot.identity.login.api.SessionResponse
+import net.onelitefeather.ingot.identity.login.api.SetupStatusResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -278,6 +279,66 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
 
         // then: the request is unauthorized
         assertErrorResponse(UNAUTHORIZED, response)
+    }
+
+    private fun setup(body: String) =
+        http.post("$base/api/auth/setup")
+            .header("Content-Type", "application/json")
+            .body(body)
+
+    @Test
+    fun `reports the setup as required on an empty instance`() {
+        // when: the setup status is requested on an instance without users
+        val response = http.get("$base/api/auth/setup").asJacksonObject(SetupStatusResponse::class)
+
+        // then: the first administrator must still be created
+        assertSuccessResponse(OK, response) { status -> assertThat(status.required).isTrue() }
+    }
+
+    @Test
+    fun `creates the first administrator with the setup code and starts an administrator session`() {
+        // given: the setup code as it is shown in the log
+        val code = loginFacade.issueSetupCode()!!
+
+        // when: the first administrator is created with it
+        val response = setup("""{"setupCode":"$code","username":"root-setup","password":"$password"}""")
+            .asJacksonObject(LoginResponse::class)
+
+        // then: the user is reported, and the session cookie carries the instance administrator permission
+        assertSuccessResponse(OK, response) { login -> assertThat(login.principal.name).isEqualTo("root-setup") }
+        val session = cookieValue(response.headers.get("Set-Cookie"), "ingot_session")
+        val me = http.get("$base/api/auth/me").header("Cookie", "ingot_session=$session").asString()
+        assertThat(me.body).describedAs("session body: ${me.body}").contains("access-token:manager")
+        val status = http.get("$base/api/auth/setup").asJacksonObject(SetupStatusResponse::class)
+        assertSuccessResponse(OK, status) { setupStatus -> assertThat(setupStatus.required).isFalse() }
+    }
+
+    @Test
+    fun `refuses a wrong setup code with 403 and keeps the setup open`() {
+        // given: an instance where the setup code has been issued
+        loginFacade.issueSetupCode()
+
+        // when: a wrong code is used
+        val response = setup("""{"setupCode":"WRONGCODE234","username":"root-wrong","password":"$password"}""")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the request is forbidden, and the setup is still open
+        assertErrorResponse(FORBIDDEN, response)
+        val status = http.get("$base/api/auth/setup").asJacksonObject(SetupStatusResponse::class)
+        assertSuccessResponse(OK, status) { setupStatus -> assertThat(setupStatus.required).isTrue() }
+    }
+
+    @Test
+    fun `refuses setup once an administrator exists`() {
+        // given: an existing user
+        loginFacade.createUser("existing-admin", "Existing", password)
+
+        // when: someone tries to create another first administrator
+        val response = setup("""{"setupCode":"ANYCODE12345","username":"intruder","password":"$password"}""")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the setup is refused
+        assertErrorResponse(FORBIDDEN, response)
     }
 
     @Test

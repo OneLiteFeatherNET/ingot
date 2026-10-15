@@ -36,7 +36,14 @@ class LoginFacade internal constructor(
         service?.providers().orEmpty()
 
     fun setupRequired(): Boolean =
-        service?.let { !it.hasUsers() } ?: false
+        service?.isSetupRequired() ?: false
+
+    /** The setup code to show in the log, `null` when no setup is required. */
+    fun issueSetupCode(): String? =
+        service?.issueSetupCode()
+
+    fun completeSetup(givenCode: String, username: String, password: String, displayName: String?, ip: String): SetupOutcome =
+        service?.completeSetup(givenCode, username, password, displayName, ip) ?: SetupOutcome.NotRequired
 
     fun login(providerId: String, username: String, password: String, ip: String): LoginOutcome =
         service?.login(providerId, username, password, ip) ?: LoginOutcome.UnknownProvider

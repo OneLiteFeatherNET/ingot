@@ -25,6 +25,12 @@ import net.onelitefeather.ingot.identity.login.LoginOutcome.Disabled
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Rejected
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Succeeded
 import net.onelitefeather.ingot.identity.login.LoginOutcome.UnknownProvider
+import net.onelitefeather.ingot.identity.login.SetupOutcome.Blocked as SetupBlocked
+import net.onelitefeather.ingot.identity.login.SetupOutcome.Created
+import net.onelitefeather.ingot.identity.login.SetupOutcome.InvalidInput
+import net.onelitefeather.ingot.identity.login.SetupOutcome.NameTaken
+import net.onelitefeather.ingot.identity.login.SetupOutcome.NotRequired
+import net.onelitefeather.ingot.identity.login.SetupOutcome.WrongCode
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
@@ -44,9 +50,13 @@ class LoginService internal constructor(
     protection: Reference<BruteForceProtectionSettings>,
     clock: Clock,
     private val audit: (AuditEvent) -> Unit,
+    private val setupCode: SetupCode = SetupCode(),
 ) {
 
     private val limiter = LoginRateLimiter(protection, clock)
+
+    /** Serializes setups of this instance, so that the check for "no user yet" and the creation happen together. */
+    private val setupLock = Any()
 
     private val providers: List<LoginProvider> = listOf(
         LocalLoginProvider(identities, credentials, hasher),
@@ -101,6 +111,63 @@ class LoginService internal constructor(
     fun hasUsers(): Boolean =
         identities.listPrincipals(PrincipalKind.USER).isNotEmpty()
 
+    fun isSetupRequired(): Boolean =
+        !hasUsers()
+
+    /** The setup code to show in the log, or `null` when no setup is required. The same code is returned until it is used. */
+    fun issueSetupCode(): String? =
+        if (isSetupRequired()) setupCode.issue() else null
+
+    /**
+     * Creates the first administrator. The code is checked like a password: wrong codes count towards the failure limit of
+     * the address, are audited, and never reveal the code. A successful setup creates the user with the instance admin
+     * role and consumes the code.
+     */
+    fun completeSetup(givenCode: String, username: String, password: String, displayName: String?, ip: String): SetupOutcome {
+        synchronized(setupLock) {
+            return createFirstAdministrator(givenCode, username, password, displayName, ip)
+        }
+    }
+
+    private fun createFirstAdministrator(givenCode: String, username: String, password: String, displayName: String?, ip: String): SetupOutcome {
+        if (!isSetupRequired()) {
+            return NotRequired
+        }
+        val key = "setup|$ip"
+        if (limiter.isBlocked(key)) {
+            recordRejected(SETUP_ACTOR, ip)
+            return SetupBlocked
+        }
+        if (!setupCode.matches(givenCode)) {
+            limiter.recordFailure(key)
+            recordRejected(SETUP_ACTOR, ip)
+            return WrongCode
+        }
+        val name = username.trim()
+        usernameProblem(name)?.let { return InvalidInput(it) }
+        passwordProblem(password)?.let { return InvalidInput(it) }
+
+        val principal = identities.createPrincipal(
+            PrincipalKind.USER,
+            name,
+            displayName?.takeIf { it.isNotBlank() } ?: name,
+            false,
+            identities.now(),
+        ) ?: return NameTaken
+        identities.grantInstanceRole(principalId = principal.id, teamId = null)
+        setPassword(principal, password, mustChange = false)
+        setupCode.clear()
+        limiter.forget(key)
+        return Created(principal)
+    }
+
+    private fun usernameProblem(name: String): String? = when {
+        name.isEmpty() -> "User name is required"
+        name.length > MAX_USERNAME_LENGTH -> "User name must not have more than $MAX_USERNAME_LENGTH characters"
+        name.any { it == ':' || it.isWhitespace() || it.isISOControl() } -> "User name must not contain colons, spaces or control characters"
+        else -> null
+    }
+
     private fun recordRejected(username: String, ip: String) {
         audit(AuditEvent(action = LOGIN_FAILED, actor = AuditActor.named(username, ip), success = false))
     }
@@ -108,6 +175,8 @@ class LoginService internal constructor(
     companion object {
         const val MIN_PASSWORD_LENGTH = 12
         const val MAX_PASSWORD_LENGTH = 256
+        private const val MAX_USERNAME_LENGTH = 255
+        private const val SETUP_ACTOR = "setup"
     }
 
 }

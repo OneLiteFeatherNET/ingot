@@ -37,3 +37,25 @@ sealed interface LoginOutcome {
     data object UnknownProvider : LoginOutcome
 
 }
+
+/** The result of the first administrator setup, see `LoginService.completeSetup`. */
+sealed interface SetupOutcome {
+
+    /** The first user exists now, as an instance administrator. */
+    data class Created(val principal: PrincipalRecord) : SetupOutcome
+
+    /** A user already exists, or the setup code was used up. */
+    data object NotRequired : SetupOutcome
+
+    data object WrongCode : SetupOutcome
+
+    /** Too many wrong codes from this address. The code was not checked. */
+    data object Blocked : SetupOutcome
+
+    /** The user name is held by a principal already. */
+    data object NameTaken : SetupOutcome
+
+    /** The user name or the password does not meet the rules. [problem] says which. */
+    data class InvalidInput(val problem: String) : SetupOutcome
+
+}

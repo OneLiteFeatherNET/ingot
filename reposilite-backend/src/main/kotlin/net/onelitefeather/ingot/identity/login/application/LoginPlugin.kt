@@ -22,6 +22,7 @@ import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
@@ -87,6 +88,16 @@ class LoginPlugin : ReposilitePlugin() {
         event { event: RoutingSetupEvent ->
             if (service != null) {
                 event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
+            }
+        }
+
+        // Shown once per start, and only while no user exists: the setup code is the way into an empty instance.
+        event { _: ReposiliteInitializeEvent ->
+            loginFacade.issueSetupCode()?.let { code ->
+                logger.info("")
+                logger.info("--- First administrator")
+                logger.info("No user exists yet. Open the dashboard and enter this setup code to create the first administrator:")
+                logger.info("$ setup code: $code")
             }
         }
 
