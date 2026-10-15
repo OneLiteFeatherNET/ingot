@@ -234,6 +234,20 @@ describe('TokenList', () => {
       expect(api.rotate).toHaveBeenCalledWith('laptop')
       expect(document.querySelector('input[readonly]').value).toBe('rotated-secret')
     })
+
+    it('shows the Bearer and Basic examples for the rotated secret', async () => {
+      await mountList()
+      await rowButton(rows(wrapper)[0], 'Rotate').trigger('click')
+      await flushPromises()
+
+      dialogButton('Rotate secret').click()
+      await flushPromises()
+
+      const bearer = document.querySelector('[data-snippet="bearer"]').textContent
+      const basic = document.querySelector('[data-snippet="basic"]').textContent
+      expect(bearer).toContain('Authorization: Bearer rotated-secret')
+      expect(basic).toContain('laptop:rotated-secret')
+    })
   })
 
   describe('revoke', () => {

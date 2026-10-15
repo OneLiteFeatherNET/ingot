@@ -15,6 +15,7 @@
   -->
 
 <script setup>
+import { computed } from 'vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import CopyIcon from '../icons/CopyIcon.vue'
 import MdButton from '../md/MdButton.vue'
@@ -30,6 +31,10 @@ import DialogShell from './DialogShell.vue'
  *   tokenName   the name of the token, for the heading text
  *   heading     the title of the dialog
  * Emits update:modelValue (false when the one close action is used).
+ *
+ * Below the secret, two ready-made curl examples show how to use it: as a Bearer header, and as
+ * Basic credentials with the token name as the user name. The examples are built from the props
+ * and the current origin on each render, and nothing is stored.
  *
  * Only the Close button closes the dialog; Escape and a click outside do not, so the secret
  * cannot be lost by accident.
@@ -61,6 +66,34 @@ const copy = async () => {
     createSuccessToast('Secret copied')
   } catch {
     createErrorToast('Could not copy the secret. Select it and copy it by hand.')
+  }
+}
+
+// A value in single quotes reaches the shell as it is; a quote inside it is closed, escaped and reopened.
+const quoted = (value) => `'${value.replaceAll("'", "'\\''")}'`
+
+const snippets = computed(() => {
+  const url = `${window.location.origin}/api/auth/me`
+  return [
+    {
+      key: 'bearer',
+      title: 'Bearer header',
+      text: `curl -H ${quoted(`Authorization: Bearer ${props.secret}`)} ${url}`
+    },
+    {
+      key: 'basic',
+      title: 'Basic credentials',
+      text: `curl -u ${quoted(`${props.tokenName}:${props.secret}`)} ${url}`
+    }
+  ]
+})
+
+const copySnippet = async (snippet) => {
+  try {
+    await navigator.clipboard.writeText(snippet.text)
+    createSuccessToast(`${snippet.title} example copied`)
+  } catch {
+    createErrorToast('Could not copy the example. Select it and copy it by hand.')
   }
 }
 </script>
@@ -103,6 +136,40 @@ const copy = async () => {
         Copy
       </MdButton>
     </div>
+
+    <section
+      aria-labelledby="secret-once-usage"
+      class="mt-6"
+    >
+      <h3
+        id="secret-once-usage"
+        class="md-title-small text-on-surface"
+      >
+        Use it in a request
+      </h3>
+      <div
+        v-for="snippet in snippets"
+        :key="snippet.key"
+        class="mt-3"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <span class="md-label-large text-on-surface-variant">{{ snippet.title }}</span>
+          <MdButton
+            variant="text"
+            @click="copySnippet(snippet)"
+          >
+            <template #icon>
+              <CopyIcon />
+            </template>
+            Copy {{ snippet.key === 'bearer' ? 'Bearer' : 'Basic' }} example
+          </MdButton>
+        </div>
+        <pre
+          :data-snippet="snippet.key"
+          class="mt-1 overflow-x-auto rounded-corner-small border border-outline-variant bg-surface-container-highest px-3 py-3 font-mono text-xs text-on-surface"
+        >{{ snippet.text }}</pre>
+      </div>
+    </section>
 
     <p
       role="alert"

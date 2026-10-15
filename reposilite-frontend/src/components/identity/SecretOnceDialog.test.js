@@ -26,7 +26,10 @@ vi.mock('../../helpers/toast', () => ({
   errorMessage: (error) => error?.message ?? `${error}`
 }))
 
-const SECRET = 'ingot-secret-0123456789'
+const SECRET = 'ingot_a1b2c3_0123456789abcdef'
+const ORIGIN = window.location.origin
+const BEARER = `curl -H 'Authorization: Bearer ${SECRET}' ${ORIGIN}/api/auth/me`
+const BASIC = `curl -u 'laptop:${SECRET}' ${ORIGIN}/api/auth/me`
 
 const dialog = () => document.querySelector('[role="dialog"]')
 const buttonByLabel = (label) =>
@@ -106,5 +109,74 @@ describe('SecretOnceDialog', () => {
     await flushPromises()
 
     expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
+  })
+
+  describe('usage snippets', () => {
+    const snippet = (title) =>
+      dialog().querySelector(`[data-snippet="${title}"]`)
+
+    const allowClipboard = () => {
+      const writeText = vi.fn().mockResolvedValue()
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+      return writeText
+    }
+
+    it('shows a Bearer header example with the secret and the current origin', () => {
+      expect(snippet('bearer').textContent.trim()).toBe(BEARER)
+    })
+
+    it('shows a Basic example with the token name as the user name and the secret', () => {
+      expect(snippet('basic').textContent.trim()).toBe(BASIC)
+    })
+
+    it('names both ways to use the token', () => {
+      expect(dialog().textContent).toContain('Bearer')
+      expect(dialog().textContent).toContain('Basic')
+    })
+
+    it('copies exactly the Bearer snippet', async () => {
+      const writeText = allowClipboard()
+
+      buttonByLabel('Copy Bearer example').click()
+      await flushPromises()
+
+      expect(writeText).toHaveBeenCalledWith(BEARER)
+      expect(toast.success).toHaveBeenCalledTimes(1)
+    })
+
+    it('copies exactly the Basic snippet', async () => {
+      const writeText = allowClipboard()
+
+      buttonByLabel('Copy Basic example').click()
+      await flushPromises()
+
+      expect(writeText).toHaveBeenCalledWith(BASIC)
+      expect(toast.success).toHaveBeenCalledTimes(1)
+    })
+
+    it('reports a clipboard that refuses to copy a snippet', async () => {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+        configurable: true
+      })
+
+      buttonByLabel('Copy Basic example').click()
+      await flushPromises()
+
+      expect(toast.error).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps a quote in the secret from ending the shell argument', async () => {
+      await wrapper.setProps({ secret: "it's" })
+
+      expect(snippet('bearer').textContent).toContain(`'Authorization: Bearer it'\\''s'`)
+    })
+
+    it('keeps the secret out of the storage and the address, snippets included', () => {
+      const everything = JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage })
+
+      expect(everything).not.toContain(SECRET)
+      expect(window.location.href).not.toContain(SECRET)
+    })
   })
 })
