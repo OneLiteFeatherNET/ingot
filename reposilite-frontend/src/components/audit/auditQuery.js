@@ -33,7 +33,13 @@ export const ACTION_LABELS = {
   TOKEN_DELETED: 'Token deleted',
   TOKEN_SECRET_REGENERATED: 'Secret regenerated',
   TOKEN_ROUTES_CHANGED: 'Token rights changed',
-  LOGIN_FAILED: 'Login failed',
+  LOGIN_SUCCEEDED: 'Signed in',
+  LOGIN_FAILED: 'Sign-in failed',
+  LOGOUT: 'Signed out',
+  SESSION_REFRESH_REUSE_DETECTED: 'Session reuse detected',
+  SETUP_COMPLETED: 'Setup completed',
+  PASSWORD_CHANGED: 'Password changed',
+  PASSWORD_RESET: 'Password reset by an admin',
   CLEANUP_RUN: 'Cleanup run',
   PRINCIPAL_CREATED: 'Account created',
   PRINCIPAL_UPDATED: 'Account updated',
@@ -56,6 +62,14 @@ export const ACTION_GROUPS = [
   { key: 'accounts', label: 'Accounts', actions: ['PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED'] },
   { key: 'teams', label: 'Teams', actions: ['TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_DELETED', 'TEAM_MEMBERSHIP_CHANGED', 'TEAM_GRANTS_CHANGED'] },
   { key: 'instance-admin', label: 'Instance admin', actions: ['INSTANCE_ADMIN_GRANTED', 'INSTANCE_ADMIN_REVOKED'] },
+  {
+    key: 'sessions',
+    label: 'Sessions and passwords',
+    actions: [
+      'LOGIN_SUCCEEDED', 'LOGIN_FAILED', 'LOGOUT', 'SESSION_REFRESH_REUSE_DETECTED',
+      'SETUP_COMPLETED', 'PASSWORD_CHANGED', 'PASSWORD_RESET',
+    ],
+  },
 ]
 
 export const ACTION_OPTIONS = [

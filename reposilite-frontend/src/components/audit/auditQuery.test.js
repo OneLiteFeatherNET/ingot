@@ -190,6 +190,37 @@ describe('identity action labels', () => {
   })
 })
 
+describe('session and password action labels', () => {
+  it.each([
+    ['LOGIN_SUCCEEDED', 'Signed in'],
+    ['LOGOUT', 'Signed out'],
+    ['LOGIN_FAILED', 'Sign-in failed'],
+    ['SESSION_REFRESH_REUSE_DETECTED', 'Session reuse detected'],
+    ['SETUP_COMPLETED', 'Setup completed'],
+    ['PASSWORD_CHANGED', 'Password changed'],
+    ['PASSWORD_RESET', 'Password reset by an admin'],
+  ])('labels %s as "%s"', (action, label) => {
+    expect(actionLabel(action)).toBe(label)
+    expect(ACTION_OPTIONS.find(option => option.value === action)?.label, `${action} is offered in the action picker`).toBe(label)
+  })
+
+  it('groups the session and password actions under one chip', () => {
+    const group = ACTION_GROUPS.find(candidate => candidate.key === 'sessions')
+
+    expect(group.label).toBe('Sessions and passwords')
+    expect(group.actions).toEqual([
+      'LOGIN_SUCCEEDED', 'LOGIN_FAILED', 'LOGOUT', 'SESSION_REFRESH_REUSE_DETECTED',
+      'SETUP_COMPLETED', 'PASSWORD_CHANGED', 'PASSWORD_RESET',
+    ])
+  })
+
+  it('keeps every action of the chip group when the address is read', () => {
+    const action = ACTION_GROUPS.find(candidate => candidate.key === 'sessions').actions.join(',')
+
+    expect(readAuditFilters({ action }).action).toBe(action)
+  })
+})
+
 describe('identity action groups', () => {
   const group = (key) => ACTION_GROUPS.find(candidate => candidate.key === key)
 
