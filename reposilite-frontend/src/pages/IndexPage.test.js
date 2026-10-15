@@ -20,6 +20,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from '../router/create'
 import IndexPage from './IndexPage.vue'
+import PageFooter from '../components/footer/PageFooter.vue'
 
 // The session is replaced by a plain flag, so each test decides whether the user is a manager.
 const session = vi.hoisted(() => ({ isManager: null, isLogged: null }))
@@ -115,6 +116,38 @@ const chooseLink = async (wrapper, label) => {
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
 const SECTION_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console', 'Settings']
+
+describe('IndexPage footer and content sheet', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  it('places a footer inside the content sheet when the navigation frame shows', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const sheet = wrapper.find('.pane-sheet')
+
+    expect(sheet.exists(), 'the navigation frame has a content sheet').toBe(true)
+    expect(sheet.findAllComponents(PageFooter), 'the sheet closes with the footer').toHaveLength(1)
+  })
+
+  it('keeps a second footer below the page, outside the sheet, for narrow windows', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const footers = wrapper.findAllComponents(PageFooter)
+    const outsideSheet = footers.filter(footer => footer.element.closest('.pane-sheet') === null)
+
+    expect(footers, 'one footer in the sheet and one below the page').toHaveLength(2)
+    expect(outsideSheet, 'the page footer sits outside the sheet').toHaveLength(1)
+  })
+
+  it('makes the sheet at least as tall as the window below the top bar', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    expect(wrapper.find('.pane-sheet').classes(), 'the sheet fills the window below the 4rem top bar')
+      .toContain('min-[600px]:min-h-[calc(100dvh_-_4rem)]')
+  })
+})
 
 describe('IndexPage section from the route', () => {
   beforeEach(() => {

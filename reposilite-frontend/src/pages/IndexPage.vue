@@ -25,6 +25,7 @@ import FileBrowserView from '../components/browser/FileBrowserView.vue'
 import MdButton from '../components/md/MdButton.vue'
 import MdNavigationBar from '../components/md/MdNavigationBar.vue'
 import MdNavigationRail from '../components/md/MdNavigationRail.vue'
+import PageFooter from '../components/footer/PageFooter.vue'
 import OverviewIcon from '../components/icons/OverviewIcon.vue'
 import DashboardIcon from '../components/icons/DashboardIcon.vue'
 import TokensIcon from '../components/icons/TokensIcon.vue'
@@ -171,14 +172,16 @@ const activeLabel = computed(() => sectionLabel(section.value))
 <template>
   <div
     class="bg-surface text-on-surface"
-    :class="hasNavigation ? 'max-[600px]:pb-[calc(5rem+env(safe-area-inset-bottom))] min-[600px]:pl-20 min-[600px]:bg-surface-container' : ''"
+    :class="hasNavigation ? 'min-[600px]:pl-20 min-[600px]:bg-surface-container' : ''"
   >
     <!--
-      Below 600px the bar sits at the bottom, so the page reserves its height and the device's
-      safe area. From 600px the rail sits at the left and the page moves right by its 80px
-      width, the header included. From 600px the frame (rail and top bar) is surface-container,
-      and the content is a surface sheet with rounded corners where it meets them. From 1600px
-      the sheet also rounds its top right corner and keeps a 16px gap to the window edge.
+      Below 600px the bar sits at the bottom, so the footer block reserves its height and the
+      device's safe area above the footer. From 600px the rail sits at the left and the page moves
+      right by its 80px width, the header included. From 600px the frame (rail and top bar) is
+      surface-container, and the content is a surface sheet with rounded corners where it meets
+      them. The sheet is at least as tall as the window below the top bar, so its footer sits at
+      the bottom of the window. From 1600px the sheet also rounds its top right corner and keeps
+      a 16px gap to the window edge.
     -->
     <DefaultHeader />
     <!--
@@ -202,7 +205,7 @@ const activeLabel = computed(() => sectionLabel(section.value))
     -->
     <div
       class="overflow-x-clip bg-surface"
-      :class="hasNavigation ? 'min-[600px]:rounded-tl-corner-extra-large min-[1600px]:mr-4 min-[1600px]:rounded-tr-corner-extra-large' : ''"
+      :class="hasNavigation ? 'pane-sheet min-[600px]:flex min-[600px]:min-h-[calc(100dvh_-_4rem)] min-[600px]:flex-col min-[600px]:rounded-tl-corner-extra-large min-[1600px]:mr-4 min-[1600px]:rounded-tr-corner-extra-large' : ''"
     >
       <NotFoundView v-if="route.name === 'not-found'" />
       <section
@@ -255,7 +258,15 @@ const activeLabel = computed(() => sectionLabel(section.value))
         :entry="route.params.entry"
         @update:domain="setDomain"
       />
+      <!-- From 600px the footer closes the sheet; below it, the footer below the page takes over. -->
+      <PageFooter
+        v-if="hasNavigation"
+        class="mt-auto hidden min-[600px]:block"
+      />
     </div>
+    <PageFooter
+      :class="hasNavigation ? 'max-[600px]:pt-[calc(5rem+env(safe-area-inset-bottom))] min-[600px]:hidden' : ''"
+    />
     <template v-if="hasNavigation">
       <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[600px]:hidden">
         <MdNavigationBar

@@ -21,13 +21,12 @@ import { useSession } from "./store/session"
 import useTheme from "./store/theme"
 import useQualifier from "./store/qualifier"
 import usePlaceholders from './store/placeholders'
-import { useAppearance } from './store/appearance'
 import { createErrorToast, errorMessage } from './helpers/toast'
 import MdSnackbar from './components/md/MdSnackbar.vue'
-import SiteFooter from './components/footer/SiteFooter.vue'
 
-const { description, icpLicense, privacyPolicy } = usePlaceholders()
-const appearance = useAppearance()
+// The footer and the legal line are drawn by the page (see PageFooter), so they sit in the
+// content sheet when the navigation frame shows.
+const { description } = usePlaceholders()
 const { theme, fetchColorMode } = useTheme()
 const { initializeSession } = useSession()
 const { qualifier } = useQualifier()
@@ -52,29 +51,7 @@ initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${
         class="router-view-full"
         :qualifier="qualifier"
       />
-      <SiteFooter :text="appearance.footerText" />
       <MdSnackbar />
-      <div
-        v-if="icpLicense || privacyPolicy"
-        class="absolute h-8 pb-2 w-full text-center md-label-medium text-on-surface-variant"
-      >
-        <a
-          v-if="icpLicense"
-          class="text-primary"
-          href="https://beian.miit.gov.cn"
-          target="_blank"
-        >{{ icpLicense }}</a>
-        <span
-          v-if="icpLicense && privacyPolicy"
-          class="mx-1"
-        >·</span>
-        <a
-          v-if="privacyPolicy"
-          class="text-primary"
-          :href="privacyPolicy"
-          target="_blank"
-        >Privacy Policy</a>
-      </div>
     </div>
   </div>
 </template>

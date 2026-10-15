@@ -125,6 +125,18 @@
   }
 
   /*
+   * The brand bar at the top of the overview hero stops where the sheet's rounded top corners
+   * begin. Clipped by the arc, the 4px bar ended at an angle inside each corner; inset by the
+   * corner radius, it is a straight bar on the sheet's flat top edge. From 600px only, where
+   * the sheet has the corners.
+   */
+  @media (width >= 600px) {
+    .pane-sheet .olf-brand-bar {
+      margin-inline: var(--md-sys-shape-corner-extra-large);
+    }
+  }
+
+  /*
    * The shared page gutter, from the MD3 window size classes: 16px on compact windows (below
    * 600px) and 24px on medium and expanded windows (600px and up). Width comes from Tailwind's
    * container utility; this adds the side padding that several views rely on without writing
