@@ -400,7 +400,7 @@ describe('LoginModal', () => {
 
       await openDialog()
 
-      expect(dialog().querySelector('[role="group"]').getAttribute('aria-label')).toBe('Sign in method')
+      expect(dialog().querySelector('[role="radiogroup"]').getAttribute('aria-label')).toBe('Sign in method')
       expect(segment('Ingot account'), 'the Ingot account is named by its own label').toBeDefined()
       expect(segment('Corporate LDAP'), 'the LDAP provider is named by its label').toBeDefined()
     })
@@ -410,8 +410,8 @@ describe('LoginModal', () => {
 
       await openDialog()
 
-      expect(segment('Ingot account').getAttribute('aria-pressed')).toBe('true')
-      expect(segment('Corporate LDAP').getAttribute('aria-pressed')).toBe('false')
+      expect(segment('Ingot account').getAttribute('aria-checked')).toBe('true')
+      expect(segment('Corporate LDAP').getAttribute('aria-checked')).toBe('false')
     })
 
     it('sends the provider id of the selected switch with the credentials', async () => {
