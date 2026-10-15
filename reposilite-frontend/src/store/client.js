@@ -126,6 +126,17 @@ const createClient = (defaultName, defaultSecret) => {
       }
     },
     maven: {
+      /*
+       * The repositories the caller may see. `q` searches id, description and tags; each tag is a
+       * repeated parameter and all of them must match. Both are optional.
+       */
+      repositories({ q, tags = [] } = {}) {
+        const params = new URLSearchParams()
+        if (q) params.set("q", q)
+        for (const tag of tags) params.append("tag", tag)
+        const query = params.toString()
+        return get(`/api/maven/repositories${query ? `?${query}` : ""}`)
+      },
       content(gav) {
         return get(`/${gav}`)
       },

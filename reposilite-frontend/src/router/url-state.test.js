@@ -22,7 +22,9 @@ import {
   levelParam,
   enabledFromLevelParam,
   tokenFromEditor,
-  editorFromToken
+  editorFromToken,
+  tagsFromParam,
+  tagsParam
 } from './url-state'
 
 const LEVELS = ['Other', 'Trace', 'Debug', 'Info', 'Warn', 'Error']
@@ -132,5 +134,32 @@ describe('editorFromToken', () => {
   it('reads back the token that tokenFromEditor named', () => {
     expect(tokenFromEditor(editorFromToken('ci-bot'))).toBe('ci-bot')
     expect(tokenFromEditor(editorFromToken('new'))).toBe('new')
+  })
+})
+
+describe('tagsFromParam and tagsParam', () => {
+  it('reads no tags from a missing parameter', () => {
+    expect(tagsFromParam(undefined)).toEqual([])
+  })
+
+  it('reads a single repeated value as one tag, in lower case', () => {
+    expect(tagsFromParam('Team-Core')).toEqual(['team-core'])
+  })
+
+  it('reads every repeated value, once each, in the order of the address', () => {
+    expect(tagsFromParam(['ci', 'team-core', 'ci'])).toEqual(['ci', 'team-core'])
+  })
+
+  it('drops the values that are not text, such as a bare tag parameter with no value', () => {
+    expect(tagsFromParam([null, '', 'ci'])).toEqual(['ci'])
+    expect(tagsFromParam(null)).toEqual([])
+  })
+
+  it('writes no parameter for an empty list, which is the default', () => {
+    expect(tagsParam([])).toBeUndefined()
+  })
+
+  it('writes the tags as a repeated parameter, in the order given', () => {
+    expect(tagsParam(['ci', 'team-core'])).toEqual(['ci', 'team-core'])
   })
 })

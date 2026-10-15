@@ -63,13 +63,14 @@ const sectionStub = vi.hoisted(() => (name, key) => async () => {
       },
       emits: ['update:search', 'update:openToken', 'update:level', 'update:domain'],
       render() {
-        return h('p', { 'data-test': 'section', 'data-section': key }, key)
+        return h('p', { 'data-test': 'section', 'data-section': key, 'data-stub': name }, key)
       }
     })
   }
 })
 
 vi.mock('../components/browser/FileBrowserView.vue', sectionStub('FileBrowserStub', 'overview'))
+vi.mock('../components/overview/RepositoryOverview.vue', sectionStub('RepositoryOverviewStub', 'overview'))
 vi.mock('../components/dashboard/DashboardView.vue', sectionStub('DashboardStub', 'dashboard'))
 vi.mock('../components/tokens/TokensView.vue', sectionStub('TokensStub', 'tokens'))
 vi.mock('../components/console/ConsoleView.vue', sectionStub('ConsoleStub', 'console'))
@@ -167,10 +168,11 @@ describe('IndexPage section from the route', () => {
     expect(shownSection(wrapper), `${url} opens ${section}`).toBe(section)
   })
 
-  it('shows the file browser on overview at the root', async () => {
+  it('shows the repository overview at the root, below the hero', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
     expect(shownSection(wrapper)).toBe('overview')
+    expect(wrapper.find('[data-test="section"]').attributes('data-stub'), 'the root lists the repositories').toBe('RepositoryOverviewStub')
     expect(wrapper.find('[data-test="hero"]').exists(), 'the overview carries the repository hero').toBe(true)
   })
 
@@ -178,6 +180,7 @@ describe('IndexPage section from the route', () => {
     const { wrapper } = await mountAt('/browse/releases/gav', { manager: false })
 
     expect(shownSection(wrapper)).toBe('overview')
+    expect(wrapper.find('[data-test="section"]').attributes('data-stub'), 'a browsed path keeps the folder listing').toBe('FileBrowserStub')
   })
 
   it('shows the not found page on an address no route claims, and no section', async () => {

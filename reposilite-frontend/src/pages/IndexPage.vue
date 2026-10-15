@@ -22,6 +22,7 @@ import { openLogin } from '../store/login'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
 import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
+import RepositoryOverview from '../components/overview/RepositoryOverview.vue'
 import MdButton from '../components/md/MdButton.vue'
 import MdNavigationBar from '../components/md/MdNavigationBar.vue'
 import MdNavigationRail from '../components/md/MdNavigationRail.vue'
@@ -232,7 +233,15 @@ const activeLabel = computed(() => sectionLabel(section.value))
       </section>
       <template v-else-if="section === 'overview'">
         <HeaderHero />
-        <FileBrowserView :qualifier="qualifier" />
+        <!-- The root lists the repositories; a browsed path keeps the folder listing. -->
+        <RepositoryOverview
+          v-if="browsedPath === ''"
+          :qualifier="qualifier"
+        />
+        <FileBrowserView
+          v-else
+          :qualifier="qualifier"
+        />
       </template>
       <DashboardView v-else-if="section === 'dashboard'" />
       <TokensView

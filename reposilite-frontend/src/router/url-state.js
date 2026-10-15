@@ -66,6 +66,21 @@ const editorFromToken = (token) => {
   return token === NEW_TOKEN ? 'newtoken' : `token:${token}`
 }
 
+/*
+ * The tags of the overview: a repeated `tag` parameter, read as lower-case names. A single value
+ * arrives as text and several as a list; a value without text is dropped, and each tag counts once.
+ */
+const tagsFromParam = (param) => {
+  const values = [param ?? []].flat()
+  const tags = values
+    .filter(value => typeof value === 'string' && value.trim() !== '')
+    .map(value => value.trim().toLowerCase())
+  return [...new Set(tags)]
+}
+
+// The empty list is the default, so it leaves the parameter out. Otherwise each tag is repeated.
+const tagsParam = (tags) => (tags.length > 0 ? [...tags] : undefined)
+
 export {
   textParam,
   textFromParam,
@@ -73,5 +88,7 @@ export {
   levelParam,
   enabledFromLevelParam,
   tokenFromEditor,
-  editorFromToken
+  editorFromToken,
+  tagsFromParam,
+  tagsParam
 }

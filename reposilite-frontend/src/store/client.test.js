@@ -66,3 +66,31 @@ describe('client response interceptor', () => {
       .rejects.toBe(error)
   })
 })
+
+describe('client repositories call', () => {
+  // The module and the axios mock are loaded together, so the client sees the mock the test inspects.
+  let http
+
+  beforeEach(async () => {
+    vi.resetModules()
+    http = (await import('axios')).default
+    http.get.mockReset()
+    http.get.mockResolvedValue({ data: { repositories: [] } })
+  })
+
+  it('requests the overview without a query when no filter is given', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient().maven.repositories()
+
+    expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories$/)
+  })
+
+  it('writes the text as q and every tag as its own tag parameter, which the endpoint reads as AND', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient().maven.repositories({ q: 'nightly builds', tags: ['team-core', 'ci'] })
+
+    expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories\?q=nightly\+builds&tag=team-core&tag=ci$/)
+  })
+})
