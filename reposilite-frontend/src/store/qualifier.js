@@ -47,9 +47,14 @@ export default function useQualifier() {
     router.push(path)
   }
 
+  // Every view that calls this reads the same path. Only a change of path reloads the listing;
+  // a second view on the same path would otherwise request the same directory again.
   watch(
     () => route.params.qualifier,
     newQualifier => {
+      if (qualifier.path === newQualifier) {
+        return
+      }
       qualifier.path = newQualifier
       refreshQualifier()
     },
