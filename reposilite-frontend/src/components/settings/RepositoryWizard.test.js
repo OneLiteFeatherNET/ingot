@@ -31,7 +31,8 @@ vi.mock('../../helpers/toast', () => ({
   errorMessage: (error) => error?.message ?? `${error}`
 }))
 vi.mock('../../store/placeholders', () => ({
-  default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' })
+  default: () => ({ basePath: '/', productionUrl: 'https://repo.example.net/' }),
+  frontendSecretsHidden: () => false
 }))
 
 const MAVEN_SCHEMA = {
