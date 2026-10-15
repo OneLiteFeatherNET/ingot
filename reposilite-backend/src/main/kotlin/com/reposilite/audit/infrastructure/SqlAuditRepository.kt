@@ -29,6 +29,7 @@ import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
@@ -139,7 +140,7 @@ internal class SqlAuditRepository(
         val parts = mutableListOf<Op<Boolean>>()
 
         query.actor?.let { parts += AuditEventsTable.actor eq it }
-        query.action?.let { parts += AuditEventsTable.action eq it.name }
+        query.actions.takeIf { it.isNotEmpty() }?.let { parts += AuditEventsTable.action inList it.map { action -> action.name } }
         query.repository?.let { parts += AuditEventsTable.repository eq it }
         query.from?.let { parts += AuditEventsTable.timestamp greaterEq it }
         query.to?.let { parts += AuditEventsTable.timestamp less it }

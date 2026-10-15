@@ -69,11 +69,12 @@ data class AuditCursor(
 /**
  * Filters for the audit log. [from] is inclusive and [to] is exclusive, both in epoch milliseconds.
  * [text] is a case-insensitive substring matched against the actor, the repository, the path and
- * the details. The action has its own filter and is not part of the text search.
+ * the details. [actions] has its own filter and is not part of the text search: a record matches when
+ * its action is any of them, and an empty set matches every action.
  */
 data class AuditQuery(
     val actor: String? = null,
-    val action: AuditAction? = null,
+    val actions: Set<AuditAction> = emptySet(),
     val repository: String? = null,
     val text: String? = null,
     val from: Long? = null,

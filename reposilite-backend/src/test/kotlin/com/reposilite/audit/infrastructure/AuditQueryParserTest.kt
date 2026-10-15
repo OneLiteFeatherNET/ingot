@@ -18,7 +18,10 @@ package com.reposilite.audit.infrastructure
 
 import com.reposilite.audit.AuditCursor
 import com.reposilite.audit.DEFAULT_PAGE_SIZE
+import com.reposilite.audit.api.AuditAction.PRINCIPAL_CREATED
+import com.reposilite.audit.api.AuditAction.PRINCIPAL_DELETED
 import com.reposilite.audit.api.AuditAction.TOKEN_CREATED
+import com.reposilite.audit.api.AuditAction.TOKEN_DELETED
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -28,7 +31,7 @@ import java.time.Instant
 internal class AuditQueryParserTest {
 
     private fun parse(vararg pairs: Pair<String, String>) =
-        AuditQueryParser.parse { name -> pairs.firstOrNull { it.first == name }?.second }
+        AuditQueryParser.parse { name -> pairs.filter { it.first == name }.map { it.second } }
 
     @Test
     fun `an empty request asks for the first default page of everything`() {
@@ -36,7 +39,7 @@ internal class AuditQueryParserTest {
 
         assertThat(query.limit).isEqualTo(DEFAULT_PAGE_SIZE)
         assertThat(query.actor).isNull()
-        assertThat(query.action).isNull()
+        assertThat(query.actions).isEmpty()
         assertThat(query.after).isNull()
     }
 
@@ -63,7 +66,7 @@ internal class AuditQueryParserTest {
         ).get()
 
         assertThat(query.actor).isEqualTo("ci")
-        assertThat(query.action).isEqualTo(TOKEN_CREATED)
+        assertThat(query.actions).containsExactly(TOKEN_CREATED)
         assertThat(query.repository).isEqualTo("releases")
         assertThat(query.text).isEqualTo("bot")
         assertThat(query.from).isEqualTo(Instant.parse("2026-10-14T00:00:00Z").toEpochMilli())
@@ -77,6 +80,78 @@ internal class AuditQueryParserTest {
         val error = parse("action" to "DELETE_EVERYTHING").error
 
         assertThat(error).contains("action")
+    }
+
+    @Test
+    fun `reads a comma separated list of actions`() {
+        val query = parse("action" to "PRINCIPAL_CREATED,PRINCIPAL_DELETED").get()
+
+        assertThat(query.actions).containsExactlyInAnyOrder(PRINCIPAL_CREATED, PRINCIPAL_DELETED)
+    }
+
+    @Test
+    fun `reads repeated action parameters`() {
+        val query = parse("action" to "PRINCIPAL_CREATED", "action" to "PRINCIPAL_DELETED").get()
+
+        assertThat(query.actions).containsExactlyInAnyOrder(PRINCIPAL_CREATED, PRINCIPAL_DELETED)
+    }
+
+    @Test
+    fun `combines repeated parameters and comma separated lists`() {
+        val query = parse("action" to "PRINCIPAL_CREATED,PRINCIPAL_DELETED", "action" to "TOKEN_CREATED").get()
+
+        assertThat(query.actions).containsExactlyInAnyOrder(PRINCIPAL_CREATED, PRINCIPAL_DELETED, TOKEN_CREATED)
+    }
+
+    @Test
+    fun `trims whitespace around the listed actions`() {
+        val query = parse("action" to " PRINCIPAL_CREATED , PRINCIPAL_DELETED ").get()
+
+        assertThat(query.actions).containsExactlyInAnyOrder(PRINCIPAL_CREATED, PRINCIPAL_DELETED)
+    }
+
+    @Test
+    fun `ignores empty entries between the listed actions`() {
+        val query = parse("action" to ",PRINCIPAL_CREATED,, ,PRINCIPAL_DELETED,").get()
+
+        assertThat(query.actions).containsExactlyInAnyOrder(PRINCIPAL_CREATED, PRINCIPAL_DELETED)
+    }
+
+    @Test
+    fun `a list of only empty entries filters nothing`() {
+        val query = parse("action" to " , ,", "action" to "").get()
+
+        assertThat(query.actions).isEmpty()
+    }
+
+    @Test
+    fun `an action listed twice counts once`() {
+        val query = parse("action" to "TOKEN_CREATED,TOKEN_CREATED", "action" to "TOKEN_CREATED").get()
+
+        assertThat(query.actions).containsExactly(TOKEN_CREATED)
+    }
+
+    @Test
+    fun `rejects an unknown action and names it`() {
+        val error = parse("action" to "TOKEN_CREATED,DELETE_EVERYTHING").error
+
+        assertThat(error).contains("DELETE_EVERYTHING")
+        assertThat(error).doesNotContain("TOKEN_CREATED")
+    }
+
+    @Test
+    fun `names every unknown action, not only the first`() {
+        val error = parse("action" to "NOPE_ONE,TOKEN_DELETED", "action" to "NOPE_TWO,NOPE_ONE").error
+
+        assertThat(error).contains("NOPE_ONE").contains("NOPE_TWO")
+        assertThat(error).doesNotContain("TOKEN_DELETED")
+    }
+
+    @Test
+    fun `a single action behaves as before`() {
+        val query = parse("action" to "TOKEN_DELETED").get()
+
+        assertThat(query.actions).containsExactly(TOKEN_DELETED)
     }
 
     @ParameterizedTest

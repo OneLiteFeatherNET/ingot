@@ -118,6 +118,22 @@ internal class SqlAuditRepositoryTest {
     }
 
     @Test
+    fun `an action filter with several actions matches any of them`() {
+        val (dataSource, database) = inMemoryDatabase()
+
+        dataSource.use {
+            val repository = SqlAuditRepository(database)
+            repository.insert(record(action = ARTIFACT_DEPLOYED))
+            repository.insert(record(action = LOGIN_FAILED))
+            repository.insert(record(action = TOKEN_DELETED))
+
+            val actions = repository.find(AuditQuery(actions = setOf(ARTIFACT_DEPLOYED, TOKEN_DELETED))).map { it.action }
+
+            assertThat(actions).containsExactlyInAnyOrder(ARTIFACT_DEPLOYED, TOKEN_DELETED)
+        }
+    }
+
+    @Test
     fun `matches the wildcard characters of the text filter only as literal characters`() {
         val (dataSource, database) = inMemoryDatabase()
 

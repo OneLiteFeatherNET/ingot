@@ -31,6 +31,7 @@ import com.reposilite.audit.api.AuditEventDto
 import com.reposilite.audit.api.AuditPageDto
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.RoutePermission.READ
+import io.javalin.http.HttpStatus.BAD_REQUEST
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.UNAUTHORIZED
@@ -133,6 +134,65 @@ internal abstract class AuditIntegrationTest : ReposiliteSpecification() {
         assertThat(failures.map { it.action }).containsOnly(LOGIN_FAILED)
         assertThat(failures.sumOf { it.occurrences }).isEqualTo(3)
         assertThat(failures.map { it.success }).containsOnly(false)
+    }
+
+    @Test
+    fun `should list the events of every action named in a comma separated action filter`() {
+        // given: a token creation and a failed login
+        useAuth("multi-creator", "multi-creator-secret", listOf(MANAGER))
+        assertThat(get("$base/api/audit").basicAuth("multi-intruder", "wrong-secret").asString().status).isEqualTo(UNAUTHORIZED.code)
+
+        // when: both actions are requested in one comma separated parameter
+        val actions = auditEvents(query = "?action=TOKEN_CREATED,LOGIN_FAILED").map { it.action }
+
+        // then: events of both actions are listed and no other action
+        assertThat(actions).contains(TOKEN_CREATED, LOGIN_FAILED)
+        assertThat(actions).containsOnly(TOKEN_CREATED, LOGIN_FAILED)
+    }
+
+    @Test
+    fun `should list the events of every action named in repeated action parameters`() {
+        // given: a token creation and a failed login
+        useAuth("repeat-creator", "repeat-creator-secret", listOf(MANAGER))
+        assertThat(get("$base/api/audit").basicAuth("repeat-intruder", "wrong-secret").asString().status).isEqualTo(UNAUTHORIZED.code)
+
+        // when: both actions are requested as repeated parameters
+        val actions = auditEvents(query = "?action=TOKEN_CREATED&action=LOGIN_FAILED").map { it.action }
+
+        // then: events of both actions are listed and no other action
+        assertThat(actions).contains(TOKEN_CREATED, LOGIN_FAILED)
+        assertThat(actions).containsOnly(TOKEN_CREATED, LOGIN_FAILED)
+    }
+
+    @Test
+    fun `should answer 400 naming every unknown action on the list and on the export`() {
+        // given: a manager
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: both endpoints get a filter with two unknown actions
+        val list = get("$base/api/audit?action=NOPE_ONE,TOKEN_CREATED&action=NOPE_TWO").basicAuth(name, secret).asString()
+        val export = get("$base/api/audit/export?action=NOPE_ONE,TOKEN_CREATED&action=NOPE_TWO").basicAuth(name, secret).asString()
+
+        // then: both refuse the request and name both unknown actions
+        assertThat(list.status).isEqualTo(BAD_REQUEST.code)
+        assertThat(list.body).contains("NOPE_ONE").contains("NOPE_TWO")
+        assertThat(export.status).isEqualTo(BAD_REQUEST.code)
+        assertThat(export.body).contains("NOPE_ONE").contains("NOPE_TWO")
+    }
+
+    @Test
+    fun `should export the events of every action named in the action filter`() {
+        // given: a token creation and a failed login
+        useAuth("export-creator", "export-creator-secret", listOf(MANAGER))
+        assertThat(get("$base/api/audit").basicAuth("export-intruder", "wrong-secret").asString().status).isEqualTo(UNAUTHORIZED.code)
+
+        // when: the export is requested with a comma separated and a repeated action
+        val (name, secret) = useDefaultManagementToken()
+        val response = get("$base/api/audit/export?action=TOKEN_CREATED,LOGIN_FAILED&action=TOKEN_CREATED").basicAuth(name, secret).asString()
+
+        // then: rows of both actions are exported
+        assertThat(response.status).isEqualTo(OK.code)
+        assertThat(response.body).contains("TOKEN_CREATED").contains("LOGIN_FAILED")
     }
 
     private fun auditEvents(query: String = ""): List<AuditEventDto> {

@@ -39,7 +39,7 @@ internal class AuditEndpoints(private val auditFacade: AuditFacade) : Reposilite
         tags = ["Audit"],
         path = "/api/audit",
         methods = [HttpMethod.GET],
-        summary = "Returns audited events, newest first. Filters: actor, action, repository, q, from, to. Pages with cursor and limit. Note: Requires manager",
+        summary = "Returns audited events, newest first. Filters: actor, action (one or more, comma separated or repeated), repository, q, from, to. Pages with cursor and limit. Note: Requires manager",
         responses = [
             OpenApiResponse("200", description = "A page of events and the cursor of the next page, or null on the last page"),
             OpenApiResponse("400", description = "A filter, limit or cursor is not valid"),
@@ -48,7 +48,7 @@ internal class AuditEndpoints(private val auditFacade: AuditFacade) : Reposilite
     )
     val findAuditEvents = ReposiliteRoute<AuditPageDto>("/api/audit", GET) {
         managerOnly {
-            response = AuditQueryParser.parse { ctx.queryParam(it) }
+            response = AuditQueryParser.parse { ctx.queryParams(it) }
                 .mapErr { badRequest(it) }
                 .map { query -> auditFacade.find(query).let { page -> AuditPageDto(page.records.map { it.toDto() }, page.nextCursor) } }
         }
@@ -67,7 +67,7 @@ internal class AuditEndpoints(private val auditFacade: AuditFacade) : Reposilite
     )
     val exportAuditEvents = ReposiliteRoute<InputStream>("/api/audit/export", GET) {
         managerOnly {
-            response = AuditQueryParser.parse { ctx.queryParam(it) }
+            response = AuditQueryParser.parse { ctx.queryParams(it) }
                 .mapErr { badRequest(it) }
                 .map { query ->
                     val csv = StringBuilder()

@@ -68,7 +68,7 @@ internal class InMemoryAuditRepository : AuditRepository {
 
     private fun matches(record: AuditRecord, query: AuditQuery): Boolean {
         if (query.actor != null && record.actor != query.actor) return false
-        if (query.action != null && record.action != query.action) return false
+        if (query.actions.isNotEmpty() && record.action !in query.actions) return false
         if (query.repository != null && record.repository != query.repository) return false
         if (query.from != null && record.timestamp < query.from) return false
         if (query.to != null && record.timestamp >= query.to) return false

@@ -35,14 +35,14 @@ internal object AuditQueryParser {
 
     private class InvalidAuditQuery(message: String) : RuntimeException(message)
 
-    fun parse(param: (String) -> String?): Result<AuditQuery, String> =
+    fun parse(param: (String) -> List<String>): Result<AuditQuery, String> =
         try {
             ok(build(param))
         } catch (exception: InvalidAuditQuery) {
             exception.message.orEmpty().asError()
         }
 
-    private fun build(param: (String) -> String?): AuditQuery {
+    private fun build(param: (String) -> List<String>): AuditQuery {
         val from = text(param, "from")?.let { instant("from", it) }
         val to = text(param, "to")?.let { instant("to", it) }
         if (from != null && to != null && from >= to) {
@@ -51,7 +51,7 @@ internal object AuditQueryParser {
 
         return AuditQuery(
             actor = text(param, "actor"),
-            action = text(param, "action")?.let { action(it) },
+            actions = actions(param("action")),
             repository = text(param, "repository"),
             text = text(param, "q"),
             from = from,
@@ -61,12 +61,30 @@ internal object AuditQueryParser {
         )
     }
 
-    private fun text(param: (String) -> String?, name: String): String? =
-        param(name)?.trim()?.takeIf { it.isNotEmpty() }
+    private fun text(param: (String) -> List<String>, name: String): String? =
+        param(name).firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
 
-    private fun action(name: String): AuditAction =
-        AuditAction.entries.firstOrNull { it.name == name }
-            ?: throw InvalidAuditQuery("Unknown action: $name")
+    /**
+     * Every `action` parameter may hold a comma separated list, so `action=A,B` and `action=A&action=B`
+     * mean the same. Entries are trimmed, empty entries are dropped and repeats count once. Unknown
+     * names are all reported together.
+     */
+    private fun actions(values: List<String>): Set<AuditAction> {
+        val names = values
+            .flatMap { it.split(',') }
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+
+        val byName = AuditAction.entries.associateBy { it.name }
+        val unknown = names.filter { it !in byName }
+        if (unknown.isNotEmpty()) {
+            val label = if (unknown.size == 1) "Unknown action" else "Unknown actions"
+            throw InvalidAuditQuery("$label: ${unknown.joinToString(", ")}")
+        }
+
+        return names.mapTo(linkedSetOf()) { byName.getValue(it) }
+    }
 
     private fun instant(name: String, value: String): Long =
         runCatching { Instant.parse(value).toEpochMilli() }

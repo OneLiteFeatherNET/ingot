@@ -128,7 +128,7 @@ internal class AuditFacadeTest {
         seedMixedEvents(facade)
 
         assertThat(facade.find(AuditQuery(actor = "ci")).records).hasSize(2)
-        assertThat(facade.find(AuditQuery(action = TOKEN_CREATED)).records.single().actor).isEqualTo("admin")
+        assertThat(facade.find(AuditQuery(actions = setOf(TOKEN_CREATED))).records.single().actor).isEqualTo("admin")
         assertThat(facade.find(AuditQuery(repository = "releases")).records.single().path).isEqualTo("org/example/app/1.0/app-1.0.jar")
     }
 
@@ -151,6 +151,16 @@ internal class AuditFacadeTest {
 
         assertThat(facade.find(AuditQuery(text = "%")).records).isEmpty()
         assertThat(facade.find(AuditQuery(text = "_")).records).isEmpty()
+    }
+
+    @Test
+    fun `an action filter with several actions matches any of them`() {
+        val facade = facade(InMemoryAuditRepository())
+        seedMixedEvents(facade)
+
+        val actions = facade.find(AuditQuery(actions = setOf(TOKEN_CREATED, LOGIN_FAILED))).records.map { it.action }
+
+        assertThat(actions).containsExactlyInAnyOrder(TOKEN_CREATED, LOGIN_FAILED)
     }
 
     @Test
