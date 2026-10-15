@@ -25,14 +25,16 @@ import MdTextField from '../md/MdTextField.vue'
 import ConflictDialog from '../settings/ConflictDialog.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
-import TeamGrantsCard from './TeamGrantsCard.vue'
+import PermissionNodesCard from './PermissionNodesCard.vue'
+import TeamLegacyGrants from './TeamLegacyGrants.vue'
 import TeamMembersCard from './TeamMembersCard.vue'
-import { grantPayload, manualMembers } from './accessTeams'
+import { manualMembers } from './accessTeams'
 import { useTeamDetail } from './useTeamDetail'
 
 /*
  * The detail of one team: the header (name, description, external reference, the instance admin
- * switch and the delete action), the members and the grants.
+ * switch and the delete action), the members, the permission nodes and the legacy role grants
+ * (read only).
  *
  * Every write sends the entity tag of the detail as If-Match. A 412 opens the conflict dialog.
  * A rejection that names a reason, such as the last instance admin, is shown with the server's
@@ -60,12 +62,10 @@ const { detail, status, failure, conflict } = team
 
 const principals = ref([])
 const principalsError = ref('')
-const repositories = ref([])
 
 onMounted(() => {
   team.load()
   loadPrincipals()
-  loadRepositories()
 })
 
 watch(() => props.name, () => {
@@ -83,16 +83,6 @@ const loadPrincipals = async () => {
   }
 }
 
-const loadRepositories = async () => {
-  try {
-    const response = await client.value.maven.repositories()
-    repositories.value = (response.data?.repositories ?? []).map(repository => repository.id)
-  } catch {
-    // The editor still offers "Every repository" and the repository of the grant being edited.
-    repositories.value = []
-  }
-}
-
 // A write: the helper sends the tag; a conflict is the dialog's business, a failure is returned.
 const commit = async (run) => {
   const result = await team.write(run)
@@ -102,11 +92,11 @@ const commit = async (run) => {
 
 const setMembers = (names) => commit(etag => api.value.setMembers(props.name, names, etag))
 
-const setGrants = async (grants) => {
-  const result = await commit(etag => api.value.setGrants(props.name, grants.map(grantPayload), etag))
-  if (result.ok) createSuccessToast('Grants saved')
-  else if (!result.conflict) createErrorToast(result.message)
-  return result
+// The nodes have an entity tag of their own: after a save the team is read again, so the instance
+// admin badge and the counts follow.
+const nodesSaved = () => {
+  team.load()
+  emit('changed')
 }
 
 // The description and the external reference.
@@ -308,6 +298,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
             </MdButton>
             <MdButton
               type="submit"
+              variant="tonal"
               data-test="save-details"
               :disabled="editBusy"
             >
@@ -374,11 +365,12 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
         :principals-error="principalsError"
         :commit="setMembers"
       />
-      <TeamGrantsCard
-        :grants="detail.grants"
-        :repositories="repositories"
-        :commit="setGrants"
+      <PermissionNodesCard
+        subject-kind="team"
+        :name="name"
+        @saved="nodesSaved()"
       />
+      <TeamLegacyGrants :grants="detail.grants" />
     </template>
 
     <ConfirmActionDialog
@@ -394,7 +386,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
         Every member of {{ name }} will be able to do every action on every repository, and manage users, teams, tokens and settings.
       </template>
       <template v-else>
-        The members of {{ name }} lose the instance admin role. Their grants stay.
+        The members of {{ name }} lose the instance admin role. Their permission nodes stay.
       </template>
     </ConfirmActionDialog>
     <ConfirmActionDialog
@@ -408,7 +400,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
       :failure="deleteFailure"
       @confirm="removeTeam()"
     >
-      {{ name }} and its grants are deleted. The members stay, but lose what the team gave them. This cannot be undone.
+      {{ name }} and its permission nodes are deleted. The members stay, but lose what the team gave them. This cannot be undone.
     </ConfirmActionDialog>
     <ConflictDialog
       :conflict="conflict"

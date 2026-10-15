@@ -207,7 +207,7 @@ const deleted = (name) => {
         v-else
         class="md-body-large text-on-surface-variant"
       >
-        Select a team to see its members and grants.
+        Select a team to see its members and permission nodes.
       </p>
     </div>
 

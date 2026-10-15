@@ -186,7 +186,7 @@ const openAdd = () => {
       :failure="failure"
       @confirm="remove()"
     >
-      {{ removing?.principal }} will no longer get the grants of {{ team.name }}.
+      {{ removing?.principal }} will no longer get the permissions of {{ team.name }}.
     </ConfirmActionDialog>
   </section>
 </template>

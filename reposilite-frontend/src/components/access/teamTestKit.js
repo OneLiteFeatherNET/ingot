@@ -54,8 +54,6 @@ const PRINCIPALS = [
   { name: 'builder', kind: 'MACHINE', displayName: 'Builder', disabled: false }
 ]
 
-const REPOSITORIES = [{ id: 'releases' }, { id: 'snapshots' }]
-
 const answer = (data, etag = '"6"') => ({ data, headers: { etag } })
 
 const failure = (status, message) => Object.assign(new Error(message), { response: { status, data: { message } } })
@@ -74,20 +72,32 @@ const makeTeamsApi = (team = TEAM) => ({
       ...members.map(principal => ({ principal, kind: 'USER', source: 'MANUAL' }))
     ]
   })),
-  setGrants: vi.fn(async (name, grants) => answer({ ...team, grants })),
   grantInstanceAdmin: vi.fn(async () => answer({ ...team, instanceRole: true })),
   revokeInstanceAdmin: vi.fn(async () => answer({ ...team, instanceRole: false }))
 })
 
+const NODES = [
+  { node: 'ingot.repository.releases.read', allowed: true },
+  { node: 'ingot.repository.private.read', allowed: false }
+]
+
+/** A fake nodes client: it answers every subject with a copy of `nodes` and a fresh entity tag. */
+const makeNodesApi = (nodes = NODES) => ({
+  get: vi.fn(async () => answer({ nodes: nodes.map(entry => ({ ...entry })) }, '"n1"')),
+  set: vi.fn(async (kind, name, written) => answer({ nodes: written }, '"n2"')),
+  catalog: vi.fn(async () => ({ data: { nodes: [] } })),
+  templates: vi.fn(async () => ({ data: { templates: [] } }))
+})
+
 /** Puts a fake client into the session holder the test file mocked. */
-const installClient = (holder, teams) => {
+const installClient = (holder, teams, nodes = makeNodesApi()) => {
   holder.session = {
     client: ref({
       identity: {
         teams,
-        principals: { list: vi.fn(async () => ({ data: PRINCIPALS })) }
-      },
-      maven: { repositories: vi.fn(async () => ({ data: { repositories: REPOSITORIES } })) }
+        principals: { list: vi.fn(async () => ({ data: PRINCIPALS })) },
+        nodes
+      }
     })
   }
 }
@@ -122,13 +132,14 @@ const confirm = async () => {
 
 export {
   PRINCIPALS,
-  REPOSITORIES,
+  NODES,
   TEAM,
   answer,
   confirm,
   confirmDialog,
   failure,
   installClient,
+  makeNodesApi,
   makeTeamsApi,
   mountTeamDetail,
   typeInto

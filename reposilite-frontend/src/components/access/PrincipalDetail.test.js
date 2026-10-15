@@ -21,6 +21,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import { setClock, resetClock } from '../../helpers/clock'
 import PrincipalDetail from './PrincipalDetail.vue'
+import { NODES, makeNodesApi } from './teamTestKit'
 
 // The session is replaced by a ref of the client, so each test decides what the server answers.
 const holder = vi.hoisted(() => ({ session: null }))
@@ -85,6 +86,7 @@ describe('PrincipalDetail', () => {
   let principals
   let tokensApi
   let legacyGet
+  let nodes
 
   const mountDetail = async (props) => {
     const router = await makeRouter()
@@ -108,9 +110,10 @@ describe('PrincipalDetail', () => {
       revoke: vi.fn()
     }
     legacyGet = vi.fn().mockResolvedValue({ data: LEGACY_TOKEN })
+    nodes = makeNodesApi()
     holder.session = {
       client: ref({
-        identity: { principals, principalTokens: vi.fn(() => tokensApi) },
+        identity: { principals, principalTokens: vi.fn(() => tokensApi), nodes },
         tokens: { get: legacyGet }
       })
     }
@@ -162,6 +165,65 @@ describe('PrincipalDetail', () => {
 
       expect(activity.text()).toBe('3 days ago')
       expect(activity.attributes('title')).toBe('2026-10-12 12:00 UTC')
+    })
+
+    describe('permission nodes', () => {
+      it('shows a Permission nodes card with the node editor', async () => {
+        await mountDetail({ name: 'alice', kind: 'USER' })
+
+        const card = wrapper.find('[data-test="permission-nodes"]')
+
+        expect(card.find('h4').text()).toBe('Permission nodes')
+        expect(card.find('[data-test="node-editor"]').exists()).toBe(true)
+      })
+
+      it('loads the nodes of the user from the principals collection', async () => {
+        await mountDetail({ name: 'alice', kind: 'USER' })
+
+        expect(nodes.get).toHaveBeenCalledWith('principals', 'alice')
+        expect(wrapper.findAll('[data-test="node-row"]')).toHaveLength(NODES.length)
+      })
+
+      it('saves the edited nodes with the entity tag of the nodes', async () => {
+        await mountDetail({ name: 'alice', kind: 'USER' })
+
+        await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
+        await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+        await flushPromises()
+
+        expect(nodes.set).toHaveBeenCalledWith(
+          'principals',
+          'alice',
+          [{ node: 'ingot.repository.releases.read', allowed: true }],
+          '"n1"'
+        )
+      })
+
+      it('reads the user again after the nodes were saved and tells the list', async () => {
+        await mountDetail({ name: 'alice', kind: 'USER' })
+        principals.get.mockClear()
+
+        await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
+        await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+        await flushPromises()
+
+        expect(principals.get).toHaveBeenCalledTimes(1)
+        expect(wrapper.emitted('changed')).toHaveLength(1)
+      })
+
+      it('keeps the actions menu next to the card', async () => {
+        await mountDetail({ name: 'alice', kind: 'USER' })
+
+        expect(wrapper.find('[data-test="actions"]').exists()).toBe(true)
+      })
+
+      it('has no role or grant editor', async () => {
+        await mountDetail({ name: 'alice', kind: 'USER' })
+
+        for (const selector of ['grants', 'add-grant', 'edit-grant', 'save-grants']) {
+          expect(wrapper.find(`[data-test="${selector}"]`).exists(), selector).toBe(false)
+        }
+      })
     })
 
     it('has the actions of a user and no token section', async () => {
@@ -233,38 +295,55 @@ describe('PrincipalDetail', () => {
       expect(wrapper.find('[data-test="team"]').attributes('href')).toBe('/access/teams/developers')
     })
 
-    describe('legacy grants', () => {
+    describe('permission nodes', () => {
+      it('loads the nodes of the machine account from the principals collection', async () => {
+        await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
+
+        expect(nodes.get).toHaveBeenCalledWith('principals', 'ci-bot')
+        expect(wrapper.find('[data-test="permission-nodes"] [data-test="node-editor"]').exists()).toBe(true)
+      })
+
+      it('shows the nodes card before the legacy routes', async () => {
+        await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
+
+        const html = wrapper.html()
+
+        expect(html.indexOf('data-test="permission-nodes"')).toBeLessThan(html.indexOf('data-test="legacy-grants"'))
+      })
+    })
+
+    describe('legacy routes', () => {
       it('reads the routes of the migrated token by the machine name', async () => {
         await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
 
         expect(legacyGet).toHaveBeenCalledWith('ci-bot')
       })
 
-      it('shows the panel with the heading and the routes', async () => {
+      it('shows the panel labeled Legacy routes with the routes', async () => {
         await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
 
         const panel = wrapper.find('[data-test="legacy-grants"]')
         const grants = panel.findAll('[data-test="legacy-grant"]')
 
-        expect(panel.text()).toContain('Legacy grants (migrated from an access token)')
+        expect(panel.find('h3').text()).toBe('Legacy routes')
         expect(grants.map(grant => grant.text())).toEqual(['/releasesReadWrite', '/snapshotsRead'])
       })
 
-      it('shows the hint to convert them to team roles and a link to the teams', async () => {
+      it('says that the routes are read only and still apply', async () => {
         await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
 
         const panel = wrapper.find('[data-test="legacy-grants"]')
 
-        expect(panel.text()).toContain('Convert these to team roles: add the machine to a team with a role on the repository')
-        expect(panel.find('[data-test="teams-link"]').attributes('href')).toBe('/access/teams')
+        expect(panel.text()).toContain('still apply')
+        expect(panel.text()).toContain('read only')
       })
 
-      it('is read-only: it holds no input, no button and no editor', async () => {
+      it('is read only: it holds no input, no button, no link and no editor', async () => {
         await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
 
         const panel = wrapper.find('[data-test="legacy-grants"]')
 
-        expect(panel.findAll('input, button, textarea, select')).toHaveLength(0)
+        expect(panel.findAll('input, button, textarea, select, a')).toHaveLength(0)
       })
 
       it('shows no team hint next to the legacy panel', async () => {

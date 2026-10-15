@@ -99,7 +99,7 @@ const submit = async () => {
       New team
     </h2>
     <p class="mt-2 md-body-large text-on-surface-variant">
-      A team groups users and machine accounts. Give it grants afterwards.
+      A team groups users and machine accounts. Give it permission nodes afterwards.
     </p>
 
     <form

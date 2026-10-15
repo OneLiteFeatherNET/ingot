@@ -19,7 +19,7 @@ import TokenTag from '../tokens/TokenTag.vue'
 
 /*
  * The routes a migrated access token had, shown for reading only. They still apply to that
- * token, but they are not edited here: the way forward is a team role on the repository.
+ * token, but they are not edited here: the permission nodes above are the way forward.
  *
  * Props:
  *   grants  [{ path, read, write }], one entry per route path
@@ -35,24 +35,18 @@ defineProps({
 <template>
   <section
     class="flex flex-col gap-3 rounded-corner-large bg-surface-container-low px-4 py-4"
-    aria-labelledby="legacy-grants-title"
+    aria-labelledby="legacy-routes-title"
     data-test="legacy-grants"
   >
     <h3
-      id="legacy-grants-title"
+      id="legacy-routes-title"
       class="md-title-large text-on-surface"
     >
-      Legacy grants (migrated from an access token)
+      Legacy routes
     </h3>
     <p class="md-body-medium text-on-surface-variant">
-      Convert these to team roles: add the machine to a team with a role on the repository.
-      <router-link
-        :to="{ name: 'access-teams' }"
-        class="md-focus-ring rounded-corner-extra-small text-primary"
-        data-test="teams-link"
-      >
-        Open teams
-      </router-link>
+      These routes come from a migrated access token and still apply. They are read only here.
+      Grant permission nodes to replace them.
     </p>
     <ul
       v-if="grants.length > 0"

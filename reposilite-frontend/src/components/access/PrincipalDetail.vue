@@ -24,13 +24,14 @@ import TokenList from '../identity/TokenList.vue'
 import { formatDate } from '../identity/identityTokens'
 import TokenTag from '../tokens/TokenTag.vue'
 import LegacyGrantsPanel from './LegacyGrantsPanel.vue'
+import PermissionNodesCard from './PermissionNodesCard.vue'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import { detailOf, isInstanceAdmin, legacyGrants, newestLastUsed, seenLabel, usedLabel } from './accessPrincipals'
 
 /*
  * The detail of one user or machine account: the facts, the teams as chips that open the team,
- * the actions, and for a machine account its tokens and the rights it still has from a migrated
- * access token.
+ * the actions, the permission nodes (edited here) and for a machine account its tokens and the
+ * routes it still has from a migrated access token (read only).
  *
  * Props:
  *   name  the principal to show
@@ -276,6 +277,12 @@ const admin = computed(() => isInstanceAdmin(detail.value))
           </dd>
         </dl>
       </div>
+
+      <PermissionNodesCard
+        subject-kind="principal"
+        :name="name"
+        @saved="changed()"
+      />
 
       <template v-if="isMachine">
         <LegacyGrantsPanel

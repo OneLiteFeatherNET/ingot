@@ -18,11 +18,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import {
+  NODES,
   TEAM,
   confirm,
   confirmDialog,
   failure,
   installClient,
+  makeNodesApi,
   makeTeamsApi,
   mountTeamDetail,
   typeInto
@@ -41,6 +43,7 @@ vi.mock('../../helpers/toast', () => ({
 describe('TeamDetail', () => {
   let wrapper
   let teams
+  let nodes
 
   const mountDetail = async (name) => {
     wrapper = await mountTeamDetail(name)
@@ -52,7 +55,8 @@ describe('TeamDetail', () => {
     vi.mocked(createSuccessToast).mockClear()
     vi.mocked(createErrorToast).mockClear()
     teams = makeTeamsApi()
-    installClient(holder, teams)
+    nodes = makeNodesApi()
+    installClient(holder, teams, nodes)
   })
 
   afterEach(() => {
@@ -88,6 +92,105 @@ describe('TeamDetail', () => {
       await mountDetail()
 
       expect(wrapper.find('[data-test="admin-badge"]').text()).toBe('Instance admin')
+    })
+  })
+
+  describe('permission nodes', () => {
+    it('shows a Permission nodes card with the node editor', async () => {
+      await mountDetail()
+
+      const card = wrapper.find('[data-test="permission-nodes"]')
+
+      expect(card.find('h4').text()).toBe('Permission nodes')
+      expect(card.find('[data-test="node-editor"]').exists()).toBe(true)
+    })
+
+    it('loads the nodes of the team from the teams collection', async () => {
+      await mountDetail()
+
+      expect(nodes.get).toHaveBeenCalledWith('teams', 'developers')
+      expect(wrapper.findAll('[data-test="node-row"]')).toHaveLength(NODES.length)
+    })
+
+    it('saves the nodes with their own entity tag, not the one of the team', async () => {
+      await mountDetail()
+
+      await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
+      await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+      await flushPromises()
+
+      expect(nodes.set).toHaveBeenCalledWith(
+        'teams',
+        'developers',
+        [{ node: 'ingot.repository.releases.read', allowed: true }],
+        '"n1"'
+      )
+      expect(teams.setMembers, 'the members are not written').not.toHaveBeenCalled()
+    })
+
+    it('reads the team again after the nodes were saved', async () => {
+      await mountDetail()
+      teams.get.mockClear()
+
+      await wrapper.find('button[aria-label="Remove ingot.repository.private.read"]').trigger('click')
+      await wrapper.findAll('button').find(button => button.text() === 'Save').trigger('click')
+      await flushPromises()
+
+      expect(teams.get).toHaveBeenCalledTimes(1)
+      expect(wrapper.emitted('changed')).toHaveLength(1)
+    })
+
+    it('keeps the members card', async () => {
+      await mountDetail()
+
+      expect(wrapper.find('[data-test="add-member"]').exists()).toBe(true)
+    })
+
+    it('has no grant editor any more', async () => {
+      await mountDetail()
+
+      for (const selector of ['grants', 'add-grant', 'edit-grant', 'remove-grant', 'save-grants', 'discard-grants']) {
+        expect(wrapper.find(`[data-test="${selector}"]`).exists(), selector).toBe(false)
+      }
+      expect(document.querySelector('[data-test="save-grant"]')).toBeNull()
+    })
+
+    it('does not read the repositories any more', async () => {
+      await mountDetail()
+
+      expect(holder.session.client.value.maven).toBeUndefined()
+    })
+
+    it('keeps the details save tonal so the node editor save is the filled button', async () => {
+      await mountDetail()
+      await wrapper.find('[data-test="edit-details"]').trigger('click')
+
+      expect(wrapper.find('[data-test="save-details"]').attributes('data-variant')).toBe('tonal')
+    })
+  })
+
+  describe('legacy grants', () => {
+    it('lists the old role grants in a collapsed section', async () => {
+      await mountDetail()
+
+      const section = wrapper.find('[data-test="legacy-team-grants"]')
+
+      expect(section.find('summary').text()).toBe('Legacy grants (2)')
+      expect(section.attributes('open')).toBeUndefined()
+      expect(section.findAll('[data-test="legacy-team-grant"]')).toHaveLength(2)
+    })
+
+    it('has no control to edit or remove a legacy grant', async () => {
+      await mountDetail()
+
+      expect(wrapper.find('[data-test="legacy-team-grants"]').findAll('input, button, textarea, select')).toHaveLength(0)
+    })
+
+    it('shows no section for a team without legacy grants', async () => {
+      teams.get.mockResolvedValue({ data: { ...TEAM, grants: [] }, headers: { etag: '"5"' } })
+      await mountDetail()
+
+      expect(wrapper.find('[data-test="legacy-team-grants"]').exists()).toBe(false)
     })
   })
 

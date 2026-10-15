@@ -24,7 +24,7 @@ import { teamDetailOf } from './accessTeams'
  * send that tag back as If-Match.
  *
  * `getName` returns the open team and `getApi` returns the teams client ({ get, update, remove,
- * setMembers, setGrants, grantInstanceAdmin, revokeInstanceAdmin }).
+ * setMembers, grantInstanceAdmin, revokeInstanceAdmin }).
  *
  * write(run) calls run(etag) and takes the answer (a TeamDetailDto) as the new detail. It never
  * throws: it returns { ok: true } or { ok: false, message, status }. A 412 additionally opens the
