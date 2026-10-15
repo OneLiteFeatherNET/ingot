@@ -24,5 +24,12 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.js"],
+    // @material/material-color-utilities 0.4 imports some of its own modules without a file
+    // extension. Node's loader cannot resolve those, so the package goes through Vite, which can.
+    server: {
+      deps: {
+        inline: ["@material/material-color-utilities"],
+      },
+    },
   },
 })
