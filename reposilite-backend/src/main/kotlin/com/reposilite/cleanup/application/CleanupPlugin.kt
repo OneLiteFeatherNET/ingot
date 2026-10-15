@@ -62,8 +62,9 @@ internal class CleanupPlugin : ReposilitePlugin() {
                     )
                 }
             },
-            deleter = VersionDeleter { repository, path, actor -> deleteVersion(mavenFacade, repository, path, actor) },
+            deleter = VersionDeleter { repository, path, actor, runId -> deleteVersion(mavenFacade, repository, path, actor, runId) },
             runs = SqlCleanupRunRepository(reposilite().database),
+            extensions = extensions(),
         )
 
         val scheduler = CleanupScheduler(
@@ -94,14 +95,20 @@ internal class CleanupPlugin : ReposilitePlugin() {
      * Deletes one version directory. A manager's run goes through the token-checked delete service, a scheduled run
      * through the unchecked path of the same service, because the scheduler has no token. Both update the metadata.
      */
-    private fun deleteVersion(mavenFacade: MavenFacade, repositoryName: String, path: String, actor: CleanupActor): Result<Unit, ErrorResponse> {
+    private fun deleteVersion(
+        mavenFacade: MavenFacade,
+        repositoryName: String,
+        path: String,
+        actor: CleanupActor,
+        runId: String,
+    ): Result<Unit, ErrorResponse> {
         val repository = mavenFacade.getRepository(repositoryName) ?: return notFoundError("Repository $repositoryName not found")
         val gav = Location.of(path)
         val accessToken = actor.accessToken
         return if (accessToken != null) {
-            mavenFacade.deleteFile(DeleteRequest(accessToken, repository, gav, actor.by))
+            mavenFacade.deleteFile(DeleteRequest(accessToken, repository, gav, actor.by, cleanupRunId = runId))
         } else {
-            mavenFacade.deleteUnchecked(repository, gav, actor.by)
+            mavenFacade.deleteUnchecked(repository, gav, actor.by, cleanupRunId = runId)
         }
     }
 

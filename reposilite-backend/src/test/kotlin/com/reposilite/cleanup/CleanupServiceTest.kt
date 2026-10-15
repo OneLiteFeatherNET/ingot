@@ -16,10 +16,15 @@
 
 package com.reposilite.cleanup
 
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.cleanup.application.CleanupPolicy
 import com.reposilite.cleanup.application.CleanupScope
 import com.reposilite.cleanup.infrastructure.InMemoryCleanupRunRepository
 import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.plugin.Extensions
+import com.reposilite.plugin.api.EventListener
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.storage.StorageProvider
@@ -50,6 +55,11 @@ internal class CleanupServiceTest {
     private val clock = Clock.fixed(Instant.parse("2026-10-15T12:00:00Z"), ZoneOffset.UTC)
     private val actor = CleanupActor(by = "manager", accessToken = AccessTokenIdentifier())
 
+    private val emitted = mutableListOf<AuditEvent>()
+    private val auditing = Extensions(logger).also { extensions ->
+        extensions.registerEvent(AuditEvent::class.java, EventListener { emitted += it })
+    }
+
     private fun storage(name: String): StorageProvider =
         FileSystemStorageProviderFactory.of(logger, workingDirectory.toPath().resolve(name).createDirectories(), "100%")
 
@@ -69,7 +79,7 @@ internal class CleanupServiceTest {
 
     /** A deleter that removes the version from the storage, like the real delete service does. */
     private fun removingDeleter(storages: Map<String, StorageProvider>, calls: MutableList<String> = mutableListOf()) =
-        VersionDeleter { repository, path, _ ->
+        VersionDeleter { repository, path, _, _ ->
             calls += "$repository:$path"
             storages.getValue(repository).removeFile(Location.of(path))
         }
@@ -79,6 +89,7 @@ internal class CleanupServiceTest {
         targets: List<CleanupTarget>,
         deleter: VersionDeleter,
         runs: CleanupRunRepository = InMemoryCleanupRunRepository(),
+        extensions: Extensions = auditing,
     ) = CleanupService(
         journalist = logger,
         clock = clock,
@@ -86,6 +97,7 @@ internal class CleanupServiceTest {
         targets = { targets },
         deleter = deleter,
         runs = runs,
+        extensions = extensions,
     )
 
     @Test
@@ -101,7 +113,7 @@ internal class CleanupServiceTest {
             storesMirrors = true,
             cachedVersions = mapOf("net/example/app/1.0" to Instant.parse("2026-08-01T00:00:00Z")),
         )
-        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
 
         // when: the policy is previewed
         val preview = cleanup.preview("mirror").orThrow()
@@ -126,7 +138,7 @@ internal class CleanupServiceTest {
                 "org/mirror/lib/2.0" to Instant.parse("2026-10-14T00:00:00Z"),
             ),
         )
-        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
 
         // when: the policy is previewed
         val preview = cleanup.preview("mirror").orThrow()
@@ -142,7 +154,7 @@ internal class CleanupServiceTest {
         mirror.writeVersion("org/mirror/lib", "1.0")
         val policy = CleanupPolicy(id = "mirror", enabled = true, repositories = listOf("central"), scope = CleanupScope.MIRROR_CACHE, notDownloadedForDays = 30)
         val target = CleanupTarget(name = "central", storage = mirror, storesMirrors = true, cachedVersions = emptyMap())
-        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
 
         // when: the policy is previewed
         val preview = cleanup.preview("mirror").orThrow()
@@ -206,7 +218,7 @@ internal class CleanupServiceTest {
         val cleanup = service(
             listOf(keepOne()),
             listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
-            VersionDeleter { _, _, deleterActor -> actors += deleterActor; Result.ok(Unit) },
+            VersionDeleter { _, _, deleterActor, _ -> actors += deleterActor; Result.ok(Unit) },
         )
 
         // when: the policy is run by a manager
@@ -226,7 +238,7 @@ internal class CleanupServiceTest {
         val cleanup = service(
             listOf(keepOne()),
             listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
-            VersionDeleter { _, path, _ ->
+            VersionDeleter { _, path, _, _ ->
                 if (path.endsWith("1.0")) errorResponse(FORBIDDEN, "denied") else releases.removeFile(Location.of(path))
             },
         )
@@ -250,7 +262,7 @@ internal class CleanupServiceTest {
         val cleanup = service(
             listOf(keepOne()),
             listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
-            VersionDeleter { _, _, _ -> errorResponse(FORBIDDEN, "denied") },
+            VersionDeleter { _, _, _, _ -> errorResponse(FORBIDDEN, "denied") },
         )
 
         // when: the policy is run
@@ -265,7 +277,7 @@ internal class CleanupServiceTest {
     @Test
     fun `should refuse to run a policy that does not exist`() {
         // given: no policies
-        val cleanup = service(emptyList(), emptyList(), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(emptyList(), emptyList(), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
 
         // when: a run is requested for an unknown id
         val result = cleanup.run("missing", actor, CleanupTrigger.MANUAL)
@@ -285,7 +297,7 @@ internal class CleanupServiceTest {
         cleanup = service(
             listOf(keepOne()),
             listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
-            VersionDeleter { _, path, _ ->
+            VersionDeleter { _, path, _, _ ->
                 nested = cleanup.run("keep-one", actor, CleanupTrigger.MANUAL)
                 releases.removeFile(Location.of(path))
             },
@@ -301,7 +313,7 @@ internal class CleanupServiceTest {
     @Test
     fun `should keep the twenty most recent runs of each policy`() {
         // given: a policy that has nothing to delete
-        val cleanup = service(listOf(keepOne()), emptyList(), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(listOf(keepOne()), emptyList(), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
 
         // when: the policy is run 25 times
         repeat(25) { cleanup.run("keep-one", actor, CleanupTrigger.MANUAL).orThrow() }
@@ -315,7 +327,7 @@ internal class CleanupServiceTest {
         // given: a mirror cache policy on a repository that stores no mirrored artifacts
         val releases = storage("releases")
         val policy = CleanupPolicy(id = "cache", enabled = true, repositories = listOf("releases"), scope = CleanupScope.MIRROR_CACHE, notDownloadedForDays = 30)
-        val cleanup = service(listOf(policy), listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(listOf(policy), listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
 
         // when: the policy is previewed
         val preview = cleanup.preview("cache").orThrow()
@@ -329,13 +341,141 @@ internal class CleanupServiceTest {
     fun `should warn about a listed repository that does not exist`() {
         // given: a policy that names a repository which is not configured
         val policy = keepOne(repository = "missing")
-        val cleanup = service(listOf(policy), emptyList(), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(listOf(policy), emptyList(), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
 
         // when: the policy is previewed
         val preview = cleanup.preview("keep-one").orThrow()
 
         // then: the missing repository is reported
         assertEquals(listOf("repository 'missing' does not exist"), preview.warnings)
+    }
+
+    @Test
+    fun `should record one cleanup run event that names the policy, the scope and the totals`() {
+        // given: two releases and a policy that keeps the newest one, started by a token on a known address
+        val releases = storage("releases")
+        releases.writeVersion("net/example/app", "1.0")
+        releases.writeVersion("net/example/app", "1.1")
+        val cleanup = service(
+            listOf(keepOne()),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
+            removingDeleter(mapOf("releases" to releases)),
+        )
+        val manager = CleanupActor(by = "deploy-bot@10.0.0.2", accessToken = AccessTokenIdentifier())
+
+        // when: the policy is run by hand
+        val run = cleanup.run("keep-one", manager, CleanupTrigger.MANUAL).orThrow()
+
+        // then: exactly one run event is emitted, for the token, with the totals of the run
+        val event = emitted.single { it.action == AuditAction.CLEANUP_RUN }
+        assertEquals(AuditActor.named("deploy-bot", "10.0.0.2"), event.actor)
+        assertEquals(
+            mapOf(
+                "runId" to run.id,
+                "policy" to "keep-one",
+                "scope" to "RELEASES",
+                "trigger" to "MANUAL",
+                "status" to "SUCCEEDED",
+                "deletedCount" to 1,
+                "deletedBytes" to run.deletedBytes,
+            ),
+            event.details,
+        )
+        assertTrue(event.success)
+    }
+
+    @Test
+    fun `should record a scheduled run as the system actor`() {
+        // given: two releases and a policy that keeps the newest one
+        val releases = storage("releases")
+        releases.writeVersion("net/example/app", "1.0")
+        releases.writeVersion("net/example/app", "1.1")
+        val cleanup = service(
+            listOf(keepOne()),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
+            removingDeleter(mapOf("releases" to releases)),
+        )
+
+        // when: the scheduler runs the policy
+        cleanup.runScheduled("keep-one").orThrow()
+
+        // then: the run is attributed to the system, not to a token
+        val event = emitted.single { it.action == AuditAction.CLEANUP_RUN }
+        assertEquals(AuditActor.SYSTEM_ACTOR, event.actor)
+        assertEquals("SCHEDULED", event.details["trigger"])
+    }
+
+    @Test
+    fun `should record a run whose every deletion failed as unsuccessful`() {
+        // given: one old release whose deletion always fails
+        val releases = storage("releases")
+        releases.writeVersion("net/example/app", "1.0")
+        releases.writeVersion("net/example/app", "1.1")
+        val cleanup = service(
+            listOf(keepOne()),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
+            VersionDeleter { _, _, _, _ -> errorResponse(FORBIDDEN, "denied") },
+        )
+
+        // when: the policy is run
+        cleanup.run("keep-one", actor, CleanupTrigger.MANUAL).orThrow()
+
+        // then: the run event says the run did not succeed and deleted nothing
+        val event = emitted.single { it.action == AuditAction.CLEANUP_RUN }
+        assertFalse(event.success)
+        assertEquals(0, event.details["deletedCount"])
+    }
+
+    @Test
+    fun `should record a run that found nothing to delete, so the schedule stays visible in the log`() {
+        // given: a single release, which the policy keeps
+        val releases = storage("releases")
+        releases.writeVersion("net/example/app", "1.0")
+        val cleanup = service(
+            listOf(keepOne()),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
+            removingDeleter(mapOf("releases" to releases)),
+        )
+
+        // when: the policy is run
+        cleanup.run("keep-one", actor, CleanupTrigger.SCHEDULED).orThrow()
+
+        // then: the empty run is recorded as a successful run that deleted nothing
+        val event = emitted.single { it.action == AuditAction.CLEANUP_RUN }
+        assertTrue(event.success)
+        assertEquals(0, event.details["deletedCount"])
+    }
+
+    @Test
+    fun `should record nothing when the policy does not exist`() {
+        // given: no policies
+        val cleanup = service(emptyList(), emptyList(), VersionDeleter { _, _, _, _ -> Result.ok(Unit) })
+
+        // when: a run is requested for an unknown id
+        cleanup.run("missing", actor, CleanupTrigger.MANUAL)
+
+        // then: no run event is emitted
+        assertTrue(emitted.none { it.action == AuditAction.CLEANUP_RUN })
+    }
+
+    @Test
+    fun `should hand the id of the run to the deleter so each deletion can be tied to the run`() {
+        // given: one old release to delete
+        val releases = storage("releases")
+        releases.writeVersion("net/example/app", "1.0")
+        releases.writeVersion("net/example/app", "1.1")
+        val runIds = mutableListOf<String>()
+        val cleanup = service(
+            listOf(keepOne()),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
+            VersionDeleter { _, path, _, runId -> runIds += runId; releases.removeFile(Location.of(path)) },
+        )
+
+        // when: the policy is run
+        val run = cleanup.run("keep-one", actor, CleanupTrigger.MANUAL).orThrow()
+
+        // then: the deleter receives the id of this run
+        assertEquals(listOf(run.id), runIds)
     }
 
     private fun <T> Result<T, ErrorResponse>.orThrow(): T =

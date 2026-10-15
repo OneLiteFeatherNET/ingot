@@ -70,14 +70,8 @@ internal class AuditPlugin : ReposilitePlugin() {
 
         event { event: DeleteEvent ->
             recordSafely {
-                auditFacade.record(
-                    AuditEvent(
-                        action = AuditAction.ARTIFACT_DELETED,
-                        actor = AuditActor.fromSessionIdentifier(event.by),
-                        repository = event.repository.name,
-                        path = event.gav.toString(),
-                    )
-                )
+                artifactDeletedEvent(event.repository.name, event.gav.toString(), event.by, event.cleanupRunId)
+                    ?.let(auditFacade::record)
             }
         }
 
@@ -105,3 +99,19 @@ internal class AuditPlugin : ReposilitePlugin() {
     }
 
 }
+
+/**
+ * The audit event of a removed file. A file removed by a cleanup run gets none: the run records one
+ * [AuditAction.CLEANUP_RUN] event with its totals, so a run that removes thousands of versions stays readable.
+ */
+internal fun artifactDeletedEvent(repository: String, path: String, by: String, cleanupRunId: String?): AuditEvent? =
+    if (cleanupRunId != null) {
+        null
+    } else {
+        AuditEvent(
+            action = AuditAction.ARTIFACT_DELETED,
+            actor = AuditActor.fromSessionIdentifier(by),
+            repository = repository,
+            path = path,
+        )
+    }

@@ -17,8 +17,12 @@
 package com.reposilite.cleanup
 
 import com.reposilite.cleanup.application.CleanupPolicy
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.cleanup.application.CleanupScope
 import com.reposilite.journalist.Journalist
+import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
@@ -53,6 +57,9 @@ internal data class CleanupTarget(
  * A dry run and a run plan the same way, from a fresh inventory. A run deletes through [deleter] and records its
  * outcome; the last [CLEANUP_RUN_HISTORY_LIMIT] runs of each policy are kept. One policy runs at a time: a second
  * request for a policy that is still running is refused with a conflict.
+ *
+ * Every run that starts emits one [AuditAction.CLEANUP_RUN] event with its totals. The deletions of the run are not
+ * audited one by one: each one carries the run id on its delete event, and the audit log leaves them to the run.
  */
 class CleanupService internal constructor(
     private val journalist: Journalist,
@@ -61,6 +68,7 @@ class CleanupService internal constructor(
     private val targets: () -> List<CleanupTarget>,
     private val deleter: VersionDeleter,
     private val runs: CleanupRunRepository,
+    private val extensions: Extensions = Extensions(journalist),
 ) : Facade {
 
     private val running = ConcurrentHashMap.newKeySet<String>()
@@ -88,8 +96,9 @@ class CleanupService internal constructor(
 
         try {
             val startedAt = clock.instant()
+            val runId = UUID.randomUUID().toString()
             val (deletions, _) = plan(policy)
-            val outcomes = deletions.map { deletion -> deletion to deleter.delete(deletion.repository, deletion.path, actor) }
+            val outcomes = deletions.map { deletion -> deletion to deleter.delete(deletion.repository, deletion.path, actor, runId) }
 
             val succeeded = outcomes.filter { (_, result) -> result.isOk }.map { (deletion, _) -> deletion }
             val failures = outcomes
@@ -102,7 +111,7 @@ class CleanupService internal constructor(
             }
 
             val run = CleanupRun(
-                id = UUID.randomUUID().toString(),
+                id = runId,
                 policyId = policyId,
                 trigger = trigger,
                 startedAt = startedAt,
@@ -115,6 +124,23 @@ class CleanupService internal constructor(
             runs.insert(run)
             runs.keepNewest(policyId, CLEANUP_RUN_HISTORY_LIMIT)
             journalist.logger.info("CLEANUP | Policy $policyId ($trigger by ${actor.by}) finished as $status: ${run.deletedCount} version(s), ${run.deletedBytes} bytes deleted, ${failures.size} failure(s)")
+            extensions.emitEvent(
+                AuditEvent(
+                    action = AuditAction.CLEANUP_RUN,
+                    actor = if (trigger == CleanupTrigger.SCHEDULED) AuditActor.SYSTEM_ACTOR else AuditActor.fromSessionIdentifier(actor.by),
+                    repository = policy.repositories.singleOrNull(),
+                    details = mapOf(
+                        "runId" to run.id,
+                        "policy" to policyId,
+                        "scope" to policy.scope.name,
+                        "trigger" to trigger.name,
+                        "status" to status.name,
+                        "deletedCount" to run.deletedCount,
+                        "deletedBytes" to run.deletedBytes,
+                    ),
+                    success = status == CleanupRunStatus.SUCCEEDED,
+                )
+            )
             return run.asSuccess()
         } finally {
             running.remove(policyId)

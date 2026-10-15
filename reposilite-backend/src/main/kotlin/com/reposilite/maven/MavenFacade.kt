@@ -79,8 +79,8 @@ class MavenFacade internal constructor(
      * Deletes without an access token, for server side jobs such as scheduled cleanup. Every deletion path reconciles
      * the metadata the same way as [deleteFile], so both paths leave maven-metadata.xml describing the same state.
      */
-    internal fun deleteUnchecked(repository: Repository, gav: Location, by: String): Result<Unit, ErrorResponse> =
-        repositoryService.deleteUnchecked(repository, gav, by)
+    internal fun deleteUnchecked(repository: Repository, gav: Location, by: String, cleanupRunId: String? = null): Result<Unit, ErrorResponse> =
+        repositoryService.deleteUnchecked(repository, gav, by, cleanupRunId)
             .peek { afterDelete(repository, gav) }
 
     /** The mirror copies of [repository] with their last access. Only these versions can be cleaned up as copies. */

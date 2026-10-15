@@ -73,10 +73,10 @@ data class CleanupPreview(
 
 /**
  * Deletes one version directory of a repository. The production implementation goes through the repository
- * delete service, so that the metadata of the artifact is updated as well.
+ * delete service, so that the metadata of the artifact is updated as well. [runId] names the run that asks for it.
  */
 fun interface VersionDeleter {
-    fun delete(repository: String, path: String, actor: CleanupActor): Result<Unit, ErrorResponse>
+    fun delete(repository: String, path: String, actor: CleanupActor, runId: String): Result<Unit, ErrorResponse>
 }
 
 /** Run history, newest first when read. */

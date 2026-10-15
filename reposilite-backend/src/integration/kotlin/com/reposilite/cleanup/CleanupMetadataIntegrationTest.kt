@@ -21,6 +21,9 @@ package com.reposilite.cleanup
 
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
+import com.reposilite.audit.api.AuditAction.ARTIFACT_DELETED
+import com.reposilite.audit.api.AuditAction.CLEANUP_RUN
+import com.reposilite.audit.api.AuditPageDto
 import com.reposilite.maven.api.Metadata
 import com.reposilite.maven.api.SaveMetadataRequest
 import com.reposilite.maven.api.Versioning
@@ -73,6 +76,31 @@ internal abstract class CleanupMetadataIntegrationTest : MavenIntegrationSpecifi
         // then: the deletion succeeded and the metadata describes the version that is left
         assertThat(deleted.isOk).`as`("unchecked delete of 1.0").isTrue
         assertMetadataDescribes(versions = listOf("1.1"), latest = "1.1", release = "1.1")
+    }
+
+    @Test
+    fun `should record a manual run as one cleanup run event instead of one event per deleted version`() {
+        // given: versions 1.0, 1.1 and 1.2 of the artifact, and a policy that keeps only the newest release
+        deployVersions("1.0", "1.1", "1.2")
+        configureKeepNewestPolicy()
+        val (token, secret) = useDefaultManagementToken()
+
+        // when: the policy is run by hand, which deletes the two older versions
+        val run = Unirest.post("$base/api/cleanup/policies/keep-newest/run").basicAuth(token, secret).asEmpty()
+        assertThat(run.status).`as`("manual run of keep-newest").isEqualTo(OK.code)
+
+        // then: the audit log holds one cleanup run event with the policy and its totals
+        val page = Unirest.get("$base/api/audit?action=CLEANUP_RUN").basicAuth(token, secret).asJacksonObject(AuditPageDto::class).body
+        assertThat(page.events).`as`("cleanup run events").hasSize(1)
+        val event = page.events.single()
+        assertThat(event.action).isEqualTo(CLEANUP_RUN)
+        assertThat(event.actor).isEqualTo("manager")
+        assertThat(event.success).isTrue
+        assertThat(event.details.toString()).contains("keep-newest").contains("\"deletedCount\":2")
+
+        // and: the deletions of the run are not written as artifact deletions
+        val deletions = Unirest.get("$base/api/audit?action=ARTIFACT_DELETED").basicAuth(token, secret).asJacksonObject(AuditPageDto::class).body
+        assertThat(deletions.events).`as`("artifact deletion events of the run").isEmpty()
     }
 
     private fun deployVersions(vararg versions: String) {
