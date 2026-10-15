@@ -643,6 +643,8 @@ last-used tracking (section 8.2), identity audit events (section 8.4) and HTTP t
   identity admin API over HTTP (`IdentityAdminIntegrationTest`, local variant).
 - O-10 Instance role assignment through the identity API: closed in phase 1b (section 7.4). Assigning the role
   to a USER principal is still only meaningful once the login providers of phase 2 exist.
+- Phase 2a (section 13.9) closes O-11 to O-16. O-19 was already closed here: last use and last seen are written by
+  the token usage tracker (section 8.2).
 
 ## 13. Browser login and sessions (phase 2a)
 
@@ -658,11 +660,12 @@ net/onelitefeather/ingot/identity/login/
   LoginFacade.kt, LoginService.kt       the facade the rest of Ingot uses; password login, setup, password changes
   LoginProvider.kt, LocalLoginProvider.kt, LoginOutcome.kt   provider interface and outcomes
   PasswordHasher.kt                     argon2id, PHC strings
-  LoginRateLimiter.kt                   failure counting per key, injected clock
+  LoginAttemptPolicy.kt, LoginAttemptLimiter.kt   failed password logins per user name and address, and per address,
+                                        with backoff, counted in the database
   SetupCode.kt                          the one-time setup code
   BearerSecret.kt, OwnTokens.kt         secrets of users' own tokens, creation, rotation, deletion
-  LoginSettings.kt                      session and refresh lifetimes (domain "login")
-  storage/LoginTables.kt, storage/LoginStore.kt   local_credential and refresh_token
+  LoginSettings.kt                      session, refresh and failure limits (domain "login")
+  storage/LoginTables.kt, storage/LoginStore.kt   local_credential, refresh_token, login_attempt, login_setup_marker
   api/AuthLoginEndpoints.kt             /api/auth/providers, login, setup, refresh, logout
   api/SelfServiceEndpoints.kt           /api/identity/me/* and the administrator password reset
   api/LoginDtos.kt                      request and response bodies
@@ -709,8 +712,23 @@ refresh_token
   ip                  varchar(64) null
 ```
 
-Both tables are created on start with `createMissingTablesAndColumns`, like the other identity tables. No marker is
-needed, because nothing is migrated. The legacy tables are never touched.
+```
+login_attempt
+  attempt_key         varchar(64) pk   SHA-256 of "user|<name lower-cased>|<address>" or "address|<address>"; no name is stored
+  failures            int              failures since the last lockout
+  lockouts            int              lockouts so far, which set the length of the next lock
+  last_failure_at     timestamp, indexed
+  locked_until        timestamp null
+  version             int              changes with every write; an update applies only to the version it read
+
+login_setup_marker
+  name                varchar(64) pk   "first-administrator", claimed once per database (13.7)
+  claimed_at          timestamp
+```
+
+These tables are part of the identity schema (`IDENTITY_TABLES`), so they exist wherever the identity store does. They
+are created on start with `createMissingTablesAndColumns`, like the other identity tables. No marker is needed for the
+creation, because nothing is migrated. The legacy tables are never touched.
 
 Principal names are case-insensitive, so the user name of a login is too. A login names a user; a machine principal has
 no password and cannot log in.
@@ -735,9 +753,11 @@ no password and cannot log in.
 
 ### 13.4 Cookies, sessions and CSRF
 
-Lifetimes come from the settings domain `login`: `sessionLifetimeMinutes` (default 15) and `refreshLifetimeHours`
-(default 168, seven days). The refresh lifetime is an idle bound: every exchange issues a token that lives that long
-again. There is no absolute lifetime yet (open point O-14).
+Lifetimes come from the settings domain `login`: `sessionLifetimeMinutes` (default 15), `refreshLifetimeHours`
+(default 168, seven days) and `refreshAbsoluteDays` (default 30). The refresh lifetime is an idle bound: every exchange
+issues a token that lives that long again, but never beyond the absolute lifetime. That lifetime counts from the login,
+which is the first token of the refresh family, so a renewal cannot extend it. A renewal after it revokes the family
+and is refused; logging in again starts a new family (O-14, closed).
 
 | Cookie | Value | Attributes | Path |
 |---|---|---|---|
@@ -786,7 +806,8 @@ recorded that deviation.
 400  missing fields, or an unknown provider
 401  wrong user name or password (the same answer for an unknown user)
 403  the user is disabled (only after the right password)
-429  too many failed attempts for this user name and address; the password is not checked
+429  locked: too many failed attempts for this user name from this address, or from this address at all. The
+     password is not checked. `Retry-After` gives the wait in whole seconds
 503  no database: browser sessions need one
 ```
 
@@ -813,8 +834,9 @@ recorded that deviation.
 200 { "principal": { ... }, "mustChangePassword": false, "expiresAt": "..." }   creates the user as instance admin, starts a session
 400  missing fields, a user name with colons, spaces or control characters, or a password outside the rules
 403  setup is not required (a user exists), or the setup code is wrong
-409  the name is held by a principal already (machine principals included)
-429  too many wrong setup codes from this address
+409  the name is held by a principal already (machine principals included), or another instance of the database
+     completed the setup (13.7)
+429  too many wrong setup codes from this address, with `Retry-After` as for login
 ```
 
 `GET /api/auth/me` keeps its shape. It works with a session cookie, Basic and Bearer. For a session, `accessToken.name`
@@ -864,8 +886,10 @@ The Bearer check runs through the Basic path with the token name the id leads to
 the expiry check, the disabled-principal check and the authentication cache as they are. A secret that names no token
 is checked with an empty name, fails, and counts like any wrong secret.
 
-Tokens created before this change, and tokens created through `/api/tokens` or through the phase-1 identity API, have
-no prefix. They keep working over Basic, and only over Basic (open point O-12).
+Tokens created through the identity admin API (`POST /api/identity/principals/{name}/tokens`) get this form when the
+caller gives no secret; a secret the caller supplies is stored as given. Tokens created before this change, and tokens
+created through the legacy `/api/tokens` endpoint, keep their unprefixed secrets and work over Basic only. The legacy
+endpoint keeps its format, because the drop-in contract forbids changing what it returns (O-12, closed).
 
 ### 13.7 Setup code
 
@@ -876,43 +900,63 @@ A successful setup creates the user with the instance admin role, consumes the c
 code is issued. A restart while still no user exists logs a new code.
 
 Setups on one instance are serialized, so the check for "no user yet" and the creation cannot interleave. Wrong codes
-count towards the same limit as wrong passwords, per address, and are audited as `LOGIN_FAILED` with the actor `setup`.
+count towards the address limit of 13.8, and are audited as `LOGIN_FAILED` with the actor `setup`.
+
+Several instances on one database each log a code, and the setup is exclusive across them. The creation first claims
+the marker row `first-administrator` of the database, with an insert that ignores an existing row. Only the instance
+that wins the claim creates the administrator. Another instance answers `409` when its own code still matches, and
+creates nothing. A creation that fails after the claim (for example because the name is taken) releases the claim
+again. The marker stays after a successful setup, so the setup is once per database. A database whose users were all
+removed by hand needs its marker row removed too before a new setup code can be used (O-13, closed).
 
 ### 13.8 Failure limit and audit
 
-The limit follows the existing `authentication.bruteForceProtection` settings: `maxAttempts` and `banDurationSeconds`
-apply to failed logins per user name (lower-cased) and address, and to failed setup codes per address. The limiter uses
-the injected clock. A blocked attempt is not checked and is audited.
+Password logins are limited by default, in the login domain: `login.maxFailedAttempts` (default 5) and
+`login.lockoutMinutes` (default 15). The limit is independent of `authentication.bruteForceProtection`, which keeps
+guarding Basic and token authentication and stays off by default (O-11, closed).
 
-The default of `bruteForceProtection.enabled` is `false`, as it was for Basic. Out of the box, password logins are not
-limited. This is open point O-11.
+Every failed login counts twice: for its user name with its address, and for its address alone. A key that reaches the
+maximum is locked for the lockout time. Every further lockout without a quiet period doubles that time, up to 24 hours.
+Failures older than the lockout time no longer count, and a quiet period of one lockout time after a lock has ended
+forgets the backoff. A successful login forgets only the key of its user name. The address key is kept, so an account of
+one's own cannot reset the failures of the address. Wrong setup codes count towards the address key.
 
-Audited with the existing actions: `LOGIN_FAILED` for a rejected, disabled or blocked login and a wrong setup code (the
-attempted name and the address, never the password or the code); `TOKEN_CREATED`, `TOKEN_SECRET_REGENERATED` and
-`TOKEN_DELETED` for the users' own tokens (never the secret). Not audited yet: successful logins, sessions started or
-renewed, logouts, password changes and resets, and the setup itself (O-15).
+The counters live in `login_attempt`, and every change is a conditional update on the version it read, so a lock set on
+one instance holds on every instance sharing the database. A blocked attempt is not checked and is audited as
+`LOGIN_FAILED`. It answers `429` with `Retry-After`. Rows whose last failure is older than a day are removed, so the table
+does not grow with user names an attacker invents.
+
+Audited: `LOGIN_FAILED` for a rejected, disabled or blocked login and a wrong setup code (the attempted name and the
+address, never the password or the code). Also `LOGIN_SUCCEEDED`, `LOGOUT`, `SESSION_REFRESH_REUSE_DETECTED` (a spent
+refresh token was presented, which revokes its family), `SETUP_COMPLETED`, `PASSWORD_CHANGED` and `PASSWORD_RESET`
+(O-15, closed). The last six are appended to `AuditAction`, so stored names keep their meaning. Renewals of a session are
+not audited. No event carries a password, a token or a session identifier: the user name and the request address are
+recorded. Also `TOKEN_CREATED`, `TOKEN_SECRET_REGENERATED` and `TOKEN_DELETED` for the users' own tokens (never the
+secret), as before.
 
 ### 13.9 Deviations and open points
 
-- O-11 The brute force limit is off by default. Password logins are unlimited until an operator enables
-  `authentication.bruteForceProtection`. A separate default for logins is a decision for the maintainers.
-- O-12 Legacy tokens and tokens created through `/api/tokens` and the phase-1 identity API still get unprefixed secrets.
-  They work over Basic only. Switching the generator to the `ingot_` form is a follow-up, because it changes what the
-  legacy create endpoint returns.
-- O-13 The setup code is per instance. Two instances started on one empty database each log a code, and the setup on one
-  instance does not see a setup on the other. Both can, in principle, pass the "no user yet" check at the same moment. A
-  database-level guard (a unique marker row) closes that window and is not implemented.
-- O-14 No absolute refresh lifetime: a browser that renews within the refresh lifetime keeps its session indefinitely.
-- O-15 Audit actions for logins, sessions, password changes and setup (see 13.8).
-- O-16 Deleting a principal through the phase-1 identity API removes its tokens, but not its `local_credential` and
-  `refresh_token` rows explicitly. Foreign keys cascade only where they are enforced, and SQLite enforces them only when
-  the connection says so. The rows are harmless, because a deleted principal is refused, but they should be removed with
-  the principal. This belongs in `IdentityStore.deletePrincipal`.
+Closed in phase 2a:
+
+- O-11 Password logins are limited by default, per user name with address and per address, shared through the
+  database (13.8). The brute force settings of Basic and token authentication are unchanged.
+- O-12 Tokens created through the identity admin API get the `ingot_` form and work as Bearer tokens (13.6). The legacy
+  `/api/tokens` endpoint keeps its unprefixed secrets, because the drop-in contract forbids changing what it returns.
+- O-13 Exactly one instance completes the first setup of a database, through the marker row (13.7). The other answers 409.
+- O-14 The refresh lifetime has an absolute limit, `login.refreshAbsoluteDays`, counted from the login (13.4).
+- O-15 Logins, logouts, reuse of a spent refresh token, setup, password changes and resets are audited (13.8). Renewals are
+  not audited.
+- O-16 Deleting a principal removes its password and its refresh tokens in the same transaction as its tokens, so the
+  removal does not depend on foreign keys being enforced. Its sessions end at once, because the session token is refused
+  when its principal is gone and no refresh token is left (`IdentityStore.deletePrincipal`).
+- O-19 Closed by phase 1b: last use and last seen are written (section 12).
+
+Still open:
+
 - O-17 `X-Forwarded-Proto` is read only for the Secure flag. Ingot had no forwarded-proto handling before; the first
   value of the header is taken as the scheme. Trusting the header matters for the Secure flag only, never for
   authorization.
 - O-18 The session key is not rotated. A rotation needs a second key that verifies the old tokens until they expire.
-- O-19 `last_used_at` and `last_seen_at` are still not written (phase 1, section 8.2).
 - O-20 No API to list or revoke a user's sessions, and no UI for any of this.
 - O-21 The forwarded path prefix (`X-Forwarded-Prefix`) is not part of the cookie path. Cookies follow the configured
   base path only.
