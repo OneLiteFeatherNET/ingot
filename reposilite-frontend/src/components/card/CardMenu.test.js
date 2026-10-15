@@ -73,16 +73,16 @@ describe('CardMenu tabs', () => {
     expect(tabNamed('Gradle Kotlin').classes(), 'an unselected tab is not primary').not.toContain('text-primary')
   })
 
-  it('draws the active indicator 3px tall', () => {
+  it('draws the active indicator 2px tall', () => {
     mountMenu()
 
-    expect(indicatorOf(tabNamed('Maven')).classes(), 'the indicator is the md3 primary tab bar height').toContain('h-[3px]')
+    expect(indicatorOf(tabNamed('Maven')).classes(), 'the indicator is the 2px md3 secondary tab indicator').toContain('h-0.5')
   })
 
-  it('rounds the top corners of the indicator by 3px', () => {
+  it('rounds the top corners of the indicator', () => {
     mountMenu()
 
-    expect(indicatorOf(tabNamed('Maven')).classes(), 'the indicator has 3px top corners').toContain('rounded-t-[3px]')
+    expect(indicatorOf(tabNamed('Maven')).classes(), 'the indicator has rounded top corners').toContain('rounded-t-full')
   })
 
   it('fills the indicator only under the active tab', () => {

@@ -302,3 +302,49 @@ describe('RepositoryOverview empty and failing states', () => {
     expect(rows()).toHaveLength(0)
   })
 })
+
+describe('RepositoryOverview Material 3 structure', () => {
+  it('makes each repository row a link named after the repository, covering the whole row', async () => {
+    await mountAt('/')
+
+    const row = rowFor('releases')
+    expect(row.element.tagName).toBe('A')
+    expect(row.attributes('aria-label')).toBe('Browse releases')
+    expect(row.classes()).toContain('md-state-layer')
+  })
+
+  it('draws the rows as one list, with a leading avatar on each row', async () => {
+    await mountAt('/')
+
+    expect(wrapper.find('ul').findAll('li')).toHaveLength(4)
+    expect(rowFor('releases').find('span.rounded-corner-full').classes()).toContain('bg-secondary-container')
+  })
+
+  it('shows the visibility as a label with an icon and no coloured fill', async () => {
+    await mountAt('/')
+
+    const label = rowFor('private').find('[data-test="visibility"]')
+    expect(label.find('svg').exists()).toBe(true)
+    expect(label.classes()).not.toContain('bg-secondary-container')
+    expect(label.classes()).not.toContain('bg-tertiary-container')
+  })
+
+  it('gives the selected filter chip a check mark and reports it as checked', async () => {
+    await mountAt('/?tag=ci')
+
+    const selected = chipNamed('ci')
+    expect(selected.attributes('aria-checked')).toBe('true')
+    expect(selected.find('svg').exists()).toBe(true)
+    expect(chipNamed('team-core').attributes('aria-checked')).toBe('false')
+  })
+
+  it('offers a clear button in the search bar only while there is text', async () => {
+    await mountAt('/')
+    expect(wrapper.find('button[aria-label="Clear search"]').exists()).toBe(false)
+
+    await search().setValue('rel')
+    await flushPromises()
+
+    expect(wrapper.find('button[aria-label="Clear search"]').exists()).toBe(true)
+  })
+})
