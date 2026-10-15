@@ -27,7 +27,10 @@ import LogoutIcon from '../icons/LogoutIcon.vue'
 import useTheme from "../../store/theme"
 
 const { theme, changeTheme } = useTheme()
-const { token, isLogged, logout } = useSession()
+const { token, isLogged, logout, principal } = useSession()
+
+// A cookie session has no token name; the principal's display name stands in for it.
+const signedInName = computed(() => principal?.value?.displayName || principal?.value?.name || token.value.name)
 
 const NEXT_MODE = { light: 'dark', dark: 'auto', auto: 'light' }
 
@@ -57,7 +60,7 @@ const themeLabel = computed(() => ({
       class="min-w-0 truncate px-3 md-body-large text-on-surface-variant max-sm:hidden"
     >
       Welcome
-      <span class="font-medium text-on-surface">{{ token.name }}</span>
+      <span class="font-medium text-on-surface">{{ signedInName }}</span>
     </span>
     <LoginModal v-if="!isLogged" />
     <MdButton

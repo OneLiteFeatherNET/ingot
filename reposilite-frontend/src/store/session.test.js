@@ -23,7 +23,7 @@ import { flushPromises } from '@vue/test-utils'
 vi.mock('axios', () => ({
   default: {
     get: vi.fn(),
-    interceptors: { response: { use: vi.fn() } }
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } }
   }
 }))
 
@@ -171,19 +171,25 @@ describe('startup with stored credentials', () => {
 })
 
 describe('startup without stored credentials', () => {
-  it('does not ask the server who is signed in when nothing is stored', async () => {
+  it('asks the server for a cookie session when nothing is stored', async () => {
     const { axios, store } = await loadSession()
+    axios.get.mockRejectedValue(responseError(401))
 
     await store.initializeSession()
 
-    expect(axios.get, 'an anonymous visit must not send a request that is bound to fail')
-      .not.toHaveBeenCalled()
+    expect(axios.get.mock.calls[0][0], 'only the server knows about an HttpOnly cookie session')
+      .toMatch(/\/api\/auth\/me$/)
+    expect(axios.get.mock.calls[0][1].withCredentials).toBe(true)
+    expect(store.isLogged.value, 'a 401 means nobody is signed in').toBe(false)
   })
 
-  it('is ready at once when nothing is stored', async () => {
-    const { store } = await loadSession()
+  it('is ready once the cookie check has answered, even with a rejection', async () => {
+    const { axios, store } = await loadSession()
+    axios.get.mockRejectedValue(responseError(401))
 
-    await store.initializeSession()
+    const starting = store.initializeSession()
+    expect(store.sessionReady.value, 'a listing must wait for the cookie check').toBe(false)
+    await starting
 
     expect(store.sessionReady.value).toBe(true)
   })
@@ -244,11 +250,14 @@ describe('session shared across tabs', () => {
 })
 
 describe('whenSessionKnown', () => {
-  it('resolves at once when nothing is stored, without asking the server', async () => {
-    const { axios, session } = await loadSession()
+  it('resolves once the cookie check of an anonymous visit has answered', async () => {
+    const { axios, store, session } = await loadSession()
+    axios.get.mockRejectedValue(responseError(401))
 
-    await expect(session.whenSessionKnown()).resolves.toBeUndefined()
-    expect(axios.get, 'an anonymous session is known without a request').not.toHaveBeenCalled()
+    const known = session.whenSessionKnown()
+    await store.initializeSession()
+
+    await expect(known).resolves.toBeUndefined()
   })
 
   it('settles once the startup check has found a signed in user', async () => {

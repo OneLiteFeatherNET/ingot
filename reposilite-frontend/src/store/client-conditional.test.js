@@ -24,7 +24,7 @@ vi.mock('axios', () => ({
     patch: vi.fn(),
     post: vi.fn(),
     delete: vi.fn(),
-    interceptors: { response: { use: vi.fn() } }
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } }
   }
 }))
 

@@ -25,22 +25,103 @@ const setUnauthorizedHandler = (handler) => {
   onUnauthorized = handler
 }
 
-// A 401 means the credentials were rejected. Every other failure passes through untouched,
-// and the error is always rethrown so that each caller still sees its own failure.
-const handleResponseError = (error) => {
-  if (error?.response?.status === 401) {
-    onUnauthorized(error)
-  }
-  return Promise.reject(error)
+// Cookie mode: the browser holds the session in HttpOnly cookies, so requests carry them
+// (withCredentials) and unsafe ones echo the readable CSRF cookie in a header. The session
+// switches this on after a cookie sign in and off when the session ends. Nothing here is
+// ever stored: the CSRF value is read from document.cookie on every request.
+let cookieMode = false
+const CSRF_COOKIE = "ingot_csrf"
+const CSRF_HEADER = "X-CSRF-Token"
+const UNSAFE_METHODS = ["POST", "PUT", "PATCH", "DELETE"]
+
+const setCookieMode = (enabled) => {
+  cookieMode = enabled === true
 }
 
-axios.interceptors.response.use(response => response, handleResponseError)
+const readCsrfToken = (cookies = typeof document === "undefined" ? "" : document.cookie) => {
+  for (const part of String(cookies || "").split(";")) {
+    const separator = part.indexOf("=")
+    if (separator !== -1 && part.slice(0, separator).trim() === CSRF_COOKIE) {
+      return decodeURIComponent(part.slice(separator + 1).trim())
+    }
+  }
+  return null
+}
+
+// A request that asked for credentials explicitly (the sign in calls) gets the same treatment
+// as one made in cookie mode, so the very first cookie request does not depend on the mode flag.
+const handleRequest = (config) => {
+  if (!cookieMode && !config.withCredentials) {
+    return config
+  }
+  config.withCredentials = true
+  const csrf = readCsrfToken()
+  if (csrf && UNSAFE_METHODS.includes(String(config.method || "get").toUpperCase())) {
+    if (typeof config.headers?.set === "function") {
+      config.headers.set(CSRF_HEADER, csrf)
+    } else {
+      config.headers = { ...config.headers, [CSRF_HEADER]: csrf }
+    }
+  }
+  return config
+}
+
+// Answers to these are answers about the sign in itself, not about a session that expired, so
+// they neither trigger a refresh nor the unauthorized handler.
+const AUTH_ENDPOINTS = ["/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/setup", "/api/auth/providers"]
+const isAuthEndpoint = (url) =>
+  AUTH_ENDPOINTS.some(endpoint => String(url || "").includes(endpoint))
 
 // Read per call rather than once at import. This module is imported while the settings
 // are still being fetched, so capturing the base url here would freeze the fallback in
 // place and break any deployment mounted under a sub path.
 const createURL = (endpoint) =>
   usePlaceholders().baseUrl + endpoint
+
+// Concurrent rejections share one refresh call.
+let refreshing = null
+const refreshSession = () => {
+  if (!refreshing) {
+    refreshing = axios
+      .post(createURL("/api/auth/refresh"), {}, { withCredentials: true })
+      .finally(() => {
+        refreshing = null
+      })
+  }
+  return refreshing
+}
+
+// A 401 means the credentials were rejected. In cookie mode the session is refreshed once and
+// the request retried once; only when that fails does the unauthorized handler run. Every other
+// failure passes through untouched, and the error is always rethrown so that each caller still
+// sees its own failure.
+const handleResponseError = async (error) => {
+  if (error?.response?.status !== 401) {
+    return Promise.reject(error)
+  }
+  const config = error.config
+  if (isAuthEndpoint(config?.url)) {
+    return Promise.reject(error)
+  }
+  if (cookieMode && config && !config._retried) {
+    config._retried = true
+    let refreshed = true
+    try {
+      await refreshSession()
+    } catch {
+      refreshed = false
+    }
+    if (refreshed) {
+      // A second 401 comes back through this handler with _retried set and ends the session.
+      return axios.request(config)
+    }
+  }
+  onUnauthorized(error)
+  return Promise.reject(error)
+}
+
+axios.interceptors.request.use(handleRequest)
+axios.interceptors.response.use(response => response, handleResponseError)
 
 /* The entity tag of a response. Null when the server sent none, and the next write is then unconditional. */
 const etagOf = (response) =>
@@ -75,6 +156,27 @@ const createClient = (defaultName, defaultSecret) => {
     auth: {
       me() {
         return get("/api/auth/me")
+      },
+      // The same question asked with the browser's cookies, for a session that is not known yet.
+      meWithCookie() {
+        return axios.get(createURL("/api/auth/me"), { withCredentials: true })
+      },
+      providers() {
+        return axios.get(createURL("/api/auth/providers"), { withCredentials: true })
+      },
+      login({ username, password }) {
+        return axios.post(createURL("/api/auth/login"), { provider: "local", username, password }, { withCredentials: true })
+      },
+      setup({ setupCode, username, password, displayName }) {
+        const body = { setupCode, username, password }
+        if (displayName) body.displayName = displayName
+        return axios.post(createURL("/api/auth/setup"), body, { withCredentials: true })
+      },
+      refresh() {
+        return refreshSession()
+      },
+      logout() {
+        return axios.post(createURL("/api/auth/logout"), {}, { withCredentials: true })
       },
     },
     console: {
@@ -306,6 +408,9 @@ export {
   createURL,
   createClient,
   setUnauthorizedHandler,
+  setCookieMode,
+  readCsrfToken,
+  handleRequest,
   handleResponseError,
   etagOf,
   isPreconditionFailed
