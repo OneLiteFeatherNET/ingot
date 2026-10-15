@@ -185,6 +185,26 @@ setInterval(() => {
   recordSnapshot()
 }, 5000)
 
+// The repositories a caller may see, filtered and sorted the way the real endpoint does it.
+const listRepositories = (query, signedIn) => {
+  const text = String(query.q ?? '').trim().toLowerCase()
+  const requiredTags = [query.tag ?? []].flat().map(tag => String(tag).toLowerCase()).filter(tag => tag !== '')
+  return {
+    repositories: (mavenSettingsEntity.repositories ?? [])
+      .filter(repository => repository.visibility === 'PUBLIC' || signedIn)
+      .map(repository => ({
+        id: repository.id,
+        visibility: repository.visibility,
+        description: repository.description ?? '',
+        tags: repository.tags ?? []
+      }))
+      .filter(repository => text === ''
+        || [repository.id, repository.description, ...repository.tags].some(value => value.toLowerCase().includes(text)))
+      .filter(repository => requiredTags.every(tag => repository.tags.includes(tag)))
+      .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
+  }
+}
+
 const statisticsSeries = [
   {
     name: 'Releases',
@@ -227,6 +247,14 @@ application
   .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend']))
   .get('/api/settings/schema/maven', (req, res) => res.send(mavenSettingsSchema))
   .get('/api/settings/domain/maven', (req, res) => res.send(mavenSettingsEntity))
+  // Overview of the repositories. Anonymous callers see PUBLIC repositories; signed-in callers
+  // also see PRIVATE and HIDDEN ones, as the real server shows them to managers. q matches id,
+  // description and tags without regard to case, and every tag parameter must match (AND).
+  // INGOT_FAKE_API_LEGACY=1 answers 404 instead, to exercise the fallback of an older backend.
+  .get('/api/maven/repositories', (req, res) => {
+    if (process.env.INGOT_FAKE_API_LEGACY) return res.status(404).send({ status: 404, message: 'Not found' })
+    authorized(req, () => res.send(listRepositories(req.query, true)), () => res.send(listRepositories(req.query, false)))
+  })
   .put('/api/settings/domain/maven', (req, res) => { mavenSettingsEntity = req.body; res.send("") })
   .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
   .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))
