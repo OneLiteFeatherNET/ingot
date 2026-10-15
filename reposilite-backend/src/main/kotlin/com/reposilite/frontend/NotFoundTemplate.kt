@@ -16,6 +16,7 @@
 
 package com.reposilite.frontend
 
+import com.reposilite.shared.HtmlEscaping
 import org.intellij.lang.annotations.Language
 
 object NotFoundTemplate {
@@ -24,9 +25,11 @@ object NotFoundTemplate {
     private val regexAntiXss = Regex("[^A-Za-z0-9/.\\-_ ]") // exclude custom non-standard characters from template
 
     fun createNotFoundPage(basePath: String, originUri: String, details: String): String {
-        val uri = originUri.replace(uriFormatter, "/")
+        val uri = HtmlEscaping.decodeRequestPath(originUri).replace(uriFormatter, "/")
         // The dashboard routes by path, so the link is the browse route of the requested address.
-        val dashboardUrl = basePath + (if (basePath.endsWith("/")) "" else "/") + "browse/" + uri.trimStart('/')
+        // Percent-encode the path first, then HTML-escape it for both the attribute and the visible text.
+        val dashboardPath = HtmlEscaping.encodePath(basePath + (if (basePath.endsWith("/")) "" else "/") + "browse/" + uri.trimStart('/'))
+        val dashboardUrl = HtmlEscaping.escape(dashboardPath)
 
         @Language("html")
         val response = """

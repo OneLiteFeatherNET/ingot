@@ -49,4 +49,53 @@ internal class NotFoundTemplateTest {
         // then: the browse route is reached below that prefix
         assertThat(page).contains("href=\"/ingot/browse/releases/net/missing\"")
     }
+
+    @Test
+    fun `should not let a request path break out of the href attribute`() {
+        // when: the requested path carries a markup injection
+        val page = NotFoundTemplate.createNotFoundPage("/", "/releases/\"><script>alert(1)</script>", "")
+
+        // then: the quote and the tags are percent-encoded inside the attribute
+        assertThat(page)
+            .`as`("href must keep the injected quote and tags encoded")
+            .contains("href=\"/browse/releases/%22%3E%3Cscript%3Ealert(1)%3C/script%3E\"")
+            .`as`("the raw injection must not reach the markup")
+            .doesNotContain("\"><script>")
+            .doesNotContain("<script>alert(1)")
+            .doesNotContain("</script>")
+    }
+
+    @Test
+    fun `should escape the displayed request path as text`() {
+        // when: the requested path carries a quote, an ampersand and a tag
+        val page = NotFoundTemplate.createNotFoundPage("/", "/releases/o'brien&co<x>", "")
+
+        // then: the visible link text shows the escaped path, not raw characters
+        assertThat(page)
+            .`as`("text node must show the escaped path")
+            .contains(">/browse/releases/o&#39;brien&amp;co%3Cx%3E</a>")
+            .`as`("href must carry the same escaped value")
+            .contains("href=\"/browse/releases/o&#39;brien&amp;co%3Cx%3E\"")
+    }
+
+    @Test
+    fun `should keep normal maven coordinates readable in the link`() {
+        // when: the requested path is a regular repository path with dots and digits
+        val page = NotFoundTemplate.createNotFoundPage("/", "/releases/com/example/1.0", "")
+
+        // then: no characters are escaped in the link
+        assertThat(page).contains("href=\"/browse/releases/com/example/1.0\"")
+    }
+
+    @Test
+    fun `should not double encode a request path that is already percent encoded`() {
+        // when: the servlet container hands over the raw, percent-encoded request URI
+        val page = NotFoundTemplate.createNotFoundPage("/", "/releases/my%20lib/1.0", "")
+
+        // then: the link keeps the single encoding of the space
+        assertThat(page)
+            .`as`("space must stay encoded exactly once")
+            .contains("href=\"/browse/releases/my%20lib/1.0\"")
+            .doesNotContain("%2520")
+    }
 }
