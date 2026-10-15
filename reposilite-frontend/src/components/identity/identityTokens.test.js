@@ -20,10 +20,14 @@ import {
   DEFAULT_EXPIRY,
   EXPIRY_PRESETS,
   buildCreateBody,
+  customDateLimits,
   expiryFor,
+  expiryForCustomDate,
   formatDate,
   formatDateTime,
   formatRelative,
+  scopesFor,
+  validateCustomDate,
   validateTokenName
 } from './identityTokens'
 
@@ -34,8 +38,8 @@ describe('identityTokens', () => {
   afterEach(() => resetClock())
 
   describe('expiry presets', () => {
-    it('offers 30 days, 90 days, 365 days and never, in that order', () => {
-      expect(EXPIRY_PRESETS.map(preset => preset.label)).toEqual(['30 days', '90 days', '365 days', 'Never'])
+    it('offers 30 days, 90 days, 1 year, custom and no expiry, in that order', () => {
+      expect(EXPIRY_PRESETS.map(preset => preset.label)).toEqual(['30 days', '90 days', '1 year', 'Custom', 'No expiry'])
     })
 
     it('defaults to 90 days', () => {
@@ -56,6 +60,42 @@ describe('identityTokens', () => {
       setClock(() => FIXED)
 
       expect(expiryFor('never')).toBeNull()
+    })
+  })
+
+  describe('validateCustomDate', () => {
+    // 2026-06-15 12:00:00 UTC: tomorrow is 2026-06-16, five years ahead is 2031-06-15.
+    it.each([
+      ['2026-06-16', ''],
+      ['2031-06-15', ''],
+      ['2026-06-15', 'Choose a date from tomorrow on'],
+      ['2031-06-16', 'Choose a date up to 5 years from today'],
+      ['2026-02-30', 'Enter a valid date'],
+      ['15.06.2027', 'Enter a valid date'],
+      ['', 'Choose an expiry date']
+    ])('judges %s as "%s"', (value, message) => {
+      expect(validateCustomDate(value, FIXED)).toBe(message)
+    })
+
+    it('reads the bounds from the injected clock, not the system time', () => {
+      expect(customDateLimits(FIXED)).toEqual({ min: '2026-06-16', max: '2031-06-15' })
+    })
+  })
+
+  describe('expiry and access', () => {
+    it('ends a custom date at the end of that day in UTC', () => {
+      expect(expiryForCustomDate('2027-01-14')).toBe('2027-01-14T23:59:59.000Z')
+    })
+
+    it('refuses to build a body for a custom expiry without a valid date', () => {
+      setClock(() => FIXED)
+
+      expect(() => buildCreateBody({ name: 'ci', preset: 'custom', customDate: '', scopes: [] })).toThrow('A custom expiry needs a valid date')
+    })
+
+    it('sends no scope narrowing for full access and READ for read only', () => {
+      expect(scopesFor('all')).toEqual([])
+      expect(scopesFor('read')).toEqual(['READ'])
     })
   })
 

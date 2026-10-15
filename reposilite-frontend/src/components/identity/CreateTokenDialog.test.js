@@ -25,7 +25,10 @@ const FIXED = new Date(Date.UTC(2026, 5, 15, 12))
 const dialog = () => document.querySelector('[role="dialog"]')
 const field = (id) => document.getElementById(id)
 const segment = (label) =>
-  [...dialog().querySelectorAll('button[aria-pressed]')].find(node => node.textContent.trim() === label)
+  [...dialog().querySelectorAll('[role="radio"]')].find(node => node.textContent.trim() === label)
+const createButton = () =>
+  [...dialog().querySelectorAll('button')].find(node => node.textContent.trim() === 'Create')
+const NEVER_WARNING = 'Tokens without expiry stay valid until revoked. Prefer an expiry and rotate the token.'
 
 const type = (id, value) => {
   field(id).value = value
@@ -56,7 +59,7 @@ describe('CreateTokenDialog', () => {
     api = {
       create: vi.fn().mockResolvedValue({ data: { token: { name: 'laptop' }, secret: 's3cr3t' } })
     }
-    wrapper = mount(CreateTokenDialog, { props: { modelValue: true, api }, attachTo: document.body })
+    wrapper = mount(CreateTokenDialog, { props: { modelValue: true, api, locale: 'en-GB' }, attachTo: document.body })
     await flushPromises()
   })
 
@@ -89,16 +92,16 @@ describe('CreateTokenDialog', () => {
     expect(dialog().textContent).toContain("Token name must not contain ':'")
   })
 
-  it('selects 90 days as the default expiry', () => {
-    expect(segment('90 days').getAttribute('aria-pressed'), '90 days is the default preset').toBe('true')
-    expect(segment('Never').getAttribute('aria-pressed')).toBe('false')
+  it('selects 90 days as the default expiry, so a token never starts without one', () => {
+    expect(segment('90 days').getAttribute('aria-checked'), '90 days is the default preset').toBe('true')
+    expect(segment('No expiry').getAttribute('aria-checked')).toBe('false')
   })
 
   it.each([
     ['30 days', '2026-07-15T12:00:00.000Z'],
     ['90 days', '2026-09-13T12:00:00.000Z'],
-    ['365 days', '2027-06-15T12:00:00.000Z'],
-    ['Never', null]
+    ['1 year', '2027-06-15T12:00:00.000Z'],
+    ['No expiry', null]
   ])('turns the %s preset into the expiry date', async (label, expiresAt) => {
     type('create-token-name', 'laptop')
     await pick(label)
@@ -150,5 +153,75 @@ describe('CreateTokenDialog', () => {
 
     expect(dialog().querySelector('[role="alert"]').textContent).toContain("Token 'laptop' already exists")
     expect(wrapper.emitted('created'), 'a failed create hands nothing on').toBeUndefined()
+  })
+
+  it('keeps Create disabled until the name is valid', async () => {
+    expect(createButton().disabled, 'an empty name cannot be sent').toBe(true)
+
+    type('create-token-name', 'laptop')
+    await flushPromises()
+
+    expect(createButton().disabled).toBe(false)
+  })
+
+  it('shows the resulting date under the control, in the dialog locale', async () => {
+    await pick('30 days')
+
+    expect(dialog().querySelector('#create-token-expiry-note').textContent.trim()).toBe('Expires on 15 Jul 2026')
+  })
+
+  it('warns in error tone when the token never expires', async () => {
+    await pick('No expiry')
+
+    const note = dialog().querySelector('#create-token-expiry-note')
+
+    expect(note.textContent.trim()).toBe(NEVER_WARNING)
+    expect(note.classList.contains('text-error'), 'the warning is in the error tone').toBe(true)
+  })
+
+  it('does not warn about an expiry the token has', () => {
+    const note = dialog().querySelector('#create-token-expiry-note')
+
+    expect(note.classList.contains('text-error')).toBe(false)
+  })
+
+  it('opens a date field for a custom expiry, bounded from tomorrow to five years ahead', async () => {
+    await pick('Custom')
+
+    expect(field('create-token-expiry-date'), 'a custom expiry asks for a date').not.toBeNull()
+    expect(field('create-token-expiry-date').getAttribute('min')).toBe('2026-06-16')
+    expect(field('create-token-expiry-date').getAttribute('max')).toBe('2031-06-15')
+  })
+
+  it('asks for a custom date and sends nothing without one', async () => {
+    type('create-token-name', 'laptop')
+    await pick('Custom')
+    await submit()
+
+    expect(api.create, 'a custom expiry needs a date before it is sent').not.toHaveBeenCalled()
+    expect(dialog().textContent).toContain('Choose an expiry date')
+  })
+
+  it.each([
+    ['2026-06-15', 'Choose a date from tomorrow on', 'today is too early'],
+    ['2026-06-14', 'Choose a date from tomorrow on', 'a past date is too early'],
+    ['2031-06-16', 'Choose a date up to 5 years from today', 'a date beyond five years is too late']
+  ])('rejects the custom date %s because %s', async (value, message) => {
+    type('create-token-name', 'laptop')
+    await pick('Custom')
+    type('create-token-expiry-date', value)
+    await flushPromises()
+
+    expect(dialog().textContent).toContain(message)
+    expect(createButton().disabled, 'Create stays disabled for an invalid date').toBe(true)
+  })
+
+  it('sends a valid custom date as the end of that day in UTC', async () => {
+    type('create-token-name', 'laptop')
+    await pick('Custom')
+    type('create-token-expiry-date', '2031-06-15')
+    await submit()
+
+    expect(api.create.mock.calls[0][0].expiresAt).toBe('2031-06-15T23:59:59.000Z')
   })
 })

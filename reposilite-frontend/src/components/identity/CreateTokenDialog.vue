@@ -28,6 +28,10 @@ import {
   EXPIRY_PRESETS,
   SCOPE_OPTIONS,
   buildCreateBody,
+  customDateLimits,
+  expiresAtFor,
+  formatExpiryDate,
+  validateCustomDate,
   validateTokenName
 } from './identityTokens'
 
@@ -39,11 +43,13 @@ import {
  *   api         { create(body) }: sends the request and returns the axios response, whose
  *               data is { token, secret }. The self service page and the admin pages pass
  *               their own endpoints.
+ *   locale      the locale for the expiry date, such as en-GB. Undefined uses the browser's.
  * Emits:
  *   update:modelValue  false when the dialog closes
  *   created            { token, secret } once the server has accepted the token
  *
  * The expiry preset becomes a date at the moment of sending, counted from the injected clock.
+ * Create stays disabled until the name is valid and, for a custom date, the date is too.
  * No checked scope means no narrowing (scopes null). A failure stays inside the dialog.
  */
 const props = defineProps({
@@ -54,25 +60,49 @@ const props = defineProps({
   api: {
     type: Object,
     required: true
+  },
+  locale: {
+    type: String,
+    default: undefined
   }
 })
 
 const emit = defineEmits(['update:modelValue', 'created'])
 
+const NEVER_WARNING = 'Tokens without expiry stay valid until revoked. Prefer an expiry and rotate the token.'
+
 const name = ref('')
 const description = ref('')
 const preset = ref(DEFAULT_EXPIRY)
+const customDate = ref('')
 const scopes = ref([])
 const submitted = ref(false)
 const busy = ref(false)
 const failure = ref(null)
 
+const isNever = computed(() => preset.value === 'never')
+const isCustom = computed(() => preset.value === 'custom')
+const limits = computed(() => customDateLimits())
+
 const nameError = computed(() => (submitted.value ? validateTokenName(name.value) : ''))
+// The custom date is checked as soon as it is typed; an empty one only once the form is sent.
+const customIssue = computed(() => (isCustom.value ? validateCustomDate(customDate.value) : ''))
+const customError = computed(() => (submitted.value || customDate.value !== '' ? customIssue.value : ''))
+const canSubmit = computed(() => validateTokenName(name.value) === '' && customIssue.value === '')
+
+// Under the control: the resulting date, or the warning when the token never expires.
+const expiryNote = computed(() => {
+  if (isNever.value) return NEVER_WARNING
+  if (customIssue.value !== '') return ''
+  const expiresAt = expiresAtFor({ preset: preset.value, customDate: customDate.value })
+  return `Expires on ${formatExpiryDate(expiresAt, props.locale)}`
+})
 
 const reset = () => {
   name.value = ''
   description.value = ''
   preset.value = DEFAULT_EXPIRY
+  customDate.value = ''
   scopes.value = []
   submitted.value = false
   busy.value = false
@@ -92,7 +122,7 @@ const toggleScope = (action, checked) => {
 const submit = async () => {
   submitted.value = true
   failure.value = null
-  if (validateTokenName(name.value) !== '') {
+  if (!canSubmit.value) {
     return
   }
   busy.value = true
@@ -101,6 +131,7 @@ const submit = async () => {
       name: name.value,
       description: description.value,
       preset: preset.value,
+      customDate: customDate.value,
       scopes: scopes.value
     }))
     emit('created', response.data)
@@ -153,7 +184,10 @@ const submit = async () => {
 
       <div class="flex flex-col gap-2">
         <span class="md-label-large text-on-surface-variant">Expires</span>
-        <SegmentedControl label="Expiry">
+        <SegmentedControl
+          label="Expiry"
+          aria-describedby="create-token-expiry-note"
+        >
           <SegmentedOption
             v-for="option in EXPIRY_PRESETS"
             :key="option.key"
@@ -163,6 +197,25 @@ const submit = async () => {
             {{ option.label }}
           </SegmentedOption>
         </SegmentedControl>
+        <MdTextField
+          v-if="isCustom"
+          id="create-token-expiry-date"
+          v-model="customDate"
+          label="Expiry date"
+          type="date"
+          variant="outlined"
+          :min="limits.min"
+          :max="limits.max"
+          :error="customError !== ''"
+          :error-text="customError"
+        />
+        <p
+          id="create-token-expiry-note"
+          class="md-body-small"
+          :class="isNever ? 'text-error' : 'text-on-surface-variant'"
+        >
+          {{ expiryNote }}
+        </p>
       </div>
 
       <fieldset class="flex flex-col gap-1 border-0 p-0">
@@ -204,7 +257,8 @@ const submit = async () => {
       <MdButton
         type="submit"
         form="create-token-form"
-        :disabled="busy"
+        variant="filled"
+        :disabled="busy || !canSubmit"
       >
         {{ busy ? 'Creating...' : 'Create' }}
       </MdButton>
