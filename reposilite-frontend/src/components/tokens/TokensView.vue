@@ -34,6 +34,7 @@ import TokenRow from './TokenRow.vue'
 import TokenRowActions from './TokenRowActions.vue'
 import TokenSecretBanner from './TokenSecretBanner.vue'
 import TokenSummary from './TokenSummary.vue'
+import ConflictDialog from '../settings/ConflictDialog.vue'
 
 const props = defineProps({
   selectedTab: property(String, true),
@@ -68,6 +69,7 @@ const currentMs = () => props.now ?? Date.now()
 
 const {
   tokens, loaded, loading, loadError, secret, dismissSecret,
+  conflict, reloadTokenConflict, overwriteTokenConflict, dismissTokenConflict,
   fetchTokens, createToken, saveTokenMeta, saveRoute, removeRoute, deleteToken, regenerateSecret,
   groupRoutes, tokenIsManager, toMs, errorMessage
 } = useTokens()
@@ -290,6 +292,13 @@ watch([loaded, () => props.openToken], openFromAddress, { immediate: true })
 
 <template>
   <div class="container mx-auto pb-12 pt-7">
+    <ConflictDialog
+      v-if="conflict"
+      :conflict="conflict"
+      @reload="reloadTokenConflict"
+      @overwrite="overwriteTokenConflict"
+      @dismiss="dismissTokenConflict"
+    />
     <div class="flex flex-col gap-1 pb-7">
       <p class="md-body-large text-on-surface-variant">
         Generate and revoke access tokens used to authenticate with this Ingot instance.

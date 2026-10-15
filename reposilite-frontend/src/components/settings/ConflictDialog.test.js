@@ -19,9 +19,9 @@ import { mount } from '@vue/test-utils'
 import ConflictDialog from './ConflictDialog.vue'
 
 // The modal would teleport to the body; the stub keeps its slot inline so the buttons can be found.
-const mountDialog = (conflict) =>
+const mountDialog = (conflict, extra = {}) =>
   mount(ConflictDialog, {
-    props: { conflict },
+    props: { conflict, ...extra },
     global: {
       stubs: {
         VueFinalModal: { template: '<div><slot /></div>' }
@@ -34,7 +34,7 @@ const settingsConflict = (overrides = {}) => ({
   name: 'maven',
   title: 'Maven',
   reviewed: false,
-  differences: [],
+  server: null,
   ...overrides
 })
 
@@ -58,7 +58,7 @@ describe('ConflictDialog', () => {
   })
 
   it('offers no review for a token, which is reloaded or overwritten only', () => {
-    const wrapper = mountDialog({ kind: 'token', name: 'ci', title: 'ci', reviewed: false, differences: [] })
+    const wrapper = mountDialog({ kind: 'token', name: 'ci', title: 'ci', reviewed: false, server: null })
 
     expect(wrapper.text()).toContain('Token changed elsewhere')
     expect(button(wrapper, 'Review')).toBeUndefined()
@@ -91,16 +91,28 @@ describe('ConflictDialog', () => {
     expect(wrapper.emitted('overwrite')).toHaveLength(1)
   })
 
-  it('lists the differing fields once reviewed', () => {
-    const wrapper = mountDialog(settingsConflict({
-      reviewed: true,
-      differences: [{ path: 'name', local: 'mine', server: 'other-admin' }]
-    }))
+  it('says how many changes the review lists once the settings were reviewed', () => {
+    const wrapper = mountDialog(settingsConflict({ reviewed: true, server: {} }), { differenceCount: 2 })
 
-    expect(wrapper.text()).toContain('name')
-    expect(wrapper.text()).toContain('"mine"')
-    expect(wrapper.text()).toContain('"other-admin"')
-    expect(button(wrapper, 'Review')).toBeUndefined()
+    expect(wrapper.text()).toContain('2 changes differ')
+  })
+
+  it('says that nothing differs when the review finds no change', () => {
+    const wrapper = mountDialog(settingsConflict({ reviewed: true, server: {} }), { differenceCount: 0 })
+
+    expect(wrapper.text()).toContain('Nothing differs')
+  })
+
+  it('keeps Review available after a review, so the sheet can be opened again', () => {
+    const wrapper = mountDialog(settingsConflict({ reviewed: true, server: {} }), { differenceCount: 1 })
+
+    expect(button(wrapper, 'Review')).toBeDefined()
+  })
+
+  it('shows no count before the settings were reviewed', () => {
+    const wrapper = mountDialog(settingsConflict())
+
+    expect(wrapper.text()).not.toContain('differ')
   })
 
   it('emits dismiss when the user keeps the draft', async () => {

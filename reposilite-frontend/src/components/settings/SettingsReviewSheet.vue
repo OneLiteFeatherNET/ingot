@@ -42,6 +42,14 @@ const props = defineProps({
   saving: {
     type: Boolean,
     default: false
+  },
+  /*
+   * The stored settings changed elsewhere: the changes compare the stored value (before) with the draft (after).
+   * Revert then takes the stored value into the draft, and nothing is saved from here; the conflict dialog owns that.
+   */
+  conflict: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -91,7 +99,7 @@ const revertLabelOf = (change) => {
           id="settings-review-title"
           class="md-title-large text-on-surface"
         >
-          Review changes
+          {{ conflict ? 'Stored settings compared' : 'Review changes' }}
         </h2>
         <MdButton
           variant="text"
@@ -104,10 +112,16 @@ const revertLabelOf = (change) => {
 
       <div class="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         <p
+          v-if="conflict"
+          class="pb-4 md-body-medium text-on-surface-variant"
+        >
+          The stored settings were saved elsewhere. Each change shows the stored value, then your draft.
+        </p>
+        <p
           v-if="changes.length === 0"
           class="md-body-large text-on-surface-variant"
         >
-          No unsaved changes.
+          {{ conflict ? 'Your draft matches the stored settings.' : 'No unsaved changes.' }}
         </p>
 
         <section
@@ -164,7 +178,7 @@ const revertLabelOf = (change) => {
                   :aria-label="revertLabelOf(change)"
                   @click="emit('revert', change)"
                 >
-                  Revert
+                  {{ conflict ? 'Use stored' : 'Revert' }}
                 </MdButton>
               </li>
             </ul>
@@ -186,9 +200,10 @@ const revertLabelOf = (change) => {
             :disabled="saving"
             @click="emit('discard')"
           >
-            Discard all
+            {{ conflict ? 'Take stored settings' : 'Discard all' }}
           </MdButton>
           <MdButton
+            v-if="!conflict"
             variant="filled"
             type="button"
             :disabled="invalid || saving"

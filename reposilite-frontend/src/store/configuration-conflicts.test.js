@@ -16,7 +16,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
-import { createConfigurationStore, diffFields } from './configuration'
+import { createConfigurationStore } from './configuration'
 import { createSuccessToast, createErrorToast } from '../helpers/toast'
 
 // The store is built per test against a fake server. Session and toast are replaced so that
@@ -197,16 +197,35 @@ describe('settings conflict resolution', () => {
     expect(createSuccessToast).toHaveBeenCalledWith('Configuration updated')
   })
 
-  it('lists the fields where the draft and the server differ when reviewed', async () => {
+  it('lists the changes between the stored state and the draft when reviewed', async () => {
     const { store } = await conflicted()
 
     await store.reviewConflict()
 
     expect(store.conflict.value.reviewed).toBe(true)
-    expect(store.conflict.value.differences).toEqual([
-      { path: 'name', local: 'mine', server: 'other-admin' }
+    expect(store.conflictChanges.value).toEqual([
+      expect.objectContaining({ domain: 'maven', kind: 'changed', before: 'other-admin', after: 'mine' })
     ])
     expect(store.isDirty('maven'), 'reviewing changes nothing').toBe(true)
+  })
+
+  it('keeps the draft tag when reviewed, so the next save is still refused', async () => {
+    const { server, store } = await conflicted()
+
+    await store.reviewConflict()
+    await store.saveConfiguration()
+
+    expect(server.update).toHaveBeenLastCalledWith('maven', { name: 'mine', size: 1 }, '"maven-1"')
+    expect(store.conflict.value).not.toBeNull()
+  })
+
+  it('lists nothing once a reverted draft matches the stored state', async () => {
+    const { store } = await conflicted()
+    await store.reviewConflict()
+
+    store.setDomainData('maven', { name: 'other-admin', size: 1 })
+
+    expect(store.conflictChanges.value).toEqual([])
   })
 
   it('keeps the draft pending when the dialog is dismissed, so the next save meets the same conflict', async () => {
@@ -220,33 +239,5 @@ describe('settings conflict resolution', () => {
 
     expect(server.update).toHaveBeenLastCalledWith('maven', { name: 'mine', size: 1 }, '"maven-1"')
     expect(store.conflict.value).not.toBeNull()
-  })
-})
-
-describe('diffFields', () => {
-  it('finds nothing when both sides are equal', () => {
-    expect(diffFields({ a: { b: 1 } }, { a: { b: 1 } })).toEqual([])
-  })
-
-  it('names a nested field by its dotted path', () => {
-    expect(diffFields({ a: { b: 1, c: 2 } }, { a: { b: 1, c: 3 } })).toEqual([
-      { path: 'a.c', local: 2, server: 3 }
-    ])
-  })
-
-  it('reports a key present on one side only, with the other side undefined', () => {
-    expect(diffFields({ a: 1 }, {})).toEqual([{ path: 'a', local: 1, server: undefined }])
-  })
-
-  it('compares arrays of equal length index by index', () => {
-    expect(diffFields({ list: [1, 2] }, { list: [1, 3] })).toEqual([
-      { path: 'list.1', local: 2, server: 3 }
-    ])
-  })
-
-  it('reports a whole array when the lengths differ', () => {
-    expect(diffFields({ list: [1] }, { list: [1, 2] })).toEqual([
-      { path: 'list', local: [1], server: [1, 2] }
-    ])
   })
 })

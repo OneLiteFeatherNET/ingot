@@ -152,7 +152,7 @@ export function createTokenStore({ getClient, notify = defaultNotify }) {
       .then(() => { notify.success(successMessage); return true })
       .catch(error => {
         if (isPreconditionFailed(error)) {
-          conflict.value = { kind: 'token', name: token.name, title: token.name, reviewed: false, differences: [], request, successMessage }
+          conflict.value = { kind: 'token', name: token.name, title: token.name, reviewed: false, request, successMessage }
           return false
         }
         notify.error(errorMessage(error))

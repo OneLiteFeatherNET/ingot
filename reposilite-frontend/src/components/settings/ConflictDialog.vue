@@ -6,11 +6,17 @@ import MdButton from '../md/MdButton.vue'
 /*
  * Shown when a save was refused because the stored settings or token changed since this dashboard read them.
  * The dialog only reports the user's choice: the owning store performs reload, review or overwrite.
- * `conflict` is { kind: 'settings' | 'token', name, title, reviewed, differences } or null when closed.
+ * `conflict` is { kind: 'settings' | 'token', name, title, reviewed, server } or null when closed. Once the
+ * stored settings were reviewed, `differenceCount` says how many changes the review lists; the review itself
+ * is a sheet the owner opens, so the dialog keeps no list of its own.
  */
 const props = defineProps({
   conflict: {
     type: Object,
+    default: null
+  },
+  differenceCount: {
+    type: Number,
     default: null
   }
 })
@@ -27,12 +33,6 @@ const title = computed(() => isSettings.value ? 'Settings changed elsewhere' : '
 // The scrim is the MD3 role colour at 32%, set inline because the modal paints a fixed black overlay.
 const overlayStyle = {
   backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)'
-}
-
-const formatValue = (value) => {
-  if (value === undefined) return 'not set'
-  const text = JSON.stringify(value)
-  return text.length > 200 ? `${text.slice(0, 200)}…` : text
 }
 
 const onOpenChange = (open) => {
@@ -76,33 +76,17 @@ const onOpenChange = (open) => {
           loaded it. Your change has not been saved.
         </p>
 
-        <section
-          v-if="isSettings && conflict.reviewed"
-          aria-label="Fields that differ"
-          class="flex flex-col gap-2"
+        <p
+          v-if="isSettings && differenceCount !== null"
+          role="status"
         >
-          <p v-if="conflict.differences.length === 0">
+          <template v-if="differenceCount === 0">
             Nothing differs between the stored settings and your draft.
-          </p>
-          <ul
-            v-else
-            class="flex flex-col gap-2"
-          >
-            <li
-              v-for="difference in conflict.differences"
-              :key="difference.path"
-              class="rounded-corner-small bg-surface-container p-3"
-            >
-              <code class="md-label-large text-on-surface">{{ difference.path }}</code>
-              <div class="md-body-small">
-                Yours: {{ formatValue(difference.local) }}
-              </div>
-              <div class="md-body-small">
-                Stored: {{ formatValue(difference.server) }}
-              </div>
-            </li>
-          </ul>
-        </section>
+          </template>
+          <template v-else>
+            {{ differenceCount }} {{ differenceCount === 1 ? 'change differs' : 'changes differ' }} between the stored settings and your draft.
+          </template>
+        </p>
 
         <p
           v-if="confirmingOverwrite"
@@ -121,7 +105,7 @@ const onOpenChange = (open) => {
           Keep my draft
         </button>
         <MdButton
-          v-if="isSettings && !conflict.reviewed"
+          v-if="isSettings"
           variant="tonal"
           @click="emit('review')"
         >

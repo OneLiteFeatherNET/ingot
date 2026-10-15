@@ -24,25 +24,9 @@ import { invalidColourFields } from '../theme/settings'
 import { setAppearance, applyAppearance } from './appearance'
 import { etagOf, isPreconditionFailed } from './client'
 import { frontendSecretsHidden } from './placeholders'
+import { diffSettings } from '../components/settings/settingsDiff'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
-
-/*
- * The fields where a draft and the server state differ, as dotted paths. Objects are compared key by key,
- * arrays index by index, and a value present on one side only is reported with the other side undefined.
- */
-export const diffFields = (local, server, path = '') => {
-  if (isEqual(local, server)) return []
-  const childPath = (key) => (path ? `${path}.${key}` : `${key}`)
-  if (isPlainObject(local) && isPlainObject(server)) {
-    return [...new Set([...Object.keys(local), ...Object.keys(server)])]
-      .flatMap(key => diffFields(local[key], server[key], childPath(key)))
-  }
-  if (Array.isArray(local) && Array.isArray(server) && local.length === server.length) {
-    return local.flatMap((value, index) => diffFields(value, server[index], childPath(index)))
-  }
-  return [{ path: path || '(whole domain)', local, server }]
-}
 
 /*
  * How many values differ between an edited configuration and the server snapshot. Objects are
@@ -141,8 +125,8 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   const hasUnsavedChanges = computed(() => hasChanges.value)
 
   /*
-   * The one place a domain takes the state the server confirmed: the draft, the saved snapshot and the tag the
-   * write will carry move together, so a later save can never pair a tag with a state it does not describe.
+   * The one place a domain takes the state the server confirmed: the draft, the saved snapshot and the tag
+   * the write will carry move together, so a later save can never pair a tag with a state it does not describe.
    */
   const setSavedState = (domain, server, etag) => {
     configurations.value[domain] = server
@@ -196,7 +180,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   }
 
   const openSettingsConflict = (domain) => {
-    conflict.value = { kind: 'settings', name: domain, title: titleOf(domain), reviewed: false, differences: [] }
+    conflict.value = { kind: 'settings', name: domain, title: titleOf(domain), reviewed: false, server: null }
   }
 
   /*
@@ -239,17 +223,16 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     return true
   }
 
-  /* Fetches what the server has now and lists the fields where it differs from the local draft. Nothing is changed. */
+  /*
+   * Fetches what the server has now and keeps it on the conflict, so the review can list the changes between it and
+   * the draft. Neither the draft nor the tag changes: the next save still carries the tag it was read with.
+   */
   const reviewConflict = async () => {
     const current = conflict.value
     if (current?.kind !== 'settings') return false
     try {
       const { server } = await loadServerState(current.name)
-      conflict.value = {
-        ...current,
-        reviewed: true,
-        differences: diffFields(configurations.value[current.name], server),
-      }
+      conflict.value = { ...current, reviewed: true, server }
       return true
     } catch (error) {
       saveError.value = `Cannot load ${titleOf(current.name)} from the server: ${errorMessage(error)}`
@@ -425,6 +408,20 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   const savedSettings = computed(() => snapshots.value)
   const savedConfiguration = (domain) => savedSettings.value[domain]
 
+  /*
+   * The changes between the server state the conflict review fetched and the draft, as the review sheet lists them.
+   * Empty until the review has run. Reverting a change in the draft shrinks the list, as it would for unsaved changes.
+   */
+  const conflictChanges = computed(() => {
+    const current = conflict.value
+    if (current?.kind !== 'settings' || !current.server) return []
+    return diffSettings(
+      { [current.name]: current.server },
+      { [current.name]: configurations.value[current.name] ?? {} },
+      schemas.value
+    )
+  })
+
   return {
     domains,
     schemas,
@@ -444,6 +441,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     fetchConfiguration,
     saveConfiguration,
     conflict,
+    conflictChanges,
     reviewConflict,
     reloadConflict,
     overwriteConflict,

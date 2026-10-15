@@ -31,6 +31,7 @@ import { barClearance } from './barClearance'
 import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
+import ConflictDialog from './ConflictDialog.vue'
 import { diffSettings, revertChange as revertDraftChange } from './settingsDiff'
 import { overlayImport, parseSettingsFile, validateImport } from './settingsImport'
 import SettingsImportErrors from './SettingsImportErrors.vue'
@@ -83,7 +84,13 @@ const {
   changeCount,
   invalidDomains,
   savedSettings,
-  secretsHidden
+  secretsHidden,
+  conflict,
+  conflictChanges,
+  reviewConflict,
+  reloadConflict,
+  overwriteConflict,
+  dismissConflict
 } = store
 
 // The domain on screen is the one the store holds. The address sets it, and the tabs set it;
@@ -263,10 +270,33 @@ const changes = computed(() => diffSettings(
 ))
 const countOfChanges = computed(() => (changes.value.length > 0 ? changes.value.length : changeCount.value))
 
+/*
+ * A save refused with 412 opens the conflict dialog. Its Review opens the same sheet, but over the stored
+ * settings: the sheet then lists the stored value against the draft, and nothing is saved from it.
+ */
+const conflictReviewOpen = ref(false)
+const reviewingConflict = computed(() => conflictReviewOpen.value && conflict.value?.kind === 'settings')
+const sheetOpen = computed(() => reviewOpen.value || reviewingConflict.value)
+const sheetChanges = computed(() => (reviewingConflict.value ? conflictChanges.value : changes.value))
+
+const openConflictReview = async () => {
+  if (await reviewConflict()) conflictReviewOpen.value = true
+}
+
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
 watch(() => changes.value.length, (count) => {
   if (count === 0) reviewOpen.value = false
 })
+
+// Once the conflict is resolved or dismissed, its review has nothing left to show.
+watch(conflict, (current) => {
+  if (!current) conflictReviewOpen.value = false
+})
+
+const closeReview = () => {
+  reviewOpen.value = false
+  conflictReviewOpen.value = false
+}
 
 const revertChange = (change) => {
   const domain = change.domain
@@ -274,15 +304,35 @@ const revertChange = (change) => {
   store.validateDomain(domain)
 }
 
-const discardAll = () => {
-  discard()
-  reviewOpen.value = false
+/*
+ * Reverting in the conflict review takes the stored value of one field into the draft. The review then lists
+ * what is left, so the user sees the draft come closer to the stored state.
+ */
+const useStoredChange = (change) => {
+  const domain = change.domain
+  store.setDomainData(domain, revertDraftChange(configurations.value[domain], conflict.value.server, change))
+  store.validateDomain(domain)
 }
 
-// The sheet closes only when the save went through; a refused save keeps the changes on screen.
-const saveFromReview = async () => {
-  if (await store.saveConfiguration()) reviewOpen.value = false
+const discardAll = () => {
+  discard()
+  closeReview()
 }
+
+// The sheet closes when the save went through, or when it was refused as a conflict: the dialog takes over then.
+// Any other refusal keeps the changes on screen with the error.
+const saveFromReview = async () => {
+  const saved = await store.saveConfiguration()
+  if (saved || conflict.value) reviewOpen.value = false
+}
+
+// Taking the stored settings drops the draft, as the dialog's reload does, so the review has nothing to compare.
+const takeStoredSettings = async () => {
+  if (await reloadConflict()) closeReview()
+}
+
+const onSheetRevert = (change) => (reviewingConflict.value ? useStoredChange(change) : revertChange(change))
+const onSheetDiscard = () => (reviewingConflict.value ? takeStoredSettings() : discardAll())
 
 /*
  * A settings file goes into the draft only when every domain in it is valid. Then the review opens
@@ -497,14 +547,25 @@ watch(
     </div>
 
     <SettingsReviewSheet
-      :open="reviewOpen"
-      :changes="changes"
+      :open="sheetOpen"
+      :changes="sheetChanges"
       :invalid="invalidDomains.length > 0"
       :saving="saving"
-      @update:open="reviewOpen = $event"
-      @revert="revertChange"
-      @discard="discardAll"
+      :conflict="reviewingConflict"
+      @update:open="closeReview"
+      @revert="onSheetRevert"
+      @discard="onSheetDiscard"
       @save="saveFromReview"
+    />
+
+    <ConflictDialog
+      v-if="conflict && !reviewingConflict"
+      :conflict="conflict"
+      :difference-count="conflict.reviewed ? conflictChanges.length : null"
+      @review="openConflictReview"
+      @reload="reloadConflict"
+      @overwrite="overwriteConflict"
+      @dismiss="dismissConflict"
     />
   </div>
 </template>
