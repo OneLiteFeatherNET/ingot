@@ -63,6 +63,10 @@ let frontendSettingsEntity = {
   }
 }
 
+// 8887 unless INGOT_FAKE_API_PORT says otherwise, which lets a second copy run beside the first.
+// The dashboard in development reads the same variable (see vite.config.js).
+const FAKE_API_PORT = Number(process.env.INGOT_FAKE_API_PORT) || 8887
+
 let uptime = 1000
 let memory = 20
 let threads = 10
@@ -509,6 +513,6 @@ application
       message: "Not found",
     })
   )
-  .listen(8887)
+  .listen(FAKE_API_PORT)
 
-console.log("Ingot stub API started on port 8887")
+console.log(`Ingot stub API started on port ${FAKE_API_PORT}`)

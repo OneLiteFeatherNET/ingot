@@ -57,6 +57,11 @@ export default defineConfig({
   base:
     process.env.INGOT_BASE_PATH ||
     (process.env.NODE_ENV === "production" ? "{{REPOSILITE.VITE_BASE_PATH}}" : "/"),
+  // The development API is the fake backend on 8887 unless INGOT_FAKE_API_PORT moves it, so that
+  // a second copy can run beside the first. Only the dev branch of the dashboard reads this.
+  define: {
+    __INGOT_FAKE_API_PORT__: JSON.stringify(process.env.INGOT_FAKE_API_PORT || "8887"),
+  },
   build: {
     minify: true,
     emptyOutDir: true,

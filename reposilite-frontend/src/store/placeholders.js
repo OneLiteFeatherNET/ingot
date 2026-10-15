@@ -36,6 +36,12 @@
 
 import { setAppearance } from './appearance'
 
+/* global __INGOT_FAKE_API_PORT__ */
+// Development only: the fake backend, whose port vite.config.js defines. The typeof guard keeps
+// the test runner, which does not apply that define, on the default port.
+const DEV_API_PORT = typeof __INGOT_FAKE_API_PORT__ === 'undefined' ? '8887' : __INGOT_FAKE_API_PORT__
+const DEV_API_ORIGIN = `http://localhost:${DEV_API_PORT}`
+
 const FALLBACKS = {
   'REPOSILITE.BASE_PATH': '/',
   'REPOSILITE.ID': 'ingot-repository',
@@ -100,7 +106,7 @@ const read = (value, token) => {
  */
 export const settingsUrlFor = ({ mountPath, origin, production }) => {
   if (!production) {
-    return 'http://localhost:8887/api/frontend/settings'
+    return `${DEV_API_ORIGIN}/api/frontend/settings`
   }
   const base = mountPath.endsWith('/') ? mountPath : `${mountPath}/`
   return new URL(`${base}api/frontend/settings`, origin).href
@@ -165,7 +171,7 @@ export default function usePlaceholders() {
   const baseUrl =
     process.env.NODE_ENV === 'production'
       ? (productionUrl.endsWith('/') ? productionUrl.slice(0, -1) : productionUrl)
-      : 'http://localhost:8887'
+      : DEV_API_ORIGIN
 
   return {
     basePath,
