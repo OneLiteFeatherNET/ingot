@@ -212,7 +212,18 @@ Example output:
     "description": "Public Maven repository hosted through Ingot",
     "organizationWebsite": "https://github.com/OneLiteFeatherNET",
     "organizationLogo": "https://avatars.githubusercontent.com/u/103827826",
-    "icpLicense": ""
+    "icpLicense": "",
+    "appearance": {
+      "seedColor": "",
+      "schemeVariant": "VIBRANT",
+      "primaryColor": "",
+      "secondaryColor": "",
+      "tertiaryColor": "",
+      "errorColor": "",
+      "logoDark": "",
+      "favicon": "",
+      "footerText": ""
+    }
   },
   "web": {
     "forwardedIp": "X-Forwarded-For"
@@ -259,5 +270,10 @@ Example output:
   }
 }
 ```
+
+The `frontend.appearance` object brands the dashboard. Every field is optional, and an empty value keeps the built-in
+Ingot look. Colour fields take a six digit hex colour in the form `#RRGGBB`. Any other value is rejected when the
+settings are saved, and an invalid shared configuration file stops the instance from starting. A configuration
+without the `appearance` object is valid and renders as before.
 
 </Spoiler>
