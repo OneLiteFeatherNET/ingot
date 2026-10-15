@@ -16,6 +16,7 @@
 package net.onelitefeather.ingot.identity.storage
 
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
+import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.Role
@@ -218,6 +219,35 @@ internal class IdentityStoreTest {
             assertThat(store.hasDirectInstanceRole(bot.id)).describedAs("its instance role should be deleted").isFalse
             assertThat(store.listMemberships(team.id)).describedAs("memberships of other teams should be gone").isEmpty()
             assertThat(store.findTeam("mods")).describedAs("unrelated team should be kept").isNotNull
+        }
+    }
+
+    @Test
+    fun `deleting a principal removes its login credential and refresh tokens without relying on foreign keys`() {
+        DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
+            // given: a user with a password and a browser session
+            val store = IdentityStore(connection.database, clock)
+            val logins = LoginStore(connection.database, clock)
+            val alice = store.createPrincipal(PrincipalKind.USER, "alice", "Alice", disabled = false, createdAt = clock.instant())!!
+            logins.saveCredential(alice.id, "argon2id-hash", mustChangePassword = false)
+            logins.insertRefreshToken(
+                familyId = "family-of-alice",
+                principalId = alice.id,
+                tokenHash = "hash-of-alice-refresh",
+                createdAt = clock.instant(),
+                expiresAt = clock.instant().plusSeconds(3600),
+                userAgent = null,
+                ip = null,
+            )
+            // and: a connection that does not enforce foreign keys, so the cascades of the schema cannot do the removal
+            connection.databaseSource.connection.use { raw -> raw.createStatement().use { it.execute("PRAGMA foreign_keys=OFF") } }
+
+            // when: the principal is deleted
+            store.deletePrincipal(alice)
+
+            // then: nothing that could log in or renew a session is left behind
+            assertThat(logins.findCredential(alice.id)).describedAs("the password of a deleted principal must be removed").isNull()
+            assertThat(logins.findRefreshToken("hash-of-alice-refresh")).describedAs("a deleted principal's refresh token must be removed").isNull()
         }
     }
 

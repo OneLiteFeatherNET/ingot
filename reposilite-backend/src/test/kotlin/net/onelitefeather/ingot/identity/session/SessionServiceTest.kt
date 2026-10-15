@@ -174,6 +174,23 @@ internal class SessionServiceTest {
     }
 
     @Test
+    fun `deleting the principal ends its sessions at once, not at the end of their lifetime`() {
+        withSessions { fixture ->
+            val alice = fixture.user()
+            val session = fixture.sessions.start(alice, ip = "10.0.0.1", userAgent = null)
+
+            fixture.identities.deletePrincipal(alice)
+
+            assertThat(fixture.sessions.authenticate(session.sessionJwt))
+                .describedAs("the session token of a deleted principal must be refused before it expires")
+                .isNull()
+            assertThat(fixture.sessions.refresh(session.refreshToken, ip = "10.0.0.1", userAgent = null))
+                .describedAs("the refresh token of a deleted principal must not renew the session")
+                .isNull()
+        }
+    }
+
+    @Test
     fun `a new session authenticates as its principal`() {
         withSessions { fixture ->
             val alice = fixture.user()

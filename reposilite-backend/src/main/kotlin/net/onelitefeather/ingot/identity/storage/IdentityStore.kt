@@ -17,6 +17,8 @@ package net.onelitefeather.ingot.identity.storage
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+import net.onelitefeather.ingot.identity.login.storage.LocalCredentialTable
+import net.onelitefeather.ingot.identity.login.storage.RefreshTokenTable
 import net.onelitefeather.ingot.identity.model.AccessSubject
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
@@ -145,6 +147,11 @@ class IdentityStore(
             InstanceRoleTable.deleteWhere { InstanceRoleTable.principalId eq principal.id }
             TeamMemberTable.deleteWhere { TeamMemberTable.principalId eq principal.id }
             PrincipalTokenTable.deleteWhere { PrincipalTokenTable.principalId eq principal.id }
+            // The password and the browser sessions of a user go in the same transaction. Deleting the refresh tokens also
+            // ends the sessions: a session token is refused as soon as its principal is gone, and no refresh token is left
+            // that could renew it. The schema cascades these rows too, but only where foreign keys are enforced.
+            LocalCredentialTable.deleteWhere { LocalCredentialTable.principalId eq principal.id }
+            RefreshTokenTable.deleteWhere { RefreshTokenTable.principalId eq principal.id }
             PrincipalTable.deleteWhere { PrincipalTable.id eq principal.id }
         }
     }

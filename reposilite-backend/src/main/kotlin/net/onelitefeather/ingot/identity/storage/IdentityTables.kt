@@ -15,6 +15,10 @@
  */
 package net.onelitefeather.ingot.identity.storage
 
+import net.onelitefeather.ingot.identity.login.storage.LocalCredentialTable
+import net.onelitefeather.ingot.identity.login.storage.LoginAttemptTable
+import net.onelitefeather.ingot.identity.login.storage.LoginSetupMarkerTable
+import net.onelitefeather.ingot.identity.login.storage.RefreshTokenTable
 import org.jetbrains.exposed.v1.core.ReferenceOption.CASCADE
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
@@ -84,7 +88,11 @@ object IdentityMigrationTable : Table("identity_migration") {
     val appliedAt = timestamp("applied_at")
 }
 
-/** Every identity table, parents before children, in the order they are created. */
+/**
+ * Every identity table, parents before children, in the order they are created. The login tables are part of the identity
+ * schema too: a principal's password and sessions are removed with the principal, which needs them to exist wherever the
+ * identity store does, not only where the login plugin runs.
+ */
 internal val IDENTITY_TABLES: Array<Table> = arrayOf(
     PrincipalTable,
     TeamTable,
@@ -92,5 +100,9 @@ internal val IDENTITY_TABLES: Array<Table> = arrayOf(
     TeamGrantTable,
     InstanceRoleTable,
     PrincipalTokenTable,
+    LocalCredentialTable,
+    RefreshTokenTable,
+    LoginAttemptTable,
+    LoginSetupMarkerTable,
     IdentityMigrationTable,
 )
