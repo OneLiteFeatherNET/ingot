@@ -8,7 +8,7 @@
       :model-value="String(tabIndex)"
       :label="control.label || 'Variants'"
       :options="variantOptions"
-      :supporting-text="control.description || ''"
+      :supporting-text="descriptionText(control.description)"
       :error="Boolean(control.errors)"
       :error-text="control.errors || ''"
       :disabled="!control.enabled"
@@ -65,6 +65,7 @@ import {useVanillaControl} from '@dzikoysk/vue-vanilla'
 import MdSelect from '../md/MdSelect.vue'
 import isEmpty from 'lodash/isEmpty'
 import DialogWrapper from '../util/DialogWrapper.vue'
+import { descriptionText } from './description.js'
 
 /*
  * The variant is picked from an outlined select, the same field as an enum. The rank is above the
@@ -117,7 +118,8 @@ export default {
       tabIndex,
       newSelectedIndex,
       dialog,
-      controlEnabled
+      controlEnabled,
+      descriptionText
     }
   },
   computed: {

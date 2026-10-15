@@ -31,9 +31,9 @@
     </div>
     <p
       v-if="control.description"
-      class="md-body-small text-on-surface-variant"
+      class="md-body-small whitespace-pre-line text-on-surface-variant"
     >
-      {{ control.description }}
+      {{ descriptionText(control.description) }}
     </p>
     <p
       v-if="noData"
@@ -130,6 +130,7 @@ import { useVanillaArrayControl } from '@dzikoysk/vue-vanilla'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import { descriptionText } from './description.js'
 
 /*
  * Arrays, drawn as a list rather than as tabs. An array of plain values is a list of rows, each an
@@ -158,7 +159,8 @@ export default {
     return {
       ...arrayControl,
       handleChange,
-      composePaths
+      composePaths,
+      descriptionText
     }
   },
   computed: {

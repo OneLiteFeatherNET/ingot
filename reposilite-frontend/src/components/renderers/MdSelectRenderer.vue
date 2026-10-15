@@ -19,6 +19,7 @@ import { isEnumControl, isOneOfEnumControl, rankWith } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed } from 'vue'
+import { descriptionText } from './description.js'
 import MdSelect from '../md/MdSelect.vue'
 
 /*
@@ -60,6 +61,7 @@ export default {
 
     return {
       ...input,
+      descriptionText,
       options,
       selected,
       onSelect
@@ -75,7 +77,7 @@ export default {
     :model-value="selected"
     :label="control.label"
     :options="options"
-    :supporting-text="control.description || ''"
+    :supporting-text="descriptionText(control.description)"
     :error="Boolean(control.errors)"
     :error-text="control.errors || ''"
     :disabled="!control.enabled"

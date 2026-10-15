@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import MdSwitch from '../md/MdSwitch.vue'
+import { descriptionText } from './description.js'
 
 /*
  * Material Design 3 switch for a boolean setting in the generated forms, laid out as a list row:
@@ -60,9 +61,9 @@ const labelId = computed(() => `${props.id}-label`)
         </span>
         <p
           v-if="description"
-          class="md-body-medium text-on-surface-variant"
+          class="md-body-medium whitespace-pre-line text-on-surface-variant"
         >
-          {{ description }}
+          {{ descriptionText(description) }}
         </p>
       </div>
       <MdSwitch

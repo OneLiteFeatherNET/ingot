@@ -203,7 +203,7 @@ const helperClass = computed(() => {
     <p
       v-if="helperText"
       :id="helperId"
-      class="md-body-small px-4"
+      class="md-body-small whitespace-pre-line px-4"
       :class="helperClass"
     >
       {{ helperText }}

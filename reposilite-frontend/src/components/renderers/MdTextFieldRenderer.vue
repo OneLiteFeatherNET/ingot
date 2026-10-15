@@ -21,6 +21,7 @@ import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed, ref } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import { descriptionText } from './description.js'
 
 /*
  * Outlined text field for a string, a number or an integer. It replaces the vanilla input for
@@ -74,6 +75,7 @@ export default {
 
     return {
       ...input,
+      descriptionText,
       displayValue,
       inputType,
       numeric,
@@ -94,7 +96,7 @@ export default {
     :label="control.label"
     variant="outlined"
     :type="inputType"
-    :supporting-text="control.description || ''"
+    :supporting-text="descriptionText(control.description)"
     :error="Boolean(control.errors)"
     :error-text="control.errors || ''"
     :disabled="!control.enabled"
