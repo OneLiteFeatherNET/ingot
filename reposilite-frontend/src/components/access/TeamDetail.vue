@@ -26,7 +26,6 @@ import ConflictDialog from '../settings/ConflictDialog.vue'
 import TokenTag from '../tokens/TokenTag.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
 import PermissionNodesCard from './PermissionNodesCard.vue'
-import TeamChildrenCard from './TeamChildrenCard.vue'
 import TeamLegacyGrants from './TeamLegacyGrants.vue'
 import TeamMembersCard from './TeamMembersCard.vue'
 import TeamParentsCard from './TeamParentsCard.vue'
@@ -378,7 +377,6 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
         :name="name"
         @saved="parentsSaved()"
       />
-      <TeamChildrenCard :names="detail.children" />
       <PermissionNodesCard
         subject-kind="team"
         :name="name"

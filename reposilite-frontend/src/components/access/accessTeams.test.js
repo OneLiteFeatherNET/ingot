@@ -175,12 +175,11 @@ describe('teamDetailOf', () => {
   })
 
 
-  it('fills the parents and the children a sparse answer leaves out', () => {
-    expect(teamDetailOf({ name: 'qa' })).toMatchObject({ parents: [], children: [] })
+  it('fills the parents a sparse answer leaves out', () => {
+    expect(teamDetailOf({ name: 'qa' })).toMatchObject({ parents: [] })
   })
 
-  it('keeps the parents and the children the server sent', () => {
-    expect(teamDetailOf({ name: 'ops', parents: ['developers'], children: ['qa'] }))
-      .toMatchObject({ parents: ['developers'], children: ['qa'] })
+  it('keeps the parents the server sent', () => {
+    expect(teamDetailOf({ name: 'ops', parents: ['developers'] })).toMatchObject({ parents: ['developers'] })
   })
 })

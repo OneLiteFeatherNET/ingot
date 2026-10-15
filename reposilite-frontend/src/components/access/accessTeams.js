@@ -95,7 +95,6 @@ const teamDetailOf = (data) => ({
   members: data?.members ?? [],
   grants: data?.grants ?? [],
   parents: data?.parents ?? [],
-  children: data?.children ?? [],
   instanceRole: data?.instanceRole === true
 })
 

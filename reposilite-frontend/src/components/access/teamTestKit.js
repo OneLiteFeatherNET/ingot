@@ -35,7 +35,6 @@ const TEAM = {
   nodeCount: 2,
   instanceRole: false,
   parents: [],
-  children: [],
   members: [
     { principal: 'alice', kind: 'USER', source: 'MANUAL' },
     { principal: 'bob', kind: 'USER', source: 'SYNC' },

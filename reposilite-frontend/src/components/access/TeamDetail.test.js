@@ -179,7 +179,7 @@ describe('TeamDetail', () => {
 
     const arrangeOps = (tree = TREE) => {
       teams.get.mockResolvedValue({
-        data: { ...TEAM, name: 'ops', parents: tree.ops.parents, children: ['release', 'qa'] },
+        data: { ...TEAM, name: 'ops', parents: tree.ops.parents },
         headers: { etag: '"5"' }
       })
       teams.parents.mockImplementation(async (name) => answer({ parents: [...tree[name].parents] }, '"p1"'))
@@ -239,19 +239,6 @@ describe('TeamDetail', () => {
 
       expect(card.find('h4').text()).toBe('Inherits from')
       expect(card.findAll('[data-test="parent"]').map(chip => chip.text())).toEqual(['developers'])
-    })
-
-    it('shows the child teams from the detail as links', async () => {
-      await openOps()
-
-      expect(wrapper.findAll('[data-test="child-team"]').map(link => link.attributes('href')))
-        .toEqual(['/access/teams/release', '/access/teams/qa'])
-    })
-
-    it('shows the empty state of the child teams for a team nobody inherits from', async () => {
-      await mountDetail()
-
-      expect(wrapper.find('[data-test="children-empty"]').exists()).toBe(true)
     })
 
     it('reads the team again and tells the page after the parents were saved', async () => {
