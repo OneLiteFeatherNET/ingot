@@ -21,6 +21,15 @@ defineProps({
     default: false
   }
 })
+
+// The focus ring is for keyboard focus. A pointer click has detail above 0, and a segment that
+// the keyboard had already focused would keep :focus-visible through it, so the ring would stay.
+// Blurring on a pointer click drops it; a keyboard activation (detail 0) keeps the focus.
+const onClick = (event) => {
+  if (event.detail > 0) {
+    event.currentTarget.blur()
+  }
+}
 </script>
 
 <template>
@@ -41,6 +50,7 @@ defineProps({
     :tabindex="on ? 0 : -1"
     class="md-state-layer md-focus-ring-inset md-label-large relative inline-flex h-10 min-w-max flex-1 basis-0 items-center justify-center gap-1 whitespace-nowrap border-l border-t border-outline px-2 -translate-x-px -translate-y-px first:border-l-0 sm:min-w-0"
     :class="on ? 'bg-secondary-container text-on-secondary-container' : 'bg-transparent text-on-surface'"
+    @click="onClick"
   >
     <svg
       v-if="on"

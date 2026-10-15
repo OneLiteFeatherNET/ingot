@@ -74,4 +74,39 @@ describe('SegmentedOption', () => {
   it('draws the focus ring inset and for keyboard focus only', () => {
     expect(mountOption().find('button').classes()).toContain('md-focus-ring-inset')
   })
+
+  it('loses the focus on a pointer click, so the ring of a keyboard-focused segment does not stay', () => {
+    const wrapper = mount(SegmentedOption, { props: { on: false }, slots: { default: 'Custom' }, attachTo: document.body })
+    const button = wrapper.find('button').element
+    button.focus()
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+
+    expect(document.activeElement, 'a pointer click leaves the segment without focus').not.toBe(button)
+    wrapper.unmount()
+  })
+
+  it('keeps the focus on a keyboard activation, which has no pointer detail', () => {
+    const wrapper = mount(SegmentedOption, { props: { on: false }, slots: { default: 'Custom' }, attachTo: document.body })
+    const button = wrapper.find('button').element
+    button.focus()
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }))
+
+    expect(document.activeElement, 'a keyboard activation keeps the focus where the arrow key put it').toBe(button)
+    wrapper.unmount()
+  })
+
+  it('still reports the click to its parent after blurring on a pointer click', () => {
+    let clicks = 0
+    const wrapper = mount(SegmentedOption, {
+      props: { on: false },
+      slots: { default: 'Custom' },
+      attrs: { onClick: () => { clicks += 1 } }
+    })
+
+    wrapper.find('button').element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+
+    expect(clicks, 'the parent handler still runs').toBe(1)
+  })
 })
