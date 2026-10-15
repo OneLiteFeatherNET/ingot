@@ -268,19 +268,22 @@ describe('SettingsView unsaved changes', () => {
 })
 
 describe('SettingsView driven by the router', () => {
-  // The page as IndexPage runs it: the route params go in as props, and a domain the view reports
-  // is written back with a replace. The view keeps no selection of its own.
+  // The page as IndexPage runs it: the view is shown on the settings routes only, the route params go
+  // in as props, and a domain the view reports is written back with a replace. The view keeps no
+  // selection of its own.
   const RouteHost = defineComponent({
     setup() {
       const route = useRoute()
       const router = useRouter()
-      return () => h(SettingsView, {
-        selectedTab: 'Settings',
-        domain: route.params.domain,
-        collection: route.params.collection,
-        entry: route.params.entry,
-        'onUpdate:domain': (domain) => router.replace({ name: 'settings', params: { domain } })
-      })
+      return () => (route.name?.startsWith('settings')
+        ? h(SettingsView, {
+          selectedTab: 'Settings',
+          domain: route.params.domain,
+          collection: route.params.collection,
+          entry: route.params.entry,
+          'onUpdate:domain': (domain) => router.replace({ name: 'settings', params: { domain } })
+        })
+        : null)
     }
   })
 
