@@ -23,6 +23,7 @@ const express = require("express")
 const expressWs = require("express-ws")
 const bodyParser = require('body-parser')
 const crypto = require("crypto")
+const audit = require("./audit.cjs")
 
 const {
   respond,
@@ -427,6 +428,16 @@ application
   .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
   .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))
   .put('/api/settings/domain/frontend', (req, res) => { frontendSettingsEntity = req.body; res.send("") })
+  .get('/api/audit', (req, res) =>
+    authorized(req, () => res.send(audit.queryEvents(req.query)), () => invalidCredentials(res))
+  )
+  .get('/api/audit/export', (req, res) =>
+    authorized(
+      req,
+      () => res.type('text/csv').attachment('ingot-audit.csv').send(audit.exportCsv(req.query)),
+      () => invalidCredentials(res)
+    )
+  )
   .get('/api/tokens', (req, res) =>
     authorized(req, () => res.send(accessTokens), () => invalidCredentials(res))
   )

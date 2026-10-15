@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { SECTIONS, visibleSections, sectionLabel } from './index-tabs'
+import { SECTIONS, MORE_KEY, visibleSections, sectionLabel, isOverflow } from './index-tabs'
 import { ROUTES } from '../router/routes'
 
 describe('visibleSections', () => {
@@ -25,7 +25,7 @@ describe('visibleSections', () => {
 
   it('offers every section to a manager, in the order of the navigation', () => {
     expect(visibleSections(true).map(section => section.label))
-      .toEqual(['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Settings'])
+      .toEqual(['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Audit', 'Settings'])
   })
 })
 
@@ -41,13 +41,13 @@ describe('section table', () => {
   it('marks exactly the manager sections as manager only', () => {
     const managerOnly = SECTIONS.filter(section => section.manager).map(section => section.key)
 
-    expect(managerOnly).toEqual(['dashboard', 'tokens', 'console', 'maintenance', 'settings'])
+    expect(managerOnly).toEqual(['dashboard', 'tokens', 'console', 'maintenance', 'audit', 'settings'])
   })
 
-  it('places the maintenance section between console and settings, which stays last', () => {
+  it('places the admin pages after console, settings stays last', () => {
     const keys = SECTIONS.map(section => section.key)
 
-    expect(keys.slice(-3)).toEqual(['console', 'maintenance', 'settings'])
+    expect(keys.slice(-4)).toEqual(['console', 'maintenance', 'audit', 'settings'])
   })
 
   it('guards the maintenance route with the manager permission', () => {
@@ -55,6 +55,18 @@ describe('section table', () => {
 
     expect(route?.path).toBe('/maintenance')
     expect(route?.meta).toEqual({ section: 'maintenance', manager: true })
+  })
+})
+
+describe('overflow', () => {
+  it('moves the rare admin pages under More and keeps the daily ones in the bar', () => {
+    expect(SECTIONS.filter(section => isOverflow(section.key)).map(section => section.key)).toEqual(['maintenance', 'audit', 'settings'])
+    expect(isOverflow('tokens')).toBe(false)
+    expect(isOverflow('unknown')).toBe(false)
+  })
+
+  it('reserves a key for the More destination that cannot clash with a section', () => {
+    expect(SECTIONS.map(section => section.key)).not.toContain(MORE_KEY)
   })
 })
 

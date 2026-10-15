@@ -75,6 +75,7 @@ vi.mock('../components/dashboard/DashboardView.vue', sectionStub('DashboardStub'
 vi.mock('../components/tokens/TokensView.vue', sectionStub('TokensStub', 'tokens'))
 vi.mock('../components/console/ConsoleView.vue', sectionStub('ConsoleStub', 'console'))
 vi.mock('../components/maintenance/MaintenanceView.vue', sectionStub('MaintenanceStub', 'maintenance'))
+vi.mock('../components/audit/AuditView.vue', sectionStub('AuditStub', 'audit'))
 vi.mock('../components/settings/SettingsView.vue', sectionStub('SettingsStub', 'settings'))
 
 const QUALIFIER = { path: '', watchable: 0 }
@@ -117,7 +118,9 @@ const chooseLink = async (wrapper, label) => {
 
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
-const SECTION_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Settings']
+const SECTION_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Audit', 'Settings']
+// The bottom bar keeps the daily sections and puts the rarer admin pages under More.
+const BAR_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console']
 
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
@@ -162,6 +165,7 @@ describe('IndexPage section from the route', () => {
     ['/tokens/ci-bot', 'tokens'],
     ['/console', 'console'],
     ['/maintenance', 'maintenance'],
+    ['/audit', 'audit'],
     ['/settings', 'settings'],
     ['/settings/maven/repositories/releases', 'settings'],
   ])('shows the section of %s for a manager', async (url, section) => {
@@ -258,13 +262,39 @@ describe('IndexPage navigation', () => {
     session.isManager = null
   })
 
-  it('offers the bar and the rail, each with every section, to a manager', async () => {
+  it('offers the rail with every section, in order, to a manager', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    const labels = navigations(wrapper).map(nav => nav.findAll('a').map(link => link.text()))
+    const [, rail] = navigations(wrapper)
 
-    expect(labels, 'the bar and the rail must list the same five sections in the same order')
-      .toEqual([SECTION_LABELS, SECTION_LABELS])
+    expect(rail.findAll('a').map(link => link.text()), 'the rail has room for every section')
+      .toEqual(SECTION_LABELS)
+  })
+
+  it('keeps the daily sections in the bar and puts the rarer ones under More', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const [bar] = navigations(wrapper)
+
+    expect(bar.findAll('a').map(link => link.text())).toEqual(BAR_LABELS)
+    expect(bar.findAll('button').map(button => button.text()), 'the bar has one More item for the overflow')
+      .toEqual(['More'])
+  })
+
+  it('opens the overflow sections from More and closes the panel once one is chosen', async () => {
+    const { wrapper, router } = await mountAt('/', { manager: true })
+
+    const [bar] = navigations(wrapper)
+    await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
+
+    const panel = wrapper.find('nav[aria-label="More sections"]')
+    expect(panel.findAll('a').map(link => link.text())).toEqual(['Maintenance', 'Audit', 'Settings'])
+
+    await panel.findAll('a').find(link => link.text() === 'Audit').trigger('click')
+
+    expect(wrapper.find('nav[aria-label="More sections"]').exists()).toBe(false)
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('audit')
   })
 
   it('shows no navigation at all when the user has only one section', async () => {

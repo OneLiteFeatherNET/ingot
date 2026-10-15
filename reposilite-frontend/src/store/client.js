@@ -275,7 +275,26 @@ const createClient = (defaultName, defaultSecret) => {
         })
       },
     },
+    audit: {
+      list(params) {
+        return get(`/api/audit${queryString(params)}`)
+      },
+      exportCsv(params) {
+        return axios.get(createURL(`/api/audit/export${queryString(params)}`), {
+          responseType: "blob",
+          ...defaultAuthorization(),
+        })
+      },
+    },
   }
+}
+
+// Empty parameters are left out, so an unfiltered call has no question mark at all.
+const queryString = (params = {}) => {
+  const search = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString()
+  return search ? `?${search}` : ""
 }
 
 export {

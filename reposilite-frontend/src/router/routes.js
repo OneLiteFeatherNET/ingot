@@ -19,7 +19,7 @@
  * read from `meta.section`, and `meta.manager` marks the routes that need the manager
  * permission. Route names are the contract the links and the other views build on.
  *
- * The section segments (dashboard, tokens, console, settings) are top level names that a
+ * The section segments (dashboard, tokens, console, maintenance, audit, settings) are top level names that a
  * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.
@@ -34,6 +34,7 @@ const ROUTES = [
   { name: 'token', path: '/tokens/:name', meta: { section: 'tokens', manager: true } },
   { name: 'console', path: '/console', meta: { section: 'console', manager: true } },
   { name: 'maintenance', path: '/maintenance', meta: { section: 'maintenance', manager: true } },
+  { name: 'audit', path: '/audit', meta: { section: 'audit', manager: true } },
   { name: 'settings', path: '/settings/:domain?', meta: { section: 'settings', manager: true } },
   {
     name: 'settings-entry',

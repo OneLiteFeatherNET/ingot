@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, defineAsyncComponent, watch, watchEffect, onBeforeUnmount, onMounted } from 'vue'
+import { computed, defineAsyncComponent, ref, watch, watchEffect, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../store/session'
 import { openLogin } from '../store/login'
@@ -33,13 +33,15 @@ import TokensIcon from '../components/icons/TokensIcon.vue'
 import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
 import CleaningIcon from '../components/icons/CleaningIcon.vue'
 import SettingsIcon from '../components/icons/SettingsIcon.vue'
+import HistoryIcon from '../components/icons/HistoryIcon.vue'
+import MoreIcon from '../components/icons/MoreIcon.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
 import { property } from '../helpers/vue-extensions'
 import { createInfoToast } from '../helpers/toast'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { SECTIONS, visibleSections, sectionLabel } from './index-tabs'
+import { SECTIONS, MORE_KEY, visibleSections, sectionLabel, isOverflow } from './index-tabs'
 import { qualifierOf, browseLocation } from '../router/paths'
 import { textFromParam, textParam, optionalParam } from '../router/url-state'
 
@@ -56,6 +58,7 @@ const MaintenanceView = lazyView(() => import('../components/maintenance/Mainten
 const DashboardView = lazyView(() => import('../components/dashboard/DashboardView.vue'))
 const TokensView = lazyView(() => import('../components/tokens/TokensView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
+const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
 
 // The icon of each section. The active one is drawn filled, the others outlined.
 const SECTION_ICONS = {
@@ -64,7 +67,9 @@ const SECTION_ICONS = {
   tokens: TokensIcon,
   console: ConsoleIcon,
   maintenance: CleaningIcon,
+  audit: HistoryIcon,
   settings: SettingsIcon,
+  [MORE_KEY]: MoreIcon,
 }
 
 defineProps({
@@ -133,6 +138,46 @@ const destinations = computed(() => menuSections.value.map(entry => ({
 })))
 
 const selectSection = (key) => router.push(locationOf(key))
+
+// The bottom bar cannot hold every section, so the rarer ones sit under a More item. That item
+// opens a small panel above the bar, and it stays active while one of its sections is on screen.
+const overflowDestinations = computed(() => destinations.value.filter(item => isOverflow(item.key)))
+const barItems = computed(() =>
+  overflowDestinations.value.length === 0
+    ? destinations.value
+    : [
+      ...destinations.value.filter(item => !isOverflow(item.key)),
+      { key: MORE_KEY, label: 'More' },
+    ]
+)
+const barSection = computed(() => (isOverflow(section.value) ? MORE_KEY : section.value))
+const moreOpen = ref(false)
+
+const selectBarItem = (key) => {
+  if (key === MORE_KEY) {
+    moreOpen.value = !moreOpen.value
+    return
+  }
+  moreOpen.value = false
+  selectSection(key)
+}
+
+// A plain left click goes through the router and closes the panel. A modified click is left to the
+// browser, so the section can still open in a new tab.
+const openOverflowItem = (event, key) => {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  selectBarItem(key)
+}
+
+watch(section, () => {
+  moreOpen.value = false
+})
+
+// Audit: the filters live in the address, so the view reports every change through the router and
+// the page keeps no copy of them.
+const setAuditQuery = (query) =>
+  router.replace({ name: route.name, params: route.params, query })
 
 // Replaces the current entry with the same route and one query value, so a search or a
 // switch does not add a history entry for every keystroke. An undefined value removes the
@@ -263,6 +308,11 @@ const activeLabel = computed(() => sectionLabel(section.value))
         @update:search="setConsoleSearch"
       />
       <MaintenanceView v-else-if="section === 'maintenance'" />
+      <AuditView
+        v-else-if="section === 'audit'"
+        :query="route.query"
+        @update:query="setAuditQuery"
+      />
       <SettingsView
         v-else-if="section === 'settings'"
         :selected-tab="activeLabel"
@@ -281,11 +331,42 @@ const activeLabel = computed(() => sectionLabel(section.value))
       :class="hasNavigation ? 'max-[600px]:pt-[calc(5rem+env(safe-area-inset-bottom))] min-[600px]:hidden' : ''"
     />
     <template v-if="hasNavigation">
+      <div
+        v-if="moreOpen"
+        class="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom)+0.5rem)] z-30 rounded-corner-large bg-surface-container-high p-2 min-[600px]:hidden"
+        @keydown.esc="moreOpen = false"
+      >
+        <nav aria-label="More sections">
+          <ul
+            role="list"
+            class="flex list-none flex-col gap-1"
+          >
+            <li
+              v-for="item in overflowDestinations"
+              :key="item.key"
+            >
+              <a
+                :href="item.href"
+                :aria-current="section === item.key ? 'page' : undefined"
+                class="md-state-layer md-focus-ring flex items-center gap-3 rounded-corner-medium px-4 py-3 no-underline"
+                :class="section === item.key ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+                @click="openOverflowItem($event, item.key)"
+              >
+                <component
+                  :is="SECTION_ICONS[item.key]"
+                  :filled="section === item.key"
+                />
+                <span class="md-label-large">{{ item.label }}</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
       <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[600px]:hidden">
         <MdNavigationBar
-          :items="destinations"
-          :model-value="section"
-          @update:model-value="selectSection"
+          :items="barItems"
+          :model-value="barSection"
+          @update:model-value="selectBarItem"
         >
           <template #icon="{ item, active }">
             <component
