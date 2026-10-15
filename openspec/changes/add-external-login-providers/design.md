@@ -111,8 +111,9 @@ GitHub is OAuth 2, so the ID token step is replaced by the API.
   `SYNC` memberships of other providers are never changed.
 - Only existing teams are matched for ordinary groups. An operator creates the team with the external ref, and nothing is
   created on login.
-- Admin groups: for each name in `adminGroups` the team with ref `<prefix><group>` is created when it does not exist, with
-  the instance role (`InstanceRoleTable`, `teamId`). A team of the same name without that ref is not taken over; the admin
+- Admin groups: for each name in `adminGroups` the team with ref `<prefix><group>` is created on demand. The admin right of that
+  team is set through `AdminRights`, one function of the external package. It sets the instance role of the team today and will
+  set the permission node `ingot.admin.*` on the team once ADR-INGT-0003 lands. Nothing writes a principal's admin right directly. A team of the same name without that ref is not taken over; the admin
   group is then logged as skipped. For a team of the provider prefix, the instance role follows `adminGroups`: granted when
   the group is listed, revoked when it is not. A manually granted instance role is on a manual team and is never touched.
   The last-admin rule of section 7.4 applies to these teams as it does to any other.
@@ -165,7 +166,7 @@ who wants both points them at the same directory and keeps two sets of settings.
 ## 10. Redirect after login
 
 - The `redirect` parameter is a path relative to the UI, with a leading `/`. It is rejected when it starts with `//` or `/\`,
-  contains a scheme, a colon before the first slash, a backslash, or any control character, or is longer than 1024 characters.
+  contains a backslash, a colon before the query string, or any control character, or is longer than 1024 characters.
   Rejected values fall back to `/`.
 - The response location is the base path followed by the path, so it stays on the same origin.
 

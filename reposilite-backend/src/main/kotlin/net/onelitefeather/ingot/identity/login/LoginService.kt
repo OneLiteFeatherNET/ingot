@@ -56,6 +56,10 @@ class LoginService internal constructor(
     clock: Clock,
     private val audit: (AuditEvent) -> Unit,
     private val setupCode: SetupCode = SetupCode(),
+    /** Password providers beyond the local one, read on every call so that a change in the settings applies at once. */
+    private val externalPasswordProviders: () -> List<LoginProvider> = { emptyList() },
+    /** Providers that redirect the browser, and the LDAP provider when it is enabled. */
+    private val externalAnnouncements: () -> List<ProviderAnnouncement> = { emptyList() },
 ) {
 
     private val limiter = LoginAttemptLimiter(credentials, settings, clock)
@@ -63,15 +67,27 @@ class LoginService internal constructor(
     /** Serializes setups of this instance, so that the check for "no user yet" and the creation happen together. */
     private val setupLock = Any()
 
-    private val providers: List<LoginProvider> = listOf(
-        LocalLoginProvider(identities, credentials, hasher),
-    )
+    private val localProvider = LocalLoginProvider(identities, credentials, hasher)
 
-    fun providers(): List<LoginProvider> =
-        providers
+    /** The providers that check a password. Only these answer [login]. */
+    fun passwordProviders(): List<LoginProvider> =
+        listOf(localProvider) + externalPasswordProviders()
+
+    /**
+     * What the login page shows: the local provider while a local user exists or the first administrator was set up, then
+     * the external providers. A provider that is disabled is never listed.
+     */
+    fun announcements(): List<ProviderAnnouncement> {
+        val local = if (hasUsers() || credentials.isFirstAdministratorClaimed()) {
+            listOf(ProviderAnnouncement(id = LocalLoginProvider.ID, type = LoginProviderType.LOCAL, label = localProvider.label, icon = "LOCAL"))
+        } else {
+            emptyList()
+        }
+        return local + externalAnnouncements()
+    }
 
     fun login(providerId: String, username: String, password: String, ip: String): LoginOutcome {
-        val provider = providers.firstOrNull { it.id == providerId } ?: return UnknownProvider
+        val provider = passwordProviders().firstOrNull { it.id == providerId } ?: return UnknownProvider
         val userKey = LoginAttemptLimiter.userKey(username, ip)
         val keys = listOf(userKey, LoginAttemptLimiter.addressKey(ip))
 
@@ -215,12 +231,8 @@ class LoginService internal constructor(
         return Created(principal)
     }
 
-    private fun usernameProblem(name: String): String? = when {
-        name.isEmpty() -> "User name is required"
-        name.length > MAX_USERNAME_LENGTH -> "User name must not have more than $MAX_USERNAME_LENGTH characters"
-        name.any { it == ':' || it.isWhitespace() || it.isISOControl() } -> "User name must not contain colons, spaces or control characters"
-        else -> null
-    }
+    private fun usernameProblem(name: String): String? =
+        LoginNames.usernameProblem(name)
 
     /** Whole seconds to wait, rounded up, and at least one: a client told "0" would retry at once. */
     private fun ceilSeconds(wait: Duration): Long =
@@ -233,7 +245,6 @@ class LoginService internal constructor(
     companion object {
         const val MIN_PASSWORD_LENGTH = 12
         const val MAX_PASSWORD_LENGTH = 256
-        private const val MAX_USERNAME_LENGTH = 255
         private const val SETUP_ACTOR = "setup"
     }
 

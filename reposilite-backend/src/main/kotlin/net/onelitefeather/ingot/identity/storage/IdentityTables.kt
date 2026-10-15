@@ -15,6 +15,7 @@
  */
 package net.onelitefeather.ingot.identity.storage
 
+import net.onelitefeather.ingot.identity.login.external.ExternalIdentityTable
 import net.onelitefeather.ingot.identity.login.storage.LocalCredentialTable
 import net.onelitefeather.ingot.identity.login.storage.LoginAttemptTable
 import net.onelitefeather.ingot.identity.login.storage.LoginSetupMarkerTable
@@ -104,5 +105,6 @@ internal val IDENTITY_TABLES: Array<Table> = arrayOf(
     RefreshTokenTable,
     LoginAttemptTable,
     LoginSetupMarkerTable,
+    ExternalIdentityTable,
     IdentityMigrationTable,
 )

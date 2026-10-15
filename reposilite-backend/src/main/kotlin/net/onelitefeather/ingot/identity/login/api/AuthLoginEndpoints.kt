@@ -64,7 +64,7 @@ internal class AuthLoginEndpoints(
     )
     private val providers = ReposiliteRoute<LoginProvidersResponse>("/api/auth/providers", Route.GET) {
         response = LoginProvidersResponse(
-            providers = facade.providers().map { LoginProviderDto(id = it.id, type = it.type.name, label = it.label) },
+            providers = facade.providers().map { LoginProviderDto(id = it.id, type = it.type.name, label = it.label, icon = it.icon, loginUrl = it.loginUrl) },
             tokenLogin = true,
             setupRequired = facade.setupRequired(),
         ).asSuccess()

@@ -16,8 +16,17 @@
 
 package net.onelitefeather.ingot.identity.login
 
-/** The kinds of login providers. OIDC and LDAP are announced here when they arrive; only LOCAL is implemented. */
-enum class LoginProviderType { LOCAL }
+/** The kinds of login providers. LOCAL and LDAP check a password; OIDC redirects the browser to the provider. */
+enum class LoginProviderType { LOCAL, OIDC, LDAP }
+
+/** A login provider as the login page shows it. [loginUrl] is set for the redirect providers only. */
+data class ProviderAnnouncement(
+    val id: String,
+    val type: LoginProviderType,
+    val label: String,
+    val icon: String,
+    val loginUrl: String? = null,
+)
 
 /**
  * A way for a human to prove their identity. A provider only answers whether the credentials are valid for an active

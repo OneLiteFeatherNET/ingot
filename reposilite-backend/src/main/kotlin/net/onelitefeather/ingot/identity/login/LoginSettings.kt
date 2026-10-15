@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.identity.login
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.SharedSettings
 import io.javalin.openapi.JsonSchema
+import net.onelitefeather.ingot.identity.login.oidc.OidcProviderSettings
 
 @JsonSchema(requireNonNulls = false)
 @Doc(title = "Login", description = "Browser login settings")
@@ -33,4 +34,6 @@ data class LoginSettings(
     val maxFailedAttempts: Int = 5,
     @get:Doc(title = "Lockout Minutes", description = "How long a locked user name or address stays locked after the first lockout. Every further lockout without a quiet period doubles it, up to 24 hours")
     val lockoutMinutes: Long = 15,
+    @get:Doc(title = "OpenID Connect Providers", description = "External identity providers. Each entry is disabled by default; see the identity model, section 14")
+    val oidcProviders: List<OidcProviderSettings> = emptyList(),
 ) : SharedSettings

@@ -39,7 +39,8 @@ const categories = [
     content: [
       'tokens',
       'routes',
-      'ldap'
+      'ldap',
+      'external-login'
     ]
   },
   {

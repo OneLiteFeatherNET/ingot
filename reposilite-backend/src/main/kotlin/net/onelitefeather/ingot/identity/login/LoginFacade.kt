@@ -37,8 +37,9 @@ class LoginFacade internal constructor(
     private val ownTokens: OwnTokens?,
 ) : Facade {
 
-    fun providers(): List<LoginProvider> =
-        service?.providers().orEmpty()
+    /** The providers the login page shows, see [LoginService.announcements]. */
+    fun providers(): List<ProviderAnnouncement> =
+        service?.announcements().orEmpty()
 
     fun setupRequired(): Boolean =
         service?.isSetupRequired() ?: false

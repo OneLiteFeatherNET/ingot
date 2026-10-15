@@ -17,6 +17,7 @@ package net.onelitefeather.ingot.identity.storage
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+import net.onelitefeather.ingot.identity.login.external.ExternalIdentityTable
 import net.onelitefeather.ingot.identity.login.storage.LocalCredentialTable
 import net.onelitefeather.ingot.identity.login.storage.RefreshTokenTable
 import net.onelitefeather.ingot.identity.model.AccessSubject
@@ -152,6 +153,7 @@ class IdentityStore(
             // ends the sessions: a session token is refused as soon as its principal is gone, and no refresh token is left
             // that could renew it. The schema cascades these rows too, but only where foreign keys are enforced.
             LocalCredentialTable.deleteWhere { LocalCredentialTable.principalId eq principal.id }
+            ExternalIdentityTable.deleteWhere { ExternalIdentityTable.principalId eq principal.id }
             RefreshTokenTable.deleteWhere { RefreshTokenTable.principalId eq principal.id }
             PrincipalTable.deleteWhere { PrincipalTable.id eq principal.id }
         }

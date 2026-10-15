@@ -1,21 +1,6 @@
-/*
- * Copyright (c) 2026 OneLiteFeather
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package net.onelitefeather.ingot.identity.login.application
 
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.token.AccessTokenFacade
@@ -29,12 +14,23 @@ import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.identity.login.LoginFacade
+import net.onelitefeather.ingot.identity.login.LoginProviderType
 import net.onelitefeather.ingot.identity.login.LoginService
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.OwnTokens
 import net.onelitefeather.ingot.identity.login.PasswordHasher
+import net.onelitefeather.ingot.identity.login.ProviderAnnouncement
 import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
 import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
+import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
+import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
+import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
+import net.onelitefeather.ingot.identity.login.oidc.IdTokenValidator
+import net.onelitefeather.ingot.identity.login.oidc.JdkHttpFetcher
+import net.onelitefeather.ingot.identity.login.oidc.OidcLoginService
+import net.onelitefeather.ingot.identity.login.oidc.OidcMetadata
+import net.onelitefeather.ingot.identity.login.oidc.OidcProviderCatalog
+import net.onelitefeather.ingot.identity.login.oidc.OidcStateCookie
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionSigner
@@ -55,32 +51,67 @@ class LoginPlugin : ReposilitePlugin() {
         val auditExtensions = extensions()
         val clock = Clock.systemUTC()
         val loginSettings = facade<SharedConfigurationFacade>().getDomainSettings<LoginSettings>()
+        val audit: (AuditEvent) -> Unit = { auditExtensions.emitEvent(it) }
+        val oidcCatalog = OidcProviderCatalog(loginSettings)
 
-        val service = database?.let { database ->
+        // The signing key is shared by every instance of the database, exactly like the ETag key: the first instance
+        // that starts generates it, and the others read it back. The external login state cookie is sealed with a key
+        // derived from it, so no second secret is stored.
+        val signingKey: ByteArray? = database?.let {
+            val encodedKey = facade<ConfigurationFacade>().findOrCreateConfiguration(SessionSigner.KEY_CONFIGURATION_NAME) {
+                Base64.getEncoder().encodeToString(ByteArray(SIGNING_KEY_BYTES).also { SecureRandom().nextBytes(it) })
+            }
+            Base64.getDecoder().decode(encodedKey)
+        }
+
+        val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
                 credentials = LoginStore(database),
                 hasher = PasswordHasher(),
                 settings = loginSettings,
                 clock = clock,
-                audit = { auditExtensions.emitEvent(it) },
+                audit = audit,
+                externalAnnouncements = {
+                    oidcCatalog.announced().map {
+                        ProviderAnnouncement(
+                            id = it.id,
+                            type = LoginProviderType.OIDC,
+                            label = it.label.ifBlank { it.id },
+                            icon = it.icon.name,
+                            loginUrl = "/api/auth/oidc/${it.id}/login",
+                        )
+                    }
+                },
             )
         }
 
-        // The signing key is shared by every instance of the database, exactly like the ETag key: the first instance
-        // that starts generates it, and the others read it back.
-        val sessions = database?.let { database ->
-            val encodedKey = facade<ConfigurationFacade>().findOrCreateConfiguration(SessionSigner.KEY_CONFIGURATION_NAME) {
-                Base64.getEncoder().encodeToString(ByteArray(SIGNING_KEY_BYTES).also { SecureRandom().nextBytes(it) })
-            }
+        val oidcService = if (database != null && signingKey != null) {
+            OidcLoginService(
+                catalog = oidcCatalog,
+                metadata = OidcMetadata(JdkHttpFetcher(), clock),
+                http = JdkHttpFetcher(),
+                states = OidcStateCookie(signingKey, clock),
+                validator = IdTokenValidator(clock),
+                accounts = ExternalAccountService(IdentityStore(database), ExternalIdentityStore(database), audit),
+                clock = clock,
+                audit = audit,
+            )
+        } else {
+            null
+        }
+
+        val sessions = if (database != null && signingKey != null) {
             SessionService(
                 store = LoginStore(database),
                 identities = IdentityStore(database),
-                signer = SessionSigner(Base64.getDecoder().decode(encodedKey), clock),
+                signer = SessionSigner(signingKey, clock),
                 settings = loginSettings,
                 clock = clock,
-                audit = { auditExtensions.emitEvent(it) },
+                audit = audit,
             )
+        } else {
+            null
         }
 
         val accessTokenFacade = facade<AccessTokenFacade>()
@@ -88,18 +119,21 @@ class LoginPlugin : ReposilitePlugin() {
             OwnTokens(
                 identities = IdentityStore(database),
                 onTokenChanged = { accessTokenFacade.tokenStateChanged(it) },
-                audit = { auditExtensions.emitEvent(it) },
+                audit = audit,
                 clock = clock,
             )
         }
 
-        val loginFacade = LoginFacade(service, sessions, ownTokens)
+        val loginFacade = LoginFacade(loginService, sessions, ownTokens)
         val basePath = facade<LocalConfiguration>().basePath
 
         event { event: RoutingSetupEvent ->
-            if (service != null) {
+            if (loginService != null) {
                 event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
                 event.registerRoutes(SelfServiceEndpoints(loginFacade, accessTokenFacade))
+            }
+            if (oidcService != null) {
+                event.registerRoutes(AuthOidcEndpoints(loginFacade, oidcService, basePath))
             }
         }
 

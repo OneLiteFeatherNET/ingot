@@ -1131,6 +1131,7 @@ A failed callback redirects with one of these codes. A code reveals nothing beyo
 | `user_disabled` | the linked or matching principal is disabled |
 | `user_not_provisioned` | no link exists and `autoCreateUsers` is false |
 | `username_taken` | the user name belongs to another principal; nothing is linked |
+| `invalid_username` | the user-name claim is not a valid user name (the setup rules of 13.5) |
 | `setup_required` | no user exists yet; the first administrator must be set up with the setup code |
 | `provider_unavailable` | discovery, the JWKS or the token endpoint could not be reached |
 | `no_database` | browser sessions need a database |
@@ -1138,7 +1139,7 @@ A failed callback redirects with one of these codes. A code reveals nothing beyo
 LDAP answers the same reasons as `403` with `{"status": 403, "message": "<reason>"}`, and wrong credentials as `401`.
 
 The redirect policy for `redirect` (14.2 and 14.3): a value is kept only when it starts with a single `/`, contains no backslash,
-no colon before its first slash, no control character, and is at most 1024 characters long. Anything else becomes `/`.
+no colon before the query string, no control character, and is at most 1024 characters long. Anything else becomes `/`.
 
 ### 14.5 Data and group synchronisation
 
@@ -1160,9 +1161,12 @@ Teams take part in synchronisation by `external_ref`: `oidc:<id>:<group>` for an
 - `MANUAL` memberships and memberships of other providers are never changed;
 - no team is created for an ordinary group. The operator creates the team with the ref.
 
-Admin groups: for each name in `adminGroups`, the team with ref `<prefix><group>` is created when missing, with the instance role.
+Admin groups: for each name in `adminGroups`, the team with ref `<prefix><group>` is created on demand. Admin rights are never written
+to a principal. They are granted to the synchronised team through one function of the external package (`AdminRights`), which
+today sets the instance role of the team and which switches to the permission node `ingot.admin.*` on the team under ADR-INGT-0003.
+The admin mapping therefore only ever changes group membership and the rights of the team.
 A team with the same name but another ref is not taken over; the group is logged as skipped. For a team of the provider prefix, the
-instance role is granted while its group is listed and revoked when it is not. Members of such a team are instance administrators
+admin right of the team is granted while its group is listed and revoked when it is not. Members of such a team are instance administrators
 through section 7.4, so the last-admin rule of section 7.4 applies. A manually granted instance role sits on a manual team and is
 never touched by synchronisation.
 

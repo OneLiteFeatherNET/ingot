@@ -24,6 +24,8 @@ data class LoginProviderDto(
     val id: String,
     val type: String,
     val label: String,
+    val icon: String? = null,
+    val loginUrl: String? = null,
 )
 
 /** `GET /api/auth/providers`. [setupRequired] is true while no human user exists, see the setup code. */

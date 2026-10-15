@@ -104,8 +104,8 @@ SHALL trigger at most one refetch per minute.
 
 ### Requirement: Redirects after login stay on the same origin
 
-The `redirect` parameter SHALL be a path that starts with a single `/`, contains no backslash, no colon before its first
-slash, no control character and at most 1024 characters. Any other value SHALL be replaced by `/`. The response location SHALL
+The `redirect` parameter SHALL be a path that starts with a single `/`, contains no backslash, no colon before the
+query string, no control character and at most 1024 characters. Any other value SHALL be replaced by `/`. The response location SHALL
 be the base path followed by the accepted path.
 
 #### Scenario: an absolute URL is replaced
@@ -176,8 +176,8 @@ NOT change.
 
 ### Requirement: Admin groups grant the instance role through a synchronised team
 
-For each name in `adminGroups` the system SHALL create the team with ref `<prefix><group>` when it does not exist, and grant it the
-instance role. For a team of the provider prefix, the instance role SHALL be granted while its group is listed in `adminGroups`
+For each name in `adminGroups` the system SHALL create the team with ref `<prefix><group>` when it does not exist, and grant the
+admin right to that team through one function, so that the right of the team is the only thing that changes. For a team of the provider prefix, the instance role SHALL be granted while its group is listed in `adminGroups`
 and revoked when it is not. A team with the same name and no such ref SHALL NOT be taken over.
 
 #### Scenario: a member of an admin group becomes an instance admin
