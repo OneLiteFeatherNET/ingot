@@ -217,6 +217,13 @@ describe('IndexPage manager routes', () => {
     expect(wrapper.text()).toContain('Sign in to open Access')
   })
 
+  it('explains the sign in prompt of a manager section with permission nodes, not with a manager role', async () => {
+    const { wrapper } = await mountAt('/access/users', { manager: false, logged: false })
+
+    expect(wrapper.text()).toContain('right permission nodes')
+    expect(wrapper.text(), 'access is node based, so the prompt must not call the section manager only').not.toContain('only open to managers')
+  })
+
   it('asks for the sign in dialog as soon as an anonymous visitor arrives on a manager section', async () => {
     await mountAt('/access/users', { manager: false, logged: false })
 
@@ -287,7 +294,7 @@ describe('IndexPage account page', () => {
   it('does not call the account page a manager section', async () => {
     const { wrapper } = await mountAt('/account', { manager: false, logged: false })
 
-    expect(wrapper.text()).not.toContain('only open to managers')
+    expect(wrapper.text()).not.toContain('permission nodes')
   })
 
   it('shows the account page after the visitor signs in, without a redirect', async () => {

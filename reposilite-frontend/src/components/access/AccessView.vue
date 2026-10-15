@@ -85,6 +85,7 @@ const select = (key) => router.push({ name: `access-${key}` })
     </div>
 
     <SettingsTabs
+      class="[&_[role=tab]]:shrink-0 [&_[role=tab]]:whitespace-nowrap max-[600px]:[&_[role=tab]]:px-2"
       :model-value="tab"
       label="Access sections"
       :tabs="TABS"

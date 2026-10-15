@@ -292,8 +292,8 @@ const activeLabel = computed(() => sectionLabel(section.value))
           v-if="route.meta.manager"
           class="md-body-large text-on-surface-variant"
         >
-          This section is only open to managers. Sign in with a token that has the manager
-          permission, and you stay on this page.
+          This section needs a sign in with the right permission nodes. Sign in with an account
+          or token that holds them, and you stay on this page.
         </p>
         <p
           v-else
