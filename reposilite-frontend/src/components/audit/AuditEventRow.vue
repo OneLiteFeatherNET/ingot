@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { property } from '../../helpers/vue-extensions'
-import { actionLabel, actorLocationOf, targetLabelOf, targetLocationOf } from './auditQuery'
+import { actionLabelOf, actorLabelOf, actorLocationOf, targetLabelOf, targetLocationOf } from './auditQuery'
 
 /*
  * One audited event. The row is dense: time, actor, action, target and result sit in one line on a
@@ -22,7 +22,8 @@ const emit = defineEmits(['toggle'])
 
 const detailsId = computed(() => `audit-details-${props.event.id}`)
 const time = computed(() => new Date(props.event.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' }))
-const label = computed(() => actionLabel(props.event.action))
+const label = computed(() => actionLabelOf(props.event))
+const actor = computed(() => actorLabelOf(props.event))
 const actorLink = computed(() => actorLocationOf(props.event))
 const target = computed(() => targetLabelOf(props.event))
 const targetLink = computed(() => targetLocationOf(props.event))
@@ -44,12 +45,12 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
           :to="actorLink"
           class="md-state-layer md-focus-ring break-all rounded-corner-small text-primary no-underline hover:underline"
         >
-          {{ event.actor }}
+          {{ actor }}
         </RouterLink>
         <span
           v-else
           class="break-all"
-        >{{ event.actor }}</span>
+        >{{ actor }}</span>
         <span
           v-if="event.actorAddress"
           class="md-body-small text-on-surface-variant"

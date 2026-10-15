@@ -181,6 +181,27 @@ export const actionLabel = (action) => ACTION_LABELS[action] ?? action
 
 const NON_PRINCIPAL_ACTORS = new Set(['anonymous', 'system'])
 
+// A login provider that changed something on its own, at a sign in, is recorded as `system:<provider>`.
+const PROVIDER_ACTOR_PREFIX = 'system:'
+
+/** The provider of an event written by a login provider (`system:oidc:corp`), or `null` for any other actor. */
+export const providerOf = (event) =>
+  (typeof event.actor === 'string' && event.actor.startsWith(PROVIDER_ACTOR_PREFIX)
+    ? event.actor.slice(PROVIDER_ACTOR_PREFIX.length)
+    : null)
+
+/** The actor as a reader sees it: a login provider reads as the provider, every other actor as its name. */
+export const actorLabelOf = (event) => {
+  const provider = providerOf(event)
+  return provider ? `Login provider ${provider}` : event.actor
+}
+
+/** The action as a reader sees it: a team change that a login provider made at a sign in reads as a sync. */
+export const actionLabelOf = (event) =>
+  (event.action === 'TEAM_MEMBERSHIP_CHANGED' && providerOf(event) !== null
+    ? 'Team members synced at sign in'
+    : actionLabel(event.action))
+
 /**
  * The account that acted, as a router path. An actor is a principal, a user or a machine account. The
  * event may carry `actorKind` (`USER` or `MACHINE`); the audit API does not send it yet, and an event
@@ -189,7 +210,7 @@ const NON_PRINCIPAL_ACTORS = new Set(['anonymous', 'system'])
  * whatever the caller typed, so it is not linked either.
  */
 export const actorLocationOf = (event) => {
-  if (NON_PRINCIPAL_ACTORS.has(event.actor) || event.action === 'LOGIN_FAILED') {
+  if (NON_PRINCIPAL_ACTORS.has(event.actor) || providerOf(event) !== null || event.action === 'LOGIN_FAILED') {
     return null
   }
   const page = event.actorKind === 'MACHINE' ? 'machines' : 'users'

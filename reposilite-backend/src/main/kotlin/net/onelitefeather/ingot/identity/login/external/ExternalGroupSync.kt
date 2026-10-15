@@ -16,8 +16,12 @@
 
 package net.onelitefeather.ingot.identity.login.external
 
+import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.model.TeamMemberSource
+import net.onelitefeather.ingot.identity.model.TeamRecord
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 
 /**
@@ -50,16 +54,20 @@ internal object AdminRights {
  *
  * Admin groups: each listed group gets its team on demand, with the admin right (see [AdminRights]). For a team of this
  * provider the right follows the list: granted while the group is listed, revoked when it is not.
+ *
+ * Every membership the sync adds or removes is audited as `TEAM_MEMBERSHIP_CHANGED`, once per team, with the actor
+ * `system:<provider>`. A login that changes nothing writes nothing.
  */
 internal class ExternalGroupSync(
     private val identities: IdentityStore,
     private val log: (String) -> Unit,
+    private val audit: (AuditEvent) -> Unit = {},
 ) {
 
-    fun apply(principal: PrincipalRecord, prefix: String, groups: Set<String>, adminGroups: Set<String>) {
+    fun apply(principal: PrincipalRecord, provider: String, prefix: String, groups: Set<String>, adminGroups: Set<String>) {
         ensureAdminTeams(prefix, adminGroups)
         applyAdminRights(prefix, adminGroups)
-        applyMemberships(principal, prefix, groups)
+        applyMemberships(principal, provider, prefix, groups)
     }
 
     private fun ensureAdminTeams(prefix: String, adminGroups: Set<String>) {
@@ -90,17 +98,34 @@ internal class ExternalGroupSync(
         }
     }
 
-    private fun applyMemberships(principal: PrincipalRecord, prefix: String, groups: Set<String>) {
+    private fun applyMemberships(principal: PrincipalRecord, provider: String, prefix: String, groups: Set<String>) {
         val teams = identities.listTeams()
         val wanted = teams.filter { team -> team.externalRef?.let { it.startsWith(prefix) && it.removePrefix(prefix) in groups } == true }
         val wantedIds = wanted.map { it.id }.toSet()
         val providerTeamIds = teams.filter { it.externalRef?.startsWith(prefix) == true }.map { it.id }.toSet()
 
-        identities.membershipsOf(principal.id)
+        val memberships = identities.membershipsOf(principal.id)
+        val synced = memberships.filter { it.source == TeamMemberSource.SYNC }.map { it.teamId }.toSet()
+        val dropped = memberships
             .filter { it.source == TeamMemberSource.SYNC && it.teamId in providerTeamIds && it.teamId !in wantedIds }
-            .forEach { identities.removeMember(it.teamId, principal.id) }
+            .map { it.teamId }
+        dropped.forEach { identities.removeMember(it, principal.id) }
 
         wantedIds.forEach { identities.addMember(it, principal.id, TeamMemberSource.SYNC) }
+
+        val joined = wantedIds - synced
+        audit(provider, principal, teams, joined = joined, left = dropped.toSet())
+    }
+
+    private fun audit(provider: String, principal: PrincipalRecord, teams: List<TeamRecord>, joined: Set<Int>, left: Set<Int>) {
+        val byId = teams.associateBy { it.id }
+        val actor = AuditActor.named("system:$provider", null)
+        (joined + left).forEach { teamId ->
+            val team = byId[teamId] ?: return@forEach
+            val added = if (teamId in joined) listOf(principal.name) else emptyList()
+            val removed = if (teamId in left) listOf(principal.name) else emptyList()
+            audit(AuditEvent(action = TEAM_MEMBERSHIP_CHANGED, actor = actor, details = mapOf("team" to team.name, "added" to added, "removed" to removed)))
+        }
     }
 
 }

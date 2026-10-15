@@ -123,6 +123,14 @@ describe('AuditEventRow identity events', () => {
     expect(row.text()).toContain('Team members changed')
   })
 
+  it('shows a team change made by a login provider as a sync by that provider', async () => {
+    const row = await mountRow({ event: { ...identityEvent('TEAM_MEMBERSHIP_CHANGED', { team: 'oidc:corp:devs', added: ['alice'], removed: [] }), actor: 'system:oidc:corp' } })
+
+    expect(row.text()).toContain('Team members synced at sign in')
+    expect(row.text()).toContain('Login provider oidc:corp')
+    expect(hrefs(row)).toEqual(['/access/teams/oidc%3Acorp%3Adevs'])
+  })
+
   it('links a user target to its user page', async () => {
     const row = await mountRow({ event: identityEvent('PRINCIPAL_UPDATED', { principal: 'alice', kind: 'USER' }) })
 

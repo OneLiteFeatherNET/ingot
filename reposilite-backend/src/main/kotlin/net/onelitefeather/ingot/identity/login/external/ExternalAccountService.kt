@@ -73,7 +73,7 @@ class ExternalAccountService internal constructor(
     log: (String) -> Unit = {},
 ) {
 
-    private val groupSync = ExternalGroupSync(identities, log)
+    private val groupSync = ExternalGroupSync(identities, log, audit)
 
     /**
      * Decides the login and, when it succeeds, synchronises the teams with the groups of the login. The caller audits the
@@ -82,7 +82,7 @@ class ExternalAccountService internal constructor(
     fun resolve(identity: ExternalIdentity): ExternalOutcome {
         val outcome = decide(identity)
         if (outcome is ExternalOutcome.Succeeded) {
-            groupSync.apply(outcome.principal, identity.groupPrefix, identity.groups.toSet(), identity.adminGroups.toSet())
+            groupSync.apply(outcome.principal, identity.provider, identity.groupPrefix, identity.groups.toSet(), identity.adminGroups.toSet())
         }
         return outcome
     }

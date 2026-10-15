@@ -3,6 +3,8 @@ import {
   ACTION_GROUPS,
   ACTION_OPTIONS,
   actionLabel,
+  actionLabelOf,
+  actorLabelOf,
   actorLocationOf,
   auditFiltersToQuery,
   auditParams,
@@ -181,6 +183,17 @@ describe('labels and links', () => {
 
   it('escapes the actor name in the link', () => {
     expect(actorLocationOf({ action: 'ARTIFACT_DEPLOYED', actor: 'a/b c' })).toBe('/access/users/a%2Fb%20c')
+  })
+
+  it('names a login provider as the actor, and does not link it to an account', () => {
+    expect(actorLabelOf({ action: 'TEAM_MEMBERSHIP_CHANGED', actor: 'system:oidc:corp' })).toBe('Login provider oidc:corp')
+    expect(actorLabelOf({ action: 'CLEANUP_RUN', actor: 'system' })).toBe('system')
+    expect(actorLocationOf({ action: 'TEAM_MEMBERSHIP_CHANGED', actor: 'system:ldap:ldap.example.org' })).toBeNull()
+  })
+
+  it('reads a team change made by a login provider as a sync, and any other team change as before', () => {
+    expect(actionLabelOf({ action: 'TEAM_MEMBERSHIP_CHANGED', actor: 'system:oidc:corp' })).toBe('Team members synced at sign in')
+    expect(actionLabelOf({ action: 'TEAM_MEMBERSHIP_CHANGED', actor: 'admin' })).toBe('Team members changed')
   })
 
   it('does not link the actor when it is not a token', () => {

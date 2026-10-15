@@ -16,6 +16,8 @@
 
 package net.onelitefeather.ingot.identity.login.external
 
+import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import net.onelitefeather.ingot.identity.login.MutableClock
 import net.onelitefeather.ingot.identity.login.external.ExternalOutcome.Succeeded
@@ -42,6 +44,8 @@ internal class ExternalGroupSyncTest {
         val accounts: ExternalAccountService,
         val alice: PrincipalRecord,
         val log: MutableList<String>,
+        /** Every audit event of the fixture, the creation of alice included. */
+        val audit: MutableList<AuditEvent>,
     )
 
     private fun withFixture(block: (Fixture) -> Unit) {
@@ -49,10 +53,11 @@ internal class ExternalGroupSyncTest {
             val identities = IdentityStore(connection.database, clock)
             identities.createPrincipal(PrincipalKind.USER, "admin", "Admin", false, clock.instant())
             val log = mutableListOf<String>()
-            val accounts = ExternalAccountService(identities, ExternalIdentityStore(connection.database), log = { log.add(it) })
+            val audit = mutableListOf<AuditEvent>()
+            val accounts = ExternalAccountService(identities, ExternalIdentityStore(connection.database), audit = { audit.add(it) }, log = { log.add(it) })
             // Alice is linked by her first login, so the group tests start from a known user.
             val first = accounts.resolve(identity(groups = emptyList())) as Succeeded
-            block(Fixture(identities, accounts, first.principal, log))
+            block(Fixture(identities, accounts, first.principal, log, audit))
         }
     }
 
@@ -190,6 +195,74 @@ internal class ExternalGroupSyncTest {
             fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
 
             assertThat(fixture.memberships(otherOps)).isEmpty()
+        }
+    }
+
+    private fun Fixture.teamChanges() = audit.filter { it.action == TEAM_MEMBERSHIP_CHANGED }
+
+    @Test
+    fun `a membership added by the sync is audited as a team change by the provider`() {
+        withFixture { fixture ->
+            fixture.identities.createTeam("oidc:corp:devs", "", "oidc:corp:devs")!!
+
+            fixture.accounts.resolve(identity(groups = listOf("devs")))
+
+            val event = fixture.teamChanges().single()
+            assertThat(event.actor.name).isEqualTo("system:oidc:corp")
+            assertThat(event.details).containsEntry("team", "oidc:corp:devs")
+            assertThat(event.details).containsEntry("added", listOf("alice"))
+            assertThat(event.details).containsEntry("removed", emptyList<String>())
+        }
+    }
+
+    @Test
+    fun `a membership removed by the sync is audited with the name in removed`() {
+        withFixture { fixture ->
+            fixture.identities.createTeam("oidc:corp:devs", "", "oidc:corp:devs")!!
+            fixture.accounts.resolve(identity(groups = listOf("devs")))
+
+            fixture.accounts.resolve(identity(groups = emptyList()))
+
+            val event = fixture.teamChanges().last()
+            assertThat(event.details).containsEntry("added", emptyList<String>())
+            assertThat(event.details).containsEntry("removed", listOf("alice"))
+        }
+    }
+
+    @Test
+    fun `a login that changes no membership writes no team change`() {
+        withFixture { fixture ->
+            fixture.identities.createTeam("oidc:corp:devs", "", "oidc:corp:devs")!!
+            fixture.accounts.resolve(identity(groups = listOf("devs")))
+
+            fixture.accounts.resolve(identity(groups = listOf("devs")))
+
+            assertThat(fixture.teamChanges()).hasSize(1)
+        }
+    }
+
+    @Test
+    fun `a manual membership that the group does not touch is not audited`() {
+        withFixture { fixture ->
+            val devs = fixture.identities.createTeam("oidc:corp:devs", "", "oidc:corp:devs")!!
+            fixture.identities.addMember(devs.id, fixture.alice.id, TeamMemberSource.MANUAL)
+
+            fixture.accounts.resolve(identity(groups = emptyList()))
+
+            assertThat(fixture.teamChanges()).isEmpty()
+        }
+    }
+
+    @Test
+    fun `an ldap sync names the ldap provider as its actor`() {
+        withFixture { fixture ->
+            fixture.identities.createTeam("ldap:staff", "", "ldap:staff")!!
+
+            // The sync is called directly: an LDAP login would need a second subject, and alice already holds the name.
+            ExternalGroupSync(fixture.identities, log = {}, audit = { fixture.audit.add(it) })
+                .apply(fixture.alice, provider = "ldap:ldap.example.org", prefix = "ldap:", groups = setOf("staff"), adminGroups = emptySet())
+
+            assertThat(fixture.teamChanges().single().actor.name).isEqualTo("system:ldap:ldap.example.org")
         }
     }
 }
