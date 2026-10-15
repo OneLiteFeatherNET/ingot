@@ -96,9 +96,9 @@ const applyMe = (data) => {
   if (data?.principal) {
     principal.value = data.principal
   }
-  if (typeof data?.mustChangePassword === 'boolean') {
-    mustChangePassword.value = data.mustChangePassword
-  }
+  // The server sends the flag while it asks for a new password and leaves it out afterwards, so
+  // a read without it clears the flag.
+  mustChangePassword.value = data?.mustChangePassword === true
 }
 
 const login = (name, secret) =>

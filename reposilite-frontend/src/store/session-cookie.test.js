@@ -161,7 +161,7 @@ describe('sign in with a password', () => {
 
   it('stores the must change password flag from the response', async () => {
     const { axios, store } = await loadSession()
-    serve(axios, { login: { data: { ...LOGIN.data, mustChangePassword: true } } })
+    serve(axios, { login: { data: { ...LOGIN.data, mustChangePassword: true } }, me: { data: { ...ME.data, mustChangePassword: true } } })
 
     await store.signInWithPassword({ username: 'alice', password: PASSWORD })
 
@@ -368,6 +368,65 @@ describe('startup with a cookie session', () => {
     expect(store.principal.value).toEqual(PRINCIPAL)
     expect(store.instanceAdmin.value).toBe(true)
     expect(store.sessionReady.value).toBe(true)
+  })
+
+  describe('the must change password flag', () => {
+    const meWith = (flag) => ({ data: { ...ME.data, ...(flag === undefined ? {} : { mustChangePassword: flag }) } })
+
+    it('is read from GET /api/auth/me after a reload', async () => {
+      const { axios, store } = await loadSession()
+      serve(axios, { me: meWith(true) })
+
+      await store.initializeSession()
+
+      expect(store.mustChangePassword.value, 'a reload must not lose the flag').toBe(true)
+    })
+
+    it('is off when GET /api/auth/me does not send it', async () => {
+      const { axios, store } = await loadSession()
+      serve(axios, { me: meWith(undefined) })
+
+      await store.initializeSession()
+
+      expect(store.mustChangePassword.value).toBe(false)
+    })
+
+    it('is read from the answer that follows a refresh', async () => {
+      const { axios, store } = await loadSession()
+      document.cookie = 'ingot_csrf=abc'
+      let answers = 0
+      serve(axios)
+      axios.get.mockImplementation((url) => {
+        if (!url.endsWith('/api/auth/me')) return Promise.reject(new Error('unexpected'))
+        answers++
+        return answers === 1 ? Promise.reject(responseError(401)) : Promise.resolve(meWith(true))
+      })
+
+      await store.initializeSession()
+
+      expect(store.mustChangePassword.value).toBe(true)
+    })
+
+    it('is read from GET /api/auth/me after a sign in, whatever the sign in response said', async () => {
+      const { axios, store } = await loadSession()
+      serve(axios, { me: meWith(true) })
+
+      await store.signInWithPassword({ username: 'alice', password: PASSWORD })
+
+      expect(store.mustChangePassword.value).toBe(true)
+    })
+
+    it('is cleared when the session is read again and the server no longer asks for a change', async () => {
+      const { axios, store, channel } = await loadSession()
+      serve(axios, { me: meWith(true) })
+      await store.initializeSession()
+      serve(axios, { me: meWith(undefined) })
+
+      channel().receive({ type: 'signed-in', principal: PRINCIPAL })
+      await flushPromises()
+
+      expect(store.mustChangePassword.value, 'the server no longer asks for a change').toBe(false)
+    })
   })
 
   it('is anonymous when the server answers 401', async () => {
