@@ -213,6 +213,16 @@ const createClient = (defaultName, defaultSecret) => {
       logout() {
         return axios.post(createURL("/api/auth/logout"), {}, { withCredentials: true })
       },
+      // Tests the saved configuration of a single sign on provider (not an unsaved draft).
+      // Resolves with { ok, issuer, endpoints, error? }.
+      testOidcProvider(id) {
+        return axios.post(createURL(`/api/auth/providers/oidc/${encodeURIComponent(id)}/test`), {}, { ...defaultAuthorization() })
+      },
+      // Tests the saved LDAP configuration, optionally with a user to look up. Resolves with
+      // { ok, userDn?, groups?, error? }.
+      testLdapProvider(body = {}) {
+        return axios.post(createURL("/api/auth/providers/ldap/test"), body, { ...defaultAuthorization() })
+      },
     },
     identity: {
       // The signed in principal looking after itself.

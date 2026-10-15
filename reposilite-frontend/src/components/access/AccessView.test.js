@@ -61,7 +61,12 @@ describe('AccessView', () => {
       list: vi.fn().mockResolvedValue({ data: [] }),
       get: vi.fn()
     }
-    holder.session = { client: ref({ identity: { principals, teams } }) }
+    holder.session = {
+      client: ref({
+        identity: { principals, teams },
+        settings: { fetch: vi.fn().mockResolvedValue({ data: {} }), update: vi.fn() }
+      })
+    }
   })
 
   afterEach(() => {
@@ -73,7 +78,24 @@ describe('AccessView', () => {
   it('offers users, machine accounts and teams as tabs', async () => {
     await mountView({ tab: 'users' })
 
-    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams'])
+    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO'])
+  })
+
+  it('opens the single sign on page from the SSO tab and shows its panel', async () => {
+    await mountView({ tab: 'sso' }, '/access/sso')
+
+    expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text())).toEqual(['SSO'])
+    expect(wrapper.find('[data-test="sso"]').exists()).toBe(true)
+    expect(principals.list, 'the single sign on page lists no principals').not.toHaveBeenCalled()
+  })
+
+  it('moves to the single sign on page through the router', async () => {
+    await mountView({ tab: 'teams' }, '/access/teams')
+
+    await tabs()[3].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/access/sso')
   })
 
   it('marks the tab of the address as selected', async () => {

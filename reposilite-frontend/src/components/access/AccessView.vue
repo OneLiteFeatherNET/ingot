@@ -19,20 +19,21 @@ import { useRouter } from 'vue-router'
 import SettingsTabs from '../settings/SettingsTabs.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
+import SsoProvidersPanel from './SsoProvidersPanel.vue'
 
 /*
  * The Access section for instance admins: users, machine accounts and teams, as tabs. The tab
  * and the open principal come from the address, and a tab change goes through the router.
  *
  * Props:
- *   tab   users, machines or teams
+ *   tab   users, machines, teams or sso
  *   name  the open user, machine account or team, if any
  */
 defineProps({
   tab: {
     type: String,
     default: 'users',
-    validator: (value) => ['users', 'machines', 'teams'].includes(value)
+    validator: (value) => ['users', 'machines', 'teams', 'sso'].includes(value)
   },
   name: {
     type: String,
@@ -45,7 +46,8 @@ const router = useRouter()
 const TABS = [
   { key: 'users', label: 'Users' },
   { key: 'machines', label: 'Machine accounts' },
-  { key: 'teams', label: 'Teams' }
+  { key: 'teams', label: 'Teams' },
+  { key: 'sso', label: 'SSO' }
 ]
 
 const select = (key) => router.push({ name: `access-${key}` })
@@ -85,6 +87,9 @@ const select = (key) => router.push({ name: `access-${key}` })
         v-else-if="tab === 'machines'"
         kind="MACHINE"
         :name="name"
+      />
+      <SsoProvidersPanel
+        v-else-if="tab === 'sso'"
       />
       <TeamsPanel
         v-else
