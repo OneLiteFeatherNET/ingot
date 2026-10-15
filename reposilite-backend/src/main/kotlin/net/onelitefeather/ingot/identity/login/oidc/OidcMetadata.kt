@@ -65,6 +65,13 @@ internal class OidcMetadata(
         return endpoints
     }
 
+    /** Drops the cached discovery document of [issuer] and its key set, so the next read goes to the provider. Used by the connection test. */
+    @Synchronized
+    fun forget(issuer: String) {
+        val removed = discoveryCache.remove(normalize(issuer))
+        removed?.value?.jwksUri?.let { jwksCache.remove(it) }
+    }
+
     /** The key set published at the jwks uri of [endpoints], from the cache while it is fresh. */
     @Synchronized
     fun jwks(endpoints: OidcEndpoints): JWKSet {

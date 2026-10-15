@@ -21,6 +21,7 @@ import net.onelitefeather.ingot.identity.login.OwnTokens
 import net.onelitefeather.ingot.identity.login.PasswordHasher
 import net.onelitefeather.ingot.identity.login.ProviderAnnouncement
 import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
+import net.onelitefeather.ingot.identity.login.api.ProviderTestEndpoints
 import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
@@ -28,6 +29,7 @@ import net.onelitefeather.ingot.identity.login.ldap.LdapLoginProvider
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
 import net.onelitefeather.ingot.identity.login.oidc.IdTokenValidator
 import net.onelitefeather.ingot.identity.login.oidc.JdkHttpFetcher
+import net.onelitefeather.ingot.identity.login.oidc.OidcConnectionCheck
 import net.onelitefeather.ingot.identity.login.oidc.OidcLoginService
 import net.onelitefeather.ingot.identity.login.oidc.OidcMetadata
 import net.onelitefeather.ingot.identity.login.oidc.OidcProviderCatalog
@@ -106,10 +108,13 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // One cache of discovery documents and key sets, shared by the logins and the connection test.
+        val oidcMetadata = OidcMetadata(JdkHttpFetcher(), clock)
+
         val oidcService = if (database != null && signingKey != null && externalAccounts != null) {
             OidcLoginService(
                 catalog = oidcCatalog,
-                metadata = OidcMetadata(JdkHttpFetcher(), clock),
+                metadata = oidcMetadata,
                 http = JdkHttpFetcher(),
                 states = OidcStateCookie(signingKey, clock),
                 validator = IdTokenValidator(clock),
@@ -151,6 +156,7 @@ class LoginPlugin : ReposilitePlugin() {
             if (loginService != null) {
                 event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
                 event.registerRoutes(SelfServiceEndpoints(loginFacade, accessTokenFacade))
+                event.registerRoutes(ProviderTestEndpoints(OidcConnectionCheck(oidcCatalog, oidcMetadata), loginSettings))
             }
             if (oidcService != null) {
                 event.registerRoutes(AuthOidcEndpoints(loginFacade, oidcService, basePath))

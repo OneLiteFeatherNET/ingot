@@ -171,6 +171,19 @@ Group references work as for OpenID Connect, with `ldap:<group>` instead of `oid
 `startTls` is provided for `ldap://` addresses. Verify it against your directory before you rely on it, because it is not
 covered by the automated tests of this release.
 
+## Testing a provider
+
+Instance administrators can check a provider before users rely on it. Both checks read the current settings, reach the
+provider and report what they found. Nothing is stored, and no secret is ever part of an answer.
+
+- `POST /api/auth/providers/oidc/<id>/test` fetches the discovery document and the key set again, and returns `ok`, the
+  `issuer` and the `endpoints`. On failure it returns `ok: false` with an `error`.
+- `POST /api/auth/providers/ldap/test` with an optional body `{"username": "...", "password": "..."}` binds with the service
+  account. With a user name it finds the user and reports `userDn` and the `groups`. With a password it also binds as the user,
+  and the password is used for that one bind only.
+
+Other callers receive `401` or `403`.
+
 ## Relation to LDAP for Maven clients
 
 The LDAP settings of [authentication](ldap) (`authentication.ldap`) let Maven clients authenticate with Basic authentication.
