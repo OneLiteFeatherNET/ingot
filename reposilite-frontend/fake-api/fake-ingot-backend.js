@@ -402,6 +402,14 @@ application
         failures: [],
       }
       cleanupRuns = [run, ...cleanupRuns]
+      audit.recordEvent({
+        action: 'CLEANUP_RUN',
+        actor: 'admin',
+        actorAddress: '10.0.0.2',
+        repository: policy.repositories.length === 1 ? policy.repositories[0] : null,
+        details: { runId: `manual-${run.id}`, policy: policy.id, scope: policy.scope, trigger: 'MANUAL', status: run.status, deletedCount: run.deletedCount, deletedBytes: run.deletedBytes },
+        success: true,
+      })
       res.send(omitNulls(run))
     }, () => invalidCredentials(res))
   })

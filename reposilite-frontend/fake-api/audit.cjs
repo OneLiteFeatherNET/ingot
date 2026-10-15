@@ -40,7 +40,7 @@ const TEMPLATES = [
   () => ({ action: 'TOKEN_DELETED', actor: 'admin', actorAddress: '10.0.0.2', repository: null, path: null, details: { token: 'old-bot' }, success: true, occurrences: 1 }),
   () => ({ action: 'SETTINGS_CHANGED', actor: 'admin', actorAddress: '10.0.0.2', repository: null, path: null, details: { domain: 'frontend', fields: ['appearance.seedColor', 'title'] }, success: true, occurrences: 1 }),
   () => ({ action: 'LOGIN_FAILED', actor: 'mallory', actorAddress: '198.51.100.23', repository: null, path: null, details: null, success: false, occurrences: 7 }),
-  () => ({ action: 'CLEANUP_RUN', actor: 'system', actorAddress: null, repository: null, path: null, details: { policy: 'nightly-snapshots', removed: 42 }, success: true, occurrences: 1 }),
+  () => ({ action: 'CLEANUP_RUN', actor: 'system', actorAddress: null, repository: 'mirror-cache', path: null, details: { runId: 'sample-nightly', policy: 'mirror-cache-nightly', scope: 'MIRROR_CACHE', trigger: 'SCHEDULED', status: 'SUCCEEDED', deletedCount: 42, deletedBytes: 21504000 }, success: true, occurrences: 1 }),
 ]
 
 const buildSample = (now) => {
@@ -129,4 +129,10 @@ const exportCsv = (params) => {
   return [CSV_HEADER, ...rows].join('\n') + '\n'
 }
 
-module.exports = { queryEvents, exportCsv, ACTIONS }
+/** Adds an event the stub API has just produced, such as a manual cleanup run, as the newest row. */
+const recordEvent = (event) => {
+  const id = Math.max(0, ...SAMPLE.map(entry => entry.id)) + 1
+  SAMPLE.unshift({ actorAddress: null, repository: null, path: null, details: null, success: true, occurrences: 1, ...event, id, timestamp: new Date().toISOString() })
+}
+
+module.exports = { queryEvents, exportCsv, recordEvent, ACTIONS }
