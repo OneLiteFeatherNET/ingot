@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, inject, provide, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { JsonForms } from '@jsonforms/vue'
 import download from 'downloadjs'
@@ -27,6 +27,7 @@ import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoryWizard from './RepositoryWizard.vue'
 import { collectionsOf, entryLayout, idText, validateNewId } from './collections'
+import { barClearance } from './barClearance'
 import { property } from '../../helpers/vue-extensions'
 
 /*
@@ -207,6 +208,29 @@ const downloadSettings = () => {
   )
 }
 
+/*
+ * The bar is sticky at the bottom of the window, so the last card would scroll under it. While it is
+ * shown the page keeps the bar's height free below its content, and on phones also the height of the
+ * bottom navigation, which the bar sits above. The height is measured, because a wrapped line adds to it.
+ */
+const barElement = ref(null)
+const barHeight = ref(0)
+const barObserver = typeof ResizeObserver === 'undefined'
+  ? null
+  : new ResizeObserver(() => { barHeight.value = barElement.value?.offsetHeight ?? 0 })
+
+watch(barElement, (element, previous) => {
+  if (previous) barObserver?.unobserve(previous)
+  if (element) barObserver?.observe(element)
+  barHeight.value = element?.offsetHeight ?? 0
+})
+
+onBeforeUnmount(() => barObserver?.disconnect())
+
+const pageClearance = computed(() => ({
+  paddingBottom: `calc(${barClearance(barHeight.value, hasUnsavedChanges.value)}px + var(--app-bottom-bar-height, 0px) + env(safe-area-inset-bottom, 0px))`
+}))
+
 const save = () => store.saveConfiguration()
 const discard = () => store.discardChanges()
 const factoryReset = () => store.factoryReset()
@@ -228,7 +252,10 @@ watch(
 </script>
 
 <template>
-  <div class="settings-view container mx-auto pt-7 pb-4">
+  <div
+    class="settings-view container mx-auto pt-7 pb-4"
+    :style="pageClearance"
+  >
     <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-end md:justify-between">
       <div class="flex min-w-0 flex-col gap-1">
         <h1 class="md-headline-medium text-on-surface">
@@ -352,7 +379,8 @@ watch(
 
     <div
       v-if="hasUnsavedChanges"
-      class="sticky bottom-0 z-10 -mx-4 mt-6 min-[600px]:-mx-6 max-[599px]:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]"
+      ref="barElement"
+      class="sticky bottom-0 z-10 mt-6 max-[599px]:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]"
     >
       <UnsavedChangesBar
         :count="changeCount"
