@@ -4,7 +4,7 @@ import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 
 /*
- * Shown when a save was refused because the stored settings or token changed since this dashboard read them.
+ * Shown when a save was refused because the stored settings, token, team or permission nodes changed since this dashboard read them.
  * The dialog only reports the user's choice: the owning store performs reload, review or overwrite.
  * `conflict` is { kind: 'settings' | 'token', name, title, reviewed, server } or null when closed. Once the
  * stored settings were reviewed, `differenceCount` says how many changes the review lists; the review itself
@@ -28,7 +28,11 @@ const confirmingOverwrite = ref(false)
 watch(() => props.conflict, () => { confirmingOverwrite.value = false })
 
 const isSettings = computed(() => props.conflict?.kind === 'settings')
-const TITLES = { settings: 'Settings changed elsewhere', team: 'Team changed elsewhere' }
+const TITLES = {
+  settings: 'Settings changed elsewhere',
+  team: 'Team changed elsewhere',
+  nodes: 'Permission nodes changed elsewhere'
+}
 const title = computed(() => TITLES[props.conflict?.kind] ?? 'Token changed elsewhere')
 
 // The scrim is the MD3 role colour at 32%, set inline because the modal paints a fixed black overlay.
@@ -75,6 +79,10 @@ const onOpenChange = (open) => {
         <p v-else-if="conflict.kind === 'team'">
           The team <strong class="text-on-surface">{{ conflict.name }}</strong> was changed by someone else after you
           loaded it. Your change has not been saved.
+        </p>
+        <p v-else-if="conflict.kind === 'nodes'">
+          The permission nodes of <strong class="text-on-surface">{{ conflict.name }}</strong> were changed by someone else
+          after you loaded them. Your changes have not been saved.
         </p>
         <p v-else>
           The token <strong class="text-on-surface">{{ conflict.name }}</strong> was changed by someone else after you

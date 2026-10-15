@@ -292,6 +292,42 @@ describe('client identity namespace', () => {
     })
   })
 
+  describe('nodes', () => {
+    it('reads the nodes of a principal by its encoded name', () => {
+      identity.nodes.get('principals', 'a b')
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/principals\/a%20b\/nodes$/),
+        expect.anything()
+      )
+    })
+
+    it('puts the nodes of a team as { nodes } with the entity tag as If-Match', () => {
+      identity.nodes.set('teams', 'qa', [{ node: 'ingot.admin.users', allowed: true }], '"4"')
+
+      expect(axios.put).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/teams\/qa\/nodes$/),
+        { nodes: [{ node: 'ingot.admin.users', allowed: true }] },
+        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"4"' }) })
+      )
+    })
+
+    it('asks the catalog with an encoded prefix', () => {
+      identity.nodes.catalog('ingot.repository.')
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/nodes\/catalog\?prefix=ingot\.repository\.$/),
+        expect.anything()
+      )
+    })
+
+    it('reads the templates', () => {
+      identity.nodes.templates()
+
+      expect(axios.get).toHaveBeenCalledWith(expect.stringMatching(/\/api\/identity\/nodes\/templates$/), expect.anything())
+    })
+  })
+
   describe('repositoryAccess', () => {
     it('reads who has access to a repository by its encoded name', () => {
       identity.repositoryAccess('my repo')

@@ -322,6 +322,22 @@ const createClient = (defaultName, defaultSecret) => {
           return axios.delete(createURL(`/api/identity/teams/${encodeURIComponent(name)}/instance-admin`), conditional(etag))
         },
       },
+      // The permission nodes of a principal or a team (kind is "principals" or "teams"). get() resolves
+      // with the ETag header; set() sends it back as If-Match. The catalog and the templates feed the editor.
+      nodes: {
+        get(kind, name) {
+          return get(`/api/identity/${kind}/${encodeURIComponent(name)}/nodes`)
+        },
+        set(kind, name, nodes, etag) {
+          return axios.put(createURL(`/api/identity/${kind}/${encodeURIComponent(name)}/nodes`), { nodes }, conditional(etag))
+        },
+        catalog(prefix) {
+          return get(`/api/identity/nodes/catalog${prefix ? `?prefix=${encodeURIComponent(prefix)}` : ""}`)
+        },
+        templates() {
+          return get("/api/identity/nodes/templates")
+        },
+      },
       // Who can reach a repository and through which team: { repository, visibility, entries }.
       repositoryAccess(repository) {
         return get(`/api/identity/repositories/${encodeURIComponent(repository)}/access`)

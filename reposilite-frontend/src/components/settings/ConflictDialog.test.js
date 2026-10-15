@@ -73,6 +73,14 @@ describe('ConflictDialog', () => {
     expect(button(wrapper, 'Review')).toBeUndefined()
   })
 
+  it('names the subject whose permission nodes changed elsewhere and offers no review', () => {
+    const wrapper = mountDialog({ kind: 'nodes', name: 'alice' })
+
+    expect(wrapper.text()).toContain('Permission nodes changed elsewhere')
+    expect(wrapper.text()).toContain('alice')
+    expect(button(wrapper, 'Review')).toBeUndefined()
+  })
+
   it('emits review when the user asks to review the settings', async () => {
     const wrapper = mountDialog(settingsConflict())
 
