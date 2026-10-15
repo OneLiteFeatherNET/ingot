@@ -270,6 +270,22 @@ class IdentityStore(
         }
     }
 
+    /**
+     * Deletes the legacy grants of a private team. A null [pathPrefix] or [role] matches every value, so the caller can
+     * remove one route, all routes of a path, or all legacy grants of the team.
+     */
+    fun deleteLegacyGrants(teamId: Int, pathPrefix: String?, role: Role?) {
+        transaction(database) {
+            val legacyRoles = Role.entries.filter { it.legacy }.map { it.name }
+            TeamGrantTable.deleteWhere {
+                var condition = (TeamGrantTable.teamId eq teamId) and (TeamGrantTable.role inList legacyRoles)
+                if (pathPrefix != null) condition = condition and (TeamGrantTable.pathPrefix eq pathPrefix)
+                if (role != null) condition = condition and (TeamGrantTable.role eq role.name)
+                condition
+            }
+        }
+    }
+
     // instance roles
 
     /** Grants the instance role to a principal or to a team, once. Exactly one of the two must be given. */

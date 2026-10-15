@@ -25,6 +25,9 @@ import com.reposilite.token.AccessTokenRepository
 import com.reposilite.token.ExportService
 import com.reposilite.token.infrastructure.InMemoryAccessTokenRepository
 import com.reposilite.token.infrastructure.SqlAccessTokenRepository
+import net.onelitefeather.ingot.identity.storage.IdentityAccessTokenRepository
+import net.onelitefeather.ingot.identity.storage.IdentityStore
+import net.onelitefeather.ingot.identity.storage.LegacyAccessTokenMigration
 import org.jetbrains.exposed.v1.jdbc.Database
 
 class AccessTokenComponents(
@@ -36,10 +39,20 @@ class AccessTokenComponents(
     private fun temporaryRepository(): AccessTokenRepository =
         InMemoryAccessTokenRepository()
 
+    /**
+     * Persistent tokens live in the identity tables. The legacy repository is still constructed first: it creates and
+     * repairs the legacy tables, which the migration reads. Those tables are never written again.
+     */
     private fun persistentRepository(): AccessTokenRepository =
         when (database) {
             null -> InMemoryAccessTokenRepository()
-            else -> SqlAccessTokenRepository(database, journalist, runMigrations)
+            else -> {
+                SqlAccessTokenRepository(database, journalist, runMigrations)
+                val store = IdentityStore(database)
+                val outcome = LegacyAccessTokenMigration(database, journalist).migrate()
+                journalist.logger.debug("Identity | access token migration: $outcome")
+                IdentityAccessTokenRepository(store)
+            }
         }
 
     private fun exportService(): ExportService =
