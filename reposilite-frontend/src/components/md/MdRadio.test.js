@@ -148,4 +148,122 @@ describe('MdRadio', () => {
 
     expect(label().className).toContain('text-on-surface/38')
   })
+
+  describe('as a card', () => {
+    const cardContent = () => document.querySelector('[data-part="card-content"]')
+
+    // Mounts a card radio in a fieldset, the way the wizard groups its options.
+    const mountCard = ({ initial = 'all', disabled = false } = {}) => {
+      const group = ref(initial)
+      const wrapper = mount({
+        setup: () => () => h('fieldset', [
+          h(MdRadio, {
+            modelValue: group.value,
+            'onUpdate:modelValue': (next) => { group.value = next },
+            value: 'read',
+            name: 'access',
+            card: true,
+            disabled
+          }, () => 'Read only'),
+          h(MdRadio, {
+            modelValue: group.value,
+            'onUpdate:modelValue': (next) => { group.value = next },
+            value: 'all',
+            name: 'access',
+            card: true,
+            disabled: false
+          }, () => 'Everything')
+        ])
+      }, { attachTo: document.body })
+      return { wrapper, group }
+    }
+    const inputs = () => Array.from(document.querySelectorAll('input[type="radio"]'))
+    const press = (element, key) => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+
+    it('makes the card itself the label of its radio', () => {
+      mounted = mountRadio({ attrs: { card: true, class: 'border p-3' } })
+
+      expect(label().contains(input()), 'the input sits inside the card label').toBe(true)
+      expect(label().classList.contains('border')).toBe(true)
+    })
+
+    it('selects the radio when the card text is clicked', async () => {
+      mounted = mountCard()
+
+      cardContent().click()
+      await mounted.wrapper.vm.$nextTick()
+
+      expect(mounted.group.value, 'a click on the card text chooses the card').toBe('read')
+    })
+
+    it('selects the radio when the empty card area is clicked', async () => {
+      mounted = mountCard()
+
+      document.querySelector('label').click()
+      await mounted.wrapper.vm.$nextTick()
+
+      expect(mounted.group.value, 'a click on the card root chooses the card').toBe('read')
+    })
+
+    it('does not select a disabled card when it is clicked', async () => {
+      mounted = mountCard({ disabled: true })
+
+      cardContent().click()
+      await mounted.wrapper.vm.$nextTick()
+
+      expect(mounted.group.value, 'a disabled card cannot be chosen').toBe('all')
+    })
+
+    it('moves the selection to the next card with the down arrow', async () => {
+      mounted = mountCard({ initial: 'read' })
+      inputs()[0].focus()
+
+      press(inputs()[0], 'ArrowDown')
+      await mounted.wrapper.vm.$nextTick()
+
+      expect(mounted.group.value, 'the second card is chosen').toBe('all')
+      expect(document.activeElement, 'the focus follows the selection').toBe(inputs()[1])
+    })
+
+    it('moves the selection back with the up arrow and wraps at the ends of the group', async () => {
+      mounted = mountCard({ initial: 'read' })
+      inputs()[0].focus()
+
+      press(inputs()[0], 'ArrowUp')
+      await mounted.wrapper.vm.$nextTick()
+
+      expect(mounted.group.value, 'up from the first card wraps to the last').toBe('all')
+    })
+
+    it('moves with the right and left arrows as well', async () => {
+      mounted = mountCard({ initial: 'all' })
+      inputs()[1].focus()
+
+      press(inputs()[1], 'ArrowRight')
+      await mounted.wrapper.vm.$nextTick()
+      expect(mounted.group.value, 'right from the last card wraps to the first').toBe('read')
+
+      press(inputs()[0], 'ArrowLeft')
+      await mounted.wrapper.vm.$nextTick()
+      expect(mounted.group.value, 'left from the first card wraps to the last').toBe('all')
+    })
+
+    it('takes the arrow key itself, so the browser does not move the selection a second time', () => {
+      mounted = mountCard({ initial: 'read' })
+
+      const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+      inputs()[0].dispatchEvent(event)
+
+      expect(event.defaultPrevented, 'the default of the arrow key is prevented').toBe(true)
+    })
+
+    it('does not move the selection for other keys', async () => {
+      mounted = mountCard({ initial: 'read' })
+
+      press(inputs()[0], 'Enter')
+      await mounted.wrapper.vm.$nextTick()
+
+      expect(mounted.group.value).toBe('read')
+    })
+  })
 })

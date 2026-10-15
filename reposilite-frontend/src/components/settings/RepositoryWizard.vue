@@ -370,6 +370,7 @@ const onModalUpdate = (open) => {
               v-model="draft.basics.visibility"
               name="visibility"
               :value="option.value"
+              card
               class="rounded-corner-medium border p-3"
               :class="draft.basics.visibility === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
             >
@@ -418,6 +419,7 @@ const onModalUpdate = (open) => {
               v-model="draft.storage.kind"
               name="storage-kind"
               :value="option.value"
+              card
               class="rounded-corner-medium border p-3"
               :class="draft.storage.kind === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
             >
@@ -502,6 +504,7 @@ const onModalUpdate = (open) => {
               v-model="draft.access.mode"
               name="access-mode"
               :value="option.value"
+              card
               class="rounded-corner-medium border p-3"
               :class="draft.access.mode === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
             >

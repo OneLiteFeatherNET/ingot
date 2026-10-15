@@ -19,14 +19,24 @@ import { computed, useAttrs, useId } from 'vue'
 
 /*
  * Material Design 3 radio button. The control is a real <input type="radio">, so the group
- * semantics, the arrow keys and the form value come from the browser. Radios that share a
- * `name` form one group: the browser moves the selection with the arrow keys and gives the
- * group one tab stop.
+ * semantics and the form value come from the browser. Radios that share a `name` form one
+ * group and the group gets one tab stop.
+ *
+ * Arrow keys move the selection through the group: Down and Right go forward, Up and Left go
+ * back. Both wrap, and disabled radios are skipped. The component does this itself, so the
+ * behaviour is the same in every browser and can be tested without one. The default is
+ * prevented, so the browser does not move the selection a second time.
  *
  * The input is transparent and covers a 48px area centred on the 40px state layer, so the
  * whole area takes a click. The visible circle is 20px with a 2px outline, and the selected
  * one has a 10px dot in the primary role. The label is a real <label for>, so a click on the
  * text selects the radio too.
+ *
+ * `card` makes the whole radio one clickable card. The root becomes a <label> around the
+ * input, so a click anywhere on it selects the radio. The default slot then sits beside the
+ * circle and keeps the colours the card gives it through its own classes. The focus ring is
+ * drawn on the card only for keyboard focus (`has-focus-visible`), so a mouse click leaves no
+ * ring behind.
  *
  * `modelValue` is the value of the group and `value` is the value of this radio, as with a
  * native radio. Emits update:modelValue with `value` when this radio is chosen.
@@ -54,6 +64,11 @@ const props = defineProps({
     required: true
   },
   disabled: {
+    type: Boolean,
+    default: false
+  },
+  // The whole area is the clickable target and the slot is the card content.
+  card: {
     type: Boolean,
     default: false
   },
@@ -85,9 +100,34 @@ const onClick = (event) => {
   }
 }
 
+const ARROW_STEP = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
+
+// Moves the selection to the next enabled radio of the same group, in the scope of its fieldset
+// or form. The next radio is focused and clicked, so it is chosen and emits like a pointer click.
+const onKeydown = (event) => {
+  const step = ARROW_STEP[event.key]
+  if (step === undefined || props.disabled) return
+  const input = event.currentTarget
+  const scope = input.closest('fieldset') ?? input.form ?? document
+  const group = Array.from(scope.querySelectorAll('input[type="radio"]'))
+    .filter(radio => radio.name === props.name && !radio.disabled)
+  const at = group.indexOf(input)
+  if (at < 0 || group.length < 2) return
+  event.preventDefault()
+  const next = group[(at + step + group.length) % group.length]
+  next.focus()
+  next.click()
+}
+
 // Every class name is spelled out in full so that Tailwind finds it in this file.
+const rootClass = computed(() => {
+  if (!props.card) return 'flex items-center gap-2'
+  const base = 'relative flex items-start gap-3 has-focus-visible:outline-3 has-focus-visible:outline-solid has-focus-visible:outline-offset-2 has-focus-visible:outline-secondary'
+  return props.disabled ? [base, 'cursor-not-allowed'] : [base, 'cursor-pointer']
+})
+
 const circleClass = computed(() => {
-  const base = 'relative flex size-5 items-center justify-center rounded-corner-full border-2 pointer-events-none transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard peer-focus-visible:outline-3 peer-focus-visible:outline-solid peer-focus-visible:outline-offset-2 peer-focus-visible:outline-secondary'
+  const base = 'relative flex size-5 items-center justify-center rounded-corner-full border-2 pointer-events-none transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard'
   if (props.disabled) {
     return [base, 'border-on-surface/38']
   }
@@ -110,12 +150,17 @@ const stateLayerClass = computed(() => {
 const labelClass = computed(() =>
   props.disabled ? 'cursor-not-allowed text-on-surface/38' : 'cursor-pointer text-on-surface'
 )
+
+// In a card the text keeps the colours the card gives it; only a disabled card dims it.
+const cardContentClass = computed(() =>
+  props.disabled ? 'min-w-0 flex-1 text-on-surface/38' : 'min-w-0 flex-1'
+)
 </script>
 
 <template>
-  <div
-    class="flex items-center gap-2"
-    :class="attrs.class"
+  <component
+    :is="card ? 'label' : 'div'"
+    :class="[rootClass, attrs.class]"
     :style="attrs.style"
   >
     <span class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full">
@@ -130,6 +175,7 @@ const labelClass = computed(() =>
         :disabled="disabled"
         @change="onChange"
         @click="onClick"
+        @keydown="onKeydown"
       >
       <span
         data-part="state-layer"
@@ -150,12 +196,20 @@ const labelClass = computed(() =>
         />
       </span>
     </span>
+    <span
+      v-if="card"
+      data-part="card-content"
+      :class="cardContentClass"
+    >
+      <slot />
+    </span>
     <label
+      v-else
       :for="inputId"
       class="flex min-h-10 min-w-0 select-none items-center md-body-large"
       :class="labelClass"
     >
       <slot />
     </label>
-  </div>
+  </component>
 </template>

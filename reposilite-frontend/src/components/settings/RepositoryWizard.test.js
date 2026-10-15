@@ -574,6 +574,62 @@ describe('RepositoryWizard create sequence', () => {
   })
 })
 
+// The option cards are the labels of their radios, so the card is found from its input.
+const optionInputs = name => [...document.querySelectorAll(`input[name="${name}"]`)]
+const optionCard = input => input.closest('label')
+const keyDown = (element, key) => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+
+describe('RepositoryWizard option cards', () => {
+  it('selects a visibility card when a click lands on its description text', async () => {
+    await mountWizard()
+    const [, , hidden] = optionInputs('visibility')
+
+    optionCard(hidden).querySelector('[data-part="card-content"]').click()
+    await flushPromises()
+
+    expect(hidden.checked, 'the card that was clicked is chosen').toBe(true)
+    expect(optionCard(hidden).className, 'the chosen card shows its selection').toContain('bg-secondary-container')
+  })
+
+  it('shows only the chosen visibility card as selected', async () => {
+    await mountWizard()
+    const [first, second] = optionInputs('visibility')
+
+    optionCard(second).click()
+    await flushPromises()
+
+    expect(optionCard(second).className).toContain('bg-secondary-container')
+    expect(optionCard(first).className, 'the card that is not chosen keeps the outline').not.toContain('bg-secondary-container')
+  })
+
+  it('moves the visibility selection with the down arrow', async () => {
+    await mountWizard()
+    const [first, second] = optionInputs('visibility')
+    optionCard(first).click()
+    await flushPromises()
+
+    keyDown(first, 'ArrowDown')
+    await flushPromises()
+
+    expect(second.checked, 'the arrow key chooses the next card').toBe(true)
+    expect(document.activeElement, 'the focus moves with the selection').toBe(second)
+  })
+
+  it('moves the access selection with the arrow keys and wraps around', async () => {
+    await mountWizard()
+    await reachAccessStep('team')
+    const modes = optionInputs('access-mode')
+    const last = modes[modes.length - 1]
+    optionCard(modes[0]).click()
+    await flushPromises()
+
+    keyDown(modes[0], 'ArrowUp')
+    await flushPromises()
+
+    expect(last.checked, 'up from the first card wraps to the last').toBe(true)
+  })
+})
+
 describe('RepositoryWizard snippets', () => {
   it('shows Maven and Gradle snippets with the real repository URL and id', async () => {
     await mountWizard()
