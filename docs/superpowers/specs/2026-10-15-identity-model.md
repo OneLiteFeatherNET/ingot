@@ -4,9 +4,9 @@ Status: proposed for implementation. Decision record: ADR-INGT-0001 (accepted).
 
 This document specifies phase 1 of the identity model for Ingot: the data model, the
 migration from access tokens, the permission evaluation, the compatibility layer and the
-phase-1 administration API. Login providers (local password, OIDC, LDAP), JWT browser
-sessions, the setup code and the dashboard are out of scope and listed under
-"Open points".
+phase-1 administration API. Section 13 (phase 2a) adds the local password provider, browser
+sessions, the setup code for the first administrator and users' own tokens with Bearer access.
+OIDC, LDAP and the dashboard stay out of scope and are listed under "Open points".
 
 ## 1. Goals and constraints
 
@@ -603,8 +603,8 @@ Required:
 ## 11. Open points
 
 - O-1 Login providers (local password, OIDC, LDAP group sync into `team_member` SYNC rows): phase 2.
-- O-2 JWT browser sessions and their revocation: phase 2.
-- O-3 Setup code for the first instance admin: phase 2. Phase 1 keeps `--token` and the
+- O-2 JWT browser sessions and their revocation: implemented in phase 2a, see section 13.
+- O-3 Setup code for the first instance admin: implemented in phase 2a, see section 13. Phase 1 kept `--token` and the
   existing manager tokens as the only bootstrap.
 - O-4 Repository-scoped cleanup endpoints stay manager-only; `MAINTAIN` does not yet unlock them.
 - O-5 Dashboard UI for principals, teams and grants: separate phase, after the MD3 work.
@@ -643,3 +643,277 @@ last-used tracking (section 8.2), identity audit events (section 8.4) and HTTP t
   identity admin API over HTTP (`IdentityAdminIntegrationTest`, local variant).
 - O-10 Instance role assignment through the identity API: closed in phase 1b (section 7.4). Assigning the role
   to a USER principal is still only meaningful once the login providers of phase 2 exist.
+
+## 13. Browser login and sessions (phase 2a)
+
+Decision record: ADR-INGT-0001 (accepted). Humans log in through pluggable login providers. This phase implements the
+provider interface and the LOCAL provider (username and password). OIDC and LDAP follow as further providers without
+changing the session layer. Browser sessions are short-lived signed tokens with a refresh token, so that logout, a
+disabled user and changed rights take effect on every instance at the latest when the session token expires.
+
+### 13.1 Packages and wiring
+
+```
+net/onelitefeather/ingot/identity/login/
+  LoginFacade.kt, LoginService.kt       the facade the rest of Ingot uses; password login, setup, password changes
+  LoginProvider.kt, LocalLoginProvider.kt, LoginOutcome.kt   provider interface and outcomes
+  PasswordHasher.kt                     argon2id, PHC strings
+  LoginRateLimiter.kt                   failure counting per key, injected clock
+  SetupCode.kt                          the one-time setup code
+  BearerSecret.kt, OwnTokens.kt         secrets of users' own tokens, creation, rotation, deletion
+  LoginSettings.kt                      session and refresh lifetimes (domain "login")
+  storage/LoginTables.kt, storage/LoginStore.kt   local_credential and refresh_token
+  api/AuthLoginEndpoints.kt             /api/auth/providers, login, setup, refresh, logout
+  api/SelfServiceEndpoints.kt           /api/identity/me/* and the administrator password reset
+  api/LoginDtos.kt                      request and response bodies
+  application/LoginPlugin.kt            the plugin "login" (depends on access-token, authentication, configuration)
+net/onelitefeather/ingot/identity/session/
+  SessionSigner.kt                      JWT issue and verification
+  SessionService.kt                     sessions, refresh rotation, reuse detection, logout, revoke-all
+  SessionCookies.kt                     cookie names, Set-Cookie values, TLS detection
+  CsrfPolicy.kt                         the double-submit rule as a pure function
+```
+
+Changed existing code, kept to the decision points:
+
+- `com.reposilite.token.AccessTokenType` gains `PRINCIPAL`. A principal identity is a user acting directly, such as a
+  browser session. Its value is the principal id. It has no token rows: `NoTokenRepository` answers every read with
+  nothing and refuses every write, so a principal id can never be read as a temporary token with the same number.
+  `AccessTokenFacade.subjectOf` resolves it from the identity tables, and a missing or disabled principal gets an empty
+  subject that denies everything. `getPermissions` reports `MANAGER` for an instance admin. `createAccessToken` refuses
+  `PRINCIPAL`.
+- `AccessSubjectSource` gains `subjectOfPrincipal` and `principalOf`, implemented by `IdentityAccessTokenRepository`.
+- `com.reposilite.web.infrastructure.ReposiliteRouting` resolves the caller in this order: an `Authorization: Bearer`
+  header, then the existing Basic and xBasic handling, then an `ingot_session` cookie when no Authorization header is
+  present. Before every route handler it applies the CSRF rule of 13.4.
+- `JavalinConfiguration` passes the login facade to the DSL. `META-INF/services` registers `LoginPlugin`.
+
+### 13.2 Data
+
+```
+local_credential
+  principal_id        pk, fk principal, cascade
+  password_hash       varchar(512)   argon2id, PHC string: $argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>
+  must_change_password boolean       default false
+  updated_at          timestamp
+
+refresh_token
+  id                  int pk
+  family_id           varchar(64), indexed     one login and all tokens derived from it
+  principal_id        fk principal, cascade
+  token_hash          varchar(128), unique     SHA-256 hex of the opaque token; the token itself is never stored
+  created_at, expires_at  timestamp
+  used_at             timestamp null           set when the token is exchanged; makes it single use
+  revoked_at          timestamp null
+  user_agent          varchar(512) null
+  ip                  varchar(64) null
+```
+
+Both tables are created on start with `createMissingTablesAndColumns`, like the other identity tables. No marker is
+needed, because nothing is migrated. The legacy tables are never touched.
+
+Principal names are case-insensitive, so the user name of a login is too. A login names a user; a machine principal has
+no password and cannot log in.
+
+### 13.3 Algorithms and libraries
+
+- **Password hashing:** argon2id, version 19, OWASP minimum parameters (19 MiB, two passes, one lane), 16-byte salt,
+  32-byte hash, implemented with `org.bouncycastle:bcprov-jdk18on:1.84`. The same version was already on the classpath
+  through `at.favre.lib:bcrypt` (via bcpkix); it is now declared directly, because the login code calls it. Verification
+  uses the cost stored in the hash, so raising the cost later does not invalidate existing passwords. Verification is
+  constant time. A wrong password, an unknown user and a user without a password all run one verification, so the
+  reply and its timing do not show which one happened.
+- **Session tokens:** JWT, `com.nimbusds:nimbus-jose-jwt:10.9.1` (no further dependencies). HS256 only; verification
+  rejects any other algorithm, including `none`, and checks the expiry against the injected clock. Claims: `sub` (principal
+  id), `name`, `kind`, `iat`, `exp`, `sid` (refresh family id).
+- **Signing key:** 32 random bytes, stored in the shared settings table under `jwt-signing-key`, created with the
+  insert-ignore pattern of `entity-tag-key` (`ConfigurationFacade.findOrCreateConfiguration`). Every instance on the same
+  database accepts the sessions of every other instance.
+- **Refresh tokens:** 32 random bytes, base64url. Only the SHA-256 hash is stored. The lookup goes by that hash, which is
+  an indexed unique column. A hash needs no salt, because the input has 256 bits of entropy.
+- **Own token secrets:** `ingot_<tokenId>_<random>`, see 13.6.
+
+### 13.4 Cookies, sessions and CSRF
+
+Lifetimes come from the settings domain `login`: `sessionLifetimeMinutes` (default 15) and `refreshLifetimeHours`
+(default 168, seven days). The refresh lifetime is an idle bound: every exchange issues a token that lives that long
+again. There is no absolute lifetime yet (open point O-14).
+
+| Cookie | Value | Attributes | Path |
+|---|---|---|---|
+| `ingot_session` | session JWT | HttpOnly, SameSite=Lax, Max-Age = session lifetime | base path |
+| `ingot_refresh` | opaque refresh token | HttpOnly, SameSite=Lax, Max-Age = refresh lifetime | `<base>/api/auth` |
+| `ingot_csrf` | random, new with every session | SameSite=Lax, not HttpOnly | base path |
+
+`Secure` is set when the request is HTTPS, or when the first value of `X-Forwarded-Proto` is `https`. The base path is
+`LocalConfiguration.basePath`, `/` by default.
+
+The CSRF rule (double-submit): a request that changes state (POST, PUT, PATCH, DELETE) and is authenticated by a session
+or refresh cookie, with no Authorization header, must repeat the value of `ingot_csrf` in the `X-CSRF-Token` header.
+Otherwise it gets 403. Basic and Bearer requests are exempt. Login and setup are exempt, because they create the cookies.
+Reads are exempt.
+
+A session is checked against its principal on every request. A disabled or deleted principal is refused on the next
+request. Logout and password changes revoke the refresh token family, or all families of the user. The session token
+itself is not looked up, so it keeps working until its `exp`, which is at most the session lifetime after the revocation.
+
+Refresh reuse detection: presenting a spent token (or a revoked one that was spent) revokes the whole family. The claim of
+the next token is a conditional update (`used_at` and `revoked_at` must still be null), so two concurrent exchanges of one
+token on any instance produce exactly one new token.
+
+### 13.5 API contract
+
+All paths are relative to the base path. Error bodies are `{"status": <int>, "message": "<text>"}`. Responses that set
+cookies set all three cookies of 13.4. The status codes are 200 for creation, like the token API; phase 1 already
+recorded that deviation.
+
+`GET /api/auth/providers` (public)
+
+```
+200 { "providers": [ { "id": "local", "type": "LOCAL", "label": "Username and password" } ],
+      "tokenLogin": true,
+      "setupRequired": false }
+```
+
+`setupRequired` is true while no user exists. Later providers (OIDC, LDAP) add entries with a `loginUrl`.
+
+`POST /api/auth/login` (public), body `{"provider": "local", "username": "...", "password": "..."}`
+
+```
+200 { "principal": { "id": 7, "kind": "USER", "name": "alice", "displayName": "Alice" },
+      "mustChangePassword": false,
+      "expiresAt": "2026-10-15T10:15:00Z" }                      + session, refresh and csrf cookies
+400  missing fields, or an unknown provider
+401  wrong user name or password (the same answer for an unknown user)
+403  the user is disabled (only after the right password)
+429  too many failed attempts for this user name and address; the password is not checked
+503  no database: browser sessions need one
+```
+
+`POST /api/auth/refresh` (refresh cookie, and `X-CSRF-Token` when the cookie is sent)
+
+```
+200 { "principal": { ... }, "expiresAt": "..." }               + new cookies
+401  unknown, expired, revoked or spent refresh token, or the user is gone; the three cookies are cleared
+403  CSRF header missing or wrong
+```
+
+`POST /api/auth/logout` (session or refresh cookie)
+
+```
+200 (empty)    the refresh family is revoked and the three cookies are cleared
+403  CSRF header missing or wrong
+```
+
+`GET /api/auth/setup` (public): `200 { "required": true }`. True while no user exists.
+
+`POST /api/auth/setup` (public), body `{"setupCode": "...", "username": "...", "password": "...", "displayName": "..."}`
+
+```
+200 { "principal": { ... }, "mustChangePassword": false, "expiresAt": "..." }   creates the user as instance admin, starts a session
+400  missing fields, a user name with colons, spaces or control characters, or a password outside the rules
+403  setup is not required (a user exists), or the setup code is wrong
+409  the name is held by a principal already (machine principals included)
+429  too many wrong setup codes from this address
+```
+
+`GET /api/auth/me` keeps its shape. It works with a session cookie, Basic and Bearer. For a session, `accessToken.name`
+is the user name, `accessToken.description` is the display name, and `permissions` contains `access-token:manager` for an
+instance admin.
+
+`POST /api/identity/me/password` (session, Basic or Bearer as a user), body `{"currentPassword", "newPassword"}`
+
+```
+200 (empty)    the password changed; every session of the user ended; a forced change ended
+403  the current password is wrong, or the caller is not a user principal (machine, legacy token)
+400  the new password breaks the rules
+```
+
+`GET /api/identity/me/tokens` (as a user): `200 [ TokenDto ]` with `name`, `description`, `createdAt`, `expiresAt`,
+`scopes`, `lastUsedAt`. No secret.
+
+`POST /api/identity/me/tokens` (as a user), body `{"name", "description"?, "expiresAt"?, "scopes"?}`. There is no
+`secret` field: the server generates it.
+
+```
+200 { "token": TokenDto, "secret": "ingot_<id>_<random>" }     the secret is returned once
+400  name missing, contains a colon, or scopes empty or unknown
+409  a token with this name exists (token names are unique across users, as before)
+```
+
+`POST /api/identity/me/tokens/{name}/rotate` (as a user): `200 { "token", "secret" }`, the new secret once; the old one
+stops working at once. `404` for a name that is not one of the user's own tokens.
+
+`DELETE /api/identity/me/tokens/{name}` (as a user): `200`, the token stops working at once. `404` as above.
+
+`POST /api/identity/principals/{name}/password` (instance admin), body `{"newPassword": "..."}`: `200`. The user must
+choose a new password at the next login (`mustChangePassword` is true), and every session of the user ends. `400`
+for a machine principal or a password outside the rules, `404` for an unknown principal, `403` for a non-admin.
+
+Password rules: 12 to 256 characters. Setup user names: 1 to 255 characters, no colon, no whitespace, no control
+characters.
+
+### 13.6 Bearer tokens
+
+`Authorization: Bearer <secret>` authenticates the token named by the secret. The secret of a token created through
+`/api/identity/me/tokens` (and of every rotation) has the form `ingot_<tokenId>_<random>`. The token id is part of the
+secret, so no name is needed, and the id is no secret: the random part protects the token. The whole secret stays below
+72 bytes, because bcrypt, which hashes it, ignores anything after that; a test pins this.
+
+The Bearer check runs through the Basic path with the token name the id leads to. That keeps brute force protection,
+the expiry check, the disabled-principal check and the authentication cache as they are. A secret that names no token
+is checked with an empty name, fails, and counts like any wrong secret.
+
+Tokens created before this change, and tokens created through `/api/tokens` or through the phase-1 identity API, have
+no prefix. They keep working over Basic, and only over Basic (open point O-12).
+
+### 13.7 Setup code
+
+While no user exists, the instance generates a setup code: 12 characters from `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, which
+leaves out 0, O, 1, I and L. The code is kept in memory and logged once per start with the line
+`--- First administrator`. It is accepted in any letter case and with surrounding spaces, and compared in constant time.
+A successful setup creates the user with the instance admin role, consumes the code and starts a session. After that no
+code is issued. A restart while still no user exists logs a new code.
+
+Setups on one instance are serialized, so the check for "no user yet" and the creation cannot interleave. Wrong codes
+count towards the same limit as wrong passwords, per address, and are audited as `LOGIN_FAILED` with the actor `setup`.
+
+### 13.8 Failure limit and audit
+
+The limit follows the existing `authentication.bruteForceProtection` settings: `maxAttempts` and `banDurationSeconds`
+apply to failed logins per user name (lower-cased) and address, and to failed setup codes per address. The limiter uses
+the injected clock. A blocked attempt is not checked and is audited.
+
+The default of `bruteForceProtection.enabled` is `false`, as it was for Basic. Out of the box, password logins are not
+limited. This is open point O-11.
+
+Audited with the existing actions: `LOGIN_FAILED` for a rejected, disabled or blocked login and a wrong setup code (the
+attempted name and the address, never the password or the code); `TOKEN_CREATED`, `TOKEN_SECRET_REGENERATED` and
+`TOKEN_DELETED` for the users' own tokens (never the secret). Not audited yet: successful logins, sessions started or
+renewed, logouts, password changes and resets, and the setup itself (O-15).
+
+### 13.9 Deviations and open points
+
+- O-11 The brute force limit is off by default. Password logins are unlimited until an operator enables
+  `authentication.bruteForceProtection`. A separate default for logins is a decision for the maintainers.
+- O-12 Legacy tokens and tokens created through `/api/tokens` and the phase-1 identity API still get unprefixed secrets.
+  They work over Basic only. Switching the generator to the `ingot_` form is a follow-up, because it changes what the
+  legacy create endpoint returns.
+- O-13 The setup code is per instance. Two instances started on one empty database each log a code, and the setup on one
+  instance does not see a setup on the other. Both can, in principle, pass the "no user yet" check at the same moment. A
+  database-level guard (a unique marker row) closes that window and is not implemented.
+- O-14 No absolute refresh lifetime: a browser that renews within the refresh lifetime keeps its session indefinitely.
+- O-15 Audit actions for logins, sessions, password changes and setup (see 13.8).
+- O-16 Deleting a principal through the phase-1 identity API removes its tokens, but not its `local_credential` and
+  `refresh_token` rows explicitly. Foreign keys cascade only where they are enforced, and SQLite enforces them only when
+  the connection says so. The rows are harmless, because a deleted principal is refused, but they should be removed with
+  the principal. This belongs in `IdentityStore.deletePrincipal`.
+- O-17 `X-Forwarded-Proto` is read only for the Secure flag. Ingot had no forwarded-proto handling before; the first
+  value of the header is taken as the scheme. Trusting the header matters for the Secure flag only, never for
+  authorization.
+- O-18 The session key is not rotated. A rotation needs a second key that verifies the old tokens until they expire.
+- O-19 `last_used_at` and `last_seen_at` are still not written (phase 1, section 8.2).
+- O-20 No API to list or revoke a user's sessions, and no UI for any of this.
+- O-21 The forwarded path prefix (`X-Forwarded-Prefix`) is not part of the cookie path. Cookies follow the configured
+  base path only.
+- O-10 remains open: no endpoint assigns instance roles, except the setup for the first administrator.
