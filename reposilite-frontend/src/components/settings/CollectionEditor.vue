@@ -79,9 +79,10 @@ const hasSelection = computed(() => props.selectedId !== null)
       </p>
     </header>
 
-    <div class="grid overflow-hidden rounded-corner-large border border-outline-variant min-[840px]:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+    <!-- Below 840px the list and the detail take the full content width: the outer card, its border and its padding go. -->
+    <div class="grid overflow-hidden min-[840px]:rounded-corner-large min-[840px]:border min-[840px]:border-outline-variant min-[840px]:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <div
-        class="min-w-0 p-3 min-[840px]:border-r min-[840px]:border-outline-variant"
+        class="min-w-0 min-[840px]:p-3 min-[840px]:border-r min-[840px]:border-outline-variant"
         :class="hasSelection ? 'max-[839px]:hidden' : ''"
       >
         <EntryList
@@ -96,7 +97,7 @@ const hasSelection = computed(() => props.selectedId !== null)
       </div>
 
       <div
-        class="min-w-0 p-4 md:p-6"
+        class="min-w-0 min-[840px]:p-6"
         :class="hasSelection ? '' : 'max-[839px]:hidden'"
       >
         <EntryDetail
