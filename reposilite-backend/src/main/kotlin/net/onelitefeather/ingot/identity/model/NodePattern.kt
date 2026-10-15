@@ -24,9 +24,12 @@ package net.onelitefeather.ingot.identity.model
 class NodePattern private constructor(
     val text: String,
     private val kind: Kind,
-    private val repository: String?,
-    private val action: String?,
-    private val area: String?,
+    /** The repository part, `*` for a wildcard, null for the other shapes. */
+    val repository: String?,
+    /** The action part, `*` for a wildcard, null for the other shapes. */
+    val action: String?,
+    /** The admin area, `*` for a wildcard, null for the other shapes. */
+    val area: String?,
 ) {
 
     private enum class Kind { EVERYTHING, REPOSITORY, ADMIN }

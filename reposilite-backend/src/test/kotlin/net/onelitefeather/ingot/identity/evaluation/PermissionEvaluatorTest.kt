@@ -15,7 +15,11 @@
  */
 package net.onelitefeather.ingot.identity.evaluation
 
+import net.onelitefeather.ingot.identity.model.AccessLevel
 import net.onelitefeather.ingot.identity.model.AccessSubject
+import net.onelitefeather.ingot.identity.model.DecisionSource
+import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.identity.model.SourcedRule
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -28,6 +32,10 @@ import org.junit.jupiter.params.provider.CsvSource
 /** Pure rules of the evaluator. No database, no clock, no shared state: every test builds its own subject. */
 internal class PermissionEvaluatorTest {
 
+    /**
+     * A machine subject with its rules in one team level. [instanceAdmin] is the node `ingot.admin.*` of that team, and
+     * [scopes] is the token narrowing the old scopes became.
+     */
     private fun subject(
         grants: List<Grant> = emptyList(),
         instanceAdmin: Boolean = false,
@@ -38,9 +46,15 @@ internal class PermissionEvaluatorTest {
         principalName = "bot",
         kind = PrincipalKind.MACHINE,
         disabled = disabled,
-        instanceAdmin = instanceAdmin,
-        grants = grants,
-        scopes = scopes,
+        levels = listOf(
+            AccessLevel(
+                source = DecisionSource.TEAM,
+                depth = 0,
+                rules = if (instanceAdmin) listOf(SourcedRule("machine:bot", NodePattern.INSTANCE_ADMIN, allowed = true)) else emptyList(),
+                grants = grants,
+            ),
+        ),
+        tokenRules = scopes?.let { ScopeRules.of("bot", it) },
     )
 
     private fun legacy(path: String, role: Role) =

@@ -118,17 +118,40 @@ data class Grant(
     val pathPrefix: String?,
 )
 
+/** Where a decision came from. [TOKEN] is the node list of the token; [DEFAULT] means no rule matched at all. */
+enum class DecisionSource { USER, TEAM, INHERITED_TEAM, LEGACY, TOKEN, DEFAULT }
+
+/** A node rule with the subject that holds it and the parsed pattern. */
+data class SourcedRule(
+    val subject: String,
+    val pattern: NodePattern,
+    val allowed: Boolean,
+)
+
 /**
- * Everything the evaluator needs about the owner of a token. Built from the store, or from the in-memory legacy view for
- * temporary tokens. Holds no reference to storage, so the evaluator stays pure.
+ * One precedence level. The rules and grants of all teams at the same distance are pooled, so the most specific rule
+ * decides across them and a denial wins a tie. [depth] is 0 for the principal's own rules and its own teams, and the
+ * distance of an inherited team otherwise.
+ */
+data class AccessLevel(
+    val source: DecisionSource,
+    val depth: Int,
+    val rules: List<SourcedRule>,
+    val grants: List<Grant>,
+)
+
+/**
+ * Everything the evaluator needs about the owner of a token: the precedence levels and the node list of the token when
+ * it narrows its owner. Built from the store, or from the in-memory legacy view for temporary tokens. Holds no reference
+ * to storage, so the evaluator stays pure.
  */
 data class AccessSubject(
     val principalId: Int?,
     val principalName: String?,
     val kind: PrincipalKind,
     val disabled: Boolean,
-    val instanceAdmin: Boolean,
-    val grants: List<Grant>,
-    val scopes: Set<Action>?,
+    val levels: List<AccessLevel>,
+    /** The node list of the token; null when the token does not narrow its owner. */
+    val tokenRules: List<SourcedRule>?,
     val teams: List<String> = emptyList(),
 )

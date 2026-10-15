@@ -554,10 +554,11 @@ class IdentityFacade(
 
         val entries = store.listPrincipals().mapNotNull { principal ->
             val subject = store.loadAccess(principal, scopes = null)
-            val applying = subject.grants.filter { PermissionEvaluator.grantReaches(it, "/$repository") }
-            if (!subject.instanceAdmin && applying.isEmpty()) return@mapNotNull null
+            val admin = PermissionEvaluator.isInstanceAdmin(subject)
+            val applying = subject.levels.flatMap { it.grants }.filter { PermissionEvaluator.grantReaches(it, "/$repository") }
+            if (!admin && applying.isEmpty()) return@mapNotNull null
 
-            val effective = if (PermissionEvaluator.isInstanceAdmin(subject)) {
+            val effective = if (admin) {
                 Action.entries.map { it.name }
             } else {
                 applying.flatMap { grant -> grant.role.actions.map { it.name } }.distinct()
@@ -569,13 +570,13 @@ class IdentityFacade(
                     role = grant.role.name,
                     pathPrefix = grant.pathPrefix,
                 )
-            } + if (subject.instanceAdmin) listOf(AccessViaDto(source = "INSTANCE_ADMIN", team = null, role = null, pathPrefix = null)) else emptyList()
+            } + if (admin) listOf(AccessViaDto(source = "INSTANCE_ADMIN", team = null, role = null, pathPrefix = null)) else emptyList()
 
             AccessEntryDto(
                 principal = principal.name,
                 kind = principal.kind.name,
                 disabled = principal.disabled,
-                instanceAdmin = subject.instanceAdmin,
+                instanceAdmin = admin,
                 effective = effective,
                 via = via,
             )

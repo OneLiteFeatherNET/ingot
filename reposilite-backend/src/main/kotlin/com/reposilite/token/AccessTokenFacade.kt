@@ -35,11 +35,15 @@ import com.reposilite.token.AccessTokenPermission.MANAGER
 import net.onelitefeather.ingot.identity.evaluation.AccessRequest
 import net.onelitefeather.ingot.identity.evaluation.AccessSubjectSource
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
+import net.onelitefeather.ingot.identity.model.AccessLevel
 import net.onelitefeather.ingot.identity.model.AccessSubject
 import net.onelitefeather.ingot.identity.model.Action
+import net.onelitefeather.ingot.identity.model.DecisionSource
 import net.onelitefeather.ingot.identity.model.Grant
+import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.Role
+import net.onelitefeather.ingot.identity.model.SourcedRule
 import net.onelitefeather.ingot.identity.model.privateTeamName
 import net.onelitefeather.ingot.identity.storage.TokenUsage
 import net.onelitefeather.ingot.identity.storage.TokenUsageSource
@@ -443,9 +447,8 @@ class AccessTokenFacade internal constructor(
                     principalName = null,
                     kind = PrincipalKind.USER,
                     disabled = true,
-                    instanceAdmin = false,
-                    grants = emptyList(),
-                    scopes = emptySet(),
+                    levels = emptyList(),
+                    tokenRules = emptyList(),
                 )
         }
         if (identifier.type == PERSISTENT) {
@@ -459,22 +462,32 @@ class AccessTokenFacade internal constructor(
         val permissions = repository.findAccessTokenPermissionsById(identifier)
         val routes = repository.findAccessTokenRoutesById(identifier)
         val name = nameOf(identifier)
+        // The legacy view of a temporary token: MANAGER is the node ingot.admin.*, and each route is a legacy grant of the
+        // private team, which is the only level the view has.
+        val team = privateTeamName(name)
+        val adminRules = if (MANAGER in permissions) listOf(SourcedRule(team, NodePattern.INSTANCE_ADMIN, allowed = true)) else emptyList()
         return AccessSubject(
             principalId = null,
             principalName = name,
             kind = PrincipalKind.MACHINE,
             disabled = false,
-            instanceAdmin = MANAGER in permissions,
-            grants = routes.map { route ->
-                Grant(
-                    team = privateTeamName(name),
-                    role = if (route.permission == RoutePermission.WRITE) Role.LEGACY_WRITE else Role.LEGACY_READ,
-                    repository = null,
-                    pathPrefix = route.path,
-                )
-            },
-            scopes = null,
-            teams = listOf(privateTeamName(name)),
+            levels = listOf(
+                AccessLevel(
+                    source = DecisionSource.TEAM,
+                    depth = 0,
+                    rules = adminRules,
+                    grants = routes.map { route ->
+                        Grant(
+                            team = team,
+                            role = if (route.permission == RoutePermission.WRITE) Role.LEGACY_WRITE else Role.LEGACY_READ,
+                            repository = null,
+                            pathPrefix = route.path,
+                        )
+                    },
+                ),
+            ),
+            tokenRules = null,
+            teams = listOf(team),
         )
     }
 
@@ -514,7 +527,7 @@ class AccessTokenFacade internal constructor(
 
     fun getPermissions(identifier: AccessTokenIdentifier): Set<AccessTokenPermission> =
         if (identifier.type == PRINCIPAL) {
-            if (subjectOf(identifier).instanceAdmin) setOf(MANAGER) else emptySet()
+            if (PermissionEvaluator.isInstanceAdmin(subjectOf(identifier))) setOf(MANAGER) else emptySet()
         } else {
             identifier.type.getRepository().findAccessTokenPermissionsById(identifier)
         }

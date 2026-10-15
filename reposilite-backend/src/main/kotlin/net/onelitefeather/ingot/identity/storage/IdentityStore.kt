@@ -20,7 +20,13 @@ import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityTable
 import net.onelitefeather.ingot.identity.login.storage.LocalCredentialTable
 import net.onelitefeather.ingot.identity.login.storage.RefreshTokenTable
+import net.onelitefeather.ingot.identity.evaluation.ScopeRules
+import net.onelitefeather.ingot.identity.evaluation.TeamHierarchy
+import net.onelitefeather.ingot.identity.model.AccessLevel
 import net.onelitefeather.ingot.identity.model.AccessSubject
+import net.onelitefeather.ingot.identity.model.DecisionSource
+import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.identity.model.SourcedRule
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.GrantRecord
@@ -541,44 +547,109 @@ class IdentityStore(
     // effective access
 
     /**
-     * Everything the evaluator needs about the principal: the grants of all its teams, whether it is an instance admin
-     * (directly or through a team), and the scopes of the token it authenticated with.
+     * Everything the evaluator needs about the principal: its own node rules, the rules and grants of its teams at distance
+     * 0, and those of the teams it inherits, one level per distance (nearest first, at most [TeamHierarchy.MAX_DEPTH]).
+     * The node list of the token, derived from its scopes, narrows the owner when the token has scopes.
+     *
+     * Instance roles still stored by the previous version count as the node `ingot.admin.*`. The migration that moves them
+     * into nodes removes the rows.
      */
     fun loadAccess(principal: PrincipalRecord, scopes: Set<Action>?): AccessSubject =
         transaction(database) {
-            val teamIds = TeamMemberTable.selectAll()
+            val directTeams = TeamMemberTable.selectAll()
                 .where { TeamMemberTable.principalId eq principal.id }
                 .map { it[TeamMemberTable.teamId].value }
                 .toSet()
-            val teams = if (teamIds.isEmpty()) emptyMap() else TeamTable.selectAll()
+            val parentsOf = TeamParentTable.selectAll()
+                .groupBy({ it[TeamParentTable.teamId].value }, { it[TeamParentTable.parentTeamId].value })
+
+            // Breadth first, so a team lands on the smallest distance it is reached at.
+            val distances = LinkedHashMap<Int, Int>()
+            var frontier = directTeams
+            var depth = 0
+            while (frontier.isNotEmpty() && depth <= TeamHierarchy.MAX_DEPTH) {
+                val fresh = frontier.filter { it !in distances }
+                fresh.forEach { distances[it] = depth }
+                frontier = fresh.flatMap { parentsOf[it].orEmpty() }.toSet()
+                depth++
+            }
+
+            val teamIds = distances.keys.toList()
+            val teamNames: Map<Int, String> = if (teamIds.isEmpty()) emptyMap() else TeamTable.selectAll()
                 .where { TeamTable.id inList teamIds.map { EntityID(it, TeamTable) } }
                 .associate { it[TeamTable.id].value to it[TeamTable.name] }
-            val grants = if (teams.isEmpty()) emptyList() else TeamGrantTable.selectAll()
-                .where { TeamGrantTable.teamId inList teams.keys.map { EntityID(it, TeamTable) } }
-                .map { row ->
-                    Grant(
-                        team = teams.getValue(row[TeamGrantTable.teamId].value),
-                        role = Role.valueOf(row[TeamGrantTable.role]),
-                        repository = row[TeamGrantTable.repository],
-                        pathPrefix = row[TeamGrantTable.pathPrefix],
-                    )
+            val nodesByTeam: Map<Int, List<NodeRow>> = if (teamIds.isEmpty()) emptyMap() else PermissionNodeTable.selectAll()
+                .where { (PermissionNodeTable.subjectKind eq NODE_SUBJECT_TEAM) and (PermissionNodeTable.subjectId inList teamIds) }
+                .groupBy { it[PermissionNodeTable.subjectId] }
+                .mapValues { (_, rows) -> rows.map { NodeRow(it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) } }
+            val grantsByTeam: Map<Int, List<Grant>> = if (teamIds.isEmpty()) emptyMap() else TeamGrantTable.selectAll()
+                .where { TeamGrantTable.teamId inList teamIds.map { EntityID(it, TeamTable) } }
+                .groupBy { it[TeamGrantTable.teamId].value }
+                .mapValues { (teamId, rows) ->
+                    rows.map { row ->
+                        Grant(
+                            team = teamNames.getValue(teamId),
+                            role = Role.valueOf(row[TeamGrantTable.role]),
+                            repository = row[TeamGrantTable.repository],
+                            pathPrefix = row[TeamGrantTable.pathPrefix],
+                        )
+                    }
                 }
-            val instanceAdmin = instanceRoleExists(principal.id, null) || (teams.isNotEmpty() && InstanceRoleTable.selectAll()
-                .where { InstanceRoleTable.teamId inList teams.keys.map { EntityID(it, TeamTable) } }
-                .any())
+            val instanceRoleTeams = if (teamIds.isEmpty()) emptySet() else InstanceRoleTable.selectAll()
+                .where { InstanceRoleTable.teamId inList teamIds.map { EntityID(it, TeamTable) } }
+                .map { it[InstanceRoleTable.teamId]!!.value }
+                .toSet()
+
+            val levels = mutableListOf(
+                AccessLevel(
+                    source = DecisionSource.USER,
+                    depth = 0,
+                    rules = nodeRulesOf(principal.kind.name, principal.id, principal.name) +
+                        instanceRoleRules(principal.name, instanceRoleExists(principal.id, null)),
+                    grants = emptyList(),
+                ),
+            )
+            for (level in 0..TeamHierarchy.MAX_DEPTH) {
+                val ids = distances.filterValues { it == level }.keys
+                if (ids.isEmpty() && level > 0) continue
+                levels += AccessLevel(
+                    source = if (level == 0) DecisionSource.TEAM else DecisionSource.INHERITED_TEAM,
+                    depth = level,
+                    rules = ids.flatMap { id ->
+                        val name = teamNames.getValue(id)
+                        nodesByTeam[id].orEmpty().mapNotNull { row -> sourcedRule(name, row.node, row.allowed) } +
+                            instanceRoleRules(name, id in instanceRoleTeams)
+                    },
+                    grants = ids.flatMap { grantsByTeam[it].orEmpty() },
+                )
+            }
+
             AccessSubject(
                 principalId = principal.id,
                 principalName = principal.name,
                 kind = principal.kind,
                 disabled = principal.disabled,
-                instanceAdmin = instanceAdmin,
-                grants = grants,
-                scopes = scopes,
-                teams = teams.values.sorted(),
+                levels = levels,
+                tokenRules = scopes?.let { ScopeRules.of(principal.name, it) },
+                teams = directTeams.mapNotNull { teamNames[it] }.sorted(),
             )
         }
 
     // internals
+
+    private class NodeRow(val node: String, val allowed: Boolean)
+
+    /** The node rules stored for one subject, parsed. A rule that does not parse is ignored, as it matches nothing. */
+    private fun nodeRulesOf(subjectKind: String, subjectId: Int, subject: String): List<SourcedRule> =
+        PermissionNodeTable.selectAll()
+            .where { (PermissionNodeTable.subjectKind eq subjectKind) and (PermissionNodeTable.subjectId eq subjectId) }
+            .mapNotNull { sourcedRule(subject, it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) }
+
+    private fun instanceRoleRules(subject: String, held: Boolean): List<SourcedRule> =
+        if (held) listOf(SourcedRule(subject, NodePattern.INSTANCE_ADMIN, allowed = true)) else emptyList()
+
+    private fun sourcedRule(subject: String, node: String, allowed: Boolean): SourcedRule? =
+        runCatching { NodePattern.of(node) }.getOrNull()?.let { SourcedRule(subject, it, allowed) }
 
     private fun instanceRoleExists(principalId: Int?, teamId: Int?): Boolean {
         val condition = when {

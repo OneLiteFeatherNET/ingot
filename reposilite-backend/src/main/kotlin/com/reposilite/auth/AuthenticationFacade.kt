@@ -236,7 +236,7 @@ class AuthenticationFacade(
                     routes = accessTokenFacade.getRoutes(it.identifier),
                     principal = SessionPrincipal(id = subject.principalId, kind = subject.kind.name, name = subject.principalName ?: it.name),
                     teams = subject.teams,
-                    grants = subject.grants.map { grant ->
+                    grants = subject.levels.flatMap { it.grants }.map { grant ->
                         SessionGrant(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name)
                     },
                 )
