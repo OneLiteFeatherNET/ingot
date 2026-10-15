@@ -37,7 +37,7 @@ const props = defineProps({
 const parentPath = ref('')
 const files = ref({})
 const loading = ref(true)
-const { details, client, hasPermissionTo } = useSession()
+const { details, client, hasPermissionTo, sessionReady } = useSession()
 const { applyAdjustments, countHiddenFiles } = useAdjustments()
 const { getParentPath } = useQualifier()
 
@@ -49,8 +49,11 @@ const processedFiles = computed(() => ({
 // Hidden utility files are counted here, on the listing as the server sent it.
 const hiddenCount = computed(() => countHiddenFiles(files.value.list ?? []))
 
+// A directory that does not exist cannot receive an upload, so the upload area is left out.
 const canUpload = computed(() => {
-  return props.qualifier.path.length > 1 && hasPermissionTo(`/${props.qualifier.path}`, 'route:write')
+  return props.qualifier.path.length > 1
+    && files.value.error !== 'not-found'
+    && hasPermissionTo(`/${props.qualifier.path}`, 'route:write')
 })
 
 // bumped by the retry action, so a failed listing can be requested again
@@ -58,9 +61,11 @@ const attempt = ref(0)
 const retry = () => attempt.value++
 
 watch(
-  () => [props.qualifier.watchable, details.value, attempt.value],
+  () => [props.qualifier.watchable, details.value, attempt.value, sessionReady.value],
   async () => {
-    if (details.value === null) {
+    // Until the stored session has been checked, the listing would be requested once without
+    // the session and again with it, so it waits for the answer.
+    if (!sessionReady.value) {
       return
     }
 
@@ -81,7 +86,8 @@ watch(
       .catch(error => {
         if (isStale()) return
         // simulate intermediate directory if 403 & user has access to only one directory
-        const currentRoutes = details.value.routes
+        // Anonymous browsing has no session details; the throw here used to leave `loading` set.
+        const currentRoutes = details.value?.routes
             ?.filter(route => route.path.startsWith(`/${qualifier}`))
             ?? []
 
@@ -156,6 +162,7 @@ const toggleCompactMode = () => {
         :compact-mode="fileBrowserCompactMode"
         :loading="loading"
         :hidden-count="hiddenCount"
+        :parent-path="parentPath"
         @retry="retry"
       />
       <BrowserUpload

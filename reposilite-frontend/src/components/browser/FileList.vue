@@ -26,6 +26,7 @@ import { useAdjustments } from '../../store/adjustments'
 import MdButton from '../md/MdButton.vue'
 import BrowserIcon from './BrowserIcon.vue'
 import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { property } from '../../helpers/vue-extensions'
 
 const props = defineProps({
@@ -33,8 +34,13 @@ const props = defineProps({
   files: property(Object, true),
   compactMode: property(Boolean, true),
   loading: property(Boolean, true),
-  hiddenCount: property(Number, false)
+  hiddenCount: property(Number, false),
+  parentPath: property(String, false)
 })
+
+const router = useRouter()
+// The first segment of the browsed path is the repository itself.
+const repositoryRoot = computed(() => `/${props.qualifier.path.split('/')[0]}`)
 
 const emit = defineEmits(['retry'])
 
@@ -142,6 +148,7 @@ const entryUrl = (file) =>
       :close="closeDeleteModal"
     />
     <ul
+      v-if="loading || (files.list?.length ?? 0) > 0"
       class="rounded-corner-medium bg-surface-container-low"
       :class="compactMode ? 'p-1' : 'p-2 [&>li+li]:after:absolute [&>li+li]:after:inset-x-4 [&>li+li]:after:top-0 [&>li+li]:after:h-px [&>li+li]:after:bg-outline-variant'"
     >
@@ -220,6 +227,23 @@ const entryUrl = (file) =>
         </template>
         Retry
       </MdButton>
+      <div
+        v-if="files.error === 'not-found'"
+        class="flex flex-wrap gap-2"
+      >
+        <MdButton
+          variant="tonal"
+          @click="router.push(parentPath || '/')"
+        >
+          Go to parent
+        </MdButton>
+        <MdButton
+          variant="tonal"
+          @click="router.push(repositoryRoot)"
+        >
+          Go to repository root
+        </MdButton>
+      </div>
     </section>
   </div>
 </template>

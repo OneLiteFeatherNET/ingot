@@ -21,8 +21,11 @@ import FileList from './FileList.vue'
 import { useAdjustments } from '../../store/adjustments'
 import { sessionState } from '../../store/session'
 
+const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }))
+
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ path: '/releases/net/example' })
+  useRoute: () => ({ path: '/releases/net/example' }),
+  useRouter: () => ({ push: routerPush })
 }))
 
 vi.mock('downloadjs', () => ({
@@ -67,6 +70,40 @@ const mountList = (props) =>
 
 const buttonWithText = (wrapper, text) =>
   wrapper.findAll('button').find(button => button.text() === text)
+
+describe('FileList missing directory', () => {
+  beforeEach(() => {
+    routerPush.mockClear()
+  })
+
+  it('leaves out the empty list when the directory does not exist', () => {
+    const wrapper = mountList({ files: { list: [], error: 'not-found' } })
+
+    expect(wrapper.find('ul').exists(), 'no grey box may sit above the not-found message').toBe(false)
+  })
+
+  it('offers to go to the parent directory', async () => {
+    const wrapper = mountList({ parentPath: '/releases/net', files: { list: [], error: 'not-found' } })
+
+    await buttonWithText(wrapper, 'Go to parent').trigger('click')
+
+    expect(routerPush).toHaveBeenCalledWith('/releases/net')
+  })
+
+  it('offers to go to the repository root', async () => {
+    const wrapper = mountList({ parentPath: '/releases/net', files: { list: [], error: 'not-found' } })
+
+    await buttonWithText(wrapper, 'Go to repository root').trigger('click')
+
+    expect(routerPush, 'the root is the first segment of the browsed path').toHaveBeenCalledWith('/releases')
+  })
+
+  it('offers no navigation for a failure that is not a missing directory', () => {
+    const wrapper = mountList({ files: { list: [], error: 'forbidden' } })
+
+    expect(buttonWithText(wrapper, 'Go to parent'), 'a forbidden directory is not a navigation problem').toBeUndefined()
+  })
+})
 
 describe('FileList empty state', () => {
   afterEach(() => {

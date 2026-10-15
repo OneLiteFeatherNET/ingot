@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import FileBrowserView from './FileBrowserView.vue'
+import BrowserUpload from './FileUpload.vue'
 import { sessionState } from '../../store/session'
 
 // The session store is replaced per file; each test swaps in its own client below.
@@ -24,14 +25,17 @@ vi.mock('../../store/session', async () => {
   const { ref } = await import('vue')
   const state = {
     details: ref({ routes: [] }),
-    client: ref(null)
+    client: ref(null),
+    sessionReady: ref(true),
+    canWrite: ref(false)
   }
   return {
     sessionState: state,
     useSession: () => ({
       details: state.details,
       client: state.client,
-      hasPermissionTo: () => false,
+      sessionReady: state.sessionReady,
+      hasPermissionTo: () => state.canWrite.value,
       token: ref({ name: '', secret: '' })
     })
   }
@@ -189,6 +193,83 @@ describe('FileBrowserView empty directories', () => {
     await flushPromises()
 
     expect(wrapper.text(), 'an empty directory says so').toContain('Directory is empty')
+  })
+})
+
+describe('FileBrowserView session start-up', () => {
+  beforeEach(() => {
+    sessionState.details.value = undefined
+    sessionState.sessionReady.value = true
+    sessionState.canWrite.value = false
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('does not request the listing before the stored session has been checked', async () => {
+    sessionState.sessionReady.value = false
+    const details = vi.fn(() => Promise.resolve({ data: { files: [] } }))
+    sessionState.client.value = clientWithDetails(details)
+
+    mountView()
+    await flushPromises()
+
+    expect(details, 'the answer about the session decides what the listing may show').not.toHaveBeenCalled()
+  })
+
+  it('requests the listing once when the stored session is restored', async () => {
+    sessionState.sessionReady.value = false
+    const details = vi.fn(() => Promise.resolve({ data: { files: [] } }))
+    sessionState.client.value = clientWithDetails(details)
+    mountView()
+    await flushPromises()
+
+    sessionState.details.value = { routes: [] }
+    sessionState.sessionReady.value = true
+    await flushPromises()
+
+    expect(details, 'a restored session must not cause the listing to be requested twice').toHaveBeenCalledTimes(1)
+  })
+
+  it('clears the loading state when a listing fails without a signed-in session', async () => {
+    sessionState.client.value = clientWithDetails(() => Promise.reject(httpError(404, 'Not found')))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text(), 'the failure is shown in place of the listing').toContain('Directory not found')
+    expect(wrapper.find('.skeleton-bars').exists(), 'no skeleton may stay on screen after the failure').toBe(false)
+  })
+})
+
+describe('FileBrowserView upload area', () => {
+  beforeEach(() => {
+    sessionState.details.value = { routes: [] }
+    sessionState.sessionReady.value = true
+    sessionState.canWrite.value = true
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('offers an upload for an existing directory the user may write to', async () => {
+    sessionState.client.value = clientWithDetails(() => Promise.resolve({ data: { files: [] } }))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+  })
+
+  it('hides the upload for a directory that does not exist', async () => {
+    sessionState.client.value = clientWithDetails(() => Promise.reject(httpError(404, 'Not found')))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.findComponent(BrowserUpload).exists(), 'nothing can be uploaded into a missing directory').toBe(false)
   })
 })
 
