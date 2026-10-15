@@ -435,7 +435,13 @@ class AccessTokenFacade internal constructor(
                 )
             },
             scopes = null,
+            teams = listOf(privateTeamName(name)),
         )
+    }
+
+    /** Drops the state a client may have cached for the token. Called after any change that affects authentication. */
+    fun tokenStateChanged(tokenName: String) {
+        tokenChanged(tokenName)
     }
 
     fun hasPermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission): Boolean =

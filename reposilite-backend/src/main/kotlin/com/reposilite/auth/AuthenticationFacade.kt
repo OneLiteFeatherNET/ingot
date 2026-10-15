@@ -23,6 +23,8 @@ import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.auth.api.Credentials
 import com.reposilite.auth.api.SessionDetails
+import com.reposilite.auth.api.SessionGrant
+import com.reposilite.auth.api.SessionPrincipal
 import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
@@ -213,10 +215,16 @@ class AuthenticationFacade(
     fun getSessionDetails(identifier: AccessTokenIdentifier): Result<SessionDetails, ErrorResponse> =
         accessTokenFacade.getAccessTokenById(identifier)
             ?.let {
+                val subject = accessTokenFacade.subjectOf(it.identifier)
                 SessionDetails(
                     accessToken = it,
                     permissions = accessTokenFacade.getPermissions(it.identifier),
-                    routes = accessTokenFacade.getRoutes(it.identifier)
+                    routes = accessTokenFacade.getRoutes(it.identifier),
+                    principal = SessionPrincipal(id = subject.principalId, kind = subject.kind.name, name = subject.principalName ?: it.name),
+                    teams = subject.teams,
+                    grants = subject.grants.map { grant ->
+                        SessionGrant(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name)
+                    },
                 )
             }
             ?.asSuccess()

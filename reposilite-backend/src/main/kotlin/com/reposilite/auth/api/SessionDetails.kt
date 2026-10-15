@@ -23,5 +23,22 @@ import com.reposilite.token.api.AccessTokenDto
 data class SessionDetails(
     val accessToken: AccessTokenDto,
     val permissions: Set<AccessTokenPermission>,
-    val routes: Set<Route>
+    val routes: Set<Route>,
+    val principal: SessionPrincipal? = null,
+    val teams: List<String> = emptyList(),
+    val grants: List<SessionGrant> = emptyList(),
+)
+
+/** The principal that owns the token. The id is null for temporary tokens, which have no stored principal. */
+data class SessionPrincipal(
+    val id: Int?,
+    val kind: String,
+    val name: String,
+)
+
+data class SessionGrant(
+    val team: String,
+    val repository: String?,
+    val pathPrefix: String?,
+    val role: String,
 )

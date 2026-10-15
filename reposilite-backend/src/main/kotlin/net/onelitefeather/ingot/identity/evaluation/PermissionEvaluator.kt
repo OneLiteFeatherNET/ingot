@@ -50,16 +50,20 @@ object PermissionEvaluator {
         if (subject.scopes != null && Action.READ !in subject.scopes) return false
         if (isInstanceAdmin(subject)) return true
 
-        val repository = fragment.removePrefix("/")
-        return subject.grants.any { grant ->
-            if (grant.role.legacy) {
-                val path = grant.pathPrefix ?: return@any false
-                path.startsWith(fragment, ignoreCase = true) || fragment.startsWith(path)
-            } else {
-                grant.repository == null || grant.repository == repository
-            }
-        }
+        return subject.grants.any { grantReaches(it, fragment) }
     }
+
+    /**
+     * Whether a grant reaches the repository of [fragment] at all, whatever its actions. Used by [canSee] and by the access
+     * explanation of the identity API, so both answer the same question.
+     */
+    fun grantReaches(grant: Grant, fragment: String): Boolean =
+        if (grant.role.legacy) {
+            val path = grant.pathPrefix
+            path != null && (path.startsWith(fragment, ignoreCase = true) || fragment.startsWith(path))
+        } else {
+            grant.repository == null || grant.repository == fragment.removePrefix("/")
+        }
 
     /**
      * Whether a HIDDEN repository is listed for the subject: instance admins, and principals with a grant of role READ or

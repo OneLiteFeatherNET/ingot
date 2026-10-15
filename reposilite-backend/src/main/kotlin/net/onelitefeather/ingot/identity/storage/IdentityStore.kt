@@ -436,6 +436,7 @@ class IdentityStore(
                 instanceAdmin = instanceAdmin,
                 grants = grants,
                 scopes = scopes,
+                teams = teams.values.sorted(),
             )
         }
 

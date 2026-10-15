@@ -40,6 +40,10 @@ import com.reposilite.token.infrastructure.RegenerateCommand
 import com.reposilite.token.infrastructure.RevokeCommand
 import com.reposilite.token.infrastructure.TokensCommand
 import com.reposilite.web.api.RoutingSetupEvent
+import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.identity.api.IdentityApiEndpoints
+import net.onelitefeather.ingot.identity.service.IdentityFacade
+import net.onelitefeather.ingot.identity.storage.IdentityStore
 
 @Plugin(name = "access-token", dependencies = ["configuration"])
 internal class AccessTokenPlugin : ReposilitePlugin() {
@@ -50,14 +54,27 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
     }
 
     override fun initialize(): AccessTokenFacade {
+        val entityTags = EntityTagSigner.stored(facade<ConfigurationFacade>())
         val accessTokenFacade = AccessTokenComponents(
             journalist = this,
             database = reposilite().database,
             runMigrations = parameters().runMigrations
         ).accessTokenFacade(
             extensions = extensions(),
-            entityTags = EntityTagSigner.stored(facade<ConfigurationFacade>()),
+            entityTags = entityTags,
         )
+
+        // The identity administration needs the identity tables, which exist only with a database.
+        val identityFacade = reposilite().database?.let { database ->
+            IdentityFacade(
+                store = IdentityStore(database),
+                accessTokens = accessTokenFacade,
+                entityTags = entityTags,
+                extensions = extensions(),
+                // Resolved per request, so that the repository service is only needed once the API is used.
+                visibilityOf = { repository -> facade<MavenFacade>().getRepository(repository)?.visibility?.name },
+            )
+        }
 
         // The --token configuration is re-applied on every start, so the bootstrap is not audited.
         parameters().tokens.forEach {
@@ -83,6 +100,7 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
 
         event { event: RoutingSetupEvent ->
             event.registerRoutes(AccessTokenApiEndpoints(accessTokenFacade))
+            identityFacade?.let { event.registerRoutes(IdentityApiEndpoints(it)) }
         }
 
         event { _: ReposiliteInitializeEvent ->

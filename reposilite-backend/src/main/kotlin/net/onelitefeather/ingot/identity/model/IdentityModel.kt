@@ -121,4 +121,5 @@ data class AccessSubject(
     val instanceAdmin: Boolean,
     val grants: List<Grant>,
     val scopes: Set<Action>?,
+    val teams: List<String> = emptyList(),
 )
