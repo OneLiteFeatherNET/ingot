@@ -68,7 +68,13 @@ class LoginPlugin : ReposilitePlugin() {
         }
 
         val externalAccounts = database?.let { database ->
-            ExternalAccountService(IdentityStore(database), ExternalIdentityStore(database), audit = audit, log = { message -> logger.info(message) })
+            ExternalAccountService(
+                IdentityStore(database),
+                ExternalIdentityStore(database),
+                audit = audit,
+                log = { message -> logger.info(message) },
+                warn = { message -> logger.warn(message) },
+            )
         }
 
         val loginService = database?.let { database ->

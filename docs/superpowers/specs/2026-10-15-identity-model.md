@@ -656,6 +656,9 @@ new actions are appended to `AuditAction`, so stored names keep their meaning:
 
 A refused change and a change that alters nothing record no event (open point O-7 is closed).
 
+A login provider that removes the last usable instance admin is audited with `LAST_ADMIN_REVOKED_BY_PROVIDER` (additive action,
+see 14.5): `provider` and `principal`, with the actor `system:<provider>`. Unlike the rows above, nothing is refused here.
+
 ## 9. Module and package layout
 
 No new Gradle module. All code stays in `reposilite-backend`.
@@ -1254,6 +1257,12 @@ Teams take part in synchronisation by `external_ref`: `oidc:<id>:<group>` for an
 - every `SYNC` membership of the principal in a team of the same provider prefix that is no longer matched is removed;
 - `MANUAL` memberships and memberships of other providers are never changed;
 - no team is created for an ordinary group. The operator creates the team with the ref.
+
+Last usable admin: the provider stays authoritative. When a sync revokes the admin right and no usable instance admin (7.4, with the
+rule of `AdminReachability`) is left, the revocation is still performed, and each principal that lost its admin right is reported
+with a WARN that names the way back (`start with --token name:secret to regain access`) and audited as
+`LAST_ADMIN_REVOKED_BY_PROVIDER` with `provider` and `principal`. A sync that leaves no usable admin when none existed before writes
+nothing. Ingot never refuses a directory change for this reason.
 
 Admin groups: for each name in `adminGroups`, the team with ref `<prefix><group>` is created on demand. Admin rights are never written
 to a principal. They are granted to the synchronised team through one function of the external package (`AdminRights`), which

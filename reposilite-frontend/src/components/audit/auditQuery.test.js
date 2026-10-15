@@ -216,6 +216,7 @@ describe('identity action labels', () => {
     ['TEAM_GRANTS_CHANGED', 'Team grants changed'],
     ['INSTANCE_ADMIN_GRANTED', 'Instance admin granted'],
     ['INSTANCE_ADMIN_REVOKED', 'Instance admin revoked'],
+    ['LAST_ADMIN_REVOKED_BY_PROVIDER', 'Last admin revoked by provider'],
   ])('labels %s as "%s"', (action, label) => {
     expect(actionLabel(action)).toBe(label)
     expect(ACTION_OPTIONS.find(option => option.value === action)?.label, `${action} is offered in the action picker`).toBe(label)

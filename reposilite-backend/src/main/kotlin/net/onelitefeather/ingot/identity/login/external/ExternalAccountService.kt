@@ -71,9 +71,10 @@ class ExternalAccountService internal constructor(
     private val links: ExternalIdentityStore,
     private val audit: (AuditEvent) -> Unit = {},
     log: (String) -> Unit = {},
+    warn: (String) -> Unit = {},
 ) {
 
-    private val groupSync = ExternalGroupSync(identities, log, audit)
+    private val groupSync = ExternalGroupSync(identities, log, warn, audit)
 
     /**
      * Decides the login and, when it succeeds, synchronises the teams with the groups of the login. The caller audits the

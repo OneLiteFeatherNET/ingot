@@ -52,6 +52,7 @@ export const ACTION_LABELS = {
   TEAM_GRANTS_CHANGED: 'Team grants changed',
   INSTANCE_ADMIN_GRANTED: 'Instance admin granted',
   INSTANCE_ADMIN_REVOKED: 'Instance admin revoked',
+  LAST_ADMIN_REVOKED_BY_PROVIDER: 'Last admin revoked by provider',
 }
 
 /**

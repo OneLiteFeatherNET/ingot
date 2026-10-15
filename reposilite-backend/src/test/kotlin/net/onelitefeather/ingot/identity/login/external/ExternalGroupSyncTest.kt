@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.identity.login.external
 
+import com.reposilite.audit.api.AuditAction.LAST_ADMIN_REVOKED_BY_PROVIDER
 import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.time.Instant
+import java.time.LocalDate
 
 internal class ExternalGroupSyncTest {
 
@@ -45,6 +47,8 @@ internal class ExternalGroupSyncTest {
         val accounts: ExternalAccountService,
         val alice: PrincipalRecord,
         val log: MutableList<String>,
+        /** Every warning of the sync, such as a last admin that a provider revoked. */
+        val warnings: MutableList<String>,
         /** Every audit event of the fixture, the creation of alice included. */
         val audit: MutableList<AuditEvent>,
     )
@@ -54,11 +58,18 @@ internal class ExternalGroupSyncTest {
             val identities = IdentityStore(connection.database, clock)
             identities.createPrincipal(PrincipalKind.USER, "admin", "Admin", false, clock.instant())
             val log = mutableListOf<String>()
+            val warnings = mutableListOf<String>()
             val audit = mutableListOf<AuditEvent>()
-            val accounts = ExternalAccountService(identities, ExternalIdentityStore(connection.database), audit = { audit.add(it) }, log = { log.add(it) })
+            val accounts = ExternalAccountService(
+                identities,
+                ExternalIdentityStore(connection.database),
+                audit = { audit.add(it) },
+                log = { log.add(it) },
+                warn = { warnings.add(it) },
+            )
             // Alice is linked by her first login, so the group tests start from a known user.
             val first = accounts.resolve(identity(groups = emptyList())) as Succeeded
-            block(Fixture(identities, accounts, first.principal, log, audit))
+            block(Fixture(identities, accounts, first.principal, log, warnings, audit))
         }
     }
 
@@ -200,6 +211,102 @@ internal class ExternalGroupSyncTest {
     }
 
     private fun Fixture.teamChanges() = audit.filter { it.action == TEAM_MEMBERSHIP_CHANGED }
+
+    private fun Fixture.lastAdminEvents() = audit.filter { it.action == LAST_ADMIN_REVOKED_BY_PROVIDER }
+
+    /** A persistent token that does not narrow its owner, so the owner is a usable admin while it holds the role. */
+    private fun Fixture.persistentToken(principal: PrincipalRecord) {
+        identities.createToken(
+            principalId = principal.id,
+            name = "${principal.name}-token",
+            secretHash = "not-a-real-hash",
+            scopes = null,
+            expiresAt = null,
+            createdAt = LocalDate.of(2026, 10, 15),
+            description = "",
+            nodes = null,
+        )
+    }
+
+    private fun Fixture.isInstanceAdmin(principal: PrincipalRecord) =
+        PermissionEvaluator.isInstanceAdmin(identities.loadAccess(principal, tokenNodes = null))
+
+    @Test
+    fun `a sync that revokes the last usable admin still revokes it and warns with the way back`() {
+        withFixture { fixture ->
+            // given: alice is the only usable admin, through the synchronised admin team
+            fixture.persistentToken(fixture.alice)
+            fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
+            assertThat(fixture.isInstanceAdmin(fixture.alice)).isTrue
+
+            // when: the directory takes the group away at alice's next login
+            fixture.accounts.resolve(identity(groups = emptyList(), adminGroups = emptyList()))
+
+            // then: the provider stays authoritative, and the warning names the principal and the way back
+            assertThat(fixture.isInstanceAdmin(fixture.alice)).describedAs("the revocation is performed").isFalse
+            assertThat(fixture.warnings).hasSize(1)
+            assertThat(fixture.warnings.single()).contains("oidc:corp", "alice", "start with --token name:secret to regain access")
+        }
+    }
+
+    @Test
+    fun `a revoked last admin is audited with the provider and the principal`() {
+        withFixture { fixture ->
+            fixture.persistentToken(fixture.alice)
+            fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
+
+            fixture.accounts.resolve(identity(groups = emptyList(), adminGroups = emptyList()))
+
+            val event = fixture.lastAdminEvents().single()
+            assertThat(event.actor.name).isEqualTo("system:oidc:corp")
+            assertThat(event.details).containsEntry("provider", "oidc:corp").containsEntry("principal", "alice")
+        }
+    }
+
+    @Test
+    fun `no warning while another usable admin remains after the revocation`() {
+        withFixture { fixture ->
+            val root = fixture.identities.createPrincipal(PrincipalKind.USER, "root", "Root", false, fixture.identities.now())!!
+            fixture.persistentToken(root)
+            fixture.identities.grantInstanceRole(principalId = root.id, teamId = null)
+            fixture.persistentToken(fixture.alice)
+            fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
+
+            fixture.accounts.resolve(identity(groups = emptyList(), adminGroups = emptyList()))
+
+            assertThat(fixture.isInstanceAdmin(fixture.alice)).describedAs("alice lost the right").isFalse
+            assertThat(fixture.warnings).describedAs("root is still an admin").isEmpty()
+            assertThat(fixture.lastAdminEvents()).isEmpty()
+        }
+    }
+
+    @Test
+    fun `a sync that keeps the last usable admin writes no warning`() {
+        withFixture { fixture ->
+            fixture.persistentToken(fixture.alice)
+            fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
+
+            fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
+
+            assertThat(fixture.warnings).isEmpty()
+            assertThat(fixture.lastAdminEvents()).isEmpty()
+        }
+    }
+
+    @Test
+    fun `no warning when no usable admin existed before the sync`() {
+        withFixture { fixture ->
+            // given: alice holds the admin team but has no persistent token, so no usable admin exists at all
+            fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
+
+            // when: the group is taken away
+            fixture.accounts.resolve(identity(groups = emptyList(), adminGroups = emptyList()))
+
+            // then: nothing was lost, so nothing is reported
+            assertThat(fixture.warnings).isEmpty()
+            assertThat(fixture.lastAdminEvents()).isEmpty()
+        }
+    }
 
     @Test
     fun `a membership added by the sync is audited as a team change by the provider`() {

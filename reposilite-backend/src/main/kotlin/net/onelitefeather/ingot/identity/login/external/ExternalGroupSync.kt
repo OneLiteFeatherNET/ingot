@@ -16,9 +16,11 @@
 
 package net.onelitefeather.ingot.identity.login.external
 
+import com.reposilite.audit.api.AuditAction.LAST_ADMIN_REVOKED_BY_PROVIDER
 import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
+import net.onelitefeather.ingot.identity.evaluation.AdminReachability
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.model.TeamMemberSource
 import net.onelitefeather.ingot.identity.model.TeamRecord
@@ -57,17 +59,49 @@ internal object AdminRights {
  *
  * Every membership the sync adds or removes is audited as `TEAM_MEMBERSHIP_CHANGED`, once per team, with the actor
  * `system:<provider>`. A login that changes nothing writes nothing.
+ *
+ * The provider stays authoritative. When a sync leaves no usable instance admin (see [AdminReachability]) although there was
+ * one before, the revocation is still performed, and every principal that lost its admin right is reported with a warning
+ * that names the way back in, and audited as `LAST_ADMIN_REVOKED_BY_PROVIDER`. Nothing is refused, so a directory that removes
+ * its admins is never overruled by Ingot.
  */
 internal class ExternalGroupSync(
     private val identities: IdentityStore,
     private val log: (String) -> Unit,
+    private val warn: (String) -> Unit = {},
     private val audit: (AuditEvent) -> Unit = {},
 ) {
 
     fun apply(principal: PrincipalRecord, provider: String, prefix: String, groups: Set<String>, adminGroups: Set<String>) {
+        val adminsBefore = usableAdmins()
         ensureAdminTeams(prefix, adminGroups)
         applyAdminRights(prefix, adminGroups)
         applyMemberships(principal, provider, prefix, groups)
+        reportLastAdminRevoked(provider, adminsBefore)
+    }
+
+    private fun usableAdmins(): Set<Int> =
+        AdminReachability.usableAdmins(identities.adminReachabilityInput(), identities.now())
+
+    /**
+     * When no usable admin is left after the sync, every admin of [before] lost the right in this sync: nothing else
+     * changes the rights between the two reads. A system without an admin before the sync is not reported.
+     */
+    private fun reportLastAdminRevoked(provider: String, before: Set<Int>) {
+        if (before.isEmpty() || usableAdmins().isNotEmpty()) return
+        before.mapNotNull { identities.findPrincipalById(it) }.sortedBy { it.name }.forEach { lost ->
+            warn(
+                "Provider $provider removed the last usable instance admin ${lost.name}: its synchronised admin group no longer " +
+                    "grants ingot.admin.*. Restore the group at the provider, or start with --token name:secret to regain access."
+            )
+            audit(
+                AuditEvent(
+                    action = LAST_ADMIN_REVOKED_BY_PROVIDER,
+                    actor = AuditActor.named("system:$provider", null),
+                    details = mapOf("provider" to provider, "principal" to lost.name),
+                )
+            )
+        }
     }
 
     private fun ensureAdminTeams(prefix: String, adminGroups: Set<String>) {
