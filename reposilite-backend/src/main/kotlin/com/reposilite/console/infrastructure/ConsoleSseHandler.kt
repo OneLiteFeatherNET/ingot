@@ -17,7 +17,6 @@ import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
 import panda.std.Result
 import panda.std.reactive.Reference
-import java.util.*
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -38,7 +37,17 @@ internal class ConsoleSseHandler(
     private val scheduler: ScheduledExecutorService
 ) {
 
-    internal val users: WeakHashMap<SseClient, SseSession> = WeakHashMap()
+    /** Request threads register here, close callbacks release here and the shutdown closes everything registered. */
+    private val connections = ConsoleSseRegistry<SseClient> { session ->
+        session.scheduler.cancel(false)
+        journalist.logger.info("CLI | ${session.identifier} closed connection")
+        journalist.unsubscribe(session.subscriberId)
+    }
+
+    /** Closes every live log connection. The close callbacks release them. */
+    fun closeAll() {
+        connections.snapshot().forEach(SseClient::close)
+    }
 
     @OpenApi(
         path = "/api/console/log",
@@ -55,12 +64,7 @@ internal class ConsoleSseHandler(
     )
     fun handleSseLiveLog(sse: SseClient) {
         sse.keepAlive()
-        sse.onClose {  ->
-            val session = users.remove(sse) ?: return@onClose
-            session.scheduler.cancel(false)
-            journalist.logger.info("CLI | ${session.identifier} closed connection")
-            journalist.unsubscribe(session.subscriberId)
-        }
+        sse.onClose { connections.release(sse) }
 
         authenticateContext(sse.ctx())
             .peek { identifier ->
@@ -77,7 +81,9 @@ internal class ConsoleSseHandler(
                     sse.sendComment("ping")
                 }, 5, 5, TimeUnit.SECONDS)
 
-                users[sse] = SseSession(identifier, subscriberId, watcher)
+                if (!connections.register(sse, SseSession(identifier, subscriberId, watcher)) { sse.terminated() }) {
+                    return@peek
+                }
 
                 journalist.cachedLogger.messages
                     .filter { it.key.priority >= journalist.visibleThreshold.priority }
