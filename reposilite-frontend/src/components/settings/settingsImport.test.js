@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createAjv } from '@jsonforms/core'
-import { parseSettingsFile, validateImport } from './settingsImport'
+import { parseSettingsFile, validateImport, overlayImport } from './settingsImport'
 
 const SCHEMAS = {
   maven: {
@@ -136,5 +136,35 @@ describe('validateImport', () => {
     validateImport(file, { domains: ['maven', 'frontend'], schemas: SCHEMAS, validator: VALIDATOR })
 
     expect(JSON.stringify(file)).toBe(before)
+  })
+})
+
+describe('overlayImport', () => {
+  it('keeps the draft fields that the file does not name', () => {
+    const draft = { id: 'ingot-repository', title: 'Ingot', description: 'Mirror' }
+
+    const merged = overlayImport({ frontend: { title: 'Imported' } }, { frontend: draft })
+
+    expect(merged.frontend).toEqual({ id: 'ingot-repository', title: 'Imported', description: 'Mirror' })
+  })
+
+  it('replaces a list the file names, as a whole', () => {
+    const draft = { maven: { repositories: [{ id: 'releases' }, { id: 'snapshots' }] } }
+
+    const merged = overlayImport({ maven: { repositories: [{ id: 'plugins' }] } }, draft)
+
+    expect(merged.maven.repositories).toEqual([{ id: 'plugins' }])
+  })
+
+  it('takes a domain the draft does not have as it is', () => {
+    expect(overlayImport({ frontend: { title: 'Imported' } }, {})).toEqual({ frontend: { title: 'Imported' } })
+  })
+
+  it('does not change the draft it is given', () => {
+    const draft = { frontend: { id: 'ingot-repository', title: 'Ingot' } }
+
+    overlayImport({ frontend: { title: 'Imported' } }, draft)
+
+    expect(draft.frontend.title).toBe('Ingot')
   })
 })

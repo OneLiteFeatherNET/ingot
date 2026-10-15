@@ -32,7 +32,7 @@ import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
 import { diffSettings, revertChange as revertDraftChange } from './settingsDiff'
-import { parseSettingsFile, validateImport } from './settingsImport'
+import { overlayImport, parseSettingsFile, validateImport } from './settingsImport'
 import SettingsImportErrors from './SettingsImportErrors.vue'
 import { property } from '../../helpers/vue-extensions'
 
@@ -241,8 +241,10 @@ watch(barElement, (element, previous) => {
 
 onBeforeUnmount(() => barObserver?.disconnect())
 
+/* The page reads these two variables in its stylesheet: the space for the bar, and on phones the bottom navigation under it. */
 const pageClearance = computed(() => ({
-  paddingBottom: `calc(${barClearance(barHeight.value, hasUnsavedChanges.value)}px + var(--app-bottom-bar-height, 0px) + env(safe-area-inset-bottom, 0px))`
+  '--settings-clearance': `${barClearance(barHeight.value, hasUnsavedChanges.value)}px`,
+  '--settings-nav': hasUnsavedChanges.value ? 'var(--app-bottom-bar-height, 0px)' : '0px'
 }))
 
 const save = () => store.saveConfiguration()
@@ -260,6 +262,11 @@ const changes = computed(() => diffSettings(
   store.schemas.value
 ))
 const countOfChanges = computed(() => (changes.value.length > 0 ? changes.value.length : changeCount.value))
+
+// The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
+watch(() => changes.value.length, (count) => {
+  if (count === 0) reviewOpen.value = false
+})
 
 const revertChange = (change) => {
   const domain = change.domain
@@ -296,7 +303,7 @@ const importFile = async (event) => {
     importErrors.value = [{ domain: '', label: '', message: parsed.error }]
     return
   }
-  const result = validateImport(parsed.value, {
+  const result = validateImport(overlayImport(parsed.value, configurations.value), {
     domains: domains.value,
     schemas: store.schemas.value,
     validator: store.configurationValidator
@@ -328,7 +335,7 @@ watch(
 
 <template>
   <div
-    class="settings-view container mx-auto pt-7 pb-4"
+    class="settings-view container mx-auto pt-7"
     :style="pageClearance"
   >
     <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-end md:justify-between">
@@ -511,5 +518,18 @@ watch(
  */
 .settings-view input:not([type="checkbox"]):read-only {
   @apply bg-surface-container text-on-surface-variant;
+}
+
+/*
+ * The bottom padding keeps the last card clear of the unsaved-changes bar. On phones the bar sits above
+ * the bottom navigation, so that height is added too; the variables are set only while the bar is shown.
+ */
+.settings-view {
+  padding-bottom: calc(1rem + var(--settings-clearance, 0px));
+}
+@media (max-width: 599px) {
+  .settings-view {
+    padding-bottom: calc(1rem + var(--settings-clearance, 0px) + var(--settings-nav, 0px) + env(safe-area-inset-bottom, 0px));
+  }
 }
 </style>

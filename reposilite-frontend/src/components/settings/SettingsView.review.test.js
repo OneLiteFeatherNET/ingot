@@ -147,6 +147,19 @@ describe('SettingsView review', () => {
     expect(writes, 'the revert writes nothing to the server').toEqual([])
   })
 
+  it('closes the review once the last change is reverted', async () => {
+    const store = await mountView()
+    store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE', redeployment: false })
+    await flushPromises()
+    await countButton().trigger('click')
+    await flushPromises()
+
+    sheet().querySelector('[aria-label="Revert Visibility"]').click()
+    await flushPromises()
+
+    expect(sheet(), 'nothing is left to review, so the sheet is closed').toBeNull()
+  })
+
   it('discards all changes from the review and closes it', async () => {
     const store = await mountView()
     editBothRepositories(store)

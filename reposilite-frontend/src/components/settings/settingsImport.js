@@ -39,6 +39,18 @@ export const parseSettingsFile = (text) => {
   return { ok: true, value }
 }
 
+/*
+ * The file laid over the draft. A domain the file names keeps the draft's fields that the file leaves
+ * out, so a file with one field changed does not drop the others. A field the file does name, a list
+ * for instance, is taken as the file gives it. The draft is not changed.
+ */
+export const overlayImport = (file, draft) => Object.fromEntries(
+  Object.entries(file).map(([domain, values]) => [
+    domain,
+    isPlainObject(values) && isPlainObject(draft?.[domain]) ? { ...JSON.parse(JSON.stringify(draft[domain])), ...values } : values
+  ])
+)
+
 const titleOf = (schema, key) => schema?.title ?? humanize(key)
 
 /*

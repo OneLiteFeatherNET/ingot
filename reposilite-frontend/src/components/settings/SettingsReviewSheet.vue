@@ -76,7 +76,8 @@ const revertLabelOf = (change) => {
     :model-value="open"
     teleport-to="body"
     :overlay-style="SCRIM_STYLE"
-    class="flex min-h-full items-stretch justify-end max-[839px]:items-stretch"
+    class="flex"
+    content-class="flex min-h-full w-full justify-end"
     @update:model-value="emit('update:open', $event)"
   >
     <div
@@ -159,7 +160,7 @@ const revertLabelOf = (change) => {
                 <MdButton
                   variant="text"
                   type="button"
-                  class="shrink-0"
+                  class="shrink-0 self-start sm:self-auto"
                   :aria-label="revertLabelOf(change)"
                   @click="emit('revert', change)"
                 >
