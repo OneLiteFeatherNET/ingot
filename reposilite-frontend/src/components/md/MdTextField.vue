@@ -195,8 +195,8 @@ const helperClass = computed(() => {
         v-if="$slots['trailing-icon']"
         class="absolute right-3 top-1/2 -translate-y-1/2 [&>svg]:size-6"
         :class="iconClass"
-        aria-hidden="true"
       >
+        <!-- Not aria-hidden: the trailing slot may hold an interactive button, such as a visibility toggle. -->
         <slot name="trailing-icon" />
       </span>
     </div>
