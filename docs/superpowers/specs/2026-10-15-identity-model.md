@@ -115,7 +115,7 @@ principal_token
   secret_hash    varchar(512)       BCrypt, same encoding as access_token.secret
   scopes         text null          JSON array of actions, null = no narrowing (legacy tokens)
   expires_at     timestamp null
-  last_used_at   timestamp null     written at most once per minute per token
+  last_used_at   timestamp null     written at most once per five minutes per token
   last_used_ip   varchar(64) null
   created_at     date
   description    text
@@ -416,7 +416,7 @@ failed.
 PrincipalDto       { id, kind, name, displayName, disabled, createdAt, lastSeenAt }
 PrincipalDetailDto { ...PrincipalDto, teams: [name], instanceRole: Boolean,
                      tokens: [TokenDto] }
-TokenDto           { name, description, createdAt, expiresAt, scopes: [Action] | null, lastUsedAt }
+TokenDto           { name, description, createdAt, expiresAt, scopes: [Action] | null, lastUsedAt, lastUsedIp }
 ```
 
 ### 7.2 Tokens of a principal
@@ -454,7 +454,26 @@ Rules: `role` in a grant is `READ`, `DEPLOY`, `MAINTAIN` or `ADMIN` (400 for leg
 slashes removed); a team named `machine:*` is 409 for create and 404 for the team endpoints;
 members must be existing principals; a disabled principal can be a member.
 
-### 7.4 Effective access on a repository
+### 7.4 Instance role
+
+| Method | Path                                                | Body / result                                                  |
+|--------|-----------------------------------------------------|----------------------------------------------------------------|
+| PUT    | `/api/identity/principals/{name}/instance-admin`    | no body -> `PrincipalDetailDto` with `ETag`; granting twice changes nothing |
+| DELETE | `/api/identity/principals/{name}/instance-admin`    | no body -> `PrincipalDetailDto` with `ETag`                    |
+| PUT    | `/api/identity/teams/{name}/instance-admin`         | no body -> `TeamDetailDto` with `ETag`                         |
+| DELETE | `/api/identity/teams/{name}/instance-admin`         | no body -> `TeamDetailDto` with `ETag`                         |
+
+All four accept `If-Match`. The instance role of a principal reported in `PrincipalDetailDto.instanceRole` is
+the direct role; an admin that holds the role through a team shows in `teams` instead.
+
+**Last usable instance admin.** A removal that leaves no usable instance admin answers 409 with a message that
+names the rule. A usable admin is an enabled principal with an unexpired persistent token that holds the role,
+directly or through a team it is a member of. Temporary `--token` admins are not persistent and never count. The
+same rule guards every change that would remove an admin as a side effect: deleting or disabling the principal,
+deleting the team, deleting the token, and replacing team members so that a team admin loses its membership. A
+change is refused only when a usable admin exists before it.
+
+### 7.5 Effective access on a repository
 
 `GET /api/identity/repositories/{repository}/access`
 
@@ -492,8 +511,15 @@ credentials`, as for a wrong secret, so the response does not reveal the state).
 ### 8.2 Last-used tracking
 
 `principal_token.last_used_at` and `last_used_ip` and `principal.last_seen_at` are written on
-successful authentication, at most once per minute per token (the throttle compares with the
-injected clock). They are informational in phase 1.
+successful authentication, including an authentication answered from the credential cache. A
+failed authentication writes nothing, and a failure to write never fails the authentication.
+Writes happen at most once per five minutes for each token and for each principal. An in-memory
+guard keeps the hot path free of writes; the database has the final word through a conditional
+UPDATE that writes only when the stored time is at least five minutes old, so instances sharing
+one database cannot write more often, and cannot move a stored time backwards. The clock is
+injected. The values are exposed as `lastUsedAt` and `lastUsedIp` on token DTOs (identity API
+and `/api/tokens` details) and as `lastSeenAt` on principal DTOs. They are informational: no
+authorization decision reads them. Reads never change an entity tag.
 
 ### 8.3 Private teams
 
@@ -504,9 +530,23 @@ it. Deleting the principal deletes the private team.
 
 ### 8.4 Audit
 
-Changes made through the identity admin API emit audit events. Phase 1 uses the existing
-token audit actions for token changes (`TOKEN_CREATED`, `TOKEN_DELETED`,
-`TOKEN_ROUTES_CHANGED`) and adds no new audit action for principal and team changes (open point O-7).
+Changes made through the identity admin API emit audit events through the existing audit module.
+Token creation and deletion keep their existing actions (`TOKEN_CREATED`, `TOKEN_DELETED`). The
+new actions are appended to `AuditAction`, so stored names keep their meaning:
+
+| Change                                              | Action                                  | Details (names and changed fields, no secrets)        |
+|-----------------------------------------------------|-----------------------------------------|-------------------------------------------------------|
+| principal created                                   | `PRINCIPAL_CREATED`                     | `principal`, `kind`                                   |
+| principal updated (display name, or re-enabled)     | `PRINCIPAL_UPDATED`                     | `principal`, `changed` (field names)                  |
+| principal disabled                                  | `PRINCIPAL_DISABLED`                    | `principal`                                           |
+| principal deleted                                   | `PRINCIPAL_DELETED`                     | `principal`, `kind`, `tokens` (token names)           |
+| team created / updated / deleted                    | `TEAM_CREATED` / `TEAM_UPDATED` / `TEAM_DELETED` | `team`, and `changed` for updates           |
+| team members replaced                               | `TEAM_MEMBERSHIP_CHANGED`               | `team`, `added`, `removed` (principal names)          |
+| team grants replaced                                | `TEAM_GRANTS_CHANGED`                   | `team`, `added`, `removed` (`repository=... path=... role=...`) |
+| instance role granted / revoked                     | `INSTANCE_ADMIN_GRANTED` / `INSTANCE_ADMIN_REVOKED` | `principal` or `team`                     |
+| principal token created / deleted                   | `TOKEN_CREATED` / `TOKEN_DELETED`       | `token`, `principal`                                  |
+
+A refused change and a change that alters nothing record no event (open point O-7 is closed).
 
 ## 9. Module and package layout
 
@@ -569,32 +609,37 @@ Required:
 - O-4 Repository-scoped cleanup endpoints stay manager-only; `MAINTAIN` does not yet unlock them.
 - O-5 Dashboard UI for principals, teams and grants: separate phase, after the MD3 work.
 - O-6 Downgrade: after migration the old version reads the frozen pre-migration state (4.6).
-- O-7 Audit actions for principal and team changes are not added in phase 1.
+- O-7 Audit actions for principal and team changes: closed in phase 1b (section 8.4).
 - O-8 Scope names are the action names. A UI for scopes is not part of phase 1.
 - O-9 `expiresAt` and `disabled` for USER principals are stored but not used before login
   providers exist.
 
 ## 12. Implementation status and deviations (phase 1)
 
-Recorded after the implementation, so that the spec and the code agree.
+Recorded after the implementation, so that the spec and the code agree. Phase 1b (branch
+`feat/identity-phase1b`) closed the gaps the phase-1 record listed: instance role assignment (section 7.4),
+last-used tracking (section 8.2), identity audit events (section 8.4) and HTTP tests of the admin API.
 
 - Sections 3 to 7 are implemented as written, with these exceptions:
   - Create and delete responses use HTTP 200 with a body, like the token API. The spec's 201 and 204 are not used.
-  - No endpoint assigns the instance role to a team or to a principal. The role is read in the
-    DTOs (`instanceRole`) and reaches principals through the legacy manager token permission. Assignment
-    through the API is open point O-10.
-  - `last_used_at`, `last_used_ip` and `principal.last_seen_at` are not written yet (section 8.2). The
-    columns exist. The entity tags leave them out, so a read never changes a tag.
-  - Identity admin changes do not emit audit events, except token creation and deletion, which reuse the
-    token audit actions. Open point O-7 stands.
+  - The instance role is assigned and removed through the endpoints of section 7.4. A principal's
+    `instanceRole` reports its direct role only. Phase 1b keeps the legacy manager token permission
+    working: it still grants the same role, and the last-admin rule of section 7.4 applies to the identity
+    endpoints only. Removing the last admin through the legacy `/api/tokens` permissions or the console is
+    not guarded in phase 1b.
+  - `last_used_at`, `last_used_ip` and `principal.last_seen_at` are written on successful authentication,
+    throttled to five minutes (section 8.2), and exposed as additive fields.
+  - Identity admin changes emit audit events (section 8.4).
+- The migration lives in `LegacyAccessTokenMigration`, and its version constant is
+  `MIGRATION_ACCESS_TOKENS = "001-access-tokens"`. The separate `IdentityMigrations.kt` of section 9 was not created.
 - The migration lives in `LegacyAccessTokenMigration`, and its version constant is
   `MIGRATION_ACCESS_TOKENS = "001-access-tokens"`. The separate `IdentityMigrations.kt` of section 9 was not created.
 - A machine principal created through the identity API gets its private team at once, as a machine principal
   created by a legacy token does (section 8.3).
 - Section 6.4 is amended in this document: a legacy token whose name clashes case-insensitively with a
   machine principal, or with a user, is refused rather than attached.
-- Tests cover the store, the migration, the evaluator, the legacy parity matrix, the `--token` pin and the
-  identity service. The HTTP layer has no direct test in phase 1. It is covered by the service tests and by
-  compilation.
-- O-10 Instance role assignment for principals and teams through the identity API: phase 2, together with the
-  login providers that make USER principals usable.
+- Tests cover the store, the migration, the evaluator, the legacy parity matrix, the `--token` pin, the
+  identity service, the instance role rules, the last-use throttle and the audit events (unit tests), and the
+  identity admin API over HTTP (`IdentityAdminIntegrationTest`, local variant).
+- O-10 Instance role assignment through the identity API: closed in phase 1b (section 7.4). Assigning the role
+  to a USER principal is still only meaningful once the login providers of phase 2 exist.
