@@ -73,7 +73,8 @@ const labelId = computed(() => `${props.id}-label`)
         :aria-labelledby="labelId"
         @update:model-value="emit('update:modelValue', $event)"
       >
-        {{ modelValue ? 'Enabled' : 'Disabled' }}
+        <!-- On phones the state word would squeeze the description, and the switch already announces its state. -->
+        <span class="max-[599px]:sr-only">{{ modelValue ? 'Enabled' : 'Disabled' }}</span>
       </MdSwitch>
     </div>
     <p
