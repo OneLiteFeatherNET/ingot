@@ -24,10 +24,21 @@ const mountOption = (props = {}) => mount(SegmentedOption, {
 })
 
 describe('SegmentedOption', () => {
-  it('reports the selected state through aria-pressed', () => {
-    const wrapper = mountOption({ on: true })
+  it('is a radio that reports the selected state through aria-checked', () => {
+    const selected = mountOption({ on: true })
+    const unselected = mountOption({ on: false })
 
-    expect(wrapper.find('button').attributes('aria-pressed')).toBe('true')
+    expect(selected.find('button').attributes('role')).toBe('radio')
+    expect(selected.find('button').attributes('aria-checked'), 'the selected segment is checked').toBe('true')
+    expect(unselected.find('button').attributes('aria-checked'), 'an unselected segment is not').toBe('false')
+  })
+
+  it('takes the tab stop only when selected, so arrow keys move within the group', () => {
+    const selected = mountOption({ on: true })
+    const unselected = mountOption({ on: false })
+
+    expect(selected.find('button').attributes('tabindex')).toBe('0')
+    expect(unselected.find('button').attributes('tabindex')).toBe('-1')
   })
 
   it('shows the check mark only on the selected segment', () => {
@@ -44,9 +55,23 @@ describe('SegmentedOption', () => {
     expect(wrapper.find('button').classes(), 'the segment height is h-10').toContain('h-10')
   })
 
-  it('extends its hit area to the 48px minimum with an after pseudo element', () => {
-    const wrapper = mountOption()
+  it('shares the track equally from sm up and never shrinks below its label on a narrow screen', () => {
+    const classes = mountOption().find('button').classes()
 
-    expect(wrapper.find('button').classes(), 'the ::after target grows the box by 4px above and below').toContain('after:-inset-y-1')
+    expect(classes, 'equal share of the track').toEqual(expect.arrayContaining(['flex-1', 'basis-0']))
+    expect(classes, 'a narrow row wraps rather than squeezing the label').toContain('min-w-max')
+    expect(classes, 'one row from sm up shares the track equally').toContain('sm:min-w-0')
+  })
+
+  it('fills the selected segment inside the track, with no ring of its own', () => {
+    const selected = mountOption({ on: true }).find('button').classes()
+
+    expect(selected).toContain('bg-secondary-container')
+    expect(selected, 'no rounding of its own, the track clips it').not.toContain('rounded-l-corner-full')
+    expect(selected, 'no outline ring on the selected segment').not.toContain('ring-2')
+  })
+
+  it('draws the focus ring inset and for keyboard focus only', () => {
+    expect(mountOption().find('button').classes()).toContain('md-focus-ring-inset')
   })
 })
