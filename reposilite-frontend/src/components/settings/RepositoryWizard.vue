@@ -25,6 +25,7 @@ import usePlaceholders from '../../store/placeholders'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdRadio from '../md/MdRadio.vue'
 import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
 import CopiedIcon from '../icons/CopiedIcon.vue'
@@ -363,24 +364,20 @@ const onModalUpdate = (open) => {
             <legend class="pb-2 md-title-small text-on-surface">
               Who can read it
             </legend>
-            <label
+            <MdRadio
               v-for="option in VISIBILITY_OPTIONS"
               :key="option.value"
-              class="md-state-layer relative flex cursor-pointer items-start gap-3 rounded-corner-medium border p-3"
+              v-model="draft.basics.visibility"
+              name="visibility"
+              :value="option.value"
+              class="rounded-corner-medium border p-3"
               :class="draft.basics.visibility === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
             >
-              <input
-                v-model="draft.basics.visibility"
-                type="radio"
-                name="visibility"
-                :value="option.value"
-                class="mt-1 size-4 shrink-0 accent-primary"
-              >
               <span class="flex min-w-0 flex-col gap-0.5">
                 <span class="md-title-small">{{ option.label }}</span>
                 <span class="md-body-medium">{{ option.who }}</span>
               </span>
-            </label>
+            </MdRadio>
             <p
               v-if="shownErrors.visibility"
               class="md-body-small text-error"
@@ -415,24 +412,20 @@ const onModalUpdate = (open) => {
             <legend class="pb-2 md-title-small text-on-surface">
               Where the files are kept
             </legend>
-            <label
+            <MdRadio
               v-for="option in STORAGE_OPTIONS"
               :key="option.value"
-              class="md-state-layer relative flex cursor-pointer items-start gap-3 rounded-corner-medium border p-3"
+              v-model="draft.storage.kind"
+              name="storage-kind"
+              :value="option.value"
+              class="rounded-corner-medium border p-3"
               :class="draft.storage.kind === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
             >
-              <input
-                v-model="draft.storage.kind"
-                type="radio"
-                name="storage-kind"
-                :value="option.value"
-                class="mt-1 size-4 shrink-0 accent-primary"
-              >
               <span class="flex min-w-0 flex-col gap-0.5">
                 <span class="md-title-small">{{ option.label }}</span>
                 <span class="md-body-medium">{{ option.who }}</span>
               </span>
-            </label>
+            </MdRadio>
           </fieldset>
 
           <MdTextField
@@ -503,24 +496,20 @@ const onModalUpdate = (open) => {
             <legend class="pb-2 md-title-small text-on-surface">
               Who gets access to this repository
             </legend>
-            <label
+            <MdRadio
               v-for="option in ACCESS_MODES"
               :key="option.value"
-              class="md-state-layer relative flex cursor-pointer items-start gap-3 rounded-corner-medium border p-3"
+              v-model="draft.access.mode"
+              name="access-mode"
+              :value="option.value"
+              class="rounded-corner-medium border p-3"
               :class="draft.access.mode === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
             >
-              <input
-                v-model="draft.access.mode"
-                type="radio"
-                name="access-mode"
-                :value="option.value"
-                class="mt-1 size-4 shrink-0 accent-primary"
-              >
               <span class="flex min-w-0 flex-col gap-0.5">
                 <span class="md-title-small">{{ option.label }}</span>
                 <span class="md-body-medium">{{ option.who }}</span>
               </span>
-            </label>
+            </MdRadio>
           </fieldset>
 
           <div
