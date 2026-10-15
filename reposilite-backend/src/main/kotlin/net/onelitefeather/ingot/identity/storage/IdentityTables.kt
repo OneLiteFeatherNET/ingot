@@ -116,6 +116,17 @@ object IdentityMigrationTable : Table("identity_migration") {
 }
 
 /**
+ * One row per legacy access token that has been copied into the identity tables, keyed by the legacy id. It is never
+ * deleted: a token revoked in the new version must not come back when the legacy row is still there, which it always is.
+ */
+object IdentityLegacyImportTable : Table("identity_legacy_import") {
+    val legacyId = integer("legacy_access_token_id")
+    val importedAt = timestamp("imported_at")
+
+    override val primaryKey = PrimaryKey(legacyId)
+}
+
+/**
  * Every identity table, parents before children, in the order they are created. The login tables are part of the identity
  * schema too: a principal's password and sessions are removed with the principal, which needs them to exist wherever the
  * identity store does, not only where the login plugin runs.
@@ -135,4 +146,5 @@ internal val IDENTITY_TABLES: Array<Table> = arrayOf(
     LoginSetupMarkerTable,
     ExternalIdentityTable,
     IdentityMigrationTable,
+    IdentityLegacyImportTable,
 )

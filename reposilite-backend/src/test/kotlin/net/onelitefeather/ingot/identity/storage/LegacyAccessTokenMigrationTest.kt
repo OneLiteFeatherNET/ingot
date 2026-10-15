@@ -210,6 +210,71 @@ internal class LegacyAccessTokenMigrationTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = ["sqlite --temporary", "h2 --temporary"])
+    fun `a legacy token written after the migration is migrated by the next start`(databaseConfiguration: String) {
+        withLegacyDatabase(databaseConfiguration) { database ->
+            // given: a migrated database, and an older Reposilite that wrote one more token into the legacy tables
+            seedLegacyTokens(database)
+            LegacyAccessTokenMigration(database, journalist).migrate()
+            SqlAccessTokenRepository(database, journalist, emptyArray())
+                .saveAccessToken(AccessToken(name = "late-bot", encryptedSecret = "hash-late", createdAt = LocalDate.of(2025, 4, 1)))
+
+            // when: the next start runs the migration again
+            val outcome = LegacyAccessTokenMigration(database, journalist).migrate()
+
+            // then: the late token is a machine principal and keeps its secret, instead of being silently unusable
+            assertThat(outcome).describedAs("a legacy row without an identity twin is work for the next start").isEqualTo(MIGRATED)
+            val store = IdentityStore(database, clock)
+            assertThat(store.findPrincipal("late-bot")?.kind?.name).describedAs("principal of the late token").isEqualTo("MACHINE")
+            assertThat(store.findToken("late-bot")?.secretHash).describedAs("secret of the late token").isEqualTo("hash-late")
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["sqlite --temporary", "h2 --temporary"])
+    fun `a token revoked after the migration does not come back on the next start`(databaseConfiguration: String) {
+        withLegacyDatabase(databaseConfiguration) { database ->
+            // given: a migrated database in which the new version has revoked a token that still exists in the legacy tables
+            seedLegacyTokens(database)
+            LegacyAccessTokenMigration(database, journalist).migrate()
+            val repository = IdentityAccessTokenRepository(IdentityStore(database, clock))
+            repository.deleteAccessToken(repository.findAccessTokenByName("ci-bot")!!.identifier)
+
+            // when: the next start runs the migration again
+            LegacyAccessTokenMigration(database, journalist).migrate()
+
+            // then: the revoked token is not resurrected from its legacy row
+            assertThat(IdentityStore(database, clock).findToken("ci-bot"))
+                .describedAs("ci-bot after a second migration run")
+                .isNull()
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["sqlite --temporary", "h2 --temporary"])
+    fun `a late legacy token whose identifier is taken keeps its name and gets an identifier of its own`(databaseConfiguration: String) {
+        withLegacyDatabase(databaseConfiguration) { database ->
+            // given: a migrated database where the new version created a token with the identifier the old one will use next
+            seedLegacyTokens(database)
+            LegacyAccessTokenMigration(database, journalist).migrate()
+            val fresh = IdentityAccessTokenRepository(IdentityStore(database, clock))
+                .saveAccessToken(AccessToken(name = "fresh", encryptedSecret = "hash-fresh"))
+            SqlAccessTokenRepository(database, journalist, emptyArray())
+                .saveAccessToken(AccessToken(name = "late-bot", encryptedSecret = "hash-late", createdAt = LocalDate.of(2025, 4, 1)))
+
+            // when: the next start runs the migration again
+            val outcome = LegacyAccessTokenMigration(database, journalist).migrate()
+
+            // then: both tokens exist, the late one keeps its secret, and neither identifier changed
+            val store = IdentityStore(database, clock)
+            assertThat(outcome).isEqualTo(MIGRATED)
+            assertThat(store.findToken("late-bot")?.secretHash).describedAs("secret of the late token").isEqualTo("hash-late")
+            assertThat(store.findToken("fresh")?.id).describedAs("identifier of the token created in the new version").isEqualTo(fresh.identifier.value)
+            assertThat(store.findToken("late-bot")?.id).describedAs("identifier of the late token").isNotEqualTo(fresh.identifier.value)
+        }
+    }
+
     private fun withLegacyDatabase(databaseConfiguration: String, block: (Database) -> Unit) {
         DatabaseConnectionFactory.createConnection(workingDirectory, databaseConfiguration, 1).use { connection ->
             block(connection.database)
