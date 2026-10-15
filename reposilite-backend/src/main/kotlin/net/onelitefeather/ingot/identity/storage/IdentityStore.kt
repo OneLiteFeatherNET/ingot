@@ -422,6 +422,7 @@ class IdentityStore(
         expiresAt: Instant?,
         createdAt: LocalDate,
         description: String,
+        nodes: List<NodeRule>? = scopes?.let { ScopeRules.nodesOf(it) },
     ): TokenRecord? {
         if (findToken(name) != null) return null
         return insertUnique {
@@ -430,7 +431,7 @@ class IdentityStore(
                 it[PrincipalTokenTable.name] = name
                 it[PrincipalTokenTable.secretHash] = secretHash
                 it[PrincipalTokenTable.scopes] = encodeScopes(scopes)
-                it[PrincipalTokenTable.nodes] = encodeNodes(scopes?.let { ScopeRules.nodesOf(it) })
+                it[PrincipalTokenTable.nodes] = encodeNodes(nodes)
                 it[PrincipalTokenTable.expiresAt] = expiresAt
                 it[PrincipalTokenTable.createdAt] = createdAt
                 it[PrincipalTokenTable.description] = description

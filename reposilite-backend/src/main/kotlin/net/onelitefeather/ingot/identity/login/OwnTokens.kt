@@ -16,6 +16,11 @@
 
 package net.onelitefeather.ingot.identity.login
 
+import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.evaluation.NodeRules
+import net.onelitefeather.ingot.identity.evaluation.ScopeRules
+import net.onelitefeather.ingot.identity.model.NodeRule
+
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
@@ -73,6 +78,12 @@ class OwnTokens internal constructor(
                     ?: return OwnTokenOutcome.Invalid("Unknown scope '$value', supported: ${Action.entries.joinToString { it.name }}")
             }.toSet()
         }
+        val nodes = request.nodes?.let { raw ->
+            if (raw.isEmpty()) return OwnTokenOutcome.Invalid("Nodes cannot be empty, omit them for an unrestricted token")
+            val rules = raw.map { NodeRule(it.node, it.allowed) }
+            NodeRules.problemsOf(rules).takeIf { it.isNotEmpty() }?.let { return OwnTokenOutcome.Invalid("Invalid permission nodes: ${it.joinToString("; ")}") }
+            rules
+        }
         if (identities.findToken(name) != null) {
             return OwnTokenOutcome.NameTaken
         }
@@ -84,6 +95,7 @@ class OwnTokens internal constructor(
             name = name,
             secretHash = "",
             scopes = scopes,
+            nodes = nodes ?: scopes?.let { ScopeRules.nodesOf(it) },
             expiresAt = request.expiresAt,
             createdAt = LocalDate.now(clock),
             description = request.description.orEmpty(),
@@ -139,6 +151,7 @@ class OwnTokens internal constructor(
         createdAt = createdAt,
         expiresAt = expiresAt,
         scopes = scopes?.map { it.name },
+        nodes = nodes?.map { NodeDto(it.node, it.allowed) },
         lastUsedAt = lastUsedAt,
         lastUsedIp = lastUsedIp,
     )

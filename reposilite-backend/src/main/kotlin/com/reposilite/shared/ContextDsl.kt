@@ -83,9 +83,9 @@ class ContextDsl<R>(
     /**
      * Request was created with manager access token
      */
-    fun managerOnly(block: AccessTokenDto.() -> Unit) {
+    fun managerOnly(area: String? = null, block: AccessTokenDto.() -> Unit) {
         authenticated {
-            isManager()
+            (if (area == null) isManager() else isAdminArea(area))
                 .peek { block(this) }
                 .onError { response = it.asError() }
         }
@@ -113,6 +113,15 @@ class ContextDsl<R>(
                     )
                     .mapToUnit()
             }
+
+    /** Whether the token may administer [area], through the node ingot.admin.<area>. */
+    fun isAdminArea(area: String): Result<Unit, ErrorResponse> =
+        authenticationResult.value
+            .filter(
+                { accessTokenFacade.hasAdminArea(it.identifier, area) },
+                { FORBIDDEN.toErrorResponse("Only instance admins with the $area area can access this endpoint") }
+            )
+            .mapToUnit()
 
     fun isManager(): Result<Unit, ErrorResponse> =
         authenticationResult.value

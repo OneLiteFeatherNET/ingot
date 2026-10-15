@@ -71,6 +71,7 @@ data class TokenDto(
     val scopes: List<String>?,
     val lastUsedAt: Instant?,
     val lastUsedIp: String?,
+    val nodes: List<NodeDto>? = null,
 )
 
 /** The secret is returned once, on creation. It is never stored in clear and never shown again. */
@@ -176,6 +177,7 @@ data class CreateTokenRequest(
     val description: String? = null,
     val expiresAt: Instant? = null,
     val scopes: List<String>? = null,
+    val nodes: List<NodeDto>? = null,
     val secret: String? = null,
 )
 

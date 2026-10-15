@@ -508,6 +508,10 @@ class AccessTokenFacade internal constructor(
     fun hasAccessTo(identifier: AccessTokenIdentifier, toPath: String, action: Action): Boolean =
         PermissionEvaluator.allows(subjectOf(identifier), AccessRequest(toPath, action))
 
+    /** Whether the owner of the token may administer [area], the node `ingot.admin.<area>`, token narrowing included. */
+    fun hasAdminArea(identifier: AccessTokenIdentifier, area: String): Boolean =
+        PermissionEvaluator.decide(subjectOf(identifier), NodePattern.admin(area)).allowed
+
     fun canSee(identifier: AccessTokenIdentifier, pathFragment: String): Boolean =
         PermissionEvaluator.canSee(subjectOf(identifier), pathFragment)
 

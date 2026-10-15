@@ -16,6 +16,8 @@
 
 package net.onelitefeather.ingot.identity.login.api
 
+import net.onelitefeather.ingot.identity.api.NodeDto
+
 import io.javalin.openapi.JsonSchema
 import java.time.Instant
 
@@ -85,6 +87,7 @@ data class SelfTokenRequest(
     val description: String? = null,
     val expiresAt: Instant? = null,
     val scopes: List<String>? = null,
+    val nodes: List<NodeDto>? = null,
 )
 
 @JsonSchema(requireNonNulls = false)

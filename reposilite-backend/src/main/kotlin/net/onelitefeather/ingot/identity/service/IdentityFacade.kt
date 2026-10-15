@@ -73,6 +73,7 @@ import net.onelitefeather.ingot.identity.api.PermissionCheckDto
 import net.onelitefeather.ingot.identity.api.TemplateDto
 import net.onelitefeather.ingot.identity.api.TemplatesDto
 import net.onelitefeather.ingot.identity.evaluation.AdminReachability
+import net.onelitefeather.ingot.identity.evaluation.ScopeRules
 import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import net.onelitefeather.ingot.identity.evaluation.TeamHierarchy
@@ -213,6 +214,12 @@ class IdentityFacade(
             if (names.isEmpty()) return badRequestError("Scopes cannot be empty, omit them for an unrestricted token")
             names.map { parseAction(it) ?: return badRequestError("Unknown scope '$it', supported: ${Action.entries.joinToString { action -> action.name }}") }.toSet()
         }
+        val parsedNodes = request.nodes?.let { raw ->
+            if (raw.isEmpty()) return badRequestError("Nodes cannot be empty, omit them for an unrestricted token")
+            parseNodes(raw)
+        }
+        if (parsedNodes != null && parsedNodes.isErr) return badRequestError(parsedNodes.error.message)
+        val tokenNodes = parsedNodes?.orNull() ?: scopes?.let { ScopeRules.nodesOf(it) }
         val givenSecret = request.secret
         if (givenSecret != null && givenSecret.isBlank()) return badRequestError("Secret cannot be blank")
 
@@ -227,6 +234,7 @@ class IdentityFacade(
             expiresAt = request.expiresAt,
             createdAt = LocalDate.now(clock),
             description = request.description.orEmpty(),
+            nodes = tokenNodes,
         ) ?: return errorResponse(CONFLICT, "Token '$name' already exists")
 
         val secret = givenSecret ?: BearerSecret.create(created.id)
@@ -881,6 +889,7 @@ class IdentityFacade(
         createdAt = createdAt,
         expiresAt = expiresAt,
         scopes = scopes?.map { it.name }?.sorted(),
+        nodes = nodes?.map { NodeDto(it.node, it.allowed) },
         lastUsedAt = lastUsedAt,
         lastUsedIp = lastUsedIp,
     )
