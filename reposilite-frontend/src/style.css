@@ -93,6 +93,38 @@
 
 @layer components {
   /*
+   * The inverse corners that finish the content sheet where it meets the navigation frame (see
+   * IndexPage.vue). Each piece is a square of the corner radius with a circle of the page colour
+   * cut out of it, so the frame shows in the corner outside the arc. The circle's centre is the
+   * corner of the square that touches the sheet. The piece takes the frame colour from the role,
+   * so the runtime theme and dark mode follow without a change here.
+   */
+  .pane-corner {
+    position: absolute;
+    top: 0;
+    width: var(--md-sys-shape-corner-extra-large);
+    height: var(--md-sys-shape-corner-extra-large);
+  }
+
+  .pane-corner-start {
+    left: 0;
+    background: radial-gradient(
+      circle at 100% 100%,
+      transparent var(--md-sys-shape-corner-extra-large),
+      var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
+    );
+  }
+
+  .pane-corner-end {
+    right: 0;
+    background: radial-gradient(
+      circle at 0 100%,
+      transparent var(--md-sys-shape-corner-extra-large),
+      var(--md-sys-color-surface-container) var(--md-sys-shape-corner-extra-large)
+    );
+  }
+
+  /*
    * The shared page gutter, from the MD3 window size classes: 16px on compact windows (below
    * 600px) and 24px on medium and expanded windows (600px and up). Width comes from Tailwind's
    * container utility; this adds the side padding that several views rely on without writing

@@ -171,20 +171,39 @@ const activeLabel = computed(() => sectionLabel(section.value))
 <template>
   <div
     class="bg-surface text-on-surface"
-    :class="hasNavigation ? 'max-[600px]:pb-[calc(5rem+env(safe-area-inset-bottom))] min-[600px]:pl-20' : ''"
+    :class="hasNavigation ? 'max-[600px]:pb-[calc(5rem+env(safe-area-inset-bottom))] min-[600px]:pl-20 min-[600px]:bg-surface-container' : ''"
   >
     <!--
       Below 600px the bar sits at the bottom, so the page reserves its height and the device's
       safe area. From 600px the rail sits at the left and the page moves right by its 80px
-      width, the header included.
+      width, the header included. From 600px the frame (rail and top bar) is surface-container,
+      and the content is a surface sheet with rounded corners where it meets them. From 1600px
+      the sheet also rounds its top right corner and keeps a 16px gap to the window edge.
     -->
     <DefaultHeader />
     <!--
+      The corners stay put while the page scrolls: the sheet's own corner scrolls under the top
+      bar with the rest of the page, so these two sticky pieces paint the same corners again at the
+      bar's bottom edge. They are only in the frame's colour outside the arc, so they are invisible
+      where the sheet is flat.
+    -->
+    <div
+      v-if="hasNavigation"
+      class="pointer-events-none sticky top-16 z-20 hidden h-0 min-[600px]:block"
+      aria-hidden="true"
+    >
+      <span class="pane-corner pane-corner-start" />
+      <span class="pane-corner pane-corner-end min-[1600px]:right-4" />
+    </div>
+    <!--
       Clips wide content at the sides without making this box a scroll container. overflow-auto
       would make it one, and then a sticky element inside it (the settings action bar) is pinned to
-      a box that never scrolls, so it leaves the window.
+      a box that never scrolls, so it leaves the window. The rounded corners clip content too.
     -->
-    <div class="overflow-x-clip">
+    <div
+      class="overflow-x-clip bg-surface"
+      :class="hasNavigation ? 'min-[600px]:rounded-tl-corner-extra-large min-[1600px]:mr-4 min-[1600px]:rounded-tr-corner-extra-large' : ''"
+    >
       <NotFoundView v-if="route.name === 'not-found'" />
       <section
         v-else-if="!sectionAllowed"
