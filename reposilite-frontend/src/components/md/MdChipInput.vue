@@ -173,72 +173,91 @@ const fieldClass = computed(() => {
   return invalid.value ? FIELD.error : FIELD.default
 })
 const helperClass = computed(() => (invalid.value ? 'text-error' : 'text-on-surface-variant'))
+
+/*
+ * The label floats into the notch of the outline, like the label of MdTextField, once the field has focus
+ * or holds a value. The input sits inside the outlined box, so the label cannot follow it through the peer
+ * pattern; the field state is read here instead.
+ */
+const floated = computed(() => focused.value || props.modelValue.length > 0 || draft.value !== '')
+const labelClass = computed(() => {
+  const colour = props.disabled
+    ? 'text-on-surface/38'
+    : (invalid.value ? 'text-error' : (focused.value ? 'text-primary' : 'text-on-surface-variant'))
+  const position = floated.value
+    ? 'top-0 -translate-y-1/2 bg-[var(--md-field-container,var(--md-sys-color-surface))] px-1 md-label-medium'
+    : 'top-1/2 -translate-y-1/2 md-body-large'
+  return [
+    'pointer-events-none absolute left-4 transition-all duration-(--md-sys-motion-duration-short4) ease-md-standard',
+    position,
+    colour
+  ]
+})
 </script>
 
 <template>
-  <div class="flex min-w-0 w-full max-w-xl flex-col gap-1">
-    <label
-      :for="inputId"
-      class="px-1 md-label-large text-on-surface-variant"
-      :class="disabled ? 'text-on-surface/38' : ''"
-    >
-      {{ label }}
-    </label>
-    <div
-      class="flex min-h-14 flex-wrap items-center gap-2 rounded-corner-extra-small border bg-transparent px-2 py-2"
-      :class="fieldClass"
-      @click="input?.focus()"
-    >
-      <ul
-        class="m-0 flex list-none flex-wrap items-center gap-2 p-0"
-        :aria-label="`${label} chips`"
+  <div class="flex min-w-0 w-full flex-col gap-1">
+    <div class="relative">
+      <div
+        class="flex min-h-14 flex-wrap items-center gap-2 rounded-corner-extra-small border bg-transparent px-4 py-2"
+        :class="fieldClass"
+        @click="input?.focus()"
       >
-        <li
-          v-for="(tag, index) in modelValue"
-          :key="`${index}:${tag}`"
-          data-test="chip"
-          class="inline-flex h-8 items-center gap-1 rounded-corner-small border pl-3 pr-1 md-label-large"
-          :class="disabled ? 'border-on-surface/12 text-on-surface/38' : 'border-outline bg-surface-container-low text-on-surface'"
+        <ul
+          class="m-0 flex list-none flex-wrap items-center gap-2 p-0"
+          :aria-label="`${label} chips`"
         >
-          <span class="[overflow-wrap:anywhere]">{{ tag }}</span>
-          <button
-            type="button"
-            class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
-            :aria-label="`Remove ${tag}`"
-            :disabled="disabled"
-            @click.stop="remove(index)"
+          <li
+            v-for="(tag, index) in modelValue"
+            :key="`${index}:${tag}`"
+            data-test="chip"
+            class="inline-flex h-8 items-center gap-1 rounded-corner-small border pl-3 pr-1 md-label-large"
+            :class="disabled ? 'border-on-surface/12 text-on-surface/38' : 'border-outline bg-surface-container-low text-on-surface'"
           >
-            <svg
-              viewBox="0 0 24 24"
-              class="size-[18px]"
-              fill="currentColor"
-              aria-hidden="true"
-              focusable="false"
+            <span class="[overflow-wrap:anywhere]">{{ tag }}</span>
+            <button
+              type="button"
+              class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-6 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
+              :aria-label="`Remove ${tag}`"
+              :disabled="disabled"
+              @click.stop="remove(index)"
             >
-              <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-          </button>
-        </li>
-      </ul>
-      <input
-        :id="inputId"
-        ref="input"
-        v-model="draft"
-        type="text"
-        autocomplete="off"
-        class="min-w-[8rem] flex-1 bg-transparent px-2 md-body-large text-on-surface outline-none disabled:text-on-surface/38"
-        :disabled="disabled"
-        :aria-invalid="invalid ? 'true' : undefined"
-        :aria-describedby="helperText ? helperId : undefined"
-        @input="onInput"
-        @keydown="onKeydown"
-        @focus="focused = true"
-        @blur="focused = false"
-      >
+              <svg
+                viewBox="0 0 24 24"
+                class="size-[18px]"
+                fill="currentColor"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          </li>
+        </ul>
+        <input
+          :id="inputId"
+          ref="input"
+          v-model="draft"
+          type="text"
+          autocomplete="off"
+          class="min-w-[8rem] flex-1 !border-0 !bg-transparent !shadow-none !ring-0 !outline-none px-1 md-body-large text-on-surface disabled:text-on-surface/38"
+          :disabled="disabled"
+          :aria-invalid="invalid ? 'true' : undefined"
+          :aria-describedby="helperText ? helperId : undefined"
+          @input="onInput"
+          @keydown="onKeydown"
+          @focus="focused = true"
+          @blur="focused = false"
+        >
+      </div>
+      <label
+        :for="inputId"
+        :class="labelClass"
+      >{{ label }}</label>
     </div>
     <ul
       v-if="visibleSuggestions.length > 0"
-      class="m-0 flex list-none flex-wrap gap-2 p-0 pt-1"
+      class="m-0 flex list-none flex-wrap gap-2 px-4 pt-1"
       :aria-label="`Suggested ${label.toLowerCase()}`"
     >
       <li
@@ -256,7 +275,7 @@ const helperClass = computed(() => (invalid.value ? 'text-error' : 'text-on-surf
         </button>
       </li>
     </ul>
-    <div class="flex items-start justify-between gap-2 px-1">
+    <div class="flex items-start justify-between gap-2 px-4">
       <p
         :id="helperId"
         class="md-body-small"

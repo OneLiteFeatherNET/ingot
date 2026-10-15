@@ -95,3 +95,28 @@ describe('MdTextArea', () => {
     expect(counter().exists()).toBe(false)
   })
 })
+
+describe('MdTextArea outlined field', () => {
+  it('draws the label after the textarea, so the peer pattern floats it into the notch', () => {
+    mountArea()
+
+    const children = [...area().element.parentElement.children].map(element => element.tagName)
+    expect(children).toEqual(['TEXTAREA', 'LABEL'])
+    expect(area().classes()).toContain('peer')
+    expect(wrapper.find('label').classes()).toContain('peer-focus:top-0')
+  })
+
+  it('has no resize handle, because the field grows with its text', () => {
+    mountArea()
+
+    expect(area().classes()).toContain('resize-none')
+    expect(area().classes()).not.toContain('resize-y')
+  })
+
+  it('takes the full width of its form, not a fixed maximum', () => {
+    mountArea()
+
+    expect(wrapper.classes()).not.toContain('max-w-xl')
+    expect(wrapper.classes()).toContain('w-full')
+  })
+})

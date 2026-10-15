@@ -231,3 +231,31 @@ describe('MdChipInput label', () => {
     expect(wrapper.find('label').attributes('for')).toBe(field().attributes('id'))
   })
 })
+
+describe('MdChipInput outlined field', () => {
+  it('floats the label into the notch once the field holds a value', () => {
+    mountInput({ modelValue: ['team-core'] })
+
+    expect(wrapper.find('label').classes()).toContain('top-0')
+    expect(wrapper.find('label').classes()).toContain('bg-[var(--md-field-container,var(--md-sys-color-surface))]')
+  })
+
+  it('rests the label in the middle of an empty field that is not focused', () => {
+    mountInput({ modelValue: [] })
+
+    expect(wrapper.find('label').classes()).toContain('top-1/2')
+  })
+
+  it('draws the text input without a border or ring of its own, inside the outlined box', () => {
+    mountInput()
+
+    expect(field().classes()).toEqual(expect.arrayContaining(['!border-0', '!shadow-none', '!ring-0']))
+  })
+
+  it('takes the full width of its form, not a fixed maximum', () => {
+    mountInput()
+
+    expect(wrapper.classes()).not.toContain('max-w-xl')
+    expect(wrapper.classes()).toContain('w-full')
+  })
+})
