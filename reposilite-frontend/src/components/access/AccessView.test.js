@@ -78,7 +78,7 @@ describe('AccessView', () => {
   it('offers users, machine accounts and teams as tabs', async () => {
     await mountView({ tab: 'users' })
 
-    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO'])
+    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP'])
   })
 
   it('opens the single sign on page from the SSO tab and shows its panel', async () => {
@@ -87,6 +87,22 @@ describe('AccessView', () => {
     expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text())).toEqual(['SSO'])
     expect(wrapper.find('[data-test="sso"]').exists()).toBe(true)
     expect(principals.list, 'the single sign on page lists no principals').not.toHaveBeenCalled()
+  })
+
+  it('opens the LDAP page from the LDAP tab and shows its form', async () => {
+    await mountView({ tab: 'ldap' }, '/access/ldap')
+
+    expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text())).toEqual(['LDAP'])
+    expect(wrapper.find('[data-test="ldap"]').exists()).toBe(true)
+  })
+
+  it('moves to the LDAP page through the router', async () => {
+    await mountView({ tab: 'teams' }, '/access/teams')
+
+    await tabs()[4].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/access/ldap')
   })
 
   it('moves to the single sign on page through the router', async () => {

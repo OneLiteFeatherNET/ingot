@@ -216,7 +216,8 @@ const ACCESS_TABS = {
   'access-machine': 'machines',
   'access-teams': 'teams',
   'access-team': 'teams',
-  'access-sso': 'sso'
+  'access-sso': 'sso',
+  'access-ldap': 'ldap'
 }
 const accessTab = computed(() => ACCESS_TABS[route.name] ?? 'users')
 const accessName = computed(() => (section.value === 'access' ? route.params.name : undefined))
