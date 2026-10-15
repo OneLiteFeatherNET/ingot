@@ -62,10 +62,14 @@ sealed interface OidcFinish {
 
 }
 
+/** Thrown inside the callback when the login must fail with [code]. */
+internal class LoginFailure(val code: String) : RuntimeException(code)
+
 /**
- * The OpenID Connect login flow: the authorization redirect with PKCE, state and nonce, and the callback that exchanges the
- * code, validates the ID token and hands the subject to [ExternalAccountService]. Nothing is kept between the two requests
- * except the sealed `ingot_oidc` cookie.
+ * The redirect login flow of the OpenID Connect and GitHub providers: the authorization redirect with PKCE, state and nonce,
+ * and the callback that exchanges the code and maps the answer to a subject for [ExternalAccountService]. Nothing is kept
+ * between the two requests except the sealed `ingot_oidc` cookie. A GitHub provider skips discovery and the ID token, see
+ * [GitHubLogin].
  */
 internal class OidcLoginService(
     private val catalog: OidcProviderCatalog,
@@ -76,16 +80,23 @@ internal class OidcLoginService(
     private val accounts: ExternalAccountService,
     private val clock: Clock,
     private val audit: (AuditEvent) -> Unit = {},
+    private val github: GitHubEndpoints = GitHubEndpoints.PUBLIC,
     private val random: SecureRandom = SecureRandom(),
 ) {
+
+    private val githubLogin = GitHubLogin(http, github)
 
     fun begin(providerId: String, redirect: String?, redirectUri: String): OidcBegin {
         val provider = catalog.find(providerId) ?: return OidcBegin.UnknownProvider
         provider.missingField()?.let { return OidcBegin.Unusable(it) }
-        val endpoints = try {
-            metadata.discovery(provider.issuerUrl)
-        } catch (_: OidcUnavailableException) {
-            return OidcBegin.Unavailable
+        val authorization = if (provider.usesGitHubEndpoints()) {
+            github.authorize
+        } else {
+            try {
+                metadata.discovery(provider.issuerUrl).authorization
+            } catch (_: OidcUnavailableException) {
+                return OidcBegin.Unavailable
+            }
         }
         val state = AuthorizationState(
             provider = providerId,
@@ -95,7 +106,7 @@ internal class OidcLoginService(
             redirect = LoginRedirect.sanitize(redirect),
             expiresAt = Instant.now(clock).plus(OidcStateCookie.LIFETIME),
         )
-        val location = authorizeUrl(endpoints.authorization, provider, state, redirectUri)
+        val location = authorizeUrl(authorization, provider, state, redirectUri)
         return OidcBegin.Started(location = location, stateCookie = states.seal(state))
     }
 
@@ -121,16 +132,17 @@ internal class OidcLoginService(
         }
 
         return try {
-            val endpoints = metadata.discovery(provider.issuerUrl)
-            val idToken = exchangeCode(provider, endpoints.token, code, expected.verifier, redirectUri)
-            val claims = validateIdToken(idToken, endpoints, provider.clientId, expected.nonce)
-                ?: return protocolFailure(providerId, ip, "invalid_id_token")
-            val identity = identityOf(provider, claims) ?: return protocolFailure(providerId, ip, "invalid_id_token")
-
+            val identity = if (provider.usesGitHubEndpoints()) {
+                githubIdentity(provider, expected, code, redirectUri)
+            } else {
+                oidcIdentity(provider, expected, code, redirectUri)
+            }
             when (val outcome = accounts.resolve(identity, ip)) {
                 is ExternalOutcome.Succeeded -> OidcFinish.LoggedIn(outcome.principal, expected.redirect)
                 is ExternalOutcome.Refused -> OidcFinish.Failed(outcome.reason.code)
             }
+        } catch (failure: LoginFailure) {
+            protocolFailure(providerId, ip, failure.code)
         } catch (_: OidcUnavailableException) {
             protocolFailure(providerId, ip, "provider_unavailable")
         } catch (_: TokenRefusedException) {
@@ -138,20 +150,67 @@ internal class OidcLoginService(
         }
     }
 
+    /** The identity of an OpenID Connect login: the ID token, validated, and the claims the provider configured. */
+    private fun oidcIdentity(provider: OidcProviderSettings, expected: AuthorizationState, code: String, redirectUri: String): ExternalIdentity {
+        val endpoints = metadata.discovery(provider.issuerUrl)
+        val idToken = exchangeCode(provider, endpoints.token, code, expected.verifier, redirectUri)
+        val claims = validateIdToken(idToken, endpoints, provider.clientId, expected.nonce)
+            ?: throw LoginFailure("invalid_id_token")
+        val subject = claims.subject?.takeIf { it.isNotBlank() } ?: throw LoginFailure("invalid_id_token")
+        val username = claims.getClaim(provider.usernameClaim) as? String
+        if (username.isNullOrBlank() && provider.autoCreateUsers) {
+            throw LoginFailure("invalid_id_token")
+        }
+        return ExternalIdentity(
+            provider = "oidc:${provider.id}",
+            subject = subject,
+            username = username.orEmpty(),
+            displayName = claims.getClaim(provider.displayNameClaim) as? String,
+            email = claims.getClaim(provider.emailClaim) as? String,
+            autoCreateUsers = provider.autoCreateUsers,
+            allowedEmailDomains = provider.allowedEmailDomains,
+        )
+    }
+
+    /** The identity of a GitHub login: the access token, then the user and the verified primary email from the API. */
+    private fun githubIdentity(provider: OidcProviderSettings, expected: AuthorizationState, code: String, redirectUri: String): ExternalIdentity {
+        val accessToken = githubLogin.exchange(provider, code, expected.verifier, redirectUri)
+        val profile = githubLogin.profile(accessToken)
+        return ExternalIdentity(
+            provider = "oidc:${provider.id}",
+            subject = profile.subject,
+            username = profile.login,
+            displayName = profile.name,
+            email = profile.email,
+            autoCreateUsers = provider.autoCreateUsers,
+            allowedEmailDomains = provider.allowedEmailDomains,
+        )
+    }
+
     private fun authorizeUrl(endpoint: String, provider: OidcProviderSettings, state: AuthorizationState, redirectUri: String): String {
         val parameters = linkedMapOf(
             "response_type" to "code",
             "client_id" to provider.clientId,
             "redirect_uri" to redirectUri,
-            "scope" to provider.scopes,
+            "scope" to effectiveScopes(provider),
             "state" to state.state,
-            "nonce" to state.nonce,
             "code_challenge" to Pkce.challengeOf(state.verifier),
             "code_challenge_method" to "S256",
         )
+        if (!provider.usesGitHubEndpoints()) {
+            parameters["nonce"] = state.nonce
+        }
         val query = parameters.entries.joinToString("&") { (name, value) -> "${encode(name)}=${encode(value)}" }
         return "$endpoint?$query"
     }
+
+    /** GitHub has no `openid` scope. The default of the OpenID Connect scopes is replaced by GitHub's own scopes. */
+    private fun effectiveScopes(provider: OidcProviderSettings): String =
+        if (provider.usesGitHubEndpoints() && (provider.scopes.isBlank() || provider.scopes == OidcProviderSettings.OIDC_DEFAULT_SCOPES)) {
+            OidcProviderSettings.GITHUB_DEFAULT_SCOPES
+        } else {
+            provider.scopes
+        }
 
     /** The ID token of the code exchange. Throws [TokenRefusedException] for a refused code or a reply without a token. */
     private fun exchangeCode(provider: OidcProviderSettings, tokenEndpoint: String, code: String, verifier: String, redirectUri: String): String {
@@ -198,24 +257,6 @@ internal class OidcLoginService(
         return (check as? IdTokenCheck.Valid)?.claims
     }
 
-    /** Reads the subject and the profile from the claims the provider configured. `null` when a required claim is missing. */
-    private fun identityOf(provider: OidcProviderSettings, claims: JWTClaimsSet): ExternalIdentity? {
-        val subject = claims.subject?.takeIf { it.isNotBlank() } ?: return null
-        val username = claims.getClaim(provider.usernameClaim) as? String
-        if (username.isNullOrBlank() && provider.autoCreateUsers) {
-            return null
-        }
-        return ExternalIdentity(
-            provider = "oidc:${provider.id}",
-            subject = subject,
-            username = username.orEmpty(),
-            displayName = claims.getClaim(provider.displayNameClaim) as? String,
-            email = claims.getClaim(provider.emailClaim) as? String,
-            autoCreateUsers = provider.autoCreateUsers,
-            allowedEmailDomains = provider.allowedEmailDomains,
-        )
-    }
-
     private fun protocolFailure(providerId: String, ip: String?, code: String): OidcFinish {
         audit(AuditEvent(action = AuditAction.LOGIN_FAILED, actor = AuditActor.named("oidc:$providerId", ip), success = false))
         return OidcFinish.Failed(code)
@@ -231,8 +272,6 @@ internal class OidcLoginService(
 
     private fun encode(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8)
-
-    private class TokenRefusedException : RuntimeException("the token endpoint refused the code")
 
     private companion object {
         const val TOKEN_BYTES = 32

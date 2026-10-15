@@ -79,6 +79,21 @@ internal class OidcTestIdentityProvider(private val clock: Clock) : AutoCloseabl
         )
     }
 
+    /** GitHub's token endpoint answer. A code it refuses is answered with `200` and no `access_token`, as GitHub does. */
+    var githubTokenBody: String = """{"access_token":"gho_test","token_type":"bearer"}"""
+
+    var githubUser: String = """{"id":4242,"login":"octocat","name":"The Octocat","email":null}"""
+
+    var githubEmails: String = """[{"email":"octo@example.org","primary":true,"verified":true}]"""
+
+    var githubTeams: String = """[{"slug":"platform","organization":{"login":"acme"}}]"""
+
+    /** The authorization header of every GitHub API request, in arrival order. */
+    val githubAuthorizations: MutableList<String?> = CopyOnWriteArrayList()
+
+    /** The form of every GitHub token request, in arrival order. */
+    val githubTokenForms: MutableList<Map<String, String>> = CopyOnWriteArrayList()
+
     val discoveryRequests = AtomicInteger()
     val jwksRequests = AtomicInteger()
     val tokenRequests = AtomicInteger()
@@ -92,6 +107,19 @@ internal class OidcTestIdentityProvider(private val clock: Clock) : AutoCloseabl
         get() = "http://127.0.0.1:${server.address.port}"
 
     init {
+        server.createContext("/github/token") { exchange ->
+            githubTokenForms.add(readForm(exchange))
+            respond(exchange, 200, githubTokenBody)
+        }
+        server.createContext("/github/api") { exchange ->
+            githubAuthorizations.add(exchange.requestHeaders.getFirst("Authorization"))
+            when (exchange.requestURI.path) {
+                "/github/api/user" -> respond(exchange, 200, githubUser)
+                "/github/api/user/teams" -> respond(exchange, 200, githubTeams)
+                "/github/api/user/emails" -> respond(exchange, 200, githubEmails)
+                else -> respond(exchange, 404, "{}")
+            }
+        }
         server.createContext("/.well-known/openid-configuration") { exchange ->
             discoveryRequests.incrementAndGet()
             val document = """{"issuer":"${discoveryIssuer ?: issuer}","authorization_endpoint":"$issuer/authorize",""" +
