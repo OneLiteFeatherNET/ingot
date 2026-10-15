@@ -17,16 +17,18 @@
 <script setup>
 import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MdChip from '../md/MdChip.vue'
 import MdTextField from '../md/MdTextField.vue'
 import NewEntryDialog from './NewEntryDialog.vue'
 import { entryAddresses, filterEntries, idText, summaryOf, validateNewId } from './collections'
 
 /*
- * The list pane of a collection: a search field over the ids, the action that adds an entry, and
- * one 56px item per entry. Each item is keyed by the entry's stable key, not by its id, so an edit
- * to the id moves nothing else. An entry without a usable id is still listed: it reads "Unnamed",
- * and its supporting line says what is wrong. The item is opened by its address, which is the id
- * or, while there is no usable id, the key. The selected item takes the secondary-container role.
+ * The list pane of a collection: a search field over the ids, descriptions and tags, the action that
+ * adds an entry, and one item per entry. Each item is keyed by the entry's stable key, not by its id,
+ * so an edit to the id moves nothing else. An entry without a usable id is still listed: it reads
+ * "Unnamed", and its supporting line says what is wrong. The item is opened by its address, which is
+ * the id or, while there is no usable id, the key. The selected item takes the secondary-container role.
+ * The tags of an entry are assist chips under its id; pressing one searches for that tag.
  */
 const props = defineProps({
   entries: {
@@ -71,12 +73,18 @@ const items = computed(() => {
       title: item.id !== '' ? item.id : `Unnamed ${props.noun}`,
       unnamed: item.id === '',
       problem,
-      summary: problem ? '' : summaryOf(props.itemSchema, item.entry)
+      summary: problem ? '' : summaryOf(props.itemSchema, item.entry),
+      tags: Array.isArray(item.entry?.tags) ? item.entry.tags.filter(tag => typeof tag === 'string') : []
     }
   })
 })
 
 const existingIds = computed(() => props.entries.map(idText))
+
+// A tag chip narrows the list to that tag, the same way typing `tag:name` does.
+const filterBy = (tag) => {
+  query.value = `tag:${tag}`
+}
 
 const emptyText = computed(() => {
   if (props.entries.length === 0) return `No ${props.collectionTitle.toLowerCase()} yet.`
@@ -112,7 +120,7 @@ const isSelected = (item) => item.key === props.selectedKey
 
     <MdTextField
       :model-value="query"
-      label="Search by id"
+      label="Search by id, description or tag"
       variant="outlined"
       autocomplete="off"
       @update:model-value="query = $event"
@@ -134,6 +142,7 @@ const isSelected = (item) => item.key === props.selectedKey
       <li
         v-for="item in items"
         :key="item.key"
+        class="flex flex-col"
       >
         <button
           type="button"
@@ -154,12 +163,26 @@ const isSelected = (item) => item.key === props.selectedKey
           </span>
           <span
             v-else-if="item.summary"
-            class="md-body-medium"
+            class="line-clamp-2 md-body-medium"
             :class="isSelected(item) ? 'text-on-secondary-container' : 'text-on-surface-variant'"
           >
             {{ item.summary }}
           </span>
         </button>
+        <div
+          v-if="item.tags.length > 0"
+          class="flex flex-wrap gap-1 px-4 pb-2"
+        >
+          <MdChip
+            v-for="tag in item.tags"
+            :key="tag"
+            data-test="tag-chip"
+            :aria-label="`Show repositories tagged ${tag}`"
+            @click="filterBy(tag)"
+          >
+            {{ tag }}
+          </MdChip>
+        </div>
       </li>
     </ul>
     <p

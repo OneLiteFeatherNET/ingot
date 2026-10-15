@@ -23,6 +23,8 @@ import { tester as textTester } from '../renderers/MdTextFieldRenderer.vue'
 import MdTextFieldRenderer from '../renderers/MdTextFieldRenderer.vue'
 import { tester as selectTester } from '../renderers/MdSelectRenderer.vue'
 import MdSelectRenderer from '../renderers/MdSelectRenderer.vue'
+import { tester as tagsTester } from '../renderers/TagsFieldRenderer.vue'
+import TagsFieldRenderer from '../renderers/TagsFieldRenderer.vue'
 import EntryDetail from './EntryDetail.vue'
 
 const renderers = markRaw([
@@ -168,5 +170,38 @@ describe('EntryDetail', () => {
     await flushPromises()
 
     expect(wrapper.emitted('delete')).toEqual([[]])
+  })
+})
+
+describe('EntryDetail tag suggestions', () => {
+  const taggedCollection = {
+    ...collection,
+    itemSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', title: 'Id' },
+        tags: { type: 'array', items: { type: 'string' }, title: 'Tags' }
+      }
+    }
+  }
+
+  it('offers the tags that the other repositories use in the tags field', async () => {
+    wrapper = mount(EntryDetail, {
+      props: {
+        collection: taggedCollection,
+        id: 'releases',
+        entry: { id: 'releases', tags: ['team-core'] },
+        otherTags: ['ci', 'internal'],
+        renderers: markRaw([{ tester: tagsTester, renderer: TagsFieldRenderer }, ...vanillaRenderers]),
+        validator: markRaw(createAjv({ useDefaults: true }))
+      },
+      global: { provide: { styles: defaultStyles } },
+      attachTo: document.body
+    })
+
+    await wrapper.findAll('input').at(-1).trigger('focus')
+
+    const suggestions = wrapper.findAll('[data-test="suggestion"]').map(button => button.text())
+    expect(suggestions).toEqual(['ci', 'internal'])
   })
 })

@@ -17,6 +17,8 @@ import { default as MdTextFieldRenderer, tester as mdTextFieldTester } from '../
 import { collectionsOf, idText, validateNewId } from '../components/settings/collections'
 import { default as MdSelectRenderer, tester as mdSelectTester, oneOfTester as mdOneOfSelectTester } from '../components/renderers/MdSelectRenderer.vue'
 import { default as MdColourFieldRenderer, tester as mdColourFieldTester } from '../components/renderers/MdColourFieldRenderer.vue'
+import { default as MdTextAreaRenderer, tester as mdTextAreaTester } from '../components/renderers/MdTextAreaRenderer.vue'
+import { default as TagsFieldRenderer, tester as tagsFieldTester } from '../components/renderers/TagsFieldRenderer.vue'
 import { default as AppearanceSectionRenderer, tester as appearanceSectionTester } from '../components/renderers/AppearanceSectionRenderer.vue'
 import { invalidColourFields } from '../theme/settings'
 import { setAppearance, applyAppearance } from './appearance'
@@ -451,6 +453,10 @@ const renderers = markRaw([
   { tester: mdOneOfSelectTester, renderer: MdSelectRenderer },
   // Colour fields outrank the text field they are strings of. They are not enums, so MdSelect does not take them.
   { tester: mdColourFieldTester, renderer: MdColourFieldRenderer },
+  // The tags of a repository are chips; they outrank the generic list of strings, which they replace.
+  { tester: tagsFieldTester, renderer: TagsFieldRenderer },
+  // Prose with a length limit is a multi-line field with a counter, above the single line field.
+  { tester: mdTextAreaTester, renderer: MdTextAreaRenderer },
   { tester: mdTextFieldTester, renderer: MdTextFieldRenderer },
   { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
   { tester: arrayListTester, renderer: ArrayListRenderer },

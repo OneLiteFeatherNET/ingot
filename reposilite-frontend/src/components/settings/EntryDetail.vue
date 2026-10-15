@@ -49,6 +49,11 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  // The tags the other entries use, which the tags field offers as suggestions.
+  otherTags: {
+    type: Array,
+    default: () => []
+  },
   // Where the not-found pane leads: the list of the domain. Given as a link, so it can be opened
   // in a new tab; the click itself is handled by the page and goes through the router.
   backHref: {
@@ -92,7 +97,9 @@ const onIdInput = (value) => {
   emit('change', latest.value)
 }
 
-const formConfiguration = { showUnfocusedDescription: true }
+// The tags of the other entries reach the tags field through the form configuration, the one place
+// a renderer can read context from that is not its own data.
+const formConfiguration = computed(() => ({ showUnfocusedDescription: true, tagSuggestions: props.otherTags }))
 const onChange = (event) => {
   latest.value = event.data
   emit('change', event.data)

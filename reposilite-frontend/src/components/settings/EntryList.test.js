@@ -45,7 +45,8 @@ const mountList = (props = {}) => {
   return wrapper
 }
 
-const itemButtons = () => wrapper.findAll('li button')
+// The row buttons only: the tag chips of an entry are buttons too, and sit beside the row.
+const itemButtons = () => wrapper.findAll('li > button')
 const itemIds = () => itemButtons().map(button => button.find('span').text())
 
 afterEach(() => {
@@ -124,6 +125,89 @@ describe('EntryList', () => {
     await flushPromises()
 
     expect(document.getElementById('new-entry-title')?.textContent).toContain('New repository')
+  })
+})
+
+describe('EntryList with descriptions and tags', () => {
+  const taggedItemSchema = {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      visibility: { type: 'string', enum: ['PUBLIC', 'PRIVATE'] },
+      description: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } }
+    }
+  }
+  const tagged = [
+    { id: 'releases', visibility: 'PUBLIC', description: 'Released artifacts', tags: ['team-core', 'public'] },
+    { id: 'snapshots', visibility: 'PUBLIC', description: 'Nightly builds', tags: ['team-core', 'ci'] },
+    { id: 'private', visibility: 'PRIVATE', description: 'Internal libraries', tags: ['internal'] },
+    { id: 'bare', visibility: 'PUBLIC' }
+  ]
+  const taggedKeys = ['entry-1', 'entry-2', 'entry-3', 'entry-4']
+
+  const mountTagged = () => {
+    wrapper = mount(EntryList, {
+      props: { entries: tagged, keys: taggedKeys, selectedKey: null, itemSchema: taggedItemSchema, collectionTitle: 'Repositories', noun: 'repository' },
+      attachTo: document.body
+    })
+    return wrapper
+  }
+  const chipsOf = (index) => wrapper.findAll('li')[index].findAll('[data-test="tag-chip"]').map(chip => chip.text())
+  // In document order: releases (team-core, public), snapshots (team-core, ci), private (internal).
+  const chipButtons = () => wrapper.findAll('[data-test="tag-chip"]')
+
+  it('shows the tags of an entry as chips under its id', () => {
+    mountTagged()
+
+    expect(chipsOf(0)).toEqual(['team-core', 'public'])
+  })
+
+  it('shows no chips for an entry without tags', () => {
+    mountTagged()
+
+    expect(chipsOf(3)).toEqual([])
+  })
+
+  it('searches the descriptions', async () => {
+    mountTagged()
+
+    await wrapper.find('input').setValue('nightly')
+
+    expect(itemIds()).toEqual(['snapshots'])
+  })
+
+  it('searches the tags as text', async () => {
+    mountTagged()
+
+    await wrapper.find('input').setValue('core')
+
+    expect(itemIds()).toEqual(['releases', 'snapshots'])
+  })
+
+  it('finds the entries of one tag with the tag: syntax, and only that tag', async () => {
+    mountTagged()
+
+    await wrapper.find('input').setValue('tag:internal')
+
+    expect(itemIds()).toEqual(['private'])
+  })
+
+  it('filters by a tag when its chip is pressed, and shows the tag: query in the field', async () => {
+    mountTagged()
+
+    await chipButtons()[3].trigger('click')
+
+    expect(wrapper.find('input').element.value).toBe('tag:ci')
+    expect(itemIds()).toEqual(['snapshots'])
+  })
+
+  it('does not select the entry whose chip was pressed', async () => {
+    mountTagged()
+
+    await chipButtons()[3].trigger('click')
+
+    expect(wrapper.emitted('select')).toBeUndefined()
   })
 })
 

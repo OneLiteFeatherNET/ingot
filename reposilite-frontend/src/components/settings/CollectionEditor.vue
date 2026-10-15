@@ -19,6 +19,7 @@ import { computed, ref, watch } from 'vue'
 import EntryList from './EntryList.vue'
 import EntryDetail from './EntryDetail.vue'
 import { entryAddresses, idText } from './collections'
+import { tagsInUse } from '../../store/maven/repositories'
 
 /*
  * One collection as a list-detail layout. From 840px the list and the detail sit side by side, the
@@ -73,7 +74,9 @@ const addresses = computed(() => entryAddresses(props.entries, props.keys))
 const selectedIndex = computed(() => (selectedKey.value === null ? -1 : props.keys.indexOf(selectedKey.value)))
 const selectedEntry = computed(() => (selectedIndex.value >= 0 ? props.entries[selectedIndex.value] : null))
 const hasSelection = computed(() => props.selectedId !== null)
-const otherIds = computed(() => props.entries.filter((_, index) => index !== selectedIndex.value).map(idText))
+const otherEntries = computed(() => props.entries.filter((_, index) => index !== selectedIndex.value))
+const otherIds = computed(() => otherEntries.value.map(idText))
+const otherTags = computed(() => tagsInUse(otherEntries.value))
 
 const resolveSelection = () => {
   if (props.selectedId === null) {
@@ -141,6 +144,7 @@ watch([addresses, () => props.keys], () => {
           :collection="collection"
           :entry="selectedEntry"
           :other-ids="otherIds"
+          :other-tags="otherTags"
           :back-href="backHref"
           :renderers="renderers"
           :validator="validator"

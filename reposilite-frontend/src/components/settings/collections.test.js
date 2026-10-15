@@ -128,6 +128,26 @@ describe('entryLayout', () => {
     expect(scopes).toEqual(['#/properties/storageProvider', '#/properties/limits'])
   })
 
+  it('keeps a list of plain strings, such as tags, in the General group in schema order', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        visibility: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+        redeployment: { type: 'boolean' }
+      }
+    }
+
+    const [general] = entryLayout(schema).elements
+
+    expect(general.elements.map(control => control.scope)).toEqual([
+      '#/properties/visibility',
+      '#/properties/tags',
+      '#/properties/redeployment'
+    ])
+  })
+
   it('omits the General group when every property is nested', () => {
     const schema = { type: 'object', properties: { id: { type: 'string' }, limits: { type: 'object', properties: {} } } }
 
@@ -185,6 +205,32 @@ describe('filterEntries', () => {
 
   it('ignores surrounding spaces in the query', () => {
     expect(filterEntries(entries, '  releases ').map(item => item.id)).toEqual(['releases'])
+  })
+
+  describe('with descriptions and tags', () => {
+    const repositories = [
+      { id: 'releases', description: 'Released artifacts', tags: ['team-core', 'public'] },
+      { id: 'snapshots', description: 'Nightly builds', tags: ['team-core', 'ci'] },
+      { id: 'private', description: 'Internal libraries', tags: ['internal'] }
+    ]
+    const ids = (query) => filterEntries(repositories, query).map(item => item.id)
+
+    it('matches the description, ignoring case', () => {
+      expect(ids('NIGHTLY')).toEqual(['snapshots'])
+    })
+
+    it('matches a part of a tag as plain text', () => {
+      expect(ids('core')).toEqual(['releases', 'snapshots'])
+    })
+
+    it('reads a tag: token as the tag itself, so tag:team does not match team-core', () => {
+      expect(ids('tag:team')).toEqual([])
+      expect(ids('tag:team-core')).toEqual(['releases', 'snapshots'])
+    })
+
+    it('combines a tag: token with the text of the rest of the query', () => {
+      expect(ids('tag:team-core nightly')).toEqual(['snapshots'])
+    })
   })
 })
 

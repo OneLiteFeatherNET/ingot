@@ -19,6 +19,8 @@
  * what becomes a list-detail collection and how an entry is laid out can be tested directly.
  */
 
+import { matchesSearch, parseSearch } from '../../store/maven/repositories'
+
 const ID_PATTERN = /^[A-Za-z0-9._-]+$/
 
 const isObjectSchema = (schema) => schema?.type === 'object' && schema.properties !== undefined
@@ -45,8 +47,12 @@ export const singularOf = (title) => {
   return title
 }
 
+/* A list of plain strings, such as the tags of a repository, is a value a single control edits. */
+const isStringList = (property) => property?.type === 'array' && property.items?.type === 'string'
+
 /* Scalars are the values a single control can edit. Objects, arrays and combinators get a section of their own. */
 const isStructural = (property) => {
+  if (isStringList(property)) return false
   const types = Array.isArray(property.type) ? property.type : [property.type]
   return types.includes('object') || types.includes('array') || property.oneOf !== undefined || property.anyOf !== undefined || property.allOf !== undefined
 }
@@ -80,12 +86,16 @@ export const summaryOf = (itemSchema, entry) => Object.entries(itemSchema?.prope
   .slice(0, 2)
   .join(' · ')
 
-/* Keeps the position of each entry in the full list, because the edit targets that position. */
+/*
+ * The entries the search text finds: the id, the description and the tags, as the overview searches
+ * them, with `tag:name` tokens for a tag. Keeps the position of each entry in the full list, because
+ * the edit targets that position.
+ */
 export const filterEntries = (entries, query) => {
-  const needle = query.trim().toLowerCase()
+  const criteria = parseSearch(query)
   return entries
     .map((entry, index) => ({ index, id: String(entry?.id ?? ''), entry }))
-    .filter(item => needle === '' || item.id.toLowerCase().includes(needle))
+    .filter(item => matchesSearch(item.entry, criteria))
 }
 
 /*
