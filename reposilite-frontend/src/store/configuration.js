@@ -326,6 +326,14 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     configurations.value[domain] = data
   }
 
+  /* Puts checked values of the domains into the draft. Nothing is written: the user reviews and saves them like any edit. */
+  const importDomains = (byDomain) => {
+    Object.entries(byDomain).forEach(([domain, data]) => {
+      setDomainData(domain, data)
+      validateDomain(domain)
+    })
+  }
+
   /*
    * Validity covers the whole domain, not the entry on screen. Only one entry's form is mounted
    * at a time, so a per-form report would forget a broken entry as soon as the user moved on.
@@ -440,6 +448,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     discardChanges,
     factoryReset,
     setDomainData,
+    importDomains,
     setValidity,
     savedConfiguration,
     validateDomain,

@@ -92,4 +92,20 @@ describe('configuration store snapshots', () => {
 
     expect(store.secretsHidden.value).toBe(false)
   })
+
+  it('stages an imported file in the draft without writing it to the server', async () => {
+    const server = { maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] } }
+    const client = fakeClient(server)
+    let writes = 0
+    client.settings.update = async () => { writes++; return { data: {} } }
+    const store = createConfigurationStore(ref(client))
+    await store.fetchConfiguration()
+
+    store.importDomains({ maven: { repositories: [{ id: 'releases', visibility: 'PRIVATE' }] } })
+
+    expect(store.configurations.value.maven.repositories[0].visibility).toBe('PRIVATE')
+    expect(store.hasUnsavedChanges.value, 'the import is an unsaved change').toBe(true)
+    expect(store.snapshots.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect(writes).toBe(0)
+  })
 })

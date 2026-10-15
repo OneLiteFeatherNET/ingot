@@ -32,6 +32,8 @@ import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
 import { diffSettings, revertChange as revertDraftChange } from './settingsDiff'
+import { parseSettingsFile, validateImport } from './settingsImport'
+import SettingsImportErrors from './SettingsImportErrors.vue'
 import { property } from '../../helpers/vue-extensions'
 
 /*
@@ -275,6 +277,39 @@ const saveFromReview = async () => {
   if (await store.saveConfiguration()) reviewOpen.value = false
 }
 
+/*
+ * A settings file goes into the draft only when every domain in it is valid. Then the review opens
+ * with the imported changes, so the user checks them before anything is saved. Otherwise the errors
+ * are listed and the draft stays as it was.
+ */
+const importInput = ref(null)
+const importErrors = ref([])
+
+const importFile = async (event) => {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  const parsed = parseSettingsFile(await file.text())
+  if (!parsed.ok) {
+    importErrors.value = [{ domain: '', label: '', message: parsed.error }]
+    return
+  }
+  const result = validateImport(parsed.value, {
+    domains: domains.value,
+    schemas: store.schemas.value,
+    validator: store.configurationValidator
+  })
+  if (!result.ok) {
+    importErrors.value = result.errors
+    return
+  }
+  importErrors.value = []
+  store.importDomains(result.domains)
+  reviewOpen.value = true
+}
+
 /* JsonForms configuration */
 const formsConfiguration = {
   showUnfocusedDescription: true
@@ -305,14 +340,32 @@ watch(
           Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance.
         </p>
       </div>
-      <SettingsDownloadMenu
-        :disabled="!hasDomains"
-        :has-unsaved="hasUnsavedChanges"
-        :can-include-unsaved="invalidDomains.length === 0"
-        :secrets-hidden="secretsHidden"
-        @saved="downloadSaved"
-        @draft="downloadDraft"
-      />
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <MdButton
+          variant="outlined"
+          type="button"
+          :disabled="!hasDomains"
+          @click="importInput?.click()"
+        >
+          Import settings
+        </MdButton>
+        <input
+          ref="importInput"
+          type="file"
+          accept=".json,application/json"
+          class="hidden"
+          aria-label="Settings file to import"
+          @change="importFile"
+        >
+        <SettingsDownloadMenu
+          :disabled="!hasDomains"
+          :has-unsaved="hasUnsavedChanges"
+          :can-include-unsaved="invalidDomains.length === 0"
+          :secrets-hidden="secretsHidden"
+          @saved="downloadSaved"
+          @draft="downloadDraft"
+        />
+      </div>
     </header>
 
     <p
@@ -322,6 +375,12 @@ watch(
     >
       {{ loadError }}
     </p>
+
+    <SettingsImportErrors
+      v-if="importErrors.length > 0"
+      :errors="importErrors"
+      @dismiss="importErrors = []"
+    />
 
     <template v-if="activeDomain">
       <SettingsTabs
