@@ -13,12 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package net.onelitefeather.ingot.identity.evaluation
 
 import com.reposilite.token.AccessTokenIdentifier
 import net.onelitefeather.ingot.identity.model.AccessSubject
+import net.onelitefeather.ingot.identity.model.PrincipalRecord
 
-/** Loads the subject of a persistent token from the identity tables. Null when the token does not exist. */
+/** Loads the subject of a persistent token or of a principal from the identity tables. Null when nothing matches. */
 internal interface AccessSubjectSource {
     fun subjectOf(identifier: AccessTokenIdentifier): AccessSubject?
+
+    /** The subject of a principal acting directly, such as a browser session. Null when the principal does not exist. */
+    fun subjectOfPrincipal(principalId: Int): AccessSubject?
+
+    fun principalOf(principalId: Int): PrincipalRecord?
 }

@@ -103,7 +103,8 @@ internal object JavalinConfiguration {
             journalist = reposilite.logger,
             failureFacade = extensionManager.facade(),
             accessTokenFacade = extensionManager.facade(),
-            authenticationFacade = extensionManager.facade()
+            authenticationFacade = extensionManager.facade(),
+            loginFacade = extensionManager.facade()
         )
 
         val dslRoutes = extensionManager.emitEvent(RoutingSetupEvent(reposilite))

@@ -1,0 +1,30 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.onelitefeather.ingot.identity.login
+
+import com.reposilite.configuration.shared.api.Doc
+import com.reposilite.configuration.shared.api.SharedSettings
+import io.javalin.openapi.JsonSchema
+
+@JsonSchema(requireNonNulls = false)
+@Doc(title = "Login", description = "Browser login settings")
+data class LoginSettings(
+    @get:Doc(title = "Session Lifetime Minutes", description = "Lifetime of a browser session token. Logout and a disabled user take effect at the latest when it expires")
+    val sessionLifetimeMinutes: Long = 15,
+    @get:Doc(title = "Refresh Lifetime Hours", description = "Lifetime of a refresh token. Every renewal issues a new one, so this bounds the idle time of a browser session")
+    val refreshLifetimeHours: Long = 168,
+) : SharedSettings

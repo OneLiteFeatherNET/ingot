@@ -17,6 +17,8 @@
 package net.onelitefeather.ingot.identity.login.application
 
 import com.reposilite.auth.application.AuthenticationSettings
+import com.reposilite.configuration.ConfigurationFacade
+import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -27,18 +29,29 @@ import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginService
+import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.PasswordHasher
 import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
+import net.onelitefeather.ingot.identity.session.SessionService
+import net.onelitefeather.ingot.identity.session.SessionSigner
 import net.onelitefeather.ingot.identity.storage.IdentityStore
+import java.security.SecureRandom
 import java.time.Clock
+import java.util.Base64
 
-@Plugin(name = "login", dependencies = ["access-token", "authentication", "shared-configuration", "audit"])
+@Plugin(
+    name = "login",
+    dependencies = ["access-token", "authentication", "configuration", "shared-configuration", "audit", "local-configuration"],
+    settings = LoginSettings::class,
+)
 class LoginPlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade {
         val database = reposilite().database
         val auditExtensions = extensions()
+        val clock = Clock.systemUTC()
+        val loginSettings = facade<SharedConfigurationFacade>().getDomainSettings<LoginSettings>()
 
         val service = database?.let { database ->
             LoginService(
@@ -48,20 +61,40 @@ class LoginPlugin : ReposilitePlugin() {
                 protection = facade<SharedConfigurationFacade>()
                     .getDomainSettings<AuthenticationSettings>()
                     .computed { it.bruteForceProtection },
-                clock = Clock.systemUTC(),
+                clock = clock,
                 audit = { auditExtensions.emitEvent(it) },
             )
         }
 
-        val loginFacade = LoginFacade(service)
+        // The signing key is shared by every instance of the database, exactly like the ETag key: the first instance
+        // that starts generates it, and the others read it back.
+        val sessions = database?.let { database ->
+            val encodedKey = facade<ConfigurationFacade>().findOrCreateConfiguration(SessionSigner.KEY_CONFIGURATION_NAME) {
+                Base64.getEncoder().encodeToString(ByteArray(SIGNING_KEY_BYTES).also { SecureRandom().nextBytes(it) })
+            }
+            SessionService(
+                store = LoginStore(database),
+                identities = IdentityStore(database),
+                signer = SessionSigner(Base64.getDecoder().decode(encodedKey), clock),
+                settings = loginSettings,
+                clock = clock,
+            )
+        }
+
+        val loginFacade = LoginFacade(service, sessions)
+        val basePath = facade<LocalConfiguration>().basePath
 
         event { event: RoutingSetupEvent ->
             if (service != null) {
-                event.registerRoutes(AuthLoginEndpoints(loginFacade))
+                event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
             }
         }
 
         return loginFacade
+    }
+
+    private companion object {
+        const val SIGNING_KEY_BYTES = 32
     }
 
 }

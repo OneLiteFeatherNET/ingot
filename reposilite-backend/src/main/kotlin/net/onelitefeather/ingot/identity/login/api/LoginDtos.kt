@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.identity.login.api
 
 import io.javalin.openapi.JsonSchema
+import java.time.Instant
 
 @JsonSchema(requireNonNulls = false)
 data class LoginProviderDto(
@@ -48,9 +49,20 @@ data class LoginPrincipalDto(
     val displayName: String,
 )
 
-/** Result of a successful password login. [mustChangePassword] tells the client to send the user to a password change. */
+/**
+ * Result of a successful password login. The session cookies are set on the same response; [expiresAt] is when the
+ * session token expires, after which the client renews it. [mustChangePassword] asks for a password change first.
+ */
 @JsonSchema(requireNonNulls = false)
 data class LoginResponse(
     val principal: LoginPrincipalDto,
     val mustChangePassword: Boolean,
+    val expiresAt: Instant,
+)
+
+/** Result of a renewed session, `POST /api/auth/refresh`. */
+@JsonSchema(requireNonNulls = false)
+data class SessionResponse(
+    val principal: LoginPrincipalDto,
+    val expiresAt: Instant,
 )

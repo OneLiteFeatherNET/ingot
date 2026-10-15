@@ -26,9 +26,15 @@ import java.time.LocalDate
 
 const val UNINITIALIZED_ENTITY_ID: Int = -1
 
+/**
+ * Where a token lives. [PRINCIPAL] is not a token at all: it names a user principal whose browser session is the caller.
+ * Its value is the principal id. It never has a token row, so the facade answers every lookup for it from the identity
+ * tables only, and it cannot be created as a token.
+ */
 enum class AccessTokenType {
     PERSISTENT,
-    TEMPORARY
+    TEMPORARY,
+    PRINCIPAL
 }
 
 data class AccessTokenIdentifier(

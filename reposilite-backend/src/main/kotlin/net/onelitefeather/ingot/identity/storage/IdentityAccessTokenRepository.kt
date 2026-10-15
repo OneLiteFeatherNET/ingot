@@ -58,6 +58,14 @@ internal class IdentityAccessTokenRepository(
         return store.loadAccess(principal, token.scopes)
     }
 
+    override fun subjectOfPrincipal(principalId: Int): AccessSubject? {
+        val principal = store.findPrincipalById(principalId) ?: return null
+        return store.loadAccess(principal, scopes = null)
+    }
+
+    override fun principalOf(principalId: Int): PrincipalRecord? =
+        store.findPrincipalById(principalId)
+
     override fun saveAccessToken(accessToken: AccessToken): AccessToken {
         val existing = store.findToken(accessToken.name)
         if (existing != null) {

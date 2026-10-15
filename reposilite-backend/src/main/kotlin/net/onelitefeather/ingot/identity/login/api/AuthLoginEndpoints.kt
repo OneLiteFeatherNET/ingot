@@ -23,17 +23,31 @@ import com.reposilite.shared.unauthorizedError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import io.javalin.community.routing.Route
+import io.javalin.http.Context
 import io.javalin.http.HttpStatus.FORBIDDEN
+import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
 import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
+import io.javalin.openapi.OpenApiRequestBody
 import io.javalin.openapi.OpenApiResponse
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginOutcome
+import net.onelitefeather.ingot.identity.model.PrincipalRecord
+import net.onelitefeather.ingot.identity.session.SessionCookies
+import net.onelitefeather.ingot.identity.session.SessionTokens
+import panda.std.reactive.Reference
 import panda.std.asSuccess
 
-internal class AuthLoginEndpoints(private val facade: LoginFacade) : ReposiliteRoutes() {
+/**
+ * The login endpoints of a browser: providers, password login, renewal and logout. Login, renewal and logout set or clear
+ * the session cookies, so that the browser never handles a token itself.
+ */
+internal class AuthLoginEndpoints(
+    private val facade: LoginFacade,
+    private val basePath: Reference<String>,
+) : ReposiliteRoutes() {
 
     @OpenApi(
         path = "/api/auth/providers",
@@ -57,9 +71,9 @@ internal class AuthLoginEndpoints(private val facade: LoginFacade) : ReposiliteR
         path = "/api/auth/login",
         methods = [HttpMethod.POST],
         summary = "Log in with a login provider",
-        description = "Checks the credentials of a human user. Wrong credentials and unknown users get the same answer",
+        description = "Checks the credentials of a human user and starts a browser session. Wrong credentials and unknown users get the same answer",
         tags = ["Auth"],
-        requestBody = io.javalin.openapi.OpenApiRequestBody(content = [ OpenApiContent(from = LoginRequest::class) ]),
+        requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = LoginRequest::class) ]),
         responses = [
             OpenApiResponse(status = "200", content = [ OpenApiContent(from = LoginResponse::class) ]),
             OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
@@ -74,19 +88,23 @@ internal class AuthLoginEndpoints(private val facade: LoginFacade) : ReposiliteR
         val username = request?.username?.takeIf { it.isNotBlank() }
         val password = request?.password?.takeIf { it.isNotBlank() }
 
-        response = when {
-            provider == null || username == null || password == null ->
-                badRequestError("Login requires provider, username and password")
-            else -> when (val outcome = facade.login(provider, username, password, ctx.ip())) {
-                is LoginOutcome.Succeeded -> LoginResponse(
-                    principal = LoginPrincipalDto(
-                        id = outcome.principal.id,
-                        kind = outcome.principal.kind.name,
-                        name = outcome.principal.name,
-                        displayName = outcome.principal.displayName,
-                    ),
-                    mustChangePassword = outcome.mustChangePassword,
-                ).asSuccess()
+        response = if (provider == null || username == null || password == null) {
+            badRequestError("Login requires provider, username and password")
+        } else {
+            when (val outcome = facade.login(provider, username, password, ctx.ip())) {
+                is LoginOutcome.Succeeded -> {
+                    val session = facade.startSession(outcome.principal, ctx.ip(), ctx.header("User-Agent"))
+                    if (session == null) {
+                        errorResponse(SERVICE_UNAVAILABLE, "Browser sessions need the database")
+                    } else {
+                        writeSessionCookies(ctx, session, basePath.get())
+                        LoginResponse(
+                            principal = outcome.principal.toLoginDto(),
+                            mustChangePassword = outcome.mustChangePassword,
+                            expiresAt = session.sessionExpiresAt,
+                        ).asSuccess()
+                    }
+                }
                 LoginOutcome.Rejected -> unauthorizedError("Invalid username or password")
                 LoginOutcome.Disabled -> errorResponse(FORBIDDEN, "This user is disabled")
                 LoginOutcome.Blocked -> errorResponse(TOO_MANY_REQUESTS, "Too many failed login attempts, try again later")
@@ -95,6 +113,63 @@ internal class AuthLoginEndpoints(private val facade: LoginFacade) : ReposiliteR
         }
     }
 
-    override val routes = routes(providers, login)
+    @OpenApi(
+        path = "/api/auth/refresh",
+        methods = [HttpMethod.POST],
+        summary = "Renew the browser session",
+        description = "Exchanges the refresh cookie for a new session. The refresh token is single use: presenting a spent one revokes the whole session",
+        tags = ["Auth"],
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = SessionResponse::class) ]),
+            OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ]
+    )
+    private val refresh = ReposiliteRoute<SessionResponse>("/api/auth/refresh", Route.POST) {
+        val session = ctx.cookie(SessionCookies.REFRESH)?.let { facade.refreshSession(it, ctx.ip(), ctx.header("User-Agent")) }
+
+        response = if (session == null) {
+            clearSessionCookies(ctx, basePath.get())
+            unauthorizedError("Invalid or expired session")
+        } else {
+            writeSessionCookies(ctx, session, basePath.get())
+            SessionResponse(principal = session.principal.toLoginDto(), expiresAt = session.sessionExpiresAt).asSuccess()
+        }
+    }
+
+    @OpenApi(
+        path = "/api/auth/logout",
+        methods = [HttpMethod.POST],
+        summary = "End the browser session",
+        description = "Revokes the refresh token family of the session and clears the session cookies",
+        tags = ["Auth"],
+        responses = [
+            OpenApiResponse(status = "200", description = "Logged out"),
+        ]
+    )
+    private val logout = ReposiliteRoute<Unit>("/api/auth/logout", Route.POST) {
+        facade.endSession(ctx.cookie(SessionCookies.REFRESH))
+        clearSessionCookies(ctx, basePath.get())
+        response = Unit.asSuccess()
+    }
+
+    override val routes = routes(providers, login, refresh, logout)
 
 }
+
+private fun PrincipalRecord.toLoginDto() = LoginPrincipalDto(
+    id = id,
+    kind = kind.name,
+    name = name,
+    displayName = displayName,
+)
+
+private fun writeSessionCookies(ctx: Context, session: SessionTokens, basePath: String) {
+    SessionCookies.setCookies(session, basePath, secure(ctx)).forEach { ctx.res().addHeader("Set-Cookie", it) }
+}
+
+private fun clearSessionCookies(ctx: Context, basePath: String) {
+    SessionCookies.clearCookies(basePath, secure(ctx)).forEach { ctx.res().addHeader("Set-Cookie", it) }
+}
+
+private fun secure(ctx: Context): Boolean =
+    SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"))

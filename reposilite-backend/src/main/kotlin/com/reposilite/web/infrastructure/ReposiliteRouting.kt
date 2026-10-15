@@ -4,12 +4,19 @@ import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.auth.api.Credentials
 import com.reposilite.journalist.Journalist
 import com.reposilite.shared.ContextDsl
+import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extensions.response
 import com.reposilite.shared.extensions.uri
 import com.reposilite.shared.extractFromHeader
+import com.reposilite.shared.unauthorizedError
 import com.reposilite.status.FailureFacade
 import com.reposilite.token.AccessTokenFacade
+import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.web.infrastructure.ReposiliteDsl.ReposiliteConfiguration
+import net.onelitefeather.ingot.identity.login.LoginFacade
+import net.onelitefeather.ingot.identity.session.SessionCookies
+import panda.std.asSuccess
+import panda.std.Result
 import io.javalin.community.routing.dsl.DslExceptionHandler
 import io.javalin.community.routing.dsl.DslRoute
 import io.javalin.community.routing.dsl.DslRouting
@@ -49,18 +56,33 @@ fun createReposiliteDsl(
     journalist: Journalist,
     accessTokenFacade: AccessTokenFacade,
     authenticationFacade: AuthenticationFacade,
-    failureFacade: FailureFacade
+    failureFacade: FailureFacade,
+    loginFacade: LoginFacade,
 ): ReposiliteRouting {
+    /**
+     * A request with an Authorization header is authenticated by it, as before. Without one, a browser session cookie
+     * authenticates the request as its user principal. Anything else is anonymous.
+     */
+    fun Context.authenticate(): Result<out AccessTokenDto, ErrorResponse> {
+        val authorization = header(Header.AUTHORIZATION)
+        val sessionToken = cookie(SessionCookies.SESSION)
+        if (authorization == null && sessionToken != null) {
+            return loginFacade.authenticateSession(sessionToken)
+                ?.let { accessTokenFacade.getAccessTokenById(it) }
+                ?.asSuccess()
+                ?: unauthorizedError<AccessTokenDto>("Invalid or expired session")
+        }
+        return extractFromHeader(authorization)
+            .map { (name, secret) -> Credentials(ip = ip(), name = name, secret = secret) }
+            .flatMap { authenticationFacade.authenticateByCredentials(it) }
+    }
+
     fun Context.toDslContext(): ContextDsl<Any> =
         ContextDsl(
             logger = journalist.logger,
             ctx = this,
             accessTokenFacade = accessTokenFacade,
-            authenticationResult = javalinLazy {
-                extractFromHeader(header(Header.AUTHORIZATION))
-                    .map { (name, secret) -> Credentials(ip = ip(), name = name, secret = secret) }
-                    .flatMap { authenticationFacade.authenticateByCredentials(it) }
-            }
+            authenticationResult = javalinLazy { authenticate() }
         )
 
     fun ContextDsl<Any>.consumeResponse() {

@@ -45,6 +45,8 @@ import net.onelitefeather.ingot.identity.storage.TokenUsage
 import net.onelitefeather.ingot.identity.storage.TokenUsageSource
 import com.reposilite.token.AccessTokenSecurityProvider.generateSecret
 import com.reposilite.token.AccessTokenType.PERSISTENT
+import com.reposilite.token.AccessTokenType.PRINCIPAL
+import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.api.AccessTokenDetails
 import com.reposilite.token.api.AccessTokenDetailsDto
 import com.reposilite.token.api.AccessTokenDto
@@ -60,6 +62,7 @@ import panda.std.asSuccess
 import panda.std.letIf
 import java.nio.file.Path
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -119,6 +122,7 @@ class AccessTokenFacade internal constructor(
         storeAccessToken(request, actor, audited).response
 
     private fun storeAccessToken(request: CreateAccessTokenRequest, actor: AuditActor, audited: Boolean): StoredAccessToken {
+        require(request.type != PRINCIPAL) { "A principal is not a token and cannot be stored as one" }
         val existingToken = request.type.getRepository().findAccessTokenByName(request.name)
         val oppositeToken = request.type.getOppositeRepository().findAccessTokenByName(request.name)
         val before = snapshotAccess(existingToken?.identifier)
@@ -430,6 +434,19 @@ class AccessTokenFacade internal constructor(
      * persistent tokens that the identity tables do not know, are read from their legacy rights.
      */
     fun subjectOf(identifier: AccessTokenIdentifier): AccessSubject {
+        if (identifier.type == PRINCIPAL) {
+            // A principal that does not exist, or is disabled, has no rights: an empty scope set denies every action.
+            return subjectSource?.subjectOfPrincipal(identifier.value)
+                ?: AccessSubject(
+                    principalId = null,
+                    principalName = null,
+                    kind = PrincipalKind.USER,
+                    disabled = true,
+                    instanceAdmin = false,
+                    grants = emptyList(),
+                    scopes = emptySet(),
+                )
+        }
         if (identifier.type == PERSISTENT) {
             subjectSource?.subjectOf(identifier)?.let { return it }
         }
@@ -495,7 +512,11 @@ class AccessTokenFacade internal constructor(
     }
 
     fun getPermissions(identifier: AccessTokenIdentifier): Set<AccessTokenPermission> =
-        identifier.type.getRepository().findAccessTokenPermissionsById(identifier)
+        if (identifier.type == PRINCIPAL) {
+            if (subjectOf(identifier).instanceAdmin) setOf(MANAGER) else emptySet()
+        } else {
+            identifier.type.getRepository().findAccessTokenPermissionsById(identifier)
+        }
 
     fun addRoute(identifier: AccessTokenIdentifier, route: Route, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Route {
         val added = identifier.type.getRepository().addRoute(identifier, route)
@@ -563,7 +584,19 @@ class AccessTokenFacade internal constructor(
         id.type.getRepository().findAccessTokenById(id)
 
     fun getAccessTokenById(id: AccessTokenIdentifier): AccessTokenDto? =
-        getRawAccessTokenById(id)?.toDto()
+        if (id.type == PRINCIPAL) {
+            subjectSource?.principalOf(id.value)?.let { principal ->
+                AccessTokenDto(
+                    identifier = id,
+                    name = principal.name,
+                    createdAt = principal.createdAt.atZone(ZoneOffset.UTC).toLocalDate(),
+                    description = principal.displayName,
+                    expiresAt = null,
+                )
+            }
+        } else {
+            getRawAccessTokenById(id)?.toDto()
+        }
 
     internal fun getAccessTokenDetailsById(id: AccessTokenIdentifier): AccessTokenDetails? =
         getRawAccessTokenById(id)?.let { AccessTokenDetails(it, getPermissions(id), getRoutes(id)) }
@@ -586,7 +619,12 @@ class AccessTokenFacade internal constructor(
         temporaryRepository.countAccessTokens() + persistentRepository.countAccessTokens()
 
     private fun AccessTokenType.getRepository(): AccessTokenRepository =
-        if (this == PERSISTENT) persistentRepository else temporaryRepository
+        when (this) {
+            PERSISTENT -> persistentRepository
+            TEMPORARY -> temporaryRepository
+            // A principal has no token rows. Its lookups must never fall through to the repository of another kind.
+            PRINCIPAL -> NoTokenRepository
+        }
 
     private fun AccessTokenType.getOppositeRepository(): AccessTokenRepository =
         if (this == PERSISTENT) temporaryRepository else persistentRepository

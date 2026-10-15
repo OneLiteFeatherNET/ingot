@@ -80,6 +80,10 @@ dependencies {
     val bouncyCastle = "1.84"
     implementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastle")
 
+    // JWT for browser sessions (HS256 only). Verification pins the algorithm, so an unsigned token is never accepted.
+    val nimbus = "10.9.1"
+    implementation("com.nimbusds:nimbus-jose-jwt:$nimbus")
+
     val expressible = "1.3.6"
     api("org.panda-lang:expressible:$expressible")
     api("org.panda-lang:expressible-kt:$expressible")
