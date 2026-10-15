@@ -22,6 +22,8 @@ import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.VersionLookupRequest
 import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.maven.api.PomDetails
+import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.maven.api.RepositoryListResponse
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.storage.api.DirectoryInfo
@@ -102,6 +104,34 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
 
     @OpenApi(
         tags = ["Maven"],
+        path = "/api/maven/repositories",
+        methods = [HttpMethod.GET],
+        summary = "Search the repositories",
+        description = "List the repositories the requesting token may see, sorted by id, each with its visibility, description and tags. " +
+            "PUBLIC repositories are listed for everyone, PRIVATE repositories for tokens with access to them and HIDDEN repositories for managers only.",
+        queryParams = [
+            OpenApiParam(name = "q", description = "Case-insensitive text matched against the id, the description and the tags of a repository", required = false),
+            OpenApiParam(name = "tag", description = "A tag the repository has to carry. Repeat the parameter to require several tags.", required = false),
+        ],
+        responses = [
+            OpenApiResponse(
+                status = "200",
+                description = "Returns the visible repositories that match the query",
+                content = [OpenApiContent(from = RepositoryListResponse::class)]
+            )
+        ]
+    )
+    private val listRepositories = ReposiliteRoute<RepositoryListResponse>("/api/maven/repositories", GET) {
+        accessed {
+            response = mavenFacade.listRepositories(
+                accessToken = this?.identifier,
+                query = RepositoryListQuery(query = ctx.queryParam("q"), tags = ctx.queryParams("tag")),
+            ).asSuccess()
+        }
+    }
+
+    @OpenApi(
+        tags = ["Maven"],
         path = "/api/maven/versions/{repository}/{gav}",
         methods = [HttpMethod.GET],
         pathParams = [
@@ -164,6 +194,6 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
         }
     }
 
-    override val routes = routes(findRepositories, findRepository, findInRepository, findVersions, generatePom)
+    override val routes = routes(findRepositories, findRepository, findInRepository, listRepositories, findVersions, generatePom)
 
 }

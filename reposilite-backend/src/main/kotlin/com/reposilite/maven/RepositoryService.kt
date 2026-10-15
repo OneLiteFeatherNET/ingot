@@ -23,6 +23,8 @@ import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.Identifier
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.PreResolveEvent
+import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.maven.api.RepositorySummary
 import com.reposilite.maven.api.ResolvedDocument
 import com.reposilite.maven.api.ResolvedFileDataEvent
 import com.reposilite.maven.api.ResolvedFileEvent
@@ -186,6 +188,17 @@ internal class RepositoryService(
             statisticsFacade.incrementResolvedRequest(IncrementResolvedRequest(identifier))
         }
     }
+
+    /**
+     * Lists the repositories the given token may see and that match the query, sorted by id. Visibility is applied
+     * before the query, so a filter cannot reveal a repository the caller is not allowed to list.
+     */
+    fun listRepositories(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): List<RepositorySummary> =
+        repositoryProvider.getRepositories()
+            .filter { securityProvider.canListRepository(accessToken, it) }
+            .map { RepositorySummary(id = it.name, visibility = it.visibility, description = it.description, tags = it.tags) }
+            .filter { query.matches(it) }
+            .sortedBy { it.id }
 
     /**
      * Lists the repositories the given token is allowed to see, each with its visibility.

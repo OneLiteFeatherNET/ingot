@@ -25,6 +25,7 @@ import com.reposilite.shared.unauthorizedError
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
+import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.RoutePermission
 import com.reposilite.token.RoutePermission.READ
 import com.reposilite.token.RoutePermission.WRITE
@@ -36,8 +37,22 @@ internal class RepositorySecurityProvider(private val accessTokenFacade: AccessT
     fun canAccessRepository(accessToken: AccessTokenIdentifier?, repository: Repository): Boolean =
         when (repository.visibility) {
             PUBLIC -> true
-            HIDDEN, PRIVATE -> accessToken?.let { accessTokenFacade.canSee(it, "/${repository.name}") } ?: false
+            HIDDEN, PRIVATE -> canSeeRepository(accessToken, repository)
         }
+
+    /**
+     * Decides whether a repository appears in the repository list. Unlike the root directory listing,
+     * a HIDDEN repository is listed to managers only, even for a token that has a route to it.
+     */
+    fun canListRepository(accessToken: AccessTokenIdentifier?, repository: Repository): Boolean =
+        when (repository.visibility) {
+            PUBLIC -> true
+            PRIVATE -> canSeeRepository(accessToken, repository)
+            HIDDEN -> accessToken?.let { accessTokenFacade.hasPermission(it, MANAGER) } ?: false
+        }
+
+    private fun canSeeRepository(accessToken: AccessTokenIdentifier?, repository: Repository): Boolean =
+        accessToken?.let { accessTokenFacade.canSee(it, "/${repository.name}") } ?: false
 
     fun canAccessResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Result<Unit, ErrorResponse> =
         when (repository.visibility) {
