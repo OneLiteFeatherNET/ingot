@@ -38,6 +38,9 @@ internal object DashboardPaths {
         "/audit",
         "/settings",
         "/settings/<path>",
+        "/access",
+        "/access/<path>",
+        "/account",
     )
 
     /** Top-level segments that belong to the API and to the bundled assets, independent of the dashboard routes. */

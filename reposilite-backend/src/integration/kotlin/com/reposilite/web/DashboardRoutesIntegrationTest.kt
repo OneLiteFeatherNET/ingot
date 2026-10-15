@@ -44,7 +44,10 @@ internal abstract class DashboardRoutesSpecification : ReposiliteSpecification()
 
     override fun overrideSharedConfiguration(sharedConfigurationFacade: SharedConfigurationFacade) {
         sharedConfigurationFacade.getDomainSettings<MavenSettings>().update { old ->
-            old.copy(repositories = old.repositories + RepositorySettings(id = "settings"))
+            old.copy(
+                repositories = old.repositories +
+                    listOf("settings", "access", "account").map { RepositorySettings(id = it) },
+            )
         }
     }
 
@@ -104,6 +107,61 @@ internal class DashboardRoutesIntegrationTest : DashboardRoutesSpecification() {
         listOf("/settings", "/settings/maven/repositories/releases").forEach { path ->
             // when / then: a browser navigating to the path gets the dashboard, although a repository has the same id
             assertDashboardResponse(path, navigation = true)
+        }
+    }
+
+    @Test
+    fun `should answer a top-level navigation on the access and account routes with the dashboard`() {
+        listOf("/access", "/access/users", "/access/teams/maintainers/members", "/account").forEach { path ->
+            // when / then: a browser navigating to the path gets the dashboard, although a repository has the same id
+            assertDashboardResponse(path, navigation = true)
+        }
+    }
+
+    @Test
+    fun `should answer a get without fetch metadata on the access and account paths with the artifact from maven`() {
+        listOf("access", "account").forEach { id ->
+            // given: an artifact deployed to the repository that shadows the dashboard route
+            val (repository, gav, file, content) = useDocument(id, "gav/1.0", "a.jar", "artifact-content", store = true)
+
+            // when: a client without fetch metadata requests the artifact
+            val response = fetch("/$repository/$gav/$file")
+
+            // then: Maven serves the file
+            assertThat(response.status).describedAs("status of artifact GET in $id").isEqualTo(OK.code)
+            assertThat(response.body).describedAs("artifact content in $id").isEqualTo(content)
+        }
+    }
+
+    @Test
+    fun `should answer a head request on the access and account paths from maven with the content type of get`() {
+        listOf("access", "account").forEach { id ->
+            // given: an artifact deployed to the repository that shadows the dashboard route
+            val (repository, gav, file) = useDocument(id, "gav/1.0", "a.jar", "artifact-content", store = true)
+            val path = "/$repository/$gav/$file"
+
+            // when: the same file is requested with GET and with HEAD
+            val getContentType = fetch(path).headers.getFirst("Content-Type")
+            val headResponse = Unirest.head("$base$path").asEmpty()
+
+            // then: HEAD is answered by Maven, not by the dashboard
+            assertThat(headResponse.status).describedAs("status of HEAD in $id").isEqualTo(OK.code)
+            assertThat(headResponse.headers.getFirst("Content-Type"))
+                .describedAs("content type of HEAD in $id")
+                .isEqualTo(getContentType)
+                .doesNotStartWith("text/html")
+        }
+    }
+
+    @Test
+    fun `should answer a bare access or account path without fetch metadata with not found`() {
+        listOf("/access", "/account").forEach { path ->
+            // when: a client requests the bare path, which no Maven route matches, without navigating to it
+            val response = fetch(path)
+
+            // then: nothing answers with the dashboard
+            assertThat(response.status).describedAs("status of bare $path").isEqualTo(NOT_FOUND.code)
+            assertThat(response.body).describedAs("bare $path is not the dashboard").doesNotContain(dashboardTitle)
         }
     }
 
