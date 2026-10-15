@@ -57,8 +57,28 @@ test, and they land in the same commit as that code. The pull request is squash-
 - [ ] 6.2 `docs(site)`: finish the guide with the admin test endpoints and link `authentication/ldap.md` to the new page. Verify: every key
   of `login.oidcProviders` and `login.ldap` appears in the guide.
 
-## 7. Pull request
+## 7. Integration follow-ups
 
-- [ ] 7.1 Open the pull request titled `feat(identity): sign users in through external login providers`, once the branch is pushed.
+Found when the frontend was wired to the contract. Each one is its own commit, named as written.
+
+- [x] 7.1 `fix(frontend): use the ldap placeholders of the backend`: the user filter takes `{username}`, the group filter `{dn}`, in
+  the defaults, the helper texts and the validation. Verify: `loginSettings.test.js` and `LdapPanel.test.js` pass.
+- [x] 7.2 `fix(frontend): align the sso provider form with the backend contract`: scopes as one text, the id slug of the backend,
+  providers that start disabled, the issuer and secret rules of GitHub and of other providers, and every login error code.
+  Verify: `SsoProvidersPanel.test.js`, `loginSettings.test.js` and `loginErrors.test.js` pass.
+- [x] 7.3 `build(frontend): mirror the login provider api in the fake backend`: the provider list, the placeholders, the test report
+  shapes and the error texts of the backend. Verify: a throwaway smoke run of the routes of `login-providers.cjs` (not committed) matched the backend's answers.
+- [x] 7.4 `fix(identity): log skipped sso provider entries`: a skipped or duplicate entry is logged once per start and per change,
+  with its reason and without a secret. Verify: `OidcProviderCatalogTest` passes with a captured log.
+- [x] 7.5 `feat(identity): build sso redirects from a configured public url`: `login.publicUrl`, validated, used for the redirect uri
+  and for the callback preview of the SSO tab. Verify: `PublicUrlTest`, `OidcRedirectUriTest` and `loginSettings.test.js` pass.
+- [x] 7.6 `feat(audit): record team changes from provider sync`: `TEAM_MEMBERSHIP_CHANGED` with the actor `system:<provider>` for
+  every synchronised membership change. Verify: `ExternalGroupSyncTest` passes, and the audit labels are tested.
+- [x] 7.7 `fix(settings): point the login domain to the access page`: the login domain is a card with links, not a generic form.
+  Verify: `SettingsView.test.js` and `configuration.test.js` pass.
+
+## 8. Pull request
+
+- [ ] 8.1 Open the pull request titled `feat(identity): sign users in through external login providers`, once the branch is pushed.
   Verify: `gh pr view` shows the title, and the body lists the commits and the test commands with their results. The first
   implementation session does not push, so this task stays open until the branch is reviewed.
