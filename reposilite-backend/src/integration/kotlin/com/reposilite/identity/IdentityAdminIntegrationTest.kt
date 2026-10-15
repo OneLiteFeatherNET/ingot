@@ -241,6 +241,45 @@ internal class IdentityAdminIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `replacing team members refuses to remove the only usable admin held through the team`() {
+        // given: an admin team whose only member is the only usable admin; the temporary --token manager does not count
+        createPrincipal("ci-bot")
+        post(identity("/principals/ci-bot/tokens")).basicAuth(admin.first, admin.second).body(mapOf("name" to "ci-token")).asString()
+        post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "operators")).asString()
+        put(identity("/teams/operators/members")).basicAuth(admin.first, admin.second).body(mapOf("members" to listOf("ci-bot"))).asString()
+        assertThat(put(identity("/teams/operators/instance-admin")).basicAuth(admin.first, admin.second).asString().status).isEqualTo(OK.code)
+
+        // when: the member list is replaced by an empty one
+        val response = put(identity("/teams/operators/members")).basicAuth(admin.first, admin.second).body(mapOf("members" to emptyList<String>())).asJacksonObject(ErrorResponse::class)
+
+        // then: refused with an explanation, and the member is still in the team
+        assertThat(response.status).describedAs("status for dropping the last team admin").isEqualTo(CONFLICT.code)
+        assertThat(response.body.message).describedAs("message names the rule").contains("last instance admin")
+        val team = get(identity("/teams/operators")).basicAuth(admin.first, admin.second).asJacksonObject(JsonNode::class)
+        assertThat(team.body.get("members").map { it.get("principal").asText() }).describedAs("members after the refusal").containsExactly("ci-bot")
+    }
+
+    @Test
+    fun `replacing team members is allowed while another usable admin remains`() {
+        // given: a team admin and a separate direct admin, both with tokens
+        createPrincipal("ci-bot")
+        createPrincipal("root")
+        post(identity("/principals/ci-bot/tokens")).basicAuth(admin.first, admin.second).body(mapOf("name" to "ci-token")).asString()
+        post(identity("/principals/root/tokens")).basicAuth(admin.first, admin.second).body(mapOf("name" to "root-token")).asString()
+        post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "operators")).asString()
+        put(identity("/teams/operators/members")).basicAuth(admin.first, admin.second).body(mapOf("members" to listOf("ci-bot"))).asString()
+        put(identity("/teams/operators/instance-admin")).basicAuth(admin.first, admin.second).asString()
+        put(identity("/principals/root/instance-admin")).basicAuth(admin.first, admin.second).asString()
+
+        // when
+        val response = put(identity("/teams/operators/members")).basicAuth(admin.first, admin.second).body(mapOf("members" to emptyList<String>())).asJacksonObject(JsonNode::class)
+
+        // then
+        assertThat(response.status).describedAs("status when another admin remains").isEqualTo(OK.code)
+        assertThat(response.body.get("members")).describedAs("members after the change").isEmpty()
+    }
+
+    @Test
     fun `a creation is recorded in the audit log with its actor and name, never a secret`() {
         // when
         createPrincipal("ci-bot")

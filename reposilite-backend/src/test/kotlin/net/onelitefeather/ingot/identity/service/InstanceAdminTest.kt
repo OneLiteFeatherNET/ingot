@@ -26,6 +26,7 @@ import net.onelitefeather.ingot.identity.api.CreateTeamRequest
 import net.onelitefeather.ingot.identity.api.CreateTokenRequest
 import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.UpdatePrincipalRequest
+import net.onelitefeather.ingot.identity.model.TeamMemberSource
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -211,6 +212,129 @@ internal class InstanceAdminTest {
             // then: refused, and the member is still there
             assertThat(result.error.status).describedAs("status for dropping the last team admin").isEqualTo(409)
             assertThat(service.getTeam("operators").orNull()?.value?.members?.map { it.principal }).containsExactly("ci-bot")
+        }
+    }
+
+    @Test
+    fun `replacing team members refuses to remove the only usable admin held through the team and names the rule`() {
+        withService { service, _ ->
+            // given: a team with the instance role whose only member is the only usable admin
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
+            service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
+            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
+            service.grantTeamInstanceAdmin("operators", ifMatch = null)
+
+            // when
+            val result = service.replaceMembers("operators", emptyList(), ifMatch = null)
+
+            // then
+            assertThat(result.error.status).describedAs("status for dropping the only team admin").isEqualTo(409)
+            assertThat(result.error.message).describedAs("message names the rule").contains("last instance admin")
+        }
+    }
+
+    @Test
+    fun `replacing team members is allowed while another usable admin remains`() {
+        withService { service, _ ->
+            // given: a team admin and a separate direct admin, both with tokens
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "root"))
+            service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
+            service.createToken("root", CreateTokenRequest(name = "root-token"))
+            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
+            service.grantTeamInstanceAdmin("operators", ifMatch = null)
+            service.grantPrincipalInstanceAdmin("root", ifMatch = null)
+
+            // when: the team admin is dropped from the team
+            val result = service.replaceMembers("operators", emptyList(), ifMatch = null)
+
+            // then
+            assertThat(result.isOk).describedAs("replace with another admin left").isTrue
+            assertThat(service.getTeam("operators").orNull()?.value?.members).describedAs("members after replace").isEmpty()
+        }
+    }
+
+    @Test
+    fun `replacing team members keeps an admin team whose admin membership is kept unaffected`() {
+        withService { service, _ ->
+            // given: an admin team with an admin member and a plain member
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "helper"))
+            service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
+            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.replaceMembers("operators", listOf("ci-bot", "helper"), ifMatch = null)
+            service.grantTeamInstanceAdmin("operators", ifMatch = null)
+
+            // when: only the member without a token leaves
+            val result = service.replaceMembers("operators", listOf("ci-bot"), ifMatch = null)
+
+            // then
+            assertThat(result.isOk).describedAs("replace that keeps the admin member").isTrue
+            assertThat(service.getTeam("operators").orNull()?.value?.members?.map { it.principal }).containsExactly("ci-bot")
+        }
+    }
+
+    @Test
+    fun `replacing team members does not count a disabled admin as a remaining admin`() {
+        withService { service, _ ->
+            // given: an admin team with a usable member and a disabled member
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "parked", disabled = true))
+            service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
+            service.createToken("parked", CreateTokenRequest(name = "parked-token"))
+            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.replaceMembers("operators", listOf("ci-bot", "parked"), ifMatch = null)
+            service.grantTeamInstanceAdmin("operators", ifMatch = null)
+
+            // when: the usable member is dropped
+            val result = service.replaceMembers("operators", listOf("parked"), ifMatch = null)
+
+            // then
+            assertThat(result.error.status).describedAs("status when only a disabled admin would remain").isEqualTo(409)
+        }
+    }
+
+    @Test
+    fun `replacing team members does not count an admin with an expired token as a remaining admin`() {
+        withService { service, _ ->
+            // given: an admin team with a usable member and a member whose only token has expired
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-bot"))
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "expired"))
+            service.createToken("ci-bot", CreateTokenRequest(name = "ci-token"))
+            service.createToken("expired", CreateTokenRequest(name = "expired-token", expiresAt = Instant.parse("2026-01-01T00:00:00Z")))
+            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.replaceMembers("operators", listOf("ci-bot", "expired"), ifMatch = null)
+            service.grantTeamInstanceAdmin("operators", ifMatch = null)
+
+            // when: the usable member is dropped
+            val result = service.replaceMembers("operators", listOf("expired"), ifMatch = null)
+
+            // then
+            assertThat(result.error.status).describedAs("status when only an expired admin would remain").isEqualTo(409)
+        }
+    }
+
+    @Test
+    fun `replacing manual team members keeps a synchronised admin member, so the change is allowed`() {
+        withService { service, store ->
+            // given: an admin team with a SYNC member that has a token, and a MANUAL member
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "synced"))
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "manual"))
+            service.createToken("synced", CreateTokenRequest(name = "synced-token"))
+            service.createToken("manual", CreateTokenRequest(name = "manual-token"))
+            service.createTeam(CreateTeamRequest(name = "operators"))
+            store.addMember(store.findTeam("operators")!!.id, store.findPrincipal("synced")!!.id, TeamMemberSource.SYNC)
+            service.replaceMembers("operators", listOf("manual"), ifMatch = null)
+            service.grantTeamInstanceAdmin("operators", ifMatch = null)
+
+            // when: all manual members are removed
+            val result = service.replaceMembers("operators", emptyList(), ifMatch = null)
+
+            // then: the SYNC member is untouched and still an admin
+            assertThat(result.isOk).describedAs("replace while a SYNC admin remains").isTrue
+            assertThat(service.getTeam("operators").orNull()?.value?.members?.map { it.principal }).containsExactly("synced")
         }
     }
 
