@@ -53,9 +53,10 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
             runMigrations = parameters().runMigrations
         ).accessTokenFacade(extensions = extensions())
 
+        // The --token configuration is re-applied on every start, so the bootstrap is not audited.
         parameters().tokens.forEach {
-            val (token) = accessTokenFacade.createAccessToken(it)
-            accessTokenFacade.addPermission(token.identifier, MANAGER)
+            val (token) = accessTokenFacade.createAccessToken(it, audited = false)
+            accessTokenFacade.addPermission(token.identifier, MANAGER, audited = false)
         }
 
         event { event: CommandsSetupEvent ->

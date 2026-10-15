@@ -28,6 +28,7 @@ import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.EventListener
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenPermission.MANAGER
+import com.reposilite.token.AccessTokenType.PERSISTENT
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.RoutePermission.READ
 import com.reposilite.token.application.AccessTokenComponents
@@ -77,6 +78,27 @@ internal class AccessTokenAuditTest {
 
         assertThat(emitted.single { it.action == TOKEN_CREATED }.details).containsEntry("replaced", true)
         assertThat(emitted.describe()).doesNotContain("first-secret", "second-secret")
+    }
+
+    @Test
+    fun `a persistent token created through the api is recorded`() {
+        facade.createAccessToken(
+            CreateAccessTokenRequest(type = PERSISTENT, name = "ci-bot", secret = "ci-secret"),
+            actor = admin,
+        )
+
+        assertThat(emitted.single { it.action == TOKEN_CREATED }.details).containsEntry("token", "ci-bot")
+    }
+
+    @Test
+    fun `a temporary token created by the startup bootstrap records nothing`() {
+        val (token) = facade.createAccessToken(
+            CreateAccessTokenRequest(type = TEMPORARY, name = "startup-bot", secret = "startup-secret"),
+            audited = false,
+        )
+        facade.addPermission(token.identifier, MANAGER, audited = false)
+
+        assertThat(emitted).isEmpty()
     }
 
     @Test

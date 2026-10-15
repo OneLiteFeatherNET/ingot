@@ -92,10 +92,18 @@ class AccessTokenFacade internal constructor(
         names.forEach { name -> changeListeners.forEach { it(name) } }
     }
 
-    fun createAccessToken(request: CreateAccessTokenRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): CreateAccessTokenResponse =
-        storeAccessToken(request, actor).response
+    /**
+     * Creates the token with the given name. [audited] is `false` only for the startup bootstrap, which re-applies the
+     * `--token` configuration on every start: those creations are not part of what an operator did, so they are not recorded.
+     */
+    fun createAccessToken(
+        request: CreateAccessTokenRequest,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        audited: Boolean = true,
+    ): CreateAccessTokenResponse =
+        storeAccessToken(request, actor, audited).response
 
-    private fun storeAccessToken(request: CreateAccessTokenRequest, actor: AuditActor): StoredAccessToken {
+    private fun storeAccessToken(request: CreateAccessTokenRequest, actor: AuditActor, audited: Boolean): StoredAccessToken {
         val existingToken = request.type.getRepository().findAccessTokenByName(request.name)
         val oppositeToken = request.type.getOppositeRepository().findAccessTokenByName(request.name)
         val before = snapshotAccess(existingToken?.identifier)
@@ -128,14 +136,16 @@ class AccessTokenFacade internal constructor(
         )
         tokenChanged(request.name)
 
-        extensions.emitEvent(
-            AuditEvent(
-                action = TOKEN_CREATED,
-                actor = actor,
-                details = mapOf("token" to request.name, "type" to request.type.name, "replaced" to (existingToken != null)),
+        if (audited) {
+            extensions.emitEvent(
+                AuditEvent(
+                    action = TOKEN_CREATED,
+                    actor = actor,
+                    details = mapOf("token" to request.name, "type" to request.type.name, "replaced" to (existingToken != null)),
+                )
             )
-        )
-        recordAccessChanges(actor, request.name, before, snapshotAccess(savedToken.identifier))
+            recordAccessChanges(actor, request.name, before, snapshotAccess(savedToken.identifier))
+        }
 
         return StoredAccessToken(
             token = savedToken,
@@ -168,7 +178,7 @@ class AccessTokenFacade internal constructor(
                 return preconditionFailed(request.name)
             }
 
-            val stored = storeAccessToken(request, actor)
+            val stored = storeAccessToken(request, actor, audited = true)
             return AccessTokenSnapshot(stored.response, snapshotOf(stored.token).etag).asSuccess()
         }
     }
@@ -365,10 +375,20 @@ class AccessTokenFacade internal constructor(
             ?.let { AccessTokenSecurityProvider.matches(it.encryptedSecret, secret) }
             ?: false
 
-    fun addPermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission, actor: AuditActor = AuditActor.SYSTEM_ACTOR): AccessTokenPermission {
+    /**
+     * Grants the permission. [audited] is `false` only for the startup bootstrap, see [createAccessToken].
+     */
+    fun addPermission(
+        identifier: AccessTokenIdentifier,
+        permission: AccessTokenPermission,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        audited: Boolean = true,
+    ): AccessTokenPermission {
         val granted = identifier.type.getRepository().addPermission(identifier, permission)
         tokenChanged(nameOf(identifier))
-        emitRightsChanged(actor, nameOf(identifier), permissionsAdded = listOf(permission))
+        if (audited) {
+            emitRightsChanged(actor, nameOf(identifier), permissionsAdded = listOf(permission))
+        }
         return granted
     }
 
