@@ -11,9 +11,10 @@ import { default as ArrayListRenderer, tester as arrayListTester } from '../comp
 import { default as OneOfRenderer, tester as oneOfTester } from '../components/renderers/OneOfRenderer.vue'
 import { default as ConstantRenderer, tester as constantTester } from '../components/renderers/ConstantRenderer.vue'
 import { default as OptionalRenderer, tester as optionalTester } from '../components/renderers/OptionalRenderer.vue'
+import { default as SectionRenderer, tester as sectionTester } from '../components/renderers/SectionRenderer.vue'
 import { default as BooleanSwitchRenderer, tester as booleanSwitchTester } from '../components/renderers/BooleanSwitchRenderer.vue'
 import { default as MdTextFieldRenderer, tester as mdTextFieldTester } from '../components/renderers/MdTextFieldRenderer.vue'
-import { default as MdSelectRenderer, tester as mdSelectTester } from '../components/renderers/MdSelectRenderer.vue'
+import { default as MdSelectRenderer, tester as mdSelectTester, oneOfTester as mdOneOfSelectTester } from '../components/renderers/MdSelectRenderer.vue'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
 
@@ -279,6 +280,7 @@ export const configurationStoreKey = Symbol('configuration-store')
 const renderers = markRaw([
   // Outlined fields for text, numbers and enums. They outrank the vanilla renderers, which they replace.
   { tester: mdSelectTester, renderer: MdSelectRenderer },
+  { tester: mdOneOfSelectTester, renderer: MdSelectRenderer },
   { tester: mdTextFieldTester, renderer: MdTextFieldRenderer },
   { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
   { tester: arrayListTester, renderer: ArrayListRenderer },
@@ -286,6 +288,8 @@ const renderers = markRaw([
   { tester: oneOfTester, renderer: OneOfRenderer },
   { tester: constantTester, renderer: ConstantRenderer },
   { tester: optionalTester, renderer: OptionalRenderer },
+  // Groups become titled sections, replacing the fieldset of the vanilla group.
+  { tester: sectionTester, renderer: SectionRenderer },
   {
     // needed because without it hangs TODO find out why
     tester: (uischema, schema) => {
@@ -314,7 +318,8 @@ const configurationStyles = mergeStyles(defaultStyles, {
     error: 'md-body-small text-error px-2 pt-1',
     /* Focus is drawn by the outlined field rules in SettingsView: a primary border, 2px in total. */
     input: 'md-body-large text-on-surface',
-    select: 'md-body-large block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface',
+    /* No background image: the forms plugin draws a chevron there, on top of the one the field shows. */
+    select: 'md-body-large block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface bg-none appearance-none px-4 text-on-surface',
     wrapper: 'flex flex-col items-start py-1'
   },
   verticalLayout: {

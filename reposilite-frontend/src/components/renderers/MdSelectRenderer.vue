@@ -15,17 +15,28 @@
   -->
 
 <script>
-import { isEnumControl, rankWith } from '@jsonforms/core'
+import { isEnumControl, isOneOfEnumControl, rankWith } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed } from 'vue'
 import MdSelect from '../md/MdSelect.vue'
 
 /*
- * Outlined select for an enum. The option values are compared as text, because a select can only
- * carry text, and the chosen option is written back as the enum value it stands for.
+ * Outlined select for an enum, and for a oneOf whose branches are all constants. The option
+ * values are compared as text, because a select can only carry text, and the chosen option is
+ * written back as the value it stands for. The vanilla enum-oneOf control ranks 5, so the
+ * oneOf form is registered above that.
  */
 export const tester = rankWith(3, isEnumControl)
+export const oneOfTester = rankWith(6, isOneOfEnumControl)
+
+/* The values of an enum, or the constants of a oneOf, with their titles as labels. */
+export const optionsOf = (schema) => {
+  if (Array.isArray(schema?.enum)) {
+    return schema.enum.map(value => ({ value, label: String(value) }))
+  }
+  return (schema?.oneOf ?? []).map(branch => ({ value: branch.const, label: branch.title ?? String(branch.const) }))
+}
 
 export default {
   name: 'MdSelectRenderer',
@@ -35,16 +46,16 @@ export default {
   props: rendererProps(),
   setup(props) {
     const input = useVanillaControl(useJsonFormsControl(props))
-    const values = computed(() => input.control.value.schema?.enum ?? [])
-    const options = computed(() => values.value.map(value => ({ value: String(value), label: String(value) })))
+    const choices = computed(() => optionsOf(input.control.value.schema))
+    const options = computed(() => choices.value.map(choice => ({ value: String(choice.value), label: choice.label })))
     const selected = computed(() => {
       const value = input.control.value.data
       return value === undefined || value === null ? '' : String(value)
     })
 
     const onSelect = (text) => {
-      const match = values.value.find(value => String(value) === text)
-      input.handleChange(input.control.value.path, match)
+      const match = choices.value.find(choice => String(choice.value) === text)
+      input.handleChange(input.control.value.path, match?.value)
     }
 
     return {

@@ -3,12 +3,16 @@
     v-if="control.visible"
     :class="styles.oneOf.root"
   >
-    <SettingsTabs
-      :model-value="tabIndex"
+    <MdSelect
+      :id="`${control.id}-variant`"
+      :model-value="String(tabIndex)"
       :label="control.label || 'Variants'"
-      variant="secondary"
-      :tabs="oneOfTabs"
-      @update:model-value="onTabSelected"
+      :options="variantOptions"
+      :supporting-text="control.description || ''"
+      :error="Boolean(control.errors)"
+      :error-text="control.errors || ''"
+      :disabled="!control.enabled"
+      @update:model-value="onVariantSelected"
     />
     <div
       v-if="selectedRenderInfo"
@@ -58,11 +62,15 @@ import {
 } from '@jsonforms/core'
 import {DispatchRenderer, rendererProps, useJsonFormsOneOfControl} from '@jsonforms/vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
-import SettingsTabs from '../settings/SettingsTabs.vue'
+import MdSelect from '../md/MdSelect.vue'
 import isEmpty from 'lodash/isEmpty'
 import DialogWrapper from '../util/DialogWrapper.vue'
 
-export const tester = rankWith(2, isOneOfControl)
+/*
+ * The variant is picked from an outlined select, the same field as an enum. The rank is above the
+ * vanilla oneOf renderer (3), which would otherwise draw its own select with the native chevron.
+ */
+export const tester = rankWith(4, isOneOfControl)
 
 const isControlEnabled = (ownProps, jsonforms) => {
   const state = { jsonforms }
@@ -86,7 +94,7 @@ export default {
   components: {
     DialogWrapper,
     DispatchRenderer,
-    SettingsTabs
+    MdSelect
   },
   props: rendererProps(),
   setup(props) {
@@ -119,6 +127,9 @@ export default {
     oneOfTabs() {
       return this.oneOfRenderInfos.map((info, index) => ({ key: index, label: info.label }))
     },
+    variantOptions() {
+      return this.oneOfTabs.map(tab => ({ value: String(tab.key), label: tab.label }))
+    },
     selectedRenderInfo() {
       return this.oneOfRenderInfos[this.selectedIndex]
     },
@@ -134,9 +145,9 @@ export default {
     }
   },
   methods: {
-    /* The bar's value follows the click first, so tabChanged sees the tab that was picked. */
-    onTabSelected(index) {
-      this.tabIndex = index
+    /* The select's value follows the choice first, so tabChanged sees the variant that was picked. */
+    onVariantSelected(value) {
+      this.tabIndex = Number(value)
       this.tabChanged()
     },
     tabChanged() {
