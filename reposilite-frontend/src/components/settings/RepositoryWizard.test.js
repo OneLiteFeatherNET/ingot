@@ -289,7 +289,7 @@ describe('RepositoryWizard create sequence', () => {
     expect(client.tokens.createOrUpdate).toHaveBeenCalledWith('team-deploy', expect.objectContaining({ type: 'PERSISTENT' }))
     expect(client.tokens.update).toHaveBeenCalledWith('team-deploy', expect.objectContaining({
       routes: [{ path: '/team', permissions: ['r', 'w'] }]
-    }))
+    }), null)
     expect($('[data-test="secret"]').textContent.trim()).toBe('secret-1')
     expect(document.body.textContent).toContain("won't see this secret again")
   })
@@ -306,7 +306,7 @@ describe('RepositoryWizard create sequence', () => {
     expect(client.tokens.createOrUpdate).not.toHaveBeenCalled()
     expect(client.tokens.update).toHaveBeenCalledWith('ci', expect.objectContaining({
       routes: [{ path: '/team', permissions: ['r', 'w'] }]
-    }))
+    }), null)
     expect($('[data-test="secret"]')).toBeNull()
   })
 
