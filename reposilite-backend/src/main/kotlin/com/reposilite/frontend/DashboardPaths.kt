@@ -35,6 +35,7 @@ internal object DashboardPaths {
         "/tokens/{name}",
         "/console",
         "/maintenance",
+        "/audit",
         "/settings",
         "/settings/<path>",
     )

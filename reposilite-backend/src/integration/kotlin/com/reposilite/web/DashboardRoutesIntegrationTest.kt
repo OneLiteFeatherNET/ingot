@@ -80,6 +80,7 @@ internal class DashboardRoutesIntegrationTest : DashboardRoutesSpecification() {
             "/tokens/manager",
             "/console",
             "/maintenance",
+            "/audit",
         ).forEach { path ->
             // when / then: no repository is called after the first segment, so each app route answers with the dashboard
             assertDashboardResponse(path)

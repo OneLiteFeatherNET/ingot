@@ -27,7 +27,7 @@ internal class DashboardPathsTest {
         val reserved = DashboardPaths.RESERVED_SEGMENTS
 
         // then: the dashboard routes and the API and asset segments are all covered
-        assertThat(reserved).containsExactlyInAnyOrder("browse", "dashboard", "tokens", "console", "maintenance", "settings", "api", "assets")
+        assertThat(reserved).containsExactlyInAnyOrder("browse", "dashboard", "tokens", "console", "maintenance", "audit", "settings", "api", "assets")
     }
 
     @Test
@@ -80,6 +80,20 @@ internal class DashboardPathsTest {
             .contains("'/maintenance'")
             .contains("'/browse/maintenance'")
             .contains("top-level browser navigation")
+    }
+
+    @Test
+    fun `should warn about a repository named after the audit route like any other dashboard route`() {
+        // when: a repository with the id of the audit route is checked
+        val warning = DashboardPaths.reservedRepositoryWarnings(listOf("audit")).single()
+
+        // then: the warning names the audit route and the browse path that reaches the repository from the dashboard
+        assertThat(warning)
+            .describedAs("warning text for the audit route")
+            .contains("'/audit'")
+            .contains("'/browse/audit'")
+            .contains("top-level browser navigation")
+            .contains("not rejected")
     }
 
     @Test
