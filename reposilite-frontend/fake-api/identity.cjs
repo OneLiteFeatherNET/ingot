@@ -427,7 +427,8 @@ const accessEntries = (repository) =>
 // ---------------------------------------------------------------- http helpers
 
 // Every error body is { status, message } and nothing else, as the backend sends it.
-const fail = (res, status, message) => res.status(status).send({ status, message })
+// The problems of a refused list are additive: they are sent only when there are some, as the backend does.
+const fail = (res, status, message, problems) => res.status(status).send(problems ? { status, message, problems } : { status, message })
 
 // A hash of the body, without the times that change on a read or a sign-in, so that signing in does
 // not make every open editor stale. The tag is quoted, as the header requires.
@@ -812,7 +813,7 @@ const createToken = (req, res, principal, status) => {
   if (body.nodes !== undefined && body.nodes !== null) {
     if (Array.isArray(body.nodes) && body.nodes.length === 0) return fail(res, 400, "Nodes cannot be empty, omit them for an unrestricted token")
     const parsed = nodeLogic.validateEntries(body.nodes)
-    if (parsed.message) return fail(res, 400, parsed.message)
+    if (parsed.message) return fail(res, 400, parsed.message, parsed.problems)
     tokenNodes = parsed.entries
   }
   if (body.secret !== undefined && (typeof body.secret !== "string" || body.secret.trim() === "")) {
@@ -1090,7 +1091,7 @@ const putNodes = (label, subjectKey, details) => (req, res, holder) => {
   const { nodes } = bodyOf(req)
   if (nodes === undefined || nodes === null) return fail(res, 400, "Nodes are required, send an empty list to remove all nodes")
   const parsed = nodeLogic.validateEntries(nodes)
-  if (parsed.message) return fail(res, 400, parsed.message)
+  if (parsed.message) return fail(res, 400, parsed.message, parsed.problems)
   const describe = (entry) => `${entry.node}=${entry.allowed ? "allowed" : "denied"}`
   const before = new Set(holder.nodes.map(describe))
   const after = new Set(parsed.entries.map(describe))
@@ -1121,13 +1122,17 @@ identity.put("/teams/:name/parents", withTeam((req, res, team) => {
   if (!Array.isArray(parents)) return fail(res, 400, "Parents are required, send an empty list to remove all parents")
   if (parents.some(entry => typeof entry !== "string")) return fail(res, 400, "Failed to read body")
   const duplicates = [...new Set(parents.filter((entry, index) => parents.indexOf(entry) !== index))].sort()
-  if (duplicates.length > 0) return fail(res, 400, `Parents listed twice: ${duplicates.join(", ")}`)
-  const resolved = []
-  for (const entry of parents) {
-    const parent = findPublicTeam(entry)
-    if (!parent) return fail(res, 400, `Unknown team '${entry}' as parent, parents must be existing teams`)
-    resolved.push(parent.name)
+  if (duplicates.length > 0) {
+    return fail(
+      res, 400, `Parents listed twice: ${duplicates.join(", ")}`,
+      duplicates.map(name => ({ node: name, message: `Parent '${name}' is listed twice` })),
+    )
   }
+  const unknown = parents
+    .filter(entry => !findPublicTeam(entry))
+    .map(entry => ({ node: entry, message: `Unknown team '${entry}' as parent, parents must be existing teams` }))
+  if (unknown.length > 0) return fail(res, 400, unknown.map(problem => problem.message).join("; "), unknown)
+  const resolved = parents.map(entry => findPublicTeam(entry).name)
   const problem = nodeLogic.checkParents(teams.map(entry => ({ id: entry.id, name: entry.name, parents: entry.parents })), team.name, resolved)
   if (problem) return fail(res, problem.status, problem.message)
   const before = team.parents

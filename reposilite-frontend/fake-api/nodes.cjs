@@ -90,19 +90,29 @@ const problemOf = (text) => parseNode(text).problem ?? null
 /**
  * Checks a list of { node, allowed } entries the way the backend does (IdentityFacade.parseNodes): every invalid node
  * is reported in one message, then a node listed twice. Returns { entries } with the cleaned entries, or { message }
- * with the text of the 400. An entry that is not { node: text, allowed: boolean } cannot be read at all.
+ * with the text of the 400, and { problems: [{ node, message }] } with one entry per row the problem belongs to.
+ * An entry that is not { node: text, allowed: boolean } cannot be read at all.
  */
 const validateEntries = (entries) => {
   if (!Array.isArray(entries)) return { message: "Failed to read body" }
   const unreadable = entries.some(entry =>
     !entry || typeof entry !== "object" || typeof entry.node !== "string" || typeof entry.allowed !== "boolean")
   if (unreadable) return { message: "Failed to read body" }
-  const problems = entries.map(entry => problemOf(entry.node)).filter(problem => problem !== null)
-  if (problems.length > 0) return { message: `Invalid permission nodes: ${problems.join("; ")}` }
+  const problems = entries
+    .map(entry => ({ node: entry.node, message: problemOf(entry.node) }))
+    .filter(problem => problem.message !== null)
+  if (problems.length > 0) {
+    return { message: `Invalid permission nodes: ${problems.map(problem => problem.message).join("; ")}`, problems }
+  }
   const counts = new Map()
   entries.forEach(entry => counts.set(entry.node, (counts.get(entry.node) ?? 0) + 1))
   const duplicates = [...counts].filter(([, count]) => count > 1).map(([node]) => node).sort()
-  if (duplicates.length > 0) return { message: `Nodes listed twice: ${duplicates.join(", ")}` }
+  if (duplicates.length > 0) {
+    return {
+      message: `Nodes listed twice: ${duplicates.join(", ")}`,
+      problems: duplicates.map(node => ({ node, message: `Node '${node}' is listed twice` })),
+    }
+  }
   return { entries: entries.map(entry => ({ node: entry.node, allowed: entry.allowed })) }
 }
 

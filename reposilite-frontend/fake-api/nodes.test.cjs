@@ -129,6 +129,28 @@ describe("node lists", () => {
     assert.match(message, /^Invalid permission nodes: /)
   })
 
+  it("names the row of every invalid node as a problem, in list order", () => {
+    const { problems } = nodes.validateEntries([allow("ingot.re*"), allow("ingot.admin.users"), allow("-x")])
+    assert.deepEqual(problems, [
+      { node: "ingot.re*", message: nodes.problemOf("ingot.re*") },
+      { node: "-x", message: nodes.problemOf("-x") },
+    ])
+  })
+
+  it("names the row of a node listed twice, once per node", () => {
+    const { message, problems } = nodes.validateEntries([allow("*"), deny("*"), allow("ingot.admin.users"), deny("ingot.admin.users")])
+    assert.equal(message, "Nodes listed twice: *, ingot.admin.users")
+    assert.deepEqual(problems, [
+      { node: "*", message: "Node '*' is listed twice" },
+      { node: "ingot.admin.users", message: "Node 'ingot.admin.users' is listed twice" },
+    ])
+  })
+
+  it("sends no problems for a valid list", () => {
+    const result = nodes.validateEntries([allow("ingot.admin.users")])
+    assert.equal(result.problems, undefined)
+  })
+
   it("cannot read an entry without the allowed flag", () => {
     assert.equal(nodes.validateEntries([{ node: "ingot.admin.users" }]).message, "Failed to read body")
   })

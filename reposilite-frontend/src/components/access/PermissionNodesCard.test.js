@@ -208,6 +208,30 @@ describe('PermissionNodesCard', () => {
       expect(wrapper.emitted('saved')).toBeUndefined()
     })
 
+    it('puts a problem that names no row under the editor and the others on their rows', async () => {
+      nodes.set.mockRejectedValue(Object.assign(new Error('bad'), {
+        response: {
+          status: 400,
+          data: {
+            message: 'Invalid permission nodes: The node \'ingot.re*\' is unknown; Nodes must be a list',
+            problems: [
+              { node: 'ingot.repository.releases.read', message: 'Use ingot.repository.<repository>.<read|deploy|delete|manage>' },
+              { node: null, message: 'Nodes must be a list' }
+            ]
+          }
+        }
+      }))
+      await mountCard()
+
+      await remove('ingot.repository.private.read')
+      await save()
+
+      expect(wrapper.find('[data-node="ingot.repository.releases.read"] [data-test="row-error"]').text())
+        .toContain('Use ingot.repository')
+      expect(wrapper.find('[data-test="form-error"]').text()).toBe('Nodes must be a list')
+      expect(createErrorToast, 'the rows and the form already show it').not.toHaveBeenCalled()
+    })
+
     it('shows a toast when the save fails without a message for a row', async () => {
       nodes.set.mockRejectedValue(failure(500, 'Store unavailable'))
       await mountCard()
