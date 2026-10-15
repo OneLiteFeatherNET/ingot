@@ -16,15 +16,19 @@
 
 package net.onelitefeather.ingot.identity.login.storage
 
+import net.onelitefeather.ingot.identity.login.AttemptState
 import net.onelitefeather.ingot.identity.storage.PrincipalTable
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -37,6 +41,9 @@ data class LocalCredential(
     val mustChangePassword: Boolean,
     val updatedAt: Instant,
 )
+
+/** A row of the attempt table with the version it was read at, for the conditional update. */
+internal data class AttemptRecord(val state: AttemptState, val version: Int)
 
 data class RefreshTokenRecord(
     val id: Int,
@@ -59,9 +66,63 @@ class LoginStore(
 
     init {
         transaction(database) {
-            SchemaUtils.createMissingTablesAndColumns(LocalCredentialTable, RefreshTokenTable)
+            SchemaUtils.createMissingTablesAndColumns(LocalCredentialTable, RefreshTokenTable, LoginAttemptTable)
         }
     }
+
+    internal fun findAttempt(attemptKey: String): AttemptRecord? =
+        transaction(database) {
+            LoginAttemptTable.selectAll()
+                .where { LoginAttemptTable.attemptKey eq attemptKey }
+                .map { row ->
+                    AttemptRecord(
+                        state = AttemptState(
+                            failures = row[LoginAttemptTable.failures],
+                            lockouts = row[LoginAttemptTable.lockouts],
+                            lastFailureAt = row[LoginAttemptTable.lastFailureAt],
+                            lockedUntil = row[LoginAttemptTable.lockedUntil],
+                        ),
+                        version = row[LoginAttemptTable.version],
+                    )
+                }
+                .firstOrNull()
+        }
+
+    /** Creates the row of a key that has none. `false` when another instance created it first. */
+    internal fun insertAttempt(attemptKey: String, state: AttemptState): Boolean =
+        transaction(database) {
+            LoginAttemptTable.insertIgnore {
+                it[LoginAttemptTable.attemptKey] = attemptKey
+                it[LoginAttemptTable.failures] = state.failures
+                it[LoginAttemptTable.lockouts] = state.lockouts
+                it[LoginAttemptTable.lastFailureAt] = state.lastFailureAt ?: Instant.now(clock)
+                it[LoginAttemptTable.lockedUntil] = state.lockedUntil
+                it[LoginAttemptTable.version] = 1
+            }.insertedCount > 0
+        }
+
+    /** Writes [state] only if the row is still at [expectedVersion]. `false` when another write came first. */
+    internal fun updateAttempt(attemptKey: String, expectedVersion: Int, state: AttemptState): Boolean =
+        transaction(database) {
+            LoginAttemptTable.update(
+                where = { (LoginAttemptTable.attemptKey eq attemptKey) and (LoginAttemptTable.version eq expectedVersion) },
+                body = {
+                    it[LoginAttemptTable.failures] = state.failures
+                    it[LoginAttemptTable.lockouts] = state.lockouts
+                    it[LoginAttemptTable.lastFailureAt] = state.lastFailureAt ?: Instant.now(clock)
+                    it[LoginAttemptTable.lockedUntil] = state.lockedUntil
+                    it[LoginAttemptTable.version] = expectedVersion + 1
+                },
+            ) > 0
+        }
+
+    internal fun deleteAttempt(attemptKey: String) {
+        transaction(database) { LoginAttemptTable.deleteWhere { LoginAttemptTable.attemptKey eq attemptKey } }
+    }
+
+    /** Removes the rows whose last failure is older than [cutoff]. Such a row can no longer hold a lock. */
+    internal fun deleteAttemptsBefore(cutoff: Instant): Int =
+        transaction(database) { LoginAttemptTable.deleteWhere { LoginAttemptTable.lastFailureAt less cutoff } }
 
     fun findCredential(principalId: Int): LocalCredential? =
         transaction(database) {

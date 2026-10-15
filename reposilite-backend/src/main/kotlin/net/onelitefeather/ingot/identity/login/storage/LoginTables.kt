@@ -48,3 +48,19 @@ object RefreshTokenTable : IntIdTable("refresh_token") {
     val userAgent = varchar("user_agent", 512).nullable()
     val ip = varchar("ip", 64).nullable()
 }
+
+/**
+ * Failed password logins, one row per key: a user name with an address, and an address on its own. The keys are hashes,
+ * so the table holds no plain user name. [version] changes with every write, which makes concurrent updates from
+ * several instances of the database conditional: the loser of a race retries against the state it finds.
+ */
+object LoginAttemptTable : Table("login_attempt") {
+    val attemptKey = varchar("attempt_key", 64)
+    val failures = integer("failures")
+    val lockouts = integer("lockouts")
+    val lastFailureAt = timestamp("last_failure_at").index()
+    val lockedUntil = timestamp("locked_until").nullable()
+    val version = integer("version")
+
+    override val primaryKey = PrimaryKey(attemptKey)
+}

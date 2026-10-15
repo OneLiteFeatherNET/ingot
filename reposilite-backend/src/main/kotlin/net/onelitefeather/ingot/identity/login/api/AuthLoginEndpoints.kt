@@ -98,7 +98,7 @@ internal class AuthLoginEndpoints(
                 is LoginOutcome.Succeeded -> startLoginSession(ctx, facade, basePath.get(), outcome.principal, outcome.mustChangePassword)
                 LoginOutcome.Rejected -> unauthorizedError("Invalid username or password")
                 LoginOutcome.Disabled -> errorResponse(FORBIDDEN, "This user is disabled")
-                LoginOutcome.Blocked -> errorResponse(TOO_MANY_REQUESTS, "Too many failed login attempts, try again later")
+                is LoginOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed login attempts, try again later")
                 LoginOutcome.UnknownProvider -> badRequestError("Unknown login provider")
             }
         }
@@ -146,7 +146,7 @@ internal class AuthLoginEndpoints(
                 is SetupOutcome.Created -> startLoginSession(ctx, facade, basePath.get(), outcome.principal, mustChangePassword = false)
                 SetupOutcome.NotRequired -> errorResponse(FORBIDDEN, "Setup is not required, a user already exists")
                 SetupOutcome.WrongCode -> errorResponse(FORBIDDEN, "Invalid setup code")
-                SetupOutcome.Blocked -> errorResponse(TOO_MANY_REQUESTS, "Too many failed setup attempts, try again later")
+                is SetupOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed setup attempts, try again later")
                 SetupOutcome.NameTaken -> errorResponse(CONFLICT, "This user name is already taken")
                 is SetupOutcome.InvalidInput -> badRequestError(outcome.problem)
             }
@@ -194,6 +194,12 @@ internal class AuthLoginEndpoints(
 
     override val routes = routes(providers, login, setupStatus, setup, refresh, logout)
 
+}
+
+/** A 429 that tells the client when to try again, as `Retry-After` in whole seconds. */
+private fun <V> tooManyRequests(ctx: Context, retryAfterSeconds: Long, message: String): Result<V, ErrorResponse> {
+    ctx.header("Retry-After", retryAfterSeconds.toString())
+    return errorResponse(TOO_MANY_REQUESTS, message)
 }
 
 private fun startLoginSession(

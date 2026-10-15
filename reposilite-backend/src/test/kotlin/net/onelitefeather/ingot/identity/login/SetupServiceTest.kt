@@ -18,7 +18,6 @@ package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditEvent
-import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Succeeded
 import net.onelitefeather.ingot.identity.login.SetupOutcome.Blocked
@@ -61,7 +60,7 @@ internal class SetupServiceTest {
                 identities = identities,
                 credentials = LoginStore(connection.database, clock),
                 hasher = PasswordHasher(Argon2Cost(memoryKib = 8, iterations = 1, parallelism = 1)),
-                protection = Reference.reference(BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 300)),
+                settings = Reference.reference(LoginSettings(maxFailedAttempts = 3, lockoutMinutes = 5)),
                 clock = clock,
                 audit = audit::add,
                 setupCode = setupCode,
@@ -148,7 +147,7 @@ internal class SetupServiceTest {
 
             val outcome = fixture.service.completeSetup(code, "root", password, displayName = null, ip = "10.0.0.9")
 
-            assertThat(outcome).describedAs("the right code must not be tried after the address is blocked").isEqualTo(Blocked)
+            assertThat(outcome).describedAs("the right code must not be tried after the address is blocked").isInstanceOf(Blocked::class.java)
         }
     }
 

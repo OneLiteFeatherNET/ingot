@@ -22,6 +22,7 @@ import com.reposilite.shared.ErrorResponse
 import io.javalin.http.HttpStatus.BAD_REQUEST
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
+import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import kong.unirest.core.HttpRequestWithBody
 import kong.unirest.core.Unirest
@@ -135,6 +136,21 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
 
         // then: the login is refused
         assertErrorResponse(FORBIDDEN, response)
+    }
+
+    @Test
+    fun `answers a locked login with 429 and tells the client when to retry`() {
+        // given: a user with a password, and five wrong passwords for that user name from this address
+        loginFacade.createUser("dave-login", "Dave", password)
+        repeat(5) { login("""{"provider":"local","username":"dave-login","password":"wrong password entirely"}""").asString() }
+
+        // when: the right password is sent while the user name is locked
+        val response = login("""{"provider":"local","username":"dave-login","password":"$password"}""")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the login is refused with 429 and the wait is given in whole seconds, at most the default lockout
+        assertErrorResponse(TOO_MANY_REQUESTS, response)
+        assertThat(response.headers.getFirst("Retry-After").toLong()).isBetween(1L, 15 * 60L)
     }
 
     @Test

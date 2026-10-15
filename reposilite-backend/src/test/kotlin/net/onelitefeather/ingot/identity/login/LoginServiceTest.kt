@@ -18,7 +18,6 @@ package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditEvent
-import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Blocked
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Disabled
@@ -49,7 +48,7 @@ internal class LoginServiceTest {
         val audit: MutableList<AuditEvent>,
     )
 
-    private fun withFixture(protection: BruteForceProtectionSettings = BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 300), block: (Fixture) -> Unit) {
+    private fun withFixture(settings: LoginSettings = LoginSettings(maxFailedAttempts = 3, lockoutMinutes = 5), block: (Fixture) -> Unit) {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val identities = IdentityStore(connection.database, clock)
             val audit = mutableListOf<AuditEvent>()
@@ -57,7 +56,7 @@ internal class LoginServiceTest {
                 identities = identities,
                 credentials = LoginStore(connection.database, clock),
                 hasher = PasswordHasher(Argon2Cost(memoryKib = 8, iterations = 1, parallelism = 1)),
-                protection = Reference.reference(protection),
+                settings = Reference.reference(settings),
                 clock = clock,
                 audit = audit::add,
             )
@@ -155,7 +154,7 @@ internal class LoginServiceTest {
 
             val outcome = fixture.loginAs("alice", password)
 
-            assertThat(outcome).describedAs("a blocked user name and address must not be let in with the right password").isEqualTo(Blocked)
+            assertThat(outcome).describedAs("a blocked user name and address must not be let in with the right password").isInstanceOf(Blocked::class.java)
         }
     }
 
@@ -172,17 +171,59 @@ internal class LoginServiceTest {
     }
 
     @Test
-    fun `forgets earlier failures after a successful login`() {
+    fun `a login to an own account does not reset the failures of the address`() {
         withFixture { fixture ->
-            fixture.userWithPassword()
-            repeat(2) { fixture.loginAs("alice", "wrong password entirely") }
+            fixture.userWithPassword(name = "alice")
+            fixture.userWithPassword(name = "bob")
+            repeat(2) { fixture.loginAs("bob", "wrong password entirely") }
             fixture.loginAs("alice", password)
 
-            repeat(2) { fixture.loginAs("alice", "wrong password entirely") }
+            repeat(2) { fixture.loginAs("bob", "wrong password entirely") }
 
             assertThat(fixture.loginAs("alice", password))
-                .describedAs("failures before a successful login must not count towards the limit")
-                .isInstanceOf(Succeeded::class.java)
+                .describedAs("an attacker with an account of their own must not reset the failures of their address")
+                .isInstanceOf(Blocked::class.java)
+        }
+    }
+
+    @Test
+    fun `limits password logins by default, without any brute force setting`() {
+        withFixture(settings = LoginSettings()) { fixture ->
+            fixture.userWithPassword()
+            repeat(5) { fixture.loginAs("alice", "wrong password entirely") }
+
+            assertThat(fixture.loginAs("alice", password))
+                .describedAs("five failures must block the user name by default, as the login settings say")
+                .isInstanceOf(Blocked::class.java)
+        }
+    }
+
+    @Test
+    fun `counts failures of one address across user names`() {
+        withFixture { fixture ->
+            fixture.userWithPassword(name = "alice")
+            fixture.userWithPassword(name = "bob")
+            fixture.loginAs("mallory", "wrong password entirely")
+            fixture.loginAs("trudy", "wrong password entirely")
+            fixture.loginAs("eve", "wrong password entirely")
+
+            assertThat(fixture.loginAs("alice", password))
+                .describedAs("failures against several names from one address must lock that address for every name")
+                .isInstanceOf(Blocked::class.java)
+        }
+    }
+
+    @Test
+    fun `tells the client how long to wait for a blocked login`() {
+        withFixture { fixture ->
+            fixture.userWithPassword()
+            repeat(3) { fixture.loginAs("alice", "wrong password entirely") }
+
+            val outcome = fixture.loginAs("alice", password)
+
+            assertThat((outcome as Blocked).retryAfterSeconds)
+                .describedAs("the retry hint must be the remaining lock time of the lockout, here five minutes")
+                .isEqualTo(300)
         }
     }
 

@@ -16,7 +16,6 @@
 
 package net.onelitefeather.ingot.identity.login.application
 
-import com.reposilite.auth.application.AuthenticationSettings
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.token.AccessTokenFacade
@@ -62,9 +61,7 @@ class LoginPlugin : ReposilitePlugin() {
                 identities = IdentityStore(database),
                 credentials = LoginStore(database),
                 hasher = PasswordHasher(),
-                protection = facade<SharedConfigurationFacade>()
-                    .getDomainSettings<AuthenticationSettings>()
-                    .computed { it.bruteForceProtection },
+                settings = loginSettings,
                 clock = clock,
                 audit = { auditExtensions.emitEvent(it) },
             )

@@ -30,8 +30,8 @@ sealed interface LoginOutcome {
     /** The credentials are right, but the principal is disabled. */
     data object Disabled : LoginOutcome
 
-    /** Too many recent failures for this user name and address. The credentials were not checked. */
-    data object Blocked : LoginOutcome
+    /** Too many recent failures for this user name, or for this address. The credentials were not checked. */
+    data class Blocked(val retryAfterSeconds: Long) : LoginOutcome
 
     /** No provider with the requested id is configured. */
     data object UnknownProvider : LoginOutcome
@@ -68,7 +68,7 @@ sealed interface SetupOutcome {
     data object WrongCode : SetupOutcome
 
     /** Too many wrong codes from this address. The code was not checked. */
-    data object Blocked : SetupOutcome
+    data class Blocked(val retryAfterSeconds: Long) : SetupOutcome
 
     /** The user name is held by a principal already. */
     data object NameTaken : SetupOutcome

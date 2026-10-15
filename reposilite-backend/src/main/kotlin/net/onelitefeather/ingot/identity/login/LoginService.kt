@@ -19,7 +19,6 @@ package net.onelitefeather.ingot.identity.login
 import com.reposilite.audit.api.AuditAction.LOGIN_FAILED
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
-import com.reposilite.auth.application.BruteForceProtectionSettings
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Blocked
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Disabled
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Rejected
@@ -37,6 +36,7 @@ import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import panda.std.reactive.Reference
 import java.time.Clock
+import java.time.Duration
 
 /**
  * Password logins for human principals. Every provider goes through the same checks here: the failure limit per user
@@ -47,13 +47,13 @@ class LoginService internal constructor(
     private val identities: IdentityStore,
     private val credentials: LoginStore,
     private val hasher: PasswordHasher,
-    protection: Reference<BruteForceProtectionSettings>,
+    settings: Reference<LoginSettings>,
     clock: Clock,
     private val audit: (AuditEvent) -> Unit,
     private val setupCode: SetupCode = SetupCode(),
 ) {
 
-    private val limiter = LoginRateLimiter(protection, clock)
+    private val limiter = LoginAttemptLimiter(credentials, settings, clock)
 
     /** Serializes setups of this instance, so that the check for "no user yet" and the creation happen together. */
     private val setupLock = Any()
@@ -67,23 +67,24 @@ class LoginService internal constructor(
 
     fun login(providerId: String, username: String, password: String, ip: String): LoginOutcome {
         val provider = providers.firstOrNull { it.id == providerId } ?: return UnknownProvider
-        val key = "${username.lowercase()}|$ip"
+        val userKey = LoginAttemptLimiter.userKey(username, ip)
+        val keys = listOf(userKey, LoginAttemptLimiter.addressKey(ip))
 
-        if (limiter.isBlocked(key)) {
+        limiter.retryAfter(keys)?.let { wait ->
             recordRejected(username, ip)
-            return Blocked
+            return Blocked(retryAfterSeconds = ceilSeconds(wait))
         }
 
         val outcome = provider.authenticate(username, password)
         when (outcome) {
-            is Succeeded -> limiter.forget(key)
+            is Succeeded -> limiter.forget(userKey)
             Rejected -> {
-                limiter.recordFailure(key)
+                limiter.recordFailure(keys)
                 recordRejected(username, ip)
             }
             // The password was right, so this is not guessing and does not count towards the limit.
             Disabled -> recordRejected(username, ip)
-            Blocked, UnknownProvider -> Unit
+            is Blocked, UnknownProvider -> Unit
         }
         return outcome
     }
@@ -160,13 +161,13 @@ class LoginService internal constructor(
         if (!isSetupRequired()) {
             return NotRequired
         }
-        val key = "setup|$ip"
-        if (limiter.isBlocked(key)) {
+        val addressKey = LoginAttemptLimiter.addressKey(ip)
+        limiter.retryAfter(listOf(addressKey))?.let { wait ->
             recordRejected(SETUP_ACTOR, ip)
-            return SetupBlocked
+            return SetupBlocked(ceilSeconds(wait))
         }
         if (!setupCode.matches(givenCode)) {
-            limiter.recordFailure(key)
+            limiter.recordFailure(listOf(addressKey))
             recordRejected(SETUP_ACTOR, ip)
             return WrongCode
         }
@@ -184,7 +185,6 @@ class LoginService internal constructor(
         identities.grantInstanceRole(principalId = principal.id, teamId = null)
         setPassword(principal, password, mustChange = false)
         setupCode.clear()
-        limiter.forget(key)
         return Created(principal)
     }
 
@@ -194,6 +194,10 @@ class LoginService internal constructor(
         name.any { it == ':' || it.isWhitespace() || it.isISOControl() } -> "User name must not contain colons, spaces or control characters"
         else -> null
     }
+
+    /** Whole seconds to wait, rounded up, and at least one: a client told "0" would retry at once. */
+    private fun ceilSeconds(wait: Duration): Long =
+        ((wait.toMillis() + 999) / 1000).coerceAtLeast(1)
 
     private fun recordRejected(username: String, ip: String) {
         audit(AuditEvent(action = LOGIN_FAILED, actor = AuditActor.named(username, ip), success = false))

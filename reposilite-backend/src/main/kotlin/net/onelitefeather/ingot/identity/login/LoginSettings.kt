@@ -27,4 +27,8 @@ data class LoginSettings(
     val sessionLifetimeMinutes: Long = 15,
     @get:Doc(title = "Refresh Lifetime Hours", description = "Lifetime of a refresh token. Every renewal issues a new one, so this bounds the idle time of a browser session")
     val refreshLifetimeHours: Long = 168,
+    @get:Doc(title = "Maximum Failed Attempts", description = "Failed password logins that lock a user name from one address, and the same number of failures that lock an address. Applies by default, independently of the brute force protection of Basic and token authentication")
+    val maxFailedAttempts: Int = 5,
+    @get:Doc(title = "Lockout Minutes", description = "How long a locked user name or address stays locked after the first lockout. Every further lockout without a quiet period doubles it, up to 24 hours")
+    val lockoutMinutes: Long = 15,
 ) : SharedSettings

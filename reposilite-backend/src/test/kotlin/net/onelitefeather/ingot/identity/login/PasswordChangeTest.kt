@@ -16,7 +16,6 @@
 
 package net.onelitefeather.ingot.identity.login
 
-import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Rejected
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Succeeded
@@ -53,7 +52,7 @@ internal class PasswordChangeTest {
                 identities = identities,
                 credentials = LoginStore(connection.database, clock),
                 hasher = PasswordHasher(Argon2Cost(memoryKib = 8, iterations = 1, parallelism = 1)),
-                protection = Reference.reference(BruteForceProtectionSettings()),
+                settings = Reference.reference(LoginSettings()),
                 clock = clock,
                 audit = {},
             )
