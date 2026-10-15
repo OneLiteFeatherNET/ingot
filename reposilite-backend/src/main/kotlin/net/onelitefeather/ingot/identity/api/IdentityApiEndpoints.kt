@@ -284,6 +284,74 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
+        path = "/api/identity/principals/{name}/instance-admin",
+        tags = ["Identity"],
+        summary = "Grants the instance role to a principal. Granting it again changes nothing. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
+        methods = [HttpMethod.PUT],
+    )
+    val grantPrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", PUT) {
+        managerOnly {
+            response = identity.grantPrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    snapshot.value
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/principals/{name}/instance-admin",
+        tags = ["Identity"],
+        summary = "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
+        methods = [HttpMethod.DELETE],
+    )
+    val revokePrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", DELETE) {
+        managerOnly {
+            response = identity.revokePrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    snapshot.value
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/teams/{name}/instance-admin",
+        tags = ["Identity"],
+        summary = "Grants the instance role to a team: its members with a valid token become instance admins. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
+        methods = [HttpMethod.PUT],
+    )
+    val grantTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", PUT) {
+        managerOnly {
+            response = identity.grantTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    snapshot.value
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/teams/{name}/instance-admin",
+        tags = ["Identity"],
+        summary = "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
+        methods = [HttpMethod.DELETE],
+    )
+    val revokeTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", DELETE) {
+        managerOnly {
+            response = identity.revokeTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH))
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    snapshot.value
+                }
+        }
+    }
+
+    @OpenApi(
         path = "/api/identity/repositories/{repository}/access",
         tags = ["Identity"],
         summary = "Explains who has which access on a repository, and why. Note: Requires Manager",
@@ -304,6 +372,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         listPrincipals, createPrincipal, getPrincipal, updatePrincipal, deletePrincipal,
         listTokens, createToken, deleteToken,
         listTeams, createTeam, getTeam, updateTeam, deleteTeam, replaceMembers, replaceGrants,
+        grantPrincipalInstanceAdmin, revokePrincipalInstanceAdmin, grantTeamInstanceAdmin, revokeTeamInstanceAdmin,
         repositoryAccess,
     )
 

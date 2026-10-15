@@ -322,6 +322,13 @@ class IdentityStore(
                 .toSet()
         }
 
+    fun listInstanceRolePrincipalIds(): Set<Int> =
+        transaction(database) {
+            InstanceRoleTable.selectAll()
+                .mapNotNull { it[InstanceRoleTable.principalId]?.value }
+                .toSet()
+        }
+
     // tokens
 
     fun createToken(

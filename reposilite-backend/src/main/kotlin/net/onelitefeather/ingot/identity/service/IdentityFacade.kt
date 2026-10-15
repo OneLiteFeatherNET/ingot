@@ -73,6 +73,19 @@ data class IdentitySnapshot<T>(
 typealias IdentityResult<T> = Result<T, ErrorResponse>
 
 /**
+ * A change that may take an instance role away from the principals that hold it: the role of a principal or a team,
+ * a principal that stops being usable, a token that goes, or team memberships that end. Used to refuse the removal of
+ * the last usable instance admin.
+ */
+private data class AdminChange(
+    val principalRoleLost: Set<Int> = emptySet(),
+    val teamRoleLost: Set<Int> = emptySet(),
+    val principalsUnusable: Set<Int> = emptySet(),
+    val tokenRemoved: Int? = null,
+    val membershipsLost: Set<Pair<Int, Int>> = emptySet(),
+)
+
+/**
  * The identity administration: principals, their tokens, teams with their members and grants, and the explanation of
  * who may do what on a repository. Every mutation checks the entity tag when one is given, and rejects names that the
  * model reserves. Private teams (named `machine:<name>`) are not visible here: they belong to their machine principal.
@@ -122,6 +135,7 @@ class IdentityFacade(
 
         val disabledChanged = request.disabled != null && request.disabled != principal.disabled
         request.displayName?.let { if (it.isBlank()) return badRequestError("Display name cannot be blank") }
+        if (request.disabled == true) adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return it }
         store.updatePrincipal(principal.id, request.displayName, request.disabled)
         if (disabledChanged) invalidateTokensOf(principal)
         return snapshotOf(principalNamed(name)!!).asSuccess()
@@ -130,6 +144,7 @@ class IdentityFacade(
     fun deletePrincipal(name: String, ifMatch: String?): IdentityResult<Unit> {
         val principal = principalNamed(name) ?: return notFoundError("Principal not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
+        adminGuard<Unit>(AdminChange(principalsUnusable = setOf(principal.id)))?.let { return it }
 
         invalidateTokensOf(principal)
         store.deletePrincipal(principal)
@@ -138,7 +153,7 @@ class IdentityFacade(
 
     // tokens
 
-    fun createToken(principalName: String, request: CreateTokenRequest, actor: AuditActor): IdentityResult<CreatedTokenDto> {
+    fun createToken(principalName: String, request: CreateTokenRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<CreatedTokenDto> {
         val principal = principalNamed(principalName) ?: return notFoundError("Principal not found")
         val name = validateName(request.name, MAX_NAME_LENGTH)
             ?: return badRequestError(nameProblem(request.name, MAX_NAME_LENGTH, "Token name"))
@@ -171,9 +186,10 @@ class IdentityFacade(
         return store.tokensOf(principal.id).map { it.toDto() }.asSuccess()
     }
 
-    fun deleteToken(principalName: String, tokenName: String, actor: AuditActor): IdentityResult<Unit> {
+    fun deleteToken(principalName: String, tokenName: String, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<Unit> {
         val principal = principalNamed(principalName) ?: return notFoundError("Principal not found")
         val token = store.tokensOf(principal.id).firstOrNull { it.name == tokenName } ?: return notFoundError("Token not found")
+        adminGuard<Unit>(AdminChange(tokenRemoved = token.id))?.let { return it }
 
         store.deleteToken(token.id)
         accessTokens.tokenStateChanged(token.name)
@@ -225,10 +241,9 @@ class IdentityFacade(
     fun deleteTeam(name: String, ifMatch: String?): IdentityResult<Unit> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+        adminGuard<Unit>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return it }
 
-        store.listMemberships(team.id).forEach { membership ->
-            store.findPrincipalById(membership.principalId)?.let { invalidateTokensOf(it) }
-        }
+        invalidateTeamMembers(team)
         store.deleteTeam(team.id)
         return Unit.asSuccess()
     }
@@ -242,8 +257,68 @@ class IdentityFacade(
         val principalIds = members.map { memberName ->
             principalNamed(memberName)?.id ?: return badRequestError("Unknown principal '$memberName'")
         }.toSet()
+        val dropped = store.listMemberships(team.id)
+            .filter { it.source == TeamMemberSource.MANUAL && it.principalId !in principalIds }
+            .map { team.id to it.principalId }
+            .toSet()
+        adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(membershipsLost = dropped))?.let { return it }
+
+        invalidateTeamMembers(team)
         store.replaceManualMembers(team.id, principalIds)
+        invalidateTeamMembers(team)
         return snapshotOf(team).asSuccess()
+    }
+
+    // instance role
+
+    /** Grants the instance role to a principal. Granting it again changes nothing and keeps the entity tag. */
+    fun grantPrincipalInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
+        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
+        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
+
+        if (!store.hasDirectInstanceRole(principal.id)) {
+            store.grantInstanceRole(principalId = principal.id, teamId = null)
+            invalidateTokensOf(principal)
+        }
+        return snapshotOf(principalNamed(name)!!).asSuccess()
+    }
+
+    /** Removes the instance role of a principal, unless that leaves no usable instance admin (see [adminGuard]). */
+    fun revokePrincipalInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<PrincipalDetailDto>> {
+        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
+        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
+
+        if (store.hasDirectInstanceRole(principal.id)) {
+            adminGuard<IdentitySnapshot<PrincipalDetailDto>>(AdminChange(principalRoleLost = setOf(principal.id)))?.let { return it }
+            store.revokeInstanceRole(principalId = principal.id, teamId = null)
+            invalidateTokensOf(principal)
+        }
+        return snapshotOf(principalNamed(name)!!).asSuccess()
+    }
+
+    /** Grants the instance role to a team: every member with a usable token becomes an instance admin. */
+    fun grantTeamInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+        val team = publicTeam(name) ?: return notFoundError("Team not found")
+        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+
+        if (!store.listInstanceRoleTeamIds().contains(team.id)) {
+            store.grantInstanceRole(principalId = null, teamId = team.id)
+            invalidateTeamMembers(team)
+        }
+        return snapshotOf(publicTeam(name)!!).asSuccess()
+    }
+
+    /** Removes the instance role of a team, unless that leaves no usable instance admin (see [adminGuard]). */
+    fun revokeTeamInstanceAdmin(name: String, ifMatch: String?): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+        val team = publicTeam(name) ?: return notFoundError("Team not found")
+        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+
+        if (store.listInstanceRoleTeamIds().contains(team.id)) {
+            adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(teamRoleLost = setOf(team.id)))?.let { return it }
+            store.revokeInstanceRole(principalId = null, teamId = team.id)
+            invalidateTeamMembers(team)
+        }
+        return snapshotOf(publicTeam(name)!!).asSuccess()
     }
 
     /** Replaces every grant of the team. Legacy roles are not assignable: only private teams carry them. */
@@ -260,6 +335,7 @@ class IdentityFacade(
             Triple(repository, normalizePrefix(request.pathPrefix), role)
         }
         store.replaceGrants(team.id, parsed)
+        invalidateTeamMembers(team)
         return snapshotOf(team).asSuccess()
     }
 
@@ -313,6 +389,45 @@ class IdentityFacade(
 
     private fun invalidateTokensOf(principal: PrincipalRecord) {
         store.tokensOf(principal.id).forEach { accessTokens.tokenStateChanged(it.name) }
+    }
+
+    private fun invalidateTeamMembers(team: TeamRecord) {
+        store.listMemberships(team.id).forEach { membership ->
+            store.findPrincipalById(membership.principalId)?.let { invalidateTokensOf(it) }
+        }
+    }
+
+    /**
+     * Refuses a change that would take the instance role away from the last usable instance admin. A usable admin is an
+     * enabled principal with an unexpired persistent token that holds the role, directly or through a team it belongs to.
+     * Temporary tokens from the command line are not persistent and never count. A change is only refused when at least
+     * one usable admin exists before it, so a system without any admin is not locked further.
+     */
+    private fun <T> adminGuard(change: AdminChange): IdentityResult<T>? {
+        val before = usableInstanceAdmins(AdminChange())
+        val after = usableInstanceAdmins(change)
+        return if (before > 0 && after == 0) {
+            errorResponse(CONFLICT, "Cannot remove the last instance admin: keep at least one enabled principal with a valid token that holds the instance role. Temporary tokens from --token do not count.")
+        } else {
+            null
+        }
+    }
+
+    /** Counts the usable instance admins as they would be once [change] is applied. */
+    private fun usableInstanceAdmins(change: AdminChange): Int {
+        val now = clock.instant()
+        val directRoles = store.listInstanceRolePrincipalIds() - change.principalRoleLost
+        val teamRoles = store.listInstanceRoleTeamIds() - change.teamRoleLost
+        return store.listPrincipals().count { principal ->
+            principal.id !in change.principalsUnusable &&
+                !principal.disabled &&
+                (principal.id in directRoles || store.membershipsOf(principal.id).any { membership ->
+                    membership.teamId in teamRoles && (membership.teamId to membership.principalId) !in change.membershipsLost
+                }) &&
+                store.tokensOf(principal.id).any { token ->
+                    token.id != change.tokenRemoved && (token.expiresAt?.let { !now.isAfter(it) } ?: true)
+                }
+        }
     }
 
     private fun <T> preconditionFailed(subject: String): IdentityResult<T> =
