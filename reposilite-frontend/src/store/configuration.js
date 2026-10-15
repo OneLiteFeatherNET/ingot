@@ -12,6 +12,8 @@ import { default as OneOfRenderer, tester as oneOfTester } from '../components/r
 import { default as ConstantRenderer, tester as constantTester } from '../components/renderers/ConstantRenderer.vue'
 import { default as OptionalRenderer, tester as optionalTester } from '../components/renderers/OptionalRenderer.vue'
 import { default as BooleanSwitchRenderer, tester as booleanSwitchTester } from '../components/renderers/BooleanSwitchRenderer.vue'
+import { default as MdTextFieldRenderer, tester as mdTextFieldTester } from '../components/renderers/MdTextFieldRenderer.vue'
+import { default as MdSelectRenderer, tester as mdSelectTester } from '../components/renderers/MdSelectRenderer.vue'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
 
@@ -59,7 +61,8 @@ export const createConfigurationStore = (client) => {
   const saveError = ref(null)
   const saving = ref(false)
 
-  const configurationValidator = createAjv({
+  /* markRaw keeps Vue from wrapping the instance in a reactive proxy, which breaks ajv's code generation. */
+  const configurationValidator = markRaw(createAjv({
     useDefaults: true,
     removeAdditional: false,
     formats: {
@@ -70,7 +73,7 @@ export const createConfigurationStore = (client) => {
       },
       'repositories.proxied.allowedGroups': /^(\w+\.)*\w+$/,
     }
-  })
+  }))
   configurationValidator.addFormat("repositories.id", {
     type: "string",
     validate: (value) => !value.endsWith(' ')
@@ -201,7 +204,7 @@ export const createConfigurationStore = (client) => {
    * A schema that does not compile is reported by the form, so it does not block the domain here.
    */
   const validateDomain = (domain) => {
-    let valid = true
+    let valid
     try {
       valid = configurationValidator.compile(schemas.value[domain])(configurations.value[domain]) === true
     } catch {
@@ -270,7 +273,13 @@ export const createConfigurationStore = (client) => {
 
 const store = createConfigurationStore(useSession().client)
 
+/* Lets a view receive another store instead of the shared one, which the tests use for a fresh store per test. */
+export const configurationStoreKey = Symbol('configuration-store')
+
 const renderers = markRaw([
+  // Outlined fields for text, numbers and enums. They outrank the vanilla renderers, which they replace.
+  { tester: mdSelectTester, renderer: MdSelectRenderer },
+  { tester: mdTextFieldTester, renderer: MdTextFieldRenderer },
   { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
   { tester: arrayListTester, renderer: ArrayListRenderer },
   { tester: allOfTester, renderer: AllOfRenderer },
@@ -313,7 +322,7 @@ const configurationStyles = mergeStyles(defaultStyles, {
   },
   group: {
     /* An outlined card: the same surface, outline and corner as MdCard, applied through the styles object. */
-    root: 'flex flex-col gap-4 rounded-corner-medium border border-outline-variant bg-surface-container-low p-4 min-w-0',
+    root: 'flex flex-col gap-4 rounded-corner-medium border border-outline-variant bg-surface p-4 min-w-0',
     label: 'md-title-medium text-on-surface px-1'
   },
   arrayList: {

@@ -3,10 +3,10 @@ import { computed } from 'vue'
 import MdSwitch from '../md/MdSwitch.vue'
 
 /*
- * Material Design 3 switch for a boolean setting in the generated forms. The label and the
- * description sit above the switch, and the switch is MdSwitch. Its visible state text is
- * "Enabled" or "Disabled" for sighted users. The accessible name is the label above, through
- * aria-labelledby, so the state text does not become part of it.
+ * Material Design 3 switch for a boolean setting in the generated forms, laid out as a list row:
+ * the label and its description on the left, the switch on the right. The switch is MdSwitch.
+ * Its visible state text is "Enabled" or "Disabled" for sighted users. The accessible name is the
+ * label, through aria-labelledby, so the state text does not become part of it.
  */
 const props = defineProps({
   id: {
@@ -45,25 +45,29 @@ const labelId = computed(() => `${props.id}-label`)
 </script>
 
 <template>
-  <div class="flex flex-col items-start py-1">
-    <span
-      :id="labelId"
-      class="block px-2 pb-1 md-body-small text-on-surface-variant"
-    >
-      {{ label }}<span
-        v-if="required"
-        aria-hidden="true"
-      > *</span>
-    </span>
-    <p
-      v-if="description"
-      class="md-body-small text-on-surface-variant px-2 pb-1"
-    >
-      {{ description }}
-    </p>
-    <div class="px-2">
+  <div class="flex w-full flex-col py-1">
+    <!-- A list row: the label and its description on the left, the switch on the right. -->
+    <div class="flex min-h-14 items-center justify-between gap-4 px-4 py-2">
+      <div class="flex min-w-0 flex-1 flex-col">
+        <span
+          :id="labelId"
+          class="block md-body-large text-on-surface"
+        >
+          {{ label }}<span
+            v-if="required"
+            aria-hidden="true"
+          > *</span>
+        </span>
+        <p
+          v-if="description"
+          class="md-body-medium text-on-surface-variant"
+        >
+          {{ description }}
+        </p>
+      </div>
       <MdSwitch
         :id="id"
+        class="shrink-0"
         :model-value="modelValue"
         :disabled="disabled"
         :aria-labelledby="labelId"
@@ -74,7 +78,7 @@ const labelId = computed(() => `${props.id}-label`)
     </div>
     <p
       v-if="errors"
-      class="md-body-small text-error px-2 pt-1"
+      class="md-body-small text-error px-4 pt-1"
     >
       {{ errors }}
     </p>
