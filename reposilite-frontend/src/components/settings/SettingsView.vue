@@ -15,32 +15,44 @@
   -->
 
 <script setup>
-import {computed, provide, watch} from 'vue'
-import {JsonForms} from '@jsonforms/vue'
-import { useConfiguration } from '../../store/configuration'
+import { computed, inject, provide, reactive, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { JsonForms } from '@jsonforms/vue'
 import download from 'downloadjs'
+import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import SettingsTabs from './SettingsTabs.vue'
+import CollectionEditor from './CollectionEditor.vue'
+import UnsavedChangesBar from './UnsavedChangesBar.vue'
+import { collectionsOf, entryLayout } from './collections'
 import { property } from '../../helpers/vue-extensions'
 
+/*
+ * The routes are `settings` (/settings/:domain?) and `settings-entry` (/settings/:domain/:collection/:entry).
+ * When they exist, the address decides what is shown and each selection is pushed or replaced
+ * through the router. Until they exist, the view keeps the selection itself, so the page works
+ * under the current router too.
+ */
 const props = defineProps({
-  selectedTab: property(String, true)
+  selectedTab: property(String, true),
+  domain: {
+    type: String,
+    default: undefined
+  },
+  collection: {
+    type: String,
+    default: undefined
+  },
+  entry: {
+    type: String,
+    default: undefined
+  }
 })
 
-const { store, renderers, configurationStyles } = useConfiguration()
-const {
-  domains,
-  schemas,
-  configurations,
-  selectedDomain,
-  hasChanges,
-  invalidDomains,
-  dirtyDomains,
-  saving,
-  saveError,
-  loadError
-} = store
+const { store: sharedStore, renderers, configurationStyles } = useConfiguration()
+const store = inject(configurationStoreKey, null) ?? sharedStore
+const router = useRouter()
 
 /*
  * 'styles' is the injection key useStyles() of @dzikoysk/vue-vanilla looks up, so every
@@ -48,44 +60,99 @@ const {
  */
 provide('styles', configurationStyles)
 
-const domainTabs = computed(() => domains.value.map(domain => ({ key: domain, label: store.titleOf(domain) })))
+const {
+  domains,
+  configurations,
+  loadError,
+  saving,
+  hasUnsavedChanges,
+  changeCount,
+  invalidDomains
+} = store
 
-const namesOf = (domains) => domains.map(domain => store.titleOf(domain)).join(', ')
-const invalidNames = computed(() => namesOf(invalidDomains.value))
-const dirtyNames = computed(() => namesOf(dirtyDomains.value))
+const hasRoute = (name) => Boolean(router?.hasRoute?.(name))
+const routed = computed(() => hasRoute('settings-entry'))
 
-const canSave = computed(() => hasChanges.value && invalidDomains.value.length === 0 && !saving.value)
-const canDownload = computed(() => invalidDomains.value.length === 0 && domains.value.length > 0)
+/* Selection kept by the view itself, used only while the address does not carry one. */
+const localSelection = reactive({})
 
-/* One line next to the actions. Errors take precedence, so a failed save is never hidden. */
-const status = computed(() => {
-  if (saveError.value) return { text: saveError.value, error: true }
-  if (saving.value) return { text: 'Saving', error: false }
-  if (invalidDomains.value.length > 0) {
-    return { text: `Fix the errors in ${invalidNames.value} to save or download.`, error: true }
-  }
-  if (hasChanges.value) return { text: `Unsaved changes in ${dirtyNames.value}.`, error: false }
-  return null
+const activeDomain = computed(() => {
+  const requested = routed.value ? props.domain : store.selectedDomain.value
+  if (domains.value.includes(requested)) return requested
+  return domains.value[0]
 })
 
-const downloadHint = computed(() =>
-  canDownload.value ? null : `Download is unavailable until the errors in ${invalidNames.value} are fixed.`
-)
+const domainTabs = computed(() => domains.value.map(domain => ({ key: domain, label: store.titleOf(domain) })))
 
-const onFormChange = (domain, event) => {
-  store.setDomainData(domain, event.data)
-  store.setValidity(domain, event.errors.length === 0)
+const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
+const activeCollections = computed(() => (activeDomain.value ? collectionsFor(activeDomain.value) : []))
+
+const entriesOf = (domain, collection) => configurations.value[domain]?.[collection.key] ?? []
+
+const selectedIdFor = (collection) => {
+  if (routed.value) return props.collection === collection.key ? (props.entry ?? null) : null
+  return localSelection[collection.key] ?? null
 }
 
-watch(
-  () => props.selectedTab,
-  (selectedTab, prev) => {
-    /* Fetch configuration only when user opens the configuration tab  */
-    if (selectedTab === 'Settings' && prev == undefined && domains.value.length == 0)
-      store.fetchConfiguration()
-  },
-  { immediate: true }
-)
+/*
+ * The fields of a domain that are not collections, as one generated form. Most domains have none
+ * of these, and then no form is drawn for them.
+ */
+const domainForm = computed(() => {
+  const domain = activeDomain.value
+  const schema = store.schemas.value[domain]
+  if (!domain || !schema?.properties) return null
+  const collectionKeys = collectionsFor(domain).map(collection => collection.key)
+  const fields = Object.fromEntries(
+    Object.entries(schema.properties).filter(([key]) => !collectionKeys.includes(key))
+  )
+  if (Object.keys(fields).length === 0) return null
+  const fieldSchema = { ...schema, properties: fields }
+  return { schema: fieldSchema, layout: entryLayout(fieldSchema, { exclude: [] }) }
+})
+
+const selectDomain = (domain) => {
+  store.selectedDomain.value = domain
+  if (hasRoute('settings')) router.push({ name: 'settings', params: { domain } })
+}
+
+const selectEntry = (collection, id) => {
+  localSelection[collection.key] = id
+  if (hasRoute('settings-entry')) {
+    router.push({ name: 'settings-entry', params: { domain: activeDomain.value, collection: collection.key, entry: id } })
+  }
+}
+
+const backToList = (collection) => {
+  localSelection[collection.key] = null
+  if (hasRoute('settings')) router.push({ name: 'settings', params: { domain: activeDomain.value } })
+}
+
+const createEntry = (collection, id) => {
+  const domain = activeDomain.value
+  store.addEntry(domain, collection.key, { id })
+  localSelection[collection.key] = id
+  if (hasRoute('settings-entry')) {
+    router.replace({ name: 'settings-entry', params: { domain, collection: collection.key, entry: id } })
+  }
+}
+
+const updateEntry = (collection, { index, entry }) => {
+  store.setEntry(activeDomain.value, collection.key, index, entry)
+}
+
+const deleteEntry = (collection, index) => {
+  store.removeEntry(activeDomain.value, collection.key, index)
+  localSelection[collection.key] = null
+  if (hasRoute('settings')) router.replace({ name: 'settings', params: { domain: activeDomain.value } })
+}
+
+const onDomainChange = (domain, event) => {
+  store.setDomainData(domain, event.data)
+  store.validateDomain(domain)
+}
+
+const canDownload = computed(() => invalidDomains.value.length === 0 && domains.value.length > 0)
 
 const downloadSettings = () => {
   if (!canDownload.value) return
@@ -104,29 +171,39 @@ const factoryReset = () => store.factoryReset()
 const formsConfiguration = {
   showUnfocusedDescription: true
 }
+
+watch(
+  () => props.selectedTab,
+  (selectedTab, prev) => {
+    /* Fetch configuration only when user opens the configuration tab  */
+    if (selectedTab === 'Settings' && prev == undefined && domains.value.length == 0)
+      store.fetchConfiguration()
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
   <div class="settings-view container mx-auto pt-7 pb-4">
-    <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-start md:justify-between">
-      <div class="flex flex-col gap-1 max-w-prose">
-        <p class="md-body-large text-on-surface-variant">
-          Modify configuration shared between all instances.
-        </p>
+    <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-end md:justify-between">
+      <div class="flex min-w-0 flex-col gap-1">
+        <h1 class="md-headline-medium text-on-surface">
+          Settings
+        </h1>
         <p class="md-body-medium text-on-surface-variant">
-          <strong class="text-on-surface">Remember</strong>: Configuration propagation can take up to 10 seconds on all your instances.
+          Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance.
         </p>
       </div>
-      <FactoryResetModal :callback="factoryReset">
-        <template #button>
-          <button
-            type="button"
-            class="md-state-layer md-focus-ring relative inline-flex min-h-12 shrink-0 items-center justify-center rounded-corner-full px-6 md-label-large text-error"
-          >
-            Factory reset
-          </button>
-        </template>
-      </FactoryResetModal>
+      <MdButton
+        variant="outlined"
+        type="button"
+        class="shrink-0"
+        :disabled="!canDownload"
+        :title="canDownload ? undefined : 'Download is unavailable until the errors are fixed.'"
+        @click="downloadSettings"
+      >
+        Download as JSON
+      </MdButton>
     </header>
 
     <p
@@ -137,74 +214,101 @@ const formsConfiguration = {
       {{ loadError }}
     </p>
 
-    <SettingsTabs
-      v-model="selectedDomain"
-      label="Configuration domains"
-      variant="primary"
-      :tabs="domainTabs"
-    />
-    <div
-      v-for="domain in domains"
-      v-show="domain === selectedDomain"
-      :key="`config_tab:${domain}`"
-      role="tabpanel"
-      class="mt-6 rounded-corner-large border border-outline-variant bg-surface-container-low p-4 md:p-6"
-    >
-      <JsonForms
-        v-if="configurations[domain]"
-        :config="formsConfiguration"
-        :data="configurations[domain]"
-        :schema="schemas[domain]"
-        :renderers="renderers"
-        :ajv="store.configurationValidator"
-        @change="onFormChange(domain, $event)"
+    <template v-if="activeDomain">
+      <SettingsTabs
+        v-if="domains.length > 1"
+        :model-value="activeDomain"
+        label="Configuration domains"
+        variant="secondary"
+        :tabs="domainTabs"
+        @update:model-value="selectDomain"
       />
-    </div>
-
-    <div class="sticky bottom-0 z-10 mt-6 flex flex-col gap-3 border-t border-outline-variant bg-surface-container px-6 py-3 md:flex-row md:items-center md:justify-between">
-      <p
-        id="settings-status"
-        class="md-body-medium min-w-0 flex-1"
-        :class="status?.error ? 'text-error' : 'text-on-surface-variant'"
-        :role="status?.error ? 'alert' : 'status'"
+      <h2
+        v-else
+        class="md-title-large text-on-surface"
       >
-        <template v-if="status">
-          {{ status.text }}
-        </template>
-        <template v-else>
-          No unsaved changes.
-        </template>
-      </p>
-      <div class="flex flex-wrap items-center gap-2">
-        <MdButton
-          variant="outlined"
-          :disabled="!canDownload"
-          :aria-describedby="downloadHint ? 'settings-download-hint' : undefined"
-          :title="downloadHint ?? undefined"
-          @click="downloadSettings"
-        >
-          Download as JSON
-        </MdButton>
-        <span
-          v-if="downloadHint"
-          id="settings-download-hint"
-          class="sr-only"
-        >{{ downloadHint }}</span>
-        <MdButton
-          variant="text"
-          :disabled="!hasChanges || saving"
-          @click="discard"
-        >
-          Reset
-        </MdButton>
-        <MdButton
-          variant="filled"
-          :disabled="!canSave"
-          @click="save"
-        >
-          Save
-        </MdButton>
+        {{ store.titleOf(activeDomain) }}
+      </h2>
+
+      <div
+        role="tabpanel"
+        class="mt-6 flex flex-col gap-8"
+      >
+        <JsonForms
+          v-if="domainForm && configurations[activeDomain]"
+          :key="`domain-fields:${activeDomain}`"
+          :config="formsConfiguration"
+          :data="configurations[activeDomain]"
+          :schema="domainForm.schema"
+          :uischema="domainForm.layout"
+          :renderers="renderers"
+          :ajv="store.configurationValidator"
+          @change="onDomainChange(activeDomain, $event)"
+        />
+
+        <CollectionEditor
+          v-for="list in activeCollections"
+          :key="`${activeDomain}:${list.key}`"
+          :collection="list"
+          :entries="entriesOf(activeDomain, list)"
+          :selected-id="selectedIdFor(list)"
+          :renderers="renderers"
+          :validator="store.configurationValidator"
+          @select="selectEntry(list, $event)"
+          @back="backToList(list)"
+          @create="createEntry(list, $event)"
+          @change="updateEntry(list, $event)"
+          @delete="deleteEntry(list, $event)"
+        />
       </div>
+    </template>
+    <p
+      v-else-if="!loadError"
+      class="mt-6 md-body-large text-on-surface-variant"
+    >
+      Loading configuration
+    </p>
+
+    <section
+      aria-labelledby="settings-danger-title"
+      class="mt-10 flex flex-col gap-4 rounded-corner-large border border-error p-4 md:flex-row md:items-center md:justify-between md:p-6"
+    >
+      <div class="flex min-w-0 flex-col gap-1">
+        <h2
+          id="settings-danger-title"
+          class="md-title-large text-error"
+        >
+          Danger zone
+        </h2>
+        <p class="md-body-medium text-on-surface-variant">
+          A factory reset sets every setting back to its default and saves it to all instances at once.
+        </p>
+      </div>
+      <FactoryResetModal :callback="factoryReset">
+        <template #button>
+          <MdButton
+            variant="outlined"
+            type="button"
+            error
+            class="shrink-0"
+          >
+            Factory reset
+          </MdButton>
+        </template>
+      </FactoryResetModal>
+    </section>
+
+    <div
+      v-if="hasUnsavedChanges"
+      class="sticky bottom-0 z-10 -mx-4 mt-6 min-[600px]:-mx-6 max-[599px]:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]"
+    >
+      <UnsavedChangesBar
+        :count="changeCount"
+        :invalid="invalidDomains.length > 0"
+        :saving="saving"
+        @save="save"
+        @discard="discard"
+      />
     </div>
   </div>
 </template>
@@ -213,38 +317,10 @@ const formsConfiguration = {
 <style>
 @reference "../../style.css";
 /*
- * Everything the renderer styles object can carry lives in src/store/configuration.js. What is
- * left below stays here because each rule selects on something no key of that object names.
- * Every rule is scoped to .settings-view, so none of it reaches the header or another view.
- * Unlayered rules beat utilities, so the states that must win are written here, not in the object.
+ * Read-only inputs look like fields that cannot be typed in. Every rule is scoped to .settings-view,
+ * so none of it reaches the header or another view.
  */
-
-/* `container` has to stay an @apply, because written into the class attribute it would also match the page gutter rule. */
-.settings-view .vertical-layout {
-  @apply container mx-auto;
-}
-
-.settings-view .control :is(.input, select) {
-  @apply block w-full max-w-xl min-h-14 rounded-corner-extra-small border border-outline bg-surface px-4 text-on-surface;
-}
-/* MD3 outlined field focus: the outline turns primary and gains 1px inside, which makes 2px. */
-.settings-view .control :is(.input, select):focus {
-  @apply border-primary outline-none;
-  box-shadow: inset 0 0 0 1px var(--md-sys-color-primary);
-}
-
-/* Field labels sit above the field in the MD3 outlined style. The control label has the `label` class; the enum array renderer prints bare labels that pass through no style key. */
-.settings-view .label,
-.settings-view label:not([class]) {
-  @apply block px-2 pb-1 md-body-small text-on-surface-variant;
-}
-
-/* The caption beside a checkbox is a bare <p>, and read-only is a state the object cannot express. */
-.settings-view .wrapper p {
-  @apply px-2 md-body-medium text-on-surface;
-}
-.settings-view .wrapper input:not([type="checkbox"]):read-only {
+.settings-view input:not([type="checkbox"]):read-only {
   @apply bg-surface-container text-on-surface-variant;
 }
-
 </style>

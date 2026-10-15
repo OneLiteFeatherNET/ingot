@@ -58,6 +58,12 @@ describe('collectionsOf', () => {
     expect(collection.itemSchema).toBe(repositoryItem)
   })
 
+  it('names one entry of the collection in the singular, in lower case', () => {
+    const [collection] = collectionsOf(mavenSchema)
+
+    expect(collection.noun).toBe('repository')
+  })
+
   it('ignores arrays of objects without an id property', () => {
     const schema = {
       type: 'object',

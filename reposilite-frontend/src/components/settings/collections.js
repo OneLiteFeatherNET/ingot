@@ -26,12 +26,17 @@ const isObjectSchema = (schema) => schema?.type === 'object' && schema.propertie
 /* A collection is an array of objects that carry an `id`: the entries are addressed by it. */
 export const collectionsOf = (schema) => Object.entries(schema?.properties ?? {})
   .filter(([, property]) => property?.type === 'array' && isObjectSchema(property.items) && 'id' in property.items.properties)
-  .map(([key, property]) => ({
-    key,
-    title: property.title ?? key,
-    description: property.description ?? '',
-    itemSchema: property.items
-  }))
+  .map(([key, property]) => {
+    const title = property.title ?? key
+    return {
+      key,
+      title,
+      description: property.description ?? '',
+      itemSchema: property.items,
+      /* The lower-case name of one entry, as it reads in "New repository" or "Delete repository". */
+      noun: (property.items.title ?? singularOf(title)).toLowerCase()
+    }
+  })
 
 /* "Repositories" -> "Repository". The plural is only a guess, so the caller can prefer a title on the item schema. */
 export const singularOf = (title) => {
