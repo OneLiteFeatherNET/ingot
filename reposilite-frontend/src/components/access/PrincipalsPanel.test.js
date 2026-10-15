@@ -135,6 +135,24 @@ describe('PrincipalsPanel', () => {
       expect(usernames()).toEqual(['admin', 'alice', 'bob'])
     })
 
+    it('lifts the row of an open actions menu above the rows that follow it', async () => {
+      await mountPanel({ kind: 'USER' })
+
+      await rowOf('alice').find('[data-test="actions"]').trigger('click')
+
+      expect(rowOf('alice').classes(), 'each row is its own stacking context, so the open one needs a z-index').toContain('z-20')
+      expect(rowOf('bob').classes()).not.toContain('z-20')
+    })
+
+    it('puts the row back when the actions menu closes', async () => {
+      await mountPanel({ kind: 'USER' })
+      await rowOf('alice').find('[data-test="actions"]').trigger('click')
+
+      await rowOf('alice').find('[data-test="actions"]').trigger('click')
+
+      expect(rowOf('alice').classes()).not.toContain('z-20')
+    })
+
     it('filters the list by username', async () => {
       await mountPanel({ kind: 'USER' })
 

@@ -75,6 +75,33 @@ describe('PrincipalActionsMenu', () => {
     document.body.innerHTML = ''
   })
 
+  describe('open state', () => {
+    it('tells its row when the menu opens', async () => {
+      await mountMenu()
+
+      await wrapper.find('[data-test="actions"]').trigger('click')
+
+      expect(wrapper.emitted('toggle')?.at(-1), 'the row needs to know to rise above the next one').toEqual([true])
+    })
+
+    it('tells its row when the menu closes after an item was chosen', async () => {
+      await mountMenu()
+
+      await chooseItem('reset-password')
+
+      expect(wrapper.emitted('toggle')?.at(-1)).toEqual([false])
+    })
+
+    it('tells its row when Escape closes the menu', async () => {
+      await mountMenu()
+      await wrapper.find('[data-test="actions"]').trigger('click')
+
+      await wrapper.find('[role="menu"]').trigger('keydown', { key: 'Escape' })
+
+      expect(wrapper.emitted('toggle')?.at(-1)).toEqual([false])
+    })
+  })
+
   describe('menu items', () => {
     it('offers every action for a user', async () => {
       await mountMenu()

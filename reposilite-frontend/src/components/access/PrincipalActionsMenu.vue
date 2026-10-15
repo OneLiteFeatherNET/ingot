@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import { etagOf, isPreconditionFailed } from '../../store/client'
 import MoreIcon from '../icons/MoreIcon.vue'
@@ -38,6 +38,8 @@ import { detailOf } from './accessPrincipals'
  *   changed  the principal changed; the PrincipalDetailDto the server answered with, or nothing
  *            when the caller has to read it again (after a conflict)
  *   deleted  the principal was deleted
+ *   toggle   the menu opened (true) or closed (false). A list row is its own stacking context, so
+ *            the row of an open menu has to be raised above the rows that follow it.
  *
  * Disable and enable read the principal again right before the write and send the entity tag
  * of that fresh read as If-Match, so a change made elsewhere in the meantime answers 412
@@ -59,9 +61,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['changed', 'deleted'])
+const emit = defineEmits(['changed', 'deleted', 'toggle'])
 
 const menuOpen = ref(false)
+watch(menuOpen, (open) => emit('toggle', open))
 const passwordOpen = ref(false)
 const adminOpen = ref(false)
 const deleteOpen = ref(false)

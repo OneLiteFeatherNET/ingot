@@ -79,6 +79,12 @@ const { principals, details, loaded, loadError, load } = usePrincipalList(props.
 
 const query = ref('')
 const newOpen = ref(false)
+// The row whose actions menu is open. Rows are stacking contexts, so it must rise above its followers.
+const menuRow = ref(null)
+const toggleMenu = (name, open) => {
+  if (open) menuRow.value = name
+  else if (menuRow.value === name) menuRow.value = null
+}
 
 onMounted(load)
 
@@ -183,7 +189,10 @@ const deleted = (principal) => {
           :key="row.principal.name"
           data-test="row"
           class="md-state-layer relative flex items-start gap-1 rounded-corner-large"
-          :class="row.principal.name === name ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+          :class="[
+            row.principal.name === name ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface',
+            row.principal.name === menuRow ? 'z-20' : ''
+          ]"
         >
           <a
             :href="row.href"
@@ -229,6 +238,7 @@ const deleted = (principal) => {
             :api="api"
             @changed="load()"
             @deleted="deleted"
+            @toggle="toggleMenu(row.principal.name, $event)"
           />
         </li>
       </ul>
