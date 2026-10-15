@@ -1,16 +1,10 @@
 {
   "repositories": [
     {
-      "id": "snapshots",
-      "visibility": "PUBLIC",
-      "redeployment": true,
-      "preserveSnapshots": false,
-      "storageProvider": { "type": "s3", "bucketName": "test" },
-      "proxied": []
-    },
-    {
       "id": "mirror-cache",
       "visibility": "PUBLIC",
+      "description": "Read-through copies of Maven Central, cleaned nightly.",
+      "tags": ["cache", "mirror"],
       "redeployment": false,
       "preserveSnapshots": false,
       "storageProvider": { "type": "s3", "bucketName": "test" },
