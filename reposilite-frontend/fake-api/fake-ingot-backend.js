@@ -24,6 +24,7 @@ const expressWs = require("express-ws")
 const bodyParser = require('body-parser')
 const crypto = require("crypto")
 const audit = require("./audit.cjs")
+const identity = require("./identity.cjs")
 
 const {
   respond,
@@ -42,6 +43,8 @@ let uploadedFiles = []
 let mavenSettingsSchema = require('./maven-settings-schema.json')
 let mavenSettingsEntity = require('./maven-settings-entity.json')
 let frontendSettingsSchema = require('./frontend-settings-schema.json')
+// The access view of a repository in the identity API reads the repositories as they are edited here.
+identity.connectRepositories(() => mavenSettingsEntity.repositories ?? [])
 // Defaults mirror FrontendSettings and AppearanceSettings on the server.
 let frontendSettingsEntity = {
   id: 'ingot-repository',
@@ -363,6 +366,8 @@ application
   .use(express.text())
   .use(bodyParser.raw({ limit: '100mb', extended: true }))
   .use(bodyParser.json())
+  // Cookie sessions, CSRF, setup, /api/auth/* and /api/identity/*. See identity.cjs.
+  .use(identity.router)
   .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend', 'cleanup']))
   .get('/api/settings/schema/cleanup', (req, res) => res.send(cleanupSchema))
   .get('/api/settings/domain/cleanup', (req, res) => res.send(omitNulls({ policies: cleanupDomain.policies.map(omitNulls) })))
@@ -447,11 +452,11 @@ application
     )
   )
   .get('/api/tokens', (req, res) =>
-    authorized(req, () => res.send(accessTokens), () => invalidCredentials(res))
+    authorized(req, () => res.send(accessTokens.concat(identity.legacyTokenViews())), () => invalidCredentials(res))
   )
   .get('/api/tokens/:name', (req, res) =>
     authorized(req, () => {
-      const token = accessTokens.find(entry => entry.name === req.params.name)
+      const token = accessTokens.concat(identity.legacyTokenViews()).find(entry => entry.name === req.params.name)
       token ? res.send(token) : res.status(404).send({ status: 404, message: "Token not found" })
     }, () => invalidCredentials(res))
   )
@@ -617,7 +622,7 @@ application
     authorized(
       req,
       () =>
-        res.send({
+        res.send(identity.decorateTokenMe({
           accessToken: {
             id: 1,
             name: "name",
@@ -643,7 +648,7 @@ application
               },
             },
           ],
-        }),
+        })),
       () => invalidCredentials(res)
     )
   })
