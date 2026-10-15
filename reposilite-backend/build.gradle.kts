@@ -281,6 +281,16 @@ licenseReport {
     allowedLicensesFile = file("allowed-licenses.json")
 }
 
+// Set in the root build: true in CI, or with -Pcoverage=true, or when testCoverage is requested.
+val ingotTestCoverageEnabled = rootProject.extra["ingotTestCoverageEnabled"] as Boolean
+
+tasks.withType<Test>().configureEach {
+    // Without coverage the agent is not attached at all, which saves its instrumentation on every class load.
+    extensions.configure(JacocoTaskExtension::class) {
+        isEnabled = ingotTestCoverageEnabled
+    }
+}
+
 tasks.test {
     extensions.configure(JacocoTaskExtension::class) {
         setDestinationFile(file("${project.layout.buildDirectory.get()}/jacoco/jacoco.exec"))
@@ -344,6 +354,7 @@ dependencies {
 }
 
 tasks.jacocoTestReport {
+    onlyIf { ingotTestCoverageEnabled }
     reports {
         html.required.set(false)
         csv.required.set(false)
@@ -356,6 +367,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
+    onlyIf { ingotTestCoverageEnabled }
     violationRules {
         rule {
             limit {
