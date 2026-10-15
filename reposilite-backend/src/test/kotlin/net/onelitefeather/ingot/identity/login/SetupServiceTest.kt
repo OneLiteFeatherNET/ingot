@@ -232,6 +232,19 @@ internal class SetupServiceTest {
         )
 
     @Test
+    fun `audits the completed setup with the name of the administrator`() {
+        withFixture { fixture ->
+            fixture.service.completeSetup(fixture.service.issueSetupCode()!!, "root", password, displayName = null, ip = "10.0.0.1")
+
+            val event = fixture.audit.single()
+            assertThat(event.action).isEqualTo(AuditAction.SETUP_COMPLETED)
+            assertThat(event.actor.name).isEqualTo("root")
+            assertThat(event.actor.address).isEqualTo("10.0.0.1")
+            assertThat(event.toString()).doesNotContain(password)
+        }
+    }
+
+    @Test
     fun `audits a wrong setup code as a failed login`() {
         withFixture { fixture ->
             fixture.service.issueSetupCode()

@@ -16,6 +16,8 @@
 
 package net.onelitefeather.ingot.identity.session
 
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.MutableClock
@@ -38,19 +40,21 @@ internal class SessionServiceTest {
     @TempDir
     lateinit var workingDirectory: Path
 
-    private class Fixture(val identities: IdentityStore, val sessions: SessionService)
+    private class Fixture(val identities: IdentityStore, val sessions: SessionService, val audit: MutableList<AuditEvent>)
 
     private fun withSessions(settings: LoginSettings = LoginSettings(), block: (Fixture) -> Unit) {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val identities = IdentityStore(connection.database, clock)
+            val audit = mutableListOf<AuditEvent>()
             val sessions = SessionService(
                 store = LoginStore(connection.database, clock),
                 identities = identities,
                 signer = SessionSigner(ByteArray(32) { 3 }, clock),
                 settings = Reference.reference(settings),
                 clock = clock,
+                audit = audit::add,
             )
-            block(Fixture(identities, sessions))
+            block(Fixture(identities, sessions, audit))
         }
     }
 
@@ -124,6 +128,48 @@ internal class SessionServiceTest {
             assertThat(fixture.sessions.refresh(renewed.refreshToken, ip = "10.0.0.1", userAgent = null))
                 .describedAs("with an absolute lifetime of two days the family must end on day two")
                 .isNull()
+        }
+    }
+
+    @Test
+    fun `audits a logout with the user name and address, never the token`() {
+        withSessions { fixture ->
+            val session = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null)
+
+            fixture.sessions.logout(session.refreshToken, ip = "10.0.0.1")
+
+            val event = fixture.audit.single()
+            assertThat(event.action).isEqualTo(AuditAction.LOGOUT)
+            assertThat(event.actor.name).isEqualTo("alice")
+            assertThat(event.actor.address).isEqualTo("10.0.0.1")
+            assertThat(event.toString()).doesNotContain(session.refreshToken)
+        }
+    }
+
+    @Test
+    fun `audits a spent refresh token as a reuse that revokes the session`() {
+        withSessions { fixture ->
+            val session = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null)
+            fixture.sessions.refresh(session.refreshToken, ip = "10.0.0.1", userAgent = null)
+
+            fixture.sessions.refresh(session.refreshToken, ip = "10.0.0.66", userAgent = null)
+
+            val event = fixture.audit.single()
+            assertThat(event.action).isEqualTo(AuditAction.SESSION_REFRESH_REUSE_DETECTED)
+            assertThat(event.actor.name).isEqualTo("alice")
+            assertThat(event.actor.address).describedAs("the address of the replay, which is the suspicious one").isEqualTo("10.0.0.66")
+            assertThat(event.toString()).doesNotContain(session.refreshToken)
+        }
+    }
+
+    @Test
+    fun `does not audit a renewal`() {
+        withSessions { fixture ->
+            val session = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null)
+
+            fixture.sessions.refresh(session.refreshToken, ip = "10.0.0.1", userAgent = null)
+
+            assertThat(fixture.audit).describedAs("a normal renewal is not a session event worth recording").isEmpty()
         }
     }
 

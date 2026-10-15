@@ -79,6 +79,7 @@ class LoginPlugin : ReposilitePlugin() {
                 signer = SessionSigner(Base64.getDecoder().decode(encodedKey), clock),
                 settings = loginSettings,
                 clock = clock,
+                audit = { auditExtensions.emitEvent(it) },
             )
         }
 

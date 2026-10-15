@@ -16,6 +16,9 @@
 
 package net.onelitefeather.ingot.identity.session
 
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -53,6 +56,7 @@ class SessionService internal constructor(
     private val signer: SessionSigner,
     private val settings: Reference<LoginSettings>,
     private val clock: Clock,
+    private val audit: (AuditEvent) -> Unit,
 ) {
 
     fun start(principal: PrincipalRecord, ip: String?, userAgent: String?): SessionTokens {
@@ -78,6 +82,7 @@ class SessionService internal constructor(
         }
         if (presented.usedAt != null || !store.claimRefreshToken(presented.id, now)) {
             store.revokeFamily(presented.familyId, now)
+            audit(AuditEvent(action = AuditAction.SESSION_REFRESH_REUSE_DETECTED, actor = actorOf(presented.principalId, ip), success = false))
             return null
         }
         val principal = activePrincipal(presented.principalId)
@@ -88,14 +93,14 @@ class SessionService internal constructor(
         return issue(principal, familyId = presented.familyId, ip = ip, userAgent = userAgent, familyEnd = familyEnd)
     }
 
-    /** Revokes the family of the refresh token. Unknown and missing tokens are ignored. */
-    fun logout(refreshToken: String?) {
+    /** Revokes the family of the refresh token. Unknown and missing tokens are ignored and not audited. */
+    fun logout(refreshToken: String?, ip: String? = null) {
         if (refreshToken == null) {
             return
         }
-        store.findRefreshToken(RandomTokens.hash(refreshToken))?.let {
-            store.revokeFamily(it.familyId, Instant.now(clock))
-        }
+        val record = store.findRefreshToken(RandomTokens.hash(refreshToken)) ?: return
+        store.revokeFamily(record.familyId, Instant.now(clock))
+        audit(AuditEvent(action = AuditAction.LOGOUT, actor = actorOf(record.principalId, ip)))
     }
 
     /** Ends every session of a principal, on every instance. Used when its password changes or is reset. */
@@ -146,6 +151,10 @@ class SessionService internal constructor(
             csrfToken = RandomTokens.generate(),
         )
     }
+
+    /** The user the event is about, by name. The address is the one of the request. */
+    private fun actorOf(principalId: Int, ip: String?): AuditActor =
+        AuditActor.named(identities.findPrincipalById(principalId)?.name ?: AuditActor.ANONYMOUS, ip)
 
     private fun activePrincipal(principalId: Int): PrincipalRecord? =
         identities.findPrincipalById(principalId)?.takeIf { it.kind == PrincipalKind.USER && !it.disabled }

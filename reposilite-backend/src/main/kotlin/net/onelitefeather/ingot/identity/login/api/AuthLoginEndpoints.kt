@@ -188,7 +188,7 @@ internal class AuthLoginEndpoints(
         ]
     )
     private val logout = ReposiliteRoute<Unit>("/api/auth/logout", Route.POST) {
-        facade.endSession(ctx.cookie(SessionCookies.REFRESH))
+        facade.endSession(ctx.cookie(SessionCookies.REFRESH), ctx.ip())
         clearSessionCookies(ctx, basePath.get())
         response = Unit.asSuccess()
     }

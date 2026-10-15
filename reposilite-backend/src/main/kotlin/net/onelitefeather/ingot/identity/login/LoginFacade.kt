@@ -64,8 +64,8 @@ class LoginFacade internal constructor(
      * The user changes their own password. Every session of the user ends, on every instance, so that the password change
      * is also a logout everywhere.
      */
-    fun changeOwnPassword(principalId: Int, currentPassword: String, newPassword: String): PasswordOutcome {
-        val outcome = service?.changePassword(principalId, currentPassword, newPassword) ?: PasswordOutcome.NotFound
+    fun changeOwnPassword(principalId: Int, currentPassword: String, newPassword: String, actor: AuditActor): PasswordOutcome {
+        val outcome = service?.changePassword(principalId, currentPassword, newPassword, actor) ?: PasswordOutcome.NotFound
         if (outcome == PasswordOutcome.Changed) {
             sessions?.revokeAllSessions(principalId)
         }
@@ -73,9 +73,9 @@ class LoginFacade internal constructor(
     }
 
     /** An administrator resets the password of a user. The user must change it at the next login, and every session ends. */
-    fun resetPassword(principalName: String, newPassword: String): PasswordOutcome {
+    fun resetPassword(principalName: String, newPassword: String, actor: AuditActor): PasswordOutcome {
         val principalId = service?.principalIdOf(principalName)
-        val outcome = service?.resetPassword(principalName, newPassword) ?: PasswordOutcome.NotFound
+        val outcome = service?.resetPassword(principalName, newPassword, actor) ?: PasswordOutcome.NotFound
         if (outcome == PasswordOutcome.Changed && principalId != null) {
             sessions?.revokeAllSessions(principalId)
         }
@@ -90,8 +90,8 @@ class LoginFacade internal constructor(
     fun refreshSession(refreshToken: String, ip: String?, userAgent: String?): SessionTokens? =
         sessions?.refresh(refreshToken, ip, userAgent)
 
-    fun endSession(refreshToken: String?) {
-        sessions?.logout(refreshToken)
+    fun endSession(refreshToken: String?, ip: String?) {
+        sessions?.logout(refreshToken, ip)
     }
 
     /**

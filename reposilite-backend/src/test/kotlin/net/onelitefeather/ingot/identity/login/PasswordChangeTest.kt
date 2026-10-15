@@ -16,6 +16,9 @@
 
 package net.onelitefeather.ingot.identity.login
 
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Rejected
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Succeeded
@@ -43,20 +46,61 @@ internal class PasswordChangeTest {
     @TempDir
     lateinit var workingDirectory: Path
 
-    private class Fixture(val identities: IdentityStore, val service: LoginService)
+    private class Fixture(val identities: IdentityStore, val service: LoginService, val audit: MutableList<AuditEvent>)
 
     private fun withFixture(block: (Fixture) -> Unit) {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val identities = IdentityStore(connection.database, clock)
+            val audit = mutableListOf<AuditEvent>()
             val service = LoginService(
                 identities = identities,
                 credentials = LoginStore(connection.database, clock),
                 hasher = PasswordHasher(Argon2Cost(memoryKib = 8, iterations = 1, parallelism = 1)),
                 settings = Reference.reference(LoginSettings()),
                 clock = clock,
-                audit = {},
+                audit = audit::add,
             )
-            block(Fixture(identities, service))
+            block(Fixture(identities, service, audit))
+        }
+    }
+
+    @Test
+    fun `audits a changed password with the user as actor and never the password`() {
+        withFixture { fixture ->
+            val id = fixture.alice()
+
+            fixture.service.changePassword(id, password, "a brand new password", actor = AuditActor.named("alice", "10.0.0.1"))
+
+            val event = fixture.audit.single()
+            assertThat(event.action).isEqualTo(AuditAction.PASSWORD_CHANGED)
+            assertThat(event.actor.name).isEqualTo("alice")
+            assertThat(event.toString()).doesNotContain("a brand new password").doesNotContain(password)
+        }
+    }
+
+    @Test
+    fun `audits a refused password change with nothing`() {
+        withFixture { fixture ->
+            val id = fixture.alice()
+
+            fixture.service.changePassword(id, "not the current one", "a brand new password")
+
+            assertThat(fixture.audit).describedAs("a refused change must not be recorded as a change").isEmpty()
+        }
+    }
+
+    @Test
+    fun `audits an administrator's reset with the administrator as actor`() {
+        withFixture { fixture ->
+            fixture.alice()
+
+            fixture.service.resetPassword("alice", "a reset password entirely", actor = AuditActor.named("root", "10.0.0.9"))
+
+            val event = fixture.audit.single()
+            assertThat(event.action).isEqualTo(AuditAction.PASSWORD_RESET)
+            assertThat(event.actor.name).isEqualTo("root")
+            assertThat(event.details).containsEntry("principal", "alice")
+            assertThat(event.toString()).doesNotContain("a reset password entirely")
         }
     }
 

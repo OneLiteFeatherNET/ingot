@@ -17,6 +17,10 @@
 package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.audit.api.AuditAction.LOGIN_FAILED
+import com.reposilite.audit.api.AuditAction.LOGIN_SUCCEEDED
+import com.reposilite.audit.api.AuditAction.PASSWORD_CHANGED
+import com.reposilite.audit.api.AuditAction.PASSWORD_RESET
+import com.reposilite.audit.api.AuditAction.SETUP_COMPLETED
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Blocked
@@ -78,7 +82,10 @@ class LoginService internal constructor(
 
         val outcome = provider.authenticate(username, password)
         when (outcome) {
-            is Succeeded -> limiter.forget(userKey)
+            is Succeeded -> {
+                limiter.forget(userKey)
+                audit(AuditEvent(action = LOGIN_SUCCEEDED, actor = AuditActor.named(outcome.principal.name, ip)))
+            }
             Rejected -> {
                 limiter.recordFailure(keys)
                 recordRejected(username, ip)
@@ -102,8 +109,11 @@ class LoginService internal constructor(
         return principal
     }
 
-    /** The user changes their own password. The current one must be given; a forced change, if any, ends with it. */
-    fun changePassword(principalId: Int, currentPassword: String, newPassword: String): PasswordOutcome {
+    /**
+     * The user changes their own password. The current one must be given; a forced change, if any, ends with it. [actor] is
+     * the user, with the address of the request; the password itself is never audited.
+     */
+    fun changePassword(principalId: Int, currentPassword: String, newPassword: String, actor: AuditActor = AuditActor.SYSTEM_ACTOR): PasswordOutcome {
         val principal = identities.findPrincipalById(principalId)?.takeIf { it.kind == PrincipalKind.USER }
             ?: return PasswordOutcome.NotAUser
         val stored = credentials.findCredential(principal.id)?.passwordHash.orEmpty()
@@ -112,17 +122,19 @@ class LoginService internal constructor(
         }
         passwordProblem(newPassword)?.let { return PasswordOutcome.InvalidInput(it) }
         setPassword(principal, newPassword, mustChange = false)
+        audit(AuditEvent(action = PASSWORD_CHANGED, actor = actor, details = mapOf("principal" to principal.name)))
         return PasswordOutcome.Changed
     }
 
-    /** An administrator sets a new password. The user must choose another one at the next login. */
-    fun resetPassword(principalName: String, newPassword: String): PasswordOutcome {
+    /** An administrator sets a new password. The user must choose another one at the next login. [actor] is the administrator. */
+    fun resetPassword(principalName: String, newPassword: String, actor: AuditActor = AuditActor.SYSTEM_ACTOR): PasswordOutcome {
         val principal = identities.findPrincipal(principalName) ?: return PasswordOutcome.NotFound
         if (principal.kind != PrincipalKind.USER) {
             return PasswordOutcome.NotAUser
         }
         passwordProblem(newPassword)?.let { return PasswordOutcome.InvalidInput(it) }
         setPassword(principal, newPassword, mustChange = true)
+        audit(AuditEvent(action = PASSWORD_RESET, actor = actor, details = mapOf("principal" to principal.name)))
         return PasswordOutcome.Changed
     }
 
@@ -199,6 +211,7 @@ class LoginService internal constructor(
         identities.grantInstanceRole(principalId = principal.id, teamId = null)
         setPassword(principal, password, mustChange = false)
         setupCode.clear()
+        audit(AuditEvent(action = SETUP_COMPLETED, actor = AuditActor.named(principal.name, ip), details = mapOf("principal" to principal.name)))
         return Created(principal)
     }
 

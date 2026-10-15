@@ -32,6 +32,7 @@ import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import net.onelitefeather.ingot.identity.api.TokenDto
+import com.reposilite.audit.api.auditActor
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.OwnTokenOutcome
 import net.onelitefeather.ingot.identity.login.PasswordOutcome
@@ -80,7 +81,7 @@ internal class SelfServiceEndpoints(
                 if (current == null || replacement == null) {
                     badRequestError("Password change requires currentPassword and newPassword")
                 } else {
-                    passwordResponse(facade.changeOwnPassword(user.principalId, current, replacement))
+                    passwordResponse(facade.changeOwnPassword(user.principalId, current, replacement, AuditActor.named(user.name, ctx.ip())))
                 }
             }
         }
@@ -169,7 +170,7 @@ internal class SelfServiceEndpoints(
             response = if (replacement == null) {
                 badRequestError("Password reset requires newPassword")
             } else {
-                when (val outcome = facade.resetPassword(name, replacement)) {
+                when (val outcome = facade.resetPassword(name, replacement, auditActor())) {
                     PasswordOutcome.Changed -> Unit.asSuccess()
                     PasswordOutcome.NotFound -> notFoundError("Principal not found")
                     PasswordOutcome.NotAUser -> badRequestError("Only a user has a password")

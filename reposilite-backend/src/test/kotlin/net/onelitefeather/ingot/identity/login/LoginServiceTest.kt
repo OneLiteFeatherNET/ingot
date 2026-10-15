@@ -187,6 +187,22 @@ internal class LoginServiceTest {
     }
 
     @Test
+    fun `audits a successful login with the user name and address`() {
+        withFixture { fixture ->
+            fixture.userWithPassword(name = "Alice")
+
+            fixture.loginAs("alice", password)
+
+            val event = fixture.audit.single()
+            assertThat(event.action).isEqualTo(AuditAction.LOGIN_SUCCEEDED)
+            assertThat(event.actor.name).isEqualTo("Alice")
+            assertThat(event.actor.address).isEqualTo("10.0.0.1")
+            assertThat(event.success).isTrue()
+            assertThat(event.toString()).doesNotContain(password)
+        }
+    }
+
+    @Test
     fun `limits password logins by default, without any brute force setting`() {
         withFixture(settings = LoginSettings()) { fixture ->
             fixture.userWithPassword()
