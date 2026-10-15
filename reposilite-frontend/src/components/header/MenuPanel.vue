@@ -44,13 +44,17 @@ const themeLabel = computed(() => ({
 </script>
 
 <template>
+  <!--
+    min-w-0 lets the group give way to the title, and a long name is cut rather than pushing the
+    theme toggle out of the header.
+  -->
   <nav
     aria-label="Account"
-    class="flex flex-row items-center gap-1"
+    class="flex min-w-0 flex-row items-center gap-1"
   >
     <span
       v-if="isLogged"
-      class="px-3 md-body-large text-on-surface-variant max-sm:hidden"
+      class="min-w-0 truncate px-3 md-body-large text-on-surface-variant max-sm:hidden"
     >
       Welcome
       <span class="font-medium text-on-surface">{{ token.name }}</span>
