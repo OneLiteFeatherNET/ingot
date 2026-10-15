@@ -620,7 +620,8 @@ Required:
 
 ## 11. Open points
 
-- O-1 Login providers (local password, OIDC, LDAP group sync into `team_member` SYNC rows): phase 2.
+- O-1 Login providers (local password, OIDC, LDAP group sync into `team_member` SYNC rows): phase 2. OIDC, GitHub and LDAP
+  are closed in phase 3 (section 14).
 - O-2 JWT browser sessions and their revocation: implemented in phase 2a, see section 13.
 - O-3 Setup code for the first instance admin: implemented in phase 2a, see section 13. Phase 1 kept `--token` and the
   existing manager tokens as the only bootstrap.
@@ -980,3 +981,223 @@ Still open:
   base path only.
 - O-10 is closed: phase 1b added the instance admin endpoints for principals and teams (section 7.4), and the
   first-admin setup assigns the role to the first user.
+
+## 14. External login providers (phase 3)
+
+Decision record: ADR-INGT-0001 (accepted). This section is the contract the frontend is built against. It implements O-1:
+OpenID Connect, GitHub (OAuth 2, built in) and LDAP as browser login providers behind the provider interface of section 13,
+with the same session layer. The design decisions are in `openspec/changes/add-external-login-providers/design.md`; the
+behaviour is pinned by `openspec/changes/add-external-login-providers/specs/external-login-providers/spec.md`.
+
+### 14.1 Packages
+
+```
+net/onelitefeather/ingot/identity/login/oidc/     settings, discovery and JWKS caches, PKCE, state cookie, ID token validation,
+                                                  the OIDC and GitHub flows, the OIDC connection test
+net/onelitefeather/ingot/identity/login/ldap/     the LDAP login provider (JNDI), RFC 4515 escaping, the LDAP connection test
+net/onelitefeather/ingot/identity/login/external/ just-in-time users, user_identity, group synchronisation, admin groups
+```
+
+Wiring: `LoginService` builds its provider list from the settings on every call, `LoginPlugin` creates the services,
+`AuthLoginEndpoints` and the new endpoint classes register the routes, and `IDENTITY_TABLES` lists `user_identity`.
+
+### 14.2 Settings (domain `login`)
+
+Added to `LoginSettings`. Every new key is optional and defaults to disabled, so an existing installation is unchanged.
+
+```
+oidcProviders: [                       empty by default
+  {
+    id: "corp"                          slug [a-z0-9-]{1,64}, unique; @SettingsKey
+    enabled: false
+    label: "Corporate SSO"
+    icon: GENERIC                       GENERIC | GITHUB | GITLAB | GOOGLE | MICROSOFT | KEYCLOAK | AUTHENTIK | OKTA | AUTH0 | GITEA
+    issuerUrl: ""                       OIDC discovery base; GITHUB with "" or "https://github.com" uses GitHub's endpoints
+    clientId: ""
+    clientSecret: ""                    @Sensitive
+    scopes: "openid profile email"      GITHUB: blank or this default becomes "read:user user:email read:org"
+    usernameClaim: "preferred_username"
+    displayNameClaim: "name"
+    emailClaim: "email"
+    groupsClaim: "groups"
+    allowedEmailDomains: []             when not empty, the email domain must be listed (case-insensitive), checked at every login
+    autoCreateUsers: true
+    adminGroups: []                     group names whose members become instance administrators (14.5)
+  }
+]
+ldap: {
+  enabled: false
+  label: "LDAP"
+  url: ""                               ldap:// or ldaps://host:port
+  startTls: false                       StartTLS before the first bind (ldap:// only)
+  bindDn: ""                            blank: anonymous search
+  bindPassword: ""                      @Sensitive
+  userBaseDn: ""
+  userFilter: "(uid={username})"        {username} is replaced by the escaped user name
+  usernameAttribute: "uid"
+  displayNameAttribute: "cn"
+  emailAttribute: "mail"
+  groupBaseDn: ""                       blank: no group synchronisation
+  groupFilter: "(member={dn})"          {dn} and {username} are replaced by their escaped values
+  groupNameAttribute: "cn"
+  autoCreateUsers: true
+  adminGroups: []
+}
+```
+
+Entries of `oidcProviders` with an empty or duplicate id, or an id that is not a slug, are skipped and logged once per start.
+An enabled provider with a missing required field (issuer, client id, url) is not announced, and its routes answer `503`
+with the name of the missing field, never a secret.
+
+### 14.3 API
+
+`GET /api/auth/providers` (public) lists the enabled providers only:
+
+```
+200 { "providers": [
+        { "id": "local", "type": "LOCAL", "label": "Username and password", "icon": "LOCAL" },
+        { "id": "corp", "type": "OIDC", "label": "Corporate SSO", "icon": "GENERIC", "loginUrl": "/api/auth/oidc/corp/login" },
+        { "id": "ldap", "type": "LDAP", "label": "LDAP", "icon": "LDAP" }
+      ],
+      "tokenLogin": true,
+      "setupRequired": false }
+```
+
+`type` is `LOCAL`, `OIDC` or `LDAP`. `loginUrl` is present for `OIDC` only and is relative to the base path, like every
+path of this API. `icon` is the enum of 14.2 for `OIDC`, `LOCAL` for the local provider and `LDAP` for the LDAP provider. The local
+provider is listed first while a local user exists or the first administrator was set up. `setupRequired` is unchanged.
+
+`GET /api/auth/oidc/{id}/login?redirect=<path>` (public)
+
+```
+302 Location: <authorization endpoint>?response_type=code&client_id=...&redirect_uri=...&scope=...
+               &state=...&nonce=...&code_challenge=...&code_challenge_method=S256        + ingot_oidc cookie
+404  unknown or disabled provider
+503  the provider is not usable (missing field), with the field named
+```
+
+`ingot_oidc` is a signed JWT (HMAC-SHA256, key derived from the session signing key) with the state, nonce, PKCE verifier,
+provider id and redirect path. It lives ten minutes, is HttpOnly, SameSite=Lax, path `<base>/api/auth/oidc`, and `Secure` under
+the rule of 13.4. The redirect path is kept only when it passes the redirect policy of 14.4; otherwise it becomes `/`.
+
+`GET /api/auth/oidc/{id}/callback?code=...&state=...` (public). Every outcome clears `ingot_oidc` and then either sets the three
+session cookies of 13.4 and redirects to the base path with the redirect path, or redirects to `<base>/?loginError=<code>`:
+
+```
+302 Location: <base>/<redirect path>            + session, refresh and csrf cookies
+302 Location: <base>/?loginError=<code>         codes of 14.4
+```
+
+The redirect uri registered with the provider is `<scheme>://<Host>/<base path>/api/auth/oidc/<id>/callback`. The scheme is
+`https` when the request is secure (13.4), so a proxy that terminates TLS must send `X-Forwarded-Proto: https`.
+
+`POST /api/auth/login` (public) with `{"provider": "ldap", "username": "...", "password": "..."}` returns the response of 13.5.
+The status codes are those of 13.5, plus `403` with the reason of 14.4 when the directory account is not provisioned, and `503`
+when the directory cannot be reached. The `429` lock of 13.8 applies to LDAP attempts as it does to local ones.
+
+`POST /api/auth/providers/oidc/{id}/test` (instance admin)
+
+```
+200 { "ok": true,  "issuer": "https://idp.example", "endpoints": { "authorization": "...", "token": "...", "jwks": "...", "userinfo": "..." } }
+200 { "ok": false, "issuer": null, "endpoints": null, "error": "discovery document not reachable" }
+403  not an instance admin
+404  unknown provider
+```
+
+`POST /api/auth/providers/ldap/test` (instance admin), body `{"username"?: "...", "password"?: "..."}`
+
+```
+200 { "ok": true, "userDn": "uid=alice,ou=people,dc=example,dc=org", "groups": ["devs", "ops"] }
+200 { "ok": true }                                     service bind only, no username given
+200 { "ok": false, "error": "service bind failed" }
+403  not an instance admin
+```
+
+`userDn` and `groups` appear only when a username was given and the user was found. A password is used for a user bind and is
+never echoed. `error` texts never contain a password, a secret or a bind password.
+
+### 14.4 Login codes
+
+A failed callback redirects with one of these codes. A code reveals nothing beyond itself; the detail is logged at debug level.
+
+| Code | Meaning |
+|---|---|
+| `invalid_state` | cookie missing, expired, for another provider, or state differs |
+| `access_denied` | the provider denied the login |
+| `provider_error` | the provider returned another error |
+| `token_exchange_failed` | the token endpoint refused the code |
+| `invalid_id_token` | signature, algorithm, issuer, audience, `azp`, expiry, skew or nonce failed |
+| `email_domain_not_allowed` | `allowedEmailDomains` is set and the email is missing or not listed |
+| `user_disabled` | the linked or matching principal is disabled |
+| `user_not_provisioned` | no link exists and `autoCreateUsers` is false |
+| `username_taken` | the user name belongs to another principal; nothing is linked |
+| `setup_required` | no user exists yet; the first administrator must be set up with the setup code |
+| `provider_unavailable` | discovery, the JWKS or the token endpoint could not be reached |
+| `no_database` | browser sessions need a database |
+
+LDAP answers the same reasons as `403` with `{"status": 403, "message": "<reason>"}`, and wrong credentials as `401`.
+
+The redirect policy for `redirect` (14.2 and 14.3): a value is kept only when it starts with a single `/`, contains no backslash,
+no colon before its first slash, no control character, and is at most 1024 characters long. Anything else becomes `/`.
+
+### 14.5 Data and group synchronisation
+
+```
+user_identity
+  provider       varchar(64)     "oidc:<id>" or "ldap:<url-host>"
+  subject        varchar(512)    the sub claim, the numeric GitHub id, or the DN
+  principal_id   fk principal, cascade
+  unique (provider, subject)
+```
+
+The table is part of `IDENTITY_TABLES`, created on start, and removed with its principal by `IdentityStore.deletePrincipal`.
+
+Teams take part in synchronisation by `external_ref`: `oidc:<id>:<group>` for an OIDC or GitHub provider (a GitHub team is
+`oidc:<id>:<org>/<team-slug>`), and `ldap:<group>` for LDAP. At each successful external login:
+
+- every existing team whose ref equals one of the principal's groups gets a `SYNC` membership, if it has none;
+- every `SYNC` membership of the principal in a team of the same provider prefix that is no longer matched is removed;
+- `MANUAL` memberships and memberships of other providers are never changed;
+- no team is created for an ordinary group. The operator creates the team with the ref.
+
+Admin groups: for each name in `adminGroups`, the team with ref `<prefix><group>` is created when missing, with the instance role.
+A team with the same name but another ref is not taken over; the group is logged as skipped. For a team of the provider prefix, the
+instance role is granted while its group is listed and revoked when it is not. Members of such a team are instance administrators
+through section 7.4, so the last-admin rule of section 7.4 applies. A manually granted instance role sits on a manual team and is
+never touched by synchronisation.
+
+Groups are read at an external login only. A refresh does not contact the identity provider, so a membership change in the
+directory takes effect at the user's next external login (14.6, O-22).
+
+Just-in-time creation: a user principal named after the user-name claim (the setup name rules apply), created only while a user
+exists (`setup_required` otherwise), never linked to an existing principal of that name (`username_taken`). Creation is audited as
+`PRINCIPAL_CREATED` with the actor `oidc:<id>` or `ldap`. Failed external logins are audited as `LOGIN_FAILED`, and successful
+ones as `LOGIN_SUCCEEDED`, both with the address of the request and never a token or a password.
+
+### 14.6 Algorithms, libraries and open points
+
+- Discovery, JWKS and token requests use `java.net.http` with a five second connect and read timeout and no redirects. Discovery
+  and the JWKS are cached per provider for one hour on the injected clock. A key id that is not cached triggers one refetch per minute.
+  Issuers must be `https`, except loopback addresses.
+- ID tokens are verified with nimbus-jose-jwt 10.9.1 (already declared) for RS256, RS384, RS512, PS256, ES256, ES384 and ES512.
+  `none` and the HMAC algorithms are refused. Clock skew is 60 seconds.
+- PKCE with S256 for every OIDC and GitHub login. Nonce is checked for OIDC only, because GitHub issues no ID token.
+- LDAP uses JNDI (`com.sun.jndi.ldap.LdapCtxFactory`), as the legacy authenticator does. No dependency is added, and the
+  UnboundID server stays a test dependency. Filter values are escaped per RFC 4515, an empty password is refused before any
+  bind, and the search must return exactly one entry.
+- No new dependency. `build.gradle.kts` is unchanged, so the licence report is unchanged.
+- Legacy LDAP Basic authentication (`authentication.ldap`, `LdapAuthenticator`) is not changed and does not read `login.ldap`. The
+  two settings are independent, and the guide says how to point both at one directory.
+
+Open points:
+
+- O-22 Group changes in the directory take effect at the next external login. An open session keeps its memberships until its
+  refresh family ends (at most `login.refreshAbsoluteDays`). Ending the sessions of a user at once needs an administrative
+  revocation endpoint, which is O-20.
+- O-23 Redirect URIs are built from the request. An operator-set public URL is not part of the contract; deployments behind a proxy
+  must send `Host` and `X-Forwarded-Proto` correctly.
+- O-24 Groups come from the ID token (OIDC) or the GitHub API only, not from the userinfo endpoint. A provider that puts groups
+  only there needs an ID token claim configured on the provider side.
+- O-25 SAML, SCIM and directory-driven de-provisioning are not implemented. A removed directory account keeps its principal until an
+  administrator disables it, and its memberships last until its next external login.
+- O-26 Account linking of an existing local user to an external subject is not implemented. A name conflict is refused.

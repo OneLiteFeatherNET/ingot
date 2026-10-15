@@ -1,0 +1,46 @@
+schema: spec-driven
+
+context: |
+  Ingot is a FOSS fork of Reposilite (Kotlin, Javalin, Exposed) and a drop-in replacement for it.
+  Read CLAUDE.md at the repository root before writing any artifact. Pointing an existing Reposilite
+  installation at Ingot must need no configuration, volume, manifest or plugin change. New environment
+  variables take the INGOT_ prefix and the REPOSILITE_ spelling stays valid as a fallback. New
+  deployment shapes are opt-in, and the default behaviour does not change.
+  Backend: Kotlin modules under reposilite-backend/, plugins under reposilite-plugins/. Plugin packages
+  stay com.reposilite.*. New code for the identity model lives in net.onelitefeather.ingot.identity.
+  Databases: SQLite is the default. MariaDB, MySQL, PostgreSQL and H2 are supported through HikariCP.
+  Storage: filesystem or S3, configured per repository.
+  Commits and pull requests follow Conventional Commits (lower case type and scope, imperative summary,
+  no trailing period). Pull requests are squash-merged, so the PR title is the commit on main, and
+  release-please reads the types for the changelog.
+  Architecture references: docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md (high availability:
+  database for locks and counters, NATS only as optional fan-out, Redis rejected in stage 4) and
+  docs/superpowers/specs/2026-10-15-identity-model.md (principals, sessions, refresh families, revocation).
+  Write all artifacts in English. Do not use em dashes or en dashes; use a hyphen, a colon, a comma or
+  two sentences instead.
+
+rules:
+  proposal:
+    - State what is out of scope.
+    - Name the Conventional Commits type and scope the change ships under, and the exact pull request
+      title. A change that mixes types is two changes.
+    - Mark anything an operator must change (configuration key, environment variable, deployment
+      manifest, data) as BREAKING. A change without such an item says so explicitly.
+  tasks:
+    - "Group tasks by Conventional Commits type and scope, one type per commit. Archive commits use docs(openspec): archive <change-name>."
+    - "Every test follows F.I.R.S.T. (fast, independent, repeatable, self-validating, timely): no sleeps, no system-time reads (inject java.time.Clock), no shared mutable static state, a temporary directory per test, bounded waits through latches. Write the failing test before the production code."
+    - Every group that changes a configuration key, environment variable or deployment manifest also
+      updates the matching page under reposilite-site/data/guides/.
+    - The last task opens the pull request under the title named in the proposal.
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
