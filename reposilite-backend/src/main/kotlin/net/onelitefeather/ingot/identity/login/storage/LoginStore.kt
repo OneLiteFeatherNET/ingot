@@ -199,6 +199,15 @@ class LoginStore(
         }
     }
 
+    /** When the login of a refresh family happened, which is when its first token was created. `null` for an unknown family. */
+    fun familyStartedAt(familyId: String): Instant? =
+        transaction(database) {
+            RefreshTokenTable.selectAll()
+                .where { RefreshTokenTable.familyId eq familyId }
+                .map { it[RefreshTokenTable.createdAt] }
+                .minOrNull()
+        }
+
     fun findRefreshToken(tokenHash: String): RefreshTokenRecord? =
         transaction(database) {
             RefreshTokenTable.selectAll()

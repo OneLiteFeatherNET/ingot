@@ -55,17 +55,25 @@ class SessionService internal constructor(
     private val clock: Clock,
 ) {
 
-    fun start(principal: PrincipalRecord, ip: String?, userAgent: String?): SessionTokens =
-        issue(principal, familyId = RandomTokens.generate(), ip = ip, userAgent = userAgent)
+    fun start(principal: PrincipalRecord, ip: String?, userAgent: String?): SessionTokens {
+        val loginEnd = Instant.now(clock).plus(absoluteLifetime())
+        return issue(principal, familyId = RandomTokens.generate(), ip = ip, userAgent = userAgent, familyEnd = loginEnd)
+    }
 
     /**
-     * Exchanges a refresh token for a new session. Returns `null` for an unknown, expired, revoked or spent token, and for
-     * a principal that is no longer an active user. A spent token revokes its whole family.
+     * Exchanges a refresh token for a new session. Returns `null` for an unknown, expired, revoked or spent token, for a
+     * family that has reached its absolute lifetime, and for a principal that is no longer an active user. A spent token
+     * revokes its whole family.
      */
     fun refresh(refreshToken: String, ip: String?, userAgent: String?): SessionTokens? {
         val now = Instant.now(clock)
         val presented = store.findRefreshToken(RandomTokens.hash(refreshToken)) ?: return null
         if (presented.revokedAt != null || !now.isBefore(presented.expiresAt)) {
+            return null
+        }
+        val familyEnd = store.familyStartedAt(presented.familyId)?.plus(absoluteLifetime()) ?: presented.createdAt.plus(absoluteLifetime())
+        if (!now.isBefore(familyEnd)) {
+            store.revokeFamily(presented.familyId, now)
             return null
         }
         if (presented.usedAt != null || !store.claimRefreshToken(presented.id, now)) {
@@ -77,7 +85,7 @@ class SessionService internal constructor(
             store.revokeFamily(presented.familyId, now)
             return null
         }
-        return issue(principal, familyId = presented.familyId, ip = ip, userAgent = userAgent)
+        return issue(principal, familyId = presented.familyId, ip = ip, userAgent = userAgent, familyEnd = familyEnd)
     }
 
     /** Revokes the family of the refresh token. Unknown and missing tokens are ignored. */
@@ -101,14 +109,21 @@ class SessionService internal constructor(
         return verified.takeIf { activePrincipal(it.principalId) != null }
     }
 
-    private fun issue(principal: PrincipalRecord, familyId: String, ip: String?, userAgent: String?): SessionTokens {
+    private fun absoluteLifetime(): Duration =
+        Duration.ofDays(settings.get().refreshAbsoluteDays)
+
+    /**
+     * Issues a session in [familyId]. The refresh token lives for the refresh lifetime, but never beyond [familyEnd], the
+     * absolute end of the login.
+     */
+    private fun issue(principal: PrincipalRecord, familyId: String, ip: String?, userAgent: String?, familyEnd: Instant): SessionTokens {
         val now = Instant.now(clock)
         val lifetimes = settings.get()
         val sessionLifetime = Duration.ofMinutes(lifetimes.sessionLifetimeMinutes)
         val refreshLifetime = Duration.ofHours(lifetimes.refreshLifetimeHours)
 
         val refreshToken = RandomTokens.generate()
-        val refreshExpiresAt = now.plus(refreshLifetime)
+        val refreshExpiresAt = minOf(now.plus(refreshLifetime), familyEnd)
         store.insertRefreshToken(
             familyId = familyId,
             principalId = principal.id,
@@ -127,7 +142,7 @@ class SessionService internal constructor(
             sessionMaxAgeSeconds = sessionLifetime.seconds,
             refreshToken = refreshToken,
             refreshExpiresAt = refreshExpiresAt,
-            refreshMaxAgeSeconds = refreshLifetime.seconds,
+            refreshMaxAgeSeconds = Duration.between(now, refreshExpiresAt).seconds,
             csrfToken = RandomTokens.generate(),
         )
     }

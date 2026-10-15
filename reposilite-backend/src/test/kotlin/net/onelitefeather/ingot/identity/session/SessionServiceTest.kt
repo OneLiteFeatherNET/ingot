@@ -40,14 +40,14 @@ internal class SessionServiceTest {
 
     private class Fixture(val identities: IdentityStore, val sessions: SessionService)
 
-    private fun withSessions(block: (Fixture) -> Unit) {
+    private fun withSessions(settings: LoginSettings = LoginSettings(), block: (Fixture) -> Unit) {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val identities = IdentityStore(connection.database, clock)
             val sessions = SessionService(
                 store = LoginStore(connection.database, clock),
                 identities = identities,
                 signer = SessionSigner(ByteArray(32) { 3 }, clock),
-                settings = Reference.reference(LoginSettings()),
+                settings = Reference.reference(settings),
                 clock = clock,
             )
             block(Fixture(identities, sessions))
@@ -56,6 +56,76 @@ internal class SessionServiceTest {
 
     private fun Fixture.user(name: String = "alice"): PrincipalRecord =
         identities.createPrincipal(PrincipalKind.USER, name, name, disabled = false, createdAt = clock.instant())!!
+
+    @Test
+    fun `a refresh family ends at the absolute lifetime, however often it is renewed`() {
+        withSessions { fixture ->
+            var refresh = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null).refreshToken
+            repeat(4) {
+                clock.advance(Duration.ofDays(6))
+                refresh = fixture.sessions.refresh(refresh, ip = "10.0.0.1", userAgent = null)!!.refreshToken
+            }
+
+            clock.advance(Duration.ofDays(6))
+
+            assertThat(fixture.sessions.refresh(refresh, ip = "10.0.0.1", userAgent = null))
+                .describedAs("renewals within the idle lifetime must not extend the family beyond thirty days from its login")
+                .isNull()
+        }
+    }
+
+    @Test
+    fun `caps the expiry of a renewed refresh token at the absolute lifetime`() {
+        withSessions { fixture ->
+            val loggedIn = Instant.parse("2026-10-15T10:00:00Z")
+            var refresh = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null).refreshToken
+            repeat(3) {
+                clock.advance(Duration.ofDays(6))
+                refresh = fixture.sessions.refresh(refresh, ip = "10.0.0.1", userAgent = null)!!.refreshToken
+            }
+            clock.advance(Duration.ofDays(6))
+
+            val renewed = fixture.sessions.refresh(refresh, ip = "10.0.0.1", userAgent = null)!!
+
+            assertThat(renewed.refreshExpiresAt)
+                .describedAs("a renewal on day 24 may live until day 30, not for the full idle lifetime of seven days")
+                .isEqualTo(loggedIn.plus(Duration.ofDays(30)))
+            assertThat(renewed.refreshMaxAgeSeconds)
+                .describedAs("the cookie must expire with the family")
+                .isEqualTo(Duration.ofDays(6).seconds)
+        }
+    }
+
+    @Test
+    fun `a new login after the absolute lifetime starts a new family`() {
+        withSessions { fixture ->
+            val alice = fixture.user()
+            val old = fixture.sessions.start(alice, ip = "10.0.0.1", userAgent = null)
+            clock.advance(Duration.ofDays(30))
+            assertThat(fixture.sessions.refresh(old.refreshToken, ip = "10.0.0.1", userAgent = null)).isNull()
+
+            val fresh = fixture.sessions.start(alice, ip = "10.0.0.1", userAgent = null)
+
+            assertThat(fixture.sessions.refresh(fresh.refreshToken, ip = "10.0.0.1", userAgent = null))
+                .describedAs("the absolute lifetime belongs to one login, not to the user")
+                .isNotNull()
+        }
+    }
+
+    @Test
+    fun `the absolute lifetime can be configured`() {
+        withSessions(LoginSettings(refreshAbsoluteDays = 2)) { fixture ->
+            val session = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null)
+            clock.advance(Duration.ofDays(1))
+            val renewed = fixture.sessions.refresh(session.refreshToken, ip = "10.0.0.1", userAgent = null)!!
+
+            clock.advance(Duration.ofDays(1))
+
+            assertThat(fixture.sessions.refresh(renewed.refreshToken, ip = "10.0.0.1", userAgent = null))
+                .describedAs("with an absolute lifetime of two days the family must end on day two")
+                .isNull()
+        }
+    }
 
     @Test
     fun `a new session authenticates as its principal`() {
