@@ -27,7 +27,7 @@ internal class DashboardPathsTest {
         val reserved = DashboardPaths.RESERVED_SEGMENTS
 
         // then: the dashboard routes and the API and asset segments are all covered
-        assertThat(reserved).containsExactlyInAnyOrder("browse", "dashboard", "tokens", "console", "settings", "api", "assets")
+        assertThat(reserved).containsExactlyInAnyOrder("browse", "dashboard", "tokens", "console", "maintenance", "settings", "api", "assets")
     }
 
     @Test

@@ -105,14 +105,20 @@ internal class RepositoryService(
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
         with(deleteRequest) {
             when {
-                securityProvider.canModifyResource(accessToken, repository, gav) ->
-                    repository.storageProvider
-                        .removeFile(gav)
-                        .peek { logger.info("DELETE | File $gav has been deleted from ${repository.name} by ${deleteRequest.by}") }
-                        .peek { resolutionProvider.invalidate(repository, gav) }
+                securityProvider.canModifyResource(accessToken, repository, gav) -> deleteUnchecked(repository, gav, by)
                 else -> unauthorizedError("Unauthorized access request")
             }
         }
+
+    /**
+     * Removes a file without checking an access token. Only server side jobs that act for the operator use it, such as
+     * the scheduled cleanup policies; every request goes through [deleteFile].
+     */
+    internal fun deleteUnchecked(repository: Repository, gav: Location, by: String): Result<Unit, ErrorResponse> =
+        repository.storageProvider
+            .removeFile(gav)
+            .peek { logger.info("DELETE | File $gav has been deleted from ${repository.name} by $by") }
+            .peek { resolutionProvider.invalidate(repository, gav) }
 
     fun findDetails(lookupRequest: LookupRequest): Result<FileDetails, ErrorResponse> =
         resolve(lookupRequest) { repository, gav -> findDetails(lookupRequest.accessToken, repository, gav) }

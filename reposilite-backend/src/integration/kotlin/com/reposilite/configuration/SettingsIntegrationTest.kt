@@ -28,6 +28,7 @@ import com.reposilite.configuration.specification.SettingsIntegrationSpecificati
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.javadocs.application.JavadocSettings
 import com.reposilite.maven.application.MavenSettings
+import com.reposilite.cleanup.application.CleanupSettings
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.statistics.api.ResolvedRequestsInterval.YEARLY
 import com.reposilite.statistics.application.StatisticsSettings
@@ -55,7 +56,8 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
             "statistics" to StatisticsSettings::class,
             "frontend" to FrontendSettings::class,
             "javadoc" to JavadocSettings::class,
-            "maven" to MavenSettings::class
+            "maven" to MavenSettings::class,
+            "cleanup" to CleanupSettings::class
         )
     }
 

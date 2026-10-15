@@ -69,6 +69,10 @@ class MavenFacade internal constructor(
         repositoryService.deleteFile(deleteRequest)
             .peek { metadataService.reconcileAfterDelete(deleteRequest.repository, deleteRequest.gav) }
 
+    /** Deletes without an access token, for server side jobs such as scheduled cleanup. See [RepositoryService.deleteUnchecked]. */
+    internal fun deleteUnchecked(repository: Repository, gav: Location, by: String): Result<Unit, ErrorResponse> =
+        repositoryService.deleteUnchecked(repository, gav, by)
+
     fun saveMetadata(saveMetadataRequest: SaveMetadataRequest): Result<Metadata, ErrorResponse> =
         metadataService.saveMetadata(saveMetadataRequest)
 
