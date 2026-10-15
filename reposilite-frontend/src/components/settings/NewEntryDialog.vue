@@ -49,7 +49,9 @@ const id = ref('')
 const touched = ref(false)
 
 // A collection with a guided flow (the maven repositories) hands "New entry" to that flow instead.
-const guided = inject(guidedCreateKey, null)
+const guidedFlow = inject(guidedCreateKey, null)
+// The template unwraps top-level refs, so it must read this computed, not guidedFlow.value.
+const guided = computed(() => guidedFlow?.value ?? null)
 
 const error = computed(() => validateNewId(id.value, props.existingIds, props.noun))
 const shownError = computed(() => (touched.value ? error.value : ''))
@@ -57,7 +59,7 @@ const shownError = computed(() => (touched.value ? error.value : ''))
 // Every opening starts from an empty field, so a refused id from an earlier attempt does not linger.
 watch(() => props.modelValue, (open) => {
   if (!open) return
-  if (guided?.value) {
+  if (guided.value) {
     emit('update:modelValue', false)
     guided.value()
     return
@@ -83,7 +85,7 @@ const submit = () => {
 
 <template>
   <VueFinalModal
-    :model-value="modelValue && !guided?.value"
+    :model-value="modelValue && !guided"
     teleport-to="body"
     :overlay-style="SCRIM_STYLE"
     class="flex min-h-full items-center justify-center p-4"

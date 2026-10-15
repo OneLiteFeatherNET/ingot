@@ -54,7 +54,18 @@ const INGOT_SCHEMA = {
   type: 'object',
   title: 'Ingot',
   properties: {
-    name: { type: 'string', title: 'Name' }
+    name: { type: 'string', title: 'Name' },
+    // A collection without a guided flow: the maven repositories are created through the wizard.
+    mirrors: {
+      title: 'Mirrors',
+      type: 'array',
+      items: {
+        type: 'object',
+        title: 'Mirror',
+        properties: { id: { type: 'string', title: 'Id' } },
+        additionalProperties: false
+      }
+    }
   }
 }
 
@@ -65,7 +76,7 @@ const SERVER = {
       { id: 'snapshots', visibility: 'PRIVATE', redeployment: true }
     ]
   },
-  ingot: { name: 'ingot' }
+  ingot: { name: 'ingot', mirrors: [{ id: 'central' }] }
 }
 
 const SCHEMAS = { maven: MAVEN_SCHEMA, ingot: INGOT_SCHEMA }
@@ -210,18 +221,18 @@ describe('SettingsView collections', () => {
   })
 
   it('adds a new entry, selects it and replaces the address with the new entry', async () => {
-    const { router, store } = await mountSettings({ props: { domain: 'maven' } })
-    await pressButton('New repository')
+    const { router, store } = await mountSettings({ props: { domain: 'ingot' } })
+    await pressButton('New mirror')
 
-    await typeIn('#new-entry-id', 'mirror')
+    await typeIn('#new-entry-id', 'backup')
     document.getElementById('new-entry-form').dispatchEvent(new Event('submit', { cancelable: true }))
     await flushPromises()
 
-    expect(repositoryIds(store)).toEqual(['releases', 'snapshots', 'mirror'])
-    expect(router.currentRoute.value.params.entry).toBe('mirror')
+    expect(store.configurations.value.ingot.mirrors.map(entry => entry.id)).toEqual(['central', 'backup'])
+    expect(router.currentRoute.value.params.entry).toBe('backup')
     // The router hands the new address back to the view as props; the test does the same.
-    await wrapper.setProps({ collection: 'repositories', entry: 'mirror' })
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('mirror')
+    await wrapper.setProps({ collection: 'mirrors', entry: 'backup' })
+    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('backup')
   })
 
   it('removes an entry only after its id is typed exactly, then returns to the list', async () => {

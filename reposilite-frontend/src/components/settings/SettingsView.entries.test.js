@@ -245,7 +245,9 @@ describe('SettingsView entries without a usable id', () => {
 
 describe('SettingsView action bar', () => {
   it('shows the action bar right after an entry is created', async () => {
-    await mountEntries({ props: { entry: undefined } })
+    // Outside the maven domain a collection has no guided flow, so "New entry" opens the id dialog.
+    const server = { ingot: { repositories: [{ id: 'releases', visibility: 'PUBLIC', storageProvider: { type: 'fs' } }] } }
+    await mountEntries({ props: { domain: 'ingot', entry: undefined }, store: await loadedStore(server) })
     await wrapper.find('[data-test="new-entry"]').trigger('click')
     await flushPromises()
 
