@@ -41,6 +41,8 @@ import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.Role
 import net.onelitefeather.ingot.identity.model.privateTeamName
+import net.onelitefeather.ingot.identity.storage.TokenUsage
+import net.onelitefeather.ingot.identity.storage.TokenUsageSource
 import com.reposilite.token.AccessTokenSecurityProvider.generateSecret
 import com.reposilite.token.AccessTokenType.PERSISTENT
 import com.reposilite.token.api.AccessTokenDetails
@@ -82,6 +84,7 @@ class AccessTokenFacade internal constructor(
     private val extensions: Extensions = Extensions(journalist),
     private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
     private val subjectSource: AccessSubjectSource? = persistentRepository as? AccessSubjectSource,
+    private val usageSource: TokenUsageSource? = persistentRepository as? TokenUsageSource,
 ) : Facade, Journalist {
 
     /**
@@ -260,11 +263,29 @@ class AccessTokenFacade internal constructor(
             "permissions" to permissions.map { it.identifier }.sorted(),
             "routes" to routes.map { "${it.permission.identifier}:${it.path}" }.sorted(),
         )
+        val usage = getTokenUsage(raw.identifier)
         return AccessTokenSnapshot(
-            value = AccessTokenDetailsDto.of(raw.toDto(), permissions, routes),
+            value = AccessTokenDetailsDto.of(raw.toDto(), permissions, routes, usage.lastUsedAt, usage.lastUsedIp),
             etag = entityTags.of(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(fingerprint)),
         )
     }
+
+    /**
+     * Records a successful authentication with the token, so that its last use and the address it came from are known.
+     * The write is throttled and never fails the authentication: a failure is logged and the caller carries on.
+     */
+    fun recordTokenUsage(identifier: AccessTokenIdentifier, address: String?) {
+        if (identifier.type != PERSISTENT) return
+        try {
+            usageSource?.recordUsage(identifier.value, address)
+        } catch (exception: RuntimeException) {
+            logger.warn("Token | could not record the use of an access token: ${exception.message}")
+        }
+    }
+
+    /** When the persistent token was last used, and from where. Temporary tokens are never recorded. */
+    fun getTokenUsage(identifier: AccessTokenIdentifier): TokenUsage =
+        if (identifier.type == PERSISTENT) usageSource?.lastUsedOf(identifier.value) ?: TokenUsage.NONE else TokenUsage.NONE
 
     /**
      * Applies the requested permissions and routes through the repositories directly, so the caller
@@ -553,8 +574,10 @@ class AccessTokenFacade internal constructor(
     fun getAccessTokens(): Collection<AccessTokenDto> =
         (temporaryRepository.findAll() + persistentRepository.findAll()).map { it.toDto() }
 
-    fun getAccessTokenDetails(token: AccessTokenDto): AccessTokenDetailsDto =
-        AccessTokenDetailsDto.of(token, getPermissions(token.identifier), getRoutes(token.identifier))
+    fun getAccessTokenDetails(token: AccessTokenDto): AccessTokenDetailsDto {
+        val usage = getTokenUsage(token.identifier)
+        return AccessTokenDetailsDto.of(token, getPermissions(token.identifier), getRoutes(token.identifier), usage.lastUsedAt, usage.lastUsedIp)
+    }
 
     fun getAccessTokensDetails(): Collection<AccessTokenDetailsDto> =
         getAccessTokens().map { getAccessTokenDetails(it) }

@@ -41,7 +41,15 @@ import net.onelitefeather.ingot.identity.model.privateTeamName
  */
 internal class IdentityAccessTokenRepository(
     private val store: IdentityStore,
-) : AccessTokenRepository, AccessSubjectSource {
+) : AccessTokenRepository, AccessSubjectSource, TokenUsageSource {
+
+    private val usage = TokenUsageTracker(store)
+
+    override fun recordUsage(tokenId: Int, address: String?) =
+        usage.recordUsage(tokenId, address)
+
+    override fun lastUsedOf(tokenId: Int): TokenUsage? =
+        usage.lastUsedOf(tokenId)
 
     override fun subjectOf(identifier: AccessTokenIdentifier): AccessSubject? {
         if (identifier.value == UNINITIALIZED_ENTITY_ID) return null

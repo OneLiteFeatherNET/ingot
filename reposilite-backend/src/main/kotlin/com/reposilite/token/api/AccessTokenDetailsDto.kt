@@ -30,10 +30,20 @@ data class AccessTokenDetailsDto(
     val expiresAt: Instant?,
     val permissions: Set<AccessTokenPermission>,
     val routes: Set<Route>,
+    /** When a persistent token was last used. Null for a token that was never used and for temporary tokens. */
+    val lastUsedAt: Instant? = null,
+    /** The address the token was last used from, when it is known. */
+    val lastUsedIp: String? = null,
 ) {
 
     companion object {
-        fun of(token: AccessTokenDto, permissions: Set<AccessTokenPermission>, routes: Set<Route>): AccessTokenDetailsDto =
+        fun of(
+            token: AccessTokenDto,
+            permissions: Set<AccessTokenPermission>,
+            routes: Set<Route>,
+            lastUsedAt: Instant? = null,
+            lastUsedIp: String? = null,
+        ): AccessTokenDetailsDto =
             AccessTokenDetailsDto(
                 identifier = token.identifier,
                 name = token.name,
@@ -42,6 +52,8 @@ data class AccessTokenDetailsDto(
                 expiresAt = token.expiresAt,
                 permissions = permissions,
                 routes = routes,
+                lastUsedAt = lastUsedAt,
+                lastUsedIp = lastUsedIp,
             )
     }
 

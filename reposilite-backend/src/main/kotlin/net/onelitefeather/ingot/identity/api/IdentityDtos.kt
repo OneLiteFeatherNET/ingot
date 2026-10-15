@@ -44,6 +44,7 @@ data class TokenDto(
     val expiresAt: Instant?,
     val scopes: List<String>?,
     val lastUsedAt: Instant?,
+    val lastUsedIp: String?,
 )
 
 /** The secret is returned once, on creation. It is never stored in clear and never shown again. */

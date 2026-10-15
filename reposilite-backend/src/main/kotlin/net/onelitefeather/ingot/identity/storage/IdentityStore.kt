@@ -35,6 +35,8 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -121,11 +123,17 @@ class IdentityStore(
         }
     }
 
-    fun touchPrincipal(id: Int, at: Instant) {
+    /**
+     * Stores the time the principal was last seen, unless a later or equal time is stored within the window. Returns
+     * whether a row was written. The condition only ever moves the stored time forward.
+     */
+    fun touchPrincipal(id: Int, at: Instant, notBefore: Instant): Boolean =
         transaction(database) {
-            PrincipalTable.update(where = { PrincipalTable.id eq id }, body = { it[PrincipalTable.lastSeenAt] = at })
+            PrincipalTable.update(
+                where = { (PrincipalTable.id eq id) and (PrincipalTable.lastSeenAt.isNull() or (PrincipalTable.lastSeenAt lessEq notBefore)) },
+                body = { it[PrincipalTable.lastSeenAt] = at },
+            ) > 0
         }
-    }
 
     /**
      * Deletes the principal with its tokens, memberships, instance role and private team (including the legacy grants of
@@ -395,14 +403,20 @@ class IdentityStore(
         transaction(database) { PrincipalTokenTable.deleteWhere { PrincipalTokenTable.id eq id } }
     }
 
-    fun touchToken(id: Int, at: Instant, ip: String) {
+    /**
+     * Stores the last use of the token and its address, unless a later or equal use is stored within the window. Returns
+     * whether a row was written. The condition only ever moves the stored time forward.
+     */
+    fun touchToken(id: Int, at: Instant, ip: String?, notBefore: Instant): Boolean =
         transaction(database) {
-            PrincipalTokenTable.update(where = { PrincipalTokenTable.id eq id }, body = {
-                it[PrincipalTokenTable.lastUsedAt] = at
-                it[PrincipalTokenTable.lastUsedIp] = ip
-            })
+            PrincipalTokenTable.update(
+                where = { (PrincipalTokenTable.id eq id) and (PrincipalTokenTable.lastUsedAt.isNull() or (PrincipalTokenTable.lastUsedAt lessEq notBefore)) },
+                body = {
+                    it[PrincipalTokenTable.lastUsedAt] = at
+                    it[PrincipalTokenTable.lastUsedIp] = ip
+                },
+            ) > 0
         }
-    }
 
     fun countTokens(): Long =
         transaction(database) { PrincipalTokenTable.selectAll().count() }

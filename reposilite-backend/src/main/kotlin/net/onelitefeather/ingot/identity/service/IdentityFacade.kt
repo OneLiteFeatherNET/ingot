@@ -475,6 +475,7 @@ class IdentityFacade(
         expiresAt = expiresAt,
         scopes = scopes?.map { it.name }?.sorted(),
         lastUsedAt = lastUsedAt,
+        lastUsedIp = lastUsedIp,
     )
 
     private fun principalDetail(principal: PrincipalRecord): PrincipalDetailDto {

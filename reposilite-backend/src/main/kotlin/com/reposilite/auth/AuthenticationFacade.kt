@@ -122,6 +122,8 @@ class AuthenticationFacade(
         if (result.isErr) {
             recordRejectedLogin(credentials)
         }
+        // Cache hits count as use too: the facade throttles the write, so a busy cache does not write more often.
+        result.peek { accessTokenFacade.recordTokenUsage(it.identifier, credentials.ip) }
         return result
     }
 
