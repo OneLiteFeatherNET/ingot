@@ -41,12 +41,12 @@ const LDAP = {
   bindDn: 'cn=svc,dc=example,dc=org',
   bindPassword: SECRET_PLACEHOLDER,
   userBaseDn: 'ou=people,dc=example,dc=org',
-  userFilter: '(uid={0})',
+  userFilter: '(uid={username})',
   usernameAttribute: 'uid',
   displayNameAttribute: 'cn',
   emailAttribute: 'mail',
   groupBaseDn: 'ou=groups,dc=example,dc=org',
-  groupFilter: '(objectClass=groupOfNames)',
+  groupFilter: '(member={dn})',
   groupNameAttribute: 'cn',
   autoCreateUsers: true,
   adminGroups: ['ingot-admins']
@@ -102,7 +102,7 @@ describe('LdapPanel', () => {
       expect(settings.fetch).toHaveBeenCalledWith('login')
       expect(field('ldap-label').value).toBe('Corporate LDAP')
       expect(field('ldap-url').value).toBe('ldaps://ldap.example.org:636')
-      expect(field('ldap-user-filter').value).toBe('(uid={0})')
+      expect(field('ldap-user-filter').value).toBe('(uid={username})')
     })
 
     it('shows the stored bind password as the placeholder', async () => {
@@ -159,6 +159,33 @@ describe('LdapPanel', () => {
 
       expect(wrapper.text()).toContain('starting with ldap:// or ldaps://')
       expect(settings.update).not.toHaveBeenCalled()
+    })
+
+    it('needs the {username} placeholder in the user filter, and writes nothing without it', async () => {
+      await mountPanel()
+      type('ldap-user-filter', '(uid=alice)')
+
+      await save()
+
+      expect(wrapper.text()).toContain('The user filter must contain {username}')
+      expect(settings.update).not.toHaveBeenCalled()
+    })
+
+    it('needs {dn} or {username} in the group filter once a group base is given', async () => {
+      await mountPanel()
+      type('ldap-group-filter', '(objectClass=groupOfNames)')
+
+      await save()
+
+      expect(wrapper.text()).toContain('The group filter must contain {dn}')
+      expect(settings.update).not.toHaveBeenCalled()
+    })
+
+    it('explains the placeholders of the user and group filter', async () => {
+      await mountPanel()
+
+      expect(wrapper.text()).toContain('{username} stands for the username typed at sign in')
+      expect(wrapper.text()).toContain('{dn} stands for the user DN')
     })
 
     it('needs the user base DN while the directory is enabled', async () => {

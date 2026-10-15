@@ -141,12 +141,12 @@ const LDAP_DEFAULTS = {
   bindDn: '',
   bindPassword: '',
   userBaseDn: '',
-  userFilter: '(uid={0})',
+  userFilter: '(uid={username})',
   usernameAttribute: 'uid',
   displayNameAttribute: 'cn',
   emailAttribute: 'mail',
   groupBaseDn: '',
-  groupFilter: '(objectClass=groupOfNames)',
+  groupFilter: '(member={dn})',
   groupNameAttribute: 'cn',
   autoCreateUsers: true,
   adminGroups: []
@@ -189,9 +189,17 @@ const validateLdap = (ldap) => {
   if (!ldap.label.trim()) problems.label = 'Enter a label, as users read it on the sign in button'
   if (!isLdapUrl(ldap.url)) problems.url = 'Enter the address, starting with ldap:// or ldaps://'
   if (!ldap.userBaseDn.trim()) problems.userBaseDn = 'Enter the base DN where users are found'
-  if (!ldap.userFilter.trim()) problems.userFilter = 'Enter the filter that finds a user by the typed name'
+  if (!ldap.userFilter.trim()) {
+    problems.userFilter = 'Enter the filter that finds a user by the typed name'
+  } else if (!ldap.userFilter.includes('{username}')) {
+    problems.userFilter = 'The user filter must contain {username}, which stands for the typed name'
+  }
   if (!ldap.usernameAttribute.trim()) problems.usernameAttribute = 'Enter the attribute that holds the username'
   if (ldap.bindDn.trim() && !ldap.bindPassword) problems.bindPassword = 'Enter the password of the bind DN'
+  // The group filter is only used when a group base is given, and then it names the user by {dn} or {username}.
+  if (ldap.groupBaseDn.trim() && !/\{(dn|username)\}/.test(ldap.groupFilter)) {
+    problems.groupFilter = 'The group filter must contain {dn}, which stands for the user DN, or {username}'
+  }
   return problems
 }
 

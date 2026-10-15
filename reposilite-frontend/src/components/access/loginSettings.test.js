@@ -157,8 +157,13 @@ describe('validateLdap', () => {
     enabled: true,
     url: 'ldaps://ldap.example.org:636',
     userBaseDn: 'ou=people,dc=example,dc=org',
-    userFilter: '(uid={0})'
+    userFilter: '(uid={username})'
   }
+
+  it('defaults to the placeholders of the backend: {username} and {dn}', () => {
+    expect(LDAP_DEFAULTS.userFilter).toBe('(uid={username})')
+    expect(LDAP_DEFAULTS.groupFilter).toBe('(member={dn})')
+  })
 
   it('accepts a complete directory when it is enabled', () => {
     expect(validateLdap(ldap)).toEqual({})
@@ -177,6 +182,17 @@ describe('validateLdap', () => {
 
     expect(problems.userBaseDn).toBeDefined()
     expect(problems.userFilter).toBeDefined()
+  })
+
+  it('needs the {username} placeholder in the user filter', () => {
+    expect(validateLdap({ ...ldap, userFilter: '(uid=alice)' }).userFilter).toMatch(/\{username\}/)
+    expect(validateLdap({ ...ldap, userFilter: '(uid={0})' }).userFilter).toMatch(/\{username\}/)
+  })
+
+  it('needs {dn} or {username} in the group filter only when a group base is given', () => {
+    expect(validateLdap({ ...ldap, groupBaseDn: 'ou=groups,dc=example,dc=org', groupFilter: '(objectClass=groupOfNames)' }).groupFilter).toMatch(/\{dn\}/)
+    expect(validateLdap({ ...ldap, groupBaseDn: 'ou=groups,dc=example,dc=org', groupFilter: '(memberUid={username})' })).toEqual({})
+    expect(validateLdap({ ...ldap, groupBaseDn: '', groupFilter: '(objectClass=groupOfNames)' })).toEqual({})
   })
 
   it('needs a bind password when a bind DN is given', () => {

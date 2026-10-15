@@ -248,7 +248,7 @@ onMounted(load)
             label="User filter"
             type="text"
             autocomplete="off"
-            supporting-text="{0} stands for the username typed at sign in, as in (uid={0})"
+            supporting-text="{username} stands for the username typed at sign in, as in (uid={username})"
             :error="errorOf('userFilter') !== ''"
             :error-text="errorOf('userFilter')"
           />
@@ -312,6 +312,9 @@ onMounted(load)
             label="Group filter"
             type="text"
             autocomplete="off"
+            supporting-text="{dn} stands for the user DN, as in (member={dn}). {username} also works"
+            :error="errorOf('groupFilter') !== ''"
+            :error-text="errorOf('groupFilter')"
           />
           <MdTextField
             id="ldap-group-name"
