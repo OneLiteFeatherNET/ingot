@@ -119,7 +119,7 @@ const FIELD = {
 // The resting label sits in the middle of the field. A floated label moves to the top edge.
 const FLOAT = {
   filled: 'peer-focus:top-2 peer-focus:translate-y-0 peer-focus:md-label-medium peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:md-label-medium',
-  outlined: 'peer-focus:top-0 peer-focus:bg-surface peer-focus:px-1 peer-focus:md-label-medium peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:bg-surface peer-[:not(:placeholder-shown)]:px-1 peer-[:not(:placeholder-shown)]:md-label-medium'
+  outlined: 'peer-focus:top-0 peer-focus:bg-[var(--md-field-container,var(--md-sys-color-surface))] peer-focus:px-1 peer-focus:md-label-medium peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:bg-[var(--md-field-container,var(--md-sys-color-surface))] peer-[:not(:placeholder-shown)]:px-1 peer-[:not(:placeholder-shown)]:md-label-medium'
 }
 
 const LABEL_COLOUR = {

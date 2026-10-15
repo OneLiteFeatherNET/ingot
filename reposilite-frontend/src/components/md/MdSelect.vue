@@ -113,7 +113,7 @@ const helperClass = computed(() => {
         :disabled="disabled"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
-        class="peer h-14 w-full appearance-none rounded-corner-extra-small border bg-transparent pl-4 pr-12 md-body-large text-on-surface outline-none disabled:border-on-surface/12 disabled:text-on-surface/38"
+        class="peer h-14 w-full appearance-none bg-none rounded-corner-extra-small border bg-transparent pl-4 pr-12 md-body-large text-on-surface outline-none disabled:border-on-surface/12 disabled:text-on-surface/38"
         :class="fieldClass"
         @change="emit('update:modelValue', $event.target.value)"
       >
@@ -127,7 +127,7 @@ const helperClass = computed(() => {
       </select>
       <label
         :for="inputId"
-        class="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-surface px-1 md-label-medium"
+        class="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-[var(--md-field-container,var(--md-sys-color-surface))] px-1 md-label-medium"
         :class="labelClass"
       >{{ label }}</label>
       <span

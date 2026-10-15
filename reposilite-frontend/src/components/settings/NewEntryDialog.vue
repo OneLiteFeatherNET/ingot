@@ -83,7 +83,7 @@ const submit = () => {
   >
     <form
       id="new-entry-form"
-      class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+      class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3 [--md-field-container:var(--md-sys-color-surface-container-high)]"
       aria-labelledby="new-entry-title"
       aria-describedby="new-entry-body"
       novalidate
