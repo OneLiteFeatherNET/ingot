@@ -19,15 +19,16 @@ import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from '../router/create'
+import { canUse } from '../store/nodeAccess'
 import IndexPage from './IndexPage.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
 
 // The session is replaced by a plain flag, so each test decides whether the user is a manager.
-const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange: null }))
+const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange: null, can: null }))
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 
 vi.mock('../store/session', () => ({
-  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange })
+  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange, can: session.can })
 }))
 
 vi.mock('../store/login', () => ({ openLogin: login.openLogin }))
@@ -84,8 +85,10 @@ const QUALIFIER = { path: '', watchable: 0 }
 
 // Builds the router the application builds, on memory history, with the session answered
 // at once. The page is mounted directly, with the router beside it, as the app does.
-const mountAt = async (url, { manager = false, logged = manager, mustChange = false } = {}) => {
+const mountAt = async (url, { manager = false, logged = manager, mustChange = false, nodes } = {}) => {
   session.isManager = ref(manager)
+  // Without a node list the session is a legacy one and the manager flag answers, as in the store.
+  session.can = (node) => (nodes === undefined ? session.isManager.value : canUse(nodes, node))
   session.isLogged = ref(logged)
   session.mustChange = ref(mustChange)
   const router = createAppRouter({
@@ -93,6 +96,7 @@ const mountAt = async (url, { manager = false, logged = manager, mustChange = fa
     component: IndexPage,
     whenSessionKnown: () => Promise.resolve(),
     isManager: () => session.isManager.value,
+    can: (node) => session.can(node),
     isLogged: () => logged,
     openLogin: login.openLogin,
     notify: () => {}
@@ -324,6 +328,60 @@ describe('IndexPage navigation', () => {
 
     expect(rail.findAll('a').map(link => link.text()), 'the rail has room for every section')
       .toEqual(SECTION_LABELS)
+  })
+
+  const railLabels = (wrapper) => navigations(wrapper)[1].findAll('a').map(link => link.text())
+
+  it('hides Maintenance from a user without ingot.admin.maintenance', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    expect(railLabels(wrapper)).not.toContain('Maintenance')
+  })
+
+  it('shows Maintenance to a user with ingot.admin.maintenance', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.maintenance'] })
+
+    expect(railLabels(wrapper)).toEqual(['Overview', 'Maintenance'])
+  })
+
+  it('hides Access from a user with no access node', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.console', 'ingot.admin.audit'] })
+
+    expect(railLabels(wrapper)).toEqual(['Overview', 'Console', 'Audit'])
+  })
+
+  it('shows every section to a user with ingot.admin.*', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.*'] })
+
+    expect(railLabels(wrapper)).toEqual(SECTION_LABELS)
+  })
+
+  it('leaves out the sections a user cannot use from the bottom bar and from More', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.console', 'ingot.admin.audit'] })
+
+    const [bar] = navigations(wrapper)
+    await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
+
+    expect(bar.findAll('a').map(link => link.text())).toEqual(['Overview', 'Console'])
+    expect(wrapper.find('nav[aria-label="More sections"]').findAll('a').map(link => link.text())).toEqual(['Audit'])
+  })
+
+  it('shows no navigation to a user with repository nodes only', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.repository.releases.read'] })
+
+    expect(navigations(wrapper)).toHaveLength(0)
+  })
+
+  it('shows the legacy manager every section when the session has no node list', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    expect(railLabels(wrapper)).toEqual(SECTION_LABELS)
+  })
+
+  it('moves a user without the node of the page to overview', async () => {
+    const { router } = await mountAt('/maintenance', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    expect(router.currentRoute.value.name).toBe('overview')
   })
 
   it('keeps the daily sections in the bar and puts the rarer ones under More', async () => {

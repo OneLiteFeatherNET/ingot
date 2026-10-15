@@ -17,21 +17,50 @@
 import { describe, it, expect } from 'vitest'
 import { SECTIONS, MORE_KEY, visibleSections, sectionLabel, isOverflow } from './index-tabs'
 import { ROUTES } from '../router/routes'
+import { canUse } from '../store/nodeAccess'
+
+// A session answers for a node from its node list, as the session store does.
+const canWith = (nodes) => (node) => canUse(nodes, node)
+const labelsFor = (nodes) => visibleSections(canWith(nodes)).map(section => section.label)
 
 describe('visibleSections', () => {
-  it('offers only overview to a visitor who is not a manager', () => {
-    expect(visibleSections(false).map(section => section.key)).toEqual(['overview'])
+  it('offers only overview to a visitor who may use no admin node', () => {
+    expect(visibleSections(() => false).map(section => section.key)).toEqual(['overview'])
   })
 
-  it('offers every section to a manager, in the order of the navigation', () => {
-    expect(visibleSections(true).map(section => section.label))
+  it('offers every section to a visitor who may use all admin nodes, in the order of the navigation', () => {
+    expect(labelsFor(['ingot.admin.*']))
       .toEqual(['Overview', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings'])
+  })
+
+  it('offers every section to an instance admin with the lone wildcard', () => {
+    expect(labelsFor(['*'])).toHaveLength(SECTIONS.length)
+  })
+
+  it('hides Maintenance from a user without ingot.admin.maintenance', () => {
+    expect(labelsFor(['ingot.admin.audit'])).not.toContain('Maintenance')
+  })
+
+  it('shows Maintenance to a user with ingot.admin.maintenance', () => {
+    expect(labelsFor(['ingot.admin.maintenance'])).toContain('Maintenance')
+  })
+
+  it('hides Access from a user with no access node', () => {
+    expect(labelsFor(['ingot.admin.audit'])).not.toContain('Access')
+  })
+
+  it('shows Access to a user with only the teams node', () => {
+    expect(labelsFor(['ingot.admin.teams'])).toContain('Access')
+  })
+
+  it('offers only overview to a user with repository nodes but no admin node', () => {
+    expect(labelsFor(['ingot.repository.releases.read'])).toEqual(['Overview'])
   })
 })
 
 describe('access section', () => {
   it('replaces the Tokens entry', () => {
-    const labels = visibleSections(true).map(section => section.label)
+    const labels = visibleSections(() => true).map(section => section.label)
 
     expect(labels).toContain('Access')
     expect(labels, 'tokens are machine accounts under Access now').not.toContain('Tokens')
@@ -71,7 +100,32 @@ describe('section table', () => {
     const route = ROUTES.find(entry => entry.name === 'maintenance')
 
     expect(route?.path).toBe('/maintenance')
-    expect(route?.meta).toEqual({ section: 'maintenance', manager: true })
+    expect(route?.meta).toEqual({ section: 'maintenance', manager: true, node: 'ingot.admin.maintenance' })
+  })
+
+  it('names the node of every admin route', () => {
+    const nodes = Object.fromEntries(
+      ROUTES.filter(route => route.meta?.node).map(route => [route.name, route.meta.node])
+    )
+
+    expect(nodes).toMatchObject({
+      dashboard: 'ingot.admin.dashboard',
+      console: 'ingot.admin.console',
+      maintenance: 'ingot.admin.maintenance',
+      audit: 'ingot.admin.audit',
+      settings: 'ingot.admin.settings',
+      'access-users': 'ingot.admin.users',
+      'access-machines': 'ingot.admin.tokens',
+      'access-teams': 'ingot.admin.teams',
+      tokens: 'ingot.admin.tokens',
+      token: 'ingot.admin.tokens'
+    })
+  })
+
+  it('keeps the manager flag on every route that names a node, for legacy sessions', () => {
+    const missing = ROUTES.filter(route => (route.meta?.node || route.meta?.anyNode) && !route.meta.manager)
+
+    expect(missing.map(route => route.name)).toEqual([])
   })
 })
 

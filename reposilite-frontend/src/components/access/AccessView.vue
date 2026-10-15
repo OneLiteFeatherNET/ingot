@@ -15,7 +15,10 @@
   -->
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSession } from '../../store/session'
+import { ACCESS_NODES, ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
 import SettingsTabs from '../settings/SettingsTabs.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
@@ -45,14 +48,21 @@ defineProps({
 
 const router = useRouter()
 
-const TABS = [
-  { key: 'users', label: 'Users' },
-  { key: 'machines', label: 'Machine accounts' },
-  { key: 'teams', label: 'Teams' },
-  { key: 'sso', label: 'SSO' },
-  { key: 'ldap', label: 'LDAP' },
-  { key: 'check', label: 'Check' }
+const { can } = useSession()
+
+// A tab whose node the user lacks is left out, not greyed out. The check is open to anyone who
+// may use one of the three lists. The provider pages save the instance settings and test the
+// provider connection, which the server answers only to the full instance admin.
+const ALL_TABS = [
+  { key: 'users', label: 'Users', nodes: [ADMIN_NODES.users] },
+  { key: 'machines', label: 'Machine accounts', nodes: [ADMIN_NODES.tokens] },
+  { key: 'teams', label: 'Teams', nodes: [ADMIN_NODES.teams] },
+  { key: 'sso', label: 'SSO', nodes: [INSTANCE_ADMIN_NODE] },
+  { key: 'ldap', label: 'LDAP', nodes: [INSTANCE_ADMIN_NODE] },
+  { key: 'check', label: 'Check', nodes: ACCESS_NODES }
 ]
+]
+const TABS = computed(() => ALL_TABS.filter(tab => tab.nodes.some(node => can(node))))
 
 const select = (key) => router.push({ name: `access-${key}` })
 </script>

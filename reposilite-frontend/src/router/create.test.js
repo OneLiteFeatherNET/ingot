@@ -334,3 +334,72 @@ describe('account route', () => {
     expect(router.currentRoute.value.name).toBe('browse')
   })
 })
+
+describe('routes gated by permission nodes', () => {
+  const sessionWith = (...nodes) => ({
+    isManager: () => true,
+    isLogged: () => true,
+    can: (node) => nodes.includes(node),
+    whenSessionKnown: () => Promise.resolve()
+  })
+
+  it('sends a user without ingot.admin.maintenance away from the maintenance page', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.audit'))
+
+    await router.push('/maintenance')
+
+    expect(router.currentRoute.value.name).toBe('overview')
+  })
+
+  it('opens the maintenance page for a user with ingot.admin.maintenance', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.maintenance'))
+
+    await router.push('/maintenance')
+
+    expect(router.currentRoute.value.name).toBe('maintenance')
+  })
+
+  it('opens the first access tab the user may use when /access is visited', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.teams'))
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name).toBe('access-teams')
+  })
+
+  it('sends a user without the users node away from the user list', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.teams'))
+
+    await router.push('/access/users')
+
+    expect(router.currentRoute.value.name).toBe('overview')
+  })
+
+  it('ends the token redirect at overview for a user without ingot.admin.tokens', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.users'))
+
+    await router.push('/tokens')
+
+    expect(router.currentRoute.value.name).toBe('overview')
+  })
+
+  it('opens the machine accounts for a user with ingot.admin.tokens', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.tokens'))
+
+    await router.push('/tokens')
+
+    expect(router.currentRoute.value.name).toBe('access-machines')
+  })
+
+  it('keeps the manager rule for a session that gives only a manager flag', async () => {
+    const router = makeRouter({
+      isManager: () => true,
+      isLogged: () => true,
+      whenSessionKnown: () => Promise.resolve()
+    })
+
+    await router.push('/audit')
+
+    expect(router.currentRoute.value.name).toBe('audit')
+  })
+})

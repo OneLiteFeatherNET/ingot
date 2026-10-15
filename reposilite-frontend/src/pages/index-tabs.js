@@ -26,20 +26,24 @@
  * console) stay one tap away.
  */
 
+import { ACCESS_NODES, ADMIN_NODES, requiredNodes } from '../store/nodeAccess'
+
 const SECTIONS = [
   { key: 'overview', label: 'Overview', manager: false, route: 'overview' },
-  { key: 'dashboard', label: 'Dashboard', manager: true, route: 'dashboard' },
-  { key: 'access', label: 'Access', manager: true, route: 'access' },
-  { key: 'console', label: 'Console', manager: true, route: 'console' },
-  { key: 'maintenance', label: 'Maintenance', manager: true, route: 'maintenance', overflow: true },
-  { key: 'audit', label: 'Audit', manager: true, route: 'audit', overflow: true },
-  { key: 'settings', label: 'Settings', manager: true, route: 'settings', overflow: true },
+  { key: 'dashboard', label: 'Dashboard', manager: true, node: ADMIN_NODES.dashboard, route: 'dashboard' },
+  { key: 'access', label: 'Access', manager: true, anyNode: ACCESS_NODES, route: 'access' },
+  { key: 'console', label: 'Console', manager: true, node: ADMIN_NODES.console, route: 'console' },
+  { key: 'maintenance', label: 'Maintenance', manager: true, node: ADMIN_NODES.maintenance, route: 'maintenance', overflow: true },
+  { key: 'audit', label: 'Audit', manager: true, node: ADMIN_NODES.audit, route: 'audit', overflow: true },
+  { key: 'settings', label: 'Settings', manager: true, node: ADMIN_NODES.settings, route: 'settings', overflow: true },
 ]
 
 const MORE_KEY = 'more'
 
-const visibleSections = (isManager) =>
-  SECTIONS.filter(section => !section.manager || isManager)
+// `can(node)` answers for a permission node. A session without a node list answers with the
+// manager flag, so the legacy behaviour lives in the session and not here.
+const visibleSections = (can) =>
+  SECTIONS.filter(section => !section.manager || requiredNodes(section).some(node => can(node)))
 
 // Pages that are not in the navigation but have a name in the document title.
 const EXTRA_LABELS = { account: 'My account' }

@@ -15,10 +15,12 @@
  */
 
 /*
- * Routes marked `manager` in their meta need the manager permission. Three visitors meet
- * them differently:
+ * Routes marked `manager` in their meta are admin pages. Which admin page a user may open is
+ * decided by the permission node the route names (`node`, or `anyNode` for alternatives); a
+ * route without a node, and a session that carries no node list, fall back to the manager
+ * permission. Three visitors meet them differently:
  *
- * - a manager goes straight in;
+ * - a user who may open the page goes straight in;
  * - an anonymous visitor stays on the URL they asked for. The page shows a prompt in place of
  *   the section, and asks for the sign in dialog itself once it is on screen, because the
  *   dialog lives in the page header and a request made before the page exists is lost;
@@ -29,15 +31,20 @@
  * while the page is still loading.
  */
 
+import { routeAllowed } from '../store/nodeAccess'
+
 const managerAccess = ({ isManager, isLogged }) => {
   if (isManager) return 'granted'
   return isLogged ? 'denied' : 'sign-in'
 }
 
+const NO_ACCESS_MESSAGE = 'You do not have access to that page'
+
 const createManagerGuard = ({
   whenSessionKnown,
   isManager,
   isLogged,
+  can = () => isManager(),
   notify
 }) => async (to) => {
   if (!to.meta?.manager) {
@@ -46,12 +53,13 @@ const createManagerGuard = ({
 
   await whenSessionKnown()
 
-  switch (managerAccess({ isManager: isManager(), isLogged: isLogged() })) {
+  const allowed = routeAllowed(to.meta, can, isManager())
+  switch (managerAccess({ isManager: allowed, isLogged: isLogged() })) {
     case 'granted':
     case 'sign-in':
       return true
     default:
-      notify('That section is only open to managers.')
+      notify(NO_ACCESS_MESSAGE)
       return { name: 'overview', replace: true }
   }
 }
@@ -69,4 +77,4 @@ const createPasswordChangeGuard = ({ mustChangePassword }) => (to) => {
   return { name: 'account', replace: true }
 }
 
-export { managerAccess, createManagerGuard, createPasswordChangeGuard }
+export { NO_ACCESS_MESSAGE, managerAccess, createManagerGuard, createPasswordChangeGuard }

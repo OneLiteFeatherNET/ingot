@@ -38,7 +38,9 @@ import HistoryIcon from '../components/icons/HistoryIcon.vue'
 import MoreIcon from '../components/icons/MoreIcon.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
 import { property } from '../helpers/vue-extensions'
-import { createInfoToast } from '../helpers/toast'
+import { createInfoToastOnce } from '../helpers/toast'
+import { routeAllowed } from '../store/nodeAccess'
+import { NO_ACCESS_MESSAGE } from '../router/guard'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
@@ -80,7 +82,7 @@ defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { isManager, isLogged, mustChangePassword } = useSession()
+const { isManager, can, isLogged, mustChangePassword } = useSession()
 // A single sign on provider that failed sends the visitor back here with the reason in the address.
 useLoginErrorNotice()
 
@@ -91,7 +93,7 @@ useLoginErrorNotice()
  */
 const section = computed(() => route.meta.section ?? null)
 const sectionAllowed = computed(() =>
-  (!route.meta.manager || isManager.value) && (!route.meta.signedIn || isLogged.value))
+  routeAllowed(route.meta, can, isManager.value) && (!route.meta.signedIn || isLogged.value))
 
 // The server asks for a new password: the router closes every other page at navigation time, and
 // this follows when the flag arrives later, with the session that has just been read or started.
@@ -114,7 +116,7 @@ onMounted(askForSignIn)
 watch([sectionAllowed, isLogged], ([allowed, logged]) => {
   if (allowed) return
   if (logged) {
-    createInfoToast('That section is only open to managers.')
+    createInfoToastOnce(NO_ACCESS_MESSAGE)
     router.replace({ name: 'overview' })
   } else {
     openLogin()
@@ -124,7 +126,7 @@ const browsedPath = computed(() => qualifierOf(route.params))
 
 // One section on its own needs no navigation: the bar and the rail are left out, and the
 // page keeps its full width.
-const menuSections = computed(() => visibleSections(isManager.value))
+const menuSections = computed(() => visibleSections(can))
 const hasNavigation = computed(() => menuSections.value.length > 1)
 
 // The snackbar lives outside this page, so it learns the bar height from the document root.
@@ -207,7 +209,7 @@ const replaceQuery = (key, value) => {
   return router.replace({ name: route.name, params: route.params, query: next })
 }
 
-// Access: the tab on screen (users, machines or teams) and the name of the principal or team that
+// Access: the tab on screen (users, machines, teams, sso, ldap or check) and the name of the principal or team that
 // is open. The view moves between them through the router itself.
 const ACCESS_TABS = {
   'access-users': 'users',

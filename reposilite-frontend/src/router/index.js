@@ -18,7 +18,7 @@ import { createWebHistory } from 'vue-router'
 import IndexPage from '../pages/IndexPage.vue'
 import usePlaceholders from '../store/placeholders'
 import { useSession, whenSessionKnown } from '../store/session'
-import { createInfoToast } from '../helpers/toast'
+import { createInfoToastOnce } from '../helpers/toast'
 import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
 
@@ -32,7 +32,7 @@ import { legacyLocation } from './legacy'
  */
 export function createIngotRouter() {
   const { basePath, title } = usePlaceholders()
-  const { isManager, isLogged, mustChangePassword } = useSession()
+  const { isManager, can, isLogged, mustChangePassword } = useSession()
 
   return createAppRouter({
     history: createWebHistory(basePath),
@@ -41,8 +41,9 @@ export function createIngotRouter() {
     siteTitle: title,
     whenSessionKnown,
     isManager: () => isManager.value,
+    can,
     isLogged: () => isLogged.value,
     mustChangePassword: () => mustChangePassword.value,
-    notify: createInfoToast
+    notify: createInfoToastOnce
   })
 }

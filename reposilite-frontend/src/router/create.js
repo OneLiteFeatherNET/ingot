@@ -15,7 +15,7 @@
  */
 
 import { createRouter } from 'vue-router'
-import { ROUTES } from './routes'
+import { ROUTES, ACCESS_TABS } from './routes'
 import { createManagerGuard, createPasswordChangeGuard } from './guard'
 import { pageTitle } from './title'
 
@@ -26,7 +26,8 @@ import { pageTitle } from './title'
  *
  * - legacy(hash) turns an old `#/...` link into a location, or returns null. It is asked
  *   once, for the first navigation, which is the one the app starts with.
- * - The manager options describe the session. The defaults are an anonymous visitor.
+ * - The session options describe the session: `can(node)` answers for a permission node and
+ *   defaults to the manager flag. The defaults are an anonymous visitor.
  */
 const createAppRouter = ({
   history,
@@ -35,6 +36,7 @@ const createAppRouter = ({
   siteTitle = '',
   whenSessionKnown = () => Promise.resolve(),
   isManager = () => false,
+  can = () => isManager(),
   isLogged = () => false,
   mustChangePassword = () => false,
   notify = () => {}
@@ -42,7 +44,14 @@ const createAppRouter = ({
   const router = createRouter({
     history,
     // A redirect never renders, so it carries no component.
-    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component }))
+    routes: ROUTES.map(route => {
+      if (route.name === 'access') {
+        // /access opens the first tab the user may use, not a tab they would be refused.
+        const first = () => (ACCESS_TABS.find(tab => can(tab.node)) ?? ACCESS_TABS[0]).route
+        return { ...route, redirect: () => ({ name: first() }) }
+      }
+      return route.redirect ? route : { ...route, component }
+    })
   })
 
   let started = false
@@ -53,7 +62,7 @@ const createAppRouter = ({
   })
 
   router.beforeEach(createPasswordChangeGuard({ mustChangePassword }))
-  router.beforeEach(createManagerGuard({ whenSessionKnown, isManager, isLogged, notify }))
+  router.beforeEach(createManagerGuard({ whenSessionKnown, isManager, isLogged, can, notify }))
 
   router.afterEach((to) => {
     document.title = pageTitle(to, siteTitle)

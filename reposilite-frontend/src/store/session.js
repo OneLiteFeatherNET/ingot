@@ -19,6 +19,7 @@ import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler } fr
 import { openSessionChannel } from './session-channel'
 import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
 import { rateLimitMessage, retryAfterSeconds } from '../helpers/rate-limit'
+import { canUse } from './nodeAccess'
 
 // The access token of a token sign in. These two keys are the one legacy place where a secret
 // sits in localStorage; they are kept so existing token sessions survive, and they stay empty
@@ -75,7 +76,8 @@ const setupRequired = ref(false)
 *       }
  *    }[],
  *    principal?: { id: string, kind: string, name: string, displayName: string },
- *    instanceAdmin?: boolean
+ *    instanceAdmin?: boolean,
+ *    nodes?: string[]
  *  })}
  */
 const defaultDetails = undefined
@@ -362,6 +364,18 @@ const isManager = computed(() => {
     ?.some(entry => entry.identifier === 'access-token:manager') === true
 })
 
+// The allowed nodes of the principal, as /api/auth/me lists them. A server that does not send the
+// list gives an empty one here; `can` tells the two cases apart.
+const nodes = computed(() => Array.isArray(details.value?.nodes) ? details.value.nodes : [])
+
+// The one place where permission nodes meet the legacy flags. A session that carries a node list
+// is decided by the list alone. A session without one (an older server) is decided by the manager
+// or instance admin flag, which is what every admin gate did before nodes existed.
+const can = (node) =>
+  Array.isArray(details.value?.nodes)
+    ? canUse(details.value.nodes, node)
+    : isManager.value
+
 const hasPermissionTo = (path, permission) => {
   if (isManager.value) {
     return true
@@ -396,6 +410,8 @@ export function useSession() {
     isLogged,
     client,
     isManager,
+    nodes,
+    can,
     hasPermissionTo,
     initializeSession,
     sessionReady

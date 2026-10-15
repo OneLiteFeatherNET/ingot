@@ -72,4 +72,26 @@ describe('toast helpers', () => {
     expect(snackbar.current.value.message, 'the error must still be the one on screen').toBe('Cannot load statistics')
     expect(snackbar.entries.value.length, 'the success must still be waiting').toBe(2)
   })
+
+  it('shows an info notice once while one with the same text is in the queue', () => {
+    toast.createInfoToastOnce('You do not have access to that page')
+    toast.createInfoToastOnce('You do not have access to that page')
+
+    expect(snackbar.entries.value, 'the second call must not queue the text again').toHaveLength(1)
+  })
+
+  it('shows the same info notice again after the first one is gone', () => {
+    toast.createInfoToastOnce('You do not have access to that page')
+    snackbar.dismiss(snackbar.current.value.id)
+    toast.createInfoToastOnce('You do not have access to that page')
+
+    expect(snackbar.entries.value).toHaveLength(1)
+  })
+
+  it('shows two info notices with different texts', () => {
+    toast.createInfoToastOnce('First')
+    toast.createInfoToastOnce('Second')
+
+    expect(snackbar.entries.value.map(entry => entry.message)).toEqual(['First', 'Second'])
+  })
 })

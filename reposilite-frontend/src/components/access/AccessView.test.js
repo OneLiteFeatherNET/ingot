@@ -65,7 +65,8 @@ describe('AccessView', () => {
       client: ref({
         identity: { principals, teams },
         settings: { fetch: vi.fn().mockResolvedValue({ data: {} }), update: vi.fn() }
-      })
+      }),
+      can: () => true
     }
   })
 
@@ -107,6 +108,47 @@ describe('AccessView', () => {
 
   it('moves to the single sign on page through the router', async () => {
     await mountView({ tab: 'teams' }, '/access/teams')
+    await tabs()[3].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/access/sso')
+  })
+
+  it('hides the tabs whose node the user lacks', async () => {
+    holder.session.can = (node) => node === 'ingot.admin.teams'
+
+    await mountView({ tab: 'teams' }, '/access/teams')
+
+    expect(tabs().map(tab => tab.text()), 'a tab is hidden, not greyed out').toEqual(['Teams', 'Check'])
+  })
+
+  it('offers the Machine accounts tab to a user with ingot.admin.tokens', async () => {
+    holder.session.can = (node) => node === 'ingot.admin.tokens'
+
+    await mountView({ tab: 'machines' }, '/access/machines')
+
+    expect(tabs().map(tab => tab.text())).toEqual(['Machine accounts', 'Check'])
+  })
+
+  it('moves to the check route from the Check tab', async () => {
+    await mountView({ tab: 'users' })
+
+    await tabs()[5].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('access-check')
+  })
+
+  it('shows the permission check on the check tab', async () => {
+    await mountView({ tab: 'check' }, '/access/check')
+
+    expect(wrapper.find('[data-test="check-form"]').exists()).toBe(true)
+  })
+
+  it('lists the principals of every kind for the check picker', async () => {
+    await mountView({ tab: 'check' }, '/access/check')
+
+    expect(principals.list, 'the check tab asks for all kinds').toHaveBeenCalledWith()
 
     await tabs()[3].trigger('click')
     await flushPromises()

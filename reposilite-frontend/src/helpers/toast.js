@@ -45,6 +45,13 @@ const errorMessage = (error) =>
 
 const createInfoToast = show('info')
 
+// An info notice that is skipped while one with the same text is still in the queue, so a burst of
+// refused navigations shows the message once.
+const createInfoToastOnce = (message, options) =>
+  snackbar.entries.value.some(entry => entry.message === message)
+    ? null
+    : createInfoToast(message, options)
+
 const createSuccessToast = show('success')
 
 const createWarningToast = show('warning')
@@ -53,6 +60,7 @@ const createErrorToast = show('error')
 
 export {
   createInfoToast,
+  createInfoToastOnce,
   createSuccessToast,
   createWarningToast,
   createErrorToast,
