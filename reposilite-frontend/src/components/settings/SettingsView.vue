@@ -28,6 +28,8 @@ import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoryWizard from './RepositoryWizard.vue'
 import { collectionsOf, entryLayout, idText, validateNewId } from './collections'
 import { barClearance } from './barClearance'
+import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
+import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
 import { property } from '../../helpers/vue-extensions'
 
 /*
@@ -75,7 +77,9 @@ const {
   saving,
   hasUnsavedChanges,
   changeCount,
-  invalidDomains
+  invalidDomains,
+  snapshots,
+  secretsHidden
 } = store
 
 // The domain on screen is the one the store holds. The address sets it, and the tabs set it;
@@ -197,15 +201,21 @@ const onDomainChange = (domain, event) => {
   store.validateDomain(domain)
 }
 
-const canDownload = computed(() => invalidDomains.value.length === 0 && domains.value.length > 0)
+/*
+ * The file is named after the day it is made, and holds the saved state unless the user asks for the
+ * draft. The saved state is what the server confirmed last, so it is valid whatever the draft holds.
+ */
+const clock = inject(settingsClockKey, systemClock)
+const hasDomains = computed(() => domains.value.length > 0)
 
-const downloadSettings = () => {
-  if (!canDownload.value) return
-  download(
-    JSON.stringify(configurations.value),
-    'shared.configuration.json',
-    'application/json'
-  )
+const downloadSettingsOf = (source) => {
+  const settings = settingsByDomain(domains.value, source)
+  download(serializeSettings(settings), settingsFileName(clock()), 'application/json')
+}
+
+const downloadSaved = () => downloadSettingsOf(snapshots.value)
+const downloadDraft = () => {
+  if (invalidDomains.value.length === 0) downloadSettingsOf(configurations.value)
 }
 
 /*
@@ -265,16 +275,14 @@ watch(
           Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance.
         </p>
       </div>
-      <MdButton
-        variant="outlined"
-        type="button"
-        class="shrink-0"
-        :disabled="!canDownload"
-        :title="canDownload ? undefined : 'Download is unavailable until the errors are fixed.'"
-        @click="downloadSettings"
-      >
-        Download as JSON
-      </MdButton>
+      <SettingsDownloadMenu
+        :disabled="!hasDomains"
+        :has-unsaved="hasUnsavedChanges"
+        :can-include-unsaved="invalidDomains.length === 0"
+        :secrets-hidden="secretsHidden"
+        @saved="downloadSaved"
+        @draft="downloadDraft"
+      />
     </header>
 
     <p

@@ -23,6 +23,7 @@ import { default as AppearanceSectionRenderer, tester as appearanceSectionTester
 import { invalidColourFields } from '../theme/settings'
 import { setAppearance, applyAppearance } from './appearance'
 import { etagOf, isPreconditionFailed } from './client'
+import { frontendSecretsHidden } from './placeholders'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
 
@@ -76,7 +77,7 @@ export const countDifferences = (current, saved) => {
  * its edited value differs from that snapshot, so the flag is derived from the data and
  * survives the settings view being unmounted and mounted again.
  */
-export const createConfigurationStore = (client) => {
+export const createConfigurationStore = (client, { secretsHidden: serverHidesSecrets = frontendSecretsHidden } = {}) => {
   const domains = ref([])
   const schemas = ref({})
   const configurations = ref({})
@@ -90,6 +91,8 @@ export const createConfigurationStore = (client) => {
   const etags = ref({})
   /* The domain whose stored settings changed elsewhere, or null. The conflict dialog renders it. */
   const conflict = ref(null)
+  // Whether the server returns secrets as ******** instead of their values. Read with the configuration.
+  const secretsHidden = ref(false)
 
   /* markRaw keeps Vue from wrapping the instance in a reactive proxy, which breaks ajv's code generation. */
   const configurationValidator = markRaw(createAjv({
@@ -161,6 +164,7 @@ export const createConfigurationStore = (client) => {
         delete validity.value[domain]
       })
       if (!domainNames.includes(selectedDomain.value)) selectedDomain.value = domainNames[0]
+      secretsHidden.value = serverHidesSecrets() === true
 
       loadError.value = null
       return true
@@ -414,6 +418,8 @@ export const createConfigurationStore = (client) => {
     domains,
     schemas,
     configurations,
+    snapshots,
+    secretsHidden,
     selectedDomain,
     configurationValidator,
     loadError,

@@ -71,6 +71,9 @@ const SETTINGS_TIMEOUT_MS = 2000
 // The settings as the server last sent them, or null when they could not be had.
 let fetched = null
 
+/* Whether the server masks its secrets, as the public settings report it. False until they are loaded. */
+export const frontendSecretsHidden = () => fetched?.secretsHidden === true
+
 /* A placeholder that still names its own token was never substituted. */
 const substituted = (value, token) => !value.includes(token)
 
