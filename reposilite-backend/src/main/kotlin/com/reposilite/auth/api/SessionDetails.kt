@@ -27,6 +27,8 @@ data class SessionDetails(
     val principal: SessionPrincipal? = null,
     val teams: List<String> = emptyList(),
     val grants: List<SessionGrant> = emptyList(),
+    /** The node patterns the owner may use, token narrowing included. For gating views; the check endpoint decides exactly. */
+    val nodes: List<String> = emptyList(),
 )
 
 /** The principal that owns the token. The id is null for temporary tokens, which have no stored principal. */

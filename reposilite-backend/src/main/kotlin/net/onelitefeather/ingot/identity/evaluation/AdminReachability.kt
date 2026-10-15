@@ -72,6 +72,44 @@ object AdminReachability {
             .toSet()
     }
 
+    /**
+     * The principal ids that are instance admins through their nodes, token narrowing aside. Disabled principals are not
+     * admins. Read by the administration API for the admin flag of every row.
+     */
+    fun effectiveAdmins(input: Input): Set<Int> {
+        val membershipsByPrincipal = input.memberships.groupBy { it.principalId }
+        return input.principals
+            .filter { principal ->
+                PermissionEvaluator.isInstanceAdmin(
+                    AccessSubject(
+                        principalId = principal.id,
+                        principalName = null,
+                        kind = PrincipalKind.USER,
+                        disabled = principal.disabled,
+                        levels = levelsOf(principal.id, input, membershipsByPrincipal[principal.id].orEmpty()),
+                        tokenRules = null,
+                    ),
+                )
+            }
+            .map { it.id }
+            .toSet()
+    }
+
+    /** Whether the team is an instance admin through its own nodes or the nodes of the teams it inherits. */
+    fun teamIsAdmin(teamId: Int, input: Input): Boolean {
+        val levels = TeamHierarchy.levelsFrom(setOf(teamId), input.parents).map { (depth, ids) ->
+            AccessLevel(
+                source = if (depth == 0) DecisionSource.TEAM else DecisionSource.INHERITED_TEAM,
+                depth = depth,
+                rules = ids.flatMap { id -> input.teamRules[id].orEmpty().mapNotNull(::sourcedRule) },
+                grants = emptyList(),
+            )
+        }
+        return PermissionEvaluator.isInstanceAdmin(
+            AccessSubject(principalId = null, principalName = null, kind = PrincipalKind.USER, disabled = false, levels = levels, tokenRules = null),
+        )
+    }
+
     /** The precedence levels of a principal: its own nodes, its teams, and the teams they inherit. */
     private fun levelsOf(principalId: Int, input: Input, memberships: List<Membership>): List<AccessLevel> {
         val own = AccessLevel(

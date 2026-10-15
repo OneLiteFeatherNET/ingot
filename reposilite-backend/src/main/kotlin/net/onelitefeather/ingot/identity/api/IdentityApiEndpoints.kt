@@ -472,6 +472,42 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         }
     }
 
+    @OpenApi(
+        path = "/api/identity/nodes/catalog",
+        tags = ["Identity"],
+        summary = "Lists the permission nodes an operator can pick, optionally by prefix. Note: Requires Manager",
+        methods = [HttpMethod.GET],
+    )
+    val nodeCatalog = ReposiliteRoute<CatalogDto>("/api/identity/nodes/catalog", GET) {
+        managerOnly {
+            response = identity.nodeCatalog(queryParameter("prefix"))
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/nodes/templates",
+        tags = ["Identity"],
+        summary = "Lists the predefined node bundles of the user interface. Note: Requires Manager",
+        methods = [HttpMethod.GET],
+    )
+    val nodeTemplates = ReposiliteRoute<TemplatesDto>("/api/identity/nodes/templates", GET) {
+        managerOnly {
+            response = identity.nodeTemplates()
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/check",
+        tags = ["Identity"],
+        summary = "Decides one node for a principal, optionally narrowed by one of its tokens, with the candidates considered. Instance admins may check any principal, others only their own.",
+        methods = [HttpMethod.GET],
+    )
+    val permissionCheck = ReposiliteRoute<PermissionCheckDto>("/api/identity/check", GET) {
+        authenticated {
+            response = identity.permissionCheck(identifier, queryParameter("principal"), queryParameter("node"), queryParameter("token"))
+        }
+    }
+
     /** Reads the request body, answering 400 when it cannot be read. */
     private inline fun <reified B : Any> ContextDsl<*>.readBody(): Result<B, ErrorResponse> =
         supplyThrowing { ctx.bodyAsClass<B>() }.mapErr { badRequest("Failed to read body") }
@@ -483,6 +519,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         grantPrincipalInstanceAdmin, revokePrincipalInstanceAdmin, grantTeamInstanceAdmin, revokeTeamInstanceAdmin,
         repositoryAccess,
         getPrincipalNodes, replacePrincipalNodes, getTeamNodes, replaceTeamNodes, getTeamParents, replaceTeamParents,
+        nodeCatalog, nodeTemplates, permissionCheck,
     )
 
 }

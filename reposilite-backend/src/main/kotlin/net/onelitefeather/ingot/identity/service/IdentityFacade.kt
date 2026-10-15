@@ -41,8 +41,10 @@ import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.shared.badRequestError
 import com.reposilite.token.AccessTokenFacade
+import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenSecurityProvider
 import io.javalin.http.HttpStatus.CONFLICT
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import net.onelitefeather.ingot.identity.api.AccessEntryDto
 import net.onelitefeather.ingot.identity.api.AccessViaDto
@@ -63,8 +65,15 @@ import net.onelitefeather.ingot.identity.api.TeamDto
 import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.api.UpdatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.UpdateTeamRequest
-import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
+import net.onelitefeather.ingot.identity.api.CatalogDto
+import net.onelitefeather.ingot.identity.api.CatalogEntryDto
+import net.onelitefeather.ingot.identity.api.CheckDecisionDto
+import net.onelitefeather.ingot.identity.api.CheckTraceDto
+import net.onelitefeather.ingot.identity.api.PermissionCheckDto
+import net.onelitefeather.ingot.identity.api.TemplateDto
+import net.onelitefeather.ingot.identity.api.TemplatesDto
 import net.onelitefeather.ingot.identity.evaluation.AdminReachability
+import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import net.onelitefeather.ingot.identity.evaluation.TeamHierarchy
 import net.onelitefeather.ingot.identity.login.BearerSecret
@@ -119,6 +128,7 @@ class IdentityFacade(
     private val entityTags: EntityTagSigner,
     private val extensions: Extensions,
     private val visibilityOf: (String) -> String?,
+    private val repositoryNames: () -> Collection<String> = { emptyList() },
     private val clock: Clock = Clock.systemUTC(),
 ) {
 
@@ -253,6 +263,7 @@ class IdentityFacade(
         val members = store.listAllMemberships().groupingBy { it.teamId }.eachCount()
         val grants = store.countGrantsByTeam()
         val roleTeams = store.listInstanceRoleTeamIds()
+        val input = store.adminReachabilityInput()
         return teams.map { team ->
             TeamDto(
                 name = team.name,
@@ -261,6 +272,8 @@ class IdentityFacade(
                 memberCount = members[team.id] ?: 0,
                 grantCount = grants[team.id] ?: 0,
                 instanceAdmin = team.id in roleTeams,
+                nodeCount = input.teamRules[team.id].orEmpty().size,
+                isAdmin = AdminReachability.teamIsAdmin(team.id, input),
             )
         }.asSuccess()
     }
@@ -547,6 +560,95 @@ class IdentityFacade(
         return teamParents(name)
     }
 
+    // catalog, templates and the permission check
+
+    /** The nodes an operator can pick, for autocomplete. Repository nodes are listed for the repositories that exist now. */
+    fun nodeCatalog(prefix: String?): IdentityResult<CatalogDto> {
+        val entries = mutableListOf<CatalogEntryDto>()
+        NodePattern.ADMIN_AREAS.forEach { area -> entries += CatalogEntryDto("ingot.admin.$area", "Administer $area", "STATIC") }
+        entries += CatalogEntryDto("ingot.admin.*", "Every administrative area, as the instance administrator", "WILDCARD")
+        entries += CatalogEntryDto("*", "Everything: every repository action and every administrative area", "WILDCARD")
+        repositoryNames().sorted().forEach { repository ->
+            NodePattern.REPOSITORY_ACTIONS.forEach { action ->
+                entries += CatalogEntryDto("ingot.repository.$repository.$action", "$action on repository $repository", "REPOSITORY")
+            }
+            entries += CatalogEntryDto("ingot.repository.$repository.*", "Every action on repository $repository", "REPOSITORY")
+        }
+        NodePattern.REPOSITORY_ACTIONS.forEach { action ->
+            entries += CatalogEntryDto("ingot.repository.*.$action", "$action on every repository", "WILDCARD")
+        }
+        val filtered = entries.filter { prefix.isNullOrEmpty() || it.node.startsWith(prefix) }
+        return CatalogDto(filtered).asSuccess()
+    }
+
+    /** The predefined node bundles of the user interface. They are data: reading them changes no rights. */
+    fun nodeTemplates(): IdentityResult<TemplatesDto> {
+        val read = "ingot.repository.{repository}.read"
+        val deploy = "ingot.repository.{repository}.deploy"
+        val delete = "ingot.repository.{repository}.delete"
+        val manage = "ingot.repository.{repository}.manage"
+        return TemplatesDto(
+            listOf(
+                TemplateDto("read", "Read", listOf(read)),
+                TemplateDto("deploy", "Deploy", listOf(read, deploy)),
+                TemplateDto("maintain", "Maintain", listOf(read, deploy, delete)),
+                TemplateDto("admin", "Admin", listOf(read, deploy, delete, manage)),
+                TemplateDto("instance-admin", "Instance admin", listOf("ingot.admin.*")),
+            ),
+        ).asSuccess()
+    }
+
+    /**
+     * Decides one concrete node for one principal, optionally narrowed by one of its tokens, and explains the decision with
+     * every candidate it considered. An instance admin may check any principal; any other caller may check only its own.
+     */
+    fun permissionCheck(
+        caller: AccessTokenIdentifier,
+        principal: String?,
+        node: String?,
+        token: String?,
+    ): IdentityResult<PermissionCheckDto> {
+        if (principal.isNullOrBlank()) return badRequestError("The query parameter 'principal' is required")
+        if (node.isNullOrBlank()) return badRequestError("The query parameter 'node' is required")
+        if (node.contains(NodePattern.WILDCARD)) return badRequestError("The node to check must be concrete, without wildcards: '$node'")
+        NodePattern.problemOf(node)?.let { return badRequestError("Invalid permission node: $it") }
+
+        val callerSubject = accessTokens.subjectOf(caller)
+        if (!PermissionEvaluator.isInstanceAdmin(callerSubject) && callerSubject.principalName != principal) {
+            return errorResponse(FORBIDDEN, "Only instance admins can check the nodes of other principals")
+        }
+        val subject = principalNamed(principal) ?: return notFoundError("Principal not found")
+        val tokenRecord = token?.let { name ->
+            store.tokensOf(subject.id).firstOrNull { it.name == name } ?: return notFoundError("Token not found")
+        }
+
+        val access = store.loadAccess(subject, tokenNodes = tokenRecord?.nodes)
+        val decision = PermissionEvaluator.decide(access, NodePattern.of(node))
+        return PermissionCheckDto(
+            principal = subject.name,
+            node = node,
+            allowed = decision.allowed,
+            decision = CheckDecisionDto(
+                source = decision.source.name,
+                subject = decision.subject,
+                node = decision.node,
+                allowed = decision.allowed,
+                depth = decision.depth,
+            ),
+            trace = decision.trace.map { candidate ->
+                CheckTraceDto(
+                    source = candidate.source.name,
+                    subject = candidate.subject,
+                    node = candidate.node,
+                    allowed = candidate.allowed,
+                    matched = candidate.matched,
+                    reason = candidate.reason,
+                    depth = candidate.depth,
+                )
+            },
+        ).asSuccess()
+    }
+
     // access explanation
 
     /**
@@ -752,6 +854,8 @@ class IdentityFacade(
         val roleTeams = store.listInstanceRoleTeamIds()
         val throughTeam = store.listAllMemberships().filter { it.teamId in roleTeams }.map { it.principalId }.toSet()
         val withPassword = store.listPrincipalIdsWithLocalCredential()
+        val input = store.adminReachabilityInput()
+        val effectiveAdmins = AdminReachability.effectiveAdmins(input)
         return principals.map { principal ->
             PrincipalSummaryDto(
                 id = principal.id,
@@ -765,6 +869,8 @@ class IdentityFacade(
                 instanceRole = principal.id in directRoles,
                 tokenCount = tokens[principal.id] ?: 0,
                 providers = if (principal.kind == PrincipalKind.USER && principal.id in withPassword) listOf(LocalLoginProvider.ID) else emptyList(),
+                nodeCount = input.principalRules[principal.id].orEmpty().size,
+                isAdmin = principal.id in effectiveAdmins,
             )
         }
     }
@@ -783,7 +889,8 @@ class IdentityFacade(
         val teams = store.membershipsOf(principal.id).mapNotNull { store.findTeamById(it.teamId)?.name }.sorted()
         val tokens = store.tokensOf(principal.id).map { it.toDto() }
         val nodes = store.listNodes(principal.kind.name, principal.id).map { NodeDto(it.node, it.allowed) }
-        return PrincipalDetailDto(principal.toDto(), teams, store.hasDirectInstanceRole(principal.id), tokens, nodes)
+        val isAdmin = PermissionEvaluator.isInstanceAdmin(store.loadAccess(principal, tokenNodes = null))
+        return PrincipalDetailDto(principal.toDto(), teams, store.hasDirectInstanceRole(principal.id), tokens, nodes, nodeCount = nodes.size, isAdmin = isAdmin)
     }
 
     /**
@@ -821,6 +928,8 @@ class IdentityFacade(
             instanceRole = store.listInstanceRoleTeamIds().contains(team.id),
             nodes = store.listNodes(NODE_SUBJECT_TEAM, team.id).map { NodeDto(it.node, it.allowed) },
             parents = parentNamesOf(team).sorted(),
+            nodeCount = store.listNodes(NODE_SUBJECT_TEAM, team.id).size,
+            isAdmin = AdminReachability.teamIsAdmin(team.id, store.adminReachabilityInput()),
         )
         return IdentitySnapshot(detail, entityTags.of(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(detail)))
     }

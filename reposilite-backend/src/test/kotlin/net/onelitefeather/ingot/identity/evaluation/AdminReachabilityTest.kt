@@ -153,4 +153,25 @@ internal class AdminReachabilityTest {
 
         assertThat(AdminReachability.usableAdmins(data, now)).describedAs("usable admins").isEmpty()
     }
+
+    @Test
+    fun `effective admins include the admins that hold no token`() {
+        val data = input(
+            principals = listOf(principal(1), principal(2)),
+            principalRules = mapOf(1 to listOf(admin)),
+        )
+
+        assertThat(AdminReachability.effectiveAdmins(data)).describedAs("effective admins").containsExactly(1)
+    }
+
+    @Test
+    fun `a team is an admin through its own node or an inherited node`() {
+        val data = input(
+            teamRules = mapOf(2 to listOf(admin)),
+            parents = mapOf(1 to setOf(2)),
+        )
+
+        assertThat(AdminReachability.teamIsAdmin(1, data)).describedAs("inherits the admin node").isTrue
+        assertThat(AdminReachability.teamIsAdmin(3, data)).describedAs("unrelated team").isFalse
+    }
 }

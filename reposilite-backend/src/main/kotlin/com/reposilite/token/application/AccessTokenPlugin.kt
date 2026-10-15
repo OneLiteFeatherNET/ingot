@@ -74,6 +74,7 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
                 extensions = extensions(),
                 // Resolved per request, so that the repository service is only needed once the API is used.
                 visibilityOf = { repository -> facade<MavenFacade>().getRepository(repository)?.visibility?.name },
+                repositoryNames = { facade<MavenFacade>().getRepositories().map { it.name } },
             )
         }
 

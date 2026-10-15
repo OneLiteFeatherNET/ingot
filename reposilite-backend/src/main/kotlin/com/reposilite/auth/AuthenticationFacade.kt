@@ -35,6 +35,7 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.shared.unauthorizedError
 import com.reposilite.token.AccessTokenFacade
+import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.api.AccessTokenDto
 import panda.std.Result
@@ -236,6 +237,7 @@ class AuthenticationFacade(
                     routes = accessTokenFacade.getRoutes(it.identifier),
                     principal = SessionPrincipal(id = subject.principalId, kind = subject.kind.name, name = subject.principalName ?: it.name),
                     teams = subject.teams,
+                    nodes = PermissionEvaluator.effectiveNodes(subject),
                     grants = subject.levels.flatMap { it.grants }.map { grant ->
                         SessionGrant(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name)
                     },

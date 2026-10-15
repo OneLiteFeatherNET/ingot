@@ -49,6 +49,8 @@ data class PrincipalSummaryDto(
     val instanceRole: Boolean,
     val tokenCount: Int,
     val providers: List<String>,
+    val nodeCount: Int = 0,
+    val isAdmin: Boolean = false,
 )
 
 data class PrincipalDetailDto(
@@ -57,6 +59,8 @@ data class PrincipalDetailDto(
     val instanceRole: Boolean,
     val tokens: List<TokenDto>,
     val nodes: List<NodeDto> = emptyList(),
+    val nodeCount: Int = 0,
+    val isAdmin: Boolean = false,
 )
 
 data class TokenDto(
@@ -82,6 +86,8 @@ data class TeamDto(
     val memberCount: Int,
     val grantCount: Int,
     val instanceAdmin: Boolean,
+    val nodeCount: Int = 0,
+    val isAdmin: Boolean = false,
 )
 
 data class TeamDetailDto(
@@ -93,6 +99,8 @@ data class TeamDetailDto(
     val instanceRole: Boolean,
     val nodes: List<NodeDto> = emptyList(),
     val parents: List<String> = emptyList(),
+    val nodeCount: Int = 0,
+    val isAdmin: Boolean = false,
 )
 
 /**
@@ -202,4 +210,53 @@ data class GrantRequest(
     val repository: String? = null,
     val pathPrefix: String? = null,
     val role: String?,
+)
+
+/** One entry of the node catalog. [kind] is STATIC, REPOSITORY or WILDCARD. */
+data class CatalogEntryDto(
+    val node: String,
+    val description: String,
+    val kind: String,
+)
+
+data class CatalogDto(
+    val nodes: List<CatalogEntryDto>,
+)
+
+/** A predefined node bundle for the user interface. `{repository}` stands for the repository the bundle is applied to. */
+data class TemplateDto(
+    val id: String,
+    val label: String,
+    val nodes: List<String>,
+)
+
+data class TemplatesDto(
+    val templates: List<TemplateDto>,
+)
+
+data class CheckDecisionDto(
+    val source: String,
+    val subject: String?,
+    val node: String,
+    val allowed: Boolean,
+    val depth: Int,
+)
+
+/** One candidate the decision looked at: whether it matched the requested node, and why it did or did not decide. */
+data class CheckTraceDto(
+    val source: String,
+    val subject: String,
+    val node: String,
+    val allowed: Boolean,
+    val matched: Boolean,
+    val reason: String,
+    val depth: Int,
+)
+
+data class PermissionCheckDto(
+    val principal: String,
+    val node: String,
+    val allowed: Boolean,
+    val decision: CheckDecisionDto,
+    val trace: List<CheckTraceDto>,
 )
