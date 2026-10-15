@@ -73,3 +73,20 @@ describe('md-focus-ring', () => {
     expect(rule).toContain('outline-offset: 2px')
   })
 })
+
+describe('md-focus-ring-inset', () => {
+  const rule = declarationsOf(stateLayerCss, '.md-focus-ring-inset:focus-visible')
+
+  it('draws the same 3px secondary outline as the outset ring', () => {
+    expect(rule).toContain('outline: 3px solid var(--md-sys-color-secondary)')
+  })
+
+  it('draws the outline inside the element by its full width', () => {
+    expect(rule, 'a negative offset keeps the ring inside the window edge').toContain('outline-offset: -3px')
+  })
+
+  it('shows only for keyboard focus, not for a pointer press', () => {
+    expect(stateLayerCss).not.toContain('.md-focus-ring-inset:focus {')
+    expect(declarationsOf(stateLayerCss, '.md-focus-ring-inset')).toBe('')
+  })
+})

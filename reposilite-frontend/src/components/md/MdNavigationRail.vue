@@ -53,12 +53,18 @@ const isActive = (item) => item.key === props.modelValue
 const isPlainLeftClick = (event) =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey
 
+// The focus ring is for keyboard focus. A pointer click (detail above 0) leaves the destination
+// it selected without focus, so no ring is left behind in any browser. A keyboard activation
+// has detail 0 and keeps the focus where the keyboard put it.
 const select = (item, event) => {
   if (item.href) {
     if (!isPlainLeftClick(event)) {
       return
     }
     event.preventDefault()
+  }
+  if (event.detail > 0) {
+    event.currentTarget.blur()
   }
   emit('update:modelValue', item.key)
 }
@@ -83,7 +89,7 @@ const select = (item, event) => {
           :href="item.href"
           :type="item.href ? undefined : 'button'"
           :aria-current="isActive(item) ? 'page' : undefined"
-          class="md-state-layer md-focus-ring relative flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
+          class="md-state-layer md-focus-ring-inset relative flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
           :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
           @click="select(item, $event)"
         >

@@ -81,6 +81,16 @@
     outline-offset: 2px;
   }
 
+  /*
+   * The same ring drawn inside the element's edge. An item that sits flush against the window
+   * edge, such as the navigation rail, would lose the outset ring to the window's clip, so it
+   * takes this variant instead.
+   */
+  .md-focus-ring-inset:focus-visible {
+    outline: 3px solid var(--md-sys-color-secondary);
+    outline-offset: -3px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .md-state-layer::before {
       transition: none;

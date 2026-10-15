@@ -293,6 +293,11 @@ exist. Prefer the `rounded-corner-*` names in new code.
   `aria-disabled="true"` get no overlay.
 - `md-focus-ring` draws the MD3 focus ring on `:focus-visible`: a 3px outline in the
   `secondary` role, drawn 2px outside the element's edge (`outline-offset: 2px`).
+- `md-focus-ring-inset` is the same ring drawn inside the edge (`outline-offset: -3px`). Use
+  it for an item that sits flush against the window edge, such as the navigation rail, where
+  the outset ring would be clipped.
+- The focus ring is for keyboard focus only. A pointer click on a navigation rail item
+  blurs that item, so no ring is left behind; a keyboard activation keeps its focus.
 
 ## Touch target
 

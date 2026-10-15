@@ -78,6 +78,44 @@ describe('MdNavigationRail', () => {
     expect(wrapper.emitted('update:modelValue')[0]).toEqual(['console'])
   })
 
+  it('draws the focus ring inside each destination so the window edge cannot clip it', () => {
+    const wrapper = mount(MdNavigationRail, { props: { items: SECTIONS, modelValue: 'overview' } })
+
+    for (const entry of wrapper.findAll('a, button')) {
+      expect(entry.classes(), `${entry.text()} uses the inset focus ring`).toContain('md-focus-ring-inset')
+    }
+  })
+
+  it('leaves no focus on a destination that a pointer click selected', () => {
+    const wrapper = mount(MdNavigationRail, {
+      props: { items: SECTIONS, modelValue: 'overview' },
+      attachTo: document.body
+    })
+    const destination = wrapper.findAll('a, button')[1].element
+    destination.focus()
+
+    destination.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))
+
+    expect(document.activeElement, 'the clicked destination does not keep the focus ring').not.toBe(destination)
+
+    wrapper.unmount()
+  })
+
+  it('keeps the focus on a destination that a keyboard activation selected', () => {
+    const wrapper = mount(MdNavigationRail, {
+      props: { items: SECTIONS, modelValue: 'overview' },
+      attachTo: document.body
+    })
+    const destination = wrapper.findAll('a, button')[1].element
+    destination.focus()
+
+    destination.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 }))
+
+    expect(document.activeElement, 'keyboard focus stays where the keyboard put it').toBe(destination)
+
+    wrapper.unmount()
+  })
+
   it('passes the active flag to the icon slot so the icon can fill', () => {
     const wrapper = mount(MdNavigationRail, {
       props: { items: SECTIONS, modelValue: 'dashboard' },
