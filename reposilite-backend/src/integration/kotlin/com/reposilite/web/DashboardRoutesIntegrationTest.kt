@@ -26,15 +26,17 @@ import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.RepositorySettings
 import io.javalin.http.HttpStatus.NOT_FOUND
 import io.javalin.http.HttpStatus.OK
+import kong.unirest.core.HttpResponse
 import kong.unirest.core.Unirest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
- * The dashboard answers its path-based routes with index.html, and everything else under the same
- * first segment still reaches Maven. The repository "settings" is configured on purpose: it collides
- * with the dashboard route, so these tests also pin down which side wins.
+ * The dashboard answers its path-based routes with index.html. A repository whose id equals the first
+ * segment of such a route keeps answering every non-browser request, and only a top-level browser navigation
+ * shows the dashboard there. The repository "settings" is configured on purpose: it collides with the
+ * dashboard route, so the tests below pin down which side answers which request.
  */
 internal abstract class DashboardRoutesSpecification : ReposiliteSpecification() {
 
@@ -46,11 +48,20 @@ internal abstract class DashboardRoutesSpecification : ReposiliteSpecification()
         }
     }
 
-    protected fun assertDashboardResponse(path: String) {
-        val response = Unirest.get("$base$path").asString()
+    /** Sends a GET, with the fetch metadata of a top-level browser navigation when [navigation] is set. */
+    protected fun fetch(path: String, navigation: Boolean = false): HttpResponse<String> {
+        val request = Unirest.get("$base$path")
+        if (navigation) {
+            request.header("Sec-Fetch-Mode", "navigate").header("Sec-Fetch-Dest", "document")
+        }
+        return request.asString()
+    }
 
-        assertThat(response.status).describedAs("status of GET $path").isEqualTo(OK.code)
-        assertThat(response.body).describedAs("body of GET $path").contains(dashboardTitle)
+    protected fun assertDashboardResponse(path: String, navigation: Boolean = false) {
+        val response = fetch(path, navigation)
+
+        assertThat(response.status).describedAs("status of GET $path (navigation=$navigation)").isEqualTo(OK.code)
+        assertThat(response.body).describedAs("body of GET $path (navigation=$navigation)").contains(dashboardTitle)
         assertThat(response.body).describedAs("placeholders left unresolved in GET $path").doesNotContain("{{REPOSILITE.")
     }
 
@@ -60,7 +71,7 @@ internal abstract class DashboardRoutesSpecification : ReposiliteSpecification()
 internal class DashboardRoutesIntegrationTest : DashboardRoutesSpecification() {
 
     @Test
-    fun `should serve the dashboard with resolved placeholders on every app route`() {
+    fun `should serve the dashboard with resolved placeholders on app routes without a repository of the same id`() {
         listOf(
             "/browse",
             "/browse/releases/gav",
@@ -68,58 +79,112 @@ internal class DashboardRoutesIntegrationTest : DashboardRoutesSpecification() {
             "/tokens",
             "/tokens/manager",
             "/console",
-            "/settings",
-            "/settings/maven/repositories/releases",
         ).forEach { path ->
-            // when / then: each app route answers with the dashboard index
+            // when / then: no repository is called after the first segment, so each app route answers with the dashboard
             assertDashboardResponse(path)
         }
     }
 
     @Test
-    fun `should answer head requests on app routes like get without a body`() {
-        // when: the head request reaches a path that would otherwise match a Maven repository route
-        val response = Unirest.head("$base/settings/maven/repositories/releases").asEmpty()
+    fun `should answer head requests on app routes without a repository of the same id like get without a body`() {
+        listOf("/browse/releases/gav", "/dashboard", "/tokens/manager", "/console").forEach { path ->
+            // when: the head request reaches an app route that no repository claims
+            val response = Unirest.head("$base$path").asEmpty()
 
-        // then: it is answered by the dashboard, with the same status and content type as GET
-        assertThat(response.status).describedAs("status of HEAD on app route").isEqualTo(OK.code)
-        assertThat(response.headers.getFirst("Content-Type")).describedAs("content type of HEAD on app route").startsWith("text/html")
+            // then: the dashboard answers with the same status and content type as GET
+            assertThat(response.status).describedAs("status of HEAD $path").isEqualTo(OK.code)
+            assertThat(response.headers.getFirst("Content-Type")).describedAs("content type of HEAD $path").startsWith("text/html")
+        }
     }
 
     @Test
-    fun `should keep serving artifacts of a regular repository from maven`() {
-        // given: an artifact deployed to a repository that is not a dashboard route
-        val (repository, gav, file, content) = useDocument("releases", "gav/1.0", "a.jar", "artifact-content", store = true)
+    fun `should answer a top-level navigation on a colliding app route with the dashboard`() {
+        listOf("/settings", "/settings/maven/repositories/releases").forEach { path ->
+            // when / then: a browser navigating to the path gets the dashboard, although a repository has the same id
+            assertDashboardResponse(path, navigation = true)
+        }
+    }
 
-        // when: the artifact is requested
-        val response = Unirest.get("$base/$repository/$gav/$file").asString()
+    @Test
+    fun `should answer a get without fetch metadata on a colliding path with the artifact from maven`() {
+        // given: an artifact deployed to the repository "settings", which shadows the dashboard route
+        val (repository, gav, file, content) = useDocument("settings", "gav/1.0", "a.jar", "artifact-content", store = true)
 
-        // then: Maven serves the file itself, not the dashboard
+        // when: a client without fetch metadata requests the artifact
+        val response = fetch("/$repository/$gav/$file")
+
+        // then: Maven serves the file, exactly as a Maven or Gradle client expects
         assertThat(response.status).describedAs("status of artifact GET").isEqualTo(OK.code)
         assertThat(response.body).describedAs("artifact content").isEqualTo(content)
     }
 
     @Test
-    fun `should keep listing directories of a regular repository from maven`() {
-        // given: an artifact deployed to a regular repository
-        val (repository, gav) = useDocument("releases", "gav/1.0", "a.jar", "artifact-content", store = true)
+    fun `should list the directory of a colliding repository from maven for a get without fetch metadata`() {
+        // given: an artifact deployed to the repository "settings"
+        val (repository, gav, file) = useDocument("settings", "gav/1.0", "a.jar", "artifact-content", store = true)
 
-        // when: the directory is requested
-        val response = Unirest.get("$base/$repository/$gav").asString()
+        // when: the directory is requested by a client without fetch metadata
+        val response = fetch("/$repository/$gav")
 
         // then: the Maven directory index lists the file, and the dashboard is not served
-        assertThat(response.body).describedAs("directory index").contains("a.jar")
+        assertThat(response.body).describedAs("directory index of $file").contains("a.jar")
         assertThat(response.body).describedAs("directory index is not the dashboard").doesNotContain(dashboardTitle)
     }
 
     @Test
-    fun `should answer a reserved path with the dashboard before a repository of the same name`() {
+    fun `should answer a head request on a colliding path from maven with the content type of get`() {
+        // given: an artifact deployed to the repository "settings"
+        val (repository, gav, file) = useDocument("settings", "gav/1.0", "a.jar", "artifact-content", store = true)
+        val path = "/$repository/$gav/$file"
+
+        // when: the same file is requested with GET and with HEAD
+        val getContentType = fetch(path).headers.getFirst("Content-Type")
+        val headResponse = Unirest.head("$base$path").asEmpty()
+
+        // then: HEAD is answered by Maven, not by the dashboard, with the content type of GET
+        assertThat(headResponse.status).describedAs("status of HEAD on colliding artifact").isEqualTo(OK.code)
+        assertThat(headResponse.headers.getFirst("Content-Type"))
+            .describedAs("content type of HEAD on colliding artifact")
+            .isEqualTo(getContentType)
+            .doesNotStartWith("text/html")
+    }
+
+    @Test
+    fun `should answer a top-level navigation on a colliding artifact path with the dashboard`() {
         // given: an artifact deployed to the repository "settings", which shadows the dashboard route
         val (repository, gav, file) = useDocument("settings", "gav/1.0", "a.jar", "artifact-content", store = true)
 
-        // when: the artifact is requested through its reserved path
-        // then: the dashboard wins, which is why the startup warning tells operators to rename the repository
-        assertDashboardResponse("/$repository/$gav/$file")
+        // when / then: a browser navigating to the reserved path gets the dashboard, and the contents stay under /browse
+        assertDashboardResponse("/$repository/$gav/$file", navigation = true)
+    }
+
+    @Test
+    fun `should answer a bare colliding path without fetch metadata with not found as upstream does`() {
+        // when: a client requests the bare path, which no Maven route matches, without navigating to it
+        val response = fetch("/settings")
+
+        // then: nothing answers with the dashboard, and the server reports the path as missing
+        assertThat(response.status).describedAs("status of bare colliding path").isEqualTo(NOT_FOUND.code)
+        assertThat(response.body).describedAs("bare colliding path is not the dashboard").doesNotContain(dashboardTitle)
+    }
+
+    @Test
+    fun `should follow a repository that is added while the server runs`() {
+        // given: no repository "dashboard" exists, so the app route answers a plain GET with the dashboard
+        assertDashboardResponse("/dashboard")
+
+        // when: the repository is added through the shared configuration at runtime
+        useFacade<SharedConfigurationFacade>().getDomainSettings<MavenSettings>().update { old ->
+            old.copy(repositories = old.repositories + RepositorySettings(id = "dashboard"))
+        }
+
+        // then: the next plain GET is answered by the repository, without a restart
+        val plain = fetch("/dashboard")
+        assertThat(plain.status).describedAs("status of plain GET after the repository was added").isEqualTo(NOT_FOUND.code)
+        assertThat(plain.body).describedAs("plain GET is no longer the dashboard").doesNotContain(dashboardTitle)
+
+        // and a top-level navigation still gets the dashboard
+        assertDashboardResponse("/dashboard", navigation = true)
     }
 
 }

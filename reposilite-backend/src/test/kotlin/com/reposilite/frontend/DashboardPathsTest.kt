@@ -54,16 +54,31 @@ internal class DashboardPathsTest {
     }
 
     @Test
-    fun `should explain in the warning that maven clients are affected too`() {
-        // when: the warning for a colliding repository is built
+    fun `should explain in the dashboard warning that maven clients keep the repository`() {
+        // when: the warning for a repository that collides with a dashboard route is built
         val warning = DashboardPaths.reservedRepositoryWarnings(listOf("settings")).single()
 
-        // then: it names the path that is shadowed and says that Maven GET requests are affected
+        // then: it says that Maven clients keep the repository, that only a browser navigation shows the dashboard,
+        // and where the contents are reachable in the UI
         assertThat(warning)
             .describedAs("warning text")
-            .contains("/settings/")
+            .contains("'/settings/<gav>'")
             .contains("Maven")
+            .contains("top-level browser navigation")
+            .contains("'/browse/settings'")
             .contains("not rejected")
+    }
+
+    @Test
+    fun `should keep the server segment warning for a repository that collides with the api`() {
+        // when: the warning for a repository that collides with the API is built
+        val warning = DashboardPaths.reservedRepositoryWarnings(listOf("api")).single()
+
+        // then: the API keeps its own explanation, because the dashboard navigation rule does not apply to it
+        assertThat(warning)
+            .describedAs("warning text for the API segment")
+            .contains("'/api/'")
+            .contains("renaming the repository avoids this")
     }
 
 }

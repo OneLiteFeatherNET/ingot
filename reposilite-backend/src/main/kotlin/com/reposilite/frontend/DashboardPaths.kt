@@ -41,7 +41,10 @@ internal object DashboardPaths {
     /** Top-level segments that belong to the API and to the bundled assets, independent of the dashboard routes. */
     val SERVER_SEGMENTS: Set<String> = setOf("api", "assets")
 
-    /** Every top-level segment the server claims. A repository with one of these ids is shadowed for GET requests. */
+    /**
+     * Every top-level segment the server claims. For the dashboard routes, a repository with one of these ids
+     * still answers every non-browser request; only a top-level browser navigation gets the dashboard.
+     */
     val RESERVED_SEGMENTS: Set<String> =
         APP_ROUTES.map { it.removePrefix("/").substringBefore('/') }.toSet() + SERVER_SEGMENTS
 
@@ -52,10 +55,17 @@ internal object DashboardPaths {
     fun reservedRepositoryWarnings(repositoryIds: Iterable<String>): List<String> =
         repositoryIds
             .filter { it in RESERVED_SEGMENTS }
-            .map { id ->
-                "Repository '$id' uses the reserved path segment '/$id', which Ingot answers itself. " +
-                    "GET requests under '/$id/' (including Maven clients) may be answered by the dashboard or the API " +
-                    "instead of the repository. The configuration is not rejected, but renaming the repository avoids this."
-            }
+            .map { id -> if (id in SERVER_SEGMENTS) serverSegmentWarning(id) else dashboardSegmentWarning(id) }
+
+    private fun dashboardSegmentWarning(id: String): String =
+        "Repository '$id' shares its path segment with the dashboard route '/$id'. The repository keeps answering " +
+            "Maven, Gradle and other non-browser clients under '/$id/<gav>', including HEAD requests. Only a top-level " +
+            "browser navigation to '/$id' shows the dashboard, and the contents of the repository stay reachable in the " +
+            "dashboard under '/browse/$id'. The configuration is not rejected."
+
+    private fun serverSegmentWarning(id: String): String =
+        "Repository '$id' uses the reserved path segment '/$id', which Ingot answers itself. " +
+            "GET requests under '/$id/' (including Maven clients) may be answered by the dashboard or the API " +
+            "instead of the repository. The configuration is not rejected, but renaming the repository avoids this."
 
 }

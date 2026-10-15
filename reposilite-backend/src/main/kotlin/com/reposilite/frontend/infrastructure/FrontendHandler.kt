@@ -17,12 +17,19 @@
 package com.reposilite.frontend.infrastructure
 
 import com.reposilite.frontend.DashboardPaths
+import com.reposilite.frontend.DashboardRouteDecision
+import com.reposilite.frontend.DashboardRouteTarget.DASHBOARD
+import com.reposilite.frontend.DashboardRouteTarget.MAVEN
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.frontend.Source
+import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.infrastructure.MavenEndpoints
+import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extensions.encoding
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.toLocation
 import com.reposilite.storage.getExtension
 import com.reposilite.storage.inputStream
@@ -34,6 +41,7 @@ import io.javalin.http.ContentType
 import io.javalin.http.Context
 import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
 import panda.std.Result
+import panda.std.asError
 import panda.std.asSuccess
 import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
@@ -78,8 +86,12 @@ internal sealed class FrontendHandler(
 internal class ResourcesFrontendHandler(
     failureFacade: FailureFacade,
     frontendFacade: FrontendFacade,
-    private val resourcesDirectory: String
+    private val resourcesDirectory: String,
+    private val mavenFacade: MavenFacade,
+    private val mavenEndpoints: MavenEndpoints,
 ) : FrontendHandler(frontendFacade, failureFacade) {
+
+    private val notFoundHandler = NotFoundHandler(frontendFacade)
 
     private val defaultHandler = ReposiliteRoute<InputStream>("/", GET, HEAD) {
         response = respondWithBundledResource(ctx, "index.html")
@@ -93,11 +105,45 @@ internal class ResourcesFrontendHandler(
         response = respondWithBundledResource(ctx, "assets/${ctx.pathParam("path")}")
     }
 
-    // Javalin answers a HEAD request with the first HEAD endpoint that matches, so every app route needs
-    // HEAD as well. Without it, HEAD on /settings/... would reach the Maven route for a repository "settings".
+    // Javalin answers a request with the first endpoint that matches it, and never falls through to the next one.
+    // So every app route needs HEAD as well, and a route whose first segment names a repository has to hand the
+    // request to Maven itself when DashboardRouteDecision says so. Without that hand-over, a repository "settings"
+    // would receive the dashboard for every Maven and Gradle request under /settings/.
     private val appRoutes = DashboardPaths.APP_ROUTES.map { path ->
+        val repository = path.removePrefix("/").substringBefore('/')
+
         ReposiliteRoute<InputStream>(path, GET, HEAD) {
-            response = respondWithBundledResource(ctx, "index.html")
+            val target = DashboardRouteDecision.decide(
+                repositoryExists = mavenFacade.getRepository(repository) != null,
+                method = ctx.method(),
+                secFetchMode = ctx.header("Sec-Fetch-Mode"),
+                secFetchDest = ctx.header("Sec-Fetch-Dest"),
+            )
+
+            when (target) {
+                DASHBOARD -> response = respondWithBundledResource(ctx, "index.html")
+                MAVEN -> answerFromMaven(repository)
+            }
+        }
+    }
+
+    /**
+     * Answers like the Maven route for `/{repository}/<gav>` does, with the same access check and the same
+     * response bodies. Maven matches only paths that have a gav, so a bare app path such as `/settings` is no
+     * Maven request: it gets the not-found page that any unclaimed path gets. The DSL route wrapper turns a thrown
+     * exception into a 500, so that page is written directly rather than thrown as a NotFoundResponse.
+     */
+    private fun ContextDsl<InputStream>.answerFromMaven(repository: String) {
+        val gav = ctx.pathParamMap().values.singleOrNull()
+        if (gav == null) {
+            notFoundHandler.handle(ctx)
+            return
+        }
+
+        accessed {
+            Location.ofRequest(gav)
+                .peek { mavenEndpoints.findFile(ctx, this?.identifier, repository, it) }
+                .onError { response = it.asError() }
         }
     }
 

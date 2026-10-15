@@ -24,6 +24,8 @@ import com.reposilite.frontend.infrastructure.CustomFrontendHandler
 import com.reposilite.frontend.infrastructure.FrontendSettingsEndpoint
 import com.reposilite.frontend.infrastructure.NotFoundHandler
 import com.reposilite.frontend.infrastructure.ResourcesFrontendHandler
+import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.infrastructure.MavenEndpoints
 import com.reposilite.plugin.api.EventListener
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.Priorities
@@ -93,11 +95,21 @@ internal class FrontendPlugin : ReposilitePlugin() {
                 routes.add(FrontendSettingsEndpoint(frontendFacade))
 
                 if (localConfiguration.defaultFrontend.get()) {
+                    // Resolved here and not in initialize: MavenPlugin depends on this plugin, so its facade exists only
+                    // by the time routes are registered. The dashboard routes hand colliding repository requests to Maven.
+                    val mavenFacade = facade<MavenFacade>()
+
                     routes.add(
                         ResourcesFrontendHandler(
                             failureFacade = failureFacade,
                             frontendFacade = frontendFacade,
-                            resourcesDirectory = FRONTEND_DIRECTORY
+                            resourcesDirectory = FRONTEND_DIRECTORY,
+                            mavenFacade = mavenFacade,
+                            mavenEndpoints = MavenEndpoints(
+                                mavenFacade = mavenFacade,
+                                frontendFacade = frontendFacade,
+                                compressionStrategy = localConfiguration.compressionStrategy.get()
+                            ),
                         )
                     )
                 }
