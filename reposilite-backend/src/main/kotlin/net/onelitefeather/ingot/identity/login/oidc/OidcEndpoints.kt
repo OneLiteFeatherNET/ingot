@@ -41,6 +41,8 @@ internal class AuthOidcEndpoints(
     private val facade: LoginFacade,
     private val oidc: OidcLoginService,
     private val basePath: Reference<String>,
+    /** The configured public URL, read on every request; blank when the redirect uri is built from the request. */
+    private val publicUrl: () -> String,
 ) : ReposiliteRoutes() {
 
     @OpenApi(
@@ -113,7 +115,7 @@ internal class AuthOidcEndpoints(
 
     private fun redirectUri(ctx: Context, id: String): String {
         val scheme = if (SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"))) "https" else "http"
-        return "$scheme://${ctx.host()}${trimmedBase(basePath.get())}/api/auth/oidc/$id/callback"
+        return OidcRedirectUri.of(publicUrl(), scheme, ctx.host().orEmpty(), basePath.get(), id)
     }
 
     private fun writeSessionCookies(ctx: Context, session: SessionTokens, base: String) {

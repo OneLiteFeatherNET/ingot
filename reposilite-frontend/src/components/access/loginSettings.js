@@ -231,9 +231,37 @@ const callbackUrlFor = (id, productionUrl) => {
   return new URL(`api/auth/oidc/${id}/callback`, base).href
 }
 
+// The public address of the dashboard (`login.publicUrl`), with the rules of the backend: an absolute https address, or
+// http for a loopback host, and no query, fragment or user name. Blank is valid and means "not set".
+const PUBLIC_URL_RULE = 'Enter an absolute https:// address, or http:// for localhost, without a query, a fragment or a user name'
+const validatePublicUrl = (value) => {
+  const text = value.trim()
+  if (text === '') return ''
+  let url
+  try {
+    url = new URL(text)
+  } catch {
+    return PUBLIC_URL_RULE
+  }
+  const loopbackHttp = url.protocol === 'http:' && LOOPBACK_HOSTS.includes(url.hostname)
+  const allowed = url.protocol === 'https:' || loopbackHttp
+  const broken = !url.hostname || /\s/.test(text) || text.includes('?') || text.includes('#') || url.username !== '' || url.password !== ''
+  return allowed && !broken ? '' : PUBLIC_URL_RULE
+}
+
+// The base the callback addresses are built from: the public address when it is set and valid, else the dashboard's own.
+const registeredBase = (publicUrl, productionUrl) => {
+  const configured = (publicUrl ?? '').trim()
+  return configured !== '' && validatePublicUrl(configured) === '' ? configured : productionUrl
+}
+
+// The callback address with the id still to come, for a preview. The id is a placeholder, never part of a URL.
+const callbackPatternFor = (base) => `${base.endsWith('/') ? base : `${base}/`}api/auth/oidc/<id>/callback`
+
 // The `login` domain as the pages use it: both parts always present, so that a fresh server reads the same.
 const normalizeLoginSettings = (data = {}) => ({
   ...data,
+  publicUrl: data.publicUrl ?? '',
   oidcProviders: Array.isArray(data.oidcProviders) ? data.oidcProviders : [],
   ldap: { ...LDAP_DEFAULTS, ...(data.ldap ?? {}) }
 })
@@ -253,14 +281,17 @@ export {
   PROVIDER_ID_PATTERN,
   PROVIDER_TYPES,
   SECRET_PLACEHOLDER,
+  callbackPatternFor,
   callbackUrlFor,
   emptyProvider,
   normalizeLoginSettings,
   providerTypeOf,
+  registeredBase,
   removeProvider,
   replaceProvider,
   scopeList,
   usesGitHub,
   validateLdap,
+  validatePublicUrl,
   validateProvider
 }

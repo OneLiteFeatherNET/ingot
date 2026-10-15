@@ -457,4 +457,56 @@ describe('SsoProvidersPanel', () => {
       expect(rowOf('Keycloak').find('[data-test="status"]').text()).toBe('Connected')
     })
   })
+
+  describe('public address', () => {
+    const preview = () => wrapper.find('[data-test="callback-preview"]').text()
+    const savePublic = async () => {
+      buttonIn(wrapper.element, 'Save public address').click()
+      await flushPromises()
+    }
+
+    it('previews the callback under the dashboard origin while no public address is set', async () => {
+      await mountPanel()
+
+      expect(preview()).toContain('http://localhost:3000/api/auth/oidc/<id>/callback')
+    })
+
+    it('builds the callback of a provider from the saved public address', async () => {
+      settings.fetch.mockResolvedValue(answer({ oidcProviders: [KEYCLOAK, GITHUB], ldap: LDAP, publicUrl: 'https://repo.example.org' }))
+      await mountPanel()
+      wrapper.find('[data-test="add-provider"]').trigger('click')
+      await flushPromises()
+      dialogButton('GitLab').click()
+      await flushPromises()
+
+      expect(dialog().querySelector('[data-test="callback-url"]').textContent)
+        .toBe('https://repo.example.org/api/auth/oidc/gitlab/callback')
+    })
+
+    it('refuses an http address of a real host, and saves nothing', async () => {
+      await mountPanel()
+      type('sso-public-url', 'http://repo.example.org')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Enter an absolute https:// address')
+      expect(preview()).toContain('Fix the public URL to see the callback address')
+      await savePublic()
+      expect(settings.update).not.toHaveBeenCalled()
+    })
+
+    it('saves the public address with the rest of the domain unchanged', async () => {
+      await mountPanel()
+      type('sso-public-url', 'https://repo.example.org/')
+      await flushPromises()
+      expect(preview()).toContain('https://repo.example.org/api/auth/oidc/<id>/callback')
+
+      await savePublic()
+
+      expect(settings.update).toHaveBeenCalledWith('login', expect.objectContaining({
+        publicUrl: 'https://repo.example.org/',
+        oidcProviders: [KEYCLOAK, GITHUB],
+        ldap: LDAP
+      }), '"v1"')
+    })
+  })
 })

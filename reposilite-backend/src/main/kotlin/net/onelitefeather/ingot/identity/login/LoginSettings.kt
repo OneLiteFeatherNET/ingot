@@ -17,7 +17,7 @@
 package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.configuration.shared.api.Doc
-import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.api.ValidatedSettings
 import io.javalin.openapi.JsonSchema
 import net.onelitefeather.ingot.identity.login.ldap.LdapLoginSettings
 import net.onelitefeather.ingot.identity.login.oidc.OidcProviderSettings
@@ -39,4 +39,11 @@ data class LoginSettings(
     val oidcProviders: List<OidcProviderSettings> = emptyList(),
     @get:Doc(title = "LDAP", description = "Directory for the browser login with a password. Independent of the LDAP Basic authentication of Maven clients")
     val ldap: LdapLoginSettings = LdapLoginSettings(),
-) : SharedSettings
+    @get:Doc(title = "Public URL", description = "Public address of the dashboard, for example https://repo.example.org/ (http:// only for localhost). The redirect URIs of the OpenID Connect providers and the callback URL shown to admins are built from it. Blank: built from the Host header and X-Forwarded-Proto of the request")
+    val publicUrl: String = "",
+) : ValidatedSettings {
+
+    override fun violations(): List<String> =
+        listOfNotNull(PublicUrl.problemOf(publicUrl)?.let { "publicUrl: $it" })
+
+}

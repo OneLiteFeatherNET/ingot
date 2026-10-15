@@ -58,7 +58,6 @@ Ships under `feat(identity)`. Pull request title, squash-merged onto main:
 - Group membership read from a provider's userinfo endpoint. Groups come from the ID token (OpenID Connect) or the GitHub API.
 - Account linking for an existing local user with the same name. A conflict is refused, so an external login never takes over
   a local account.
-- An operator-set public base URL. Redirect URIs are built from the request (see the design, decision 6).
 - Changing the legacy LDAP Basic authentication, its settings or its tests.
 
 ## Breaking changes

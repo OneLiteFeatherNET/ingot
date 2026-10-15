@@ -1043,6 +1043,8 @@ ldap: {
   autoCreateUsers: true
   adminGroups: []
 }
+publicUrl: ""                           blank: redirect URIs are built from the request. Otherwise an absolute https address, or
+                                        http for localhost, without query, fragment or user name, for example https://repo.example.org/
 ```
 
 Entries of `oidcProviders` with an empty or duplicate id, or an id that is not a slug, are skipped and logged once per start.
@@ -1088,8 +1090,10 @@ session cookies of 13.4 and redirects to the base path with the redirect path, o
 302 Location: <base>/?loginError=<code>         codes of 14.4
 ```
 
-The redirect uri registered with the provider is `<scheme>://<Host>/<base path>/api/auth/oidc/<id>/callback`. The scheme is
-`https` when the request is secure (13.4), so a proxy that terminates TLS must send `X-Forwarded-Proto: https`.
+The redirect uri registered with the provider is `<publicUrl>/api/auth/oidc/<id>/callback` when `publicUrl` is set (the trailing
+slash of the public URL is dropped). Without a public URL it is `<scheme>://<Host>/<base path>/api/auth/oidc/<id>/callback`. The
+scheme is `https` when the request is secure (13.4), so a proxy that terminates TLS must send `X-Forwarded-Proto: https`. The path
+of `publicUrl` must be the base path the server runs under, because the state cookie is scoped to it.
 
 `POST /api/auth/login` (public) with `{"provider": "ldap", "username": "...", "password": "..."}` returns the response of 13.5.
 The status codes are those of 13.5, plus `403` with the reason of 14.4 when the directory account is not provisioned, and `503`
@@ -1198,8 +1202,8 @@ Open points:
 - O-22 Group changes in the directory take effect at the next external login. An open session keeps its memberships until its
   refresh family ends (at most `login.refreshAbsoluteDays`). Ending the sessions of a user at once needs an administrative
   revocation endpoint, which is O-20.
-- O-23 Redirect URIs are built from the request. An operator-set public URL is not part of the contract; deployments behind a proxy
-  must send `Host` and `X-Forwarded-Proto` correctly.
+- O-23 Resolved: `login.publicUrl` sets the base of the redirect URIs and of the callback URL shown in the dashboard (14.2, 14.3).
+  Without it, deployments behind a proxy must send `Host` and `X-Forwarded-Proto` correctly.
 - O-24 Groups come from the ID token (OIDC) or the GitHub API only, not from the userinfo endpoint. A provider that puts groups
   only there needs an ID token claim configured on the provider side.
 - O-25 SAML, SCIM and directory-driven de-provisioning are not implemented. A removed directory account keeps its principal until an

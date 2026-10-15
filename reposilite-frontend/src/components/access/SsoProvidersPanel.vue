@@ -15,16 +15,23 @@
   -->
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useSession } from '../../store/session'
 import usePlaceholders from '../../store/placeholders'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
 import MdSwitch from '../md/MdSwitch.vue'
+import MdTextField from '../md/MdTextField.vue'
 import ProviderIcon from '../icons/ProviderIcon.vue'
 import ConfirmActionDialog from './ConfirmActionDialog.vue'
 import SsoProviderDialog from './SsoProviderDialog.vue'
-import { removeProvider, replaceProvider } from './loginSettings'
+import {
+  callbackPatternFor,
+  registeredBase,
+  removeProvider,
+  replaceProvider,
+  validatePublicUrl
+} from './loginSettings'
 import { useLoginSettings } from './useLoginSettings'
 
 /*
@@ -46,6 +53,31 @@ const {
 } = useLoginSettings(() => client.value.settings)
 
 const { productionUrl } = usePlaceholders()
+
+// The public address the callback URLs are built from. The draft is what the admin types; the saved one is what
+// the callbacks use, so the dialog shows the saved base.
+const publicUrlSaved = computed(() => settings.value.publicUrl ?? '')
+const publicUrlDraft = ref('')
+watch(publicUrlSaved, (value) => {
+  publicUrlDraft.value = value
+}, { immediate: true })
+const publicUrlProblem = computed(() => validatePublicUrl(publicUrlDraft.value))
+const publicUrlDirty = computed(() => publicUrlDraft.value.trim() !== publicUrlSaved.value)
+const savedBase = computed(() => registeredBase(publicUrlSaved.value, productionUrl))
+const callbackPreview = computed(() => (publicUrlProblem.value !== ''
+  ? 'Fix the public URL to see the callback address'
+  : callbackPatternFor(registeredBase(publicUrlDraft.value, productionUrl))))
+
+const savePublicUrl = async () => {
+  if (publicUrlProblem.value !== '') return
+  const publicUrl = publicUrlDraft.value.trim()
+  const ok = await save({ ...settings.value, publicUrl })
+  if (ok) {
+    createSuccessToast(publicUrl ? 'Public address saved' : 'Public address cleared')
+  } else {
+    createErrorToast(saveError.value)
+  }
+}
 
 const dialogOpen = ref(false)
 const confirmOpen = ref(false)
@@ -156,6 +188,50 @@ onMounted(load)
       </MdButton>
     </div>
 
+    <section
+      v-if="loaded && !loadError"
+      aria-labelledby="sso-public-title"
+      class="flex flex-col gap-3 rounded-corner-medium border border-outline-variant bg-surface-container-low p-4"
+      data-test="sso-public-url"
+    >
+      <h4
+        id="sso-public-title"
+        class="md-title-small text-on-surface"
+      >
+        Public address
+      </h4>
+      <p class="md-body-medium text-on-surface-variant">
+        The callback URLs are built from this address, so a provider keeps the same callback when the dashboard is
+        reached through another name. Leave it empty to build them from the address the dashboard is opened at.
+      </p>
+      <MdTextField
+        id="sso-public-url"
+        v-model="publicUrlDraft"
+        label="Public URL"
+        type="url"
+        autocomplete="off"
+        placeholder="https://repo.example.org/"
+        supporting-text="An absolute https:// address. http:// is accepted for localhost only."
+        :error="publicUrlProblem !== ''"
+        :error-text="publicUrlProblem"
+      />
+      <p
+        class="md-body-medium text-on-surface-variant"
+        data-test="callback-preview"
+      >
+        Callback URL: <code class="break-all">{{ callbackPreview }}</code>
+      </p>
+      <div class="flex justify-end">
+        <MdButton
+          variant="outlined"
+          :disabled="!publicUrlDirty || publicUrlProblem !== '' || saving"
+          @click="savePublicUrl"
+        >
+          {{ saving ? 'Saving...' : 'Save public address' }}
+        </MdButton>
+      </div>
+    </section>
+
     <p
       v-if="!loaded"
       role="status"
@@ -235,7 +311,7 @@ onMounted(load)
       v-model="dialogOpen"
       :provider="editingProvider"
       :taken-ids="takenIds"
-      :production-url="productionUrl"
+      :production-url="savedBase"
       :test-result="editingId ? testResults[editingId] : null"
       :testing="testing !== null && testing === editingId"
       :busy="saving"

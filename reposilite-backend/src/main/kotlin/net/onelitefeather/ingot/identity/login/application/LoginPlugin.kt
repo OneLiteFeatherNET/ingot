@@ -159,7 +159,7 @@ class LoginPlugin : ReposilitePlugin() {
                 event.registerRoutes(ProviderTestEndpoints(OidcConnectionCheck(oidcCatalog, oidcMetadata), loginSettings))
             }
             if (oidcService != null) {
-                event.registerRoutes(AuthOidcEndpoints(loginFacade, oidcService, basePath))
+                event.registerRoutes(AuthOidcEndpoints(loginFacade, oidcService, basePath, publicUrl = { loginSettings.get().publicUrl }))
             }
         }
 

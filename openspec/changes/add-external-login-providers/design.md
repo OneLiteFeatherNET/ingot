@@ -67,7 +67,8 @@ as they do for repositories.
 6. Redirect uris are built from the request: the scheme is `https` when `SessionCookies.isSecure` says so, otherwise `http`,
    the host is the `Host` header, and the base path is the configured one. The identity provider compares the uri with the
    registered one, so a forged `Host` cannot redirect a code. This is a known limit: a deployment that sits behind a proxy
-   which rewrites `Host` must set it correctly. An operator-set public URL is recorded as an open point.
+   which rewrites `Host` must set it correctly. An operator-set public URL (`login.publicUrl`) replaces the request-derived
+   base, so the registered uri does not depend on `Host` at all.
 
 ## 4. GitHub
 

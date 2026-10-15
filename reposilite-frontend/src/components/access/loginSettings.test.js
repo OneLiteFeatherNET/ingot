@@ -19,14 +19,17 @@ import {
   LDAP_DEFAULTS,
   PROVIDER_TYPES,
   SECRET_PLACEHOLDER,
+  callbackPatternFor,
   callbackUrlFor,
   emptyProvider,
   normalizeLoginSettings,
   providerTypeOf,
   removeProvider,
+  registeredBase,
   replaceProvider,
   scopeList,
   validateLdap,
+  validatePublicUrl,
   validateProvider
 } from './loginSettings'
 
@@ -219,6 +222,49 @@ describe('validateLdap', () => {
   it('needs a bind password when a bind DN is given', () => {
     expect(validateLdap({ ...ldap, bindDn: 'cn=svc,dc=example,dc=org', bindPassword: '' }).bindPassword).toBeDefined()
     expect(validateLdap({ ...ldap, bindDn: 'cn=svc,dc=example,dc=org', bindPassword: SECRET_PLACEHOLDER })).toEqual({})
+  })
+})
+
+describe('validatePublicUrl', () => {
+  it.each([
+    'https://repo.example.org/',
+    'https://repo.example.org/ingot',
+    'http://localhost:8080/',
+    'http://127.0.0.1:8080',
+    '',
+    '   '
+  ])('accepts %j, which the backend accepts too', (value) => {
+    expect(validatePublicUrl(value)).toBe('')
+  })
+
+  it.each([
+    'http://repo.example.org/',
+    'repo.example.org',
+    'ftp://repo.example.org/',
+    'https://',
+    'https://repo.example.org/?next=/',
+    'https://repo.example.org/#top',
+    'https://alice:secret@repo.example.org/',
+    'https://repo.example.org/with space'
+  ])('refuses %j', (value) => {
+    expect(validatePublicUrl(value)).toMatch(/https:\/\//)
+  })
+})
+
+describe('registeredBase and the callback pattern', () => {
+  it('uses the public address when it is set and valid, else the dashboard origin', () => {
+    expect(registeredBase('https://repo.example.org', 'http://localhost:3000/')).toBe('https://repo.example.org')
+    expect(registeredBase('', 'http://localhost:3000/')).toBe('http://localhost:3000/')
+    expect(registeredBase('http://repo.example.org', 'http://localhost:3000/')).toBe('http://localhost:3000/')
+  })
+
+  it('shows the callback pattern with the id still to come', () => {
+    expect(callbackPatternFor('https://repo.example.org')).toBe('https://repo.example.org/api/auth/oidc/<id>/callback')
+    expect(callbackPatternFor('https://repo.example.org/')).toBe('https://repo.example.org/api/auth/oidc/<id>/callback')
+  })
+
+  it('gives a server answer without a public address an empty one', () => {
+    expect(normalizeLoginSettings({}).publicUrl).toBe('')
   })
 })
 
