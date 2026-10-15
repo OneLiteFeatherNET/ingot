@@ -140,6 +140,7 @@ class OwnTokens internal constructor(
         expiresAt = expiresAt,
         scopes = scopes?.map { it.name },
         lastUsedAt = lastUsedAt,
+        lastUsedIp = lastUsedIp,
     )
 
     private companion object {
