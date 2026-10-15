@@ -24,6 +24,7 @@ import net.onelitefeather.ingot.identity.login.LoginOutcome.Disabled
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Rejected
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Succeeded
 import net.onelitefeather.ingot.identity.login.LoginOutcome.UnknownProvider
+import net.onelitefeather.ingot.identity.login.SetupOutcome.AlreadyCompleted
 import net.onelitefeather.ingot.identity.login.SetupOutcome.Blocked as SetupBlocked
 import net.onelitefeather.ingot.identity.login.SetupOutcome.Created
 import net.onelitefeather.ingot.identity.login.SetupOutcome.InvalidInput
@@ -159,7 +160,7 @@ class LoginService internal constructor(
 
     private fun createFirstAdministrator(givenCode: String, username: String, password: String, displayName: String?, ip: String): SetupOutcome {
         if (!isSetupRequired()) {
-            return NotRequired
+            return if (setupCode.matches(givenCode) && credentials.isFirstAdministratorClaimed()) AlreadyCompleted else NotRequired
         }
         val addressKey = LoginAttemptLimiter.addressKey(ip)
         limiter.retryAfter(listOf(addressKey))?.let { wait ->
@@ -175,13 +176,26 @@ class LoginService internal constructor(
         usernameProblem(name)?.let { return InvalidInput(it) }
         passwordProblem(password)?.let { return InvalidInput(it) }
 
-        val principal = identities.createPrincipal(
-            PrincipalKind.USER,
-            name,
-            displayName?.takeIf { it.isNotBlank() } ?: name,
-            false,
-            identities.now(),
-        ) ?: return NameTaken
+        // The claim makes the setup exclusive across instances: of all instances on the database, only one gets it.
+        if (!credentials.claimFirstAdministrator()) {
+            return AlreadyCompleted
+        }
+        val principal = try {
+            identities.createPrincipal(
+                PrincipalKind.USER,
+                name,
+                displayName?.takeIf { it.isNotBlank() } ?: name,
+                false,
+                identities.now(),
+            )
+        } catch (failure: Throwable) {
+            credentials.releaseFirstAdministrator()
+            throw failure
+        }
+        if (principal == null) {
+            credentials.releaseFirstAdministrator()
+            return NameTaken
+        }
         identities.grantInstanceRole(principalId = principal.id, teamId = null)
         setPassword(principal, password, mustChange = false)
         setupCode.clear()

@@ -50,6 +50,17 @@ object RefreshTokenTable : IntIdTable("refresh_token") {
 }
 
 /**
+ * Markers that exist once per database, such as the claim of the first administrator. A claim is an insert that ignores an
+ * existing row, so of several instances sharing the database only one gets it.
+ */
+object LoginSetupMarkerTable : Table("login_setup_marker") {
+    val name = varchar("name", 64)
+    val claimedAt = timestamp("claimed_at")
+
+    override val primaryKey = PrimaryKey(name)
+}
+
+/**
  * Failed password logins, one row per key: a user name with an address, and an address on its own. The keys are hashes,
  * so the table holds no plain user name. [version] changes with every write, which makes concurrent updates from
  * several instances of the database conditional: the loser of a race retries against the state it finds.

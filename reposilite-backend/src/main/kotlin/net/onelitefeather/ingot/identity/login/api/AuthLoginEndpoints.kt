@@ -145,6 +145,7 @@ internal class AuthLoginEndpoints(
             when (val outcome = facade.completeSetup(code, username, password, request.displayName, ctx.ip())) {
                 is SetupOutcome.Created -> startLoginSession(ctx, facade, basePath.get(), outcome.principal, mustChangePassword = false)
                 SetupOutcome.NotRequired -> errorResponse(FORBIDDEN, "Setup is not required, a user already exists")
+                SetupOutcome.AlreadyCompleted -> errorResponse(CONFLICT, "The first administrator was created by another instance of this database, sign in instead")
                 SetupOutcome.WrongCode -> errorResponse(FORBIDDEN, "Invalid setup code")
                 is SetupOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed setup attempts, try again later")
                 SetupOutcome.NameTaken -> errorResponse(CONFLICT, "This user name is already taken")

@@ -20,6 +20,7 @@ import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import net.onelitefeather.ingot.identity.login.LoginOutcome.Succeeded
+import net.onelitefeather.ingot.identity.login.SetupOutcome.AlreadyCompleted
 import net.onelitefeather.ingot.identity.login.SetupOutcome.Blocked
 import net.onelitefeather.ingot.identity.login.SetupOutcome.Created
 import net.onelitefeather.ingot.identity.login.SetupOutcome.InvalidInput
@@ -31,6 +32,7 @@ import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.io.TempDir
 import panda.std.reactive.Reference
 import java.nio.file.Path
@@ -172,6 +174,62 @@ internal class SetupServiceTest {
             assertThat(fixture.service.hasUsers()).describedAs("the setup must not create a user under a taken name").isFalse()
         }
     }
+
+    @Test
+    fun `lets only one of two instances on one database complete the setup`() {
+        DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
+            val first = setupInstance(connection.database)
+            val second = setupInstance(connection.database)
+            val firstCode = first.issueSetupCode()!!
+            val secondCode = second.issueSetupCode()!!
+
+            val created = first.completeSetup(firstCode, "root", password, displayName = null, ip = "10.0.0.1")
+            val conflict = second.completeSetup(secondCode, "other", password, displayName = null, ip = "10.0.0.2")
+
+            assertThat(created).describedAs("the first instance creates the administrator").isInstanceOf(Created::class.java)
+            assertThat(conflict)
+                .describedAs("the second instance, with its own valid code, must get a conflict and not create a second administrator")
+                .isEqualTo(AlreadyCompleted)
+            assertThat(first.hasUsers()).isTrue
+            assertThat(IdentityStore(connection.database, clock).listPrincipals(PrincipalKind.USER).map { it.name })
+                .describedAs("exactly one administrator exists")
+                .containsExactly("root")
+        }
+    }
+
+    @Test
+    fun `claims the first administrator marker once`() {
+        DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
+            val store = LoginStore(connection.database, clock)
+
+            assertThat(store.claimFirstAdministrator()).describedAs("the first claim wins").isTrue
+            assertThat(store.claimFirstAdministrator()).describedAs("a second claim must not win").isFalse
+        }
+    }
+
+    @Test
+    fun `releases the marker when the administrator cannot be created, so that a valid setup can follow`() {
+        withFixture { fixture ->
+            fixture.identities.createPrincipal(PrincipalKind.MACHINE, "root", "root", disabled = false, createdAt = clock.instant())
+            fixture.service.completeSetup(fixture.service.issueSetupCode()!!, "root", password, displayName = null, ip = "10.0.0.1")
+
+            val outcome = fixture.service.completeSetup(fixture.service.issueSetupCode()!!, "admin", password, displayName = null, ip = "10.0.0.1")
+
+            assertThat(outcome).describedAs("a setup that failed on the name must not block the next one").isInstanceOf(Created::class.java)
+        }
+    }
+
+    /** One instance of Ingot on the shared database, with a code of its own. */
+    private fun setupInstance(database: Database): LoginService =
+        LoginService(
+            identities = IdentityStore(database, clock),
+            credentials = LoginStore(database, clock),
+            hasher = PasswordHasher(Argon2Cost(memoryKib = 8, iterations = 1, parallelism = 1)),
+            settings = Reference.reference(LoginSettings(maxFailedAttempts = 3, lockoutMinutes = 5)),
+            clock = clock,
+            audit = {},
+            setupCode = SetupCode(),
+        )
 
     @Test
     fun `audits a wrong setup code as a failed login`() {

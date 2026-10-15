@@ -65,6 +65,12 @@ sealed interface SetupOutcome {
     /** A user already exists, or the setup code was used up. */
     data object NotRequired : SetupOutcome
 
+    /**
+     * Another instance on the same database created the first administrator while this one still held its code. Only
+     * the instance that claimed the setup creates the administrator; this one is a conflict, not a plain refusal.
+     */
+    data object AlreadyCompleted : SetupOutcome
+
     data object WrongCode : SetupOutcome
 
     /** Too many wrong codes from this address. The code was not checked. */

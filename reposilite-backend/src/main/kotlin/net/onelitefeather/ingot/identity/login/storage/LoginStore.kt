@@ -57,6 +57,7 @@ data class RefreshTokenRecord(
 
 private const val MAX_USER_AGENT_LENGTH = 512
 private const val MAX_IP_LENGTH = 64
+private const val FIRST_ADMINISTRATOR = "first-administrator"
 
 /** Reads and writes the login tables. Every method runs in its own transaction. */
 class LoginStore(
@@ -66,9 +67,31 @@ class LoginStore(
 
     init {
         transaction(database) {
-            SchemaUtils.createMissingTablesAndColumns(LocalCredentialTable, RefreshTokenTable, LoginAttemptTable)
+            SchemaUtils.createMissingTablesAndColumns(LocalCredentialTable, RefreshTokenTable, LoginAttemptTable, LoginSetupMarkerTable)
         }
     }
+
+    /**
+     * Claims the first administrator for the whole database. Of several instances that set up the same empty database,
+     * only one gets `true`; the others must not create an administrator.
+     */
+    internal fun claimFirstAdministrator(): Boolean =
+        transaction(database) {
+            LoginSetupMarkerTable.insertIgnore {
+                it[LoginSetupMarkerTable.name] = FIRST_ADMINISTRATOR
+                it[LoginSetupMarkerTable.claimedAt] = Instant.now(clock)
+            }.insertedCount > 0
+        }
+
+    /** Gives the claim back when the administrator could not be created after all, so that a valid setup can follow. */
+    internal fun releaseFirstAdministrator() {
+        transaction(database) { LoginSetupMarkerTable.deleteWhere { LoginSetupMarkerTable.name eq FIRST_ADMINISTRATOR } }
+    }
+
+    internal fun isFirstAdministratorClaimed(): Boolean =
+        transaction(database) {
+            LoginSetupMarkerTable.selectAll().where { LoginSetupMarkerTable.name eq FIRST_ADMINISTRATOR }.any()
+        }
 
     internal fun findAttempt(attemptKey: String): AttemptRecord? =
         transaction(database) {
