@@ -219,6 +219,53 @@ const createClient = (defaultName, defaultSecret) => {
       principalTokens(principalName) {
         return tokenEndpoints(`/api/identity/principals/${encodeURIComponent(principalName)}/tokens`)
       },
+      // The principals, for an instance admin. get() resolves with the ETag header, which a later
+      // update() sends back as If-Match; a missing tag means an unconditional write.
+      principals: {
+        list(kind) {
+          return get(`/api/identity/principals${kind ? `?kind=${encodeURIComponent(kind)}` : ""}`)
+        },
+        get(name) {
+          return get(`/api/identity/principals/${encodeURIComponent(name)}`)
+        },
+        create(body) {
+          return axios.post(createURL("/api/identity/principals"), body, { ...defaultAuthorization() })
+        },
+        update(name, body, etag) {
+          return axios.patch(createURL(`/api/identity/principals/${encodeURIComponent(name)}`), body, {
+            headers: {
+              "Content-Type": "application/json",
+              ...ifMatch(etag),
+              ...defaultAuthorization().headers,
+            },
+          })
+        },
+        remove(name) {
+          return axios.delete(createURL(`/api/identity/principals/${encodeURIComponent(name)}`), {
+            ...defaultAuthorization(),
+          })
+        },
+        // 204. The principal must choose a new password at the next sign in.
+        setPassword(name, password) {
+          return axios.post(
+            createURL(`/api/identity/principals/${encodeURIComponent(name)}/password`),
+            { password },
+            { ...defaultAuthorization() }
+          )
+        },
+        grantInstanceAdmin(name) {
+          return axios.put(
+            createURL(`/api/identity/principals/${encodeURIComponent(name)}/instance-admin`),
+            {},
+            { ...defaultAuthorization() }
+          )
+        },
+        revokeInstanceAdmin(name) {
+          return axios.delete(createURL(`/api/identity/principals/${encodeURIComponent(name)}/instance-admin`), {
+            ...defaultAuthorization(),
+          })
+        },
+      },
     },
     console: {
       execute(command) {

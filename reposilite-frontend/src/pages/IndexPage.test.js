@@ -55,13 +55,14 @@ const sectionStub = vi.hoisted(() => (name, key) => async () => {
         selectedTab: String,
         qualifier: Object,
         search: String,
-        openToken: String,
+        tab: String,
+        name: String,
         level: String,
         domain: String,
         collection: String,
         entry: String
       },
-      emits: ['update:search', 'update:openToken', 'update:level', 'update:domain'],
+      emits: ['update:search', 'update:level', 'update:domain'],
       render() {
         return h('p', { 'data-test': 'section', 'data-section': key, 'data-stub': name }, key)
       }
@@ -72,7 +73,7 @@ const sectionStub = vi.hoisted(() => (name, key) => async () => {
 vi.mock('../components/browser/FileBrowserView.vue', sectionStub('FileBrowserStub', 'overview'))
 vi.mock('../components/overview/RepositoryOverview.vue', sectionStub('RepositoryOverviewStub', 'overview'))
 vi.mock('../components/dashboard/DashboardView.vue', sectionStub('DashboardStub', 'dashboard'))
-vi.mock('../components/tokens/TokensView.vue', sectionStub('TokensStub', 'tokens'))
+vi.mock('../components/access/AccessView.vue', sectionStub('AccessStub', 'access'))
 vi.mock('../components/console/ConsoleView.vue', sectionStub('ConsoleStub', 'console'))
 vi.mock('../components/maintenance/MaintenanceView.vue', sectionStub('MaintenanceStub', 'maintenance'))
 vi.mock('../components/account/AccountView.vue', sectionStub('AccountStub', 'account'))
@@ -120,9 +121,9 @@ const chooseLink = async (wrapper, label) => {
 
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
-const SECTION_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Audit', 'Settings']
+const SECTION_LABELS = ['Overview', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']
 // The bottom bar keeps the daily sections and puts the rarer admin pages under More.
-const BAR_LABELS = ['Overview', 'Dashboard', 'Tokens', 'Console']
+const BAR_LABELS = ['Overview', 'Dashboard', 'Access', 'Console']
 
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
@@ -163,8 +164,8 @@ describe('IndexPage section from the route', () => {
 
   it.each([
     ['/dashboard', 'dashboard'],
-    ['/tokens', 'tokens'],
-    ['/tokens/ci-bot', 'tokens'],
+    ['/access/users', 'access'],
+    ['/access/machines/ci-bot', 'access'],
     ['/console', 'console'],
     ['/maintenance', 'maintenance'],
     ['/audit', 'audit'],
@@ -206,20 +207,20 @@ describe('IndexPage manager routes', () => {
   })
 
   it('asks an anonymous visitor to sign in in place of the section', async () => {
-    const { wrapper } = await mountAt('/tokens', { manager: false, logged: false })
+    const { wrapper } = await mountAt('/access/users', { manager: false, logged: false })
 
     expect(shownSection(wrapper), 'the section must not render without the permission').toBeNull()
-    expect(wrapper.text()).toContain('Sign in to open Tokens')
+    expect(wrapper.text()).toContain('Sign in to open Access')
   })
 
   it('asks for the sign in dialog as soon as an anonymous visitor arrives on a manager section', async () => {
-    await mountAt('/tokens', { manager: false, logged: false })
+    await mountAt('/access/users', { manager: false, logged: false })
 
     expect(login.openLogin, 'the dialog lives in the page, so it is asked for once the page is shown').toHaveBeenCalledTimes(1)
   })
 
   it('does not ask for the sign in dialog when the visitor may see the section', async () => {
-    await mountAt('/tokens', { manager: true })
+    await mountAt('/access/users', { manager: true })
 
     expect(login.openLogin).not.toHaveBeenCalled()
   })
@@ -235,13 +236,13 @@ describe('IndexPage manager routes', () => {
   })
 
   it('stays on the requested URL while the visitor signs in', async () => {
-    const { router } = await mountAt('/tokens/ci-bot', { manager: false, logged: false })
+    const { router } = await mountAt('/access/machines/ci-bot', { manager: false, logged: false })
 
-    expect(router.currentRoute.value.fullPath).toBe('/tokens/ci-bot')
+    expect(router.currentRoute.value.fullPath).toBe('/access/machines/ci-bot')
   })
 
   it('sends a visitor whose sign in does not grant the permission to overview', async () => {
-    const { router } = await mountAt('/tokens', { manager: false, logged: false })
+    const { router } = await mountAt('/access/users', { manager: false, logged: false })
 
     session.isLogged.value = true
     await flushPromises()
@@ -250,12 +251,12 @@ describe('IndexPage manager routes', () => {
   })
 
   it('shows the section once the visitor has become a manager', async () => {
-    const { wrapper } = await mountAt('/tokens', { manager: false, logged: false })
+    const { wrapper } = await mountAt('/access/users', { manager: false, logged: false })
 
     session.isManager.value = true
     await flushPromises()
 
-    expect(shownSection(wrapper)).toBe('tokens')
+    expect(shownSection(wrapper)).toBe('access')
   })
 })
 
@@ -358,22 +359,22 @@ describe('IndexPage navigation', () => {
   })
 
   it('marks the active section as the current page in both navigations', async () => {
-    const { wrapper } = await mountAt('/tokens', { manager: true })
+    const { wrapper } = await mountAt('/access/users', { manager: true })
 
     const current = navigations(wrapper).map(nav =>
       nav.findAll('[aria-current="page"]').map(item => item.text()))
 
-    expect(current).toEqual([['Tokens'], ['Tokens']])
+    expect(current).toEqual([['Access'], ['Access']])
   })
 
   it('keeps the browsed repository path on the overview link', async () => {
     const { wrapper } = await mountAt('/browse/org/repo', { manager: true })
 
     const overview = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Overview')
-    const tokens = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Tokens')
+    const access = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Access')
 
     expect(overview.attributes('href'), 'returning to overview keeps the place in the browser').toBe('/browse/org/repo')
-    expect(tokens.attributes('href'), 'other sections are plain URLs').toBe('/tokens')
+    expect(access.attributes('href'), 'the Access entry links to /access, which opens the user list').toBe('/access')
   })
 
   it('switches the section through the router when a rail item is chosen', async () => {
@@ -388,7 +389,7 @@ describe('IndexPage navigation', () => {
   it('shows the previous section again when the browser goes back', async () => {
     const { wrapper, router } = await mountAt('/dashboard', { manager: true })
 
-    await router.push('/tokens')
+    await router.push('/access/users')
     await flushPromises()
     await router.back()
     await flushPromises()
@@ -402,68 +403,29 @@ describe('IndexPage view state from the URL', () => {
     session.isManager = null
   })
 
-  it('hands the tokens view its search text and the token whose editor is open', async () => {
-    const { wrapper } = await mountAt('/tokens/ci-bot?q=ci', { manager: true })
+  it('hands the access view the tab and the name of the principal that is open', async () => {
+    const { wrapper } = await mountAt('/access/machines/ci-bot', { manager: true })
 
-    const tokens = wrapper.findComponent({ name: 'TokensStub' })
+    const access = wrapper.findComponent({ name: 'AccessStub' })
 
-    expect(tokens.props('search')).toBe('ci')
-    expect(tokens.props('openToken')).toBe('ci-bot')
+    expect(access.props('tab')).toBe('machines')
+    expect(access.props('name')).toBe('ci-bot')
   })
 
-  it('hands the tokens view no open token on the list', async () => {
-    const { wrapper } = await mountAt('/tokens', { manager: true })
+  it('hands the access view no name on a list', async () => {
+    const { wrapper } = await mountAt('/access/users', { manager: true })
 
-    expect(wrapper.findComponent({ name: 'TokensStub' }).props('openToken')).toBeNull()
+    const access = wrapper.findComponent({ name: 'AccessStub' })
+
+    expect(access.props('tab')).toBe('users')
+    expect(access.props('name')).toBeUndefined()
   })
 
-  it('writes a token search into the URL by replacing the entry', async () => {
-    const { wrapper, router } = await mountAt('/tokens', { manager: true })
-    const push = vi.spyOn(router, 'push')
-    const replace = vi.spyOn(router, 'replace')
-
-    wrapper.findComponent({ name: 'TokensStub' }).vm.$emit('update:search', 'ci')
-    await flushPromises()
-
-    expect(router.currentRoute.value.query.q).toBe('ci')
-    expect(replace, 'typing must not add a history entry').toHaveBeenCalled()
-    expect(push).not.toHaveBeenCalled()
-  })
-
-  it('removes the token search from the URL when it is cleared', async () => {
-    const { wrapper, router } = await mountAt('/tokens?q=ci', { manager: true })
-
-    wrapper.findComponent({ name: 'TokensStub' }).vm.$emit('update:search', '')
-    await flushPromises()
-
-    expect(router.currentRoute.value.query).toEqual({})
-  })
-
-  it('opens a token editor through its own URL and keeps the search', async () => {
-    const { wrapper, router } = await mountAt('/tokens?q=ci', { manager: true })
-
-    wrapper.findComponent({ name: 'TokensStub' }).vm.$emit('update:openToken', 'ci-bot')
-    await flushPromises()
-
-    expect(router.currentRoute.value.fullPath).toBe('/tokens/ci-bot?q=ci')
-  })
-
-  it('returns to the token list when the editor closes', async () => {
+  it('follows the old tokens address to the machine accounts', async () => {
     const { wrapper, router } = await mountAt('/tokens/ci-bot', { manager: true })
 
-    wrapper.findComponent({ name: 'TokensStub' }).vm.$emit('update:openToken', null)
-    await flushPromises()
-
-    expect(router.currentRoute.value.fullPath).toBe('/tokens')
-  })
-
-  it('opens the create form through the reserved new address', async () => {
-    const { wrapper, router } = await mountAt('/tokens', { manager: true })
-
-    wrapper.findComponent({ name: 'TokensStub' }).vm.$emit('update:openToken', 'new')
-    await flushPromises()
-
-    expect(router.currentRoute.value.fullPath).toBe('/tokens/new')
+    expect(router.currentRoute.value.fullPath).toBe('/access/machines/ci-bot')
+    expect(wrapper.findComponent({ name: 'AccessStub' }).props('tab')).toBe('machines')
   })
 
   it('hands the console the shown levels and the filter from the URL', async () => {

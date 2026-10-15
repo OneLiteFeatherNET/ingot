@@ -25,7 +25,24 @@ describe('visibleSections', () => {
 
   it('offers every section to a manager, in the order of the navigation', () => {
     expect(visibleSections(true).map(section => section.label))
-      .toEqual(['Overview', 'Dashboard', 'Tokens', 'Console', 'Maintenance', 'Audit', 'Settings'])
+      .toEqual(['Overview', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings'])
+  })
+})
+
+describe('access section', () => {
+  it('replaces the Tokens entry', () => {
+    const labels = visibleSections(true).map(section => section.label)
+
+    expect(labels).toContain('Access')
+    expect(labels, 'tokens are machine accounts under Access now').not.toContain('Tokens')
+  })
+
+  it('opens the access route', () => {
+    expect(SECTIONS.find(section => section.key === 'access')?.route).toBe('access')
+  })
+
+  it('names the section in the document title', () => {
+    expect(sectionLabel('access')).toBe('Access')
   })
 })
 
@@ -41,7 +58,7 @@ describe('section table', () => {
   it('marks exactly the manager sections as manager only', () => {
     const managerOnly = SECTIONS.filter(section => section.manager).map(section => section.key)
 
-    expect(managerOnly).toEqual(['dashboard', 'tokens', 'console', 'maintenance', 'audit', 'settings'])
+    expect(managerOnly).toEqual(['dashboard', 'access', 'console', 'maintenance', 'audit', 'settings'])
   })
 
   it('places the admin pages after console, settings stays last', () => {
@@ -61,7 +78,7 @@ describe('section table', () => {
 describe('overflow', () => {
   it('moves the rare admin pages under More and keeps the daily ones in the bar', () => {
     expect(SECTIONS.filter(section => isOverflow(section.key)).map(section => section.key)).toEqual(['maintenance', 'audit', 'settings'])
-    expect(isOverflow('tokens')).toBe(false)
+    expect(isOverflow('access')).toBe(false)
     expect(isOverflow('unknown')).toBe(false)
   })
 

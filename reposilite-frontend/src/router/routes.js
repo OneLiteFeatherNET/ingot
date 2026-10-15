@@ -19,11 +19,13 @@
  * read from `meta.section`, and `meta.manager` marks the routes that need the manager
  * permission. Route names are the contract the links and the other views build on.
  *
- * The section segments (account, dashboard, tokens, console, maintenance, audit, settings) are top level names that a
+ * The section segments (account, dashboard, access, tokens, console, maintenance, audit, settings) are top level names that a
  * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.
  */
+
+const ACCESS = { section: 'access', manager: true }
 
 const ROUTES = [
   { name: 'overview', path: '/', meta: { section: 'overview' } },
@@ -31,9 +33,25 @@ const ROUTES = [
   // Open to every signed in principal. `signedIn` shows the sign in prompt to a visitor.
   { name: 'account', path: '/account', meta: { section: 'account', signedIn: true } },
   { name: 'dashboard', path: '/dashboard', meta: { section: 'dashboard', manager: true } },
-  { name: 'tokens', path: '/tokens', meta: { section: 'tokens', manager: true } },
-  // `new` is reserved: it opens the create form rather than a token of that name.
-  { name: 'token', path: '/tokens/:name', meta: { section: 'tokens', manager: true } },
+  // The access section: users, machine accounts and teams. The detail routes name the principal or
+  // the team in `:name`. `/access` has no page of its own and opens the user list.
+  { name: 'access', path: '/access', redirect: { name: 'access-users' }, meta: ACCESS },
+  { name: 'access-users', path: '/access/users', meta: ACCESS },
+  { name: 'access-user', path: '/access/users/:name', meta: ACCESS },
+  { name: 'access-machines', path: '/access/machines', meta: ACCESS },
+  { name: 'access-machine', path: '/access/machines/:name', meta: ACCESS },
+  { name: 'access-teams', path: '/access/teams', meta: ACCESS },
+  { name: 'access-team', path: '/access/teams/:name', meta: ACCESS },
+  // The token pages of the old dashboard. A token is a machine account now, so these links keep
+  // working and end at the machine accounts. `new` was the create form and has no machine of its own.
+  { name: 'tokens', path: '/tokens', redirect: { name: 'access-machines' }, meta: ACCESS },
+  { name: 'token-new', path: '/tokens/new', redirect: { name: 'access-machines' }, meta: ACCESS },
+  {
+    name: 'token',
+    path: '/tokens/:name',
+    redirect: (to) => ({ name: 'access-machine', params: { name: to.params.name } }),
+    meta: ACCESS
+  },
   { name: 'console', path: '/console', meta: { section: 'console', manager: true } },
   { name: 'maintenance', path: '/maintenance', meta: { section: 'maintenance', manager: true } },
   { name: 'audit', path: '/audit', meta: { section: 'audit', manager: true } },

@@ -41,7 +41,8 @@ const createAppRouter = ({
 }) => {
   const router = createRouter({
     history,
-    routes: ROUTES.map(route => ({ ...route, component }))
+    // A redirect never renders, so it carries no component.
+    routes: ROUTES.map(route => (route.redirect ? route : { ...route, component }))
   })
 
   let started = false

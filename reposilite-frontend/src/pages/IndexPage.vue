@@ -29,7 +29,7 @@ import MdNavigationRail from '../components/md/MdNavigationRail.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
 import OverviewIcon from '../components/icons/OverviewIcon.vue'
 import DashboardIcon from '../components/icons/DashboardIcon.vue'
-import TokensIcon from '../components/icons/TokensIcon.vue'
+import AccessIcon from '../components/icons/AccessIcon.vue'
 import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
 import CleaningIcon from '../components/icons/CleaningIcon.vue'
 import SettingsIcon from '../components/icons/SettingsIcon.vue'
@@ -56,7 +56,7 @@ const lazyView = (loader) => defineAsyncComponent({
 const ConsoleView = lazyView(() => import('../components/console/ConsoleView.vue'))
 const MaintenanceView = lazyView(() => import('../components/maintenance/MaintenanceView.vue'))
 const DashboardView = lazyView(() => import('../components/dashboard/DashboardView.vue'))
-const TokensView = lazyView(() => import('../components/tokens/TokensView.vue'))
+const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
 const AccountView = lazyView(() => import('../components/account/AccountView.vue'))
@@ -65,7 +65,7 @@ const AccountView = lazyView(() => import('../components/account/AccountView.vue
 const SECTION_ICONS = {
   overview: OverviewIcon,
   dashboard: DashboardIcon,
-  tokens: TokensIcon,
+  access: AccessIcon,
   console: ConsoleIcon,
   maintenance: CleaningIcon,
   audit: HistoryIcon,
@@ -204,18 +204,18 @@ const replaceQuery = (key, value) => {
   return router.replace({ name: route.name, params: route.params, query: next })
 }
 
-// Tokens: the search text, and the token whose editor is open.
-const tokenSearch = computed(() => textFromParam(route.query.q))
-const openToken = computed(() => (route.name === 'token' ? route.params.name : null))
-
-const setTokenSearch = (text) => replaceQuery('q', textParam(text))
-
-const setOpenToken = (name) =>
-  router.replace({
-    name: name ? 'token' : 'tokens',
-    params: name ? { name } : {},
-    query: route.query
-  })
+// Access: the tab on screen (users, machines or teams) and the name of the principal or team that
+// is open. The view moves between them through the router itself.
+const ACCESS_TABS = {
+  'access-users': 'users',
+  'access-user': 'users',
+  'access-machines': 'machines',
+  'access-machine': 'machines',
+  'access-teams': 'teams',
+  'access-team': 'teams'
+}
+const accessTab = computed(() => ACCESS_TABS[route.name] ?? 'users')
+const accessName = computed(() => (section.value === 'access' ? route.params.name : undefined))
 
 // Console: the level switches and the text filter, as the views read and write them.
 const consoleLevel = computed(() => optionalParam(route.query.level))
@@ -314,13 +314,10 @@ const activeLabel = computed(() => sectionLabel(section.value))
       </template>
       <AccountView v-else-if="section === 'account'" />
       <DashboardView v-else-if="section === 'dashboard'" />
-      <TokensView
-        v-else-if="section === 'tokens'"
-        :selected-tab="activeLabel"
-        :search="tokenSearch"
-        :open-token="openToken"
-        @update:search="setTokenSearch"
-        @update:open-token="setOpenToken"
+      <AccessView
+        v-else-if="section === 'access'"
+        :tab="accessTab"
+        :name="accessName"
       />
       <ConsoleView
         v-else-if="section === 'console'"

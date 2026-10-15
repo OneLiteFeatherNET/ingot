@@ -46,8 +46,12 @@ describe('route to section mapping', () => {
     ['/browse/releases/gav/0.1.0', 'overview'],
     ['/account', 'account'],
     ['/dashboard', 'dashboard'],
-    ['/tokens', 'tokens'],
-    ['/tokens/ci-bot', 'tokens'],
+    ['/access/users', 'access'],
+    ['/access/users/alice', 'access'],
+    ['/access/machines', 'access'],
+    ['/access/machines/ci-bot', 'access'],
+    ['/access/teams', 'access'],
+    ['/access/teams/developers', 'access'],
     ['/console', 'console'],
     ['/maintenance', 'maintenance'],
     ['/settings', 'settings'],
@@ -74,13 +78,31 @@ describe('route to section mapping', () => {
 })
 
 describe('route names and parameters', () => {
-  it('reads the reserved token name new as the create form, not as a token', async () => {
+  it('names the user list, the user detail, the machine list and the machine detail', async () => {
     const router = makeRouter()
 
-    await router.push('/tokens/new')
+    await router.push('/access/users')
+    expect(router.currentRoute.value.name).toBe('access-users')
 
-    expect(router.currentRoute.value.name).toBe('token')
-    expect(router.currentRoute.value.params.name).toBe('new')
+    await router.push('/access/users/alice')
+    expect(router.currentRoute.value.name).toBe('access-user')
+    expect(router.currentRoute.value.params.name).toBe('alice')
+
+    await router.push('/access/machines')
+    expect(router.currentRoute.value.name).toBe('access-machines')
+
+    await router.push('/access/machines/ci-bot')
+    expect(router.currentRoute.value.name).toBe('access-machine')
+    expect(router.currentRoute.value.params.name).toBe('ci-bot')
+  })
+
+  it('names the team list and the team detail for the next phase', async () => {
+    const router = makeRouter()
+
+    await router.push('/access/teams/developers')
+
+    expect(router.currentRoute.value.name).toBe('access-team')
+    expect(router.currentRoute.value.params.name).toBe('developers')
   })
 
   it('reads the repository path of a browse URL as the qualifier', async () => {
@@ -114,6 +136,59 @@ describe('route names and parameters', () => {
   })
 })
 
+describe('access and the old token routes', () => {
+  it('redirects /access to the user list', async () => {
+    const router = makeRouter()
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.fullPath).toBe('/access/users')
+  })
+
+  it('redirects /tokens to the machine accounts', async () => {
+    const router = makeRouter()
+
+    await router.push('/tokens')
+
+    expect(router.currentRoute.value.fullPath).toBe('/access/machines')
+  })
+
+  it('redirects /tokens/new to the machine accounts', async () => {
+    const router = makeRouter()
+
+    await router.push('/tokens/new')
+
+    expect(router.currentRoute.value.fullPath, 'new is not a machine name').toBe('/access/machines')
+  })
+
+  it('redirects /tokens/:name to the machine of that name', async () => {
+    const router = makeRouter()
+
+    await router.push('/tokens/ci-bot')
+
+    expect(router.currentRoute.value.fullPath).toBe('/access/machines/ci-bot')
+    expect(router.currentRoute.value.params.name).toBe('ci-bot')
+  })
+
+  it('keeps the name encoded when it is redirected', async () => {
+    const router = makeRouter()
+
+    await router.push('/tokens/ci%20bot')
+
+    expect(router.currentRoute.value.params.name).toBe('ci bot')
+  })
+
+  it('applies the manager guard to the target of a redirect', async () => {
+    const notify = vi.fn()
+    const router = makeRouter({ isManager: () => false, isLogged: () => true, notify })
+
+    await router.push('/tokens')
+
+    expect(router.currentRoute.value.name, 'a signed in user without the permission is sent away').toBe('overview')
+    expect(notify).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('manager routes', () => {
   beforeEach(() => {
     document.title = ''
@@ -122,9 +197,9 @@ describe('manager routes', () => {
   it('keeps an anonymous visitor on the requested URL', async () => {
     const router = makeRouter({ whenSessionKnown: () => Promise.resolve() })
 
-    await router.push('/tokens/ci-bot')
+    await router.push('/access/machines/ci-bot')
 
-    expect(router.currentRoute.value.fullPath, 'the URL the visitor asked for stays in the address bar').toBe('/tokens/ci-bot')
+    expect(router.currentRoute.value.fullPath, 'the URL the visitor asked for stays in the address bar').toBe('/access/machines/ci-bot')
   })
 
   it('lets a manager reach the section they asked for', async () => {
@@ -165,14 +240,14 @@ describe('manager routes', () => {
       whenSessionKnown: () => known.promise
     })
 
-    const navigation = router.push('/tokens')
+    const navigation = router.push('/access/users')
     await Promise.resolve()
 
-    expect(router.currentRoute.value.name, 'the page must not change before the session answers').not.toBe('tokens')
+    expect(router.currentRoute.value.name, 'the page must not change before the session answers').not.toBe('access-users')
 
     known.resolve()
     await navigation
-    expect(router.currentRoute.value.name).toBe('tokens')
+    expect(router.currentRoute.value.name).toBe('access-users')
   })
 
   it('leaves routes that are not for managers alone, even for an anonymous visitor', async () => {
@@ -198,7 +273,7 @@ describe('legacy hash links', () => {
 
     await router.push('/#/?tab=tokens')
 
-    expect(router.currentRoute.value.fullPath).toBe('/tokens')
+    expect(router.currentRoute.value.fullPath, 'the old tokens link ends at the machine accounts').toBe('/access/machines')
   })
 
   it('does not rewrite a hash on a later navigation', async () => {

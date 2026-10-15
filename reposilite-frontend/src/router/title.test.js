@@ -31,11 +31,11 @@ describe('pageTitle', () => {
   })
 
   it('names the section for a manager section', () => {
-    expect(pageTitle({ name: 'tokens', params: {}, meta: { section: 'tokens' } }, SITE)).toBe('Tokens · Ingot Repository')
+    expect(pageTitle({ name: 'access-users', params: {}, meta: { section: 'access' } }, SITE)).toBe('Access · Ingot Repository')
   })
 
-  it('names the section for a token editor as well', () => {
-    expect(pageTitle({ name: 'token', params: { name: 'ci' }, meta: { section: 'tokens' } }, SITE)).toBe('Tokens · Ingot Repository')
+  it('names the section for a machine account as well', () => {
+    expect(pageTitle({ name: 'access-machine', params: { name: 'ci' }, meta: { section: 'access' } }, SITE)).toBe('Access · Ingot Repository')
   })
 
   it('names the settings section for an entry of the settings', () => {

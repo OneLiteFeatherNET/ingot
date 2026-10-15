@@ -62,7 +62,7 @@ describe('views use the shared window margins', () => {
     '../../components/header/DefaultHeader.vue',
     '../../components/console/ConsoleView.vue',
     '../../components/dashboard/DashboardView.vue',
-    '../../components/tokens/TokensView.vue',
+    '../../components/access/AccessView.vue',
     '../../components/settings/SettingsView.vue'
   ]
 

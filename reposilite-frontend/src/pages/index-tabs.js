@@ -22,14 +22,14 @@
  * The bottom bar on a phone holds five destinations at most. A section marked `overflow` is
  * kept out of it and sits under "More" instead. The rail beside the page has room for all of them,
  * seven destinations being the most a navigation rail holds. Maintenance, the audit log and Settings
- * are the rarer admin pages, so they overflow and the daily pages (overview, dashboard, tokens,
+ * are the rarer admin pages, so they overflow and the daily pages (overview, dashboard, access,
  * console) stay one tap away.
  */
 
 const SECTIONS = [
   { key: 'overview', label: 'Overview', manager: false, route: 'overview' },
   { key: 'dashboard', label: 'Dashboard', manager: true, route: 'dashboard' },
-  { key: 'tokens', label: 'Tokens', manager: true, route: 'tokens' },
+  { key: 'access', label: 'Access', manager: true, route: 'access' },
   { key: 'console', label: 'Console', manager: true, route: 'console' },
   { key: 'maintenance', label: 'Maintenance', manager: true, route: 'maintenance', overflow: true },
   { key: 'audit', label: 'Audit', manager: true, route: 'audit', overflow: true },
