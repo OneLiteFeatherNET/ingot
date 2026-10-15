@@ -14,6 +14,7 @@ import { default as OptionalRenderer, tester as optionalTester } from '../compon
 import { default as SectionRenderer, tester as sectionTester } from '../components/renderers/SectionRenderer.vue'
 import { default as BooleanSwitchRenderer, tester as booleanSwitchTester } from '../components/renderers/BooleanSwitchRenderer.vue'
 import { default as MdTextFieldRenderer, tester as mdTextFieldTester } from '../components/renderers/MdTextFieldRenderer.vue'
+import { collectionsOf, idText, validateNewId } from '../components/settings/collections'
 import { default as MdSelectRenderer, tester as mdSelectTester, oneOfTester as mdOneOfSelectTester } from '../components/renderers/MdSelectRenderer.vue'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
@@ -211,8 +212,21 @@ export const createConfigurationStore = (client) => {
     } catch {
       valid = true
     }
-    validity.value[domain] = valid
+    validity.value[domain] = valid && idsAreUsable(domain)
   }
+
+  /*
+   * Every entry needs an id that the new-entry dialog would accept: present, in the allowed
+   * characters, and unique in its collection. An entry without one has no address, so the domain
+   * cannot be saved or downloaded until it has one.
+   */
+  const idsAreUsable = (domain) => collectionsOf(schemas.value[domain]).every((collection) => {
+    const entries = configurations.value[domain]?.[collection.key] ?? []
+    return entries.every((entry, index) => {
+      const others = entries.filter((_, other) => other !== index).map(idText)
+      return validateNewId(idText(entry), others, collection.noun) === ''
+    })
+  })
 
   const entriesOf = (domain, collection) => {
     if (!configurations.value[domain]) configurations.value[domain] = {}
@@ -220,22 +234,50 @@ export const createConfigurationStore = (client) => {
     return configurations.value[domain][collection]
   }
 
-  /* Replaces the entry at `index`. Schema defaults are filled in by the validation, as on load. */
+  /*
+   * The stable key of each entry, aligned with the entries by position. A key belongs to the entry
+   * and not to its id, so the list and the detail pane can follow an entry while its fields change.
+   * The keys are kept outside the reactive state: they are never sent to the server, and the view
+   * only reads them.
+   */
+  let keySequence = 0
+  const keysByCollection = new Map()
+  // The live key list, kept at one key per entry. It is only written by the edits below, never by a read.
+  const keysFor = (domain, collection, count) => {
+    const name = `${domain}/${collection}`
+    if (!keysByCollection.has(name)) keysByCollection.set(name, [])
+    const keys = keysByCollection.get(name)
+    while (keys.length < count) keys.push(`entry-${++keySequence}`)
+    keys.length = count
+    return keys
+  }
+
+  // A copy, read during render, so it writes nothing into the reactive state.
+  const entryKeysOf = (domain, collection) => [...keysFor(domain, collection, configurations.value[domain]?.[collection]?.length ?? 0)]
+
+  /* Replaces the entry at `index`. An edit that arrives without an id keeps the id the entry had, so a change of the form can never drop an entry from the list. */
   const setEntry = (domain, collection, index, entry) => {
-    entriesOf(domain, collection)[index] = entry
+    const entries = entriesOf(domain, collection)
+    const previous = entries[index]
+    const keepsId = isPlainObject(entry) && entry.id === undefined && isPlainObject(previous) && previous.id !== undefined
+    entries[index] = keepsId ? { id: previous.id, ...entry } : entry
     validateDomain(domain)
   }
 
   /* Appends an entry and returns its position in the collection. */
   const addEntry = (domain, collection, entry) => {
     const entries = entriesOf(domain, collection)
+    keysFor(domain, collection, entries.length)
     entries.push(entry)
+    keysFor(domain, collection, entries.length)
     validateDomain(domain)
     return entries.length - 1
   }
 
   const removeEntry = (domain, collection, index) => {
-    entriesOf(domain, collection).splice(index, 1)
+    const entries = entriesOf(domain, collection)
+    keysFor(domain, collection, entries.length).splice(index, 1)
+    entries.splice(index, 1)
     validateDomain(domain)
   }
 
@@ -264,6 +306,7 @@ export const createConfigurationStore = (client) => {
     setDomainData,
     setValidity,
     validateDomain,
+    entryKeysOf,
     setEntry,
     addEntry,
     removeEntry,

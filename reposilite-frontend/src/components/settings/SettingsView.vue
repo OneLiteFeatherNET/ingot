@@ -25,7 +25,7 @@ import MdButton from '../md/MdButton.vue'
 import SettingsTabs from './SettingsTabs.vue'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
-import { collectionsOf, entryLayout } from './collections'
+import { collectionsOf, entryLayout, idText, validateNewId } from './collections'
 import { property } from '../../helpers/vue-extensions'
 
 /*
@@ -142,8 +142,21 @@ const createEntry = (collection, id) => {
   router.replace({ name: 'settings-entry', params: { domain, collection: collection.key, entry: id } })
 }
 
+/*
+ * An edit is stored at once. The address of the open entry follows its id, but only once the id is
+ * usable: until then the address keeps the old id and the entry stays open, so typing a new id does
+ * not close the pane.
+ */
 const updateEntry = (collection, { index, entry }) => {
-  store.setEntry(activeDomain.value, collection.key, index, entry)
+  const domain = activeDomain.value
+  store.setEntry(domain, collection.key, index, entry)
+  if (props.collection !== collection.key) return
+  const others = (configurations.value[domain]?.[collection.key] ?? [])
+    .filter((_, other) => other !== index)
+    .map(idText)
+  const id = idText(entry)
+  if (id === props.entry || validateNewId(id, others, collection.noun) !== '') return
+  router.replace({ name: 'settings-entry', params: { domain, collection: collection.key, entry: id } })
 }
 
 const deleteEntry = (collection, index) => {
@@ -261,6 +274,7 @@ watch(
           :key="`${activeDomain}:${list.key}`"
           :collection="list"
           :entries="entriesOf(activeDomain, list)"
+          :keys="store.entryKeysOf(activeDomain, list.key)"
           :selected-id="selectedIdFor(list)"
           :back-href="backHref"
           :renderers="renderers"

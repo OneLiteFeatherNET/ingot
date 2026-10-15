@@ -15,14 +15,20 @@
   -->
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import EntryList from './EntryList.vue'
 import EntryDetail from './EntryDetail.vue'
+import { entryAddresses, idText } from './collections'
 
 /*
  * One collection as a list-detail layout. From 840px the list and the detail sit side by side, the
  * list in a 340px column. Below that there is one pane at a time: the list while nothing is
  * selected, the detail once an entry is, with a back button to return to the list.
+ *
+ * The address (selectedId) comes from the route. The selection itself is the stable key of the
+ * entry, resolved from the address when the address changes. So while the user edits the id of the
+ * selected entry, the entry stays selected, even when the address still names the old id; the
+ * settings view moves the address once the new id is usable.
  *
  * The component does not change the configuration itself. It reports the selection, creation,
  * edits and deletion, and the settings view decides how each one is stored and addressed.
@@ -36,6 +42,12 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  // The stable key of each entry, by position. See the store's entryKeysOf.
+  keys: {
+    type: Array,
+    default: () => []
+  },
+  // The address in the route: an entry's id, or "~" and its key while it has no usable id.
   selectedId: {
     type: String,
     default: null
@@ -56,11 +68,28 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'create', 'change', 'delete', 'back'])
 
-const selectedIndex = computed(() => (props.selectedId === null
-  ? -1
-  : props.entries.findIndex(entry => String(entry?.id) === props.selectedId)))
+const selectedKey = ref(null)
+const addresses = computed(() => entryAddresses(props.entries, props.keys))
+const selectedIndex = computed(() => (selectedKey.value === null ? -1 : props.keys.indexOf(selectedKey.value)))
 const selectedEntry = computed(() => (selectedIndex.value >= 0 ? props.entries[selectedIndex.value] : null))
 const hasSelection = computed(() => props.selectedId !== null)
+const otherIds = computed(() => props.entries.filter((_, index) => index !== selectedIndex.value).map(idText))
+
+const resolveSelection = () => {
+  if (props.selectedId === null) {
+    selectedKey.value = null
+    return
+  }
+  const index = addresses.value.indexOf(props.selectedId)
+  selectedKey.value = index >= 0 ? props.keys[index] : null
+}
+
+// A new address is resolved at once. The entries may arrive after the address, and an entry may
+// go away, so the address is resolved again while the selected entry cannot be found.
+watch(() => props.selectedId, resolveSelection, { immediate: true })
+watch([addresses, () => props.keys], () => {
+  if (selectedIndex.value < 0) resolveSelection()
+})
 </script>
 
 <template>
@@ -91,7 +120,8 @@ const hasSelection = computed(() => props.selectedId !== null)
       >
         <EntryList
           :entries="entries"
-          :selected-id="selectedId"
+          :keys="keys"
+          :selected-key="selectedKey"
           :item-schema="collection.itemSchema"
           :collection-title="collection.title"
           :noun="collection.noun"
@@ -107,9 +137,10 @@ const hasSelection = computed(() => props.selectedId !== null)
         <EntryDetail
           v-if="hasSelection"
           :id="selectedId"
-          :key="selectedId"
+          :key="selectedKey ?? `missing:${selectedId}`"
           :collection="collection"
           :entry="selectedEntry"
+          :other-ids="otherIds"
           :back-href="backHref"
           :renderers="renderers"
           :validator="validator"

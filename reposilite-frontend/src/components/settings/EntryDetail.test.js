@@ -84,10 +84,11 @@ describe('EntryDetail', () => {
     expect(heading().text()).toBe('releases')
   })
 
-  it('leaves the id out of the form, because renaming it would move the entry', () => {
+  it('edits the id in its own field, once, and not among the generated fields', () => {
     mountDetail()
 
-    expect(labels()).not.toContain('Id')
+    expect(labels().filter(label => label === 'Id'), 'exactly one field is labelled Id').toHaveLength(1)
+    expect(wrapper.find('#entry-detail-id').exists()).toBe(true)
   })
 
   it('draws the scalar properties in the General group', () => {

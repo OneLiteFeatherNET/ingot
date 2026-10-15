@@ -32,11 +32,14 @@ const entries = [
   { id: 'mirror-central', visibility: 'PUBLIC' }
 ]
 
+// The keys belong to the entries, not to their ids: they stay when the entries are edited.
+const keys = ['entry-1', 'entry-2', 'entry-3']
+
 let wrapper
 
 const mountList = (props = {}) => {
   wrapper = mount(EntryList, {
-    props: { entries, selectedId: null, itemSchema, collectionTitle: 'Repositories', noun: 'repository', ...props },
+    props: { entries, keys, selectedKey: null, itemSchema, collectionTitle: 'Repositories', noun: 'repository', ...props },
     attachTo: document.body
   })
   return wrapper
@@ -64,12 +67,12 @@ describe('EntryList', () => {
   })
 
   it('marks only the selected entry as the current one', () => {
-    mountList({ selectedId: 'snapshots' })
+    mountList({ selectedKey: 'entry-2' })
 
     expect(itemButtons().map(button => button.attributes('aria-current'))).toEqual([undefined, 'true', undefined])
   })
 
-  it('emits the id of the entry that is clicked', async () => {
+  it('emits the address of the entry that is clicked, which is its id', async () => {
     mountList()
 
     await itemButtons()[2].trigger('click')
@@ -103,7 +106,7 @@ describe('EntryList', () => {
   })
 
   it('says that the collection is empty when it has no entries', () => {
-    mountList({ entries: [] })
+    mountList({ entries: [], keys: [] })
 
     expect(wrapper.text()).toContain('No repositories yet.')
   })
@@ -121,5 +124,62 @@ describe('EntryList', () => {
     await flushPromises()
 
     expect(document.getElementById('new-entry-title')?.textContent).toContain('New repository')
+  })
+})
+
+describe('EntryList entries without a usable id', () => {
+  it('never draws an empty list item for an entry without an id', () => {
+    mountList({ entries: [{ visibility: 'PUBLIC' }, ...entries], keys: ['entry-0', ...keys] })
+
+    expect(itemButtons().every(button => button.find('span').text() !== '')).toBe(true)
+    expect(wrapper.findAll('li')).toHaveLength(4)
+  })
+
+  it('shows an entry without an id as "Unnamed repository", with the reason as its supporting line', () => {
+    mountList({ entries: [{ visibility: 'PUBLIC' }], keys: ['entry-0'] })
+
+    expect(itemIds()).toEqual(['Unnamed repository'])
+    expect(itemButtons()[0].text()).toContain('Enter an id.')
+  })
+
+  it('shows an id that is empty as unnamed too, and does not hide the entry', () => {
+    mountList({ entries: [{ id: '', visibility: 'PUBLIC' }], keys: ['entry-0'] })
+
+    expect(itemIds()).toEqual(['Unnamed repository'])
+  })
+
+  it('marks two entries that share an id as duplicates, so both stay visible', () => {
+    mountList({ entries: [{ id: 'dup' }, { id: 'dup' }], keys: ['entry-1', 'entry-2'] })
+
+    expect(itemIds()).toEqual(['dup', 'dup'])
+    expect(itemButtons().map(button => button.text()).every(text => text.includes('A repository with this id already exists.'))).toBe(true)
+  })
+
+  it('selects an entry without a usable id by its key, so the address does not name a missing id', async () => {
+    mountList({ entries: [{ visibility: 'PUBLIC' }], keys: ['entry-0'] })
+
+    await itemButtons()[0].trigger('click')
+
+    expect(wrapper.emitted('select')).toEqual([['~entry-0']])
+  })
+})
+
+describe('EntryList keys', () => {
+  it('keeps the same list item on screen when the id of its entry is edited', async () => {
+    mountList()
+    const before = wrapper.findAll('li')[0].element
+
+    await wrapper.setProps({ entries: [{ id: 'renamed', visibility: 'PUBLIC' }, entries[1], entries[2]] })
+
+    expect(wrapper.findAll('li')[0].element, 'the item is the same element, so focus and state stay with it').toBe(before)
+    expect(itemIds()).toEqual(['renamed', 'snapshots', 'mirror-central'])
+  })
+
+  it('does not drop an entry when a second entry is cleared', async () => {
+    mountList()
+
+    await wrapper.setProps({ entries: [{ id: '' }, entries[1], entries[2]] })
+
+    expect(wrapper.findAll('li')).toHaveLength(3)
   })
 })

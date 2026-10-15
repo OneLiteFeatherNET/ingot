@@ -19,19 +19,25 @@ import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import NewEntryDialog from './NewEntryDialog.vue'
-import { filterEntries, summaryOf } from './collections'
+import { entryAddresses, filterEntries, idText, summaryOf, validateNewId } from './collections'
 
 /*
  * The list pane of a collection: a search field over the ids, the action that adds an entry, and
- * one 56px item per entry. The item shows the id as its headline and a short line built from the
- * schema's text values. The selected item takes the secondary-container role.
+ * one 56px item per entry. Each item is keyed by the entry's stable key, not by its id, so an edit
+ * to the id moves nothing else. An entry without a usable id is still listed: it reads "Unnamed",
+ * and its supporting line says what is wrong. The item is opened by its address, which is the id
+ * or, while there is no usable id, the key. The selected item takes the secondary-container role.
  */
 const props = defineProps({
   entries: {
     type: Array,
     required: true
   },
-  selectedId: {
+  keys: {
+    type: Array,
+    default: () => []
+  },
+  selectedKey: {
     type: String,
     default: null
   },
@@ -54,19 +60,30 @@ const emit = defineEmits(['select', 'create'])
 const query = ref('')
 const dialogOpen = ref(false)
 
-const items = computed(() => filterEntries(props.entries, query.value).map(item => ({
-  ...item,
-  summary: summaryOf(props.itemSchema, item.entry)
-})))
+const items = computed(() => {
+  const addresses = entryAddresses(props.entries, props.keys)
+  const ids = props.entries.map(idText)
+  return filterEntries(props.entries, query.value).map((item) => {
+    const problem = validateNewId(item.id, ids.filter((_, other) => other !== item.index), props.noun)
+    return {
+      key: props.keys[item.index] ?? String(item.index),
+      address: addresses[item.index],
+      title: item.id !== '' ? item.id : `Unnamed ${props.noun}`,
+      unnamed: item.id === '',
+      problem,
+      summary: problem ? '' : summaryOf(props.itemSchema, item.entry)
+    }
+  })
+})
 
-const existingIds = computed(() => props.entries.map(entry => String(entry?.id ?? '')))
+const existingIds = computed(() => props.entries.map(idText))
 
 const emptyText = computed(() => {
   if (props.entries.length === 0) return `No ${props.collectionTitle.toLowerCase()} yet.`
   return `No ${props.noun} matches "${query.value.trim()}".`
 })
 
-const isSelected = (item) => item.id === props.selectedId
+const isSelected = (item) => item.key === props.selectedKey
 </script>
 
 <template>
@@ -116,18 +133,27 @@ const isSelected = (item) => item.id === props.selectedId
     >
       <li
         v-for="item in items"
-        :key="item.id"
+        :key="item.key"
       >
         <button
           type="button"
           class="md-state-layer md-focus-ring relative flex min-h-14 w-full flex-col justify-center rounded-corner-large px-4 py-2 text-left"
           :class="isSelected(item) ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
           :aria-current="isSelected(item) ? 'true' : undefined"
-          @click="emit('select', item.id)"
+          @click="emit('select', item.address)"
         >
-          <span class="md-title-small [overflow-wrap:anywhere]">{{ item.id }}</span>
           <span
-            v-if="item.summary"
+            class="md-title-small [overflow-wrap:anywhere]"
+            :class="item.unnamed ? 'italic' : ''"
+          >{{ item.title }}</span>
+          <span
+            v-if="item.problem"
+            class="md-body-medium text-error"
+          >
+            {{ item.problem }}
+          </span>
+          <span
+            v-else-if="item.summary"
             class="md-body-medium"
             :class="isSelected(item) ? 'text-on-secondary-container' : 'text-on-surface-variant'"
           >

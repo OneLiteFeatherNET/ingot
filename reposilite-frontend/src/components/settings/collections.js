@@ -94,11 +94,26 @@ export const filterEntries = (entries, query) => {
  * file systems.
  */
 export const validateNewId = (id, existingIds, noun = 'entry') => {
-  if (id === '') return 'Enter an id.'
-  if (!ID_PATTERN.test(id)) return 'Use only letters, digits, dots, underscores and hyphens.'
-  const lower = id.toLowerCase()
-  if (existingIds.some(existing => String(existing).toLowerCase() === lower)) {
+  // A missing id (undefined, null, a number) is no id at all, and must not pass the pattern as "undefined".
+  const text = typeof id === 'string' ? id : ''
+  if (text === '') return 'Enter an id.'
+  if (!ID_PATTERN.test(text)) return 'Use only letters, digits, dots, underscores and hyphens.'
+  const lower = text.toLowerCase()
+  if (existingIds.some(existing => idText({ id: existing }).toLowerCase() === lower)) {
     return `A ${noun} with this id already exists.`
   }
   return ''
 }
+
+/* The id of an entry as text, or '' when the entry has none. */
+export const idText = (entry) => (typeof entry?.id === 'string' ? entry.id : '')
+
+/*
+ * The address of each entry: its id when the id is usable and unique, otherwise "~" and the
+ * entry's key. No valid id starts with "~", so the two cannot clash, and an entry that has no
+ * usable id can still be opened and fixed.
+ */
+export const entryAddresses = (entries, keys) => entries.map((entry, index) => {
+  const others = entries.filter((_, other) => other !== index).map(idText)
+  return validateNewId(idText(entry), others) === '' ? idText(entry) : `~${keys[index]}`
+})

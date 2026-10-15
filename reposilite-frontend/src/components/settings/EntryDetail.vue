@@ -15,23 +15,27 @@
   -->
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdTextField from '../md/MdTextField.vue'
 import DeleteEntryDialog from './DeleteEntryDialog.vue'
-import { entryLayout } from './collections'
+import { entryLayout, idText, validateNewId } from './collections'
 
 /*
- * The detail pane of one entry. The form is generated from the item schema, so the entry is
- * edited with the same renderers as the rest of the settings. A null entry means the id in the
- * address names nothing, and the pane says so.
+ * The detail pane of one entry. The id is edited in its own field, checked the way the new-entry
+ * dialog checks it: the field shows the problem, and the entry keeps the typed value either way, so
+ * the list shows the problem too and the save is blocked until it is fixed. The rest of the form is
+ * generated from the item schema, so the entry is edited with the same renderers as the rest of
+ * the settings. A null entry means the id in the address names nothing, and the pane says so.
  */
 const props = defineProps({
   collection: {
     type: Object,
     required: true
   },
+  // The address in the route, which is the id of the entry, or the key marker when it has none.
   id: {
     type: String,
     required: true
@@ -39,6 +43,11 @@ const props = defineProps({
   entry: {
     type: Object,
     default: null
+  },
+  // The ids of the other entries of the collection, which the id of this one must not repeat.
+  otherIds: {
+    type: Array,
+    default: () => []
   },
   // Where the not-found pane leads: the list of the domain. Given as a link, so it can be opened
   // in a new tab; the click itself is handled by the page and goes through the router.
@@ -58,12 +67,36 @@ const props = defineProps({
 
 const emit = defineEmits(['change', 'delete', 'back'])
 
+const noun = computed(() => props.collection.noun)
 const layout = computed(() => entryLayout(props.collection.itemSchema))
 const backLabel = computed(() => `Back to ${props.collection.title.toLowerCase()}`)
+const headline = computed(() => idText(props.entry) || `Unnamed ${noun.value}`)
 const deleteOpen = ref(false)
 
+// The latest value of the whole entry, so an id typed in the field is written next to the fields the form has changed.
+const latest = ref(props.entry)
+watch(() => props.entry, (entry) => {
+  latest.value = entry
+})
+
+const idDraft = ref(idText(props.entry))
+watch(() => idText(props.entry), (id) => {
+  idDraft.value = id
+})
+
+const idError = computed(() => validateNewId(idDraft.value, props.otherIds, noun.value))
+
+const onIdInput = (value) => {
+  idDraft.value = value
+  latest.value = { ...latest.value, id: value }
+  emit('change', latest.value)
+}
+
 const formConfiguration = { showUnfocusedDescription: true }
-const onChange = (event) => emit('change', event.data)
+const onChange = (event) => {
+  latest.value = event.data
+  emit('change', event.data)
+}
 </script>
 
 <template>
@@ -108,10 +141,24 @@ const onChange = (event) => emit('change', event.data)
       <h3
         data-test="entry-title"
         class="min-w-0 break-all md-headline-small text-on-surface"
+        :class="idText(entry) ? '' : 'italic'"
       >
-        {{ entry.id }}
+        {{ headline }}
       </h3>
     </header>
+
+    <MdTextField
+      id="entry-detail-id"
+      label="Id"
+      variant="outlined"
+      autocomplete="off"
+      required
+      :model-value="idDraft"
+      supporting-text="Letters, digits, dots, underscores and hyphens. The address follows the id."
+      :error="Boolean(idError)"
+      :error-text="idError"
+      @update:model-value="onIdInput"
+    />
 
     <JsonForms
       :key="id"
@@ -160,7 +207,7 @@ const onChange = (event) => emit('change', event.data)
     </section>
 
     <DeleteEntryDialog
-      :id="entry.id"
+      :id="idText(entry) || 'unnamed'"
       v-model="deleteOpen"
       @confirm="emit('delete')"
     />
