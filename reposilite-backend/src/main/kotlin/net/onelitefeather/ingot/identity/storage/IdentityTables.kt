@@ -62,6 +62,30 @@ object TeamGrantTable : IntIdTable("team_grant") {
     val role = varchar("role", 32)
 }
 
+/**
+ * Permission nodes of a principal (`USER` or `MACHINE`) or of a team (`TEAM`). The subject is not a foreign key, because
+ * it names one of two tables; the store removes the rows of a subject together with the subject.
+ */
+object PermissionNodeTable : IntIdTable("permission_node") {
+    val subjectKind = varchar("subject_kind", 16)
+    val subjectId = integer("subject_id")
+    val node = varchar("node", 512)
+    val allowed = bool("allowed")
+    val createdAt = timestamp("created_at")
+
+    init {
+        uniqueIndex("uq_permission_node_subject", subjectKind, subjectId, node)
+    }
+}
+
+/** Inheritance between teams: the team inherits the nodes and grants of each parent. */
+object TeamParentTable : Table("team_parent") {
+    val teamId = reference("team_id", TeamTable, onDelete = CASCADE).index()
+    val parentTeamId = reference("parent_team_id", TeamTable, onDelete = CASCADE).index()
+
+    override val primaryKey = PrimaryKey(teamId, parentTeamId)
+}
+
 object InstanceRoleTable : IntIdTable("instance_role") {
     val principalId = reference("principal_id", PrincipalTable, onDelete = CASCADE).nullable().index()
     val teamId = reference("team_id", TeamTable, onDelete = CASCADE).nullable().index()
@@ -100,6 +124,8 @@ internal val IDENTITY_TABLES: Array<Table> = arrayOf(
     TeamMemberTable,
     TeamGrantTable,
     InstanceRoleTable,
+    PermissionNodeTable,
+    TeamParentTable,
     PrincipalTokenTable,
     LocalCredentialTable,
     RefreshTokenTable,

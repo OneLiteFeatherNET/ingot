@@ -26,6 +26,8 @@ import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.GrantRecord
 import net.onelitefeather.ingot.identity.model.INSTANCE_ADMIN_ROLE
 import net.onelitefeather.ingot.identity.model.MembershipRecord
+import net.onelitefeather.ingot.identity.model.NODE_SUBJECT_TEAM
+import net.onelitefeather.ingot.identity.model.NodeRule
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.model.Role
@@ -148,6 +150,9 @@ class IdentityStore(
             findTeamRowIdsByKey(foldName(privateTeamName(principal.name))).forEach { deleteTeamRows(it) }
             InstanceRoleTable.deleteWhere { InstanceRoleTable.principalId eq principal.id }
             TeamMemberTable.deleteWhere { TeamMemberTable.principalId eq principal.id }
+            PermissionNodeTable.deleteWhere {
+                (PermissionNodeTable.subjectKind eq principal.kind.name) and (PermissionNodeTable.subjectId eq principal.id)
+            }
             PrincipalTokenTable.deleteWhere { PrincipalTokenTable.principalId eq principal.id }
             // The password and the browser sessions of a user go in the same transaction. Deleting the refresh tokens also
             // ends the sessions: a session token is refused as soon as its principal is gone, and no refresh token is left
@@ -470,6 +475,69 @@ class IdentityStore(
                 .toSet()
         }
 
+    // permission nodes
+
+    /** The node rules of one subject, in node order. [subjectKind] is a [PrincipalKind] name or [NODE_SUBJECT_TEAM]. */
+    fun listNodes(subjectKind: String, subjectId: Int): List<NodeRule> =
+        transaction(database) {
+            PermissionNodeTable.selectAll()
+                .where { (PermissionNodeTable.subjectKind eq subjectKind) and (PermissionNodeTable.subjectId eq subjectId) }
+                .map { NodeRule(it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) }
+                .sortedBy { it.node }
+        }
+
+    /** The node rules of every subject of one kind, read in one query. Subjects without rules are absent. */
+    fun listAllNodes(subjectKind: String): Map<Int, List<NodeRule>> =
+        transaction(database) {
+            PermissionNodeTable.selectAll()
+                .where { PermissionNodeTable.subjectKind eq subjectKind }
+                .groupBy { it[PermissionNodeTable.subjectId] }
+                .mapValues { (_, rows) -> rows.map { NodeRule(it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) }.sortedBy { it.node } }
+        }
+
+    /** Replaces every node rule of the subject in one transaction. The caller has checked the rules and their uniqueness. */
+    fun replaceNodes(subjectKind: String, subjectId: Int, rules: List<NodeRule>) {
+        transaction(database) {
+            PermissionNodeTable.deleteWhere { (PermissionNodeTable.subjectKind eq subjectKind) and (PermissionNodeTable.subjectId eq subjectId) }
+            val createdAt = now()
+            rules.forEach { rule ->
+                PermissionNodeTable.insert {
+                    it[PermissionNodeTable.subjectKind] = subjectKind
+                    it[PermissionNodeTable.subjectId] = subjectId
+                    it[PermissionNodeTable.node] = rule.node
+                    it[PermissionNodeTable.allowed] = rule.allowed
+                    it[PermissionNodeTable.createdAt] = createdAt
+                }
+            }
+        }
+    }
+
+    /** The parents of a team. */
+    fun listParents(teamId: Int): Set<Int> =
+        transaction(database) {
+            TeamParentTable.selectAll().where { TeamParentTable.teamId eq teamId }.map { it[TeamParentTable.parentTeamId].value }.toSet()
+        }
+
+    /** The parents of every team that has any, read in one query. */
+    fun listAllParents(): Map<Int, Set<Int>> =
+        transaction(database) {
+            TeamParentTable.selectAll().groupBy { it[TeamParentTable.teamId].value }
+                .mapValues { (_, rows) -> rows.map { it[TeamParentTable.parentTeamId].value }.toSet() }
+        }
+
+    /** Replaces the parents of the team in one transaction. */
+    fun replaceParents(teamId: Int, parentIds: Set<Int>) {
+        transaction(database) {
+            TeamParentTable.deleteWhere { TeamParentTable.teamId eq teamId }
+            parentIds.forEach { parentId ->
+                TeamParentTable.insert {
+                    it[TeamParentTable.teamId] = EntityID(teamId, TeamTable)
+                    it[TeamParentTable.parentTeamId] = EntityID(parentId, TeamTable)
+                }
+            }
+        }
+    }
+
     // effective access
 
     /**
@@ -525,6 +593,8 @@ class IdentityStore(
 
     private fun deleteTeamRows(teamId: Int) {
         TeamGrantTable.deleteWhere { TeamGrantTable.teamId eq teamId }
+        PermissionNodeTable.deleteWhere { (PermissionNodeTable.subjectKind eq NODE_SUBJECT_TEAM) and (PermissionNodeTable.subjectId eq teamId) }
+        TeamParentTable.deleteWhere { (TeamParentTable.teamId eq teamId) or (TeamParentTable.parentTeamId eq teamId) }
         TeamMemberTable.deleteWhere { TeamMemberTable.teamId eq teamId }
         InstanceRoleTable.deleteWhere { InstanceRoleTable.teamId eq teamId }
         TeamTable.deleteWhere { TeamTable.id eq teamId }

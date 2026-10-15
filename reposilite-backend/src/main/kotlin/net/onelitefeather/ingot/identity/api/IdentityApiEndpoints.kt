@@ -364,6 +364,114 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         }
     }
 
+    @OpenApi(
+        path = "/api/identity/principals/{name}/nodes",
+        tags = ["Identity"],
+        summary = "Returns the permission nodes of a principal, with its entity tag. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
+        methods = [HttpMethod.GET],
+    )
+    val getPrincipalNodes = ReposiliteRoute<NodeListDto>("/api/identity/principals/{name}/nodes", GET) {
+        managerOnly {
+            response = identity.principalNodes(requireParameter("name"))
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    NodeListDto(snapshot.value)
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/principals/{name}/nodes",
+        tags = ["Identity"],
+        summary = "Replaces the whole permission node list of a principal. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
+        requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceNodesRequest::class)], required = true),
+        methods = [HttpMethod.PUT],
+    )
+    val replacePrincipalNodes = ReposiliteRoute<NodeListDto>("/api/identity/principals/{name}/nodes", PUT) {
+        managerOnly {
+            response = readBody<ReplaceNodesRequest>()
+                .flatMap { request -> identity.replacePrincipalNodes(requireParameter("name"), request.nodes, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    NodeListDto(snapshot.value)
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/teams/{name}/nodes",
+        tags = ["Identity"],
+        summary = "Returns the permission nodes of a team, with its entity tag. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
+        methods = [HttpMethod.GET],
+    )
+    val getTeamNodes = ReposiliteRoute<NodeListDto>("/api/identity/teams/{name}/nodes", GET) {
+        managerOnly {
+            response = identity.teamNodes(requireParameter("name"))
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    NodeListDto(snapshot.value)
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/teams/{name}/nodes",
+        tags = ["Identity"],
+        summary = "Replaces the whole permission node list of a team. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
+        requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceNodesRequest::class)], required = true),
+        methods = [HttpMethod.PUT],
+    )
+    val replaceTeamNodes = ReposiliteRoute<NodeListDto>("/api/identity/teams/{name}/nodes", PUT) {
+        managerOnly {
+            response = readBody<ReplaceNodesRequest>()
+                .flatMap { request -> identity.replaceTeamNodes(requireParameter("name"), request.nodes, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    NodeListDto(snapshot.value)
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/teams/{name}/parents",
+        tags = ["Identity"],
+        summary = "Returns the parent teams of a team, with its entity tag. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
+        methods = [HttpMethod.GET],
+    )
+    val getTeamParents = ReposiliteRoute<ParentListDto>("/api/identity/teams/{name}/parents", GET) {
+        managerOnly {
+            response = identity.teamParents(requireParameter("name"))
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    ParentListDto(snapshot.value)
+                }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/identity/teams/{name}/parents",
+        tags = ["Identity"],
+        summary = "Replaces the parent teams of a team. A cycle or a depth above 8 levels is refused with 409. Note: Requires Manager",
+        pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
+        requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceParentsRequest::class)], required = true),
+        methods = [HttpMethod.PUT],
+    )
+    val replaceTeamParents = ReposiliteRoute<ParentListDto>("/api/identity/teams/{name}/parents", PUT) {
+        managerOnly {
+            response = readBody<ReplaceParentsRequest>()
+                .flatMap { request -> identity.replaceTeamParents(requireParameter("name"), request.parents, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .map { snapshot ->
+                    ctx.header(Header.ETAG, snapshot.etag)
+                    ParentListDto(snapshot.value)
+                }
+        }
+    }
+
     /** Reads the request body, answering 400 when it cannot be read. */
     private inline fun <reified B : Any> ContextDsl<*>.readBody(): Result<B, ErrorResponse> =
         supplyThrowing { ctx.bodyAsClass<B>() }.mapErr { badRequest("Failed to read body") }
@@ -374,6 +482,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         listTeams, createTeam, getTeam, updateTeam, deleteTeam, replaceMembers, replaceGrants,
         grantPrincipalInstanceAdmin, revokePrincipalInstanceAdmin, grantTeamInstanceAdmin, revokeTeamInstanceAdmin,
         repositoryAccess,
+        getPrincipalNodes, replacePrincipalNodes, getTeamNodes, replaceTeamNodes, getTeamParents, replaceTeamParents,
     )
 
 }

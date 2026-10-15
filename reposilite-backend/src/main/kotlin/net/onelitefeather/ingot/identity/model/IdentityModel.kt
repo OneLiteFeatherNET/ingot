@@ -88,6 +88,15 @@ data class GrantRecord(
     val role: Role,
 )
 
+/** A stored permission node: the node as written and whether it allows (true) or denies (false). */
+data class NodeRule(
+    val node: String,
+    val allowed: Boolean,
+)
+
+/** Subject kinds of permission nodes. Principals use their [PrincipalKind] name, teams use [NODE_SUBJECT_TEAM]. */
+const val NODE_SUBJECT_TEAM: String = "TEAM"
+
 data class TokenRecord(
     val id: Int,
     val principalId: Int,

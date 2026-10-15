@@ -47,4 +47,5 @@ enum class AuditAction {
     SETUP_COMPLETED,
     PASSWORD_CHANGED,
     PASSWORD_RESET,
+    NODES_CHANGED,
 }

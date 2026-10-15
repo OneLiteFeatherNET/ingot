@@ -27,6 +27,7 @@ import com.reposilite.audit.api.AuditAction.TEAM_CREATED
 import com.reposilite.audit.api.AuditAction.TEAM_DELETED
 import com.reposilite.audit.api.AuditAction.TEAM_GRANTS_CHANGED
 import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
+import com.reposilite.audit.api.AuditAction.NODES_CHANGED
 import com.reposilite.audit.api.AuditAction.TEAM_UPDATED
 import com.reposilite.audit.api.AuditAction.TOKEN_CREATED
 import com.reposilite.audit.api.AuditAction.TOKEN_DELETED
@@ -52,6 +53,7 @@ import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import net.onelitefeather.ingot.identity.api.GrantDto
 import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.MemberDto
+import net.onelitefeather.ingot.identity.api.NodeDto
 import net.onelitefeather.ingot.identity.api.PrincipalDetailDto
 import net.onelitefeather.ingot.identity.api.PrincipalDto
 import net.onelitefeather.ingot.identity.api.PrincipalSummaryDto
@@ -61,11 +63,16 @@ import net.onelitefeather.ingot.identity.api.TeamDto
 import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.api.UpdatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.UpdateTeamRequest
+import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
+import net.onelitefeather.ingot.identity.evaluation.TeamHierarchy
 import net.onelitefeather.ingot.identity.login.BearerSecret
 import net.onelitefeather.ingot.identity.login.LocalLoginProvider
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
+import net.onelitefeather.ingot.identity.model.NODE_SUBJECT_TEAM
+import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.identity.model.NodeRule
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.model.privateTeamName
@@ -443,6 +450,99 @@ class IdentityFacade(
         return snapshotOf(team).asSuccess()
     }
 
+    // permission nodes
+
+    /** The node list of a principal, with the entity tag of the principal it was read from. */
+    fun principalNodes(name: String): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
+        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
+        return snapshotOf(principal).let { IdentitySnapshot(it.value.nodes, it.etag) }.asSuccess()
+    }
+
+    /** Replaces the whole node list of a principal. A list that changes nothing writes nothing and records no event. */
+    fun replacePrincipalNodes(
+        name: String,
+        nodes: List<NodeDto>?,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
+        val principal = principalNamed(name) ?: return notFoundError("Principal not found")
+        if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
+        return parseNodes(nodes).flatMap { rules ->
+            replaceNodeRules(principal.kind.name, principal.id, rules, principal.name, actor, subjectKey = "principal", kind = principal.kind.name)
+            principalNodes(name)
+        }
+    }
+
+    fun teamNodes(name: String): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
+        val team = publicTeam(name) ?: return notFoundError("Team not found")
+        return snapshotOf(team).let { IdentitySnapshot(it.value.nodes, it.etag) }.asSuccess()
+    }
+
+    /** Replaces the whole node list of a team. Every principal below the team loses its cached credentials. */
+    fun replaceTeamNodes(
+        name: String,
+        nodes: List<NodeDto>?,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
+        val team = publicTeam(name) ?: return notFoundError("Team not found")
+        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+        return parseNodes(nodes).flatMap { rules ->
+            replaceNodeRules(NODE_SUBJECT_TEAM, team.id, rules, team.name, actor, subjectKey = "team", kind = null)
+            teamNodes(name)
+        }
+    }
+
+    fun teamParents(name: String): IdentityResult<IdentitySnapshot<List<String>>> {
+        val team = publicTeam(name) ?: return notFoundError("Team not found")
+        return snapshotOf(team).let { IdentitySnapshot(it.value.parents, it.etag) }.asSuccess()
+    }
+
+    /**
+     * Replaces the parents of a team. Parents must be existing, non-private teams. A change that makes a cycle, or a chain
+     * of inheritance deeper than [TeamHierarchy.MAX_DEPTH], is refused with 409 and stores nothing.
+     */
+    fun replaceTeamParents(
+        name: String,
+        parents: List<String>?,
+        ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+    ): IdentityResult<IdentitySnapshot<List<String>>> {
+        val team = publicTeam(name) ?: return notFoundError("Team not found")
+        if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+        if (parents == null) return badRequestError("Parents are required, send an empty list to remove all parents")
+        val duplicates = parents.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+        if (duplicates.isNotEmpty()) return badRequestError("Parents listed twice: ${duplicates.sorted().joinToString()}")
+
+        val parentTeams = parents.map { parentName ->
+            publicTeam(parentName) ?: return badRequestError("Unknown team '$parentName' as parent, parents must be existing teams")
+        }
+        val graph = store.listAllParents().toMutableMap()
+        graph[team.id] = parentTeams.map { it.id }.toSet()
+        when (val problem = TeamHierarchy.problemOf(graph)) {
+            null -> Unit
+            is HierarchyProblem.Cycle -> return errorResponse(
+                CONFLICT,
+                "Inheritance of '${teamNameOf(problem.teamId)}' would form a cycle: a team cannot inherit from itself, directly or through its parents",
+            )
+            is HierarchyProblem.TooDeep -> return errorResponse(
+                CONFLICT,
+                "Inheritance of '${teamNameOf(problem.teamId)}' would be ${problem.depth} levels deep, the limit is ${TeamHierarchy.MAX_DEPTH} levels",
+            )
+        }
+
+        val before = parentNamesOf(team)
+        store.replaceParents(team.id, parentTeams.map { it.id }.toSet())
+        invalidateAllTokens()
+        val after = parentTeams.map { it.name }.toSet()
+        val added = (after - before).sorted()
+        val removed = (before - after).sorted()
+        if (added.isNotEmpty() || removed.isNotEmpty()) {
+            audit(TEAM_UPDATED, actor, mapOf("team" to team.name, "changed" to listOf("parents"), "added" to added, "removed" to removed))
+        }
+        return teamParents(name)
+    }
+
     // access explanation
 
     /**
@@ -490,6 +590,52 @@ class IdentityFacade(
 
     private fun publicTeam(name: String): TeamRecord? =
         store.findTeam(name)?.takeUnless { it.isPrivate }
+
+    /** Validates a node list. Every problem is listed, so the operator fixes them in one round. */
+    private fun parseNodes(nodes: List<NodeDto>?): IdentityResult<List<NodeRule>> {
+        if (nodes == null) return badRequestError("Nodes are required, send an empty list to remove all nodes")
+        val problems = nodes.mapNotNull { NodePattern.problemOf(it.node) }
+        if (problems.isNotEmpty()) return badRequestError("Invalid permission nodes: ${problems.joinToString("; ")}")
+        val duplicates = nodes.groupingBy { it.node }.eachCount().filterValues { it > 1 }.keys
+        if (duplicates.isNotEmpty()) return badRequestError("Nodes listed twice: ${duplicates.sorted().joinToString()}")
+        return nodes.map { NodeRule(it.node, it.allowed) }.asSuccess()
+    }
+
+    private fun replaceNodeRules(
+        subjectKind: String,
+        subjectId: Int,
+        rules: List<NodeRule>,
+        subjectName: String,
+        actor: AuditActor,
+        subjectKey: String,
+        kind: String?,
+    ) {
+        val before = store.listNodes(subjectKind, subjectId).map(::describeRule).toSet()
+        val after = rules.map(::describeRule).toSet()
+        if (before == after) return
+        store.replaceNodes(subjectKind, subjectId, rules)
+        invalidateAllTokens()
+        val details = mutableMapOf<String, Any?>(
+            subjectKey to subjectName,
+            "added" to (after - before).sorted(),
+            "removed" to (before - after).sorted(),
+        )
+        kind?.let { details["kind"] = it }
+        audit(NODES_CHANGED, actor, details)
+    }
+
+    private fun describeRule(rule: NodeRule): String =
+        "${rule.node}=${if (rule.allowed) "allowed" else "denied"}"
+
+    private fun parentNamesOf(team: TeamRecord): Set<String> =
+        store.listParents(team.id).mapNotNull { store.findTeamById(it)?.name }.toSet()
+
+    private fun teamNameOf(teamId: Int): String =
+        store.findTeamById(teamId)?.name ?: "team #$teamId"
+
+    private fun invalidateAllTokens() {
+        store.listPrincipals().forEach { invalidateTokensOf(it) }
+    }
 
     private fun invalidateTokensOf(principal: PrincipalRecord) {
         store.tokensOf(principal.id).forEach { accessTokens.tokenStateChanged(it.name) }
@@ -627,7 +773,8 @@ class IdentityFacade(
     private fun principalDetail(principal: PrincipalRecord): PrincipalDetailDto {
         val teams = store.membershipsOf(principal.id).mapNotNull { store.findTeamById(it.teamId)?.name }.sorted()
         val tokens = store.tokensOf(principal.id).map { it.toDto() }
-        return PrincipalDetailDto(principal.toDto(), teams, store.hasDirectInstanceRole(principal.id), tokens)
+        val nodes = store.listNodes(principal.kind.name, principal.id).map { NodeDto(it.node, it.allowed) }
+        return PrincipalDetailDto(principal.toDto(), teams, store.hasDirectInstanceRole(principal.id), tokens, nodes)
     }
 
     /**
@@ -643,6 +790,7 @@ class IdentityFacade(
             "teams" to detail.teams,
             "instanceRole" to detail.instanceRole,
             "tokens" to detail.tokens.map { listOf(it.name, it.description, it.createdAt.toString(), it.expiresAt?.toString(), it.scopes) },
+            "nodes" to detail.nodes.map { listOf(it.node, it.allowed) },
         )
         return IdentitySnapshot(detail, entityTags.of(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(fingerprint)))
     }
@@ -662,6 +810,8 @@ class IdentityFacade(
             members = members,
             grants = grants,
             instanceRole = store.listInstanceRoleTeamIds().contains(team.id),
+            nodes = store.listNodes(NODE_SUBJECT_TEAM, team.id).map { NodeDto(it.node, it.allowed) },
+            parents = parentNamesOf(team).sorted(),
         )
         return IdentitySnapshot(detail, entityTags.of(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(detail)))
     }

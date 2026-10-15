@@ -56,6 +56,7 @@ data class PrincipalDetailDto(
     val teams: List<String>,
     val instanceRole: Boolean,
     val tokens: List<TokenDto>,
+    val nodes: List<NodeDto> = emptyList(),
 )
 
 data class TokenDto(
@@ -90,6 +91,27 @@ data class TeamDetailDto(
     val members: List<MemberDto>,
     val grants: List<GrantDto>,
     val instanceRole: Boolean,
+    val nodes: List<NodeDto> = emptyList(),
+    val parents: List<String> = emptyList(),
+)
+
+/**
+ * A permission node and whether it allows (true) or denies (false) the subject. The string `-node` is only how a
+ * denial is displayed; it is never stored or sent.
+ */
+data class NodeDto(
+    val node: String,
+    val allowed: Boolean,
+)
+
+/** The node list of a principal or a team: the whole list, replaced as a whole on write. */
+data class NodeListDto(
+    val nodes: List<NodeDto>,
+)
+
+/** The parents of a team, by name. */
+data class ParentListDto(
+    val parents: List<String>,
 )
 
 data class MemberDto(
@@ -162,6 +184,14 @@ data class UpdateTeamRequest(
 
 data class ReplaceMembersRequest(
     val members: List<String>?,
+)
+
+data class ReplaceNodesRequest(
+    val nodes: List<NodeDto>?,
+)
+
+data class ReplaceParentsRequest(
+    val parents: List<String>?,
 )
 
 data class ReplaceGrantsRequest(
