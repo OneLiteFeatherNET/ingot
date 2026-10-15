@@ -31,6 +31,8 @@ import panda.std.Result
 class Repository internal constructor(
     val name: String,
     val visibility: RepositoryVisibility,
+    val description: String,
+    val tags: List<String>,
     val redeployment: Boolean,
     val preserveSnapshots: Boolean,
     val mirrorHosts: List<MirrorHost>,
