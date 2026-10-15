@@ -282,7 +282,7 @@ const validateDomain = (text, existing) => {
             label="Client secret"
             type="password"
             autocomplete="off"
-            supporting-text="A stored secret shows as ******** . Type a new value to replace it."
+            supporting-text="A stored secret shows as ********. Type a new value to replace it."
             :error="errorOf('clientSecret') !== ''"
             :error-text="errorOf('clientSecret')"
             required
