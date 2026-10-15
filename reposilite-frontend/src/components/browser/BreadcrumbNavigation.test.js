@@ -90,6 +90,22 @@ describe('BreadcrumbNavigation', () => {
     expect(linkTexts, 'the ancestors are still reachable').toEqual(expect.arrayContaining(['/', 'releases/', 'net/']))
   })
 
+  it('keeps a long directory name on one line with an ellipsis and its full name in the title', async () => {
+    const segment = '80-db1-bba-b9621f618-a-very-long-directory-name'
+    wrapper = await mountBreadcrumb(`/filled/${segment}`)
+    const current = wrapper.find('[aria-current="page"]')
+
+    expect(current.classes(), 'the long name is cut with an ellipsis, not wrapped or cut in the middle').toContain('truncate')
+    expect(current.attributes('title'), 'hovering the crumb shows the whole name').toBe(segment)
+  })
+
+  it('gives every ancestor crumb its full name as a title', async () => {
+    wrapper = await mountBreadcrumb('/releases/net/example')
+    const ancestors = wrapper.findAll('ol a')
+
+    expect(ancestors.map(link => link.attributes('title'))).toEqual(['/', 'releases', 'net'])
+  })
+
   it('resolves the parent control to the parent directory', async () => {
     wrapper = await mountBreadcrumb()
 
