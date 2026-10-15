@@ -70,7 +70,51 @@ const FAKE_API_PORT = Number(process.env.INGOT_FAKE_API_PORT) || 8887
 let uptime = 1000
 let memory = 20
 let threads = 10
-let failures = 0
+// Recorded failures as the server keeps them: newest first in the listing, each with the time it
+// happened stored as an age, so the timestamps stay recent however long the stub has been running.
+const FAILURE_STACK = (message, type, frames) =>
+  [`  by ${type}: ${message}`, ...frames.map(frame => `  at ${frame}`)].join("\n")
+
+let recordedFailures = [
+  {
+    id: 3,
+    ageMs: 2 * 60 * 1000,
+    source: "/api/maven/details/releases",
+    type: "IllegalStateException",
+    message: "Repository releases is not ready",
+    count: 1,
+    stacktrace: FAILURE_STACK("Repository releases is not ready", "IllegalStateException", [
+      "com.reposilite.maven.MavenFacade.details(MavenFacade.kt:118)",
+      "com.reposilite.maven.infrastructure.MavenEndpoints.details(MavenEndpoints.kt:64)",
+      "io.javalin.http.JavalinServlet.handle(JavalinServlet.kt:38)",
+    ]),
+  },
+  {
+    id: 2,
+    ageMs: 47 * 60 * 1000,
+    source: "/com/reposilite/private/example/1.0/example-1.0.jar",
+    type: "NullPointerException",
+    message: null,
+    count: 4,
+    stacktrace: FAILURE_STACK("null", "NullPointerException", [
+      "com.reposilite.storage.StorageProvider.read(StorageProvider.kt:27)",
+      "com.reposilite.maven.RepositoryProvider.resolve(RepositoryProvider.kt:81)",
+      "com.reposilite.maven.infrastructure.MavenEndpoints.findFile(MavenEndpoints.kt:37)",
+    ]),
+  },
+  {
+    id: 1,
+    ageMs: 26 * 60 * 60 * 1000,
+    source: "S3 Storage Provider failed with IO Exception",
+    type: "SdkClientException",
+    message: "Unable to execute HTTP request: Connection refused",
+    count: 1,
+    stacktrace: FAILURE_STACK("Unable to execute HTTP request: Connection refused", "SdkClientException", [
+      "software.amazon.awssdk.core.exception.SdkClientException.create(SdkClientException.java:44)",
+      "com.reposilite.storage.s3.S3StorageProvider.write(S3StorageProvider.kt:121)",
+    ]),
+  },
+]
 
 const todayLocalDate = () => {
   const now = new Date()
@@ -402,7 +446,7 @@ application
           maxMemory: MAX_MEMORY_MB,
           usedThreads: threads,
           maxThreads: MAX_THREADS,
-          failuresCount: failures
+          failuresCount: recordedFailures.length
         })
       },
       () => invalidCredentials(res)
@@ -413,6 +457,55 @@ application
       req,
       () => {
         res.send(snapshots)
+      },
+      () => invalidCredentials(res)
+    )
+  })
+  .get("/api/status/failures", (req, res) => {
+    authorized(
+      req,
+      () => {
+        res.send({
+          failures: [...recordedFailures]
+            .sort((a, b) => a.ageMs - b.ageMs)
+            .map(({ id, ageMs, source, type, message, count, stacktrace }) => ({
+              id,
+              timestamp: new Date(Date.now() - ageMs).toISOString(),
+              source,
+              type,
+              message,
+              stacktrace,
+              count,
+            })),
+        })
+      },
+      () => invalidCredentials(res)
+    )
+  })
+  .delete("/api/status/failures", (req, res) => {
+    authorized(
+      req,
+      () => {
+        recordedFailures = []
+        res.send({})
+      },
+      () => invalidCredentials(res)
+    )
+  })
+  // Public, like the real endpoint: the dashboard reads it without credentials.
+  .get("/api/status/health", (req, res) => {
+    res.send({ status: "UP" })
+  })
+  // Stands in for the Swagger UI plugin, which serves its page at /swagger.
+  .get("/swagger", (req, res) => {
+    res.type("html").send('<!doctype html><html><head><title>Ingot API</title></head><body><div id="swagger-ui"></div></body></html>')
+  })
+  // Stands in for the Prometheus plugin, which answers 401 to anonymous scrapes.
+  .get("/metrics", (req, res) => {
+    authorized(
+      req,
+      () => {
+        res.type("text/plain").send(`# TYPE ingot_failures_recorded gauge\ningot_failures_recorded ${recordedFailures.length}\n`)
       },
       () => invalidCredentials(res)
     )

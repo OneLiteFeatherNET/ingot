@@ -20,6 +20,8 @@ import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import FailuresSheet from './FailuresSheet.vue'
+import InstanceHealthRow from './InstanceHealthRow.vue'
 import StatTile from './StatTile.vue'
 
 // Five seconds, where this used to ask once a second. Memory, threads and uptime do not
@@ -122,6 +124,14 @@ const failures = computed(() => {
     ? { status: 'good', label: 'None recorded' }
     : { status: 'critical', label: count === 1 ? '1 failure recorded' : `${count} failures recorded` }
 })
+
+// The tile opens the list only when there is something in it. An empty tile has no action, so it
+// is not announced as a button either.
+const failuresOpen = ref(false)
+const hasFailures = computed(() => instanceStatus.value?.failuresCount > 0)
+const openFailures = () => {
+  if (hasFailures.value) failuresOpen.value = true
+}
 </script>
 
 <template>
@@ -169,37 +179,53 @@ const failures = computed(() => {
 
   <div
     v-else
-    class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+    class="flex flex-col gap-3"
   >
-    <StatTile
-      label="Used memory"
-      :value="memory.value"
-      :detail="memory.detail"
-      :ratio="memory.ratio"
-    />
-    <StatTile
-      label="Used threads"
-      :value="threads.value"
-      :detail="threads.detail"
-      :ratio="threads.ratio"
-    />
-    <StatTile
-      label="Failures"
-      :value="`${instanceStatus.failuresCount}`"
-      :status="failures.status"
-      :status-label="failures.label"
-    />
-    <StatTile
-      label="Uptime"
-      :value="prettyUptime(instanceStatus.uptime)"
-      detail="Since the last restart"
-    />
-    <StatTile
-      label="Version"
-      :value="instanceStatus.version"
-      :status="versionState.status"
-      :status-label="versionState.label"
-      link="https://github.com/OneLiteFeatherNET/ingot/releases"
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <StatTile
+        label="Used memory"
+        :value="memory.value"
+        :detail="memory.detail"
+        :ratio="memory.ratio"
+      />
+      <StatTile
+        label="Used threads"
+        :value="threads.value"
+        :detail="threads.detail"
+        :ratio="threads.ratio"
+      />
+      <StatTile
+        label="Failures"
+        :value="`${instanceStatus.failuresCount}`"
+        :status="failures.status"
+        :status-label="failures.label"
+        :role="hasFailures ? 'button' : undefined"
+        :tabindex="hasFailures ? 0 : undefined"
+        :aria-haspopup="hasFailures ? 'dialog' : undefined"
+        :aria-label="hasFailures ? `Failures: ${instanceStatus.failuresCount} recorded. Show details` : undefined"
+        :class="hasFailures ? 'cursor-pointer hover:border-outline md-focus-ring' : undefined"
+        @click="openFailures"
+        @keydown.enter.prevent="openFailures"
+        @keydown.space.prevent="openFailures"
+      />
+      <StatTile
+        label="Uptime"
+        :value="prettyUptime(instanceStatus.uptime)"
+        detail="Since the last restart"
+      />
+      <StatTile
+        label="Version"
+        :value="instanceStatus.version"
+        :status="versionState.status"
+        :status-label="versionState.label"
+        link="https://github.com/OneLiteFeatherNET/ingot/releases"
+      />
+    </div>
+
+    <InstanceHealthRow />
+    <FailuresSheet
+      v-model="failuresOpen"
+      @cleared="requestStatus()"
     />
   </div>
 </template>

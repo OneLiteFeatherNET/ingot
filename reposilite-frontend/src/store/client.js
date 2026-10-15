@@ -82,7 +82,31 @@ const createClient = (defaultName, defaultSecret) => {
       },
       snapshots() {
         return get("/api/status/snapshots")
-      }
+      },
+      failures() {
+        return get("/api/status/failures")
+      },
+      clearFailures() {
+        return axios.delete(createURL("/api/status/failures"), {
+          ...defaultAuthorization(),
+        })
+      },
+      health() {
+        return get("/api/status/health")
+      },
+      // Anonymous on purpose: an integration is probed the way a stranger would reach it, and a
+      // 401 or 404 is an answer rather than an error. The reply is cut down to what the probe reads.
+      probe(endpoint) {
+        return axios.get(createURL(endpoint), { validateStatus: () => true, responseType: "text" })
+          .then(response => ({
+            status: response.status,
+            contentType: response.headers?.["content-type"] ?? "",
+            body: typeof response.data === "string" ? response.data.slice(0, 16384) : "",
+          }))
+      },
+      url(endpoint) {
+        return createURL(endpoint)
+      },
     },
     statistics: {
       allResolved() {

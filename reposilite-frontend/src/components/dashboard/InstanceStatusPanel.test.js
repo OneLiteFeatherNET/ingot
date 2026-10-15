@@ -36,8 +36,18 @@ const INSTANCE = {
   failuresCount: 0
 }
 
+// The health row and the failures sheet are part of the panel, so their requests are answered
+// here too. Nothing in these tests depends on what they say.
 const clientWith = (instance) => ({
-  status: { instance, snapshots: vi.fn() }
+  status: {
+    instance,
+    snapshots: vi.fn(),
+    health: vi.fn(() => Promise.resolve({ status: 200, data: { status: 'UP' } })),
+    probe: vi.fn(() => Promise.resolve({ status: 404, contentType: '', body: '' })),
+    url: (endpoint) => endpoint,
+    failures: vi.fn(() => Promise.resolve({ data: { failures: [] } })),
+    clearFailures: vi.fn(() => Promise.resolve({}))
+  }
 })
 
 describe('InstanceStatusPanel', () => {
@@ -77,6 +87,38 @@ describe('InstanceStatusPanel', () => {
 
     expect(instance, 'retry should send a second status request').toHaveBeenCalledTimes(2)
     expect(wrapper.text(), 'a successful retry should replace the error with the tiles').toContain('Used memory')
+    wrapper.unmount()
+  })
+
+  it('opens the failures sheet from the failures tile when failures are recorded', async () => {
+    const failure = {
+      id: 1,
+      timestamp: '2026-10-15T11:58:00Z',
+      source: '/api/maven/details',
+      type: 'IllegalStateException',
+      message: 'repository is broken',
+      stacktrace: '  by IllegalStateException: repository is broken',
+      count: 1
+    }
+    const client = clientWith(() => Promise.resolve({ data: { ...INSTANCE, failuresCount: 1 } }))
+    client.status.failures = vi.fn(() => Promise.resolve({ data: { failures: [failure] } }))
+    session.client = ref(client)
+    const wrapper = mount(InstanceStatusPanel, { attachTo: document.body })
+    await flushPromises()
+
+    await wrapper.find('[aria-haspopup="dialog"]').trigger('click')
+    await flushPromises()
+
+    expect(document.querySelector('[role="dialog"]')?.textContent, 'the tile opens the list of failures').toContain('Recorded failures')
+    wrapper.unmount()
+  })
+
+  it('leaves the failures tile without any action when nothing has failed', async () => {
+    session.client = ref(clientWith(() => Promise.resolve({ data: { ...INSTANCE, failuresCount: 0 } })))
+    const wrapper = mount(InstanceStatusPanel)
+    await flushPromises()
+
+    expect(wrapper.find('[aria-haspopup="dialog"]').exists(), 'an empty tile has nothing to open').toBe(false)
     wrapper.unmount()
   })
 })
