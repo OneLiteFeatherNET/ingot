@@ -329,6 +329,7 @@ testing {
                     systemProperty("ingot.image", providers.systemProperty("ingot.image").getOrElse("ingot:ci"))
                     systemProperty("ingot.dashboard.image", providers.systemProperty("ingot.dashboard.image").getOrElse("ingot-dashboard:ci"))
                     systemProperty("ingot.upstream.image", providers.systemProperty("ingot.upstream.image").getOrElse("dzikoysk/reposilite:3.5.28"))
+                    systemProperty("ingot.previous.image", providers.systemProperty("ingot.previous.image").getOrElse("ghcr.io/onelitefeathernet/ingot:1.1.0"))
 
                     // One container at a time, and several of them per test. Running the
                     // classes in parallel would just contend for the same Docker daemon.
