@@ -19,7 +19,8 @@ import { computed, inject, nextTick, reactive, ref, shallowRef, unref, watch } f
 import { useRouter } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
-import { tokenStoreKey, useTokens } from '../../store/tokens'
+import { useSession } from '../../store/session'
+import { errorMessage } from '../../helpers/toast'
 import usePlaceholders from '../../store/placeholders'
 import MdButton from '../md/MdButton.vue'
 import MdCheckbox from '../md/MdCheckbox.vue'
@@ -30,21 +31,27 @@ import CopiedIcon from '../icons/CopiedIcon.vue'
 import CopyIcon from '../icons/CopyIcon.vue'
 import { copyToClipboard } from '../card/copySnippet'
 import { idText } from './collections'
+import { ROLES, roleExplanation } from '../access/accessTeams'
 import { SCRIM_STYLE } from './dialog'
+import { createAccessPorts } from './repositoryAccessPorts'
 import {
+  ACCESS_MODES,
+  MACHINE_SCOPES,
   STEPS,
   VISIBILITY_OPTIONS,
   buildActions,
   createProgress,
+  createdSoFar,
   emptyDraft,
   failureNote,
   firstInvalidStep,
+  machineNameOf,
+  newTeamNameOf,
   optionalFieldsOf,
   repositoryUrl,
   runActions,
   snippetsFor,
   summaryRows,
-  tokenNameOf,
   validateStep
 } from './repositoryWizard'
 
@@ -54,9 +61,11 @@ import {
  * stores. Full screen below 600px, a dialog of at most 560px above it.
  *
  * Nothing is written before Create. The create sequence runs one action at a time, and a failed
- * action keeps the ones before it: a saved repository is never saved again, and a created token is
- * never created again. The one-time token secret is shown on the success step, and the route
- * opens the repository only when the user presses Done, so the secret is not lost to a redirect.
+ * action keeps the ones before it: a saved repository is never saved again, and a created team or
+ * machine account is never created again. Nothing is rolled back; the failed step shows what exists.
+ * Access is given through a team (see repositoryAccessPorts.js). The one-time secret of the
+ * machine account's token is shown on the success step, and the route opens the repository only
+ * when the user presses Done, so the secret is not lost to a redirect.
  */
 
 const props = defineProps({
@@ -69,7 +78,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const configuration = inject(configurationStoreKey, null) ?? useConfiguration().store
-const tokenStore = inject(tokenStoreKey, null) ?? useTokens()
+const { client } = useSession()
 const router = useRouter()
 const { productionUrl } = usePlaceholders()
 
@@ -86,23 +95,8 @@ const STORAGE_OPTIONS = [
   }
 ]
 
-const ACCESS_OPTIONS = [
-  {
-    value: 'create',
-    label: 'Create a deploy token for this repository',
-    who: 'A new token that can read and write it. Its secret is shown once, after the repository is created.'
-  },
-  {
-    value: 'grant',
-    label: 'Grant an existing token',
-    who: 'Adds access to this repository to a token you already have.'
-  },
-  {
-    value: 'none',
-    label: 'Skip for now',
-    who: 'Create the repository without a token. Add access later from the tokens page.'
-  }
-]
+const ROLE_OPTIONS = ROLES.map(role => ({ value: role.value, label: role.label }))
+const SCOPE_OPTIONS = MACHINE_SCOPES.map(scope => ({ value: scope.value, label: scope.label }))
 
 const draft = reactive(emptyDraft())
 const stepIndex = ref(0)
@@ -120,14 +114,17 @@ const stepKey = computed(() => STEPS[stepIndex.value].key)
 const itemSchema = computed(() => configuration.schemas.value.maven?.properties?.repositories?.items)
 const optional = computed(() => optionalFieldsOf(itemSchema.value))
 const existingIds = computed(() => (configuration.configurations.value.maven?.repositories ?? []).map(idText))
-const tokens = computed(() => tokenStore.tokens.value)
-const context = computed(() => ({ existingIds: existingIds.value, tokens: tokens.value }))
+// The teams and the principals the access step offers and checks names against. Loaded when the step opens.
+const teams = ref([])
+const principals = ref([])
+const accessLoadError = ref('')
+const context = computed(() => ({ existingIds: existingIds.value, teams: teams.value, principals: principals.value }))
 const stepErrors = computed(() => validateStep(stepKey.value, draft, context.value))
 const shownErrors = computed(() => (attempted.value ? stepErrors.value : {}))
 const summary = computed(() => summaryRows(draft, { optional: optional.value }))
-const tokenOptions = computed(() => [
-  { value: '', label: 'Choose a token' },
-  ...tokens.value.map(token => ({ value: token.name, label: token.name }))
+const teamOptions = computed(() => [
+  { value: '', label: 'Choose a team' },
+  ...teams.value.map(team => ({ value: team.name, label: team.name }))
 ])
 // The labels of the actions the review shows before anything runs. The ports are never called for it.
 const planLabels = computed(() => buildActions(draft, { optional: optional.value }, {}).actions.map(action => action.label))
@@ -137,7 +134,7 @@ const unsavedNote = computed(() => {
 })
 const dismissable = computed(() => !running.value && !succeeded.value)
 
-// The only place the stores are touched. Each one throws on failure, which the runner reports per step.
+// The only place the stores and the identity client are touched. Each one throws on failure, which the runner reports per step.
 const ports = {
   addEntry: (entry) => configuration.addEntry('maven', 'repositories', entry),
   saveSettings: async () => {
@@ -149,21 +146,24 @@ const ports = {
       throw new Error(unref(configuration.saveError) || 'The settings were not saved.')
     }
   },
-  createToken: async (name) => {
-    const created = await tokenStore.createToken(name, { type: 'PERSISTENT' })
-    // The token store shows every new secret on the tokens page too. This wizard shows it, so it is dropped there.
-    tokenStore.dismissSecret()
-    return created.secret
-  },
-  grantRoute: async (name, route) => {
-    const findToken = () => tokenStore.tokens.value.find(token => token.name === name)
-    let token = findToken()
-    if (!token) {
-      await tokenStore.fetchTokens()
-      token = findToken()
-    }
-    if (!token) throw new Error(`The token ${name} was not found.`)
-    if (!(await tokenStore.saveRoute(token, route))) throw new Error(`The route ${route.path} was not saved.`)
+  createTeam: (name) => createAccessPorts(client.value.identity).createTeam(name),
+  grantTeam: (team, grant) => createAccessPorts(client.value.identity).grantTeam(team, grant),
+  createMachine: (name) => createAccessPorts(client.value.identity).createMachine(name),
+  addMachineToTeam: (team, machine) => createAccessPorts(client.value.identity).addMachineToTeam(team, machine),
+  createMachineToken: (machine, scopes) => createAccessPorts(client.value.identity).createMachineToken(machine, scopes)
+}
+
+const loadAccessData = async () => {
+  accessLoadError.value = ''
+  try {
+    const [teamList, principalList] = await Promise.all([
+      client.value.identity.teams.list(),
+      client.value.identity.principals.list()
+    ])
+    teams.value = teamList.data ?? []
+    principals.value = principalList.data ?? []
+  } catch (error) {
+    accessLoadError.value = errorMessage(error)
   }
 }
 
@@ -183,7 +183,7 @@ watch(() => props.modelValue, (open) => {
 })
 
 watch(stepKey, (key) => {
-  if (key === 'access' && !tokenStore.loaded.value) tokenStore.fetchTokens()
+  if (key === 'access') loadAccessData()
 })
 
 const focusHeading = () => nextTick(() => heading.value?.focus())
@@ -233,7 +233,8 @@ const stateText = (key) => ({
   failed: 'Failed'
 })[progress[key]?.state] ?? ''
 
-const failureFor = (key) => failureNote(key, plan.value?.mode)
+const failureFor = (key) => failureNote(key)
+const created = computed(() => (plan.value ? createdSoFar(plan.value.actions, progress) : []))
 
 const snippets = computed(() => {
   if (!succeeded.value || !plan.value) return null
@@ -500,10 +501,10 @@ const onModalUpdate = (open) => {
         >
           <fieldset class="flex flex-col gap-2">
             <legend class="pb-2 md-title-small text-on-surface">
-              Access for this repository
+              Who gets access to this repository
             </legend>
             <label
-              v-for="option in ACCESS_OPTIONS"
+              v-for="option in ACCESS_MODES"
               :key="option.value"
               class="md-state-layer relative flex cursor-pointer items-start gap-3 rounded-corner-medium border p-3"
               :class="draft.access.mode === option.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
@@ -522,57 +523,92 @@ const onModalUpdate = (open) => {
             </label>
           </fieldset>
 
+          <div
+            v-if="accessLoadError"
+            role="alert"
+            class="flex flex-wrap items-center gap-3"
+          >
+            <span class="md-body-medium text-error">Could not load the teams: {{ accessLoadError }}</span>
+            <MdButton
+              data-test="reload-access"
+              variant="text"
+              type="button"
+              @click="loadAccessData"
+            >
+              Retry
+            </MdButton>
+          </div>
+
+          <MdSelect
+            v-if="draft.access.mode === 'existing'"
+            id="wizard-team"
+            :model-value="draft.access.team"
+            label="Team"
+            :options="teamOptions"
+            :supporting-text="teams.length > 0 ? 'Everyone in the team gets the role below on this repository.' : 'There are no teams yet. Create a team for this repository instead.'"
+            :error="Boolean(shownErrors.team)"
+            :error-text="shownErrors.team ?? ''"
+            @update:model-value="draft.access.team = $event"
+          />
           <MdTextField
-            v-if="draft.access.mode === 'create'"
-            id="wizard-token-name"
-            :model-value="tokenNameOf(draft)"
-            label="Token name"
+            v-if="draft.access.mode === 'new'"
+            id="wizard-new-team"
+            :model-value="newTeamNameOf(draft)"
+            label="Team name"
             variant="outlined"
             autocomplete="off"
             supporting-text="Suggested from the repository id. Change it if you like."
-            :error="Boolean(shownErrors.tokenName)"
-            :error-text="shownErrors.tokenName ?? ''"
-            @update:model-value="draft.access.tokenName = $event"
+            :error="Boolean(shownErrors.newTeam)"
+            :error-text="shownErrors.newTeam ?? ''"
+            @update:model-value="draft.access.newTeam = $event"
           />
-          <MdSelect
-            v-if="draft.access.mode === 'grant'"
-            id="wizard-existing-token"
-            :model-value="draft.access.existingToken"
-            label="Token"
-            :options="tokenOptions"
-            :supporting-text="tokens.length > 0 ? 'The route is added to this token. Its other routes stay as they are.' : 'There are no tokens yet. Create one from the tokens page first, or pick another option.'"
-            :error="Boolean(shownErrors.existingToken)"
-            :error-text="shownErrors.existingToken ?? ''"
-            @update:model-value="draft.access.existingToken = $event"
-          />
-          <fieldset
-            v-if="draft.access.mode !== 'none'"
-            class="flex flex-col gap-2"
-          >
-            <legend class="pb-2 md-title-small text-on-surface">
-              Permissions on /{{ draft.basics.id }}
-            </legend>
-            <div class="flex flex-wrap gap-6">
+
+          <template v-if="draft.access.mode !== 'none'">
+            <MdSelect
+              id="wizard-role"
+              :model-value="draft.access.role"
+              label="Role"
+              :options="ROLE_OPTIONS"
+              :supporting-text="roleExplanation(draft.access.role)"
+              :error="Boolean(shownErrors.role)"
+              :error-text="shownErrors.role ?? ''"
+              @update:model-value="draft.access.role = $event"
+            />
+
+            <div class="flex flex-col gap-2">
               <MdCheckbox
-                id="wizard-read"
-                v-model="draft.access.read"
+                id="wizard-machine"
+                v-model="draft.access.machine"
               >
-                Read
+                Also create a machine account with a token
               </MdCheckbox>
-              <MdCheckbox
-                id="wizard-write"
-                v-model="draft.access.write"
-              >
-                Write
-              </MdCheckbox>
+              <p class="md-body-medium text-on-surface-variant">
+                For a build or a script that publishes here. The account joins the team above, because that is where its rights come from.
+              </p>
             </div>
-            <p
-              v-if="shownErrors.permissions"
-              class="md-body-small text-error"
-            >
-              {{ shownErrors.permissions }}
-            </p>
-          </fieldset>
+
+            <template v-if="draft.access.machine">
+              <MdTextField
+                id="wizard-machine-name"
+                :model-value="machineNameOf(draft)"
+                label="Machine account name"
+                variant="outlined"
+                autocomplete="off"
+                supporting-text="Suggested from the repository id. The token has the same name, which is the user name for a login."
+                :error="Boolean(shownErrors.machineName)"
+                :error-text="shownErrors.machineName ?? ''"
+                @update:model-value="draft.access.machineName = $event"
+              />
+              <MdSelect
+                id="wizard-machine-scope"
+                :model-value="draft.access.scope"
+                label="What the token may do"
+                :options="SCOPE_OPTIONS"
+                supporting-text="The token can never do more than the role of the team allows."
+                @update:model-value="draft.access.scope = $event"
+              />
+            </template>
+          </template>
         </div>
 
         <!-- Review, and the create sequence -->
@@ -649,6 +685,23 @@ const onModalUpdate = (open) => {
                   <p class="md-body-small text-on-surface-variant break-words">
                     {{ progress[action.key].error }}
                   </p>
+                  <div
+                    v-if="created.length > 0"
+                    data-test="created"
+                    class="flex flex-col gap-1"
+                  >
+                    <p class="md-label-large text-on-surface">
+                      Created so far
+                    </p>
+                    <ul class="m-0 flex list-disc flex-col gap-0.5 pl-5 md-body-small text-on-surface-variant">
+                      <li
+                        v-for="line in created"
+                        :key="line"
+                      >
+                        {{ line }}
+                      </li>
+                    </ul>
+                  </div>
                   <div>
                     <MdButton
                       data-test="retry"
@@ -705,16 +758,16 @@ const onModalUpdate = (open) => {
               </p>
             </section>
             <p
-              v-else-if="plan.mode === 'grant'"
+              v-else-if="plan.result.teamName"
               class="md-body-medium text-on-surface-variant"
             >
-              The route was added to {{ plan.result.tokenName }}. Its secret did not change.
+              Team {{ plan.result.teamName }} has access to this repository. No machine account was created, so the snippets below need a token from the Access page before they can publish.
             </p>
             <p
-              v-else-if="plan.mode === 'none'"
+              v-else
               class="md-body-medium text-on-surface-variant"
             >
-              No token was created. The snippets below need a token before they can publish.
+              No access was set up. The snippets below need a token before they can publish.
             </p>
 
             <section

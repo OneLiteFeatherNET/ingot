@@ -20,12 +20,15 @@
  *
  * The create sequence is a list of actions with the same labels the review step shows, so the
  * user sees exactly what will run. Each action is retried on its own: a repository that was
- * saved is never saved twice, and a token that was created is never created again.
+ * saved is never saved twice, and a team or a machine account that was created is never created
+ * again. Access is given through a team: the team gets a role on the repository, and an optional
+ * machine account with a token joins the team.
  */
 
 import { validateNewId } from './collections'
-import { validateTokenName } from '../../store/tokens'
 import { errorMessage } from '../../helpers/toast'
+import { validatePrincipalName } from '../access/accessPrincipals'
+import { ROLES, validateTeamName } from '../access/accessTeams'
 
 export const STEPS = [
   { key: 'basics', label: 'Basics' },
@@ -68,9 +71,46 @@ export const emptyDraft = () => ({
     accessKey: '',
     secretKey: ''
   },
-  // `tokenName` stays null until the user edits it, so it keeps following the repository id.
-  access: { mode: 'create', tokenName: null, existingToken: '', read: true, write: true }
+  // `newTeam` and `machineName` stay null until the user edits them, so they keep following the repository id.
+  access: {
+    mode: 'existing',
+    team: '',
+    newTeam: null,
+    role: 'DEPLOY',
+    machine: false,
+    machineName: null,
+    scope: 'WRITE'
+  }
 })
+
+/* Who gets the access: a team that exists, a team created for this repository, or nobody yet. */
+export const ACCESS_MODES = [
+  {
+    value: 'existing',
+    label: 'Give a team access',
+    who: 'The team gets a role on this repository. Its other grants stay as they are.'
+  },
+  {
+    value: 'new',
+    label: 'Create a team for this repository',
+    who: 'A new, empty team that gets a role on this repository. Add its members later from the Access page.'
+  },
+  {
+    value: 'none',
+    label: 'Skip for now',
+    who: 'Create the repository without access. Add it later from the Access page.'
+  }
+]
+
+/* What a token of the machine account may do. A scope only narrows the role of the team, so write includes read. */
+export const MACHINE_SCOPES = [
+  { value: 'READ', label: 'Read only', scopes: ['READ'] },
+  { value: 'WRITE', label: 'Read and write', scopes: ['READ', 'WRITE'] }
+]
+
+export const scopesOf = (scope) => MACHINE_SCOPES.find(entry => entry.value === scope)?.scopes ?? ['READ']
+
+export const roleLabelOf = (role) => ROLES.find(entry => entry.value === role)?.label ?? role
 
 /* Which optional repository fields the schema defines. Other agents add them; the wizard shows them only when present. */
 export const optionalFieldsOf = (itemSchema) => {
@@ -81,10 +121,24 @@ export const optionalFieldsOf = (itemSchema) => {
   }
 }
 
-export const tokenNameOf = (draft) => {
-  if (draft.access.tokenName !== null) return draft.access.tokenName
+export const newTeamNameOf = (draft) => {
+  if (draft.access.newTeam !== null) return draft.access.newTeam
+  return draft.basics.id ? `${draft.basics.id}-team` : ''
+}
+
+export const machineNameOf = (draft) => {
+  if (draft.access.machineName !== null) return draft.access.machineName
   return draft.basics.id ? `${draft.basics.id}-deploy` : ''
 }
+
+/* The team the repository is given to, or an empty string when there is none. */
+export const teamNameOf = (draft) => {
+  if (draft.access.mode === 'existing') return draft.access.team
+  if (draft.access.mode === 'new') return newTeamNameOf(draft).trim()
+  return ''
+}
+
+const sameName = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase()
 
 export const parseTags = (text) => [...new Set(
   String(text ?? '').split(',').map(tag => tag.trim()).filter(tag => tag !== '')
@@ -110,29 +164,32 @@ export const validateStorage = (storage) => {
   return errors
 }
 
-export const validateAccess = (draft, { tokens = [] } = {}) => {
+export const validateAccess = (draft, { teams = [], principals = [] } = {}) => {
   const { access } = draft
   if (access.mode === 'none') return {}
 
   const errors = {}
-  if (access.mode === 'create') {
-    const name = tokenNameOf(draft)
-    const problem = validateTokenName(name, tokens)
-    if (problem === 'empty') errors.tokenName = 'Enter a token name.'
-    if (problem === 'invalid') errors.tokenName = "Token name cannot contain ':' or '/'"
-    if (problem === 'duplicate') errors.tokenName = `A token named '${name.trim()}' already exists`
+  if (access.mode === 'existing' && access.team === '') errors.team = 'Choose a team.'
+  if (access.mode === 'new') {
+    const name = newTeamNameOf(draft)
+    const problem = validateTeamName(name)
+    if (problem) errors.newTeam = problem
+    else if (teams.some(team => sameName(team.name, name))) errors.newTeam = `A team named '${name.trim()}' already exists`
   }
-  if (access.mode === 'grant' && access.existingToken === '') {
-    errors.existingToken = 'Choose a token to grant access to.'
+  if (!ROLES.some(role => role.value === access.role)) errors.role = 'Choose a role.'
+  if (access.machine) {
+    const name = machineNameOf(draft)
+    const problem = validatePrincipalName(name)
+    if (problem) errors.machineName = problem
+    else if (principals.some(principal => sameName(principal.name, name))) errors.machineName = `A principal named '${name.trim()}' already exists`
   }
-  if (!access.read && !access.write) errors.permissions = 'Select read, write or both.'
   return errors
 }
 
-export const validateStep = (key, draft, { existingIds = [], tokens = [] } = {}) => {
+export const validateStep = (key, draft, { existingIds = [], teams = [], principals = [] } = {}) => {
   if (key === 'basics') return validateBasics(draft.basics, { existingIds })
   if (key === 'storage') return validateStorage(draft.storage)
-  if (key === 'access') return validateAccess(draft, { tokens })
+  if (key === 'access') return validateAccess(draft, { teams, principals })
   return {}
 }
 
@@ -175,19 +232,18 @@ export const describeStorage = (storage) => {
   return `S3 bucket "${storage.bucketName.trim()}"${region ? `, region ${region}` : ''}`
 }
 
-const permissionWords = ({ read, write }) => {
-  if (read && write) return 'read and write'
-  if (read) return 'read'
-  if (write) return 'write'
-  return 'no access'
+const machineWords = (draft) => {
+  const scope = MACHINE_SCOPES.find(entry => entry.value === draft.access.scope)?.label.toLowerCase() ?? 'read only'
+  return `a machine account "${machineNameOf(draft).trim()}" with a ${scope} token`
 }
 
 export const describeAccess = (draft) => {
   const { access } = draft
-  const route = `/${draft.basics.id}`
-  if (access.mode === 'create') return `New token "${tokenNameOf(draft)}" with ${permissionWords(access)} on ${route}`
-  if (access.mode === 'grant') return `Existing token "${access.existingToken}" with ${permissionWords(access)} on ${route}`
-  return 'No token now. Add access later from the tokens page.'
+  if (access.mode === 'none') return 'No access now. Add it later from the Access page.'
+  const team = teamNameOf(draft)
+  const kind = access.mode === 'new' ? 'New team' : 'Team'
+  const base = `${kind} "${team}" gets the ${roleLabelOf(access.role)} role on ${draft.basics.id}`
+  return access.machine ? `${base}, and ${machineWords(draft)} joins the team` : base
 }
 
 /* The review table: what the repository will be, in the order the wizard asked for it. */
@@ -202,12 +258,6 @@ export const summaryRows = (draft, { optional }) => {
   rows.push({ label: 'Access', value: describeAccess(draft) })
   return rows
 }
-
-export const routeOf = (draft) => ({
-  path: `/${draft.basics.id}`,
-  read: draft.access.read,
-  write: draft.access.write
-})
 
 /* The address of a repository, with no double slash whether or not the base ends in one. */
 export const repositoryUrl = ({ base, id }) => `${base.replace(/\/+$/, '')}/${id}`
@@ -266,25 +316,36 @@ export const snippetsFor = ({ id, url, tokenName }) => {
 }
 
 /*
- * The create sequence. `ports` is the only thing that touches the stores:
- *   addEntry(entry)            adds the repository to the draft settings
- *   saveSettings()             saves the settings, rejects when they are not saved
- *   createToken(name)          creates a persistent token, resolves with its secret
- *   grantRoute(name, route)    adds the route to a token, rejects when it is not saved
- * `result` collects what the success step shows.
+ * The create sequence. `ports` is the only thing that touches the stores and the server:
+ *   addEntry(entry)                      adds the repository to the draft settings
+ *   saveSettings()                       saves the settings, rejects when they are not saved
+ *   createTeam(name)                     creates an empty team
+ *   grantTeam(team, {repository, role})  appends a grant to the team, keeping its other grants
+ *   createMachine(name)                  creates a machine account
+ *   addMachineToTeam(team, machine)      adds the machine account to the manual members of the team
+ *   createMachineToken(machine, scopes)  creates its token, resolves with the secret
+ * The order is the order of a clean failure: whatever fails, everything before it exists and
+ * nothing after it was started. `result` collects what the success step shows.
  */
 export const buildActions = (draft, { optional }, ports) => {
   const id = draft.basics.id
-  const mode = draft.access.mode
-  const tokenName = mode === 'create' ? tokenNameOf(draft) : draft.access.existingToken
-  const route = routeOf(draft)
+  const { access } = draft
+  const team = teamNameOf(draft)
+  const machine = access.mode !== 'none' && access.machine ? machineNameOf(draft).trim() : null
   const entry = repositoryEntry(draft, { optional })
-  const result = { secret: null, tokenName: mode === 'none' ? null : tokenName }
+  const result = {
+    secret: null,
+    tokenName: machine,
+    machineName: machine,
+    teamName: access.mode === 'none' ? null : team,
+    role: access.mode === 'none' ? null : access.role
+  }
 
   let entryAdded = false
   const actions = [{
     key: 'settings',
     label: `Save repository "${id}"`,
+    created: `Repository "${id}" is saved.`,
     run: async () => {
       // Added once: a retry after a failed save must not add the same repository a second time.
       if (!entryAdded) {
@@ -295,21 +356,44 @@ export const buildActions = (draft, { optional }, ports) => {
     }
   }]
 
-  if (mode === 'create') {
+  if (access.mode === 'none') return { actions, result }
+
+  if (access.mode === 'new') {
     actions.push({
-      key: 'token',
-      label: `Create token "${tokenName}"`,
-      run: async () => {
-        result.secret = await ports.createToken(tokenName)
-      }
+      key: 'team',
+      label: `Create team "${team}"`,
+      created: `Team "${team}" exists.`,
+      run: () => ports.createTeam(team)
     })
   }
 
-  if (mode === 'create' || mode === 'grant') {
+  actions.push({
+    key: 'grant',
+    label: `Give team "${team}" the ${roleLabelOf(access.role)} role on ${id}`,
+    created: `Team "${team}" has the ${roleLabelOf(access.role)} role on ${id}.`,
+    run: () => ports.grantTeam(team, { repository: id, role: access.role })
+  })
+
+  if (machine) {
     actions.push({
-      key: 'route',
-      label: `Give "${tokenName}" ${permissionWords(draft.access)} on /${id}`,
-      run: () => ports.grantRoute(tokenName, route)
+      key: 'machine',
+      label: `Create machine account "${machine}"`,
+      created: `Machine account "${machine}" exists.`,
+      run: () => ports.createMachine(machine)
+    })
+    actions.push({
+      key: 'member',
+      label: `Add "${machine}" to team "${team}"`,
+      created: `"${machine}" is a member of team "${team}".`,
+      run: () => ports.addMachineToTeam(team, machine)
+    })
+    actions.push({
+      key: 'token',
+      label: `Create a token for "${machine}"`,
+      created: `The token of "${machine}" exists.`,
+      run: async () => {
+        result.secret = await ports.createMachineToken(machine, scopesOf(access.scope))
+      }
     })
   }
 
@@ -339,10 +423,19 @@ export const runActions = async (actions, progress) => {
   return true
 }
 
-/* What a failed step means for the repository, so the user knows what the retry will and will not touch. */
-export const failureNote = (key, mode) => {
-  if (key === 'settings') return 'The repository was not saved. Nothing else has been changed.'
-  if (key === 'token') return 'The repository is saved, but its deploy token was not created. Retry creates only the token.'
-  if (mode === 'create') return 'The repository and its token exist, but the route was not added. Retry adds only the route.'
-  return 'The repository is saved, but the token was not given access to it. Retry adds only the route.'
+const FAILURE_NOTES = {
+  settings: 'The repository was not saved. Nothing else has been changed.',
+  team: 'The repository is saved, but the team was not created. Retry creates only the team.',
+  grant: 'The repository is saved, but the team was not given access to it. Retry adds only the grant.',
+  machine: 'The team has its access, but the machine account was not created. Retry creates only the machine account.',
+  member: 'The machine account exists, but it is not in the team yet, so it has no rights. Retry adds only the membership.',
+  token: 'The machine account is in the team, but its token was not created. Retry creates only the token.'
 }
+
+/* What a failed step means for the repository, so the user knows what the retry will and will not touch. */
+export const failureNote = (key) => FAILURE_NOTES[key] ?? 'This step failed. Retry runs only this step.'
+
+/* What exists after the steps that are done, one sentence each, so a failure shows what was already created. */
+export const createdSoFar = (actions, progress) => actions
+  .filter(action => progress[action.key]?.state === 'done')
+  .map(action => action.created)

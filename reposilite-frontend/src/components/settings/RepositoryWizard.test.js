@@ -19,11 +19,13 @@ import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
-import { createTokenStore, tokenStoreKey } from '../../store/tokens'
 import RepositoryWizard from './RepositoryWizard.vue'
 
-// The session is not needed: the stores are built on a fake client below. Toasts stay off the page.
-vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
+// The configuration module reads the session once when it is imported, so the holder starts with an empty client.
+const holder = vi.hoisted(() => ({ session: { client: { value: null } } }))
+
+// The stores are built on a fake client below; the wizard reaches the same client through the session. Toasts stay off the page.
+vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
@@ -58,19 +60,69 @@ const MAVEN_SCHEMA = {
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
-// A server with one existing repository and one token. Writes land in `state`, so a test can read them back.
 const FRONTEND_SCHEMA = { type: 'object', title: 'Frontend', properties: { title: { type: 'string' } } }
 const SCHEMAS = { maven: MAVEN_SCHEMA, frontend: FRONTEND_SCHEMA }
 
+// A server with one team (one manual and one synchronized member, one grant) and one user. Writes land in `state`.
+const fakeIdentity = () => {
+  const state = {
+    teams: {
+      developers: {
+        name: 'developers',
+        members: [
+          { principal: 'alice', kind: 'USER', source: 'MANUAL' },
+          { principal: 'bob', kind: 'USER', source: 'SYNC' }
+        ],
+        grants: [{ repository: null, pathPrefix: null, role: 'READ' }],
+        instanceRole: false
+      }
+    },
+    principals: [{ name: 'alice', kind: 'USER' }]
+  }
+  const machineTokens = { create: vi.fn(async (body) => ({ data: { token: { name: body.name }, secret: 'secret-1' } })) }
+  return {
+    state,
+    machineTokens,
+    teams: {
+      list: vi.fn(async () => ({ data: Object.values(state.teams).map(team => ({ name: team.name })) })),
+      get: vi.fn(async (name) => ({ data: clone(state.teams[name]), headers: { etag: '"1"' } })),
+      create: vi.fn(async (body) => {
+        state.teams[body.name] = { name: body.name, members: [], grants: [], instanceRole: false }
+        return { data: clone(state.teams[body.name]) }
+      }),
+      setGrants: vi.fn(async (name, grants) => {
+        state.teams[name].grants = clone(grants)
+        return { data: clone(state.teams[name]) }
+      }),
+      setMembers: vi.fn(async (name, members) => {
+        const team = state.teams[name]
+        team.members = [
+          ...team.members.filter(member => member.source === 'SYNC'),
+          ...members.map(principal => ({ principal, kind: 'USER', source: 'MANUAL' }))
+        ]
+        return { data: clone(team) }
+      })
+    },
+    principals: {
+      list: vi.fn(async () => ({ data: clone(state.principals) })),
+      create: vi.fn(async (body) => {
+        state.principals.push({ name: body.name, kind: body.kind })
+        return { data: clone(body) }
+      })
+    },
+    principalTokens: vi.fn(() => machineTokens)
+  }
+}
+
+// A server with one existing repository. The legacy token routes are spies the wizard must never call.
 const fakeClient = () => {
   const state = {
     maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] },
     frontend: { title: 'Ingot Repository' }
   }
-  const tokens = [{ name: 'ci', permissions: [], routes: [] }]
-  const tokenNamed = (name) => tokens.find(token => token.name === name)
   return {
     state,
+    identity: fakeIdentity(),
     settings: {
       domains: vi.fn(async () => ({ data: ['maven', 'frontend'] })),
       schema: vi.fn(async (domain) => ({ data: SCHEMAS[domain] })),
@@ -78,19 +130,9 @@ const fakeClient = () => {
       update: vi.fn(async (domain, content) => { state[domain] = clone(content) })
     },
     tokens: {
-      list: vi.fn(async () => ({ data: clone(tokens) })),
-      createOrUpdate: vi.fn(async (name) => {
-        tokens.push({ name, permissions: [], routes: [] })
-        return { data: { secret: 'secret-1' } }
-      }),
-      update: vi.fn(async (name, request) => {
-        const token = tokenNamed(name)
-        token.routes = request.routes.flatMap(route => route.permissions.map(permission => ({
-          path: route.path,
-          permission: { identifier: permission === 'w' ? 'route:write' : 'route:read' }
-        })))
-        return { data: clone(token) }
-      })
+      list: vi.fn(async () => ({ data: [] })),
+      createOrUpdate: vi.fn(),
+      update: vi.fn()
     }
   }
 }
@@ -99,7 +141,6 @@ let wrapper
 let router
 let client
 let configuration
-let tokenStore
 
 const $ = (selector) => document.querySelector(selector)
 
@@ -141,23 +182,22 @@ const reachAccessStep = async (id = 'team') => {
   await next()
 }
 
-const reachReview = async (id = 'team') => {
+// The access step with the existing team chosen, and then the review.
+const reachReview = async ({ id = 'team', machine = false } = {}) => {
   await reachAccessStep(id)
+  await pick('#wizard-team', 'developers')
+  if (machine) await choose('#wizard-machine')
   await next()
 }
 
 const mountWizard = async ({ open = true } = {}) => {
   await configuration.fetchConfiguration()
-  await tokenStore.fetchTokens()
   wrapper = mount(RepositoryWizard, {
     props: { modelValue: open },
     attachTo: document.body,
     global: {
       plugins: [router],
-      provide: {
-        [configurationStoreKey]: configuration,
-        [tokenStoreKey]: tokenStore
-      }
+      provide: { [configurationStoreKey]: configuration }
     }
   })
   await flushPromises()
@@ -165,11 +205,8 @@ const mountWizard = async ({ open = true } = {}) => {
 
 beforeEach(async () => {
   client = fakeClient()
+  holder.session = { client: ref(client) }
   configuration = createConfigurationStore(ref(client))
-  tokenStore = createTokenStore({
-    getClient: () => client,
-    notify: { success: vi.fn(), error: vi.fn() }
-  })
   router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -236,15 +273,6 @@ describe('RepositoryWizard steps', () => {
     expect(document.body.textContent).toContain('Enter the bucket name.')
   })
 
-  it('suggests a deploy token named after the repository', async () => {
-    await mountWizard()
-
-    await reachAccessStep('team')
-
-    expect(heading()).toBe('Access')
-    expect($('#wizard-token-name').value).toBe('team-deploy')
-  })
-
   it('shows the description field only when the schema defines one', async () => {
     await mountWizard()
     expect($('#wizard-description')).toBeNull()
@@ -256,97 +284,265 @@ describe('RepositoryWizard steps', () => {
   })
 })
 
+describe('RepositoryWizard access step', () => {
+  it('offers the teams that exist, loaded from the teams endpoint', async () => {
+    await mountWizard()
+
+    await reachAccessStep('team')
+
+    const options = [...$('#wizard-team').options].map(option => option.value)
+    expect(heading()).toBe('Access')
+    expect(client.identity.teams.list).toHaveBeenCalled()
+    expect(options).toEqual(['', 'developers'])
+  })
+
+  it('no longer offers a token name or a token to choose', async () => {
+    await mountWizard()
+
+    await reachAccessStep('team')
+
+    expect($('#wizard-token-name')).toBeNull()
+    expect($('#wizard-existing-token')).toBeNull()
+    expect($('#wizard-read')).toBeNull()
+  })
+
+  it('does not move on without a team, and says so', async () => {
+    await mountWizard()
+    await reachAccessStep('team')
+
+    await next()
+
+    expect(heading()).toBe('Access')
+    expect(document.body.textContent).toContain('Choose a team.')
+  })
+
+  it('explains the chosen role in one line', async () => {
+    await mountWizard()
+    await reachAccessStep('team')
+
+    await pick('#wizard-role', 'MAINTAIN')
+
+    expect(document.body.textContent).toContain('Read, deploy and delete artifacts.')
+  })
+
+  it('asks for the name of a new team, suggested from the repository id', async () => {
+    await mountWizard()
+    await reachAccessStep('team')
+
+    await choose('input[name="access-mode"][value="new"]')
+
+    expect($('#wizard-team')).toBeNull()
+    expect($('#wizard-new-team').value).toBe('team-team')
+  })
+
+  it('refuses a new team name that exists already', async () => {
+    await mountWizard()
+    await reachAccessStep('team')
+    await choose('input[name="access-mode"][value="new"]')
+
+    await setText('#wizard-new-team', 'developers')
+    await next()
+
+    expect(heading()).toBe('Access')
+    expect(document.body.textContent).toContain("A team named 'developers' already exists")
+  })
+
+  it('asks for the machine account only when it is wanted, with a name suggested from the repository id', async () => {
+    await mountWizard()
+    await reachAccessStep('team')
+    expect($('#wizard-machine-name')).toBeNull()
+
+    await choose('#wizard-machine')
+
+    expect($('#wizard-machine-name').value).toBe('team-deploy')
+  })
+
+  it('refuses a machine account name that another principal has', async () => {
+    await mountWizard()
+    await reachAccessStep('team')
+    await pick('#wizard-team', 'developers')
+    await choose('#wizard-machine')
+
+    await setText('#wizard-machine-name', 'alice')
+    await next()
+
+    expect(heading()).toBe('Access')
+    expect(document.body.textContent).toContain("A principal named 'alice' already exists")
+  })
+
+  it('does not mention the tokens page', async () => {
+    await mountWizard()
+
+    await reachAccessStep('team')
+    await choose('input[name="access-mode"][value="none"]')
+
+    expect(document.body.textContent).not.toContain('tokens page')
+  })
+})
+
 describe('RepositoryWizard review', () => {
   it('shows what will be created, and changes nothing until Create is pressed', async () => {
     await mountWizard()
 
-    await reachReview('team')
+    await reachReview()
 
     expect(heading()).toBe('Review')
     expect(document.body.textContent).toContain('Filesystem, quota 100%')
-    expect(document.body.textContent).toContain('New token "team-deploy" with read and write on /team')
+    expect(document.body.textContent).toContain('Team "developers" gets the Deploy role on team')
     expect(client.settings.update).not.toHaveBeenCalled()
-    expect(client.tokens.createOrUpdate).not.toHaveBeenCalled()
+    expect(client.identity.teams.setGrants).not.toHaveBeenCalled()
+    expect(client.identity.principals.create).not.toHaveBeenCalled()
   })
 
   it('warns that unsaved changes elsewhere are saved together with the repository', async () => {
     await mountWizard()
     configuration.setDomainData('frontend', { title: 'Edited' })
 
-    await reachReview('team')
+    await reachReview()
 
     expect(document.body.textContent).toContain('Creating the repository saves them too')
   })
 })
 
 describe('RepositoryWizard create sequence', () => {
-  it('saves the repository, creates the token, grants the route, and shows the secret once', async () => {
-    await mountWizard()
-    await reachReview('team')
-
-    await click('#wizard-create')
-
-    expect(client.state.maven.repositories.map(repo => repo.id)).toEqual(['releases', 'team'])
-    expect(client.tokens.createOrUpdate).toHaveBeenCalledWith('team-deploy', expect.objectContaining({ type: 'PERSISTENT' }))
-    expect(client.tokens.update).toHaveBeenCalledWith('team-deploy', expect.objectContaining({
-      routes: [{ path: '/team', permissions: ['r', 'w'] }]
-    }), null)
-    expect($('[data-test="secret"]').textContent.trim()).toBe('secret-1')
-    expect(document.body.textContent).toContain("won't see this secret again")
-  })
-
-  it('grants an existing token without creating one', async () => {
+  it('saves the repository and gives the chosen team the chosen role on it', async () => {
     await mountWizard()
     await reachAccessStep('team')
-    await choose('input[name="access-mode"][value="grant"]')
-    await pick('#wizard-existing-token', 'ci')
+    await pick('#wizard-team', 'developers')
+    await pick('#wizard-role', 'MAINTAIN')
     await next()
 
     await click('#wizard-create')
 
-    expect(client.tokens.createOrUpdate).not.toHaveBeenCalled()
-    expect(client.tokens.update).toHaveBeenCalledWith('ci', expect.objectContaining({
-      routes: [{ path: '/team', permissions: ['r', 'w'] }]
-    }), null)
-    expect($('[data-test="secret"]')).toBeNull()
+    expect(client.state.maven.repositories.map(repo => repo.id)).toEqual(['releases', 'team'])
+    expect(client.identity.teams.setGrants).toHaveBeenCalledWith(
+      'developers',
+      [
+        { repository: null, pathPrefix: null, role: 'READ' },
+        { repository: 'team', pathPrefix: null, role: 'MAINTAIN' }
+      ],
+      '"1"'
+    )
   })
 
-  it('keeps the repository when its token fails, and retries only the token', async () => {
-    client.tokens.createOrUpdate.mockRejectedValueOnce(new Error('token service unavailable'))
+  it('creates a new team before it is granted', async () => {
     await mountWizard()
-    await reachReview('team')
+    await reachAccessStep('team')
+    await choose('input[name="access-mode"][value="new"]')
+    await next()
 
     await click('#wizard-create')
 
-    expect($('[data-step="settings"]').dataset.state).toBe('done')
-    expect($('[data-step="token"]').dataset.state).toBe('failed')
-    expect(document.body.textContent).toContain('The repository is saved, but its deploy token was not created.')
-    expect(client.state.maven.repositories.map(repo => repo.id)).toContain('team')
+    expect(client.identity.teams.create).toHaveBeenCalledWith({ name: 'team-team' })
+    expect(client.identity.teams.create.mock.invocationCallOrder[0])
+      .toBeLessThan(client.identity.teams.setGrants.mock.invocationCallOrder[0])
+    expect(client.identity.state.teams['team-team'].grants)
+      .toEqual([{ repository: 'team', pathPrefix: null, role: 'DEPLOY' }])
+  })
 
-    await click('[data-step="token"] [data-test="retry"]')
+  it('creates the machine account, adds it to the team keeping the manual members, and creates its token', async () => {
+    await mountWizard()
+    await reachReview({ machine: true })
+
+    await click('#wizard-create')
+
+    expect(client.identity.principals.create).toHaveBeenCalledWith({ kind: 'MACHINE', name: 'team-deploy' })
+    expect(client.identity.teams.setMembers).toHaveBeenCalledWith('developers', ['alice', 'team-deploy'], '"1"')
+    expect(client.identity.principalTokens).toHaveBeenCalledWith('team-deploy')
+    expect(client.identity.machineTokens.create).toHaveBeenCalledWith({
+      name: 'team-deploy',
+      expiresAt: null,
+      scopes: ['READ', 'WRITE']
+    })
+    expect($('[data-test="secret"]').textContent.trim()).toBe('secret-1')
+    expect(document.body.textContent).toContain("won't see this secret again")
+  })
+
+  it('calls the steps in the order that makes a failure clean', async () => {
+    await mountWizard()
+    await reachReview({ machine: true })
+
+    await click('#wizard-create')
+
+    const order = [
+      client.settings.update,
+      client.identity.teams.setGrants,
+      client.identity.principals.create,
+      client.identity.teams.setMembers,
+      client.identity.machineTokens.create
+    ].map(spy => spy.mock.invocationCallOrder[0])
+    expect(order, 'every call happened').not.toContain(undefined)
+    expect(order).toEqual([...order].sort((a, b) => a - b))
+  })
+
+  it('creates no machine account and no token when none is wanted', async () => {
+    await mountWizard()
+    await reachReview()
+
+    await click('#wizard-create')
+
+    expect(client.identity.principals.create).not.toHaveBeenCalled()
+    expect(client.identity.machineTokens.create).not.toHaveBeenCalled()
+    expect($('[data-test="secret"]')).toBeNull()
+  })
+
+  it('does not call the old token routes', async () => {
+    await mountWizard()
+    await reachReview({ machine: true })
+
+    await click('#wizard-create')
+
+    expect(client.tokens.createOrUpdate).not.toHaveBeenCalled()
+    expect(client.tokens.update).not.toHaveBeenCalled()
+  })
+
+  it('shows the error of a failed step and what was created before it', async () => {
+    client.identity.teams.setMembers.mockRejectedValueOnce(new Error('412 precondition failed'))
+    await mountWizard()
+    await reachReview({ machine: true })
+
+    await click('#wizard-create')
+
+    expect($('[data-step="member"]').dataset.state).toBe('failed')
+    expect($('[data-step="token"]').dataset.state).toBe('pending')
+    expect(document.body.textContent).toContain('412 precondition failed')
+    const created = $('[data-step="member"] [data-test="created"]').textContent
+    expect(created).toContain('Repository "team" is saved.')
+    expect(created).toContain('Machine account "team-deploy" exists.')
+    expect(client.identity.machineTokens.create).not.toHaveBeenCalled()
+  })
+
+  it('keeps what was created when a step fails, and retries only that step', async () => {
+    client.identity.teams.setMembers.mockRejectedValueOnce(new Error('412 precondition failed'))
+    await mountWizard()
+    await reachReview({ machine: true })
+    await click('#wizard-create')
+
+    await click('[data-step="member"] [data-test="retry"]')
 
     expect(client.settings.update).toHaveBeenCalledTimes(1)
-    expect(client.tokens.createOrUpdate).toHaveBeenCalledTimes(2)
+    expect(client.identity.principals.create).toHaveBeenCalledTimes(1)
+    expect(client.identity.teams.setMembers).toHaveBeenCalledTimes(2)
     expect($('[data-test="secret"]').textContent.trim()).toBe('secret-1')
   })
 
-  it('leaves the token steps untouched when the repository itself cannot be saved', async () => {
+  it('leaves the access steps untouched when the repository itself cannot be saved', async () => {
     client.settings.update.mockRejectedValueOnce(new Error('409 conflict'))
     await mountWizard()
-    await reachReview('team')
+    await reachReview()
 
     await click('#wizard-create')
 
     expect($('[data-step="settings"]').dataset.state).toBe('failed')
-    expect($('[data-step="token"]').dataset.state).toBe('pending')
-    expect(client.tokens.createOrUpdate).not.toHaveBeenCalled()
+    expect($('[data-step="grant"]').dataset.state).toBe('pending')
+    expect(client.identity.teams.setGrants).not.toHaveBeenCalled()
     expect(document.body.textContent).toContain('409 conflict')
   })
 
   it('takes an unsaved repository back out of the settings when the wizard is cancelled', async () => {
     client.settings.update.mockRejectedValueOnce(new Error('409 conflict'))
     await mountWizard()
-    await reachReview('team')
+    await reachReview()
     await click('#wizard-create')
 
     await click('#wizard-cancel')
@@ -354,10 +550,10 @@ describe('RepositoryWizard create sequence', () => {
     expect(configuration.configurations.value.maven.repositories.map(repo => repo.id)).toEqual(['releases'])
   })
 
-  it('keeps a saved repository when the wizard is cancelled after the token step failed', async () => {
-    client.tokens.createOrUpdate.mockRejectedValueOnce(new Error('token service unavailable'))
+  it('keeps a saved repository when the wizard is cancelled after an access step failed', async () => {
+    client.identity.teams.setGrants.mockRejectedValueOnce(new Error('412 precondition failed'))
     await mountWizard()
-    await reachReview('team')
+    await reachReview()
     await click('#wizard-create')
 
     await click('#wizard-cancel')
@@ -367,7 +563,7 @@ describe('RepositoryWizard create sequence', () => {
 
   it('navigates to the repository only when Done is pressed, because the secret is shown there', async () => {
     await mountWizard()
-    await reachReview('team')
+    await reachReview({ machine: true })
     await click('#wizard-create')
 
     expect(router.currentRoute.value.fullPath).toBe('/')
@@ -381,7 +577,7 @@ describe('RepositoryWizard create sequence', () => {
 describe('RepositoryWizard snippets', () => {
   it('shows Maven and Gradle snippets with the real repository URL and id', async () => {
     await mountWizard()
-    await reachReview('team')
+    await reachReview({ machine: true })
     await click('#wizard-create')
 
     const maven = $('[data-snippet="maven-settings"]').textContent
