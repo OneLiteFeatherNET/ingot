@@ -231,7 +231,7 @@ internal class IdentityFacadeTest {
         withService { service, store ->
             // given: a DEPLOY grant on releases, held by a member principal
             service.createTeam(CreateTeamRequest(name = "deployers"))
-            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", role = "DEPLOY")), ifMatch = null)
+            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "DEPLOY")), ifMatch = null)
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci"))
             store.addMember(store.findTeam("deployers")!!.id, store.findPrincipal("ci")!!.id, TeamMemberSource.MANUAL)
 

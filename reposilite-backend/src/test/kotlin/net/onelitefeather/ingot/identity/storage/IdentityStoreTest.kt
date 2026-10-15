@@ -170,8 +170,8 @@ internal class IdentityStoreTest {
             store.grantInstanceRole(principalId = null, teamId = admins.id)
 
             // when / then: the member is an instance admin, the non-member is not
-            assertThat(PermissionEvaluator.isInstanceAdmin(store.loadAccess(alice, scopes = null))).describedAs("team member should inherit the instance role").isTrue
-            assertThat(PermissionEvaluator.isInstanceAdmin(store.loadAccess(bob, scopes = null))).describedAs("non-member should not be an instance admin").isFalse
+            assertThat(PermissionEvaluator.isInstanceAdmin(store.loadAccess(alice, tokenNodes = null))).describedAs("team member should inherit the instance role").isTrue
+            assertThat(PermissionEvaluator.isInstanceAdmin(store.loadAccess(bob, tokenNodes = null))).describedAs("non-member should not be an instance admin").isFalse
         }
     }
 
@@ -188,7 +188,7 @@ internal class IdentityStoreTest {
             store.addGrant(readers.id, "snapshots", null, Role.READ)
 
             // when: the access of the principal is loaded
-            val access = store.loadAccess(ci, scopes = null)
+            val access = store.loadAccess(ci, tokenNodes = null)
 
             // then: only the grant of the team it belongs to is part of it
             assertThat(access.levels.flatMap { it.grants }).describedAs("grants of the principal's teams")

@@ -48,6 +48,26 @@ object TeamHierarchy {
         return null
     }
 
+    /**
+     * The teams a principal reaches, grouped by distance: the direct teams at distance 0, their parents at 1, and so on up to
+     * [MAX_DEPTH]. A team sits at the smallest distance it is reached at. Levels with no team are not listed, so the list
+     * ends at the last distance that holds a team.
+     */
+    fun levelsFrom(direct: Set<Int>, parents: Map<Int, Set<Int>>): List<Pair<Int, Set<Int>>> {
+        val levels = mutableListOf<Pair<Int, Set<Int>>>()
+        val seen = HashSet<Int>()
+        var frontier = direct
+        var depth = 0
+        while (frontier.isNotEmpty() && depth <= MAX_DEPTH) {
+            val fresh = frontier.filter { seen.add(it) }.toSet()
+            if (fresh.isEmpty()) break
+            levels += depth to fresh
+            frontier = fresh.flatMap { parents[it].orEmpty() }.toSet()
+            depth++
+        }
+        return levels
+    }
+
     /** Depth of [team] by a walk up its parents, or the problem found on the way. */
     private fun depthOf(
         team: Int,

@@ -104,6 +104,7 @@ internal class LegacyAccessTokenMigrationTest {
 
             // when: the migration runs
             LegacyAccessTokenMigration(database, journalist).migrate()
+            PermissionNodeMigration(database, journalist).migrate()
 
             // then: the manager is an instance admin, the reader is not, and the routes are legacy grants on the private team
             val store = IdentityStore(database, clock)

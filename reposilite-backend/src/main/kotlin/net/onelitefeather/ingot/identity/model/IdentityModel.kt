@@ -108,6 +108,8 @@ data class TokenRecord(
     val lastUsedIp: String?,
     val createdAt: LocalDate,
     val description: String,
+    /** The node list of the token, null when it does not narrow its owner. */
+    val nodes: List<NodeRule>? = null,
 )
 
 /** A grant as the evaluator sees it: the team it belongs to is kept for explanations. */

@@ -167,16 +167,16 @@ internal class IdentityAuditTest {
         withService { service, _, events ->
             // given
             service.createTeam(CreateTeamRequest(name = "deployers"))
-            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", role = "READ")), ifMatch = null)
+            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "READ")), ifMatch = null)
             events.clear()
 
             // when
-            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", role = "DEPLOY")), ifMatch = null, actor = operator)
+            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "DEPLOY")), ifMatch = null, actor = operator)
 
             // then
             val event = events.single { it.action == AuditAction.TEAM_GRANTS_CHANGED }
-            assertThat(event.details["added"]).isEqualTo(listOf("repository=releases path=* role=DEPLOY"))
-            assertThat(event.details["removed"]).isEqualTo(listOf("repository=releases path=* role=READ"))
+            assertThat(event.details["added"]).isEqualTo(listOf("repository=releases path=com/example role=DEPLOY"))
+            assertThat(event.details["removed"]).isEqualTo(listOf("repository=releases path=com/example role=READ"))
         }
     }
 

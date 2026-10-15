@@ -23,9 +23,11 @@ import net.onelitefeather.ingot.identity.login.storage.RefreshTokenTable
 import net.onelitefeather.ingot.identity.evaluation.ScopeRules
 import net.onelitefeather.ingot.identity.evaluation.TeamHierarchy
 import net.onelitefeather.ingot.identity.model.AccessLevel
+import net.onelitefeather.ingot.identity.evaluation.AdminReachability
 import net.onelitefeather.ingot.identity.model.AccessSubject
 import net.onelitefeather.ingot.identity.model.DecisionSource
 import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.identity.model.NodeRule
 import net.onelitefeather.ingot.identity.model.SourcedRule
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
@@ -33,7 +35,6 @@ import net.onelitefeather.ingot.identity.model.GrantRecord
 import net.onelitefeather.ingot.identity.model.INSTANCE_ADMIN_ROLE
 import net.onelitefeather.ingot.identity.model.MembershipRecord
 import net.onelitefeather.ingot.identity.model.NODE_SUBJECT_TEAM
-import net.onelitefeather.ingot.identity.model.NodeRule
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.model.Role
@@ -41,6 +42,7 @@ import net.onelitefeather.ingot.identity.model.TeamMemberSource
 import net.onelitefeather.ingot.identity.model.TeamRecord
 import net.onelitefeather.ingot.identity.model.TokenRecord
 import net.onelitefeather.ingot.identity.model.privateTeamName
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
@@ -336,46 +338,69 @@ class IdentityStore(
         }
     }
 
-    // instance roles
+    // instance roles: the node ingot.admin.* allowed on the subject
 
     /** Grants the instance role to a principal or to a team, once. Exactly one of the two must be given. */
     fun grantInstanceRole(principalId: Int?, teamId: Int?) {
         require((principalId == null) != (teamId == null)) { "Exactly one of principalId or teamId must be set" }
         transaction(database) {
-            if (instanceRoleExists(principalId, teamId)) return@transaction
-            InstanceRoleTable.insert {
-                it[InstanceRoleTable.principalId] = principalId?.let { value -> EntityID(value, PrincipalTable) }
-                it[InstanceRoleTable.teamId] = teamId?.let { value -> EntityID(value, TeamTable) }
-                it[InstanceRoleTable.role] = INSTANCE_ADMIN_ROLE
+            val subjectKind = if (principalId != null) {
+                PrincipalTable.selectAll().where { PrincipalTable.id eq principalId }.single()[PrincipalTable.kind]
+            } else {
+                NODE_SUBJECT_TEAM
             }
+            val subjectId = principalId ?: teamId!!
+            val existing = PermissionNodeTable.selectAll()
+                .where { adminNodeOf(subjectKind, subjectId) }
+                .singleOrNull()
+            when {
+                existing == null -> PermissionNodeTable.insert {
+                    it[PermissionNodeTable.subjectKind] = subjectKind
+                    it[PermissionNodeTable.subjectId] = subjectId
+                    it[PermissionNodeTable.node] = NodePattern.INSTANCE_ADMIN.text
+                    it[PermissionNodeTable.allowed] = true
+                    it[PermissionNodeTable.createdAt] = now()
+                }
+                !existing[PermissionNodeTable.allowed] -> PermissionNodeTable.update(
+                    where = { adminNodeOf(subjectKind, subjectId) },
+                    body = { it[PermissionNodeTable.allowed] = true },
+                )
+            }
+            Unit
         }
     }
 
+    /** Removes the instance role: the admin node of the subject is deleted, whatever its value. */
     fun revokeInstanceRole(principalId: Int?, teamId: Int?) {
         transaction(database) {
-            val condition = if (principalId != null) {
-                InstanceRoleTable.principalId eq principalId
+            if (principalId != null) {
+                PermissionNodeTable.deleteWhere { adminNodeOf(PRINCIPAL_KINDS, principalId) }
             } else {
-                InstanceRoleTable.teamId eq teamId!!
+                PermissionNodeTable.deleteWhere { adminNodeOf(NODE_SUBJECT_TEAM, teamId!!) }
             }
-            InstanceRoleTable.deleteWhere { condition }
         }
     }
 
     fun hasDirectInstanceRole(principalId: Int): Boolean =
-        transaction(database) { instanceRoleExists(principalId, null) }
+        transaction(database) {
+            PermissionNodeTable.selectAll()
+                .where { adminNodeAllowed(PRINCIPAL_KINDS, principalId) }
+                .any()
+        }
 
     fun listInstanceRoleTeamIds(): Set<Int> =
         transaction(database) {
-            InstanceRoleTable.selectAll()
-                .mapNotNull { it[InstanceRoleTable.teamId]?.value }
+            PermissionNodeTable.selectAll()
+                .where { (PermissionNodeTable.subjectKind eq NODE_SUBJECT_TEAM) and adminNodeAllowedFilter() }
+                .map { it[PermissionNodeTable.subjectId] }
                 .toSet()
         }
 
     fun listInstanceRolePrincipalIds(): Set<Int> =
         transaction(database) {
-            InstanceRoleTable.selectAll()
-                .mapNotNull { it[InstanceRoleTable.principalId]?.value }
+            PermissionNodeTable.selectAll()
+                .where { (PermissionNodeTable.subjectKind inList PRINCIPAL_KINDS) and adminNodeAllowedFilter() }
+                .map { it[PermissionNodeTable.subjectId] }
                 .toSet()
         }
 
@@ -405,6 +430,7 @@ class IdentityStore(
                 it[PrincipalTokenTable.name] = name
                 it[PrincipalTokenTable.secretHash] = secretHash
                 it[PrincipalTokenTable.scopes] = encodeScopes(scopes)
+                it[PrincipalTokenTable.nodes] = encodeNodes(scopes?.let { ScopeRules.nodesOf(it) })
                 it[PrincipalTokenTable.expiresAt] = expiresAt
                 it[PrincipalTokenTable.createdAt] = createdAt
                 it[PrincipalTokenTable.description] = description
@@ -420,6 +446,7 @@ class IdentityStore(
                 it[PrincipalTokenTable.name] = token.name
                 it[PrincipalTokenTable.secretHash] = token.secretHash
                 it[PrincipalTokenTable.scopes] = encodeScopes(token.scopes)
+                it[PrincipalTokenTable.nodes] = encodeNodes(token.nodes)
                 it[PrincipalTokenTable.expiresAt] = token.expiresAt
                 it[PrincipalTokenTable.createdAt] = token.createdAt
                 it[PrincipalTokenTable.description] = token.description
@@ -547,14 +574,11 @@ class IdentityStore(
     // effective access
 
     /**
-     * Everything the evaluator needs about the principal: its own node rules, the rules and grants of its teams at distance
-     * 0, and those of the teams it inherits, one level per distance (nearest first, at most [TeamHierarchy.MAX_DEPTH]).
-     * The node list of the token, derived from its scopes, narrows the owner when the token has scopes.
-     *
-     * Instance roles still stored by the previous version count as the node `ingot.admin.*`. The migration that moves them
-     * into nodes removes the rows.
+     * Everything the evaluator needs about the principal: its own node rules, and the rules and grants of its teams, one
+     * level per distance (the direct teams first, their parents next, at most [TeamHierarchy.MAX_DEPTH]). [tokenNodes] is the
+     * node list of the token that authenticated the principal; null means the token does not narrow its owner.
      */
-    fun loadAccess(principal: PrincipalRecord, scopes: Set<Action>?): AccessSubject =
+    fun loadAccess(principal: PrincipalRecord, tokenNodes: List<NodeRule>?): AccessSubject =
         transaction(database) {
             val directTeams = TeamMemberTable.selectAll()
                 .where { TeamMemberTable.principalId eq principal.id }
@@ -562,19 +586,10 @@ class IdentityStore(
                 .toSet()
             val parentsOf = TeamParentTable.selectAll()
                 .groupBy({ it[TeamParentTable.teamId].value }, { it[TeamParentTable.parentTeamId].value })
+                .mapValues { (_, parents) -> parents.toSet() }
+            val reached = TeamHierarchy.levelsFrom(directTeams, parentsOf)
+            val teamIds = reached.flatMap { it.second }.toList()
 
-            // Breadth first, so a team lands on the smallest distance it is reached at.
-            val distances = LinkedHashMap<Int, Int>()
-            var frontier = directTeams
-            var depth = 0
-            while (frontier.isNotEmpty() && depth <= TeamHierarchy.MAX_DEPTH) {
-                val fresh = frontier.filter { it !in distances }
-                fresh.forEach { distances[it] = depth }
-                frontier = fresh.flatMap { parentsOf[it].orEmpty() }.toSet()
-                depth++
-            }
-
-            val teamIds = distances.keys.toList()
             val teamNames: Map<Int, String> = if (teamIds.isEmpty()) emptyMap() else TeamTable.selectAll()
                 .where { TeamTable.id inList teamIds.map { EntityID(it, TeamTable) } }
                 .associate { it[TeamTable.id].value to it[TeamTable.name] }
@@ -586,39 +601,33 @@ class IdentityStore(
                 .where { TeamGrantTable.teamId inList teamIds.map { EntityID(it, TeamTable) } }
                 .groupBy { it[TeamGrantTable.teamId].value }
                 .mapValues { (teamId, rows) ->
-                    rows.map { row ->
-                        Grant(
-                            team = teamNames.getValue(teamId),
-                            role = Role.valueOf(row[TeamGrantTable.role]),
-                            repository = row[TeamGrantTable.repository],
-                            pathPrefix = row[TeamGrantTable.pathPrefix],
-                        )
+                    rows.mapNotNull { row ->
+                        teamNames[teamId]?.let { name ->
+                            Grant(
+                                team = name,
+                                role = Role.valueOf(row[TeamGrantTable.role]),
+                                repository = row[TeamGrantTable.repository],
+                                pathPrefix = row[TeamGrantTable.pathPrefix],
+                            )
+                        }
                     }
                 }
-            val instanceRoleTeams = if (teamIds.isEmpty()) emptySet() else InstanceRoleTable.selectAll()
-                .where { InstanceRoleTable.teamId inList teamIds.map { EntityID(it, TeamTable) } }
-                .map { it[InstanceRoleTable.teamId]!!.value }
-                .toSet()
 
             val levels = mutableListOf(
                 AccessLevel(
                     source = DecisionSource.USER,
                     depth = 0,
-                    rules = nodeRulesOf(principal.kind.name, principal.id, principal.name) +
-                        instanceRoleRules(principal.name, instanceRoleExists(principal.id, null)),
+                    rules = nodeRulesOf(principal.kind.name, principal.id, principal.name),
                     grants = emptyList(),
                 ),
             )
-            for (level in 0..TeamHierarchy.MAX_DEPTH) {
-                val ids = distances.filterValues { it == level }.keys
-                if (ids.isEmpty() && level > 0) continue
+            reached.forEach { (depth, ids) ->
                 levels += AccessLevel(
-                    source = if (level == 0) DecisionSource.TEAM else DecisionSource.INHERITED_TEAM,
-                    depth = level,
+                    source = if (depth == 0) DecisionSource.TEAM else DecisionSource.INHERITED_TEAM,
+                    depth = depth,
                     rules = ids.flatMap { id ->
-                        val name = teamNames.getValue(id)
-                        nodesByTeam[id].orEmpty().mapNotNull { row -> sourcedRule(name, row.node, row.allowed) } +
-                            instanceRoleRules(name, id in instanceRoleTeams)
+                        val name = teamNames[id] ?: return@flatMap emptyList()
+                        nodesByTeam[id].orEmpty().mapNotNull { row -> sourcedRule(name, row.node, row.allowed) }
                     },
                     grants = ids.flatMap { grantsByTeam[it].orEmpty() },
                 )
@@ -630,8 +639,40 @@ class IdentityStore(
                 kind = principal.kind,
                 disabled = principal.disabled,
                 levels = levels,
-                tokenRules = scopes?.let { ScopeRules.of(principal.name, it) },
+                tokenRules = tokenRulesOf(principal.name, tokenNodes),
                 teams = directTeams.mapNotNull { teamNames[it] }.sorted(),
+            )
+        }
+
+    /**
+     * The rows the last-admin rule needs, read in one query each. The rule itself is pure (see [AdminReachability]).
+     */
+    fun adminReachabilityInput(): AdminReachability.Input =
+        transaction(database) {
+            val principals = PrincipalTable.selectAll().map { AdminReachability.Principal(it[PrincipalTable.id].value, it[PrincipalTable.disabled]) }
+            val nodes = PermissionNodeTable.selectAll().toList()
+            val principalRules = nodes.filter { it[PermissionNodeTable.subjectKind] != NODE_SUBJECT_TEAM }
+                .groupBy { it[PermissionNodeTable.subjectId] }
+                .mapValues { (_, rows) -> rows.map { NodeRule(it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) } }
+            val teamRules = nodes.filter { it[PermissionNodeTable.subjectKind] == NODE_SUBJECT_TEAM }
+                .groupBy { it[PermissionNodeTable.subjectId] }
+                .mapValues { (_, rows) -> rows.map { NodeRule(it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) } }
+            AdminReachability.Input(
+                principals = principals,
+                principalRules = principalRules,
+                teamRules = teamRules,
+                parents = TeamParentTable.selectAll()
+                    .groupBy({ it[TeamParentTable.teamId].value }, { it[TeamParentTable.parentTeamId].value })
+                    .mapValues { (_, parents) -> parents.toSet() },
+                memberships = TeamMemberTable.selectAll().map { AdminReachability.Membership(it[TeamMemberTable.teamId].value, it[TeamMemberTable.principalId].value) },
+                tokens = PrincipalTokenTable.selectAll().map { row ->
+                    AdminReachability.Token(
+                        id = row[PrincipalTokenTable.id].value,
+                        principalId = row[PrincipalTokenTable.principalId].value,
+                        expiresAt = row[PrincipalTokenTable.expiresAt],
+                        nodes = decodeNodes(row[PrincipalTokenTable.nodes]),
+                    )
+                },
             )
         }
 
@@ -645,19 +686,32 @@ class IdentityStore(
             .where { (PermissionNodeTable.subjectKind eq subjectKind) and (PermissionNodeTable.subjectId eq subjectId) }
             .mapNotNull { sourcedRule(subject, it[PermissionNodeTable.node], it[PermissionNodeTable.allowed]) }
 
-    private fun instanceRoleRules(subject: String, held: Boolean): List<SourcedRule> =
-        if (held) listOf(SourcedRule(subject, NodePattern.INSTANCE_ADMIN, allowed = true)) else emptyList()
-
     private fun sourcedRule(subject: String, node: String, allowed: Boolean): SourcedRule? =
         runCatching { NodePattern.of(node) }.getOrNull()?.let { SourcedRule(subject, it, allowed) }
 
-    private fun instanceRoleExists(principalId: Int?, teamId: Int?): Boolean {
-        val condition = when {
-            principalId != null -> InstanceRoleTable.principalId eq principalId
-            else -> InstanceRoleTable.teamId eq teamId!!
-        }
-        return InstanceRoleTable.selectAll().where { condition }.any()
+    /**
+     * The node list of a token, narrowing its owner. A node that does not parse makes the list deny everything, so an
+     * unreadable token never widens.
+     */
+    private fun tokenRulesOf(subject: String, nodes: List<NodeRule>?): List<SourcedRule>? {
+        if (nodes == null) return null
+        val parsed = nodes.map { sourcedRule(subject, it.node, it.allowed) }
+        return if (parsed.any { it == null }) emptyList() else parsed.filterNotNull()
     }
+
+    private fun adminNodeOf(subjectKind: String, subjectId: Int): Op<Boolean> =
+        (PermissionNodeTable.subjectKind eq subjectKind) and (PermissionNodeTable.subjectId eq subjectId) and
+            (PermissionNodeTable.node eq NodePattern.INSTANCE_ADMIN.text)
+
+    private fun adminNodeOf(subjectKinds: List<String>, subjectId: Int): Op<Boolean> =
+        (PermissionNodeTable.subjectKind inList subjectKinds) and (PermissionNodeTable.subjectId eq subjectId) and
+            (PermissionNodeTable.node eq NodePattern.INSTANCE_ADMIN.text)
+
+    private fun adminNodeAllowed(subjectKinds: List<String>, subjectId: Int): Op<Boolean> =
+        adminNodeOf(subjectKinds, subjectId) and (PermissionNodeTable.allowed eq true)
+
+    private fun adminNodeAllowedFilter(): Op<Boolean> =
+        (PermissionNodeTable.node eq NodePattern.INSTANCE_ADMIN.text) and (PermissionNodeTable.allowed eq true)
 
     private fun findTeamRowIdsByKey(nameKey: String): List<Int> =
         TeamTable.selectAll().where { TeamTable.nameKey eq nameKey }.map { it[TeamTable.id].value }
@@ -716,6 +770,7 @@ class IdentityStore(
         name = this[PrincipalTokenTable.name],
         secretHash = this[PrincipalTokenTable.secretHash],
         scopes = decodeScopes(this[PrincipalTokenTable.scopes]),
+        nodes = decodeNodes(this[PrincipalTokenTable.nodes]),
         expiresAt = this[PrincipalTokenTable.expiresAt],
         lastUsedAt = this[PrincipalTokenTable.lastUsedAt],
         lastUsedIp = this[PrincipalTokenTable.lastUsedIp],
@@ -725,6 +780,9 @@ class IdentityStore(
 
     companion object {
 
+        /** The subject kinds of principals, as stored in the node table. */
+        internal val PRINCIPAL_KINDS: List<String> = PrincipalKind.entries.map { it.name }
+
         /** The key under which names are unique. Locale-independent, so Turkish dotted i does not split a name. */
         fun foldName(name: String): String =
             name.lowercase(Locale.ROOT)
@@ -732,6 +790,16 @@ class IdentityStore(
         /** Scopes are stored as a JSON array of action names, or `null` when the token is not narrowed. */
         internal fun encodeScopes(scopes: Set<Action>?): String? =
             scopes?.map { it.name }?.sorted()?.let { DEFAULT_OBJECT_MAPPER.writeValueAsString(it) }
+
+        /** Node lists are stored as a JSON array of `{node, allowed}`, or `null` when the token is not narrowed. */
+        internal fun encodeNodes(nodes: List<NodeRule>?): String? =
+            nodes?.map { mapOf("node" to it.node, "allowed" to it.allowed) }?.let { DEFAULT_OBJECT_MAPPER.writeValueAsString(it) }
+
+        internal fun decodeNodes(encoded: String?): List<NodeRule>? =
+            encoded?.let {
+                DEFAULT_OBJECT_MAPPER.readValue(it, object : TypeReference<List<Map<String, Any>>>() {})
+                    .map { entry -> NodeRule(entry.getValue("node") as String, entry.getValue("allowed") as Boolean) }
+            }
 
         internal fun decodeScopes(encoded: String?): Set<Action>? =
             encoded?.let {

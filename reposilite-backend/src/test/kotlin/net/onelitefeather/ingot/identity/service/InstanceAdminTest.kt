@@ -429,7 +429,7 @@ internal class InstanceAdminTest {
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
             // when: the grants are replaced
-            val result = service.replaceGrants("operators", listOf(GrantRequest(role = "READ")), ifMatch = null)
+            val result = service.replaceGrants("operators", listOf(GrantRequest(repository = "releases", pathPrefix = "com", role = "READ")), ifMatch = null)
 
             // then: the instance role stays and is reported
             assertThat(result.orNull()?.value?.instanceRole).isTrue

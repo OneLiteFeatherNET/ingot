@@ -189,7 +189,7 @@ internal class IdentityListSummaryTest {
             service.createTeam(CreateTeamRequest(name = "deployers"))
             service.createTeam(CreateTeamRequest(name = "empty"))
             service.replaceMembers("deployers", listOf("first", "second"), ifMatch = null)
-            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", role = "DEPLOY")), ifMatch = null)
+            service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "DEPLOY")), ifMatch = null)
 
             // when
             val teams = service.listTeams().orNull()!!.associateBy { it.name }
@@ -233,7 +233,7 @@ internal class IdentityListSummaryTest {
             // when: ten more teams with a grant exist
             repeat(10) {
                 service.createTeam(CreateTeamRequest(name = "more-$it"))
-                service.replaceGrants("more-$it", listOf(GrantRequest(role = "READ")), ifMatch = null)
+                service.replaceGrants("more-$it", listOf(GrantRequest(repository = "releases", pathPrefix = "com", role = "READ")), ifMatch = null)
             }
             val large = statementsOf(store) { service.listTeams() }
 

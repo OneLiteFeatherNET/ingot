@@ -64,6 +64,7 @@ import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.api.UpdatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.UpdateTeamRequest
 import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
+import net.onelitefeather.ingot.identity.evaluation.AdminReachability
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import net.onelitefeather.ingot.identity.evaluation.TeamHierarchy
 import net.onelitefeather.ingot.identity.login.BearerSecret
@@ -434,7 +435,10 @@ class IdentityFacade(
             if (role !in Role.ASSIGNABLE) return badRequestError("Role $role cannot be assigned, supported: READ, DEPLOY, MAINTAIN, ADMIN")
             val repository = request.repository?.trim()?.takeIf { it.isNotEmpty() }
             if (repository != null && repository.contains('/')) return badRequestError("Repository '$repository' must not contain '/'")
-            Triple(repository, normalizePrefix(request.pathPrefix), role)
+            val pathPrefix = normalizePrefix(request.pathPrefix)
+                ?: return badRequestError("A grant names a path. Repository-wide access is granted with permission nodes, see /api/identity/teams/{name}/nodes")
+            if (role == Role.ADMIN) return badRequestError("ADMIN applies to a whole repository, grant it with permission nodes")
+            Triple(repository, pathPrefix, role)
         }
         val before = store.listGrants(team.id).map { describeGrant(it.repository, it.pathPrefix, it.role.name) }.toSet()
         val after = parsed.map { (repository, pathPrefix, role) -> describeGrant(repository, pathPrefix, role.name) }.toSet()
@@ -553,7 +557,7 @@ class IdentityFacade(
         val visibility = visibilityOf(repository) ?: return notFoundError("Repository not found")
 
         val entries = store.listPrincipals().mapNotNull { principal ->
-            val subject = store.loadAccess(principal, scopes = null)
+            val subject = store.loadAccess(principal, tokenNodes = null)
             val admin = PermissionEvaluator.isInstanceAdmin(subject)
             val applying = subject.levels.flatMap { it.grants }.filter { PermissionEvaluator.grantReaches(it, "/$repository") }
             if (!admin && applying.isEmpty()) return@mapNotNull null
@@ -678,22 +682,26 @@ class IdentityFacade(
         }
     }
 
-    /** Counts the usable instance admins as they would be once [change] is applied. */
+    /**
+     * Counts the usable instance admins as they would be once [change] is applied. The rule itself is pure (see
+     * [AdminReachability]); the change only removes what it names from the rows that were read.
+     */
     private fun usableInstanceAdmins(change: AdminChange): Int {
-        val now = clock.instant()
-        val directRoles = store.listInstanceRolePrincipalIds() - change.principalRoleLost
-        val teamRoles = store.listInstanceRoleTeamIds() - change.teamRoleLost
-        return store.listPrincipals().count { principal ->
-            principal.id !in change.principalsUnusable &&
-                !principal.disabled &&
-                (principal.id in directRoles || store.membershipsOf(principal.id).any { membership ->
-                    membership.teamId in teamRoles && (membership.teamId to membership.principalId) !in change.membershipsLost
-                }) &&
-                store.tokensOf(principal.id).any { token ->
-                    token.id != change.tokenRemoved && (token.expiresAt?.let { !now.isAfter(it) } ?: true)
-                }
-        }
+        val input = store.adminReachabilityInput()
+        val changed = AdminReachability.Input(
+            principals = input.principals.map { if (it.id in change.principalsUnusable) it.copy(disabled = true) else it },
+            principalRules = input.principalRules.mapValues { (id, rules) -> if (id in change.principalRoleLost) withoutAdminNodes(rules) else rules },
+            teamRules = input.teamRules.mapValues { (id, rules) -> if (id in change.teamRoleLost) withoutAdminNodes(rules) else rules },
+            parents = input.parents,
+            memberships = input.memberships.filterNot { (it.teamId to it.principalId) in change.membershipsLost },
+            tokens = input.tokens.filterNot { it.id == change.tokenRemoved },
+        )
+        return AdminReachability.usableAdmins(changed, clock.instant()).size
     }
+
+    /** The rules that confer the instance admin: the admin node itself and the star node. */
+    private fun withoutAdminNodes(rules: List<NodeRule>): List<NodeRule> =
+        rules.filterNot { it.allowed && (it.node == NodePattern.INSTANCE_ADMIN.text || it.node == NodePattern.WILDCARD) }
 
     private fun <T> preconditionFailed(subject: String): IdentityResult<T> =
         errorResponse(PRECONDITION_FAILED, "$subject has been changed since it was read, reload it and try again")

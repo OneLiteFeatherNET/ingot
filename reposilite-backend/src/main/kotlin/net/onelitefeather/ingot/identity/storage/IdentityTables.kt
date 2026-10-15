@@ -101,6 +101,8 @@ object PrincipalTokenTable : IntIdTable("principal_token") {
     val name = varchar("name", NAME_LENGTH).uniqueIndex("uq_principal_token_name")
     val secretHash = varchar("secret_hash", 512)
     val scopes = text("scopes").nullable()
+    /** The node list of the token, JSON `[{node, allowed}]`. Null when the token does not narrow its owner. */
+    val nodes = text("nodes").nullable()
     val expiresAt = timestamp("expires_at").nullable()
     val lastUsedAt = timestamp("last_used_at").nullable()
     val lastUsedIp = varchar("last_used_ip", 64).nullable()

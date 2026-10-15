@@ -29,6 +29,7 @@ import com.reposilite.token.infrastructure.SqlAccessTokenRepository
 import net.onelitefeather.ingot.identity.storage.IdentityAccessTokenRepository
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import net.onelitefeather.ingot.identity.storage.LegacyAccessTokenMigration
+import net.onelitefeather.ingot.identity.storage.PermissionNodeMigration
 import org.jetbrains.exposed.v1.jdbc.Database
 
 class AccessTokenComponents(
@@ -52,6 +53,7 @@ class AccessTokenComponents(
                 val store = IdentityStore(database)
                 val outcome = LegacyAccessTokenMigration(database, journalist).migrate()
                 journalist.logger.debug("Identity | access token migration: $outcome")
+                PermissionNodeMigration(database, journalist).migrate()
                 IdentityAccessTokenRepository(store)
             }
         }

@@ -55,12 +55,12 @@ internal class IdentityAccessTokenRepository(
         if (identifier.value == UNINITIALIZED_ENTITY_ID) return null
         val token = store.findTokenById(identifier.value) ?: return null
         val principal = store.findPrincipalById(token.principalId) ?: return null
-        return store.loadAccess(principal, token.scopes)
+        return store.loadAccess(principal, token.nodes)
     }
 
     override fun subjectOfPrincipal(principalId: Int): AccessSubject? {
         val principal = store.findPrincipalById(principalId) ?: return null
-        return store.loadAccess(principal, scopes = null)
+        return store.loadAccess(principal, tokenNodes = null)
     }
 
     override fun principalOf(principalId: Int): PrincipalRecord? =

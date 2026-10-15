@@ -25,6 +25,8 @@ import com.reposilite.shared.EntityTagSigner
 import com.reposilite.token.application.AccessTokenComponents
 import net.onelitefeather.ingot.identity.api.CreatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.CreateTeamRequest
+import net.onelitefeather.ingot.identity.api.CreateTokenRequest
+import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.NodeDto
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
@@ -300,6 +302,56 @@ internal class PermissionNodeAdministrationTest {
 
             val event = events.single { it.action == AuditAction.TEAM_UPDATED && it.details["changed"] == listOf("parents") }
             assertThat(event.details).containsEntry("team", "deployers")
+        }
+    }
+
+    @Test
+    fun `refuses a repository-wide grant because nodes are the way to grant it`() {
+        withService { service, _, _ ->
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+
+            val result = service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", role = "DEPLOY")), ifMatch = null)
+
+            assertThat(result.error.status).describedAs("status").isEqualTo(400)
+            assertThat(result.error.message).describedAs("names the node endpoint").contains("nodes")
+        }
+    }
+
+    @Test
+    fun `accepts a path-scoped deploy grant`() {
+        withService { service, _, _ ->
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+
+            val result = service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "DEPLOY")), ifMatch = null)
+
+            assertThat(result.isOk).describedAs("path-scoped grant").isTrue
+        }
+    }
+
+    @Test
+    fun `refuses an admin grant on a path, because admin applies to a whole repository`() {
+        withService { service, _, _ ->
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+
+            val result = service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com", role = "ADMIN")), ifMatch = null)
+
+            assertThat(result.error.status).describedAs("status").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `refuses to remove the admin node of the last usable admin`() {
+        withService { service, _, _ ->
+            // given: an admin with a usable token
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.createToken("alice", CreateTokenRequest(name = "alice-token"))
+            service.grantPrincipalInstanceAdmin("alice", ifMatch = null)
+
+            // when
+            val result = service.revokePrincipalInstanceAdmin("alice", ifMatch = null)
+
+            // then
+            assertThat(result.error.status).describedAs("last admin").isEqualTo(409)
         }
     }
 

@@ -66,4 +66,27 @@ internal class TeamHierarchyTest {
         val graph = mapOf(1 to setOf(2, 3), 2 to setOf(4), 3 to setOf(4))
         assertThat(TeamHierarchy.problemOf(graph)).isNull()
     }
+
+    @Test
+    fun `levels group the inherited teams by distance, nearest first`() {
+        val levels = TeamHierarchy.levelsFrom(setOf(1), mapOf(1 to setOf(2, 3), 2 to setOf(4), 3 to setOf(4)))
+
+        assertThat(levels).containsExactly(0 to setOf(1), 1 to setOf(2, 3), 2 to setOf(4))
+    }
+
+    @Test
+    fun `a team reached by a short and a long path lands on the short distance`() {
+        val levels = TeamHierarchy.levelsFrom(setOf(1), mapOf(1 to setOf(2, 3), 2 to setOf(3)))
+
+        assertThat(levels).containsExactly(0 to setOf(1), 1 to setOf(2, 3))
+    }
+
+    @Test
+    fun `levels stop at the maximum depth`() {
+        val parents = (1..12).associateWith { setOf(it + 1) }
+
+        val levels = TeamHierarchy.levelsFrom(setOf(1), parents)
+
+        assertThat(levels.last().first).describedAs("deepest level").isEqualTo(TeamHierarchy.MAX_DEPTH)
+    }
 }

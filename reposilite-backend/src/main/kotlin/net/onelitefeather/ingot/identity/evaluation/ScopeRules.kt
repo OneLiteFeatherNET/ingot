@@ -17,6 +17,7 @@ package net.onelitefeather.ingot.identity.evaluation
 
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.identity.model.NodeRule
 import net.onelitefeather.ingot.identity.model.SourcedRule
 
 /**
@@ -29,6 +30,10 @@ object ScopeRules {
     /** The node list equivalent to [scopes] for a token of [owner]. Every node allows; the token narrows by listing them. */
     fun of(owner: String, scopes: Set<Action>): List<SourcedRule> =
         scopes.sortedBy { it.ordinal }.map { scope -> SourcedRule(owner, NodePattern.of(nodeOf(scope)), allowed = true) }
+
+    /** The node rules a token with these scopes carries. Stored with the token, so the token keeps its rights as it was. */
+    fun nodesOf(scopes: Set<Action>): List<NodeRule> =
+        scopes.sortedBy { it.ordinal }.map { NodeRule(nodeOf(it), allowed = true) }
 
     /** The node text a scope becomes. */
     fun nodeOf(scope: Action): String =
