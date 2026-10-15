@@ -68,12 +68,14 @@ const select = (item, event) => {
   >
     <ul
       role="list"
-      class="flex h-full list-none items-center justify-around gap-1 px-2"
+      class="flex h-full w-full min-w-0 list-none items-center justify-around gap-1 px-2"
     >
+      <!-- min-w-0: an item shrinks to its share of the width instead of its label's width, so the
+           bar never runs past the client area. -->
       <li
         v-for="item in items"
         :key="item.key"
-        class="flex h-full flex-1"
+        class="flex h-full min-w-0 flex-1 basis-0"
       >
         <component
           :is="item.href ? 'a' : 'button'"
