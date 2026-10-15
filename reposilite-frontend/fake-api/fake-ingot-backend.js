@@ -368,7 +368,7 @@ application
   .use(bodyParser.json())
   // Cookie sessions, CSRF, setup, /api/auth/* and /api/identity/*. See identity.cjs.
   .use(identity.router)
-  .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend', 'cleanup']))
+  .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend', 'cleanup', 'login']))
   .get('/api/settings/schema/cleanup', (req, res) => res.send(cleanupSchema))
   .get('/api/settings/domain/cleanup', (req, res) => res.send(omitNulls({ policies: cleanupDomain.policies.map(omitNulls) })))
   .put('/api/settings/domain/cleanup', (req, res) => {

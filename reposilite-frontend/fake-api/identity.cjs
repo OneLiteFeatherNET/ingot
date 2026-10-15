@@ -901,7 +901,7 @@ identity.put("/teams/:name/members", withTeam((req, res, team) => {
   const membersAdded = after.filter(name => !before.some(other => same(other, name)))
   const membersRemoved = before.filter(name => !after.some(other => same(other, name)))
   if (membersAdded.length > 0 || membersRemoved.length > 0) {
-    record(req, "TEAM_MEMBERSHIP_CHANGED", { team: team.name, membersAdded, membersRemoved })
+    record(req, "TEAM_MEMBERSHIP_CHANGED", { team: team.name, added: membersAdded, removed: membersRemoved })
   }
   reply(res, teamDetail(team))
 }))
