@@ -20,8 +20,26 @@ import { default as MdColourFieldRenderer, tester as mdColourFieldTester } from 
 import { default as AppearanceSectionRenderer, tester as appearanceSectionTester } from '../components/renderers/AppearanceSectionRenderer.vue'
 import { invalidColourFields } from '../theme/settings'
 import { setAppearance, applyAppearance } from './appearance'
+import { etagOf, isPreconditionFailed } from './client'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
+
+/*
+ * The fields where a draft and the server state differ, as dotted paths. Objects are compared key by key,
+ * arrays index by index, and a value present on one side only is reported with the other side undefined.
+ */
+export const diffFields = (local, server, path = '') => {
+  if (isEqual(local, server)) return []
+  const childPath = (key) => (path ? `${path}.${key}` : `${key}`)
+  if (isPlainObject(local) && isPlainObject(server)) {
+    return [...new Set([...Object.keys(local), ...Object.keys(server)])]
+      .flatMap(key => diffFields(local[key], server[key], childPath(key)))
+  }
+  if (Array.isArray(local) && Array.isArray(server) && local.length === server.length) {
+    return local.flatMap((value, index) => diffFields(value, server[index], childPath(index)))
+  }
+  return [{ path: path || '(whole domain)', local, server }]
+}
 
 /*
  * How many values differ between an edited configuration and the server snapshot. Objects are
@@ -66,6 +84,10 @@ export const createConfigurationStore = (client) => {
   const loadError = ref(null)
   const saveError = ref(null)
   const saving = ref(false)
+  /* The tag each domain was last read or written with. A write sends it back, so the server can refuse a stale draft. */
+  const etags = ref({})
+  /* The domain whose stored settings changed elsewhere, or null. The conflict dialog renders it. */
+  const conflict = ref(null)
 
   /* markRaw keeps Vue from wrapping the instance in a reactive proxy, which breaks ajv's code generation. */
   const configurationValidator = markRaw(createAjv({
@@ -121,13 +143,14 @@ export const createConfigurationStore = (client) => {
           client.value.settings.schema(domain),
           client.value.settings.fetch(domain)
         ])
-        return { domain, schema: schema.data, configuration: configuration.data }
+        return { domain, schema: schema.data, configuration: configuration.data, etag: etagOf(configuration) }
       }))
 
       domains.value = domainNames
-      loaded.forEach(({ domain, schema, configuration }) => {
+      loaded.forEach(({ domain, schema, configuration, etag }) => {
         schemas.value[domain] = schema
         configurations.value[domain] = configuration
+        etags.value[domain] = etag
       })
       loaded.forEach(({ domain }) => {
         const withDefaultValues = withDefaults(domain, cloneJson(configurations.value[domain]))
@@ -146,10 +169,33 @@ export const createConfigurationStore = (client) => {
     }
   }
 
+  /* The stored state of a domain as the server has it now, with the schema defaults applied as on load, and its tag. */
+  const loadServerState = async (domain) => {
+    const response = await client.value.settings.fetch(domain)
+    return { server: withDefaults(domain, cloneJson(response.data)), etag: etagOf(response) }
+  }
+
+  /* Makes the server state the draft and the snapshot of a domain, and keeps the tag it came with. */
+  const adoptServerState = async (domain, server, etag) => {
+    configurations.value[domain] = server
+    snapshots.value[domain] = cloneJson(server)
+    etags.value[domain] = etag
+    // The dashboard shows its appearance from these settings, so the admin sees the result now.
+    if (domain === 'frontend') {
+      setAppearance(server.appearance)
+      await applyAppearance()
+    }
+  }
+
+  const openSettingsConflict = (domain) => {
+    conflict.value = { kind: 'settings', name: domain, title: titleOf(domain), reviewed: false, differences: [] }
+  }
+
   /*
-   * Writes only the domains that differ from the server. Each one is written and read back, so
-   * the snapshot holds what the server now has. One failing domain does not undo the others;
-   * it stays dirty and is named in saveError.
+   * Writes only the domains that differ from the server. Each one is written with the tag it was read with
+   * and read back, so the snapshot holds what the server now has. One failing domain does not undo the others.
+   * A domain the server refused with 412 changed elsewhere: it stays dirty and opens the conflict dialog.
+   * Any other failure stays dirty too and is named in saveError.
    */
   const saveConfiguration = async () => {
     if (saving.value || invalidDomains.value.length > 0) return false
@@ -160,31 +206,96 @@ export const createConfigurationStore = (client) => {
     saveError.value = null
     const outcomes = await Promise.allSettled(pending.map(async domain => {
       // The payload is copied before the first await, so later edits do not leak into this write.
-      await client.value.settings.update(domain, cloneJson(configurations.value[domain]))
-      const response = await client.value.settings.fetch(domain)
-      const confirmed = withDefaults(domain, cloneJson(response.data))
-      configurations.value[domain] = confirmed
-      snapshots.value[domain] = cloneJson(confirmed)
-      // The dashboard shows its appearance from these settings, so the admin sees the result now.
-      if (domain === 'frontend') {
-        setAppearance(confirmed.appearance)
-        await applyAppearance()
-      }
+      await client.value.settings.update(domain, cloneJson(configurations.value[domain]), etags.value[domain])
+      const { server, etag } = await loadServerState(domain)
+      await adoptServerState(domain, server, etag)
     }))
     saving.value = false
 
     const failures = outcomes
       .map((outcome, index) => outcome.status === 'rejected' ? { domain: pending[index], error: outcome.reason } : null)
       .filter(Boolean)
-    if (failures.length === 0) {
+    const stale = failures.filter(failure => isPreconditionFailed(failure.error))
+    const others = failures.filter(failure => !isPreconditionFailed(failure.error))
+
+    if (stale.length > 0) openSettingsConflict(stale[0].domain)
+    if (others.length > 0) {
+      const names = others.map(failure => titleOf(failure.domain)).join(', ')
+      saveError.value = `Not saved: ${names}. ${errorMessage(others[0].error)}`
+      createErrorToast(saveError.value)
+      return false
+    }
+    if (stale.length > 0) return false
+
+    createSuccessToast('Configuration updated')
+    return true
+  }
+
+  /* Fetches what the server has now and lists the fields where it differs from the local draft. Nothing is changed. */
+  const reviewConflict = async () => {
+    const current = conflict.value
+    if (current?.kind !== 'settings') return false
+    try {
+      const { server } = await loadServerState(current.name)
+      conflict.value = {
+        ...current,
+        reviewed: true,
+        differences: diffFields(configurations.value[current.name], server),
+      }
+      return true
+    } catch (error) {
+      saveError.value = `Cannot load ${titleOf(current.name)} from the server: ${errorMessage(error)}`
+      createErrorToast(saveError.value)
+      return false
+    }
+  }
+
+  /* Takes the server state and drops the local draft of that domain. */
+  const reloadConflict = async () => {
+    const current = conflict.value
+    if (current?.kind !== 'settings') return false
+    try {
+      const { server, etag } = await loadServerState(current.name)
+      await adoptServerState(current.name, server, etag)
+      delete validity.value[current.name]
+      conflict.value = null
+      return true
+    } catch (error) {
+      saveError.value = `Cannot load ${titleOf(current.name)} from the server: ${errorMessage(error)}`
+      createErrorToast(saveError.value)
+      return false
+    }
+  }
+
+  /*
+   * Sends the local draft of the conflicting domain without a precondition, which replaces the change made
+   * elsewhere. The dialog asks for a second confirmation before this runs.
+   */
+  const overwriteConflict = async () => {
+    const current = conflict.value
+    if (current?.kind !== 'settings' || saving.value) return false
+    saving.value = true
+    saveError.value = null
+    try {
+      await client.value.settings.update(current.name, cloneJson(configurations.value[current.name]))
+      const { server, etag } = await loadServerState(current.name)
+      await adoptServerState(current.name, server, etag)
+      delete validity.value[current.name]
+      conflict.value = null
       createSuccessToast('Configuration updated')
       return true
+    } catch (error) {
+      saveError.value = `Not saved: ${titleOf(current.name)}. ${errorMessage(error)}`
+      createErrorToast(saveError.value)
+      return false
+    } finally {
+      saving.value = false
     }
+  }
 
-    const names = failures.map(failure => titleOf(failure.domain)).join(', ')
-    saveError.value = `Not saved: ${names}. ${errorMessage(failures[0].error)}`
-    createErrorToast(saveError.value)
-    return false
+  /* Closes the dialog and keeps the draft. It stays dirty, so the next save meets the same conflict. */
+  const dismissConflict = () => {
+    conflict.value = null
   }
 
   /* Puts every edited domain back to its server snapshot. Nothing is sent. */
@@ -310,6 +421,11 @@ export const createConfigurationStore = (client) => {
     titleOf,
     fetchConfiguration,
     saveConfiguration,
+    conflict,
+    reviewConflict,
+    reloadConflict,
+    overwriteConflict,
+    dismissConflict,
     discardChanges,
     factoryReset,
     setDomainData,

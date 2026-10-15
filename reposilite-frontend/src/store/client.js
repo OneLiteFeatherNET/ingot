@@ -42,6 +42,14 @@ axios.interceptors.response.use(response => response, handleResponseError)
 const createURL = (endpoint) =>
   usePlaceholders().baseUrl + endpoint
 
+/* The entity tag of a response. Null when the server sent none, and the next write is then unconditional. */
+const etagOf = (response) =>
+  response?.headers?.etag ?? null
+
+/* The 412 the server answers when the stored state changed since this client read it. */
+const isPreconditionFailed = (error) =>
+  error?.response?.status === 412
+
 const createClient = (defaultName, defaultSecret) => {
   const defaultAuthorization = () =>
     defaultName && defaultSecret
@@ -53,6 +61,10 @@ const createClient = (defaultName, defaultSecret) => {
       Authorization: `xBasic ${btoa(`${name}:${secret}`)}`,
     },
   })
+
+  // The precondition of an optimistic write. Without a known tag no header is sent, which is what an older server expects.
+  const ifMatch = (etag) =>
+    etag ? { "If-Match": etag } : {}
 
   const get = (endpoint, credentials) =>
     axios.get(createURL(endpoint), {
@@ -181,11 +193,12 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
-      update(name, content) {
+      update(name, content, etag) {
         return axios.put(createURL(`/api/settings/domain/${name}`), content, {
           headers: {
             "Content-Type": "application/json",
             Accepts: "application/json",
+            ...ifMatch(etag),
             ...defaultAuthorization().headers,
           },
         })
@@ -198,18 +211,20 @@ const createClient = (defaultName, defaultSecret) => {
       get(name) {
         return get(`/api/tokens/${encodeURIComponent(name)}`)
       },
-      createOrUpdate(name, request) {
+      createOrUpdate(name, request, etag) {
         return axios.put(createURL(`/api/tokens/${encodeURIComponent(name)}`), request, {
           headers: {
             "Content-Type": "application/json",
+            ...ifMatch(etag),
             ...defaultAuthorization().headers,
           },
         })
       },
-      update(name, request) {
+      update(name, request, etag) {
         return axios.patch(createURL(`/api/tokens/${encodeURIComponent(name)}`), request, {
           headers: {
             "Content-Type": "application/json",
+            ...ifMatch(etag),
             ...defaultAuthorization().headers,
           },
         })
@@ -232,5 +247,7 @@ export {
   createURL,
   createClient,
   setUnauthorizedHandler,
-  handleResponseError
+  handleResponseError,
+  etagOf,
+  isPreconditionFailed
 }

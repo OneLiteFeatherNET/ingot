@@ -1,0 +1,113 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import ConflictDialog from './ConflictDialog.vue'
+
+// The modal would teleport to the body; the stub keeps its slot inline so the buttons can be found.
+const mountDialog = (conflict) =>
+  mount(ConflictDialog, {
+    props: { conflict },
+    global: {
+      stubs: {
+        VueFinalModal: { template: '<div><slot /></div>' }
+      }
+    }
+  })
+
+const settingsConflict = (overrides = {}) => ({
+  kind: 'settings',
+  name: 'maven',
+  title: 'Maven',
+  reviewed: false,
+  differences: [],
+  ...overrides
+})
+
+const button = (wrapper, label) =>
+  wrapper.findAll('button').find(candidate => candidate.text() === label)
+
+describe('ConflictDialog', () => {
+  it('names the settings that changed elsewhere', () => {
+    const wrapper = mountDialog(settingsConflict())
+
+    expect(wrapper.text()).toContain('Settings changed elsewhere')
+    expect(wrapper.text()).toContain('Maven')
+  })
+
+  it('offers review, reload and overwrite for settings', () => {
+    const wrapper = mountDialog(settingsConflict())
+
+    expect(button(wrapper, 'Review')).toBeDefined()
+    expect(button(wrapper, 'Reload and discard my changes')).toBeDefined()
+    expect(button(wrapper, 'Overwrite')).toBeDefined()
+  })
+
+  it('offers no review for a token, which is reloaded or overwritten only', () => {
+    const wrapper = mountDialog({ kind: 'token', name: 'ci', title: 'ci', reviewed: false, differences: [] })
+
+    expect(wrapper.text()).toContain('Token changed elsewhere')
+    expect(button(wrapper, 'Review')).toBeUndefined()
+    expect(button(wrapper, 'Reload and discard my changes')).toBeDefined()
+  })
+
+  it('emits review when the user asks to review the settings', async () => {
+    const wrapper = mountDialog(settingsConflict())
+
+    await button(wrapper, 'Review').trigger('click')
+
+    expect(wrapper.emitted('review')).toHaveLength(1)
+  })
+
+  it('emits reload when the user chooses to discard their changes', async () => {
+    const wrapper = mountDialog(settingsConflict())
+
+    await button(wrapper, 'Reload and discard my changes').trigger('click')
+
+    expect(wrapper.emitted('reload')).toHaveLength(1)
+  })
+
+  it('does not overwrite on the first press and emits overwrite only after the confirmation', async () => {
+    const wrapper = mountDialog(settingsConflict())
+
+    await button(wrapper, 'Overwrite').trigger('click')
+    expect(wrapper.emitted('overwrite'), 'the first press only asks for confirmation').toBeUndefined()
+
+    await button(wrapper, 'Confirm overwrite').trigger('click')
+    expect(wrapper.emitted('overwrite')).toHaveLength(1)
+  })
+
+  it('lists the differing fields once reviewed', () => {
+    const wrapper = mountDialog(settingsConflict({
+      reviewed: true,
+      differences: [{ path: 'name', local: 'mine', server: 'other-admin' }]
+    }))
+
+    expect(wrapper.text()).toContain('name')
+    expect(wrapper.text()).toContain('"mine"')
+    expect(wrapper.text()).toContain('"other-admin"')
+    expect(button(wrapper, 'Review')).toBeUndefined()
+  })
+
+  it('emits dismiss when the user keeps the draft', async () => {
+    const wrapper = mountDialog(settingsConflict())
+
+    await button(wrapper, 'Keep my draft').trigger('click')
+
+    expect(wrapper.emitted('dismiss')).toHaveLength(1)
+  })
+})

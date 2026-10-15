@@ -17,6 +17,7 @@
 import { ref } from 'vue'
 import { useSession } from './session'
 import { createSuccessToast, createErrorToast, errorMessage } from '../helpers/toast'
+import { etagOf, isPreconditionFailed } from './client'
 
 const tokenIsManager = (token) =>
   (token.permissions || []).some(permission => permission.identifier === 'access-token:manager')
@@ -93,6 +94,16 @@ export function createTokenStore({ getClient, notify = defaultNotify }) {
   const loading = ref(false)
   const loadError = ref('')
   const secret = ref(null)
+  /* The tag each token's details were last read with. The list carries none, so every token is read once per load. */
+  const etags = {}
+  /* The token whose stored state changed elsewhere, or null. The conflict dialog renders it. */
+  const conflict = ref(null)
+
+  const fetchEtag = (name) =>
+    Promise.resolve()
+      .then(() => getClient().tokens.get(name))
+      .then(response => { etags[name] = etagOf(response) })
+      .catch(() => { etags[name] = null })
 
   const fetchTokens = () => {
     loading.value = true
@@ -101,6 +112,7 @@ export function createTokenStore({ getClient, notify = defaultNotify }) {
       .then(response => {
         tokens.value = response.data
         loaded.value = true
+        return Promise.all(response.data.map(token => fetchEtag(token.name)))
       })
       .catch(error => { loadError.value = errorMessage(error) })
       .finally(() => { loading.value = false })
@@ -125,11 +137,49 @@ export function createTokenStore({ getClient, notify = defaultNotify }) {
     expiresAt: token.expiresAt ? new Date(toMs(token.expiresAt)).toISOString() : null,
   })
 
-  const saveToken = (token, overrides, successMessage) =>
-    getClient().tokens.update(token.name, { ...toUpdateRequest(token), ...overrides })
+  /*
+   * Saves with the tag the token was read with. A 412 means the token changed elsewhere, so nothing is written and
+   * the conflict dialog offers a reload or an overwrite. Other failures are reported as before.
+   */
+  const saveToken = (token, overrides, successMessage) => {
+    const request = { ...toUpdateRequest(token), ...overrides }
+    return getClient().tokens.update(token.name, request, etags[token.name])
       .then(() => fetchTokens())
       .then(() => { notify.success(successMessage); return true })
+      .catch(error => {
+        if (isPreconditionFailed(error)) {
+          conflict.value = { kind: 'token', name: token.name, title: token.name, reviewed: false, differences: [], request, successMessage }
+          return false
+        }
+        notify.error(errorMessage(error))
+        return false
+      })
+  }
+
+  /* Takes the server state. The local edit is dropped, because the view shows what the list now holds. */
+  const reloadTokenConflict = () => {
+    conflict.value = null
+    return fetchTokens()
+  }
+
+  /* Sends the edit again without a precondition. The dialog asks for a second confirmation before this runs. */
+  const overwriteTokenConflict = () => {
+    const current = conflict.value
+    if (current?.kind !== 'token') return Promise.resolve(false)
+    return getClient().tokens.update(current.name, current.request)
+      .then(() => fetchTokens())
+      .then(() => {
+        conflict.value = null
+        notify.success(current.successMessage)
+        return true
+      })
       .catch(error => { notify.error(errorMessage(error)); return false })
+  }
+
+  /* Closes the dialog and keeps the edit. The next save meets the same conflict until the token is reloaded. */
+  const dismissTokenConflict = () => {
+    conflict.value = null
+  }
 
   const saveTokenMeta = (token, { description, manager, expiresAt }) =>
     saveToken(token, {
@@ -173,6 +223,10 @@ export function createTokenStore({ getClient, notify = defaultNotify }) {
     loadError,
     secret,
     dismissSecret,
+    conflict,
+    reloadTokenConflict,
+    overwriteTokenConflict,
+    dismissTokenConflict,
     fetchTokens,
     createToken,
     saveTokenMeta,
