@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { createErrorToast, createSuccessToast, errorMessage } from '../../helpers/toast'
 import { etagOf, isPreconditionFailed } from '../../store/client'
 import MoreIcon from '../icons/MoreIcon.vue'
@@ -41,6 +41,12 @@ import { detailOf } from './accessPrincipals'
  *   toggle   the menu opened (true) or closed (false). A list row is its own stacking context, so
  *            the row of an open menu has to be raised above the rows that follow it.
  *
+ * The open menu is teleported to the body and positioned with `fixed` from the bounding rect of
+ * its trigger, because the list card clips whatever sticks out of it (overflow-hidden keeps its
+ * rounded corners). It opens upwards when there is no room below. As the menu then no longer
+ * follows its trigger, it closes on scroll and resize. It also closes on Escape (the focus goes
+ * back to the trigger), on a press outside of it and when the focus leaves it.
+ *
  * Disable and enable read the principal again right before the write and send the entity tag
  * of that fresh read as If-Match, so a change made elsewhere in the meantime answers 412
  * instead of being overwritten. A rejection that names a reason, such as the last instance
@@ -64,7 +70,52 @@ const props = defineProps({
 const emit = defineEmits(['changed', 'deleted', 'toggle'])
 
 const menuOpen = ref(false)
-watch(menuOpen, (open) => emit('toggle', open))
+const root = ref(null)
+const menuElement = ref(null)
+const placement = ref({})
+
+const GAP = 4
+const triggerElement = () => root.value?.querySelector('[data-test="actions"]')
+
+const place = async () => {
+  const trigger = triggerElement()
+  if (!trigger) return
+  const rect = trigger.getBoundingClientRect()
+  const right = `${window.innerWidth - rect.right}px`
+  placement.value = { top: `${rect.bottom + GAP}px`, right }
+  await nextTick()
+  const height = menuElement.value?.getBoundingClientRect().height ?? 0
+  if (rect.bottom + GAP + height > window.innerHeight && rect.top - GAP - height >= 0) {
+    placement.value = { bottom: `${window.innerHeight - rect.top + GAP}px`, right }
+  }
+}
+
+const closeMenu = () => {
+  menuOpen.value = false
+}
+
+const insideMenu = (node) => root.value?.contains(node) || menuElement.value?.contains(node)
+
+const onPointerdown = (event) => {
+  if (!insideMenu(event.target)) closeMenu()
+}
+
+const listen = (on) => {
+  const toggle = on ? 'addEventListener' : 'removeEventListener'
+  document[toggle]('pointerdown', onPointerdown)
+  window[toggle]('scroll', closeMenu, true)
+  window[toggle]('resize', closeMenu)
+}
+
+watch(menuOpen, async (open) => {
+  emit('toggle', open)
+  listen(open)
+  if (!open) return
+  await place()
+  menuElement.value?.querySelector('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true })
+})
+
+onBeforeUnmount(() => listen(false))
 const passwordOpen = ref(false)
 const adminOpen = ref(false)
 const deleteOpen = ref(false)
@@ -82,12 +133,14 @@ const choose = (action) => {
 }
 
 const onKeydown = (event) => {
-  if (event.key === 'Escape') menuOpen.value = false
+  if (event.key !== 'Escape' || !menuOpen.value) return
+  menuOpen.value = false
+  triggerElement()?.focus()
 }
 
 // Closes the menu when the focus leaves it, so a click elsewhere does not leave it hanging open.
 const onFocusout = (event) => {
-  if (!event.currentTarget.contains(event.relatedTarget)) menuOpen.value = false
+  if (!insideMenu(event.relatedTarget)) menuOpen.value = false
 }
 
 const toggleDisabled = async () => {
@@ -150,6 +203,7 @@ const itemClass = 'md-state-layer relative flex w-full items-center rounded-corn
 
 <template>
   <div
+    ref="root"
     class="relative shrink-0"
     @keydown="onKeydown"
     @focusout="onFocusout"
@@ -163,52 +217,58 @@ const itemClass = 'md-state-layer relative flex w-full items-center rounded-corn
     >
       <MoreIcon />
     </MdIconButton>
-    <div
-      v-if="menuOpen"
-      role="menu"
-      :aria-label="`Actions for ${principal.name}`"
-      class="absolute right-0 z-20 mt-1 flex w-56 flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
-    >
-      <button
-        v-if="isUser"
-        type="button"
-        role="menuitem"
-        data-test="reset-password"
-        :class="itemClass"
-        @click="choose(() => (passwordOpen = true))"
+    <Teleport to="body">
+      <div
+        v-if="menuOpen"
+        ref="menuElement"
+        role="menu"
+        :aria-label="`Actions for ${principal.name}`"
+        :style="{ position: 'fixed', ...placement }"
+        class="z-50 flex w-56 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-corner-extra-small bg-surface-container p-2 shadow-elevation-2"
+        @keydown="onKeydown"
+        @focusout="onFocusout"
       >
-        Reset password
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        data-test="toggle-disabled"
-        :class="itemClass"
-        :disabled="busy"
-        @click="choose(toggleDisabled)"
-      >
-        {{ principal.disabled ? 'Enable' : 'Disable' }}
-      </button>
-      <button
-        v-if="isUser"
-        type="button"
-        role="menuitem"
-        data-test="toggle-admin"
-        :class="itemClass"
-        @click="choose(() => (adminOpen = true))"
-      >
-        {{ instanceAdmin ? 'Remove instance admin' : 'Make instance admin' }}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        data-test="delete"
-        :class="[itemClass, '!text-error']"
-        @click="choose(() => (deleteOpen = true))"
-      >
-        Delete
-      </button>
-    </div>
+        <button
+          v-if="isUser"
+          type="button"
+          role="menuitem"
+          data-test="reset-password"
+          :class="itemClass"
+          @click="choose(() => (passwordOpen = true))"
+        >
+          Reset password
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          data-test="toggle-disabled"
+          :class="itemClass"
+          :disabled="busy"
+          @click="choose(toggleDisabled)"
+        >
+          {{ principal.disabled ? 'Enable' : 'Disable' }}
+        </button>
+        <button
+          v-if="isUser"
+          type="button"
+          role="menuitem"
+          data-test="toggle-admin"
+          :class="itemClass"
+          @click="choose(() => (adminOpen = true))"
+        >
+          {{ instanceAdmin ? 'Remove instance admin' : 'Make instance admin' }}
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          data-test="delete"
+          :class="[itemClass, '!text-error']"
+          @click="choose(() => (deleteOpen = true))"
+        >
+          Delete
+        </button>
+      </div>
+    </Teleport>
 
     <ResetPasswordDialog
       v-if="isUser"

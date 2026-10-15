@@ -30,6 +30,16 @@ const ALICE = { name: 'alice', kind: 'USER', displayName: 'Alice Example', disab
 const rejection = (status, message) =>
   Object.assign(new Error('failed'), { response: { status, data: { message } } })
 
+// The menu is teleported to the body, so it is read from the document and not from the wrapper.
+const menu = () => document.querySelector('[role="menu"]')
+const item = (test) => document.querySelector(`[role="menu"] [data-test="${test}"]`)
+const clickItem = async (test) => {
+  item(test).click()
+  await flushPromises()
+}
+
+const texts = () => [...document.querySelectorAll('[role="menuitem"]')].map(node => node.textContent.trim())
+
 const dialog = () => document.querySelector('[role="dialog"]')
 const dialogButton = (label) =>
   [...dialog().querySelectorAll('button')].find(node => node.textContent.trim() === label)
@@ -52,8 +62,8 @@ describe('PrincipalActionsMenu', () => {
 
   const chooseItem = async (test) => {
     await wrapper.find('[data-test="actions"]').trigger('click')
-    await wrapper.find(`[data-test="${test}"]`).trigger('click')
     await flushPromises()
+    await clickItem(test)
   }
 
   beforeEach(() => {
@@ -70,6 +80,7 @@ describe('PrincipalActionsMenu', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     wrapper?.unmount()
     wrapper = undefined
     document.body.innerHTML = ''
@@ -96,9 +107,119 @@ describe('PrincipalActionsMenu', () => {
       await mountMenu()
       await wrapper.find('[data-test="actions"]').trigger('click')
 
-      await wrapper.find('[role="menu"]').trigger('keydown', { key: 'Escape' })
+      menu().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await flushPromises()
 
       expect(wrapper.emitted('toggle')?.at(-1)).toEqual([false])
+    })
+  })
+
+  describe('placement', () => {
+    const openMenu = async () => {
+      await wrapper.find('[data-test="actions"]').trigger('click')
+      await flushPromises()
+    }
+
+    it('mounts the open menu directly under the body so no card can clip it', async () => {
+      await mountMenu()
+
+      await openMenu()
+
+      expect(menu(), 'the menu is open').not.toBeNull()
+      expect(menu().parentElement, 'a teleported menu is a child of the body').toBe(document.body)
+      expect(wrapper.find('[role="menu"]').exists(), 'nothing of the menu stays inside the row').toBe(false)
+    })
+
+    it('mounts no menu while it is closed', async () => {
+      await mountMenu()
+
+      expect(menu()).toBeNull()
+    })
+
+    it('positions the menu from the trigger with fixed positioning', async () => {
+      await mountMenu()
+      const trigger = wrapper.find('[data-test="actions"]').element
+      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 140, left: 260, right: 300, width: 40, height: 40 })
+
+      await openMenu()
+
+      expect(menu().style.position).toBe('fixed')
+      expect(menu().style.top, 'four pixels below the trigger').toBe('144px')
+      expect(menu().style.right, 'right edges line up').toBe(`${window.innerWidth - 300}px`)
+    })
+
+    it('opens upwards when there is no room below the trigger', async () => {
+      await mountMenu()
+      const trigger = wrapper.find('[data-test="actions"]').element
+      vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({ top: 700, bottom: 740, left: 260, right: 300, width: 40, height: 40 })
+      vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(768)
+      const original = Element.prototype.getBoundingClientRect
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+        return this.getAttribute?.('role') === 'menu'
+          ? { top: 0, bottom: 200, left: 0, right: 224, width: 224, height: 200 }
+          : original.call(this)
+      })
+
+      await openMenu()
+
+      expect(menu().style.bottom, 'the menu sits above the trigger').toBe(`${768 - 700 + 4}px`)
+      expect(menu().style.top).toBe('')
+    })
+  })
+
+  describe('keyboard and pointer', () => {
+    const openMenu = async () => {
+      await wrapper.find('[data-test="actions"]').trigger('click')
+      await flushPromises()
+    }
+
+    it('moves the focus to the first item when it opens', async () => {
+      await mountMenu()
+
+      await openMenu()
+
+      expect(document.activeElement).toBe(menu().querySelector('[role="menuitem"]'))
+    })
+
+    it('closes on Escape and returns the focus to the trigger', async () => {
+      await mountMenu()
+      await openMenu()
+
+      item('delete').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await flushPromises()
+
+      expect(menu(), 'Escape closes the menu').toBeNull()
+      expect(document.activeElement, 'the focus goes back to where the user came from').toBe(wrapper.find('[data-test="actions"]').element)
+    })
+
+    it('closes on a click outside of the menu', async () => {
+      await mountMenu()
+      await openMenu()
+
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+      await flushPromises()
+
+      expect(menu()).toBeNull()
+    })
+
+    it('stays open on a pointer press inside the menu', async () => {
+      await mountMenu()
+      await openMenu()
+
+      menu().dispatchEvent(new Event('pointerdown', { bubbles: true }))
+      await flushPromises()
+
+      expect(menu()).not.toBeNull()
+    })
+
+    it('closes when the page scrolls, because the menu no longer lines up with its trigger', async () => {
+      await mountMenu()
+      await openMenu()
+
+      window.dispatchEvent(new Event('scroll'))
+      await flushPromises()
+
+      expect(menu()).toBeNull()
     })
   })
 
@@ -107,29 +228,36 @@ describe('PrincipalActionsMenu', () => {
       await mountMenu()
       await wrapper.find('[data-test="actions"]').trigger('click')
 
-      expect(wrapper.findAll('[role="menuitem"]').map(item => item.text()))
-        .toEqual(['Reset password', 'Disable', 'Make instance admin', 'Delete'])
+      await flushPromises()
+
+      expect(texts()).toEqual(['Reset password', 'Disable', 'Make instance admin', 'Delete'])
     })
 
     it('offers Enable for a disabled principal', async () => {
       await mountMenu({ principal: { ...ALICE, disabled: true } })
       await wrapper.find('[data-test="actions"]').trigger('click')
 
-      expect(wrapper.find('[data-test="toggle-disabled"]').text()).toBe('Enable')
+      await flushPromises()
+
+      expect(item('toggle-disabled').textContent.trim()).toBe('Enable')
     })
 
     it('offers Remove instance admin for an instance admin', async () => {
       await mountMenu({ instanceAdmin: true })
       await wrapper.find('[data-test="actions"]').trigger('click')
 
-      expect(wrapper.find('[data-test="toggle-admin"]').text()).toBe('Remove instance admin')
+      await flushPromises()
+
+      expect(item('toggle-admin').textContent.trim()).toBe('Remove instance admin')
     })
 
     it('offers a machine account neither a password nor the admin role', async () => {
       await mountMenu({ principal: { name: 'ci-bot', kind: 'MACHINE', disabled: false } })
       await wrapper.find('[data-test="actions"]').trigger('click')
 
-      expect(wrapper.findAll('[role="menuitem"]').map(item => item.text())).toEqual(['Disable', 'Delete'])
+      await flushPromises()
+
+      expect(texts()).toEqual(['Disable', 'Delete'])
     })
   })
 
