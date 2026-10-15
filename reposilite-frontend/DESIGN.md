@@ -168,6 +168,17 @@ for dark, and the `prefers-contrast: more` block for both high contrast schemes.
   generator in `src/theme/runtime.js`.
 - Development: `?theme-seed=%23006a6a` previews a seed without changing the settings. It is
   read only when `import.meta.env.DEV` is true.
+- The settings are fetched from `/api/frontend/settings` in both deployments, bundled or
+  detached, before the first render. The request goes below the mount point of the build, never
+  below the current address. The wait is capped at two seconds; a failure keeps the defaults
+  silently.
+- Saving the `frontend` settings domain applies the appearance again at once, without a reload.
+  Clearing the seed takes the generated theme and the favicon back out.
+- In the settings editor the five colour fields (`seedColor`, `primaryColor`, `secondaryColor`,
+  `tertiaryColor`, `errorColor`) are colour fields: an outlined text field with a swatch, a
+  picker behind an icon button, and a Clear action. A value must be `#RRGGBB` or empty, and the
+  domain cannot be saved otherwise. Under the Appearance section a preview strip shows the
+  primary, secondary, tertiary, error and surface roles of the scheme the form would give.
 
 ## Charts
 

@@ -16,6 +16,10 @@ import { default as BooleanSwitchRenderer, tester as booleanSwitchTester } from 
 import { default as MdTextFieldRenderer, tester as mdTextFieldTester } from '../components/renderers/MdTextFieldRenderer.vue'
 import { collectionsOf, idText, validateNewId } from '../components/settings/collections'
 import { default as MdSelectRenderer, tester as mdSelectTester, oneOfTester as mdOneOfSelectTester } from '../components/renderers/MdSelectRenderer.vue'
+import { default as MdColourFieldRenderer, tester as mdColourFieldTester } from '../components/renderers/MdColourFieldRenderer.vue'
+import { default as AppearanceSectionRenderer, tester as appearanceSectionTester } from '../components/renderers/AppearanceSectionRenderer.vue'
+import { invalidColourFields } from '../theme/settings'
+import { setAppearance, applyAppearance } from './appearance'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
 
@@ -161,6 +165,11 @@ export const createConfigurationStore = (client) => {
       const confirmed = withDefaults(domain, cloneJson(response.data))
       configurations.value[domain] = confirmed
       snapshots.value[domain] = cloneJson(confirmed)
+      // The dashboard shows its appearance from these settings, so the admin sees the result now.
+      if (domain === 'frontend') {
+        setAppearance(confirmed.appearance)
+        await applyAppearance()
+      }
     }))
     saving.value = false
 
@@ -212,7 +221,7 @@ export const createConfigurationStore = (client) => {
     } catch {
       valid = true
     }
-    validity.value[domain] = valid && idsAreUsable(domain)
+    validity.value[domain] = valid && idsAreUsable(domain) && invalidColourFields(configurations.value[domain]).length === 0
   }
 
   /*
@@ -324,6 +333,8 @@ const renderers = markRaw([
   // Outlined fields for text, numbers and enums. They outrank the vanilla renderers, which they replace.
   { tester: mdSelectTester, renderer: MdSelectRenderer },
   { tester: mdOneOfSelectTester, renderer: MdSelectRenderer },
+  // Colour fields outrank the text field they are strings of. They are not enums, so MdSelect does not take them.
+  { tester: mdColourFieldTester, renderer: MdColourFieldRenderer },
   { tester: mdTextFieldTester, renderer: MdTextFieldRenderer },
   { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
   { tester: arrayListTester, renderer: ArrayListRenderer },
@@ -331,6 +342,8 @@ const renderers = markRaw([
   { tester: oneOfTester, renderer: OneOfRenderer },
   { tester: constantTester, renderer: ConstantRenderer },
   { tester: optionalTester, renderer: OptionalRenderer },
+  // The Appearance group of the dashboard settings, with a live preview of its colours under it.
+  { tester: appearanceSectionTester, renderer: AppearanceSectionRenderer },
   // Groups become titled sections, replacing the fieldset of the vanilla group.
   { tester: sectionTester, renderer: SectionRenderer },
   {

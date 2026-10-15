@@ -42,7 +42,7 @@ import {
   argbFromHex,
   hexFromArgb
 } from '@material/material-color-utilities'
-import { THEME_STYLE_ID, normalizeAppearance } from './settings'
+import { THEME_STYLE_ID, normalizeAppearance, removeTheme, setThemeColour } from './settings'
 
 export {
   THEME_STYLE_ID,
@@ -205,19 +205,38 @@ const generate = (appearance) => {
 export const buildThemeCss = (raw) => generate(normalizeAppearance(raw)).css
 
 /*
+ * The colours the settings preview shows for a seed, in the light theme: the five roles of the
+ * preview strip. Null when no seed is set, because then there is no generated scheme to show.
+ */
+export const previewRoles = (raw) => {
+  const appearance = normalizeAppearance(raw)
+  if (!appearance.seedColor) {
+    return null
+  }
+  const values = roleValues(schemeFor(appearance, false, 0))
+  return {
+    primary: values.get('primary'),
+    secondary: values.get('secondary'),
+    tertiary: values.get('tertiary'),
+    error: values.get('error'),
+    surface: values.get('surface')
+  }
+}
+
+/*
  * Writes the theme into the document. An empty result removes a previously injected theme, so
  * clearing the seed restores the static stylesheet. The theme-color meta is only updated when
  * the page already has one, and it takes the light surface, which is the colour of the header.
  */
 export const applyTheme = (raw, doc = document) => {
   const { css, lightSurface } = generate(normalizeAppearance(raw))
-  const existing = doc.getElementById(THEME_STYLE_ID)
 
   if (!css) {
-    existing?.remove()
+    removeTheme(doc)
     return ''
   }
 
+  const existing = doc.getElementById(THEME_STYLE_ID)
   const style = existing ?? doc.createElement('style')
   style.id = THEME_STYLE_ID
   style.textContent = css
@@ -225,6 +244,6 @@ export const applyTheme = (raw, doc = document) => {
     doc.head.append(style)
   }
 
-  doc.querySelector('meta[name="theme-color"]')?.setAttribute('content', lightSurface)
+  setThemeColour(lightSurface, doc)
   return css
 }

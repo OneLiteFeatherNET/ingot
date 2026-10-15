@@ -40,6 +40,32 @@ export const KEY_COLOURS = Object.freeze(['primaryColor', 'secondaryColor', 'ter
 
 const HEX = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i
 
+// The colour fields of the settings, by name. The settings editor draws each of them as a colour
+// field, and it refuses to save a value that is not #RRGGBB or empty.
+export const COLOUR_PROPERTIES = Object.freeze(['seedColor', 'primaryColor', 'secondaryColor', 'tertiaryColor', 'errorColor'])
+
+const STRICT_HEX = /^#[0-9a-fA-F]{6}$/
+
+/* Empty means not set. Otherwise the value must be #RRGGBB, the form the settings editor accepts. */
+export const isColour = (value) =>
+  value === undefined || value === null || value === '' || (typeof value === 'string' && STRICT_HEX.test(value))
+
+/* The names of the colour fields, anywhere in a settings object, whose value is neither empty nor #RRGGBB. */
+export const invalidColourFields = (data, found = []) => {
+  if (Array.isArray(data)) {
+    data.forEach(item => invalidColourFields(item, found))
+  } else if (data && typeof data === 'object') {
+    for (const [key, value] of Object.entries(data)) {
+      if (COLOUR_PROPERTIES.includes(key) && !isColour(value)) {
+        found.push(key)
+      } else {
+        invalidColourFields(value, found)
+      }
+    }
+  }
+  return found
+}
+
 /* An empty value means not set. Anything else must be a colour, or it is dropped with a warning. */
 export const normalizeHex = (value, field) => {
   if (value === undefined || value === null || value === '') {
@@ -106,18 +132,56 @@ export const normalizeAppearance = (raw) => {
 export const logoFor = (appearance, organizationLogo, isDark) =>
   isDark && appearance.logoDark ? appearance.logoDark : organizationLogo
 
-/* Replaces the icon of the page, or adds one when the page has none. An empty value leaves it. */
+/*
+ * Replaces the icon of the page, or adds one when the page has none. An empty value puts back the
+ * icon the page was built with, so clearing the setting in the editor takes effect at once. The
+ * first href written is remembered for that.
+ */
 export const applyFavicon = (href, doc = document) => {
+  const link = doc.querySelector('link[rel="icon"]')
   if (!href) {
+    if (link?.dataset.ingotDefault !== undefined) {
+      link.setAttribute('href', link.dataset.ingotDefault)
+      delete link.dataset.ingotDefault
+    }
     return
   }
-  let link = doc.querySelector('link[rel="icon"]')
+  const target = link ?? doc.createElement('link')
   if (!link) {
-    link = doc.createElement('link')
-    link.setAttribute('rel', 'icon')
-    doc.head.append(link)
+    target.setAttribute('rel', 'icon')
+    doc.head.append(target)
   }
-  link.setAttribute('href', href)
+  if (target.dataset.ingotDefault === undefined) {
+    target.dataset.ingotDefault = target.getAttribute('href') ?? ''
+  }
+  target.setAttribute('href', href)
+}
+
+const THEME_COLOUR_META = 'meta[name="theme-color"]'
+
+/* Sets the theme colour of the page, remembering the colour it had before, so removeTheme can restore it. */
+export const setThemeColour = (colour, doc = document) => {
+  const meta = doc.querySelector(THEME_COLOUR_META)
+  if (!meta) {
+    return
+  }
+  if (meta.dataset.ingotDefault === undefined) {
+    meta.dataset.ingotDefault = meta.getAttribute('content') ?? ''
+  }
+  meta.setAttribute('content', colour)
+}
+
+/*
+ * Takes the generated theme out of the page and restores the theme colour. This is the default
+ * appearance, so it runs without loading the colour generator.
+ */
+export const removeTheme = (doc = document) => {
+  doc.getElementById(THEME_STYLE_ID)?.remove()
+  const meta = doc.querySelector(THEME_COLOUR_META)
+  if (meta?.dataset.ingotDefault !== undefined) {
+    meta.setAttribute('content', meta.dataset.ingotDefault)
+    delete meta.dataset.ingotDefault
+  }
 }
 
 /*

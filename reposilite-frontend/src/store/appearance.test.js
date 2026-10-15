@@ -69,3 +69,64 @@ describe('setAppearance', () => {
     expect(useAppearance().seedColor, 'an invalid seed is dropped').toBe('')
   })
 })
+
+describe('applyAppearance after a change in the settings', () => {
+  // The page as the server built it: a theme colour and an icon of its own.
+  const builtPage = () => {
+    const doc = freshDocument()
+    const meta = doc.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    meta.setAttribute('content', '#fff8f8')
+    const icon = doc.createElement('link')
+    icon.setAttribute('rel', 'icon')
+    icon.setAttribute('href', '/favicon.png')
+    doc.head.append(meta, icon)
+    return doc
+  }
+
+  it('takes the generated theme out again when the seed is cleared', async () => {
+    const doc = builtPage()
+    setAppearance({ seedColor: '#006a6a' })
+    await applyAppearance(doc)
+
+    setAppearance({})
+    await applyAppearance(doc)
+
+    expect(doc.getElementById(THEME_STYLE_ID), 'clearing the seed restores the static theme').toBeNull()
+  })
+
+  it('puts the built theme colour back when the seed is cleared', async () => {
+    const doc = builtPage()
+    setAppearance({ seedColor: '#006a6a' })
+    await applyAppearance(doc)
+    expect(doc.querySelector('meta[name="theme-color"]').getAttribute('content')).not.toBe('#fff8f8')
+
+    setAppearance({})
+    await applyAppearance(doc)
+
+    expect(doc.querySelector('meta[name="theme-color"]').getAttribute('content')).toBe('#fff8f8')
+  })
+
+  it('puts the built icon back when the favicon is cleared', async () => {
+    const doc = builtPage()
+    setAppearance({ favicon: 'https://example.org/icon.svg' })
+    await applyAppearance(doc)
+
+    setAppearance({})
+    await applyAppearance(doc)
+
+    expect(doc.querySelector('link[rel="icon"]').getAttribute('href')).toBe('/favicon.png')
+  })
+
+  it('replaces the theme on the page when the seed changes, without a second style element', async () => {
+    const doc = builtPage()
+    setAppearance({ seedColor: '#006a6a' })
+    await applyAppearance(doc)
+
+    setAppearance({ seedColor: '#8a1c1c' })
+    await applyAppearance(doc)
+
+    expect(doc.querySelectorAll(`#${THEME_STYLE_ID}`)).toHaveLength(1)
+    expect(doc.getElementById(THEME_STYLE_ID).textContent).toContain('--md-sys-color-primary')
+  })
+})

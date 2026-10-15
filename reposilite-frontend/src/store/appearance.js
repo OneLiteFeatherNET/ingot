@@ -22,7 +22,7 @@
  * so the static OneLiteFeather theme is used unchanged.
  */
 
-import { normalizeAppearance, applyFavicon, devSeedFromSearch } from '../theme/settings'
+import { normalizeAppearance, applyFavicon, devSeedFromSearch, removeTheme } from '../theme/settings'
 
 let current = normalizeAppearance({})
 
@@ -44,13 +44,15 @@ export function useAppearance() {
 }
 
 /*
- * Applies the favicon, and the theme when a seed is set. The colour library is imported only
- * here, so a default install never downloads it. A failed import keeps the default theme and
- * does not stop the app from mounting.
+ * Applies the favicon, and the theme when a seed is set. Without a seed any generated theme is
+ * taken out again, so clearing the seed in the settings takes effect without a reload. The colour
+ * library is imported only here, so a default install never downloads it. A failed import keeps
+ * the default theme and does not stop the app from mounting.
  */
 export async function applyAppearance(doc = document) {
   applyFavicon(current.favicon, doc)
   if (!current.seedColor) {
+    removeTheme(doc)
     return
   }
   try {
