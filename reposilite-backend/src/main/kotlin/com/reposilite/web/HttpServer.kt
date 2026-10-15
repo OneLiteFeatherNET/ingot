@@ -44,7 +44,7 @@ class HttpServer {
             useLoom = false
         )
 
-        this.javalin = Javalin.start { config ->
+        val javalin = Javalin.start { config ->
             config.jetty.host = reposilite.parameters.hostname
             config.jetty.port = reposilite.parameters.port
 
@@ -63,6 +63,11 @@ class HttpServer {
 
             reposilite.extensions.emitEvent(HttpServerInitializationEvent(reposilite, config))
         }
+
+        this.javalin = javalin
+        // Port 0 asks the OS for a free port. Report the port that was bound, so that everything that reads
+        // parameters.port afterwards, tests included, talks to the running server.
+        reposilite.parameters.port = javalin.port()
 
         extensionsManagement.emitEvent(HttpServerStartedEvent)
     }

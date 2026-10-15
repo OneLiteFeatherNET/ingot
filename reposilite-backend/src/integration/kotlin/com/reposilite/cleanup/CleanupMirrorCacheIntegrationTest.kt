@@ -106,7 +106,7 @@ internal abstract class CleanupMirrorCacheIntegrationTest : MavenIntegrationSpec
     private fun serveUpstream(files: List<String>): Javalin {
         val started = CountDownLatch(1)
         val upstream = Javalin.start { config ->
-            config.jetty.port = reposilite.parameters.port + 1
+            config.jetty.port = 0
             config.events.serverStarted { started.countDown() }
             files.forEach { gav ->
                 val content = "content-of-$gav"
@@ -115,6 +115,7 @@ internal abstract class CleanupMirrorCacheIntegrationTest : MavenIntegrationSpec
             }
         }
         assertThat(started.await(10, TimeUnit.SECONDS)).`as`("upstream started").isTrue
+        useUpstreamPort(upstream.port())
         return upstream
     }
 

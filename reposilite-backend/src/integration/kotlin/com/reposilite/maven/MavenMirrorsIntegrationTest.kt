@@ -68,12 +68,13 @@ internal abstract class MavenMirrorsIntegrationTest : MavenIntegrationSpecificat
         val gav = "com/reposilite/broken.jar"
         val started = CountDownLatch(1)
         val upstream = Javalin.start { config ->
-            config.jetty.port = reposilite.parameters.port + 1
+            config.jetty.port = 0
             config.events.serverStarted { started.countDown() }
             config.routes.head("/releases/$gav") { ctx -> ctx.contentType("application/java-archive").header("Content-Length", "100").status(200) }
             config.routes.get("/releases/$gav") { ctx -> ctx.status(500).result("upstream temporarily unavailable") }
         }
         assertThat(started.await(10, TimeUnit.SECONDS)).isTrue
+        useUpstreamPort(upstream.port())
 
         try {
             // when: client requests the artifact through the proxy
@@ -98,7 +99,7 @@ internal abstract class MavenMirrorsIntegrationTest : MavenIntegrationSpecificat
         val clientsSent = CountDownLatch(clients)
         val gateOpened = AtomicBoolean(false)
         val upstream = Javalin.start { config ->
-            config.jetty.port = reposilite.parameters.port + 1
+            config.jetty.port = 0
             config.events.serverStarted { started.countDown() }
             config.routes.head("/releases/$gav") { ctx ->
                 ctx.contentType("application/java-archive").header("Content-Length", content.length.toString()).status(200)
@@ -110,6 +111,7 @@ internal abstract class MavenMirrorsIntegrationTest : MavenIntegrationSpecificat
             }
         }
         assertThat(started.await(10, TimeUnit.SECONDS)).isTrue
+        useUpstreamPort(upstream.port())
 
         try {
             // when: five clients request the same artifact in parallel through a storing mirror
