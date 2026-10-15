@@ -44,19 +44,17 @@ internal class FrontendSettingsEndpoint(private val frontendFacade: FrontendFaca
         path = "/api/frontend/settings",
         methods = [HttpMethod.GET],
         summary = "Fetch the dashboard presentation settings",
-        description = "Returns the values a dashboard needs to render itself. Public, because a bundled dashboard already exposes all of them to anonymous visitors.",
+        description = "Returns the values a dashboard needs to render itself, including its appearance. Public, because a bundled dashboard already exposes all of them to anonymous visitors.",
         responses = [
             OpenApiResponse(
                 status = "200",
-                description = "Presentation settings, keyed by placeholder token",
+                description = "Presentation settings, as plain fields and as placeholder tokens",
                 content = [OpenApiContent(from = FrontendSettingsResponse::class)]
             )
         ]
     )
     private val findFrontendSettings = ReposiliteRoute<FrontendSettingsResponse>("/api/frontend/settings", GET) {
-        response = FrontendSettingsResponse(
-            placeholders = frontendFacade.createPlaceholders(escapeForJs = false)
-        ).asSuccess()
+        response = frontendFacade.createSettingsResponse().asSuccess()
     }
 
     override val routes = routes(findFrontendSettings)

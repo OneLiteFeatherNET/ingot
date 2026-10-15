@@ -40,6 +40,28 @@ expressWs(application)
 let uploadedFiles = []
 let mavenSettingsSchema = require('./maven-settings-schema.json')
 let mavenSettingsEntity = require('./maven-settings-entity.json')
+let frontendSettingsSchema = require('./frontend-settings-schema.json')
+// Defaults mirror FrontendSettings and AppearanceSettings on the server.
+let frontendSettingsEntity = {
+  id: 'ingot-repository',
+  title: 'Ingot Repository',
+  description: 'Public Maven repository hosted through Ingot',
+  organizationWebsite: 'https://github.com/OneLiteFeatherNET',
+  organizationLogo: 'https://avatars.githubusercontent.com/u/103827826?s=200&v=4',
+  privacyPolicy: 'https://example.com/privacy',
+  icpLicense: '国ICP备000000000号',
+  appearance: {
+    seedColor: '',
+    schemeVariant: 'VIBRANT',
+    primaryColor: '',
+    secondaryColor: '',
+    tertiaryColor: '',
+    errorColor: '',
+    logoDark: '',
+    favicon: '',
+    footerText: ''
+  }
+}
 
 let uptime = 1000
 let memory = 20
@@ -154,10 +176,13 @@ application
   .use(express.text())
   .use(bodyParser.raw({ limit: '100mb', extended: true }))
   .use(bodyParser.json())
-  .get('/api/settings/domains', (req, res) => res.send(['maven']))
+  .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend']))
   .get('/api/settings/schema/maven', (req, res) => res.send(mavenSettingsSchema))
   .get('/api/settings/domain/maven', (req, res) => res.send(mavenSettingsEntity))
   .put('/api/settings/domain/maven', (req, res) => { mavenSettingsEntity = req.body; res.send("") })
+  .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
+  .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))
+  .put('/api/settings/domain/frontend', (req, res) => { frontendSettingsEntity = req.body; res.send("") })
   .get('/api/tokens', (req, res) =>
     authorized(req, () => res.send(accessTokens), () => invalidCredentials(res))
   )
@@ -390,34 +415,31 @@ application
   })
   // Public on purpose, mirroring the real server: a detached dashboard reads its own
   // settings here before it has any credentials.
-  .get("/api/frontend/settings", (req, res) =>
+  .get("/api/frontend/settings", (req, res) => {
+    const settings = frontendSettingsEntity
     res.send({
       placeholders: {
         "{{REPOSILITE.BASE_PATH}}": "/",
         "{{REPOSILITE.VITE_BASE_PATH}}": ".",
-        "{{REPOSILITE.ID}}": "ingot-repository",
-        "{{REPOSILITE.TITLE}}": "Ingot Repository",
-        "{{REPOSILITE.DESCRIPTION}}": "Public Maven repository hosted through Ingot",
-        "{{REPOSILITE.ORGANIZATION_WEBSITE}}": "https://github.com/OneLiteFeatherNET",
-        "{{REPOSILITE.ORGANIZATION_LOGO}}": "https://avatars.githubusercontent.com/u/103827826?s=200&v=4",
-        "{{REPOSILITE.ICP_LICENSE}}": "\u56fdICP\u5907000000000\u53f7",
-        "{{REPOSILITE.PRIVACY_POLICY}}": "https://example.com/privacy",
+        "{{REPOSILITE.ID}}": settings.id,
+        "{{REPOSILITE.TITLE}}": settings.title,
+        "{{REPOSILITE.DESCRIPTION}}": settings.description,
+        "{{REPOSILITE.ORGANIZATION_WEBSITE}}": settings.organizationWebsite,
+        "{{REPOSILITE.ORGANIZATION_LOGO}}": settings.organizationLogo,
+        "{{REPOSILITE.ICP_LICENSE}}": settings.icpLicense,
+        "{{REPOSILITE.PRIVACY_POLICY}}": settings.privacyPolicy,
         "{{REPOSILITE.JAVADOC_SUFFIXES}}": "-javadoc.jar,-groovydoc.jar"
       },
-      // Empty means not set: the default OneLiteFeather theme stays in place.
-      appearance: {
-        seedColor: "",
-        schemeVariant: "VIBRANT",
-        primaryColor: "",
-        secondaryColor: "",
-        tertiaryColor: "",
-        errorColor: "",
-        logoDark: "",
-        favicon: "",
-        footerText: ""
-      }
+      id: settings.id,
+      title: settings.title,
+      description: settings.description,
+      organizationWebsite: settings.organizationWebsite,
+      organizationLogo: settings.organizationLogo,
+      privacyPolicy: settings.privacyPolicy,
+      icpLicense: settings.icpLicense,
+      appearance: settings.appearance
     })
-  )
+  })
   .get("/api/statistics/resolved/all", (req, res) => {
     authorized(
       req,

@@ -18,8 +18,10 @@ package com.reposilite.configuration.shared
 
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.api.ValidatedSettings
 import panda.std.Result
 import panda.std.Result.supplyThrowing
+import panda.std.asError
 import java.io.InputStream
 import java.util.function.Supplier
 import kotlin.reflect.full.findAnnotation
@@ -47,10 +49,17 @@ internal class DefaultSharedSettingsReference<T : SharedSettings>(
     override fun get(): T =
         getter()
 
-    override fun update(value: T): Result<T, out Exception> =
-        supplyThrowing { setter(value) }
+    override fun update(value: T): Result<T, out Exception> {
+        // Checked before the setter runs, so a rejected update leaves the current settings in place.
+        val violations = (value as? ValidatedSettings)?.violations().orEmpty()
+        if (violations.isNotEmpty()) {
+            return IllegalArgumentException("Invalid $name settings: ${violations.joinToString("; ")}").asError()
+        }
+
+        return supplyThrowing { setter(value) }
             .mapErr { IllegalStateException("Cannot update settings reference $name", it) }
             .map { get() }
+    }
 
     private fun String.sanitizeURLParam(): String =
         lowercase().replace(' ', '_')

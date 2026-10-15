@@ -16,6 +16,7 @@
 package com.reposilite.frontend
 
 import com.reposilite.frontend.BasePathFormatter.formatAsViteBasePath
+import com.reposilite.frontend.api.FrontendSettingsResponse
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.plugin.api.Facade
 import panda.std.reactive.Reference
@@ -32,6 +33,8 @@ class FrontendFacade internal constructor(
     internal companion object {
         private const val BASE_PATH = "{{REPOSILITE.BASE_PATH}}"
         private const val VITE_BASE_PATH = "{{REPOSILITE.VITE_BASE_PATH}}"
+        private const val FAVICON = "{{REPOSILITE.FAVICON}}"
+        private const val BUNDLED_FAVICON = "favicon.png"
     }
 
     private val resources = HashMap<String, ResourceSupplier>(0)
@@ -64,7 +67,14 @@ class FrontendFacade internal constructor(
             .replace("\n", "\\n")
 
     private fun createLazyPlaceholderResolver(): LazyPlaceholderResolver =
-        LazyPlaceholderResolver(buildMap {
+        LazyPlaceholderResolver(createAssetPlaceholders())
+
+    /**
+     * The substitutions for the bundled assets. Built from [createPlaceholders] plus the entries that
+     * only make sense inside an asset, so the settings endpoint never carries them.
+     */
+    internal fun createAssetPlaceholders(): Map<String, String> =
+        buildMap {
             putAll(createPlaceholders(escapeForJs = true))
 
             // The URL encoded spellings only matter for substitution inside the served
@@ -72,7 +82,31 @@ class FrontendFacade internal constructor(
             // in the API response, so they are added here rather than in createPlaceholders.
             put(URLEncoder.encode(BASE_PATH, StandardCharsets.UTF_8), formattedBasePath.get())
             put(URLEncoder.encode(VITE_BASE_PATH, StandardCharsets.UTF_8), formatAsViteBasePath(formattedBasePath.get()))
-        })
+
+            // The favicon link lives in the document head, so it is only ever substituted into the
+            // index page. It is absent from the API for the same reason as the encoded spellings.
+            put(FAVICON, frontendSettings.get().appearance.favicon.ifBlank { BUNDLED_FAVICON })
+        }
+
+    /**
+     * The settings a dashboard needs to render itself, as the public endpoint serves them.
+     * The identity and appearance are plain values, and [FrontendSettingsResponse.placeholders]
+     * is the same token map the bundled dashboard is substituted with.
+     */
+    internal fun createSettingsResponse(): FrontendSettingsResponse =
+        with(frontendSettings.get()) {
+            FrontendSettingsResponse(
+                placeholders = createPlaceholders(escapeForJs = false),
+                id = id,
+                title = title,
+                description = description,
+                organizationWebsite = organizationWebsite,
+                organizationLogo = organizationLogo,
+                privacyPolicy = privacyPolicy,
+                icpLicense = icpLicense,
+                appearance = appearance,
+            )
+        }
 
     /**
      * The values the dashboard needs in order to render itself. Both the substitution into

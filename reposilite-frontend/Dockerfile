@@ -47,6 +47,7 @@ RUN set -eu; \
     sed -i \
         -e 's/{{REPOSILITE.TITLE}}/Ingot Repository/g' \
         -e 's|{{REPOSILITE.DESCRIPTION}}|Maven repository powered by Ingot|g' \
+        -e 's|{{REPOSILITE.FAVICON}}|favicon.png|g' \
         -e "s|{{REPOSILITE.BASE_PATH}}|${INGOT_BASE_PATH}|g" \
         "$index"; \
     ! grep -q '{{REPOSILITE\.' "$index"
