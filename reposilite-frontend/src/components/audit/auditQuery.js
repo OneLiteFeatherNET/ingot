@@ -35,7 +35,28 @@ export const ACTION_LABELS = {
   TOKEN_ROUTES_CHANGED: 'Token rights changed',
   LOGIN_FAILED: 'Login failed',
   CLEANUP_RUN: 'Cleanup run',
+  PRINCIPAL_CREATED: 'Account created',
+  PRINCIPAL_UPDATED: 'Account updated',
+  PRINCIPAL_DISABLED: 'Account disabled',
+  PRINCIPAL_DELETED: 'Account deleted',
+  TEAM_CREATED: 'Team created',
+  TEAM_UPDATED: 'Team updated',
+  TEAM_DELETED: 'Team deleted',
+  TEAM_MEMBERSHIP_CHANGED: 'Team members changed',
+  TEAM_GRANTS_CHANGED: 'Team grants changed',
+  INSTANCE_ADMIN_GRANTED: 'Instance admin granted',
+  INSTANCE_ADMIN_REVOKED: 'Instance admin revoked',
 }
+
+/**
+ * The identity chips. Each one stands for several actions, which travel as one comma separated
+ * `action` filter, so the address of a chip is the list of its actions.
+ */
+export const ACTION_GROUPS = [
+  { key: 'accounts', label: 'Accounts', actions: ['PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED'] },
+  { key: 'teams', label: 'Teams', actions: ['TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_DELETED', 'TEAM_MEMBERSHIP_CHANGED', 'TEAM_GRANTS_CHANGED'] },
+  { key: 'instance-admin', label: 'Instance admin', actions: ['INSTANCE_ADMIN_GRANTED', 'INSTANCE_ADMIN_REVOKED'] },
+]
 
 export const ACTION_OPTIONS = [
   { value: '', label: 'All actions' },
@@ -55,15 +76,19 @@ const RANGE_KEYS = RANGE_OPTIONS.map(option => option.key)
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '')
 
+/** The known actions of an action filter, which holds one action or a comma separated list of them. */
+const knownActions = (value) =>
+  value.split(',').map(part => part.trim()).filter(part => Object.hasOwn(ACTION_LABELS, part)).join(',')
+
 /**
  * Reads the filters from a route query. An unknown action or range is dropped rather than sent,
  * so a hand-edited address shows the unfiltered view instead of an error.
  */
 export const readAuditFilters = (query = {}) => {
-  const action = text(query.action)
+  const action = knownActions(text(query.action))
   const range = text(query.range)
   return {
-    action: Object.hasOwn(ACTION_LABELS, action) ? action : '',
+    action,
     actor: text(query.actor),
     repository: text(query.repository),
     text: text(query.q),
@@ -151,8 +176,43 @@ export const actorLocationOf = (event) =>
     ? null
     : { name: 'token', params: { name: event.actor } }
 
+const MACHINE_TEAM_PREFIX = 'machine:'
+const PRINCIPAL_PAGES = { USER: 'users', MACHINE: 'machines' }
+const KIND_LABELS = { USER: 'User', MACHINE: 'Machine' }
+const GONE_ACTIONS = new Set(['PRINCIPAL_DELETED', 'TEAM_DELETED'])
+
+/**
+ * The account or team an identity event acts on. A team event names `team`; a principal event names
+ * `principal` and, when it knows, `kind`. An event that does not say which kind a principal is counts
+ * as a user. A deleted target and the private team of a machine (`machine:*`) have no page to open,
+ * so they get a label and no link.
+ */
+const identityTargetOf = (event) => {
+  const details = event.details
+  if (typeof details?.team === 'string' && details.team) {
+    const privateTeam = details.team.startsWith(MACHINE_TEAM_PREFIX)
+    return {
+      label: `Team ${details.team}`,
+      path: privateTeam || GONE_ACTIONS.has(event.action) ? null : `/access/teams/${encodeURIComponent(details.team)}`,
+    }
+  }
+  if (typeof details?.principal === 'string' && details.principal) {
+    const kind = Object.hasOwn(PRINCIPAL_PAGES, details.kind) ? details.kind : 'USER'
+    return {
+      label: `${KIND_LABELS[kind]} ${details.principal}`,
+      path: GONE_ACTIONS.has(event.action) ? null : `/access/${PRINCIPAL_PAGES[kind]}/${encodeURIComponent(details.principal)}`,
+    }
+  }
+  return null
+}
+
+const isIdentityEvent = (event) => /^(PRINCIPAL|TEAM|INSTANCE_ADMIN)_/.test(event.action)
+
 /** What a row acts on, as a label. */
 export const targetLabelOf = (event) => {
+  if (isIdentityEvent(event)) {
+    return identityTargetOf(event)?.label ?? ''
+  }
   if (event.repository) {
     return [event.repository, event.path].filter(Boolean).join('/')
   }
@@ -167,9 +227,13 @@ export const targetLabelOf = (event) => {
 
 /**
  * The router location a target links to: a repository path opens in the browser, a token opens its
- * editor. A row with neither has no link.
+ * editor, and an account or team opens its admin page (a path string, because the routes belong to
+ * the access pages). A row with none of these has no link.
  */
 export const targetLocationOf = (event) => {
+  if (isIdentityEvent(event)) {
+    return identityTargetOf(event)?.path ?? null
+  }
   if (event.repository) {
     return browseLocation([event.repository, event.path].filter(Boolean).join('/'))
   }

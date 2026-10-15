@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  ACTION_GROUPS,
   ACTION_OPTIONS,
   actionLabel,
   actorLocationOf,
@@ -163,5 +164,113 @@ describe('labels and links', () => {
     expect(actorLocationOf({ action: 'CLEANUP_RUN', actor: 'system' })).toBeNull()
     expect(actorLocationOf({ action: 'ARTIFACT_DEPLOYED', actor: 'anonymous' })).toBeNull()
     expect(actorLocationOf({ action: 'LOGIN_FAILED', actor: 'guessed-name' })).toBeNull()
+  })
+})
+
+describe('identity action labels', () => {
+  it.each([
+    ['PRINCIPAL_CREATED', 'Account created'],
+    ['PRINCIPAL_UPDATED', 'Account updated'],
+    ['PRINCIPAL_DISABLED', 'Account disabled'],
+    ['PRINCIPAL_DELETED', 'Account deleted'],
+    ['TEAM_CREATED', 'Team created'],
+    ['TEAM_UPDATED', 'Team updated'],
+    ['TEAM_DELETED', 'Team deleted'],
+    ['TEAM_MEMBERSHIP_CHANGED', 'Team members changed'],
+    ['TEAM_GRANTS_CHANGED', 'Team grants changed'],
+    ['INSTANCE_ADMIN_GRANTED', 'Instance admin granted'],
+    ['INSTANCE_ADMIN_REVOKED', 'Instance admin revoked'],
+  ])('labels %s as "%s"', (action, label) => {
+    expect(actionLabel(action)).toBe(label)
+    expect(ACTION_OPTIONS.find(option => option.value === action)?.label, `${action} is offered in the action picker`).toBe(label)
+  })
+
+  it('keeps an unknown action as it is', () => {
+    expect(actionLabel('SOMETHING_NEW')).toBe('SOMETHING_NEW')
+  })
+})
+
+describe('identity action groups', () => {
+  const group = (key) => ACTION_GROUPS.find(candidate => candidate.key === key)
+
+  it('groups the account actions under the Accounts chip', () => {
+    expect(group('accounts').label).toBe('Accounts')
+    expect(group('accounts').actions).toEqual(['PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED'])
+  })
+
+  it('groups the team actions under the Teams chip', () => {
+    expect(group('teams').label).toBe('Teams')
+    expect(group('teams').actions).toEqual(['TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_DELETED', 'TEAM_MEMBERSHIP_CHANGED', 'TEAM_GRANTS_CHANGED'])
+  })
+
+  it('groups the grant and revoke actions under the Instance admin chip', () => {
+    expect(group('instance-admin').label).toBe('Instance admin')
+    expect(group('instance-admin').actions).toEqual(['INSTANCE_ADMIN_GRANTED', 'INSTANCE_ADMIN_REVOKED'])
+  })
+
+  it('reads several known actions from the address and drops the unknown ones', () => {
+    expect(readAuditFilters({ action: 'TEAM_CREATED,TEAM_DELETED' }).action).toBe('TEAM_CREATED,TEAM_DELETED')
+    expect(readAuditFilters({ action: 'TEAM_CREATED,DROP_EVERYTHING' }).action).toBe('TEAM_CREATED')
+  })
+
+  it('sends the actions of a group as one comma separated action filter', () => {
+    const action = group('instance-admin').actions.join(',')
+
+    expect(auditParams(readAuditFilters({ action }), NOW)).toEqual({ action: 'INSTANCE_ADMIN_GRANTED,INSTANCE_ADMIN_REVOKED' })
+  })
+})
+
+describe('identity targets', () => {
+  const identityEvent = (action, details) => ({ action, actor: 'admin', repository: null, path: null, details })
+
+  it('links a user principal to its user page', () => {
+    const event = identityEvent('PRINCIPAL_UPDATED', { principal: 'alice', kind: 'USER' })
+
+    expect(targetLocationOf(event)).toBe('/access/users/alice')
+    expect(targetLabelOf(event)).toBe('User alice')
+  })
+
+  it('links a machine principal to its machine page', () => {
+    const event = identityEvent('PRINCIPAL_CREATED', { principal: 'ci-bot', kind: 'MACHINE' })
+
+    expect(targetLocationOf(event)).toBe('/access/machines/ci-bot')
+    expect(targetLabelOf(event)).toBe('Machine ci-bot')
+  })
+
+  it('links a principal of unknown kind to the user page', () => {
+    expect(targetLocationOf(identityEvent('PRINCIPAL_DISABLED', { principal: 'bob' }))).toBe('/access/users/bob')
+  })
+
+  it('links a team to its team page', () => {
+    const event = identityEvent('TEAM_GRANTS_CHANGED', { team: 'release-managers' })
+
+    expect(targetLocationOf(event)).toBe('/access/teams/release-managers')
+    expect(targetLabelOf(event)).toBe('Team release-managers')
+  })
+
+  it('links an instance admin change to the team or the principal it names', () => {
+    expect(targetLocationOf(identityEvent('INSTANCE_ADMIN_GRANTED', { team: 'ops' }))).toBe('/access/teams/ops')
+    expect(targetLocationOf(identityEvent('INSTANCE_ADMIN_REVOKED', { principal: 'carol', kind: 'USER' }))).toBe('/access/users/carol')
+  })
+
+  it('does not link a private machine team', () => {
+    const event = identityEvent('TEAM_GRANTS_CHANGED', { team: 'machine:ci-bot' })
+
+    expect(targetLocationOf(event)).toBeNull()
+    expect(targetLabelOf(event)).toBe('Team machine:ci-bot')
+  })
+
+  it('does not link a target that no longer exists', () => {
+    expect(targetLocationOf(identityEvent('PRINCIPAL_DELETED', { principal: 'alice', kind: 'USER' }))).toBeNull()
+    expect(targetLocationOf(identityEvent('TEAM_DELETED', { team: 'devs' }))).toBeNull()
+  })
+
+  it('escapes the name in the link', () => {
+    expect(targetLocationOf(identityEvent('PRINCIPAL_UPDATED', { principal: 'a/b c', kind: 'USER' }))).toBe('/access/users/a%2Fb%20c')
+  })
+
+  it('has no target when the event names none', () => {
+    expect(targetLocationOf(identityEvent('TEAM_CREATED', null))).toBeNull()
+    expect(targetLabelOf(identityEvent('TEAM_CREATED', null))).toBe('')
   })
 })

@@ -10,6 +10,7 @@ import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
 import AuditEventRow from './AuditEventRow.vue'
 import {
+  ACTION_GROUPS,
   ACTION_OPTIONS,
   RANGE_OPTIONS,
   auditFiltersToQuery,
@@ -98,6 +99,10 @@ const loadMore = () => {
 const update = (changes) => emit('update:query', auditFiltersToQuery({ ...filters.value, ...changes }))
 
 const chooseAction = (action) => update({ action })
+const groupValue = (group) => group.actions.join(',')
+const toggleGroup = (group) => update({ action: filters.value.action === groupValue(group) ? '' : groupValue(group) })
+// The picker names one action; a chip stands for several, so the picker is blank while a chip is on.
+const pickedAction = computed(() => (filters.value.action.includes(',') ? '' : filters.value.action))
 const chooseRange = (range) => update({ range })
 const applyText = () => update({
   text: draft.value.text.trim(),
@@ -179,7 +184,7 @@ const countText = computed(() => {
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="min-w-60">
             <MdSelect
-              :model-value="filters.action"
+              :model-value="pickedAction"
               label="Action"
               :options="ACTION_OPTIONS"
               @update:model-value="chooseAction"
@@ -193,6 +198,22 @@ const countText = computed(() => {
           </MdButton>
         </div>
       </form>
+
+      <div
+        role="group"
+        aria-label="Identity actions"
+        class="flex flex-wrap items-center gap-2 border-b border-outline-variant px-4 py-3"
+      >
+        <MdChip
+          v-for="group in ACTION_GROUPS"
+          :key="group.key"
+          variant="filter"
+          :selected="filters.action === groupValue(group)"
+          @click="toggleGroup(group)"
+        >
+          {{ group.label }}
+        </MdChip>
+      </div>
 
       <div
         role="group"

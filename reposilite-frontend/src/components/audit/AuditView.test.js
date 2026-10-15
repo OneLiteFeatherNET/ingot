@@ -216,6 +216,36 @@ describe('AuditView filters', () => {
     expect(wrapper.emitted('update:query')).toEqual([[{ action: 'LOGIN_FAILED' }]])
   })
 
+  it.each([
+    ['Accounts', 'PRINCIPAL_CREATED,PRINCIPAL_UPDATED,PRINCIPAL_DISABLED,PRINCIPAL_DELETED'],
+    ['Teams', 'TEAM_CREATED,TEAM_UPDATED,TEAM_DELETED,TEAM_MEMBERSHIP_CHANGED,TEAM_GRANTS_CHANGED'],
+    ['Instance admin', 'INSTANCE_ADMIN_GRANTED,INSTANCE_ADMIN_REVOKED'],
+  ])('filters by the actions of the %s chip and keeps the other filters', async (chip, actions) => {
+    const wrapper = await mountView({ query: { actor: 'admin' } })
+
+    await wrapper.findAll('button').find(button => button.text() === chip).trigger('click')
+
+    expect(wrapper.emitted('update:query')).toEqual([[{ actor: 'admin', action: actions }]])
+  })
+
+  it('marks the chip whose actions are the filter, and clears the filter when it is chosen again', async () => {
+    const wrapper = await mountView({ query: { action: 'INSTANCE_ADMIN_GRANTED,INSTANCE_ADMIN_REVOKED' } })
+    const chip = wrapper.findAll('button').find(button => button.text() === 'Instance admin')
+
+    expect(chip.attributes('aria-checked')).toBe('true')
+    await chip.trigger('click')
+
+    expect(wrapper.emitted('update:query')).toEqual([[{}]])
+  })
+
+  it('asks the log for the actions of the chip named in the address', async () => {
+    session.client = fakeClient()
+
+    await mountView({ query: { action: 'INSTANCE_ADMIN_GRANTED,INSTANCE_ADMIN_REVOKED' } })
+
+    expect(session.client.audit.list).toHaveBeenCalledWith({ action: 'INSTANCE_ADMIN_GRANTED,INSTANCE_ADMIN_REVOKED' })
+  })
+
   it('reports the typed search text when the filters are applied', async () => {
     const wrapper = await mountView()
 

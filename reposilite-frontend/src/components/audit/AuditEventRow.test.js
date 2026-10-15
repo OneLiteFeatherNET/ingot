@@ -103,3 +103,39 @@ describe('AuditEventRow details', () => {
     expect(row.emitted('toggle')).toEqual([[42]])
   })
 })
+
+describe('AuditEventRow identity events', () => {
+  const identityEvent = (action, details) => event({ action, actor: 'admin', repository: null, path: null, details })
+  const hrefs = (row) => row.findAll('a').map(anchor => anchor.attributes('href'))
+
+  it('shows the label of an identity action', async () => {
+    const row = await mountRow({ event: identityEvent('TEAM_MEMBERSHIP_CHANGED', { team: 'devs' }) })
+
+    expect(row.text()).toContain('Team members changed')
+  })
+
+  it('links a user target to its user page', async () => {
+    const row = await mountRow({ event: identityEvent('PRINCIPAL_UPDATED', { principal: 'alice', kind: 'USER' }) })
+
+    expect(hrefs(row)).toContain('/access/users/alice')
+  })
+
+  it('links a machine target to its machine page', async () => {
+    const row = await mountRow({ event: identityEvent('PRINCIPAL_CREATED', { principal: 'ci-bot', kind: 'MACHINE' }) })
+
+    expect(hrefs(row)).toContain('/access/machines/ci-bot')
+  })
+
+  it('links a team target to its team page', async () => {
+    const row = await mountRow({ event: identityEvent('TEAM_UPDATED', { team: 'devs' }) })
+
+    expect(hrefs(row)).toContain('/access/teams/devs')
+  })
+
+  it('shows a private machine team as plain text', async () => {
+    const row = await mountRow({ event: identityEvent('TEAM_GRANTS_CHANGED', { team: 'machine:ci-bot' }) })
+
+    expect(hrefs(row).some(href => href.startsWith('/access/')), 'no link into /access').toBe(false)
+    expect(row.text()).toContain('machine:ci-bot')
+  })
+})
