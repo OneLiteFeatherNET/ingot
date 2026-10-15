@@ -32,6 +32,15 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.token.AccessTokenPermission.MANAGER
+import net.onelitefeather.ingot.identity.evaluation.AccessRequest
+import net.onelitefeather.ingot.identity.evaluation.AccessSubjectSource
+import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
+import net.onelitefeather.ingot.identity.model.AccessSubject
+import net.onelitefeather.ingot.identity.model.Action
+import net.onelitefeather.ingot.identity.model.Grant
+import net.onelitefeather.ingot.identity.model.PrincipalKind
+import net.onelitefeather.ingot.identity.model.Role
+import net.onelitefeather.ingot.identity.model.privateTeamName
 import com.reposilite.token.AccessTokenSecurityProvider.generateSecret
 import com.reposilite.token.AccessTokenType.PERSISTENT
 import com.reposilite.token.api.AccessTokenDetails
@@ -72,6 +81,7 @@ class AccessTokenFacade internal constructor(
     private val exportService: ExportService,
     private val extensions: Extensions = Extensions(journalist),
     private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
+    private val subjectSource: AccessSubjectSource? = persistentRepository as? AccessSubjectSource,
 ) : Facade, Journalist {
 
     /**
@@ -394,18 +404,62 @@ class AccessTokenFacade internal constructor(
         return granted
     }
 
+    /**
+     * The rights of the owner of a token. Persistent tokens are read from the identity tables. Temporary tokens, and
+     * persistent tokens that the identity tables do not know, are read from their legacy rights.
+     */
+    fun subjectOf(identifier: AccessTokenIdentifier): AccessSubject {
+        if (identifier.type == PERSISTENT) {
+            subjectSource?.subjectOf(identifier)?.let { return it }
+        }
+        return legacySubjectOf(identifier)
+    }
+
+    private fun legacySubjectOf(identifier: AccessTokenIdentifier): AccessSubject {
+        val repository = identifier.type.getRepository()
+        val permissions = repository.findAccessTokenPermissionsById(identifier)
+        val routes = repository.findAccessTokenRoutesById(identifier)
+        val name = nameOf(identifier)
+        return AccessSubject(
+            principalId = null,
+            principalName = name,
+            kind = PrincipalKind.MACHINE,
+            disabled = false,
+            instanceAdmin = MANAGER in permissions,
+            grants = routes.map { route ->
+                Grant(
+                    team = privateTeamName(name),
+                    role = if (route.permission == RoutePermission.WRITE) Role.LEGACY_WRITE else Role.LEGACY_READ,
+                    repository = null,
+                    pathPrefix = route.path,
+                )
+            },
+            scopes = null,
+        )
+    }
+
     fun hasPermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission): Boolean =
-        identifier.type.getRepository().findAccessTokenPermissionsById(identifier).contains(permission)
+        when (permission) {
+            MANAGER -> PermissionEvaluator.isInstanceAdmin(subjectOf(identifier))
+        }
 
     fun hasPermissionTo(identifier: AccessTokenIdentifier, toPath: String, requiredPermission: RoutePermission): Boolean =
-        hasPermission(identifier, MANAGER) || identifier.type.getRepository()
-            .findAccessTokenRoutesById(identifier)
-            .any { it.hasPermissionTo(toPath, requiredPermission) }
+        hasAccessTo(identifier, toPath, if (requiredPermission == RoutePermission.WRITE) Action.WRITE else Action.READ)
+
+    /** Whether the owner of the token may perform [action] on [toPath], a full path such as `/repository/gav`. */
+    fun hasAccessTo(identifier: AccessTokenIdentifier, toPath: String, action: Action): Boolean =
+        PermissionEvaluator.allows(subjectOf(identifier), AccessRequest(toPath, action))
 
     fun canSee(identifier: AccessTokenIdentifier, pathFragment: String): Boolean =
-        hasPermission(identifier, MANAGER) || identifier.type.getRepository()
-            .findAccessTokenRoutesById(identifier)
-            .any { it.path.startsWith(pathFragment, ignoreCase = true) || pathFragment.startsWith(it.path) }
+        PermissionEvaluator.canSee(subjectOf(identifier), pathFragment)
+
+    /** Whether a HIDDEN repository is listed for the token. See [PermissionEvaluator.canListHidden]. */
+    fun canListHidden(identifier: AccessTokenIdentifier, repository: String): Boolean =
+        PermissionEvaluator.canListHidden(subjectOf(identifier), repository)
+
+    /** A disabled principal authenticates to nothing and is granted nothing. */
+    fun isDisabled(identifier: AccessTokenIdentifier): Boolean =
+        subjectOf(identifier).disabled
 
     fun deletePermission(identifier: AccessTokenIdentifier, permission: AccessTokenPermission, actor: AuditActor = AuditActor.SYSTEM_ACTOR) {
         identifier.type.getRepository().deletePermission(identifier, permission)

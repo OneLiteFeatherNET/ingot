@@ -20,7 +20,7 @@ import com.reposilite.journalist.Logger
 import com.reposilite.shared.extensions.uri
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenPermission.MANAGER
-import com.reposilite.token.RoutePermission
+import net.onelitefeather.ingot.identity.model.Action
 import com.reposilite.token.api.AccessTokenDto
 import io.javalin.http.Context
 import io.javalin.http.HandlerType
@@ -37,12 +37,12 @@ class ContextDsl<R>(
 ) {
 
     private companion object {
-        private val METHOD_PERMISSIONS = mapOf(
-            HandlerType.HEAD to RoutePermission.READ,
-            HandlerType.GET to RoutePermission.READ,
-            HandlerType.PUT to RoutePermission.WRITE,
-            HandlerType.POST to RoutePermission.WRITE,
-            HandlerType.DELETE to RoutePermission.WRITE
+        private val METHOD_ACTIONS = mapOf(
+            HandlerType.HEAD to Action.READ,
+            HandlerType.GET to Action.READ,
+            HandlerType.PUT to Action.WRITE,
+            HandlerType.POST to Action.WRITE,
+            HandlerType.DELETE to Action.DELETE
         )
     }
 
@@ -108,7 +108,7 @@ class ContextDsl<R>(
             .flatMapErr { _ ->
                 authenticationResult.value
                     .filter(
-                        { accessTokenFacade.hasPermissionTo(it.identifier, to, METHOD_PERMISSIONS[ctx.method()]!!) },
+                        { accessTokenFacade.hasAccessTo(it.identifier, to, METHOD_ACTIONS[ctx.method()]!!) },
                         { FORBIDDEN.toErrorResponse("This token is not authorized to access this path") }
                     )
                     .mapToUnit()

@@ -25,10 +25,7 @@ import com.reposilite.shared.unauthorizedError
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
-import com.reposilite.token.AccessTokenPermission.MANAGER
-import com.reposilite.token.RoutePermission
-import com.reposilite.token.RoutePermission.READ
-import com.reposilite.token.RoutePermission.WRITE
+import net.onelitefeather.ingot.identity.model.Action
 import io.javalin.http.HttpStatus.FORBIDDEN
 import panda.std.Result
 
@@ -48,7 +45,7 @@ internal class RepositorySecurityProvider(private val accessTokenFacade: AccessT
         when (repository.visibility) {
             PUBLIC -> true
             PRIVATE -> canSeeRepository(accessToken, repository)
-            HIDDEN -> accessToken?.let { accessTokenFacade.hasPermission(it, MANAGER) } ?: false
+            HIDDEN -> accessToken?.let { accessTokenFacade.canListHidden(it, repository.name) } ?: false
         }
 
     private fun canSeeRepository(accessToken: AccessTokenIdentifier?, repository: Repository): Boolean =
@@ -58,23 +55,27 @@ internal class RepositorySecurityProvider(private val accessTokenFacade: AccessT
         when (repository.visibility) {
             PUBLIC -> Result.ok(Unit)
             HIDDEN -> Result.ok(Unit)
-            PRIVATE -> hasPermissionTo(accessToken, repository, gav, READ)
+            PRIVATE -> hasPermissionTo(accessToken, repository, gav, Action.READ)
         }
 
     fun canBrowseResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Result<Unit, ErrorResponse> =
         when (repository.visibility) {
             PUBLIC -> Result.ok(Unit)
-            HIDDEN -> hasPermissionTo(accessToken, repository, gav, READ)
-            PRIVATE -> hasPermissionTo(accessToken, repository, gav, READ)
+            HIDDEN -> hasPermissionTo(accessToken, repository, gav, Action.READ)
+            PRIVATE -> hasPermissionTo(accessToken, repository, gav, Action.READ)
         }
 
     fun canModifyResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Boolean =
-        hasPermissionTo(accessToken, repository, gav, WRITE).isOk
+        hasPermissionTo(accessToken, repository, gav, Action.WRITE).isOk
 
-    private fun hasPermissionTo(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location, permission: RoutePermission): Result<Unit, ErrorResponse> =
+    /** Deleting needs DELETE, which legacy write tokens carry as they did under WRITE, and MAINTAIN and above. */
+    fun canDeleteResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Boolean =
+        hasPermissionTo(accessToken, repository, gav, Action.DELETE).isOk
+
+    private fun hasPermissionTo(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location, action: Action): Result<Unit, ErrorResponse> =
         accessToken
             ?.let {
-                Result.`when`(accessTokenFacade.hasPermissionTo(accessToken, "/${repository.name}/$gav", permission),
+                Result.`when`(accessTokenFacade.hasAccessTo(accessToken, "/${repository.name}/$gav", action),
                     { },
                     { FORBIDDEN.toErrorResponse("You must be the token owner or a manager to access this.") }
                 )

@@ -32,7 +32,7 @@ internal class BasicAuthenticator(
 
     override fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
         accessTokenFacade.getAccessToken(credentials.name)
-            ?.takeIf { !it.isExpired(clock) && accessTokenFacade.secretMatches(it.identifier, credentials.secret) }
+            ?.takeIf { !it.isExpired(clock) && !accessTokenFacade.isDisabled(it.identifier) && accessTokenFacade.secretMatches(it.identifier, credentials.secret) }
             ?.asSuccess()
             ?: unauthorizedError("Invalid authorization credentials")
 

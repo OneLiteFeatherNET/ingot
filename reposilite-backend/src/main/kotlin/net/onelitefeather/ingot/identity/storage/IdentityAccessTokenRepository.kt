@@ -24,6 +24,8 @@ import com.reposilite.token.AccessTokenType.PERSISTENT
 import com.reposilite.token.Route
 import com.reposilite.token.RoutePermission
 import com.reposilite.token.UNINITIALIZED_ENTITY_ID
+import net.onelitefeather.ingot.identity.evaluation.AccessSubjectSource
+import net.onelitefeather.ingot.identity.model.AccessSubject
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.model.Role
@@ -39,7 +41,14 @@ import net.onelitefeather.ingot.identity.model.privateTeamName
  */
 internal class IdentityAccessTokenRepository(
     private val store: IdentityStore,
-) : AccessTokenRepository {
+) : AccessTokenRepository, AccessSubjectSource {
+
+    override fun subjectOf(identifier: AccessTokenIdentifier): AccessSubject? {
+        if (identifier.value == UNINITIALIZED_ENTITY_ID) return null
+        val token = store.findTokenById(identifier.value) ?: return null
+        val principal = store.findPrincipalById(token.principalId) ?: return null
+        return store.loadAccess(principal, token.scopes)
+    }
 
     override fun saveAccessToken(accessToken: AccessToken): AccessToken {
         val existing = store.findToken(accessToken.name)

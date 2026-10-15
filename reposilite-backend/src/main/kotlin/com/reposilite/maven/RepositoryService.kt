@@ -106,7 +106,7 @@ internal class RepositoryService(
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
         with(deleteRequest) {
             when {
-                securityProvider.canModifyResource(accessToken, repository, gav) -> deleteUnchecked(repository, gav, by, cleanupRunId)
+                securityProvider.canDeleteResource(accessToken, repository, gav) -> deleteUnchecked(repository, gav, by, cleanupRunId)
                 else -> unauthorizedError("Unauthorized access request")
             }
         }
