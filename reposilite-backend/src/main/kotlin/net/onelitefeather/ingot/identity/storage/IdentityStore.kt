@@ -249,6 +249,13 @@ class IdentityStore(
         }
     }
 
+    /** Removes the membership of one principal in one team, whatever its source. Used by the synchronisation of provider groups. */
+    fun removeMember(teamId: Int, principalId: Int) {
+        transaction(database) {
+            TeamMemberTable.deleteWhere { (TeamMemberTable.teamId eq teamId) and (TeamMemberTable.principalId eq principalId) }
+        }
+    }
+
     private fun insertMember(teamId: Int, principalId: Int, source: TeamMemberSource) {
         TeamMemberTable.insert {
             it[TeamMemberTable.teamId] = EntityID(teamId, TeamTable)

@@ -81,6 +81,17 @@ internal class LdapLoginProvider(
             if (!directory.bindSucceeds(entry.dn, password)) {
                 return LoginOutcome.Rejected
             }
+            // A directory that cannot list the groups fails the login rather than dropping the memberships of the user.
+            val groups = if (settings.groupBaseDn.isBlank()) {
+                emptyList()
+            } else {
+                directory.search(
+                    context = service,
+                    base = settings.groupBaseDn,
+                    filter = LdapFilters.fill(settings.groupFilter, mapOf("dn" to entry.dn, "username" to username)),
+                    attributes = listOf(settings.groupNameAttribute),
+                ).mapNotNull { it.first(settings.groupNameAttribute) }
+            }
             val identity = ExternalIdentity(
                 provider = providerReference,
                 subject = entry.dn,
@@ -89,6 +100,9 @@ internal class LdapLoginProvider(
                 email = entry.first(settings.emailAttribute),
                 autoCreateUsers = settings.autoCreateUsers,
                 allowedEmailDomains = emptyList(),
+                groups = groups,
+                adminGroups = settings.adminGroups,
+                groupPrefix = "ldap:",
             )
             return when (val outcome = accounts.resolve(identity)) {
                 is ExternalOutcome.Succeeded -> LoginOutcome.Succeeded(outcome.principal, mustChangePassword = false)

@@ -172,8 +172,19 @@ internal class OidcLoginService(
             email = claims.getClaim(provider.emailClaim) as? String,
             autoCreateUsers = provider.autoCreateUsers,
             allowedEmailDomains = provider.allowedEmailDomains,
+            groups = groupsOf(claims, provider.groupsClaim),
+            adminGroups = provider.adminGroups,
+            groupPrefix = "oidc:${provider.id}:",
         )
     }
+
+    /** The groups of a claim that is a list of names or a single name. Anything else gives no groups. */
+    private fun groupsOf(claims: JWTClaimsSet, claim: String): List<String> =
+        when (val value = claims.getClaim(claim)) {
+            is List<*> -> value.filterIsInstance<String>().filter { it.isNotBlank() }
+            is String -> listOfNotNull(value.takeIf { it.isNotBlank() })
+            else -> emptyList()
+        }
 
     /** The identity of a GitHub login: the access token, then the user and the verified primary email from the API. */
     private fun githubIdentity(provider: OidcProviderSettings, expected: AuthorizationState, code: String, redirectUri: String): ExternalIdentity {
@@ -187,6 +198,9 @@ internal class OidcLoginService(
             email = profile.email,
             autoCreateUsers = provider.autoCreateUsers,
             allowedEmailDomains = provider.allowedEmailDomains,
+            groups = profile.groups,
+            adminGroups = provider.adminGroups,
+            groupPrefix = "oidc:${provider.id}:",
         )
     }
 

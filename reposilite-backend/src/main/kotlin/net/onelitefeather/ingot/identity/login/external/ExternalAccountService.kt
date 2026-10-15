@@ -34,6 +34,12 @@ data class ExternalIdentity(
     val email: String?,
     val autoCreateUsers: Boolean,
     val allowedEmailDomains: List<String>,
+    /** The groups of the subject, as the provider names them. Teams are matched by `<groupPrefix><group>`. */
+    val groups: List<String> = emptyList(),
+    /** The groups whose members become instance administrators through a synchronised team. */
+    val adminGroups: List<String> = emptyList(),
+    /** The prefix of the team references of this provider: `oidc:<id>:` for OpenID Connect and GitHub, `ldap:` for LDAP. */
+    val groupPrefix: String = "$provider:",
 )
 
 /** Why an external login was refused. [code] is the stable word the login page and the audit trail use. */
@@ -64,10 +70,24 @@ class ExternalAccountService internal constructor(
     private val identities: IdentityStore,
     private val links: ExternalIdentityStore,
     private val audit: (AuditEvent) -> Unit = {},
+    log: (String) -> Unit = {},
 ) {
 
-    /** Decides the login. The caller audits the outcome, because only the caller knows the address and the protocol. */
+    private val groupSync = ExternalGroupSync(identities, log)
+
+    /**
+     * Decides the login and, when it succeeds, synchronises the teams with the groups of the login. The caller audits the
+     * outcome, because only the caller knows the address and the protocol.
+     */
     fun resolve(identity: ExternalIdentity): ExternalOutcome {
+        val outcome = decide(identity)
+        if (outcome is ExternalOutcome.Succeeded) {
+            groupSync.apply(outcome.principal, identity.groupPrefix, identity.groups.toSet(), identity.adminGroups.toSet())
+        }
+        return outcome
+    }
+
+    private fun decide(identity: ExternalIdentity): ExternalOutcome {
         emailRefusal(identity)?.let { return ExternalOutcome.Refused(it) }
 
         val linkedId = links.principalIdOf(identity.provider, identity.subject)

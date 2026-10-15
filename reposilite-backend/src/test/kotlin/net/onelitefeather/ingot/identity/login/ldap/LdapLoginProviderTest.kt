@@ -182,6 +182,18 @@ internal class LdapLoginProviderTest {
     }
 
     @Test
+    fun `directory groups are synchronised into teams with the ldap reference`() {
+        withDatabase { fixture ->
+            val devs = fixture.identities.createTeam("ldap:devs", "", "ldap:devs")!!
+            val provider = LdapLoginProvider(settings().copy(groupBaseDn = "ou=groups,${InMemoryDirectory.BASE_DN}"), fixture.accounts)
+
+            val outcome = provider.authenticate("alice", "alice-secret") as Succeeded
+
+            assertThat(fixture.identities.listMemberships(devs.id).map { it.principalId }).containsExactly(outcome.principal.id)
+        }
+    }
+
+    @Test
     fun `an empty instance cannot be claimed through the directory`() {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val identities = IdentityStore(connection.database, clock)

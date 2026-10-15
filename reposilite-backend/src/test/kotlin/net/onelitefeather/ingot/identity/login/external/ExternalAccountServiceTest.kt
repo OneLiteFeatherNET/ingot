@@ -58,7 +58,7 @@ internal class ExternalAccountServiceTest {
             val identities = IdentityStore(connection.database, clock)
             identities.createPrincipal(PrincipalKind.USER, "admin", "Admin", false, clock.instant())
             val audit = mutableListOf<AuditEvent>()
-            val service = ExternalAccountService(identities, ExternalIdentityStore(connection.database)) { audit.add(it) }
+            val service = ExternalAccountService(identities, ExternalIdentityStore(connection.database), audit = { audit.add(it) })
 
             val first = service.resolve(identity()) as Succeeded
             val second = service.resolve(identity()) as Succeeded

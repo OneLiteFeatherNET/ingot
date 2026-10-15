@@ -77,7 +77,7 @@ internal class OidcLoginServiceTest {
         }
     }
 
-    private fun corp(autoCreate: Boolean = true, domains: List<String> = emptyList()) = OidcProviderSettings(
+    private fun corp(autoCreate: Boolean = true, domains: List<String> = emptyList(), adminGroups: List<String> = emptyList()) = OidcProviderSettings(
         id = "corp",
         enabled = true,
         label = "Corporate",
@@ -85,7 +85,33 @@ internal class OidcLoginServiceTest {
         clientSecret = OidcTestIdentityProvider.CLIENT_SECRET,
         autoCreateUsers = autoCreate,
         allowedEmailDomains = domains,
+        adminGroups = adminGroups,
     )
+
+    @Test
+    fun `a group of the id token is synchronised into the team with its external reference`() {
+        withFlow { fixture, identities ->
+            fixture.localAdmin()
+            val devs = identities.createTeam("oidc:corp:devs", "", "oidc:corp:devs")!!
+            val (started, _) = fixture.startAndEchoNonce()
+
+            val outcome = fixture.finish(started) as LoggedIn
+
+            assertThat(identities.listMemberships(devs.id).map { it.principalId }).containsExactly(outcome.principal.id)
+        }
+    }
+
+    @Test
+    fun `a member of an admin group is an instance administrator after the login`() {
+        withFlow(provider = corp(adminGroups = listOf("devs"))) { fixture, identities ->
+            fixture.localAdmin()
+            val (started, _) = fixture.startAndEchoNonce()
+
+            val outcome = fixture.finish(started) as LoggedIn
+
+            assertThat(identities.loadAccess(outcome.principal, scopes = null).instanceAdmin).isTrue
+        }
+    }
 
     private fun Fixture.begin(redirect: String = "/dashboard"): Started {
         val outcome = service.begin("corp", redirect, redirectUri = "http://localhost:8080/api/auth/oidc/corp/callback")
