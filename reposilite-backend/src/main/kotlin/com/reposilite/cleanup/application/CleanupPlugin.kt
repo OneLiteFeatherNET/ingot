@@ -32,6 +32,7 @@ import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
+import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.Location
@@ -75,6 +76,8 @@ internal class CleanupPlugin : ReposilitePlugin() {
                     service.runScheduled(policy.id).onError { logger.warn("CLEANUP | Scheduled run of ${policy.id} failed: ${it.message}") }
                 }
             },
+            claims = SqlScheduledJobClaims(reposilite().database, clock),
+            journalist = this,
         )
         val tick = reposilite().scheduler.scheduleWithFixedDelay({
             runCatching { scheduler.tick() }.onFailure { logger.warn("CLEANUP | Scheduler tick failed: ${it.message}") }

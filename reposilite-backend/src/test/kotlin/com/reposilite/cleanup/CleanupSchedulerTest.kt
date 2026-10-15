@@ -18,6 +18,8 @@ package com.reposilite.cleanup
 
 import com.reposilite.cleanup.application.CleanupPolicy
 import com.reposilite.cleanup.application.CleanupScope
+import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.scheduling.ScheduledJobClaims
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -47,7 +49,13 @@ internal class CleanupSchedulerTest {
     )
 
     private fun scheduler(clock: Clock, vararg policies: CleanupPolicy, started: MutableList<String>) =
-        CleanupScheduler(clock = clock, policies = { policies.toList() }, start = { started += it.id })
+        CleanupScheduler(
+            clock = clock,
+            policies = { policies.toList() },
+            start = { started += it.id },
+            claims = ScheduledJobClaims.Unshared,
+            journalist = InMemoryLogger(),
+        )
 
     @Test
     fun `should start an enabled policy at its scheduled minute`() {
