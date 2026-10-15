@@ -21,7 +21,7 @@ import { flushPromises } from '@vue/test-utils'
 // The store reads the session for its client and token at import time, and it talks to the
 // stream through EventSource. Both are replaced so the test runs without a server, a token
 // or a browser stream.
-const session = vi.hoisted(() => ({ client: null, token: null }))
+const session = vi.hoisted(() => ({ client: null, token: null, authMode: null }))
 vi.mock('../session.js', () => ({ useSession: () => session }))
 vi.mock('../client', () => ({ createURL: (path) => `http://localhost${path}` }))
 vi.mock('../../helpers/toast', () => ({
@@ -59,6 +59,7 @@ describe('useConsole', () => {
     // state of one test cannot leak into the next one, whatever order they run in.
     vi.resetModules()
     FakeEventSource.instances.length = 0
+    session.authMode = null
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
@@ -94,6 +95,48 @@ describe('useConsole', () => {
       afterRemount.previousCommand()
 
       expect(afterRemount.command.value, 'the arrow key should still recall the command sent before the remount').toBe('list')
+    })
+  })
+
+  describe('authenticating the stream', () => {
+    const open = async (mode, token) => {
+      session.client = ref({ console: { execute: vi.fn() } })
+      session.authMode = ref(mode)
+      const { default: useConsole } = await import('./connection')
+      useConsole().connect(token)
+      return FakeEventSource.instances[0]
+    }
+
+    it('sends the session cookie and no token header in cookie mode', async () => {
+      const stream = await open('cookie', { name: '', secret: '' })
+
+      expect(stream.options.withCredentials, 'the browser must attach the HttpOnly session cookie').toBe(true)
+      expect(stream.options.headers?.Authorization, 'a cookie session has no token to send').toBeUndefined()
+    })
+
+    it('ignores a token that is still around in cookie mode', async () => {
+      const stream = await open('cookie', { name: 'ops', secret: 'secret' })
+
+      expect(stream.options.headers?.Authorization).toBeUndefined()
+    })
+
+    it('keeps the token header in token mode', async () => {
+      const stream = await open('token', { name: 'ops', secret: 'secret' })
+
+      expect(stream.options.headers.Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
+      expect(stream.options.withCredentials, 'a token session does not need cookies').toBeFalsy()
+    })
+
+    it('keeps the token header when nobody is known to be signed in', async () => {
+      const stream = await open(undefined, { name: 'ops', secret: 'secret' })
+
+      expect(stream.options.headers.Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
+    })
+
+    it('still never retries on its own', async () => {
+      const stream = await open('cookie', { name: '', secret: '' })
+
+      expect(stream.options.disableRetry).toBe(true)
     })
   })
 

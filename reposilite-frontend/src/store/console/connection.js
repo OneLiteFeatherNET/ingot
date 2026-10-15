@@ -20,7 +20,7 @@ import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
 import { useSession } from "../session.js"
 
-const { client } = useSession()
+const { client, authMode } = useSession()
 
 const connection = ref()
 const command = ref("")
@@ -119,6 +119,13 @@ export default function useConsole() {
         failure.value = 'Your session has expired. Sign in again, then reconnect.'
       })
 
+  // A cookie session has no token to send: the browser attaches the HttpOnly session cookie to
+  // the stream (withCredentials). A token session, or one not known yet, sends the token as before.
+  const streamOptions = (token) =>
+    authMode?.value === 'cookie'
+      ? { withCredentials: true }
+      : { headers: { Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}` } }
+
   const connect = (token) => {
     status.value = 'connecting'
     failure.value = null
@@ -126,9 +133,7 @@ export default function useConsole() {
 
     try {
       connection.value = new Eventsource(consoleAddress, {
-        headers: {
-          Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}`
-        },
+        ...streamOptions(token),
         // No automatic retry, on purpose. A stream that fails because the server is
         // struggling is the worst moment to start reconnecting in a loop. The view offers
         // a button instead, so the retry happens when somebody decides it should.
