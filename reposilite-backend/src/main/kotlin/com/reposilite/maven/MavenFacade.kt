@@ -40,6 +40,7 @@ import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 import panda.std.Result
 import java.io.InputStream
+import java.util.concurrent.CompletableFuture
 
 class MavenFacade internal constructor(
     private val journalist: Journalist,
@@ -47,6 +48,7 @@ class MavenFacade internal constructor(
     private val repositoryProvider: RepositoryProvider,
     private val metadataService: MetadataService,
     private val latestService: LatestService,
+    private val storageUsageService: StorageUsageService,
 ) : Journalist, Facade {
 
     private val repositoryService = repositoryProvider.repositoryService
@@ -123,6 +125,14 @@ class MavenFacade internal constructor(
 
     fun getRepositories(): Collection<Repository> =
         repositoryService.repositoryProvider.getRepositories()
+
+    /** Usage figures of every repository as last computed, see [StorageUsageService]. */
+    fun storageUsage(): StorageUsage =
+        storageUsageService.current()
+
+    /** Starts measuring the storage usage in the background, or joins a measurement that is already running. */
+    fun refreshStorageUsage(): CompletableFuture<StorageUsage> =
+        storageUsageService.refresh()
 
     override fun getLogger(): Logger =
         journalist.logger

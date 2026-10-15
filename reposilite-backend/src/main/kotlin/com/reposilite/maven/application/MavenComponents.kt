@@ -21,6 +21,8 @@ import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.LatestService
 import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.StorageTarget
+import com.reposilite.maven.StorageUsageService
 import com.reposilite.maven.MetadataService
 import com.reposilite.maven.MirrorService
 import com.reposilite.maven.ResolutionProvider
@@ -32,6 +34,7 @@ import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
+import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.token.AccessTokenFacade
 import panda.std.reactive.Reference
 import java.nio.file.Path
@@ -105,7 +108,31 @@ internal class MavenComponents(
             repositorySecurityProvider = securityProvider,
             repositoryProvider = repositoryProvider,
             metadataService = metadataService,
-            latestService = latestService
+            latestService = latestService,
+            storageUsageService = storageUsageService(repositoryProvider),
         )
+
+    private fun storageUsageService(repositoryProvider: RepositoryProvider): StorageUsageService =
+        StorageUsageService(
+            journalist = journalist,
+            clock = clock,
+            targets = {
+                repositoryProvider.getRepositories().map { repository ->
+                    StorageTarget(
+                        id = repository.name,
+                        storage = repository.storageProvider,
+                        quota = configuredQuota(repository.name),
+                    )
+                }
+            },
+            executor = ioService,
+        )
+
+    /** The quota as written in the settings. Only the file system storage has one; object storage reports none. */
+    private fun configuredQuota(repository: String): String? =
+        mavenSettings.get().repositories
+            .firstOrNull { it.id == repository }
+            ?.storageProvider
+            ?.let { (it as? FileSystemStorageProviderSettings)?.quota }
 
 }

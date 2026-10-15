@@ -72,7 +72,8 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
                 maxPercentage = maxPercentage,
             )
 
-        private fun displaySizeToBytesCount(displaySize: String): Long {
+        /** Reads a size such as "500MB" or "10GB" (or a plain byte count) as a number of bytes. */
+        fun displaySizeToBytesCount(displaySize: String): Long {
             val match = DISPLAY_SIZE_PATTERN.matcher(displaySize)
 
             if (!match.matches() || match.groupCount() != 3) {
