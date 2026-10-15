@@ -74,6 +74,28 @@ data class SetupRequest(
     val displayName: String? = null,
 )
 
+/**
+ * A token a user creates for themselves. There is no secret field: the server generates the secret and returns it once.
+ */
+@JsonSchema(requireNonNulls = false)
+data class SelfTokenRequest(
+    val name: String? = null,
+    val description: String? = null,
+    val expiresAt: Instant? = null,
+    val scopes: List<String>? = null,
+)
+
+@JsonSchema(requireNonNulls = false)
+data class PasswordChangeRequest(
+    val currentPassword: String? = null,
+    val newPassword: String? = null,
+)
+
+@JsonSchema(requireNonNulls = false)
+data class PasswordResetRequest(
+    val newPassword: String? = null,
+)
+
 /** Result of a renewed session, `POST /api/auth/refresh`. */
 @JsonSchema(requireNonNulls = false)
 data class SessionResponse(

@@ -80,6 +80,13 @@ fun createReposiliteDsl(
     fun Context.authenticate(): Result<out AccessTokenDto, ErrorResponse> {
         val authorization = header(Header.AUTHORIZATION)
         val sessionToken = cookie(SessionCookies.SESSION)
+        if (authorization != null && authorization.startsWith("Bearer ", ignoreCase = true)) {
+            // A Bearer secret names its token through its id. The name goes through the same check as Basic, so a
+            // wrong secret counts towards the failure limit whether or not it names a token.
+            val secret = authorization.substring("Bearer ".length).trim()
+            val name = loginFacade.bearerTokenName(secret).orEmpty()
+            return authenticationFacade.authenticateByCredentials(Credentials(ip = ip(), name = name, secret = secret))
+        }
         if (authorization == null && sessionToken != null) {
             return loginFacade.authenticateSession(sessionToken)
                 ?.let { accessTokenFacade.getAccessTokenById(it) }

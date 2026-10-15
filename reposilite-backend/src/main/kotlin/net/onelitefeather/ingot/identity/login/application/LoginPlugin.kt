@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.identity.login.application
 import com.reposilite.auth.application.AuthenticationSettings
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.configuration.local.LocalConfiguration
+import com.reposilite.token.AccessTokenFacade
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -31,8 +32,10 @@ import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginService
 import net.onelitefeather.ingot.identity.login.LoginSettings
+import net.onelitefeather.ingot.identity.login.OwnTokens
 import net.onelitefeather.ingot.identity.login.PasswordHasher
 import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
+import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionSigner
@@ -82,12 +85,23 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
-        val loginFacade = LoginFacade(service, sessions)
+        val accessTokenFacade = facade<AccessTokenFacade>()
+        val ownTokens = database?.let { database ->
+            OwnTokens(
+                identities = IdentityStore(database),
+                onTokenChanged = { accessTokenFacade.tokenStateChanged(it) },
+                audit = { auditExtensions.emitEvent(it) },
+                clock = clock,
+            )
+        }
+
+        val loginFacade = LoginFacade(service, sessions, ownTokens)
         val basePath = facade<LocalConfiguration>().basePath
 
         event { event: RoutingSetupEvent ->
             if (service != null) {
                 event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
+                event.registerRoutes(SelfServiceEndpoints(loginFacade, accessTokenFacade))
             }
         }
 

@@ -23,7 +23,9 @@ import io.javalin.http.HttpStatus.BAD_REQUEST
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.UNAUTHORIZED
+import kong.unirest.core.HttpRequestWithBody
 import kong.unirest.core.Unirest
+import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.api.LoginProvidersResponse
 import net.onelitefeather.ingot.identity.login.api.LoginResponse
@@ -270,6 +272,162 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
 
         // then: the csrf check does not apply, so the logout is served
         assertThat(response.status).isEqualTo(OK.code)
+    }
+
+    private fun withSession(request: HttpRequestWithBody, session: Session): HttpRequestWithBody =
+        request
+            .header("Cookie", "ingot_session=${session.session}; ingot_csrf=${session.csrf}")
+            .header("X-CSRF-Token", session.csrf)
+            .header("Content-Type", "application/json")
+
+    private fun administratorSession(): Session {
+        val code = loginFacade.issueSetupCode()!!
+        val headers = setup("""{"setupCode":"$code","username":"root-admin","password":"$password"}""")
+            .asJacksonObject(LoginResponse::class)
+            .headers
+            .get("Set-Cookie")
+        return Session(
+            session = cookieValue(headers, "ingot_session"),
+            refresh = cookieValue(headers, "ingot_refresh"),
+            csrf = cookieValue(headers, "ingot_csrf"),
+        )
+    }
+
+    private fun createOwnToken(session: Session, name: String): String =
+        withSession(http.post("$base/api/identity/me/tokens"), session)
+            .body("""{"name":"$name"}""")
+            .asJacksonObject(CreatedTokenDto::class)
+            .body
+            .secret
+
+    private fun bearerStatus(secret: String): Int =
+        http.get("$base/api/auth/me").header("Authorization", "Bearer $secret").asString().status
+
+    @Test
+    fun `creates an own token whose secret authenticates as a bearer and never shows again`() {
+        // given: a signed-in user
+        val session = loginSession("liam-token")
+
+        // when: a token is created, and the user uses its secret as a bearer
+        val created = withSession(http.post("$base/api/identity/me/tokens"), session)
+            .body("""{"name":"ci"}""")
+            .asJacksonObject(CreatedTokenDto::class)
+        assertSuccessResponse(OK, created) { dto -> assertThat(dto.token.name).isEqualTo("ci") }
+        val secret = created.body.secret
+        assertThat(secret).startsWith("ingot_")
+
+        // then: the secret authenticates as the user, and the token list does not show it
+        val me = http.get("$base/api/auth/me").header("Authorization", "Bearer $secret").asString()
+        assertThat(me.status).describedAs("bearer body: ${me.body}").isEqualTo(OK.code)
+        assertThat(me.body).contains("liam-token")
+        val listed = http.get("$base/api/identity/me/tokens").header("Cookie", "ingot_session=${session.session}").asString()
+        assertThat(listed.body).contains("\"ci\"").doesNotContain(secret)
+    }
+
+    @Test
+    fun `refuses a bearer secret that is changed by one character`() {
+        // given: a token and its secret
+        val secret = createOwnToken(loginSession("mona-token"), "ci")
+
+        // when: the secret is presented with its last character changed
+        val forged = secret.dropLast(1) + (if (secret.last() == 'A') 'B' else 'A')
+
+        // then: the request is unauthorized
+        assertThat(bearerStatus(forged)).isEqualTo(UNAUTHORIZED.code)
+    }
+
+    @Test
+    fun `rotates an own token and the old bearer secret stops working`() {
+        // given: a token whose secret is in use
+        val session = loginSession("nico-token")
+        val old = createOwnToken(session, "ci")
+
+        // when: the token is rotated
+        val rotated = withSession(http.post("$base/api/identity/me/tokens/ci/rotate"), session).asJacksonObject(CreatedTokenDto::class)
+        assertSuccessResponse(OK, rotated) { dto -> assertThat(dto.secret).isNotEqualTo(old) }
+
+        // then: the old secret is refused and the new one works
+        assertThat(bearerStatus(old)).describedAs("the old secret must stop at once").isEqualTo(UNAUTHORIZED.code)
+        assertThat(bearerStatus(rotated.body.secret)).isEqualTo(OK.code)
+    }
+
+    @Test
+    fun `deletes an own token and its bearer secret stops working`() {
+        // given: a token whose secret is in use
+        val session = loginSession("olga-token")
+        val secret = createOwnToken(session, "ci")
+
+        // when: the token is deleted
+        val deleted = withSession(http.delete("$base/api/identity/me/tokens/ci"), session).asString()
+
+        // then: the deletion succeeds and the secret is refused
+        assertThat(deleted.status).isEqualTo(OK.code)
+        assertThat(bearerStatus(secret)).isEqualTo(UNAUTHORIZED.code)
+    }
+
+    @Test
+    fun `changes the own password, ends the sessions and accepts only the new password`() {
+        // given: a signed-in user
+        val session = loginSession("nina-pw")
+        val replacement = "a brand new passphrase"
+
+        // when: the password is changed with the current one
+        val changed = withSession(http.post("$base/api/identity/me/password"), session)
+            .body("""{"currentPassword":"$password","newPassword":"$replacement"}""")
+            .asString()
+
+        // then: the old password is refused, the new one logs in, and the old session cannot be renewed
+        assertThat(changed.status).isEqualTo(OK.code)
+        assertThat(login("""{"provider":"local","username":"nina-pw","password":"$password"}""").asString().status).isEqualTo(UNAUTHORIZED.code)
+        assertThat(login("""{"provider":"local","username":"nina-pw","password":"$replacement"}""").asString().status).isEqualTo(OK.code)
+        assertThat(renew(session.refresh, session.csrf).asString().status).describedAs("sessions must end with the password").isEqualTo(UNAUTHORIZED.code)
+    }
+
+    @Test
+    fun `refuses a password change with the wrong current password`() {
+        // given: a signed-in user
+        val session = loginSession("otto-pw")
+
+        // when: the current password is wrong
+        val response = withSession(http.post("$base/api/identity/me/password"), session)
+            .body("""{"currentPassword":"not the current one","newPassword":"a brand new passphrase"}""")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the change is refused
+        assertErrorResponse(FORBIDDEN, response)
+    }
+
+    @Test
+    fun `resets a user's password as administrator and forces a change at the next login`() {
+        // given: an administrator and a user
+        val admin = administratorSession()
+        loginFacade.createUser("oscar-reset", "Oscar", password)
+
+        // when: the administrator resets the password
+        val reset = withSession(http.post("$base/api/identity/principals/oscar-reset/password"), admin)
+            .body("""{"newPassword":"reset passphrase here"}""")
+            .asString()
+
+        // then: the user logs in with the new password and must change it
+        assertThat(reset.status).isEqualTo(OK.code)
+        val login = login("""{"provider":"local","username":"oscar-reset","password":"reset passphrase here"}""")
+            .asJacksonObject(LoginResponse::class)
+        assertSuccessResponse(OK, login) { response -> assertThat(response.mustChangePassword).isTrue() }
+    }
+
+    @Test
+    fun `refuses a password reset from a user who is no administrator`() {
+        // given: a user who is not an administrator, and another user
+        val session = loginSession("paula-reset")
+        loginFacade.createUser("quinn-reset", "Quinn", password)
+
+        // when: the first user tries to reset the second password
+        val response = withSession(http.post("$base/api/identity/principals/quinn-reset/password"), session)
+            .body("""{"newPassword":"reset passphrase here"}""")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the reset is forbidden
+        assertErrorResponse(FORBIDDEN, response)
     }
 
     @Test

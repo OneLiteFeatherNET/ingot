@@ -186,6 +186,24 @@ internal class SessionServiceTest {
     }
 
     @Test
+    fun `ends every session of a user at once`() {
+        withSessions { fixture ->
+            val alice = fixture.user()
+            val onPhone = fixture.sessions.start(alice, ip = "10.0.0.1", userAgent = "phone")
+            val onLaptop = fixture.sessions.start(alice, ip = "10.0.0.2", userAgent = "laptop")
+
+            fixture.sessions.revokeAllSessions(alice.id)
+
+            assertThat(fixture.sessions.refresh(onPhone.refreshToken, ip = "10.0.0.1", userAgent = null))
+                .describedAs("a password change must end the session on the phone")
+                .isNull()
+            assertThat(fixture.sessions.refresh(onLaptop.refreshToken, ip = "10.0.0.2", userAgent = null))
+                .describedAs("and the session on the laptop")
+                .isNull()
+        }
+    }
+
+    @Test
     fun `reports the lifetimes of the session and the refresh token for the cookies`() {
         withSessions { fixture ->
             val session = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null)

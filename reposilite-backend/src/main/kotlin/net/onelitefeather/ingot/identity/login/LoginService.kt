@@ -100,6 +100,30 @@ class LoginService internal constructor(
         return principal
     }
 
+    /** The user changes their own password. The current one must be given; a forced change, if any, ends with it. */
+    fun changePassword(principalId: Int, currentPassword: String, newPassword: String): PasswordOutcome {
+        val principal = identities.findPrincipalById(principalId)?.takeIf { it.kind == PrincipalKind.USER }
+            ?: return PasswordOutcome.NotAUser
+        val stored = credentials.findCredential(principal.id)?.passwordHash.orEmpty()
+        if (!hasher.matches(currentPassword, stored)) {
+            return PasswordOutcome.WrongCurrentPassword
+        }
+        passwordProblem(newPassword)?.let { return PasswordOutcome.InvalidInput(it) }
+        setPassword(principal, newPassword, mustChange = false)
+        return PasswordOutcome.Changed
+    }
+
+    /** An administrator sets a new password. The user must choose another one at the next login. */
+    fun resetPassword(principalName: String, newPassword: String): PasswordOutcome {
+        val principal = identities.findPrincipal(principalName) ?: return PasswordOutcome.NotFound
+        if (principal.kind != PrincipalKind.USER) {
+            return PasswordOutcome.NotAUser
+        }
+        passwordProblem(newPassword)?.let { return PasswordOutcome.InvalidInput(it) }
+        setPassword(principal, newPassword, mustChange = true)
+        return PasswordOutcome.Changed
+    }
+
     /** A user-facing reason why [password] is not acceptable, or `null` when it is. */
     fun passwordProblem(password: String): String? = when {
         password.length < MIN_PASSWORD_LENGTH -> "Password must have at least $MIN_PASSWORD_LENGTH characters"
@@ -110,6 +134,9 @@ class LoginService internal constructor(
     /** Whether at least one human principal exists. The setup code is needed exactly as long as this is `false`. */
     fun hasUsers(): Boolean =
         identities.listPrincipals(PrincipalKind.USER).isNotEmpty()
+
+    fun principalIdOf(principalName: String): Int? =
+        identities.findPrincipal(principalName)?.id
 
     fun isSetupRequired(): Boolean =
         !hasUsers()

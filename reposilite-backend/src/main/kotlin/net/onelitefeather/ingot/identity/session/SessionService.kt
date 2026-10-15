@@ -90,6 +90,11 @@ class SessionService internal constructor(
         }
     }
 
+    /** Ends every session of a principal, on every instance. Used when its password changes or is reset. */
+    fun revokeAllSessions(principalId: Int) {
+        store.revokeAllOfPrincipal(principalId, Instant.now(clock))
+    }
+
     /** The verified claims of a session token whose principal is still an active user, or `null`. */
     fun authenticate(sessionJwt: String): VerifiedSession? {
         val verified = signer.verify(sessionJwt) ?: return null

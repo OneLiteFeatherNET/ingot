@@ -38,6 +38,24 @@ sealed interface LoginOutcome {
 
 }
 
+/** The result of a password change or reset. */
+sealed interface PasswordOutcome {
+
+    data object Changed : PasswordOutcome
+
+    /** A user changing their own password gave the wrong current one. */
+    data object WrongCurrentPassword : PasswordOutcome
+
+    /** The new password breaks the password rules. [problem] says which. */
+    data class InvalidInput(val problem: String) : PasswordOutcome
+
+    data object NotFound : PasswordOutcome
+
+    /** Machine principals have no password. */
+    data object NotAUser : PasswordOutcome
+
+}
+
 /** The result of the first administrator setup, see `LoginService.completeSetup`. */
 sealed interface SetupOutcome {
 

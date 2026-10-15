@@ -145,6 +145,16 @@ class LoginStore(
         }
     }
 
+    /** Revokes every token of every family of a principal, for example after its password changed. */
+    fun revokeAllOfPrincipal(principalId: Int, at: Instant) {
+        transaction(database) {
+            RefreshTokenTable.update(
+                where = { (RefreshTokenTable.principalId eq principalId) and RefreshTokenTable.revokedAt.isNull() },
+                body = { it[RefreshTokenTable.revokedAt] = at },
+            )
+        }
+    }
+
     private fun ResultRow.toRefreshToken() = RefreshTokenRecord(
         id = this[RefreshTokenTable.id].value,
         familyId = this[RefreshTokenTable.familyId],
