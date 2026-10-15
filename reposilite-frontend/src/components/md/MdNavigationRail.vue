@@ -20,7 +20,7 @@ import { clearRailWidth, publishRailWidth } from '../../helpers/navigation-rail'
 
 /*
  * Material Design 3 navigation rail: the vertical counterpart of MdNavigationBar, for the
- * medium and expanded widths. Spec: 80px wide on the surface colour, a 56 by 32 active
+ * medium and expanded widths. Spec: 80px wide on the surface-container colour, a 56 by 32 active
  * indicator on secondary-container, a 24px icon and a label-medium label under it. The items
  * start 44px from the top.
  *
@@ -67,7 +67,7 @@ const select = (item, event) => {
 <template>
   <nav
     :aria-label="label"
-    class="flex h-full w-20 flex-col items-center bg-surface pt-11 text-on-surface"
+    class="flex h-full w-20 flex-col items-center bg-surface-container pt-11 text-on-surface"
   >
     <ul
       role="list"
@@ -98,7 +98,10 @@ const select = (item, event) => {
               :active="isActive(item)"
             />
           </span>
-          <span class="md-label-medium">{{ item.label }}</span>
+          <span
+            class="md-label-medium"
+            :class="isActive(item) ? 'md-label-medium-prominent text-on-surface' : ''"
+          >{{ item.label }}</span>
         </component>
       </li>
     </ul>
