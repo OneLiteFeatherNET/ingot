@@ -14,23 +14,11 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import DefaultHeader from './DefaultHeader.vue'
-
-// The window scroll position is a plain value each test sets before it mounts the header.
-const scroll = vi.hoisted(() => ({ y: 0 }))
-
-vi.mock('@vueuse/core', async (importOriginal) => {
-  const { ref: vueRef } = await import('vue')
-  const actual = await importOriginal()
-  return {
-    ...actual,
-    useWindowScroll: () => ({ x: vueRef(0), y: vueRef(scroll.y) })
-  }
-})
 
 // The account menu is not under test here, so the session is a signed out one.
 vi.mock('../../store/session', () => ({
@@ -51,25 +39,12 @@ const mountHeader = () => {
   return mount(DefaultHeader, { global: { plugins: [router] } })
 }
 
-describe('DefaultHeader scroll state', () => {
-  beforeEach(() => {
-    scroll.y = 0
-  })
-
-  it('keeps the plain surface colour while the page is at the top', () => {
-    const wrapper = mountHeader()
-
-    expect(wrapper.find('header').classes(), 'the header must not tint before the page moves')
-      .toContain('bg-surface')
-    expect(wrapper.find('header').classes()).not.toContain('bg-surface-container')
-  })
-
-  it('tints the header with the surface container colour once the page scrolls', () => {
-    scroll.y = 120
+describe('DefaultHeader', () => {
+  it('sits on the surface container colour at the top of the page, like the navigation rail', () => {
     const wrapper = mountHeader()
 
     expect(wrapper.find('header').classes()).toContain('bg-surface-container')
-    expect(wrapper.find('header').classes(), 'the plain surface is replaced, not kept beside the tint')
+    expect(wrapper.find('header').classes(), 'the header must not fall back to the page surface')
       .not.toContain('bg-surface')
   })
 

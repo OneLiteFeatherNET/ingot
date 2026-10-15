@@ -15,24 +15,19 @@
   -->
 
 <script setup>
-import { computed } from 'vue'
-import { useWindowScroll } from '@vueuse/core'
 import usePlaceholders from '../../store/placeholders'
 import MenuPanel from './MenuPanel.vue'
 
 const { title } = usePlaceholders()
 
-// The top app bar is a flat surface at the top of the page. Once the page scrolls under it, it
-// takes the surface container colour, so it separates from the content it now overlaps. The
-// colour change is the only effect: MD3 small top app bars do not add a shadow on scroll.
-const { y } = useWindowScroll()
-const scrolled = computed(() => y.value > 0)
+// The top app bar and the navigation rail share the surface container colour, so the app frame
+// reads as one region apart from the page content on surface. The bar keeps that colour when the
+// page scrolls under it, so it needs no scroll state.
 </script>
 
 <template>
   <header
-    class="sticky top-0 z-30 text-on-surface transition-colors duration-(--md-sys-motion-duration-short4) ease-md-standard motion-reduce:transition-none"
-    :class="scrolled ? 'bg-surface-container' : 'bg-surface'"
+    class="sticky top-0 z-30 bg-surface-container text-on-surface"
   >
     <!-- The top app bar: the title on the left, the account and theme actions on the right. -->
     <div class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2">
