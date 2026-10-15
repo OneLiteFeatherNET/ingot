@@ -51,8 +51,8 @@ const ROLE_ACTIONS = {
   LEGACY_WRITE: ["WRITE", "DELETE"],
 }
 const ALL_ACTIONS = ["READ", "WRITE", "DELETE", "MANAGE_REPOSITORY", "INSTANCE_ADMIN"]
-// DEPLOY is accepted next to the actions because the dashboard offers READ and DEPLOY as scopes.
-const SCOPE_NAMES = [...ALL_ACTIONS, "DEPLOY"]
+// Token scopes are actions, as in the backend (spec 2.1 and O-8). Roles such as DEPLOY are not scopes.
+const SCOPE_NAMES = ALL_ACTIONS
 
 // ---------------------------------------------------------------- state
 
