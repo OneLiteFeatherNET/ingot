@@ -118,6 +118,7 @@ describe('LdapPanel', () => {
       await save()
 
       expect(settings.update).toHaveBeenCalledWith('login', {
+        publicUrl: '',
         oidcProviders: OIDC,
         ldap: { ...LDAP, userBaseDn: 'ou=staff,dc=example,dc=org' }
       }, '"v1"')
