@@ -25,7 +25,8 @@ object NotFoundTemplate {
 
     fun createNotFoundPage(basePath: String, originUri: String, details: String): String {
         val uri = originUri.replace(uriFormatter, "/")
-        val dashboardUrl = basePath + (if (basePath.endsWith("/")) "" else "/") + "#" + uri
+        // The dashboard routes by path, so the link is the browse route of the requested address.
+        val dashboardUrl = basePath + (if (basePath.endsWith("/")) "" else "/") + "browse/" + uri.trimStart('/')
 
         @Language("html")
         val response = """
