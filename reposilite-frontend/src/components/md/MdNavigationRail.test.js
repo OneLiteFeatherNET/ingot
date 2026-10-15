@@ -17,6 +17,25 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MdNavigationRail from './MdNavigationRail.vue'
+import { RAIL_WIDTH_VARIABLE } from '../../helpers/navigation-rail'
+
+describe('MdNavigationRail width variable', () => {
+  it('publishes its width on the document root while it is mounted', () => {
+    const wrapper = mount(MdNavigationRail, { props: { items: SECTIONS, modelValue: 'overview' } })
+
+    expect(document.documentElement.style.getPropertyValue(RAIL_WIDTH_VARIABLE), 'the rail is 80px wide').toBe('80px')
+
+    wrapper.unmount()
+  })
+
+  it('withdraws the variable once it is unmounted', () => {
+    const wrapper = mount(MdNavigationRail, { props: { items: SECTIONS, modelValue: 'overview' } })
+
+    wrapper.unmount()
+
+    expect(document.documentElement.style.getPropertyValue(RAIL_WIDTH_VARIABLE)).toBe('')
+  })
+})
 
 // The five dashboard sections, as the rail is meant to show them.
 const SECTIONS = [

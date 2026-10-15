@@ -15,6 +15,9 @@
   -->
 
 <script setup>
+import { onBeforeUnmount, onMounted } from 'vue'
+import { clearRailWidth, publishRailWidth } from '../../helpers/navigation-rail'
+
 /*
  * Material Design 3 navigation rail: the vertical counterpart of MdNavigationBar, for the
  * medium and expanded widths. Spec: 80px wide on the surface colour, a 56 by 32 active
@@ -40,6 +43,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+
+// The rail publishes its width for overlays such as the snackbar, and withdraws it when it leaves.
+onMounted(() => publishRailWidth())
+onBeforeUnmount(() => clearRailWidth())
 
 const isActive = (item) => item.key === props.modelValue
 

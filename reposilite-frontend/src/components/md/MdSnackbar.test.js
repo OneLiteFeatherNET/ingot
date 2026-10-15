@@ -117,6 +117,15 @@ describe('MdSnackbar', () => {
     expect(wrapper.find('[role="status"]').exists(), 'the success notice must leave on its own').toBe(false)
   })
 
+  it('steps right of the navigation rail from 600px by reading the rail width variable', () => {
+    const wrapper = mountSnackbar()
+    const host = wrapper.get('div').classes().join(' ')
+
+    expect(host, 'the side offset comes from the rail width, not the bottom bar height').toContain(
+      'min-[600px]:left-[calc(var(--app-rail-width,0px)+1.5rem)]'
+    )
+  })
+
   it('sits above the navigation bar below 600px by reading the bar height variable', () => {
     const wrapper = mountSnackbar()
     const host = wrapper.get('div').classes().join(' ')
