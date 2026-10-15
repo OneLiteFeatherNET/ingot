@@ -20,6 +20,7 @@ import usePlaceholders from '../store/placeholders'
 import { useSession, whenSessionKnown } from '../store/session'
 import { createInfoToast } from '../helpers/toast'
 import { createAppRouter } from './create'
+import { legacyLocation } from './legacy'
 
 /*
  * The application's router. It is created when the app starts, not when this module loads:
@@ -36,6 +37,7 @@ export function createIngotRouter() {
   return createAppRouter({
     history: createWebHistory(basePath),
     component: IndexPage,
+    legacy: legacyLocation,
     siteTitle: title,
     whenSessionKnown,
     isManager: () => isManager.value,

@@ -24,11 +24,14 @@ import { pageTitle } from './title'
  * settings on its own: they are passed in, so the router can be built on memory history with
  * fakes in a test, and src/router/index.js is the only place that wires in the real ones.
  *
+ * - legacy(hash) turns an old `#/...` link into a location, or returns null. It is asked
+ *   once, for the first navigation, which is the one the app starts with.
  * - The manager options describe the session. The defaults are an anonymous visitor.
  */
 const createAppRouter = ({
   history,
   component,
+  legacy = () => null,
   siteTitle = '',
   whenSessionKnown = () => Promise.resolve(),
   isManager = () => false,
@@ -38,6 +41,13 @@ const createAppRouter = ({
   const router = createRouter({
     history,
     routes: ROUTES.map(route => ({ ...route, component }))
+  })
+
+  let started = false
+  router.beforeEach((to) => {
+    if (started) return true
+    started = true
+    return legacy(to.hash) ?? true
   })
 
   router.beforeEach(createManagerGuard({ whenSessionKnown, isManager, isLogged, notify }))

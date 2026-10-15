@@ -17,6 +17,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from './create'
+import { legacyLocation } from './legacy'
 
 // Every route renders the same shell in the application. Here the shell is an empty stub,
 // because what it shows is tested with the page itself.
@@ -28,6 +29,7 @@ const makeRouter = (options = {}) =>
   createAppRouter({
     history: createMemoryHistory(),
     component: shell,
+    legacy: legacyLocation,
     siteTitle: 'Ingot Repository',
     ...options
   })
@@ -177,6 +179,33 @@ describe('manager routes', () => {
     await router.push('/browse/releases')
 
     expect(router.currentRoute.value.name, 'the browser needs no session to open').toBe('browse')
+  })
+})
+
+describe('legacy hash links', () => {
+  it('turns a legacy link into the route that replaces it on the first navigation', async () => {
+    const router = makeRouter()
+
+    await router.push('/#/releases/gav/0.1.0?tab=overview')
+
+    expect(router.currentRoute.value.fullPath).toBe('/browse/releases/gav/0.1.0')
+  })
+
+  it('turns a legacy section link into its route', async () => {
+    const router = makeRouter({ whenSessionKnown: () => Promise.resolve(), isManager: () => true, isLogged: () => true })
+
+    await router.push('/#/?tab=tokens')
+
+    expect(router.currentRoute.value.fullPath).toBe('/tokens')
+  })
+
+  it('does not rewrite a hash on a later navigation', async () => {
+    const router = makeRouter()
+    await router.push('/')
+
+    await router.push('/#/releases?tab=overview')
+
+    expect(router.currentRoute.value.name).toBe('overview')
   })
 })
 
