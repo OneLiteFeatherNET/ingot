@@ -16,18 +16,26 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
 import { useSession } from '../../store/session'
+import { createURL } from '../../store/client'
 import { loginRequests } from '../../store/login'
 import { now } from '../../helpers/clock'
 import { rateLimitMessage, rateLimitedUntil } from '../../helpers/rate-limit'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import SegmentedControl from '../tokens/SegmentedControl.vue'
+import SegmentedOption from '../tokens/SegmentedOption.vue'
+import ProviderIcon from '../icons/ProviderIcon.vue'
+import { providerLoginHref } from './providerLinks'
 
 /*
  * One dialog, three faces. First run (the server says setupRequired) it is "Set up Ingot".
- * Otherwise it lists the sign in providers of the server, with a password form for the local
- * one, and a link to the older access token form. A password never leaves these refs: they are
+ * Otherwise it offers the password providers (the Ingot account and an LDAP directory, one form
+ * with a switch when both exist), then an "or" divider and one button per single sign on provider,
+ * and a link to the older access token form. A provider button is a link that starts the provider's
+ * login with the current page as the return address. A password never leaves these refs: they are
  * cleared whenever the dialog closes, and nothing is written to a storage.
  */
 const {
@@ -69,8 +77,32 @@ const setupPassword = ref('')
 const setupConfirm = ref('')
 const submitted = ref(false)
 
+const route = useRoute()
+
+// The providers that take a username and a password: the Ingot account and the LDAP directory.
 const localProvider = computed(() => providers.value.find(provider => provider.type === 'LOCAL'))
-const otherProviders = computed(() => providers.value.filter(provider => provider.type !== 'LOCAL'))
+const passwordProviders = computed(() =>
+  providers.value.filter(provider => provider.type === 'LOCAL' || provider.type === 'LDAP'))
+// The single sign on providers. Each one is a link to its own login, never a form.
+const ssoProviders = computed(() => providers.value.filter(provider => provider.type === 'OIDC'))
+const hasPasswordForm = computed(() => passwordProviders.value.length > 0)
+
+// The provider the form signs in with. The switch changes it; the Ingot account is the default.
+const selectedProviderId = ref(null)
+const activeProvider = computed(() =>
+  passwordProviders.value.find(provider => provider.id === selectedProviderId.value)
+    ?? localProvider.value
+    ?? passwordProviders.value[0])
+const providerTitle = (provider) => (provider.type === 'LOCAL' ? 'Ingot account' : provider.label)
+const selectProvider = (id) => {
+  selectedProviderId.value = id
+  failure.value = null
+}
+
+// Where a provider sends the visitor back: the page they are on, with its query.
+const ssoHref = (provider) => (provider.loginUrl
+  ? providerLoginHref(provider.loginUrl, route?.fullPath ?? '/', createURL)
+  : undefined)
 
 const mode = computed(() => (setupRequired.value ? 'setup' : view.value))
 const title = computed(() => ({
@@ -79,7 +111,6 @@ const title = computed(() => ({
   token: 'Sign in with access token'
 }[mode.value]))
 const formId = computed(() => `login-form-${mode.value}`)
-const hasForm = computed(() => mode.value !== 'password' || localProvider.value !== undefined)
 
 const passwordError = computed(() =>
   submitted.value && setupPassword.value.length < MIN_PASSWORD_LENGTH)
@@ -140,6 +171,7 @@ const forgetInput = () => {
   submitted.value = false
   failure.value = null
   view.value = 'password'
+  selectedProviderId.value = null
 }
 
 const close = () => {
@@ -184,8 +216,9 @@ const attempt = (action, failureMessage, fieldId) => {
 
 const signinWithPassword = () => {
   if (isLocked()) return Promise.resolve()
+  const provider = activeProvider.value.id
   return attempt(
-    () => signInWithPassword({ username: username.value, password: password.value }),
+    () => signInWithPassword({ provider, username: username.value, password: password.value }),
     (error) => {
       lockFrom(error)
       return passwordFailureMessage(error)
@@ -349,10 +382,26 @@ const overlayStyle = {
         </form>
 
         <template v-else>
+          <SegmentedControl
+            v-if="passwordProviders.length > 1"
+            label="Sign in method"
+            class="mt-6 w-full"
+          >
+            <SegmentedOption
+              v-for="provider in passwordProviders"
+              :key="provider.id"
+              :on="provider.id === activeProvider.id"
+              class="flex-1 justify-center"
+              @click="selectProvider(provider.id)"
+            >
+              {{ providerTitle(provider) }}
+            </SegmentedOption>
+          </SegmentedControl>
+
           <form
-            v-if="localProvider"
+            v-if="hasPasswordForm"
             :id="formId"
-            class="mt-6 flex flex-col gap-4"
+            class="mt-4 flex flex-col gap-4"
             @submit.prevent="submit()"
           >
             <MdTextField
@@ -374,24 +423,48 @@ const overlayStyle = {
               :error="fieldError()"
               :error-text="fieldErrorText()"
             />
+            <MdButton
+              type="submit"
+              class="w-full"
+              :disabled="busy || isLocked()"
+            >
+              {{ submitLabel }}
+            </MdButton>
           </form>
 
+          <div
+            v-if="hasPasswordForm && ssoProviders.length > 0"
+            data-test="divider"
+            aria-hidden="true"
+            class="mt-6 flex items-center gap-3"
+          >
+            <span class="h-px flex-1 bg-outline-variant" />
+            <span class="md-label-medium text-on-surface-variant">or</span>
+            <span class="h-px flex-1 bg-outline-variant" />
+          </div>
+
           <ul
-            v-if="otherProviders.length > 0"
-            class="mt-4 flex list-none flex-col gap-2 p-0"
+            v-if="ssoProviders.length > 0"
+            class="mt-6 flex list-none flex-col gap-2 p-0"
           >
             <li
-              v-for="provider in otherProviders"
+              v-for="provider in ssoProviders"
               :key="provider.id"
               class="flex"
             >
               <MdButton
                 variant="outlined"
                 class="w-full"
-                :href="provider.loginUrl"
+                :href="ssoHref(provider)"
                 :disabled="!provider.loginUrl"
               >
-                {{ provider.label }}
+                <template #icon>
+                  <ProviderIcon
+                    :icon="provider.icon"
+                    class="size-6!"
+                  />
+                </template>
+                Continue with {{ provider.label }}
               </MdButton>
             </li>
           </ul>
@@ -430,10 +503,10 @@ const overlayStyle = {
               Cancel
             </MdButton>
             <MdButton
-              v-if="hasForm"
+              v-if="mode !== 'password'"
               type="submit"
               :form="formId"
-              :disabled="busy || (mode === 'password' && isLocked())"
+              :disabled="busy"
             >
               {{ submitLabel }}
             </MdButton>

@@ -197,8 +197,10 @@ const createClient = (defaultName, defaultSecret) => {
       providers() {
         return axios.get(createURL("/api/auth/providers"), { withCredentials: true })
       },
-      login({ username, password }) {
-        return axios.post(createURL("/api/auth/login"), { provider: "local", username, password }, { withCredentials: true })
+      // The provider is the id from GET /api/auth/providers: "local" for the Ingot account, "ldap" for
+      // the directory. The server rejects a provider it does not know, so the default is the local one.
+      login({ provider = "local", username, password }) {
+        return axios.post(createURL("/api/auth/login"), { provider, username, password }, { withCredentials: true })
       },
       setup({ setupCode, username, password, displayName }) {
         const body = { setupCode, username, password }

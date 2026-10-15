@@ -138,9 +138,11 @@ const startCookieSession = async (data) => {
   channel.signedIn(principal.value)
 }
 
-const signInWithPassword = ({ username, password }) =>
+// The provider id decides which directory checks the pair: the Ingot account by default, or the LDAP
+// provider of the server. Both answer alike, so the dialog shows the same failure for either.
+const signInWithPassword = ({ provider = 'local', username, password }) =>
   anonymousApi()
-    .login({ username, password })
+    .login({ provider, username, password })
     .then(response => startCookieSession(response.data))
 
 // First run: the setup response signs the new administrator in. A server that answers without a

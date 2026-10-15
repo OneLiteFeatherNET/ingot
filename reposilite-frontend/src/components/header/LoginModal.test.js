@@ -16,7 +16,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
+import { siGithub } from 'simple-icons'
 import LoginModal from './LoginModal.vue'
 import { openLogin } from '../../store/login'
 import { useSession } from '../../store/session'
@@ -71,16 +73,32 @@ const submit = async () => {
 
 const helperOf = (id) => document.getElementById(field(id).getAttribute('aria-describedby'))
 
+// A link's address, read against the test origin whether it is relative or absolute.
+const urlOf = (link) => new URL(link.getAttribute('href'), 'http://ingot.test')
+
+const LDAP = { id: 'ldap', type: 'LDAP', label: 'Corporate LDAP', icon: 'GENERIC' }
+const KEYCLOAK = { id: 'keycloak', type: 'OIDC', label: 'Keycloak', icon: 'KEYCLOAK', loginUrl: '/api/auth/oidc/keycloak/login' }
+const GITHUB = { id: 'github', type: 'OIDC', label: 'GitHub', icon: 'GITHUB', loginUrl: '/api/auth/oidc/github/login' }
+const dividerOf = () => dialog().querySelector('[data-test="divider"]')
+const segment = (label) => buttonByLabel(label)
+
 describe('LoginModal', () => {
   let wrapper
   let store
+  let router
 
   const openDialog = async () => {
     await wrapper.find('button').trigger('click')
     await flushPromises()
   }
 
-  beforeEach(() => {
+  // A memory router: the dialog reads the current path to send a provider back to it.
+  const makeRouter = () => createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }]
+  })
+
+  beforeEach(async () => {
     actions.signInWithPassword = vi.fn().mockResolvedValue()
     actions.signInWithToken = vi.fn().mockResolvedValue()
     actions.completeSetup = vi.fn().mockResolvedValue()
@@ -88,7 +106,9 @@ describe('LoginModal', () => {
     store = useSession()
     store.providers.value = [LOCAL]
     store.setupRequired.value = false
-    wrapper = mount(LoginModal, { attachTo: document.body })
+    router = makeRouter()
+    await router.push('/')
+    wrapper = mount(LoginModal, { attachTo: document.body, global: { plugins: [router] } })
   })
 
   afterEach(() => {
@@ -177,7 +197,7 @@ describe('LoginModal', () => {
       await submit()
 
       expect(actions.signInWithPassword).toHaveBeenCalledTimes(1)
-      expect(actions.signInWithPassword).toHaveBeenCalledWith({ username: 'alice', password: 'correct horse battery' })
+      expect(actions.signInWithPassword).toHaveBeenCalledWith({ provider: 'local', username: 'alice', password: 'correct horse battery' })
     })
 
     it('closes after a successful sign in', async () => {
@@ -321,7 +341,7 @@ describe('LoginModal', () => {
       type('login-username', 'alice')
       await submit()
 
-      expect(actions.signInWithPassword).toHaveBeenCalledWith({ username: 'alice', password: 'wrong' })
+      expect(actions.signInWithPassword).toHaveBeenCalledWith({ provider: 'local', username: 'alice', password: 'wrong' })
     })
 
     it('keeps the wait when the dialog is closed and opened again', async () => {
@@ -344,21 +364,21 @@ describe('LoginModal', () => {
 
   describe('providers', () => {
     it('shows a provider with a login url as a link that goes there', async () => {
-      store.providers.value = [LOCAL, { id: 'oidc', type: 'OIDC', label: 'Continue with Example', loginUrl: '/api/auth/oidc/start' }]
+      store.providers.value = [LOCAL, { id: 'oidc', type: 'OIDC', label: 'Example', loginUrl: '/api/auth/oidc/start' }]
 
       await openDialog()
 
       const link = buttonByLabel('Continue with Example')
       expect(link.tagName).toBe('A')
-      expect(link.getAttribute('href'), 'the button navigates to the provider').toBe('/api/auth/oidc/start')
+      expect(urlOf(link).pathname, 'the button navigates to the provider').toBe('/api/auth/oidc/start')
     })
 
     it('shows a provider without a login url as a disabled button with its label', async () => {
-      store.providers.value = [LOCAL, { id: 'saml', type: 'SAML', label: 'Corporate SSO' }]
+      store.providers.value = [LOCAL, { id: 'corp', type: 'OIDC', label: 'Corporate SSO' }]
 
       await openDialog()
 
-      const button = buttonByLabel('Corporate SSO')
+      const button = buttonByLabel('Continue with Corporate SSO')
       expect(button, 'the provider is listed even when it cannot be used').not.toBeUndefined()
       expect(button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true').toBe(true)
     })
@@ -369,6 +389,169 @@ describe('LoginModal', () => {
       await openDialog()
 
       expect(field('login-password')).toBeNull()
+    })
+  })
+
+  describe('sign in with several providers', () => {
+    const submitNode = () => buttonByLabel('Sign in')
+
+    it('shows a switch between the Ingot account and the LDAP provider when both are enabled', async () => {
+      store.providers.value = [LOCAL, LDAP]
+
+      await openDialog()
+
+      expect(dialog().querySelector('[role="group"]').getAttribute('aria-label')).toBe('Sign in method')
+      expect(segment('Ingot account'), 'the Ingot account is named by its own label').toBeDefined()
+      expect(segment('Corporate LDAP'), 'the LDAP provider is named by its label').toBeDefined()
+    })
+
+    it('starts on the Ingot account', async () => {
+      store.providers.value = [LOCAL, LDAP]
+
+      await openDialog()
+
+      expect(segment('Ingot account').getAttribute('aria-pressed')).toBe('true')
+      expect(segment('Corporate LDAP').getAttribute('aria-pressed')).toBe('false')
+    })
+
+    it('sends the provider id of the selected switch with the credentials', async () => {
+      store.providers.value = [LOCAL, LDAP]
+      await openDialog()
+      segment('Corporate LDAP').click()
+      await flushPromises()
+      type('login-username', 'ldapuser')
+      type('login-password', 'ldap-password-12')
+
+      await submit()
+
+      expect(actions.signInWithPassword).toHaveBeenCalledWith({
+        provider: 'ldap',
+        username: 'ldapuser',
+        password: 'ldap-password-12'
+      })
+    })
+
+    it('keeps the typed username when the provider changes', async () => {
+      store.providers.value = [LOCAL, LDAP]
+      await openDialog()
+      type('login-username', 'alice')
+
+      segment('Corporate LDAP').click()
+      await flushPromises()
+
+      expect(field('login-username').value).toBe('alice')
+    })
+
+    it('shows no switch and a single form when only the LDAP provider is enabled', async () => {
+      store.providers.value = [LDAP]
+
+      await openDialog()
+      type('login-username', 'ldapuser')
+      type('login-password', 'ldap-password-12')
+      await submit()
+
+      expect(dialog().querySelector('[role="group"]')).toBeNull()
+      expect(actions.signInWithPassword).toHaveBeenCalledWith({
+        provider: 'ldap',
+        username: 'ldapuser',
+        password: 'ldap-password-12'
+      })
+    })
+
+    it('puts the Sign in button full width under the fields, inside the form', async () => {
+      store.providers.value = [LOCAL]
+
+      await openDialog()
+
+      const button = submitNode()
+      expect(button.type, 'the button submits the form, so password managers see the pair').toBe('submit')
+      expect(button.closest('form'), 'the button belongs to the form it submits').toBe(dialog().querySelector('form'))
+      expect(button.classList.contains('w-full')).toBe(true)
+    })
+
+    it('separates the SSO buttons from the form with an or divider that is hidden from assistive technology', async () => {
+      store.providers.value = [LOCAL, KEYCLOAK]
+
+      await openDialog()
+
+      expect(dividerOf().getAttribute('aria-hidden')).toBe('true')
+      expect(dividerOf().textContent.trim()).toBe('or')
+      expect(
+        dividerOf().compareDocumentPosition(buttonByLabel('Continue with Keycloak')) & Node.DOCUMENT_POSITION_FOLLOWING,
+        'the divider sits between the form and the SSO buttons'
+      ).toBeTruthy()
+    })
+
+    it('shows no divider when there is no password form', async () => {
+      store.providers.value = [KEYCLOAK]
+
+      await openDialog()
+
+      expect(dividerOf()).toBeNull()
+    })
+
+    it('shows the SSO buttons alone, without a form, when only SSO providers exist', async () => {
+      store.providers.value = [KEYCLOAK, GITHUB]
+
+      await openDialog()
+
+      expect(dialog().querySelector('form')).toBeNull()
+      expect(dialog().querySelector('button[type="submit"]')).toBeNull()
+      expect(buttonByLabel('Continue with Keycloak')).toBeDefined()
+      expect(buttonByLabel('Continue with GitHub')).toBeDefined()
+    })
+
+    it('shows one outlined button per SSO provider, named Continue with its label', async () => {
+      store.providers.value = [LOCAL, KEYCLOAK, GITHUB]
+
+      await openDialog()
+
+      const keycloak = buttonByLabel('Continue with Keycloak')
+      expect(keycloak.classList.contains('border'), 'an outlined button has a border').toBe(true)
+      expect(keycloak.classList.contains('w-full')).toBe(true)
+      expect(buttonByLabel('Continue with GitHub')).toBeDefined()
+    })
+
+    it('draws the provider mark in the button, in the text colour', async () => {
+      store.providers.value = [LOCAL, GITHUB]
+
+      await openDialog()
+
+      const svg = buttonByLabel('Continue with GitHub').querySelector('svg')
+      expect(svg.querySelector('path').getAttribute('d')).toBe(siGithub.path)
+      expect(svg.getAttribute('fill')).toBe('currentColor')
+      expect(svg.getAttribute('aria-hidden')).toBe('true')
+    })
+
+    it('sends the browser to the provider with the current path as the redirect', async () => {
+      await router.push('/access/sso')
+      store.providers.value = [LOCAL, KEYCLOAK]
+
+      await openDialog()
+
+      const url = urlOf(buttonByLabel('Continue with Keycloak'))
+      expect(url.pathname, 'the provider starts its login at its own address').toBe('/api/auth/oidc/keycloak/login')
+      expect(url.searchParams.get('redirect'), 'the provider returns the visitor to this page').toBe('/access/sso')
+    })
+
+    it('keeps the query of the current page in the redirect', async () => {
+      await router.push('/access/users?tab=2')
+      store.providers.value = [KEYCLOAK]
+
+      await openDialog()
+
+      expect(urlOf(buttonByLabel('Continue with Keycloak')).searchParams.get('redirect')).toBe('/access/users?tab=2')
+    })
+
+    it('keeps the access token link and Cancel after the SSO buttons', async () => {
+      store.providers.value = [LOCAL, KEYCLOAK]
+
+      await openDialog()
+
+      const sso = buttonByLabel('Continue with Keycloak')
+      const tokenLink = buttonByLabel('Use an access token instead')
+      expect(sso.compareDocumentPosition(tokenLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(buttonLabels()).toContain('Cancel')
     })
   })
 

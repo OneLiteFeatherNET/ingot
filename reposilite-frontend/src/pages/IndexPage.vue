@@ -19,6 +19,7 @@ import { computed, defineAsyncComponent, ref, watch, watchEffect, onBeforeUnmoun
 import { useRoute, useRouter } from 'vue-router'
 import { useSession } from '../store/session'
 import { openLogin } from '../store/login'
+import { useLoginErrorNotice } from '../components/header/loginErrors'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
 import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
@@ -80,6 +81,8 @@ defineProps({
 const route = useRoute()
 const router = useRouter()
 const { isManager, isLogged, mustChangePassword } = useSession()
+// A single sign on provider that failed sends the visitor back here with the reason in the address.
+useLoginErrorNotice()
 
 /*
  * Everything this page shows follows from the route. The section comes from the route's meta,
