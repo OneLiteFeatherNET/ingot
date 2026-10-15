@@ -33,6 +33,7 @@
     "extended-eventsource": "^2.1.0",
     "mime-types": "^3.0.2",
     "pretty-bytes": "^7.1.0",
+    "simple-icons": "^16.35.0",
     "vue": "^3.5.35",
     "vue-axios": "^3.5.2",
     "vue-final-modal": "^4.5.5",
