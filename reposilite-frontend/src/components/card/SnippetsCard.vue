@@ -145,7 +145,7 @@ const selectTab = (tab) =>
   <!-- Outlined on the surface: the file listing beside it is the tonal block, this card the quiet frame. -->
   <MdCard
     variant="outlined"
-    class="w-full"
+    class="w-full min-w-0"
   >
     <div class="px-2 pb-2">
       <div class="flex flex-row justify-between">
@@ -174,9 +174,10 @@ const selectTab = (tab) =>
             :key="selectedTab"
             class="relative"
           >
+            <!-- Stacked above the code block, which is a later sibling and would otherwise paint over it. -->
             <div
               v-if="!loading"
-              class="absolute top-2 right-2 flex items-center gap-1"
+              class="absolute top-2 right-2 z-10 flex items-center gap-1"
             >
               <span
                 v-if="copyState === 'copied'"
@@ -192,7 +193,7 @@ const selectTab = (tab) =>
             </div>
             <div
               ref="codeBlock"
-              class="card-editor overflow-auto font-mono md-body-small h-29 relative py-3 px-4 rounded-corner-medium bg-surface-container-highest text-on-surface"
+              class="card-editor max-w-full overflow-auto font-mono md-body-small h-29 relative py-3 pl-4 pr-14 rounded-corner-medium bg-surface-container-highest text-on-surface"
             >
               <div
                 v-if="loading"
@@ -284,7 +285,12 @@ const selectTab = (tab) =>
   margin-top: 10px;
 }
 
+/*
+ * A snippet line is never wrapped. The block is as wide as its longest line, so the editor
+ * scrolls sideways and the card keeps its column.
+ */
 .card-editor > pre {
-  position: absolute;
+  width: max-content;
+  min-width: 100%;
 }
 </style>
