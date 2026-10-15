@@ -28,6 +28,7 @@ const crypto = require("crypto")
 const express = require("express")
 const { basicAuth } = require("./extensions.cjs")
 const audit = require("./audit.cjs")
+const loginProviders = require("./login-providers.cjs")
 
 const SETUP_MODE = process.env.INGOT_FAKE_SETUP === "1"
 const SETUP_CODE = "fake-setup-123456"
@@ -539,20 +540,19 @@ router.use((req, res, next) => {
   next()
 })
 
+// The sign in providers, their single sign on logins, LDAP, the test endpoints and the login settings.
+// Mounted here so that they share the actor and CSRF handling above. See login-providers.cjs.
+router.use(loginProviders.create({
+  findPrincipal,
+  addPrincipal,
+  startSession,
+  fail,
+  bodyOf,
+  etagOf,
+  setupRequired: () => setupRequired,
+}))
+
 // ---- auth
-
-router.get("/api/auth/providers", (req, res) => {
-  res.send({
-    providers: [
-      { id: "local", type: "LOCAL", label: "Username and password" },
-      { id: "example-sso", type: "OIDC", label: "Example SSO", loginUrl: "/api/auth/oidc/login" },
-    ],
-    tokenLogin: true,
-    setupRequired,
-  })
-})
-
-router.get("/api/auth/oidc/login", (req, res) => fail(res, 404, "The example provider is not configured"))
 
 const MAX_FAILED_LOGINS = 5
 const LOGIN_RETRY_AFTER_SECONDS = 900
@@ -560,7 +560,7 @@ const failedLogins = new Map()
 
 router.post("/api/auth/login", (req, res) => {
   const { provider, username, password } = bodyOf(req)
-  if (provider !== "local") return fail(res, 400, "Unknown provider, supported: local")
+  if (provider !== "local") return fail(res, 400, "Unknown provider, supported: local, ldap")
   const principal = typeof username === "string" ? findPrincipal(username) : undefined
   const attempted = typeof username === "string" ? username.trim().toLowerCase() : ""
   if (!principal || principal.password === null || principal.password !== password) {
