@@ -246,10 +246,10 @@ describe('MdChipInput outlined field', () => {
     expect(wrapper.find('label').classes()).toContain('top-1/2')
   })
 
-  it('draws the text input without a border or ring of its own, inside the outlined box', () => {
+  it('draws the text input with the shared embedded-input reset, inside the outlined box', () => {
     mountInput()
 
-    expect(field().classes()).toEqual(expect.arrayContaining(['!border-0', '!shadow-none', '!ring-0']))
+    expect(field().classes()).toContain('md-embedded-input')
   })
 
   it('takes the full width of its form, not a fixed maximum', () => {

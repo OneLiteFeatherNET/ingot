@@ -304,6 +304,12 @@ describe('RepositoryOverview empty and failing states', () => {
 })
 
 describe('RepositoryOverview Material 3 structure', () => {
+  it('draws the search input with the embedded-input reset, so the pill is the only box', async () => {
+    await mountAt('/')
+
+    expect(search().classes()).toContain('md-embedded-input')
+  })
+
   it('makes each repository row a link named after the repository, covering the whole row', async () => {
     await mountAt('/')
 

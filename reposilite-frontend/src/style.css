@@ -39,6 +39,15 @@
  */
 @custom-variant dark (&:is(.dark, .dark *));
 
+/*
+ * An input embedded in a composite field (a search bar pill, a chip field). The forms plugin
+ * draws a box on every text input; inside the field that box is a second border. The important
+ * flags beat its selectors, which carry more specificity than a single class.
+ */
+@utility md-embedded-input {
+  @apply !border-0 !bg-transparent !shadow-none !ring-0 !outline-none;
+}
+
 @theme {
   --font-mono: Consolas, Monaco, monospace;
 }

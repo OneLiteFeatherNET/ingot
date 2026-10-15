@@ -179,7 +179,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
           </svg>
           <input
             type="search"
-            class="min-w-0 flex-1 bg-transparent md-body-large text-on-surface outline-none placeholder:text-on-surface-variant [&::-webkit-search-cancel-button]:hidden"
+            class="md-embedded-input min-w-0 flex-1 md-body-large text-on-surface placeholder:text-on-surface-variant [&::-webkit-search-cancel-button]:hidden"
             aria-label="Search by id, description or tag"
             placeholder="Search by id, description or tag"
             autocomplete="off"
