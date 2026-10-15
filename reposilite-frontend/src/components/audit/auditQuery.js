@@ -179,16 +179,22 @@ export const localInputToIso = (value) => {
 
 export const actionLabel = (action) => ACTION_LABELS[action] ?? action
 
-const NON_TOKEN_ACTORS = new Set(['anonymous', 'system'])
+const NON_PRINCIPAL_ACTORS = new Set(['anonymous', 'system'])
 
 /**
- * The token that acted, as a router location. Only an authenticated token is linked: `anonymous` and
- * `system` are not tokens, and a failed login names whatever the caller typed, so it is not linked either.
+ * The account that acted, as a router path. An actor is a principal, a user or a machine account. The
+ * event may carry `actorKind` (`USER` or `MACHINE`); the audit API does not send it yet, and an event
+ * without it links to the user page, because the access pages have no search to fall back on. Only an
+ * authenticated account is linked: `anonymous` and `system` are not accounts, and a failed login names
+ * whatever the caller typed, so it is not linked either.
  */
-export const actorLocationOf = (event) =>
-  NON_TOKEN_ACTORS.has(event.actor) || event.action === 'LOGIN_FAILED'
-    ? null
-    : { name: 'token', params: { name: event.actor } }
+export const actorLocationOf = (event) => {
+  if (NON_PRINCIPAL_ACTORS.has(event.actor) || event.action === 'LOGIN_FAILED') {
+    return null
+  }
+  const page = event.actorKind === 'MACHINE' ? 'machines' : 'users'
+  return `/access/${page}/${encodeURIComponent(event.actor)}`
+}
 
 const MACHINE_TEAM_PREFIX = 'machine:'
 const PRINCIPAL_PAGES = { USER: 'users', MACHINE: 'machines' }

@@ -61,6 +61,8 @@ const createTestRouter = () => createRouter({
     { path: '/', name: 'overview', component: { render: () => null } },
     { path: '/browse/:qualifier(.*)*', name: 'browse', component: { render: () => null } },
     { path: '/tokens/:name', name: 'token', component: { render: () => null } },
+    { path: '/access/users/:name', component: { render: () => null } },
+    { path: '/access/machines/:name', component: { render: () => null } },
     { path: '/audit', name: 'audit', component: { render: () => null } },
   ]
 })
@@ -113,7 +115,7 @@ describe('AuditView loading', () => {
     expect(wrapper.text()).toContain('Token created')
     const hrefs = wrapper.findAll('a').map(link => link.attributes('href'))
     expect(hrefs).toContain('/browse/releases/org/example/app-1.0.jar')
-    expect(hrefs).toContain('/tokens/admin')
+    expect(hrefs).toContain('/access/users/admin')
     expect(hrefs).toContain('/tokens/deploy-bot')
   })
 

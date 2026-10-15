@@ -156,8 +156,31 @@ describe('labels and links', () => {
     expect(targetLabelOf(event)).toBe('Settings frontend')
   })
 
-  it('links the actor of an authenticated token to its editor', () => {
-    expect(actorLocationOf({ action: 'ARTIFACT_DEPLOYED', actor: 'ci' })).toEqual({ name: 'token', params: { name: 'ci' } })
+  it('links an actor whose kind is not recorded to its user page', () => {
+    expect(actorLocationOf({ action: 'ARTIFACT_DEPLOYED', actor: 'ci' })).toBe('/access/users/ci')
+  })
+
+  it('links the human admin actor to a user page and never to a machine page', () => {
+    const location = actorLocationOf({ action: 'SETTINGS_CHANGED', actor: 'admin' })
+
+    expect(location).toBe('/access/users/admin')
+    expect(location).not.toContain('/access/machines')
+  })
+
+  it('links an actor that the event marks as a user to its user page', () => {
+    expect(actorLocationOf({ action: 'PASSWORD_CHANGED', actor: 'alice', actorKind: 'USER' })).toBe('/access/users/alice')
+  })
+
+  it('links an actor that the event marks as a machine account to its machine page', () => {
+    expect(actorLocationOf({ action: 'ARTIFACT_DEPLOYED', actor: 'ci-bot', actorKind: 'MACHINE' })).toBe('/access/machines/ci-bot')
+  })
+
+  it('treats an actor kind that it does not know like a missing one', () => {
+    expect(actorLocationOf({ action: 'ARTIFACT_DEPLOYED', actor: 'ci', actorKind: 'ROBOT' })).toBe('/access/users/ci')
+  })
+
+  it('escapes the actor name in the link', () => {
+    expect(actorLocationOf({ action: 'ARTIFACT_DEPLOYED', actor: 'a/b c' })).toBe('/access/users/a%2Fb%20c')
   })
 
   it('does not link the actor when it is not a token', () => {

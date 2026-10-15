@@ -23,6 +23,8 @@ const mountRow = async (props) => {
     routes: [
       { path: '/browse/:qualifier(.*)*', name: 'browse', component: { render: () => null } },
       { path: '/tokens/:name', name: 'token', component: { render: () => null } },
+      { path: '/access/users/:name', component: { render: () => null } },
+      { path: '/access/machines/:name', component: { render: () => null } },
     ]
   })
   await router.push('/')
@@ -30,11 +32,18 @@ const mountRow = async (props) => {
 }
 
 describe('AuditEventRow actor', () => {
-  it('links an authenticated token to its editor', async () => {
+  it('links an actor to its user page when the kind is not recorded', async () => {
     const row = await mountRow({ event: event() })
 
     const link = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')
-    expect(link.attributes('href')).toBe('/tokens/ci-deployer')
+    expect(link.attributes('href')).toBe('/access/users/ci-deployer')
+  })
+
+  it('links a machine account actor to its machine page', async () => {
+    const row = await mountRow({ event: event({ actorKind: 'MACHINE' }) })
+
+    const link = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')
+    expect(link.attributes('href')).toBe('/access/machines/ci-deployer')
   })
 
   it('shows the anonymous and system actors as plain text', async () => {
@@ -135,7 +144,7 @@ describe('AuditEventRow identity events', () => {
   it('shows a private machine team as plain text', async () => {
     const row = await mountRow({ event: identityEvent('TEAM_GRANTS_CHANGED', { team: 'machine:ci-bot' }) })
 
-    expect(hrefs(row).some(href => href.startsWith('/access/')), 'no link into /access').toBe(false)
+    expect(hrefs(row).some(href => href.startsWith('/access/teams')), 'no link to a team page').toBe(false)
     expect(row.text()).toContain('machine:ci-bot')
   })
 })
