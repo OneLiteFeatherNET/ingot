@@ -33,4 +33,14 @@ internal class InMemoryConfigurationRepository : ConfigurationRepository {
     override fun findConfigurationUpdateDate(name: String): Instant? =
         settings[name]?.first
 
+    override fun saveConfigurationIfAbsent(name: String, configuration: String): Boolean =
+        synchronized(settings) {
+            if (settings.containsKey(name)) {
+                return false
+            }
+
+            settings[name] = Pair(Instant.now(), configuration)
+            true
+        }
+
 }

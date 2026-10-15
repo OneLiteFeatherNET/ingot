@@ -16,13 +16,16 @@
 
 package com.reposilite.token.application
 
+import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.console.api.CommandsSetupEvent
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.facade
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
+import com.reposilite.shared.EntityTagSigner
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.ExportTokensCommand
@@ -38,7 +41,7 @@ import com.reposilite.token.infrastructure.RevokeCommand
 import com.reposilite.token.infrastructure.TokensCommand
 import com.reposilite.web.api.RoutingSetupEvent
 
-@Plugin(name = "access-token")
+@Plugin(name = "access-token", dependencies = ["configuration"])
 internal class AccessTokenPlugin : ReposilitePlugin() {
 
     companion object {
@@ -51,7 +54,10 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
             journalist = this,
             database = reposilite().database,
             runMigrations = parameters().runMigrations
-        ).accessTokenFacade(extensions = extensions())
+        ).accessTokenFacade(
+            extensions = extensions(),
+            entityTags = EntityTagSigner.stored(facade<ConfigurationFacade>()),
+        )
 
         // The --token configuration is re-applied on every start, so the bootstrap is not audited.
         parameters().tokens.forEach {

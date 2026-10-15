@@ -33,6 +33,7 @@ import com.reposilite.configuration.shared.infrastructure.RemoteSharedConfigurat
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
+import com.reposilite.shared.EntityTagSigner
 import com.reposilite.status.FailureFacade
 import java.nio.file.Path
 import java.util.ServiceLoader
@@ -83,7 +84,8 @@ class SharedConfigurationComponents(
     fun sharedConfigurationFacade(
         schemaGenerator: Lazy<SchemaGenerator> = schemaGenerator(),
         sharedSettingsProvider: SharedSettingsProvider = sharedSettingsProvider(),
-        sharedConfigurationProvider: SharedConfigurationProvider = sharedConfigurationProvider()
+        sharedConfigurationProvider: SharedConfigurationProvider = sharedConfigurationProvider(),
+        entityTags: EntityTagSigner = EntityTagSigner.stored(configurationFacade),
     ): SharedConfigurationFacade =
         SharedConfigurationFacade(
             journalist = journalist,
@@ -92,6 +94,7 @@ class SharedConfigurationComponents(
             sharedSettingsProvider = sharedSettingsProvider,
             sharedConfigurationProvider = sharedConfigurationProvider,
             extensions = extensions,
+            entityTags = entityTags,
         )
 
 }

@@ -28,6 +28,7 @@ import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.EntityTag
+import com.reposilite.shared.EntityTagSigner
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.toErrorResult
@@ -53,12 +54,6 @@ data class SharedSettingsSnapshot<S : SharedSettings>(
 
 private val canonicalWriter = DEFAULT_OBJECT_MAPPER.writer().with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
 
-private fun SharedSettings.entityTag(): String =
-    EntityTag.of(canonicalWriter.writeValueAsBytes(this))
-
-private fun <S : SharedSettings> S.snapshot(): SharedSettingsSnapshot<S> =
-    SharedSettingsSnapshot(this, entityTag())
-
 class SharedConfigurationFacade(
     private val journalist: Journalist,
     private val schemaGenerator: Lazy<SchemaGenerator>,
@@ -66,6 +61,7 @@ class SharedConfigurationFacade(
     private val sharedSettingsProvider: SharedSettingsProvider,
     private val sharedConfigurationProvider: SharedConfigurationProvider,
     private val extensions: Extensions = Extensions(journalist),
+    private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
 ) : Facade {
 
     private val configHandlers = mutableMapOf<String, SharedSettingsReference<*>>()
@@ -74,6 +70,12 @@ class SharedConfigurationFacade(
      * Serializes reads and writes of the settings of this instance, so a precondition is checked against the state it writes.
      */
     private val stateLock = Any()
+
+    private fun SharedSettings.entityTag(): String =
+        entityTags.of(canonicalWriter.writeValueAsBytes(this))
+
+    private fun <S : SharedSettings> S.snapshot(): SharedSettingsSnapshot<S> =
+        SharedSettingsSnapshot(this, entityTag())
 
     init {
         val jsonSchemaLoader = JsonSchemaLoader()

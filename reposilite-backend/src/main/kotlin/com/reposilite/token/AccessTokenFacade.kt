@@ -27,6 +27,7 @@ import com.reposilite.journalist.Logger
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.EntityTag
+import com.reposilite.shared.EntityTagSigner
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
@@ -70,6 +71,7 @@ class AccessTokenFacade internal constructor(
     private val persistentRepository: AccessTokenRepository,
     private val exportService: ExportService,
     private val extensions: Extensions = Extensions(journalist),
+    private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
 ) : Facade, Journalist {
 
     /**
@@ -250,7 +252,7 @@ class AccessTokenFacade internal constructor(
         )
         return AccessTokenSnapshot(
             value = AccessTokenDetailsDto.of(raw.toDto(), permissions, routes),
-            etag = EntityTag.of(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(fingerprint)),
+            etag = entityTags.of(DEFAULT_OBJECT_MAPPER.writeValueAsBytes(fingerprint)),
         )
     }
 

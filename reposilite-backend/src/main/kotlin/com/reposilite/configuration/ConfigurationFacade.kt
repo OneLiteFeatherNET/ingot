@@ -32,4 +32,14 @@ class ConfigurationFacade internal constructor(
     fun findConfigurationUpdateDate(name: String): Instant? =
         configurationRepository.findConfigurationUpdateDate(name)
 
+    /**
+     * Returns the configuration stored under [name], storing the result of [create] first when there is none. Concurrent
+     * callers agree on one value: whoever stores first wins and everybody else reads that value back.
+     */
+    fun findOrCreateConfiguration(name: String, create: () -> String): String {
+        findConfiguration(name)?.let { return it }
+        configurationRepository.saveConfigurationIfAbsent(name, create())
+        return findConfiguration(name) ?: error("Configuration '$name' is missing after it has been created")
+    }
+
 }

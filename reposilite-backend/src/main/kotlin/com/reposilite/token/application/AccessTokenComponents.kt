@@ -19,6 +19,7 @@ package com.reposilite.token.application
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
+import com.reposilite.shared.EntityTagSigner
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenRepository
 import com.reposilite.token.ExportService
@@ -49,6 +50,7 @@ class AccessTokenComponents(
         persistentRepository: AccessTokenRepository = persistentRepository(),
         exportService: ExportService = exportService(),
         extensions: Extensions = Extensions(journalist),
+        entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
     ): AccessTokenFacade =
         AccessTokenFacade(
             journalist = journalist,
@@ -56,6 +58,7 @@ class AccessTokenComponents(
             persistentRepository = persistentRepository,
             exportService = exportService,
             extensions = extensions,
+            entityTags = entityTags,
         )
 
 }

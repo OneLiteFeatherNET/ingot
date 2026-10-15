@@ -19,6 +19,7 @@ package com.reposilite.configuration.infrastructure
 import com.reposilite.configuration.ConfigurationRepository
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.javatime.datetime
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
@@ -81,6 +82,21 @@ internal class SqlConfigurationRepository(private val database: Database) : Conf
                 .map { it[SettingsTable.updateDate] }
                 .map { it.toInstant(ZoneOffset.UTC) }
                 .firstOrNull()
+        }
+
+    override fun saveConfigurationIfAbsent(name: String, configuration: String): Boolean =
+        try {
+            transaction(database) {
+                SettingsTable.insert {
+                    it[SettingsTable.name] = name
+                    it[SettingsTable.updateDate] = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
+                    it[SettingsTable.content] = configuration
+                }
+            }
+            true
+        } catch (exception: ExposedSQLException) {
+            // The unique index on the name rejected the insert: another writer stored the document first.
+            false
         }
 
 }

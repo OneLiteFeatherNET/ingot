@@ -26,4 +26,11 @@ interface ConfigurationRepository {
 
     fun findConfigurationUpdateDate(name: String): Instant?
 
+    /**
+     * Stores [configuration] under [name] unless something is already stored there, atomically with respect to other writers.
+     *
+     * @return true when this call stored the document
+     */
+    fun saveConfigurationIfAbsent(name: String, configuration: String): Boolean
+
 }

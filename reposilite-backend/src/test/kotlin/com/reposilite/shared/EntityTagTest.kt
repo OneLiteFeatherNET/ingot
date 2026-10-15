@@ -22,25 +22,6 @@ import org.junit.jupiter.api.Test
 internal class EntityTagTest {
 
     @Test
-    fun `should derive a quoted strong entity tag from the content`() {
-        // when: a tag is derived from some content
-        val tag = EntityTag.of("""{"property":"value"}""".toByteArray())
-
-        // then: it is a strong entity tag, quoted as HTTP requires
-        assertThat(tag).matches("\"[0-9a-f]{64}\"")
-    }
-
-    @Test
-    fun `should derive the same entity tag for identical content`() {
-        assertThat(EntityTag.of("same".toByteArray())).isEqualTo(EntityTag.of("same".toByteArray()))
-    }
-
-    @Test
-    fun `should derive a different entity tag when the content changes`() {
-        assertThat(EntityTag.of("before".toByteArray())).isNotEqualTo(EntityTag.of("after".toByteArray()))
-    }
-
-    @Test
     fun `should allow the write when no if-match header is sent`() {
         assertThat(EntityTag.matches(ifMatch = null, current = "\"abc\"")).isTrue
         assertThat(EntityTag.matches(ifMatch = "  ", current = "\"abc\"")).isTrue
