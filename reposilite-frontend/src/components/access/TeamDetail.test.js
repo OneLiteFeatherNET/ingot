@@ -100,6 +100,17 @@ describe('TeamDetail', () => {
       await flushPromises()
     }
 
+    it('explains the external reference for the OIDC and the LDAP sync while it is edited', async () => {
+      await mountDetail()
+      await wrapper.find('[data-test="edit-details"]').trigger('click')
+
+      const describedBy = wrapper.find('#team-external-ref').attributes('aria-describedby')
+      const helper = wrapper.find(`[id="${describedBy}"]`).text()
+
+      expect(helper, 'the field names both formats the sync reads').toContain('oidc:<provider id>:<group>')
+      expect(helper).toContain('ldap:<group>')
+    })
+
     it('patches the description and the external reference with the entity tag it loaded', async () => {
       await mountDetail()
 

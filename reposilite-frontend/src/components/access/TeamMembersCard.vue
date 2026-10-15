@@ -141,7 +141,7 @@ const openAdd = () => {
             v-if="disabledNames.has(member.principal)"
             data-test="disabled-chip"
           >Disabled</TokenTag>
-          <TokenTag data-test="source-chip">{{ member.source === 'SYNC' ? 'Sync' : 'Manual' }}</TokenTag>
+          <TokenTag data-test="source-chip">{{ member.source === 'SYNC' ? 'Synced' : 'Manual' }}</TokenTag>
         </span>
         <MdButton
           v-if="member.source !== 'SYNC'"

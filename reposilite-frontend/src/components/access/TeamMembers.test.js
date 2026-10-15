@@ -85,7 +85,7 @@ describe('TeamDetail members', () => {
 
     it('shows the source of every membership', async () => {
       expect(row('alice').find('[data-test="source-chip"]').text()).toBe('Manual')
-      expect(row('bob').find('[data-test="source-chip"]').text()).toBe('Sync')
+      expect(row('bob').find('[data-test="source-chip"]').text()).toBe('Synced')
     })
 
     it('marks a disabled principal with a chip', async () => {

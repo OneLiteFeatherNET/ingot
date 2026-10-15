@@ -296,7 +296,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
             label="External reference"
             type="text"
             autocomplete="off"
-            supporting-text="The group of your identity provider this team stands for."
+            supporting-text="The group this team stands for. Use oidc:<provider id>:<group> for a single sign on group, or ldap:<group> for a directory group. A team with a reference takes its synced members from that group."
           />
           <div class="flex flex-wrap justify-end gap-2">
             <MdButton
