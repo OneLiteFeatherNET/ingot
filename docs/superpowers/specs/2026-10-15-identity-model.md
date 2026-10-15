@@ -960,4 +960,5 @@ Still open:
 - O-20 No API to list or revoke a user's sessions, and no UI for any of this.
 - O-21 The forwarded path prefix (`X-Forwarded-Prefix`) is not part of the cookie path. Cookies follow the configured
   base path only.
-- O-10 remains open: no endpoint assigns instance roles, except the setup for the first administrator.
+- O-10 is closed: phase 1b added the instance admin endpoints for principals and teams (section 7.4), and the
+  first-admin setup assigns the role to the first user.
