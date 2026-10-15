@@ -15,8 +15,7 @@
   -->
 
 <script setup>
-// Material Symbols "history" (Apache 2.0). One glyph serves both states: the active section is
-// marked by its indicator pill, so the icon itself does not need a second drawing.
+// Material Symbols "history", outlined and filled (Apache 2.0). The filled glyph is the active one.
 defineProps({
   filled: {
     type: Boolean,
@@ -24,7 +23,8 @@ defineProps({
   }
 })
 
-const GLYPH = 'M480-120q-75 0-140.5-28.5t-114-77q-48.5-48.5-77-114T120-440h60q0 125 87.5 212.5T480-140q125 0 212.5-87.5T780-440q0-125-87.5-212.5T480-740q-68 0-127 31t-103 85h110v60H130v-200h60v102q50-62 120.5-97T480-800q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-440q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-120Zm112-192L440-464v-216h60v184l144 144-43 44Z'
+const OUTLINED = 'M477-120q-149 0-253-105.5T120-481h60q0 125 86 213t211 88q127 0 215-89t88-216q0-124-89-209.5T477-780q-68 0-127.5 31T246-667h105v60H142v-208h60v106q52-61 123.5-96T477-840q75 0 141 28t115.5 76.5Q783-687 811.5-622T840-482q0 75-28.5 141t-78 115Q684-177 618-148.5T477-120Zm128-197L451-469v-214h60v189l137 134-43 43Z'
+const FILLED = 'M477-120q-149 0-253-105.5T120-481h60q0 125 86 213t211 88q127 0 215-89t88-216q0-124-89-209.5T477-780q-68 0-127.5 31T246-667h105v60H142v-208h60v106q52-61 123.5-96T477-840q75 0 141 28t115.5 76.5Q783-687 811.5-622T840-482q0 75-28.5 141t-78 115Q684-177 618-148.5T477-120Zm128-197L451-469v-214h60v189l137 134-43 43Z'
 </script>
 
 <template>
@@ -36,6 +36,6 @@ const GLYPH = 'M480-120q-75 0-140.5-28.5t-114-77q-48.5-48.5-77-114T120-440h60q0 
     aria-hidden="true"
     focusable="false"
   >
-    <path :d="GLYPH" />
+    <path :d="filled ? FILLED : OUTLINED" />
   </svg>
 </template>
