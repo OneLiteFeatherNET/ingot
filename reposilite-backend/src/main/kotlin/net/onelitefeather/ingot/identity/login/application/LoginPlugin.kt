@@ -24,6 +24,7 @@ import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
 import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
+import net.onelitefeather.ingot.identity.login.ldap.LdapLoginProvider
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
 import net.onelitefeather.ingot.identity.login.oidc.IdTokenValidator
 import net.onelitefeather.ingot.identity.login.oidc.JdkHttpFetcher
@@ -64,6 +65,10 @@ class LoginPlugin : ReposilitePlugin() {
             Base64.getDecoder().decode(encodedKey)
         }
 
+        val externalAccounts = database?.let { database ->
+            ExternalAccountService(IdentityStore(database), ExternalIdentityStore(database), audit)
+        }
+
         val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
@@ -72,8 +77,17 @@ class LoginPlugin : ReposilitePlugin() {
                 settings = loginSettings,
                 clock = clock,
                 audit = audit,
+                externalPasswordProviders = {
+                    val ldap = loginSettings.get().ldap
+                    if (externalAccounts != null && ldap.enabled && ldap.missingField() == null) {
+                        listOf(LdapLoginProvider(ldap, externalAccounts))
+                    } else {
+                        emptyList()
+                    }
+                },
                 externalAnnouncements = {
-                    oidcCatalog.announced().map {
+                    val ldap = loginSettings.get().ldap
+                    val oidc = oidcCatalog.announced().map {
                         ProviderAnnouncement(
                             id = it.id,
                             type = LoginProviderType.OIDC,
@@ -82,18 +96,24 @@ class LoginPlugin : ReposilitePlugin() {
                             loginUrl = "/api/auth/oidc/${it.id}/login",
                         )
                     }
+                    val directory = if (ldap.enabled && ldap.missingField() == null) {
+                        listOf(ProviderAnnouncement(id = LdapLoginProvider.ID, type = LoginProviderType.LDAP, label = ldap.label.ifBlank { "LDAP" }, icon = "LDAP"))
+                    } else {
+                        emptyList()
+                    }
+                    oidc + directory
                 },
             )
         }
 
-        val oidcService = if (database != null && signingKey != null) {
+        val oidcService = if (database != null && signingKey != null && externalAccounts != null) {
             OidcLoginService(
                 catalog = oidcCatalog,
                 metadata = OidcMetadata(JdkHttpFetcher(), clock),
                 http = JdkHttpFetcher(),
                 states = OidcStateCookie(signingKey, clock),
                 validator = IdTokenValidator(clock),
-                accounts = ExternalAccountService(IdentityStore(database), ExternalIdentityStore(database), audit),
+                accounts = externalAccounts,
                 clock = clock,
                 audit = audit,
             )

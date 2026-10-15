@@ -66,16 +66,8 @@ class ExternalAccountService internal constructor(
     private val audit: (AuditEvent) -> Unit = {},
 ) {
 
-    fun resolve(identity: ExternalIdentity, ip: String?): ExternalOutcome {
-        val outcome = decide(identity)
-        when (outcome) {
-            is ExternalOutcome.Succeeded -> audit(AuditEvent(action = AuditAction.LOGIN_SUCCEEDED, actor = AuditActor.named(outcome.principal.name, ip)))
-            is ExternalOutcome.Refused -> audit(AuditEvent(action = AuditAction.LOGIN_FAILED, actor = AuditActor.named(identity.username, ip), success = false))
-        }
-        return outcome
-    }
-
-    private fun decide(identity: ExternalIdentity): ExternalOutcome {
+    /** Decides the login. The caller audits the outcome, because only the caller knows the address and the protocol. */
+    fun resolve(identity: ExternalIdentity): ExternalOutcome {
         emailRefusal(identity)?.let { return ExternalOutcome.Refused(it) }
 
         val linkedId = links.principalIdOf(identity.provider, identity.subject)

@@ -204,7 +204,7 @@ rejection; any other directory failure SHALL answer `503`.
 #### Scenario: an empty password is refused without a bind
 
 - **WHEN** `POST /api/auth/login` has `provider: "ldap"` and an empty password
-- **THEN** the response is `401` and the directory receives no user bind
+- **THEN** the response is `400` (a blank password is a missing field for every provider) and the directory receives no request
 
 #### Scenario: an unreachable directory is not a wrong password
 

@@ -6,11 +6,12 @@ title: External login providers
 Browsers can sign in to Ingot through an external identity provider instead of a local password. Every provider is
 disabled until you enable it, so an existing installation keeps its behaviour.
 
-Two kinds of provider are supported:
+Three kinds of provider are supported:
 
 - **OpenID Connect**: any provider that publishes a discovery document (Keycloak, Authentik, Okta, Auth0, Google,
   Microsoft Entra ID, GitLab, Gitea and so on).
 - **GitHub**: an OpenID Connect entry with the icon `GITHUB` and no issuer. It uses GitHub's OAuth endpoints directly.
+- **LDAP**: a user name and password checked against a directory, see [LDAP login](#ldap-login).
 
 Provider settings live in the shared settings, in the domain `login`, under `oidcProviders`. Changes apply without a restart.
 
@@ -137,6 +138,38 @@ When a login fails, the browser returns to `/?loginError=<code>`. The codes are:
 | `no_database` | Browser sessions need a database |
 
 The login page receives the code. The detail of each failure is written to the log at debug level, never a secret.
+
+## LDAP login
+
+The LDAP login checks the password of a user in a directory and signs the user in with the same session as the other
+providers. It is configured under `login.ldap`:
+
+|        Key         |                    Example                    |                                    Description                                    |
+|:------------------:|:---------------------------------------------:|:---------------------------------------------------------------------------------:|
+|      enabled       |                    `true`                     | Shows the LDAP login and accepts LDAP passwords. Defaults to `false`              |
+|        url         |      `ldaps://ldap.example.org:636`           | `ldap://` or `ldaps://` address                                                   |
+|      startTls     |                   `false`                     | Upgrades an `ldap://` connection with StartTLS before the first bind             |
+|      bindDn        | `cn=ingot,ou=services,dc=example,dc=org`      | Service account for the search. Blank searches anonymously                        |
+|   bindPassword     |                 (secret)                      | Password of the service account. Masked in the settings API                       |
+|    userBaseDn     |          `ou=people,dc=example,dc=org`        | Where users are searched                                                          |
+|    userFilter     |               `(uid={username})`              | Finds the user. `{username}` is replaced by the escaped user name                 |
+| usernameAttribute |                    `uid`                      | Attribute that gives the user name of a new user                                  |
+| displayNameAttribute |                  `cn`                      | Attribute that gives the display name                                             |
+|   emailAttribute   |                    `mail`                     | Attribute that gives the email address                                            |
+|   groupBaseDn      |          `ou=groups,dc=example,dc=org`        | Where groups are searched. Blank disables the group synchronisation               |
+|   groupFilter      |               `(member={dn})`                 | Finds the groups of a user. `{dn}` and `{username}` are replaced by escaped values |
+|  groupNameAttribute |                   `cn`                       | Attribute that gives the name of a group                                          |
+| autoCreateUsers    |                   `true`                      | Creates a user at the first login. With `false`, only users that already exist    |
+|    adminGroups    |               `["ingot-admins"]`              | Members of these groups become instance administrators, as for OpenID Connect    |
+
+A login searches for the user with the service account, requires exactly one match, and then binds as that user with the
+password. A blank password is refused without asking the directory. Failed passwords count towards the same limit as the local
+login, so five wrong passwords for one user name from one address lock it for a while.
+
+Group references work as for OpenID Connect, with `ldap:<group>` instead of `oidc:<id>:<group>`.
+
+`startTls` is provided for `ldap://` addresses. Verify it against your directory before you rely on it, because it is not
+covered by the automated tests of this release.
 
 ## Relation to LDAP for Maven clients
 

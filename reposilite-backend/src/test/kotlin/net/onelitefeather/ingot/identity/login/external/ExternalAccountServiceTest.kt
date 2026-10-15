@@ -60,8 +60,8 @@ internal class ExternalAccountServiceTest {
             val audit = mutableListOf<AuditEvent>()
             val service = ExternalAccountService(identities, ExternalIdentityStore(connection.database)) { audit.add(it) }
 
-            val first = service.resolve(identity(), ip = "10.0.0.1") as Succeeded
-            val second = service.resolve(identity(), ip = "10.0.0.1") as Succeeded
+            val first = service.resolve(identity()) as Succeeded
+            val second = service.resolve(identity()) as Succeeded
 
             assertThat(second.principal.id).describedAs("same principal").isEqualTo(first.principal.id)
             assertThat(identities.listPrincipals(PrincipalKind.USER)).describedAs("users").hasSize(2)
@@ -75,10 +75,10 @@ internal class ExternalAccountServiceTest {
             val identities = IdentityStore(connection.database, clock)
             identities.createPrincipal(PrincipalKind.USER, "admin", "Admin", false, clock.instant())
             val service = ExternalAccountService(identities, ExternalIdentityStore(connection.database))
-            val linked = service.resolve(identity(), ip = null) as Succeeded
+            val linked = service.resolve(identity()) as Succeeded
 
             identities.deletePrincipal(linked.principal)
-            val again = service.resolve(identity(), ip = null) as Succeeded
+            val again = service.resolve(identity()) as Succeeded
 
             assertThat(again.principal.id).describedAs("a fresh principal").isNotEqualTo(linked.principal.id)
         }
@@ -91,8 +91,8 @@ internal class ExternalAccountServiceTest {
             identities.createPrincipal(PrincipalKind.USER, "admin", "Admin", false, clock.instant())
             val service = ExternalAccountService(identities, ExternalIdentityStore(connection.database))
 
-            val corp = service.resolve(identity(provider = "oidc:corp", username = "alice"), ip = null)
-            val other = service.resolve(identity(provider = "oidc:other", username = "alice-2"), ip = null)
+            val corp = service.resolve(identity(provider = "oidc:corp", username = "alice"))
+            val other = service.resolve(identity(provider = "oidc:other", username = "alice-2"))
 
             assertThat(corp).isInstanceOf(Succeeded::class.java)
             assertThat(other).isInstanceOf(Succeeded::class.java)
@@ -107,7 +107,7 @@ internal class ExternalAccountServiceTest {
             identities.createPrincipal(PrincipalKind.USER, "admin", "Admin", false, clock.instant())
             val service = ExternalAccountService(identities, ExternalIdentityStore(connection.database))
 
-            val outcome = service.resolve(identity(username = "has space"), ip = null)
+            val outcome = service.resolve(identity(username = "has space"))
 
             assertThat(outcome).isEqualTo(Refused(ExternalRefusal.INVALID_USERNAME))
             assertThat(identities.listPrincipals(PrincipalKind.USER)).hasSize(1)

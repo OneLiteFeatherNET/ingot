@@ -108,7 +108,10 @@ class LoginService internal constructor(
             }
             // The password was right, so this is not guessing and does not count towards the limit.
             Disabled -> recordRejected(username, ip)
-            is Blocked, UnknownProvider -> Unit
+            // The password was judged to be wrong for this account: counted like a rejection by the audit trail.
+            is LoginOutcome.Refused -> recordRejected(username, ip)
+            // The directory did not answer, so nothing was judged and nothing counts towards the limit.
+            LoginOutcome.Unavailable, is Blocked, UnknownProvider -> Unit
         }
         return outcome
     }

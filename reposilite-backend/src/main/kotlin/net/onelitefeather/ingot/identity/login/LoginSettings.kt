@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.identity.login
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.SharedSettings
 import io.javalin.openapi.JsonSchema
+import net.onelitefeather.ingot.identity.login.ldap.LdapLoginSettings
 import net.onelitefeather.ingot.identity.login.oidc.OidcProviderSettings
 
 @JsonSchema(requireNonNulls = false)
@@ -36,4 +37,6 @@ data class LoginSettings(
     val lockoutMinutes: Long = 15,
     @get:Doc(title = "OpenID Connect Providers", description = "External identity providers. Each entry is disabled by default; see the identity model, section 14")
     val oidcProviders: List<OidcProviderSettings> = emptyList(),
+    @get:Doc(title = "LDAP", description = "Directory for the browser login with a password. Independent of the LDAP Basic authentication of Maven clients")
+    val ldap: LdapLoginSettings = LdapLoginSettings(),
 ) : SharedSettings

@@ -137,9 +137,12 @@ internal class OidcLoginService(
             } else {
                 oidcIdentity(provider, expected, code, redirectUri)
             }
-            when (val outcome = accounts.resolve(identity, ip)) {
-                is ExternalOutcome.Succeeded -> OidcFinish.LoggedIn(outcome.principal, expected.redirect)
-                is ExternalOutcome.Refused -> OidcFinish.Failed(outcome.reason.code)
+            when (val outcome = accounts.resolve(identity)) {
+                is ExternalOutcome.Succeeded -> {
+                    audit(AuditEvent(action = AuditAction.LOGIN_SUCCEEDED, actor = AuditActor.named(outcome.principal.name, ip)))
+                    OidcFinish.LoggedIn(outcome.principal, expected.redirect)
+                }
+                is ExternalOutcome.Refused -> protocolFailure(providerId, ip, outcome.reason.code)
             }
         } catch (failure: LoginFailure) {
             protocolFailure(providerId, ip, failure.code)

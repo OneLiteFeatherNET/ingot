@@ -100,6 +100,8 @@ internal class AuthLoginEndpoints(
                 LoginOutcome.Disabled -> errorResponse(FORBIDDEN, "This user is disabled")
                 is LoginOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed login attempts, try again later")
                 LoginOutcome.UnknownProvider -> badRequestError("Unknown login provider")
+                is LoginOutcome.Refused -> errorResponse(FORBIDDEN, outcome.reason.code)
+                LoginOutcome.Unavailable -> errorResponse(SERVICE_UNAVAILABLE, "The login provider cannot be reached, try again later")
             }
         }
     }

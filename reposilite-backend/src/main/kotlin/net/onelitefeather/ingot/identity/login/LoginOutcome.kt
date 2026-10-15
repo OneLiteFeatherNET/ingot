@@ -36,6 +36,12 @@ sealed interface LoginOutcome {
     /** No provider with the requested id is configured. */
     data object UnknownProvider : LoginOutcome
 
+    /** The password was right, but the account cannot sign in: a user name taken, not provisioned, and so on. */
+    data class Refused(val reason: net.onelitefeather.ingot.identity.login.external.ExternalRefusal) : LoginOutcome
+
+    /** The directory cannot be reached. The credentials were not judged, so the failure limit does not count this. */
+    data object Unavailable : LoginOutcome
+
 }
 
 /** The result of a password change or reset. */

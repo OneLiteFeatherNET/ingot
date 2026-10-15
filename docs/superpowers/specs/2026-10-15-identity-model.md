@@ -1205,3 +1205,10 @@ Open points:
 - O-25 SAML, SCIM and directory-driven de-provisioning are not implemented. A removed directory account keeps its principal until an
   administrator disables it, and its memberships last until its next external login.
 - O-26 Account linking of an existing local user to an external subject is not implemented. A name conflict is refused.
+- O-27 StartTLS for `login.ldap` (`startTls: true` on `ldap://`) is implemented with JNDI's extended operation, and the bind after
+  the upgrade relies on JNDI's reconnect. No automated test covers it, because the in-memory directory has no TLS listener. Verify it
+  against a real directory before enabling it, or use `ldaps://`.
+- O-28 Audit ownership: the login service audits the outcome of a password login (LDAP) and the OpenID Connect callback audits
+  its own outcome, with the address of the request. The account service audits only the creation of a user.
+- O-29 A blank password is a missing field (`400`) for every provider, as the existing login route already answers. The directory
+  is not asked in that case. A wrong password is `401`.
