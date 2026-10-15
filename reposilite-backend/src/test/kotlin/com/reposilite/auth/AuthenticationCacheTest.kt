@@ -1,5 +1,6 @@
 package com.reposilite.auth
 
+import com.google.common.base.Ticker
 import com.reposilite.audit.MutableClock
 import com.reposilite.auth.api.Credentials
 import com.reposilite.journalist.backend.InMemoryLogger
@@ -29,6 +30,7 @@ import java.time.Instant
 internal class AuthenticationCacheTest {
 
     private val clock = MutableClock()
+    private val ticker = ManualTicker()
     private val journalist = InMemoryLogger()
     private val tokens = AccessTokenFacade(
         journalist = journalist,
@@ -43,6 +45,7 @@ internal class AuthenticationCacheTest {
         authenticators = sortedSetOf(Authenticator.priorityComparator, spy),
         accessTokenFacade = tokens,
         clock = clock,
+        ticker = ticker,
     )
 
     @Test
@@ -57,6 +60,30 @@ internal class AuthenticationCacheTest {
         // then: the request is authorized and the authenticator was consulted only once
         assertOk(response)
         assertThat(spy.calls).`as`("authenticator calls").isEqualTo(1)
+    }
+
+    @Test
+    fun `should expire a cached credential one bound after it was cached even while it is used continuously`() {
+        // given: a token whose credentials were cached at the start
+        createToken("busy-bot", "secret")
+        assertOk(authenticate("busy-bot", "secret"))
+
+        // when: the credentials are presented every ten seconds, up to just before the bound
+        val step = Duration.ofSeconds(10)
+        repeat((AuthenticationFacade.CREDENTIAL_CACHE_MAX_AGE.seconds / step.seconds - 1).toInt()) {
+            ticker.advance(step)
+            assertOk(authenticate("busy-bot", "secret"))
+        }
+
+        // then: every hit was served from the cache
+        assertThat(spy.calls).`as`("authenticator calls before the bound").isEqualTo(1)
+
+        // when: the bound is reached, although the last hit was just a few seconds ago
+        ticker.advance(step)
+        assertOk(authenticate("busy-bot", "secret"))
+
+        // then: the entry expired from its write time and the credentials were checked again
+        assertThat(spy.calls).`as`("authenticator calls at the bound").isEqualTo(2)
     }
 
     @Test
@@ -157,6 +184,21 @@ internal class AuthenticationCacheTest {
 
     private fun authenticate(name: String, secret: String): Result<out AccessTokenDto, ErrorResponse> =
         authentication.authenticateByCredentials(Credentials("host", name, secret))
+
+}
+
+/**
+ * A clock for the cache that only moves when a test advances it, so that expiry needs no sleeping.
+ */
+private class ManualTicker : Ticker() {
+
+    private var nanos = 0L
+
+    override fun read(): Long = nanos
+
+    fun advance(duration: Duration) {
+        nanos += duration.toNanos()
+    }
 
 }
 

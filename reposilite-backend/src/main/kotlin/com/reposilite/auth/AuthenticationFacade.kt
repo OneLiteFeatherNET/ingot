@@ -17,6 +17,7 @@
 package com.reposilite.auth
 
 import com.google.common.cache.Cache
+import com.google.common.base.Ticker
 import com.google.common.cache.CacheBuilder
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditActor
@@ -40,10 +41,11 @@ import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
 import java.time.Clock
+import java.time.Duration
 import java.util.SortedSet
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit.HOURS
-import java.util.concurrent.TimeUnit.MINUTES
+import java.util.concurrent.TimeUnit.NANOSECONDS
 
 private data class FailedAttempt(
     val count: Int,
@@ -57,7 +59,16 @@ class AuthenticationFacade(
     private val bruteForceProtectionSettings: Reference<BruteForceProtectionSettings> = Reference.reference(BruteForceProtectionSettings()),
     private val extensions: Extensions = Extensions(journalist),
     private val clock: Clock = Clock.systemUTC(),
+    private val ticker: Ticker = Ticker.systemTicker(),
 ) : Journalist, Facade {
+
+    companion object {
+        /**
+         * Upper bound for a cached successful authentication, counted from the moment it was cached. Measured from the
+         * write and not from the last hit, so that a credential in continuous use is checked again once per bound.
+         */
+        val CREDENTIAL_CACHE_MAX_AGE: Duration = Duration.ofMinutes(1)
+    }
 
     /**
      * Successful authentications, keyed by the presented credentials. An entry is only a shortcut: every change of its token
@@ -70,7 +81,8 @@ class AuthenticationFacade(
             .newBuilder()
             .maximumSize(16)
             .concurrencyLevel(2)
-            .expireAfterAccess(1, MINUTES)
+            .expireAfterWrite(CREDENTIAL_CACHE_MAX_AGE.toNanos(), NANOSECONDS)
+            .ticker(ticker)
             .build()
 
     /**
