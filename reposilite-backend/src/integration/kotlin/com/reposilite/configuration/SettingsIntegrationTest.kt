@@ -21,6 +21,7 @@ package com.reposilite.configuration
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.ReposiliteObjectMapper
+import com.reposilite.audit.application.AuditSettings
 import com.reposilite.auth.application.AuthenticationSettings
 import com.reposilite.auth.application.LdapSettings
 import com.reposilite.configuration.shared.SharedConfigurationFacade
@@ -57,7 +58,8 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
             "frontend" to FrontendSettings::class,
             "javadoc" to JavadocSettings::class,
             "maven" to MavenSettings::class,
-            "cleanup" to CleanupSettings::class
+            "cleanup" to CleanupSettings::class,
+            "audit" to AuditSettings::class
         )
     }
 

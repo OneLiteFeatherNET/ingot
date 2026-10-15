@@ -17,6 +17,7 @@
 package com.reposilite.token.infrastructure
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.reposilite.audit.api.auditActor
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.notFoundError
 import com.reposilite.shared.toErrorResult
@@ -115,6 +116,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
                             description = request.description,
                         ),
                         ifMatch = ctx.header(Header.IF_MATCH),
+                        actor = auditActor(),
                     )
                 }
                 .map { snapshot ->
@@ -157,6 +159,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
                             updateExpiresAt = expiresAtProvided,
                         ),
                         ifMatch = ctx.header(Header.IF_MATCH),
+                        actor = auditActor(),
                     )
                 }
                 .map { snapshot ->
@@ -176,7 +179,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     val regenerateSecret = ReposiliteRoute<String>("/api/tokens/{name}/secret", POST) {
         managerOnly {
             response = accessTokenFacade.getAccessToken(requireParameter("name"))
-                ?.let { accessTokenFacade.regenerateAccessToken(it, secret = null) }
+                ?.let { accessTokenFacade.regenerateAccessToken(it, secret = null, actor = auditActor()) }
                 ?: notFoundError("Token not found")
         }
     }
@@ -191,7 +194,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     val deleteToken = ReposiliteRoute<Unit>("/api/tokens/{name}", DELETE) {
         managerOnly {
             response = accessTokenFacade.getAccessToken(requireParameter("name"))
-                ?.let { accessTokenFacade.deleteToken(it.identifier) }
+                ?.let { accessTokenFacade.deleteToken(it.identifier, actor = auditActor()) }
                 ?: notFoundError("Token not found")
         }
     }

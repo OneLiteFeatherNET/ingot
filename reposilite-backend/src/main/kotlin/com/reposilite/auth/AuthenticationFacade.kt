@@ -18,11 +18,15 @@ package com.reposilite.auth
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.auth.api.Credentials
 import com.reposilite.auth.api.SessionDetails
 import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
+import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
@@ -46,7 +50,8 @@ class AuthenticationFacade(
     private val journalist: Journalist,
     private val authenticators: SortedSet<Authenticator>,
     private val accessTokenFacade: AccessTokenFacade,
-    private val bruteForceProtectionSettings: Reference<BruteForceProtectionSettings> = Reference.reference(BruteForceProtectionSettings())
+    private val bruteForceProtectionSettings: Reference<BruteForceProtectionSettings> = Reference.reference(BruteForceProtectionSettings()),
+    private val extensions: Extensions = Extensions(journalist),
 ) : Journalist, Facade {
 
     private val authenticationCache: Cache<Credentials, AccessTokenDto> =
@@ -71,6 +76,7 @@ class AuthenticationFacade(
 
     fun authenticateByCredentials(credentials: Credentials): Result<out AccessTokenDto, ErrorResponse> {
         if (isBruteForceBlocked(credentials.ip)) {
+            recordRejectedLogin(credentials)
             return unauthorizedError("Invalid authorization credentials")
         }
 
@@ -91,7 +97,24 @@ class AuthenticationFacade(
                 ?: unauthorizedError("Invalid authorization credentials")
 
         trackBruteForceAttempt(ip = credentials.ip, success = result.isOk)
+        if (result.isErr) {
+            recordRejectedLogin(credentials)
+        }
         return result
+    }
+
+    /**
+     * Only the attempted name and address are recorded. The secret is part of the credentials and
+     * stays out of the audit log.
+     */
+    private fun recordRejectedLogin(credentials: Credentials) {
+        extensions.emitEvent(
+            AuditEvent(
+                action = AuditAction.LOGIN_FAILED,
+                actor = AuditActor.named(credentials.name, credentials.ip),
+                success = false,
+            )
+        )
     }
 
     private fun isBruteForceBlocked(ip: String): Boolean {

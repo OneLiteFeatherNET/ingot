@@ -51,7 +51,7 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
             journalist = this,
             database = reposilite().database,
             runMigrations = parameters().runMigrations
-        ).accessTokenFacade()
+        ).accessTokenFacade(extensions = extensions())
 
         parameters().tokens.forEach {
             val (token) = accessTokenFacade.createAccessToken(it)

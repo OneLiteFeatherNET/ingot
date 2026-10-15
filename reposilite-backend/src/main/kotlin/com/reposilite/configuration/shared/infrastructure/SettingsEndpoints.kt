@@ -18,6 +18,7 @@ package com.reposilite.configuration.shared.infrastructure
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+import com.reposilite.audit.api.auditActor
 import com.reposilite.configuration.shared.SettingsSecrets
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedSettingsReference
@@ -149,7 +150,7 @@ internal class SettingsEndpoints(
                 response = reference
                     ?.let { settingsReference ->
                         // Without If-Match the write is unconditional, as it always was. The precondition and the write share one lock.
-                        sharedConfigurationFacade.updateDomain<SharedSettings>(this, ctx.header(Header.IF_MATCH)) { current ->
+                        sharedConfigurationFacade.updateDomain<SharedSettings>(this, ctx.header(Header.IF_MATCH), auditActor()) { current ->
                             if (hideSecrets.get()) {
                                 restoreSecrets(this, settingsReference, body, current)
                             } else {

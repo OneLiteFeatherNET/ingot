@@ -16,11 +16,16 @@
 
 package com.reposilite.configuration.shared
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.github.victools.jsonschema.generator.SchemaGenerator
 import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.journalist.Journalist
+import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.EntityTag
 import com.reposilite.shared.ErrorResponse
@@ -59,7 +64,8 @@ class SharedConfigurationFacade(
     private val schemaGenerator: Lazy<SchemaGenerator>,
     private val failureFacade: FailureFacade,
     private val sharedSettingsProvider: SharedSettingsProvider,
-    private val sharedConfigurationProvider: SharedConfigurationProvider
+    private val sharedConfigurationProvider: SharedConfigurationProvider,
+    private val extensions: Extensions = Extensions(journalist),
 ) : Facade {
 
     private val configHandlers = mutableMapOf<String, SharedSettingsReference<*>>()
@@ -137,12 +143,18 @@ class SharedConfigurationFacade(
             ?: ok()
     }
 
-    fun <S : SharedSettings> updateSharedSettings(name: String, body: S): Result<S, out Exception>? {
+    /**
+     * Stores the new settings of a domain and records which fields changed. The audit event names the
+     * fields only: the values of settings can be secrets, so they never leave this method.
+     */
+    fun <S : SharedSettings> updateSharedSettings(name: String, body: S, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Result<S, out Exception>? {
         synchronized(stateLock) {
             refreshFromProvider()
-            return getSettingsReference<S>(name)
-                ?.update(body)
-                ?.peek { sharedConfigurationProvider.updateConfiguration(renderConfiguration()) }
+            val reference = getSettingsReference<S>(name) ?: return null
+            val before = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
+            return reference.update(body)
+                .peek { sharedConfigurationProvider.updateConfiguration(renderConfiguration()) }
+                .peek { recordSettingsChange(name, before, body, actor) }
         }
     }
 
@@ -162,13 +174,14 @@ class SharedConfigurationFacade(
     /**
      * Replaces a domain with the settings returned by [transform], which receives the latest stored state. The precondition
      * and the write run under one lock. When [ifMatch] is absent the write is unconditional, otherwise it is applied only
-     * while the entity tag still describes the stored state.
+     * while the entity tag still describes the stored state. The change is recorded for [actor] with the field names only.
      *
      * @return null when the domain does not exist, a 412 error when [ifMatch] no longer matches the stored state
      */
     fun <S : SharedSettings> updateDomain(
         name: String,
         ifMatch: String?,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
         transform: (current: S) -> Result<S, ErrorResponse>
     ): Result<SharedSettingsSnapshot<S>, ErrorResponse>? {
         synchronized(stateLock) {
@@ -183,6 +196,7 @@ class SharedConfigurationFacade(
                 reference.update(settings)
                     .mapErr { badRequest(it.toString()) }
                     .peek { sharedConfigurationProvider.updateConfiguration(renderConfiguration()) }
+                    .peek { recordSettingsChange(name, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(current), settings, actor) }
                     .map { it.snapshot() }
             }
         }
@@ -207,6 +221,15 @@ class SharedConfigurationFacade(
                 .onSuccess { reference.update(it) }
                 .onFailure { journalist.logger.warn("Shared configuration | Cannot refresh '$name' from ${sharedConfigurationProvider.name()}: ${it.message}") }
         }
+    }
+
+    private fun recordSettingsChange(name: String, before: JsonNode, body: SharedSettings, actor: AuditActor) {
+        val fields = changedSettingPaths(before, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(body))
+        if (fields.isEmpty()) {
+            return
+        }
+
+        extensions.emitEvent(AuditEvent(action = AuditAction.SETTINGS_CHANGED, actor = actor, details = mapOf("domain" to name, "fields" to fields)))
     }
 
     private fun domainTypes(): Map<String, Class<*>> =

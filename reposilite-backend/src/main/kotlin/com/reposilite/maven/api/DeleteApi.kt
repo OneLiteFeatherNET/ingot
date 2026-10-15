@@ -17,6 +17,7 @@
 package com.reposilite.maven.api
 
 import com.reposilite.maven.Repository
+import com.reposilite.plugin.api.Event
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 
@@ -26,3 +27,12 @@ data class DeleteRequest(
     val gav: Location,
     val by: String
 )
+
+/**
+ * Called when a file has been removed from a repository. [by] is the session identifier of the caller.
+ */
+class DeleteEvent(
+    val repository: Repository,
+    val gav: Location,
+    val by: String
+) : Event

@@ -90,7 +90,8 @@ class SharedConfigurationComponents(
             schemaGenerator = schemaGenerator,
             failureFacade = failureFacade,
             sharedSettingsProvider = sharedSettingsProvider,
-            sharedConfigurationProvider = sharedConfigurationProvider
+            sharedConfigurationProvider = sharedConfigurationProvider,
+            extensions = extensions,
         )
 
 }

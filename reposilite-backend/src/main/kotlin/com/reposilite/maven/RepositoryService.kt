@@ -17,6 +17,7 @@ package com.reposilite.maven
 
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
+import com.reposilite.maven.api.DeleteEvent
 import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.api.DeployRequest
@@ -119,6 +120,7 @@ internal class RepositoryService(
             .removeFile(gav)
             .peek { logger.info("DELETE | File $gav has been deleted from ${repository.name} by $by") }
             .peek { resolutionProvider.invalidate(repository, gav) }
+            .peek { extensions.emitEvent(DeleteEvent(repository, gav, by)) }
 
     fun findDetails(lookupRequest: LookupRequest): Result<FileDetails, ErrorResponse> =
         resolve(lookupRequest) { repository, gav -> findDetails(lookupRequest.accessToken, repository, gav) }

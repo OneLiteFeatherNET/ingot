@@ -17,6 +17,7 @@
 package com.reposilite.token.application
 
 import com.reposilite.journalist.Journalist
+import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenRepository
@@ -46,13 +47,15 @@ class AccessTokenComponents(
     fun accessTokenFacade(
         temporaryRepository: AccessTokenRepository = temporaryRepository(),
         persistentRepository: AccessTokenRepository = persistentRepository(),
-        exportService: ExportService = exportService()
+        exportService: ExportService = exportService(),
+        extensions: Extensions = Extensions(journalist),
     ): AccessTokenFacade =
         AccessTokenFacade(
             journalist = journalist,
             temporaryRepository = temporaryRepository,
             persistentRepository = persistentRepository,
-            exportService = exportService
+            exportService = exportService,
+            extensions = extensions,
         )
 
 }
