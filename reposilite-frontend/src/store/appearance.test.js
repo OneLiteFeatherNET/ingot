@@ -17,6 +17,9 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { setAppearance, useAppearance, applyAppearance } from './appearance'
 import { THEME_STYLE_ID } from '../theme/settings'
+// applyAppearance imports the colour library on first use. Loading it while the file is collected
+// keeps that cold load out of the first test, which would otherwise be charged for it.
+import '../theme/runtime'
 
 // The appearance is module state, as it is in the app, so each test returns it to the defaults.
 // The documents are fresh per test.

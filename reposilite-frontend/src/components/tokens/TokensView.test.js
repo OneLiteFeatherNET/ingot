@@ -16,6 +16,10 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+// Loaded while the file is collected, not inside the first test: a fresh worker evaluates the
+// view's whole module graph on first use, which under load can outlast the test timeout. Each
+// test still loads its own copy below, after vi.resetModules().
+import './TokensView.vue'
 
 // The client is swapped per test through this holder. The store reads it lazily.
 const session = vi.hoisted(() => ({ client: null }))

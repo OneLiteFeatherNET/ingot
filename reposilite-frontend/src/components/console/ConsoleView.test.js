@@ -17,6 +17,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
+// Loaded while the file is collected, not inside the first test: a fresh worker evaluates the
+// view's whole module graph on first use, which under load can outlast the test timeout. Each
+// test still loads its own copy in mountView(), after vi.resetModules().
+import './ConsoleView.vue'
 
 // The view reads the session for its token and client, and streams through EventSource. The
 // stream is a fake the test drives event by event: nothing here opens a socket or waits.

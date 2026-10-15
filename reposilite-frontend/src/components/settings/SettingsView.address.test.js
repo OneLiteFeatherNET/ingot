@@ -16,6 +16,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+// Loaded while the file is collected, not inside the first test: a fresh worker evaluates the
+// view's whole module graph on first use, which under load can outlast the test timeout. Each
+// test still loads its own copy below, after vi.resetModules().
+import './SettingsView.vue'
 
 // The configuration store is a module singleton, so each test loads a fresh copy. The server
 // is replaced by a client that knows two domains with empty settings: the tests are about
