@@ -31,6 +31,10 @@ watchEffect(() => {
   localStorage.setItem('token-secret', token.value.secret)
 })
 
+// False only while stored credentials are being checked. A listing that is requested before
+// the answer is known would be requested again once the answer arrives.
+const sessionReady = ref(!(token.value.name && token.value.secret))
+
 /**
  * @type {(undefined|{
  *    accessToken: {
@@ -98,9 +102,15 @@ const expireSession = () => {
 const client = computed(() => createClient(token.value.name, token.value.secret))
 
 // A rejected secret stays useless on every later visit, so it is forgotten here. A server
-// that cannot be reached at all says nothing about the credentials and keeps them.
-const initializeSession = () =>
-  login(token.value.name, token.value.secret)
+// that cannot be reached at all says nothing about the credentials and keeps them. Without
+// stored credentials there is nothing to check, so the server is not asked at all.
+const initializeSession = () => {
+  shareSession()
+  if (!token.value.name || !token.value.secret) {
+    sessionReady.value = true
+    return Promise.resolve()
+  }
+  return login(token.value.name, token.value.secret)
     .catch(error => {
       if (error?.response?.status === 401) {
         clearSession()
@@ -108,6 +118,47 @@ const initializeSession = () =>
       }
       throw error
     })
+    .finally(() => {
+      sessionReady.value = true
+    })
+}
+
+// The session is shared by all tabs of the browser: a login or a logout in one tab is followed
+// by the others. Each tab writes the same two keys, so the handler only reacts to changes of
+// those keys and only acts when the stored session differs from the one held here.
+const SESSION_KEYS = ['token-name', 'token-secret']
+let sharing = false
+
+const onStorage = (event) => {
+  if (event.key !== null && !SESSION_KEYS.includes(event.key)) {
+    return
+  }
+  const name = localStorage.getItem('token-name') || ''
+  const secret = localStorage.getItem('token-secret') || ''
+
+  if (!name || !secret) {
+    if (token.value.name || token.value.secret) {
+      clearSession()
+    }
+    return
+  }
+  if (name === token.value.name && secret === token.value.secret) {
+    return
+  }
+  // A rejected pair leaves this tab as it was; the other tab has already been told it failed.
+  login(name, secret).catch(() => {})
+}
+
+const shareSession = () => {
+  if (sharing) return
+  window.addEventListener('storage', onStorage)
+  sharing = true
+}
+
+const stopSharingSession = () => {
+  window.removeEventListener('storage', onStorage)
+  sharing = false
+}
 
 const isLogged = computed(() => details.value !== undefined)
 
@@ -139,8 +190,9 @@ export function useSession() {
     client,
     isManager,
     hasPermissionTo,
-    initializeSession
+    initializeSession,
+    sessionReady
   }
 }
 
-export { loginFailureMessage }
+export { loginFailureMessage, stopSharingSession }

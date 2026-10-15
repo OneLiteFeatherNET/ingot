@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 
 // Every test gets a fresh copy of the session module, so the token ref and the stored
 // credentials of one test cannot leak into the next. The toast helper is replaced, which
@@ -52,8 +53,16 @@ const loadSession = async ({ storedName = '', storedSecret = '' } = {}) => {
   const client = await import('./client')
   const toast = await import('../helpers/toast')
 
+  loaded.push(session)
   return { axios, session, client, toast, store: session.useSession() }
 }
+
+// A session loaded by a test keeps listening to storage events until it is told to stop, so
+// a test cannot react to the session of an earlier test.
+const loaded = []
+afterEach(() => {
+  loaded.splice(0).forEach(session => session.stopSharingSession())
+})
 
 describe('loginFailureMessage', () => {
   beforeEach(() => {
@@ -158,5 +167,78 @@ describe('startup with stored credentials', () => {
 
     expect(store.token.value, 'an unreachable server says nothing about the credentials')
       .toEqual({ name: 'alice', secret: 'secret' })
+  })
+})
+
+describe('startup without stored credentials', () => {
+  it('does not ask the server who is signed in when nothing is stored', async () => {
+    const { axios, store } = await loadSession()
+
+    await store.initializeSession()
+
+    expect(axios.get, 'an anonymous visit must not send a request that is bound to fail')
+      .not.toHaveBeenCalled()
+  })
+
+  it('is ready at once when nothing is stored', async () => {
+    const { store } = await loadSession()
+
+    await store.initializeSession()
+
+    expect(store.sessionReady.value).toBe(true)
+  })
+
+  it('is not ready until stored credentials have been checked', async () => {
+    const { axios, store } = await loadSession({ storedName: 'alice', storedSecret: 'secret' })
+    axios.get.mockRejectedValue(new Error('Network Error'))
+
+    const starting = store.initializeSession().catch(() => {})
+
+    expect(store.sessionReady.value, 'a listing must wait for the check').toBe(false)
+    await starting
+    expect(store.sessionReady.value, 'an unreachable server still ends the start-up').toBe(true)
+  })
+})
+
+describe('session shared across tabs', () => {
+  it('signs out when another tab clears the shared session', async () => {
+    const { axios, store } = await loadSession({ storedName: 'alice', storedSecret: 'secret' })
+    axios.get.mockResolvedValue({ data: SIGNED_IN_DETAILS })
+    await store.initializeSession()
+    expect(store.isLogged.value).toBe(true)
+
+    localStorage.setItem('token-name', '')
+    localStorage.setItem('token-secret', '')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'token-name', newValue: '', storageArea: localStorage }))
+
+    expect(store.isLogged.value, 'a logout in another tab must end the session here too').toBe(false)
+    expect(store.token.value).toEqual({ name: '', secret: '' })
+  })
+
+  it('signs in when another tab stores a session', async () => {
+    const { axios, store } = await loadSession()
+    axios.get.mockResolvedValue({ data: SIGNED_IN_DETAILS })
+    await store.initializeSession()
+
+    localStorage.setItem('token-name', 'alice')
+    localStorage.setItem('token-secret', 'secret')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'token-secret', newValue: 'secret', storageArea: localStorage }))
+    await flushPromises()
+
+    expect(store.isLogged.value, 'a login in another tab must be followed here').toBe(true)
+    expect(store.token.value).toEqual({ name: 'alice', secret: 'secret' })
+  })
+
+  it('ignores storage changes that are not about the session', async () => {
+    const { axios, store } = await loadSession({ storedName: 'alice', storedSecret: 'secret' })
+    axios.get.mockResolvedValue({ data: SIGNED_IN_DETAILS })
+    await store.initializeSession()
+    const callsBefore = axios.get.mock.calls.length
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'console-theme', newValue: 'dark', storageArea: localStorage }))
+    await flushPromises()
+
+    expect(store.isLogged.value).toBe(true)
+    expect(axios.get.mock.calls.length, 'an unrelated key must not trigger a sign in').toBe(callsBefore)
   })
 })
