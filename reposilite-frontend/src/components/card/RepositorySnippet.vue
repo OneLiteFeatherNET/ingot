@@ -18,6 +18,7 @@
 import XmlTag from './XmlTag.vue'
 import CodeString from './CodeString.vue'
 import CodeBrackets from "./CodeBrackets.vue"
+import BreakableText from "./BreakableText.vue"
 import { computed, ref } from 'vue'
 
 const props = defineProps({
@@ -54,7 +55,7 @@ defineExpose({ content })
 <XmlTag name="repository">
   <XmlTag name="id">{{ data.repoId }}</XmlTag>
   <XmlTag name="name">{{ data.title }}</XmlTag>
-  <XmlTag name="url">{{ data.domain }}</XmlTag>
+  <XmlTag name="url"><BreakableText :text="data.domain" /></XmlTag>
 </XmlTag>
 </pre>
   <pre
@@ -66,7 +67,7 @@ start="{"
 end="}"
 >
     name <CodeString>{{ gradleId }}</CodeString>
-    url <CodeString>{{ data.domain }}</CodeString>
+    url <CodeString><BreakableText :text="data.domain" /></CodeString>
 </CodeBrackets>
 </pre>
   <pre
@@ -81,7 +82,7 @@ end="}"
     url = uri<CodeBrackets
 start="("
 end=")"
-><CodeString>{{ data.domain }}</CodeString></CodeBrackets>
+><CodeString><BreakableText :text="data.domain" /></CodeString></CodeBrackets>
 </CodeBrackets>
 </pre>
   <pre
@@ -90,6 +91,6 @@ end=")"
   >
 resolvers +=
   <CodeString>{{ data.repoId }}</CodeString>
-     at <CodeString>{{ data.domain }}</CodeString>
+     at <CodeString><BreakableText :text="data.domain" /></CodeString>
 </pre>
 </template>

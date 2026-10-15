@@ -296,6 +296,8 @@ const selectTab = (tab) =>
  */
 .card-editor > pre {
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  /* Lines break at spaces and between the tags; a word only splits when it is wider than the editor. */
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 </style>
