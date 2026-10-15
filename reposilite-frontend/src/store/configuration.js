@@ -1,5 +1,6 @@
 import {computed, markRaw, ref} from 'vue'
 import isEqual from 'lodash/isEqual'
+import isPlainObject from 'lodash/isPlainObject'
 import { useSession } from './session'
 import { createSuccessToast, createErrorToast, errorMessage } from '../helpers/toast'
 import { createAjv } from '@jsonforms/core'
@@ -13,6 +14,30 @@ import { default as OptionalRenderer, tester as optionalTester } from '../compon
 import { default as BooleanSwitchRenderer, tester as booleanSwitchTester } from '../components/renderers/BooleanSwitchRenderer.vue'
 
 const cloneJson = (value) => JSON.parse(JSON.stringify(value))
+
+/*
+ * How many values differ between an edited configuration and the server snapshot. Objects are
+ * compared key by key, arrays position by position, and a value present on only one side counts
+ * once. So an edited field counts as one change, and an added or removed entry as one change too.
+ */
+export const countDifferences = (current, saved) => {
+  if (isEqual(current, saved)) return 0
+  if (Array.isArray(current) && Array.isArray(saved)) {
+    const length = Math.max(current.length, saved.length)
+    let count = 0
+    for (let index = 0; index < length; index++) {
+      count += index >= current.length || index >= saved.length ? 1 : countDifferences(current[index], saved[index])
+    }
+    return count
+  }
+  if (isPlainObject(current) && isPlainObject(saved)) {
+    const keys = new Set([...Object.keys(current), ...Object.keys(saved)])
+    let count = 0
+    for (const key of keys) count += countDifferences(current[key], saved[key])
+    return count
+  }
+  return 1
+}
 
 /*
  * One store per client. The factory keeps no module state of its own, so a test builds a
@@ -71,6 +96,13 @@ export const createConfigurationStore = (client) => {
   const dirtyDomains = computed(() => domains.value.filter(isDirty))
   const hasChanges = computed(() => dirtyDomains.value.length > 0)
   const invalidDomains = computed(() => domains.value.filter(domain => validity.value[domain] === false))
+
+  /* A domain with a difference always counts at least once, even when the diff finds nothing (for example an added undefined key). */
+  const changeCount = computed(() => dirtyDomains.value.reduce(
+    (total, domain) => total + Math.max(1, countDifferences(configurations.value[domain], snapshots.value[domain])),
+    0
+  ))
+  const hasUnsavedChanges = computed(() => hasChanges.value)
 
   const fetchConfiguration = async () => {
     try {
@@ -163,6 +195,46 @@ export const createConfigurationStore = (client) => {
     configurations.value[domain] = data
   }
 
+  /*
+   * Validity covers the whole domain, not the entry on screen. Only one entry's form is mounted
+   * at a time, so a per-form report would forget a broken entry as soon as the user moved on.
+   * A schema that does not compile is reported by the form, so it does not block the domain here.
+   */
+  const validateDomain = (domain) => {
+    let valid = true
+    try {
+      valid = configurationValidator.compile(schemas.value[domain])(configurations.value[domain]) === true
+    } catch {
+      valid = true
+    }
+    validity.value[domain] = valid
+  }
+
+  const entriesOf = (domain, collection) => {
+    if (!configurations.value[domain]) configurations.value[domain] = {}
+    if (!Array.isArray(configurations.value[domain][collection])) configurations.value[domain][collection] = []
+    return configurations.value[domain][collection]
+  }
+
+  /* Replaces the entry at `index`. Schema defaults are filled in by the validation, as on load. */
+  const setEntry = (domain, collection, index, entry) => {
+    entriesOf(domain, collection)[index] = entry
+    validateDomain(domain)
+  }
+
+  /* Appends an entry and returns its position in the collection. */
+  const addEntry = (domain, collection, entry) => {
+    const entries = entriesOf(domain, collection)
+    entries.push(entry)
+    validateDomain(domain)
+    return entries.length - 1
+  }
+
+  const removeEntry = (domain, collection, index) => {
+    entriesOf(domain, collection).splice(index, 1)
+    validateDomain(domain)
+  }
+
   const setValidity = (domain, valid) => {
     validity.value[domain] = valid
   }
@@ -186,7 +258,13 @@ export const createConfigurationStore = (client) => {
     discardChanges,
     factoryReset,
     setDomainData,
-    setValidity
+    setValidity,
+    validateDomain,
+    setEntry,
+    addEntry,
+    removeEntry,
+    changeCount,
+    hasUnsavedChanges
   }
 }
 
