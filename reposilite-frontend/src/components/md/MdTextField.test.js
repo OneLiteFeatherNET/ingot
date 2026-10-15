@@ -259,4 +259,18 @@ describe('MdTextField', () => {
       expect(wrapper.find('input').attributes('disabled')).toBeDefined()
     })
   })
+
+  it('styles a date input with the theme colour scheme and the primary accent', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Expiry date', type: 'date' } })
+
+    const classes = wrapper.find('input').classes()
+    expect(classes, 'the browser picker follows the dashboard theme').toEqual(expect.arrayContaining(['[color-scheme:light]', 'dark:[color-scheme:dark]']))
+    expect(classes, 'the picker selection uses the primary role').toContain('accent-primary')
+  })
+
+  it('leaves a text input without the date styling', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name' } })
+
+    expect(wrapper.find('input').classes()).not.toContain('accent-primary')
+  })
 })

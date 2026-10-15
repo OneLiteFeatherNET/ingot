@@ -18,6 +18,7 @@
 import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
+import MdRadio from '../md/MdRadio.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
 import SegmentedOption from '../tokens/SegmentedOption.vue'
@@ -154,32 +155,39 @@ const submit = async () => {
       Create token
     </h2>
 
+    <!--
+      Spacing (MD3 dialog): 16px between fields, 24px between the sections (Expires, Access,
+      the failure notice and the actions), 16px from the segmented control to the date field,
+      and 8px from a section label to its content.
+    -->
     <form
       id="create-token-form"
-      class="mt-6 flex flex-col gap-4"
+      class="mt-6 flex flex-col gap-6"
       novalidate
       @submit.prevent="submit()"
     >
-      <MdTextField
-        id="create-token-name"
-        v-model="name"
-        label="Name"
-        type="text"
-        autocomplete="off"
-        required
-        :error="nameError !== ''"
-        :error-text="nameError"
-      />
-      <MdTextField
-        id="create-token-description"
-        v-model="description"
-        label="Description (optional)"
-        type="text"
-        autocomplete="off"
-      />
+      <div class="flex flex-col gap-4">
+        <MdTextField
+          id="create-token-name"
+          v-model="name"
+          label="Name"
+          type="text"
+          autocomplete="off"
+          required
+          :error="nameError !== ''"
+          :error-text="nameError"
+        />
+        <MdTextField
+          id="create-token-description"
+          v-model="description"
+          label="Description (optional)"
+          type="text"
+          autocomplete="off"
+        />
+      </div>
 
-      <div class="flex flex-col gap-2">
-        <span class="md-label-large text-on-surface-variant">Expires</span>
+      <div class="flex flex-col">
+        <span class="md-title-small mb-2 text-on-surface-variant">Expires</span>
         <SegmentedControl
           label="Expiry"
           aria-describedby="create-token-expiry-note"
@@ -197,9 +205,11 @@ const submit = async () => {
           v-if="isCustom"
           id="create-token-expiry-date"
           v-model="customDate"
+          class="mt-4"
           label="Expiry date"
           type="date"
           variant="outlined"
+          supporting-text="Last day the token is valid"
           :min="limits.min"
           :max="limits.max"
           :error="customError !== ''"
@@ -207,41 +217,38 @@ const submit = async () => {
         />
         <p
           id="create-token-expiry-note"
-          class="md-body-small"
+          class="mt-2 md-body-small"
           :class="isNever ? 'text-error' : 'text-on-surface-variant'"
         >
           {{ expiryNote }}
         </p>
       </div>
 
-      <fieldset class="flex flex-col gap-2 border-0 p-0">
-        <legend class="md-label-large text-on-surface-variant">
+      <fieldset class="flex flex-col border-0 p-0">
+        <legend class="md-title-small mb-2 text-on-surface-variant">
           Access
         </legend>
-        <label
+        <div
           v-for="option in ACCESS_OPTIONS"
           :key="option.key"
-          class="flex cursor-pointer items-start gap-3"
+          class="flex flex-col"
         >
-          <input
+          <MdRadio
             :id="`create-token-access-${option.key}`"
             v-model="access"
-            type="radio"
             name="create-token-access"
             :value="option.key"
             :aria-describedby="`create-token-access-${option.key}-help`"
-            class="mt-1 size-5 shrink-0 accent-primary"
           >
-          <span class="flex flex-col">
-            <span class="md-body-large text-on-surface">{{ option.label }}</span>
-            <span
-              :id="`create-token-access-${option.key}-help`"
-              class="md-body-small text-on-surface-variant"
-            >
-              {{ option.help }}
-            </span>
-          </span>
-        </label>
+            {{ option.label }}
+          </MdRadio>
+          <p
+            :id="`create-token-access-${option.key}-help`"
+            class="pl-12 md-body-small text-on-surface-variant"
+          >
+            {{ option.help }}
+          </p>
+        </div>
       </fieldset>
 
       <p

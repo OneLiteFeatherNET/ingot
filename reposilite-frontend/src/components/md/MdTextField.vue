@@ -133,6 +133,14 @@ const stateKey = computed(() => (props.error ? 'error' : 'default'))
 
 const fieldClass = computed(() => FIELD[variantKey.value][stateKey.value])
 
+// A native date input keeps the browser's picker, and so its calendar icon and its keyboard
+// handling. The colour scheme follows the dashboard theme (the dark class, not the OS setting),
+// so the icon is drawn for the theme, and accent-color sets the picker's selected day to the
+// primary role.
+const DATE_INPUT = '[color-scheme:light] dark:[color-scheme:dark] accent-primary'
+
+const dateClass = computed(() => (props.type === 'date' ? DATE_INPUT : ''))
+
 const labelClass = computed(() => [
   'pointer-events-none absolute top-1/2 -translate-y-1/2 md-body-large transition-all duration-(--md-sys-motion-duration-short4) ease-md-standard',
   FLOAT[variantKey.value],
@@ -170,6 +178,7 @@ const helperClass = computed(() => {
         :class="[
           'peer',
           fieldClass,
+          dateClass,
           $slots['leading-icon'] ? 'pl-12' : 'pl-4',
           $slots['trailing-icon'] ? 'pr-12' : 'pr-4'
         ]"
