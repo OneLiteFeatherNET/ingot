@@ -47,7 +47,10 @@ internal interface MirrorCacheLedger {
 
     fun contains(repository: String, path: String): Boolean
 
-    /** Sets the last access of an existing row. Returns true when a row was updated. */
+    /**
+     * Moves the last access of an existing row forward to [now]. A [now] older than the stored access leaves the row
+     * as it is. Returns true when a row was updated.
+     */
     fun markAccessed(repository: String, path: String, now: Instant): Boolean
 
     /** Removes the row of exactly [path]. */

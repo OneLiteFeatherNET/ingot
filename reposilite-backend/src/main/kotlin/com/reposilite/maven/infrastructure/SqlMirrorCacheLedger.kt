@@ -22,10 +22,11 @@ import com.reposilite.maven.MirrorCacheLedger
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
-import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -49,26 +50,23 @@ internal object MirrorCacheEntryTable : Table("mirror_cache_entry") {
  */
 internal class SqlMirrorCacheLedger(private val database: Database) : MirrorCacheLedger {
 
-    /** Serialises the check-then-insert of [insertIfAbsent] within this process. */
-    private val insertLock = Any()
-
     init {
         transaction(database) {
             SchemaUtils.create(MirrorCacheEntryTable)
         }
     }
 
+    /**
+     * A single INSERT ... IGNORE (or ON CONFLICT DO NOTHING), so the primary key decides the race between instances
+     * that share the database. A row that another instance inserted first is left untouched.
+     */
     override fun insertIfAbsent(repository: String, path: String, now: Instant) {
-        synchronized(insertLock) {
-            transaction(database) {
-                if (!entryExists(repository, path)) {
-                    MirrorCacheEntryTable.insert {
-                        it[repositoryId] = repository
-                        it[entryPath] = path
-                        it[cachedAt] = now.toEpochMilli()
-                        it[lastAccessedAt] = now.toEpochMilli()
-                    }
-                }
+        transaction(database) {
+            MirrorCacheEntryTable.insertIgnore {
+                it[repositoryId] = repository
+                it[entryPath] = path
+                it[cachedAt] = now.toEpochMilli()
+                it[lastAccessedAt] = now.toEpochMilli()
             }
         }
     }
@@ -76,9 +74,17 @@ internal class SqlMirrorCacheLedger(private val database: Database) : MirrorCach
     override fun contains(repository: String, path: String): Boolean =
         transaction(database) { entryExists(repository, path) }
 
+    /**
+     * Conditional UPDATE: the row only moves forward. Two instances whose clocks or requests interleave cannot
+     * overwrite a newer last access with an older one.
+     */
     override fun markAccessed(repository: String, path: String, now: Instant): Boolean =
         transaction(database) {
-            MirrorCacheEntryTable.update({ (MirrorCacheEntryTable.repositoryId eq repository) and (MirrorCacheEntryTable.entryPath eq path) }) {
+            MirrorCacheEntryTable.update({
+                (MirrorCacheEntryTable.repositoryId eq repository) and
+                    (MirrorCacheEntryTable.entryPath eq path) and
+                    (MirrorCacheEntryTable.lastAccessedAt less now.toEpochMilli())
+            }) {
                 it[lastAccessedAt] = now.toEpochMilli()
             } > 0
         }
