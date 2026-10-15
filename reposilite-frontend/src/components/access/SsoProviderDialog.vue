@@ -26,10 +26,13 @@ import ProviderIcon from '../icons/ProviderIcon.vue'
 import CopyIcon from '../icons/CopyIcon.vue'
 import { createErrorToast, createSuccessToast } from '../../helpers/toast'
 import {
+  PROVIDER_ID_PATTERN,
   PROVIDER_TYPES,
   callbackUrlFor,
   emptyProvider,
   providerTypeOf,
+  scopeList,
+  usesGitHub,
   validateProvider
 } from './loginSettings'
 
@@ -78,10 +81,20 @@ const errorOf = (field) => (submitted.value ? problems.value[field] ?? '' : '')
 const testable = computed(() =>
   isEditing.value && form.value !== null && JSON.stringify(form.value) === JSON.stringify(props.provider))
 
-const ID_PATTERN = /^[a-z][a-z0-9-]{1,39}$/
-const callbackUrl = computed(() => (form.value && ID_PATTERN.test(form.value.id)
+const callbackUrl = computed(() => (form.value && PROVIDER_ID_PATTERN.test(form.value.id)
   ? callbackUrlFor(form.value.id, props.productionUrl)
   : ''))
+
+// GitHub's own endpoints need no issuer and take the GitHub client secret; the rules follow the backend.
+const githubEndpoints = computed(() => form.value !== null && usesGitHub(form.value))
+
+// The scopes are stored as one text; the chips show and edit its words.
+const scopeChips = computed({
+  get: () => scopeList(form.value?.scopes),
+  set: (chips) => {
+    form.value.scopes = chips.join(' ')
+  }
+})
 
 const endpointLines = computed(() => {
   const endpoints = props.testResult?.endpoints
@@ -262,7 +275,7 @@ const validateDomain = (text, existing) => {
           :supporting-text="kind.issuerNote ?? (kind.issuerHint ? `For example ${kind.issuerHint}` : '')"
           :error="errorOf('issuerUrl') !== ''"
           :error-text="errorOf('issuerUrl')"
-          required
+          :required="!githubEndpoints"
         />
 
         <div class="grid gap-4 sm:grid-cols-2">
@@ -282,18 +295,22 @@ const validateDomain = (text, existing) => {
             label="Client secret"
             type="password"
             autocomplete="off"
-            supporting-text="A stored secret shows as ********. Type a new value to replace it."
+            :supporting-text="githubEndpoints
+              ? 'Required for GitHub. A stored secret shows as ********. Type a new value to replace it.'
+              : 'A stored secret shows as ********. Type a new value to replace it. Leave empty for a public client.'"
             :error="errorOf('clientSecret') !== ''"
             :error-text="errorOf('clientSecret')"
-            required
+            :required="githubEndpoints"
           />
         </div>
 
         <MdChipInput
           id="sso-scopes"
-          v-model="form.scopes"
+          v-model="scopeChips"
           label="Scopes"
-          supporting-text="Add each scope as a chip. openid is required."
+          :supporting-text="githubEndpoints
+            ? 'Blank uses read:user user:email read:org. Add a scope as a chip to replace it.'
+            : 'Add each scope as a chip. openid is required.'"
           :validate="validateScope"
           :error="errorOf('scopes') !== ''"
           :error-text="errorOf('scopes')"
@@ -324,6 +341,7 @@ const validateDomain = (text, existing) => {
             Members of an admin group become instance admins at sign in. A team whose external
             reference is <code>oidc:{{ form.id || 'id' }}:&lt;group&gt;</code> is synced from the groups
             claim: its members follow the group, and they cannot be removed by hand.
+            <span v-if="githubEndpoints">For GitHub the group is an organisation or <code>organisation/team-slug</code>.</span>
           </p>
           <MdChipInput
             id="sso-admin-groups"

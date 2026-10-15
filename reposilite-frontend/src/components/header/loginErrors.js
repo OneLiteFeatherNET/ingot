@@ -23,11 +23,21 @@ import { createErrorToast } from '../../helpers/toast'
  * ?loginError=<code> on the page they started from. The code is shown once, in words a visitor can
  * act on, and then taken out of the address so that a reload does not show it again.
  */
+// One sentence for each code of the callback (identity model, section 14.4). The codes stay in the address.
 const MESSAGES = {
   access_denied: 'The provider did not grant access. Try another account, or ask for access there.',
   invalid_state: 'The sign in expired or was started in another browser. Start it again from here.',
+  provider_error: 'The provider could not complete the sign in. Try again in a moment.',
+  token_exchange_failed: 'The provider did not accept the sign in. Try again, or ask an administrator to check the client settings.',
+  invalid_id_token: 'The answer of the provider could not be verified. Ask an administrator to check the provider settings.',
   email_domain_not_allowed: 'Your email domain is not allowed to sign in to this instance.',
-  provider_error: 'The provider could not complete the sign in. Try again in a moment.'
+  user_disabled: 'This account is disabled. Ask an administrator to enable it.',
+  user_not_provisioned: 'No account exists for you on this instance yet. Ask an administrator to create one.',
+  username_taken: 'Another account already uses your user name here. Ask an administrator to resolve it.',
+  invalid_username: 'Your user name at the provider is not a valid user name on this instance.',
+  setup_required: 'This instance has no administrator yet. Create the first administrator with the setup code from the log.',
+  provider_unavailable: 'The provider cannot be reached right now. Try again in a moment.',
+  no_database: 'Signing in needs the database of this instance, which is not available right now.'
 }
 
 const GENERIC_MESSAGE = 'The sign in did not complete. Try again, or use another sign in method.'

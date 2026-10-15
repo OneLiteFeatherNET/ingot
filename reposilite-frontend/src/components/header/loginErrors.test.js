@@ -43,7 +43,11 @@ const openAt = async (address) => {
 }
 
 describe('loginErrorMessage', () => {
-  it.each(['access_denied', 'invalid_state', 'email_domain_not_allowed', 'provider_error'])(
+  it.each([
+    'access_denied', 'invalid_state', 'provider_error', 'token_exchange_failed', 'invalid_id_token',
+    'email_domain_not_allowed', 'user_disabled', 'user_not_provisioned', 'username_taken', 'invalid_username',
+    'setup_required', 'provider_unavailable', 'no_database'
+  ])(
     'says in words what happened for %s, without the code',
     (code) => {
       const message = loginErrorMessage(code)

@@ -40,7 +40,7 @@ const KEYCLOAK = {
   issuerUrl: 'https://sso.example.org/realms/ingot',
   clientId: 'ingot',
   clientSecret: SECRET_PLACEHOLDER,
-  scopes: ['openid', 'profile', 'email'],
+  scopes: 'openid profile email',
   usernameClaim: 'preferred_username',
   displayNameClaim: 'name',
   emailClaim: 'email',
@@ -194,6 +194,13 @@ describe('SsoProvidersPanel', () => {
       expect(dialog().textContent).toContain('openid')
     })
 
+    it('prefills GitHub without scopes, because the server applies its own GitHub defaults', async () => {
+      await pickKind('GitHub')
+
+      expect(dialog().textContent).toContain('Blank uses read:user user:email read:org')
+      expect(dialog().textContent).toContain('Leave empty for GitHub itself')
+    })
+
     it('shows the callback URL for the id it will have, under the dashboard origin', async () => {
       await pickKind('GitLab')
 
@@ -232,7 +239,18 @@ describe('SsoProvidersPanel', () => {
       expect(settings.update, 'nothing is written before the form is valid').not.toHaveBeenCalled()
     })
 
-    it('needs the client secret, which a new provider has not got yet', async () => {
+    it('needs the client secret of a GitHub OAuth app, but no secret for a public client', async () => {
+      await pickKind('GitHub')
+      type('sso-client-id', 'Iv1.ingot')
+
+      dialogButton('Save').click()
+      await flushPromises()
+
+      expect(dialog().textContent).toContain('Enter the client secret of the GitHub OAuth app')
+      expect(settings.update).not.toHaveBeenCalled()
+    })
+
+    it('saves a GitLab client without a secret, because the backend accepts a public client', async () => {
       await pickKind('GitLab')
       type('sso-issuer', 'https://gitlab.example.org')
       type('sso-client-id', 'ingot-client')
@@ -240,7 +258,7 @@ describe('SsoProvidersPanel', () => {
       dialogButton('Save').click()
       await flushPromises()
 
-      expect(dialog().textContent).toContain('Enter the client secret')
+      expect(settings.update).toHaveBeenCalledTimes(1)
     })
 
     it('saves the new provider with the list it was read from', async () => {
@@ -261,7 +279,8 @@ describe('SsoProvidersPanel', () => {
             issuerUrl: 'https://gitlab.example.org',
             clientId: 'ingot-client',
             clientSecret: 's3cret',
-            enabled: true
+            scopes: 'openid profile email',
+            enabled: false
           })
         ],
         ldap: LDAP

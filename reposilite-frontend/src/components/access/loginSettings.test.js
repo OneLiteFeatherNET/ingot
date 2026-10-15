@@ -25,6 +25,7 @@ import {
   providerTypeOf,
   removeProvider,
   replaceProvider,
+  scopeList,
   validateLdap,
   validateProvider
 } from './loginSettings'
@@ -37,7 +38,7 @@ const KEYCLOAK = {
   issuerUrl: 'https://sso.example.org/realms/ingot',
   clientId: 'ingot',
   clientSecret: SECRET_PLACEHOLDER,
-  scopes: ['openid', 'profile', 'email'],
+  scopes: 'openid profile email',
   usernameClaim: 'preferred_username',
   displayNameClaim: 'name',
   emailClaim: 'email',
@@ -60,15 +61,15 @@ describe('provider types', () => {
     }
   })
 
-  it('prefills a new provider from its kind: id, label, icon and the default scopes', () => {
+  it('prefills a new provider from its kind: id, label, icon and the default scopes, disabled', () => {
     const provider = emptyProvider(providerTypeOf('GITLAB'))
 
     expect(provider).toMatchObject({
       id: 'gitlab',
       label: 'GitLab',
       icon: 'GITLAB',
-      enabled: true,
-      scopes: ['openid', 'profile', 'email'],
+      enabled: false,
+      scopes: 'openid profile email',
       allowedEmailDomains: [],
       adminGroups: [],
       autoCreateUsers: true
@@ -92,10 +93,11 @@ describe('validateProvider', () => {
     expect(validateProvider(KEYCLOAK, { takenIds: [] })).toEqual({})
   })
 
-  it('wants a slug id, lowercase, starting with a letter', () => {
+  it('wants a slug id of the backend: lowercase letters, digits and dashes, at most 64 characters', () => {
     expect(validateProvider({ ...KEYCLOAK, id: 'My Provider' }, {}).id).toMatch(/lowercase/)
-    expect(validateProvider({ ...KEYCLOAK, id: '1st' }, {}).id).toMatch(/lowercase/)
-    expect(validateProvider({ ...KEYCLOAK, id: 'a' }, {}).id, 'one character is too short').toBeDefined()
+    expect(validateProvider({ ...KEYCLOAK, id: 'x'.repeat(65) }, {}).id).toBeDefined()
+    expect(validateProvider({ ...KEYCLOAK, id: '1st' }, {})).toEqual({})
+    expect(validateProvider({ ...KEYCLOAK, id: 'a' }, {})).toEqual({})
   })
 
   it('refuses an id that another provider already has', () => {
@@ -106,30 +108,49 @@ describe('validateProvider', () => {
     expect(validateProvider({ ...KEYCLOAK, label: '  ' }, {}).label).toBeDefined()
   })
 
-  it('needs an https issuer, so an http or a malformed address is refused', () => {
+  it('needs an https issuer, and accepts http only for a loopback address, as the backend does', () => {
     expect(validateProvider({ ...KEYCLOAK, issuerUrl: 'http://sso.example.org' }, {}).issuerUrl).toMatch(/https/)
     expect(validateProvider({ ...KEYCLOAK, issuerUrl: 'not a url' }, {}).issuerUrl).toMatch(/https/)
     expect(validateProvider({ ...KEYCLOAK, issuerUrl: '' }, {}).issuerUrl).toBeDefined()
+    expect(validateProvider({ ...KEYCLOAK, issuerUrl: 'http://localhost:8080/realms/ingot' }, {})).toEqual({})
+    expect(validateProvider({ ...KEYCLOAK, issuerUrl: 'http://127.0.0.1:8080' }, {})).toEqual({})
   })
 
   it('needs a client id', () => {
     expect(validateProvider({ ...KEYCLOAK, clientId: '' }, {}).clientId).toBeDefined()
   })
 
-  it('needs a secret for a new provider', () => {
-    expect(validateProvider({ ...KEYCLOAK, clientSecret: '' }, { editing: false }).clientSecret).toBeDefined()
+  it('does not need a secret for a public client, because the backend sends none', () => {
+    expect(validateProvider({ ...KEYCLOAK, clientSecret: '' }, {})).toEqual({})
   })
 
-  it('accepts the hidden secret of a saved provider, which keeps the stored value', () => {
-    expect(validateProvider({ ...KEYCLOAK, clientSecret: SECRET_PLACEHOLDER }, { editing: true })).toEqual({})
+  it('needs the secret for GitHub, whose OAuth app is confidential', () => {
+    const github = { ...KEYCLOAK, id: 'github', icon: 'GITHUB', issuerUrl: '', scopes: '', clientSecret: '' }
+
+    expect(validateProvider(github, {}).clientSecret).toMatch(/GitHub/)
+    expect(validateProvider({ ...github, clientSecret: SECRET_PLACEHOLDER }, {})).toEqual({})
   })
 
-  it('needs an empty secret to be typed again on a saved provider', () => {
-    expect(validateProvider({ ...KEYCLOAK, clientSecret: '' }, { editing: true }).clientSecret).toBeDefined()
+  it('needs no issuer and no openid scope for GitHub, whose endpoints are known', () => {
+    const github = { ...KEYCLOAK, id: 'github', icon: 'GITHUB', issuerUrl: '', scopes: '', clientSecret: SECRET_PLACEHOLDER }
+
+    expect(validateProvider(github, {})).toEqual({})
+    expect(validateProvider({ ...github, issuerUrl: 'https://github.com/' }, {})).toEqual({})
+  })
+
+  it('treats GitHub with an issuer of its own as an OpenID Connect bridge', () => {
+    const bridge = { ...KEYCLOAK, id: 'github', icon: 'GITHUB', issuerUrl: 'https://bridge.example.org', scopes: 'profile' }
+
+    expect(validateProvider(bridge, {}).scopes).toMatch(/openid/)
   })
 
   it('needs the openid scope, without which the provider cannot sign anyone in', () => {
-    expect(validateProvider({ ...KEYCLOAK, scopes: ['profile'] }, {}).scopes).toMatch(/openid/)
+    expect(validateProvider({ ...KEYCLOAK, scopes: 'profile' }, {}).scopes).toMatch(/openid/)
+  })
+
+  it('splits the scopes text into its words', () => {
+    expect(scopeList('openid  profile\temail')).toEqual(['openid', 'profile', 'email'])
+    expect(scopeList('')).toEqual([])
   })
 
   it('checks each allowed email domain', () => {

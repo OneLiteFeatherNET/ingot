@@ -22,8 +22,11 @@
 // What the server sends in place of a stored secret. Sent back unchanged, it keeps the stored value.
 const SECRET_PLACEHOLDER = '********'
 
-const PROVIDER_ID_PATTERN = /^[a-z][a-z0-9-]{1,39}$/
+// The slug of the backend (`[a-z0-9-]{1,64}`): the id is part of the callback URL and of the group references.
+const PROVIDER_ID_PATTERN = /^[a-z0-9-]{1,64}$/
 const EMAIL_DOMAIN_PATTERN = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i
+const OIDC_SCOPES = 'openid profile email'
+const GITHUB_ISSUER = 'https://github.com'
 
 // The kinds the picker offers. `icon` is the icon enum of the backend, so a kind and its mark stay
 // one value. The scopes are the ones the kind needs to return an identity; the registration text
@@ -34,8 +37,9 @@ const PROVIDER_TYPES = [
     icon: 'GITHUB',
     label: 'GitHub',
     issuerHint: '',
-    scopes: ['openid', 'profile', 'email'],
-    issuerNote: 'GitHub publishes no OIDC issuer of its own. Enter the issuer of an OIDC bridge in front of it.',
+    // Blank scopes make the server ask for read:user user:email read:org, which is what GitHub needs.
+    scopes: '',
+    issuerNote: 'Leave empty for GitHub itself. Enter an issuer only for an OIDC bridge in front of GitHub.',
     register: 'In GitHub, create an OAuth app under the organization settings, Developer settings. Set the callback URL below as its authorization callback URL.'
   },
   {
@@ -43,7 +47,7 @@ const PROVIDER_TYPES = [
     icon: 'GITLAB',
     label: 'GitLab',
     issuerHint: 'https://gitlab.com',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In GitLab, create an application under your user or group settings, Applications. Tick the openid, profile and email scopes and set the callback URL below as the redirect URI.'
   },
   {
@@ -51,7 +55,7 @@ const PROVIDER_TYPES = [
     icon: 'GOOGLE',
     label: 'Google',
     issuerHint: 'https://accounts.google.com',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In the Google Cloud console, create an OAuth client ID of type Web application and add the callback URL below under authorized redirect URIs.'
   },
   {
@@ -59,7 +63,7 @@ const PROVIDER_TYPES = [
     icon: 'MICROSOFT',
     label: 'Microsoft',
     issuerHint: 'https://login.microsoftonline.com/<tenant-id>/v2.0',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In Microsoft Entra ID, register an application under App registrations, add the callback URL below as a Web redirect URI and create a client secret.'
   },
   {
@@ -67,7 +71,7 @@ const PROVIDER_TYPES = [
     icon: 'KEYCLOAK',
     label: 'Keycloak',
     issuerHint: 'https://keycloak.example.org/realms/<realm>',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In your Keycloak realm, create a client with client authentication switched on and the callback URL below as a valid redirect URI.'
   },
   {
@@ -75,7 +79,7 @@ const PROVIDER_TYPES = [
     icon: 'AUTHENTIK',
     label: 'Authentik',
     issuerHint: 'https://authentik.example.org/application/o/<slug>/',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In Authentik, create an OAuth2/OpenID provider with the callback URL below as its redirect URI, and an application that uses it.'
   },
   {
@@ -83,7 +87,7 @@ const PROVIDER_TYPES = [
     icon: 'OKTA',
     label: 'Okta',
     issuerHint: 'https://<org>.okta.com',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In the Okta admin console, create an OIDC web application and set the callback URL below as its sign-in redirect URI.'
   },
   {
@@ -91,7 +95,7 @@ const PROVIDER_TYPES = [
     icon: 'AUTH0',
     label: 'Auth0',
     issuerHint: 'https://<tenant>.auth0.com/',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In the Auth0 dashboard, create a Regular Web Application and add the callback URL below to its Allowed Callback URLs.'
   },
   {
@@ -99,7 +103,7 @@ const PROVIDER_TYPES = [
     icon: 'GITEA',
     label: 'Gitea',
     issuerHint: 'https://gitea.example.org',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'In Gitea, create an OAuth2 application under Settings, Applications, and set the callback URL below as its redirect URI.'
   },
   {
@@ -107,7 +111,7 @@ const PROVIDER_TYPES = [
     icon: 'GENERIC',
     label: 'Generic OIDC',
     issuerHint: 'https://sso.example.org',
-    scopes: ['openid', 'profile', 'email'],
+    scopes: OIDC_SCOPES,
     register: 'At your provider, register the callback URL below as the redirect URI of a confidential OIDC client.'
   }
 ]
@@ -117,13 +121,14 @@ const providerTypeOf = (icon) => PROVIDER_TYPES.find(type => type.icon === icon)
 // A new provider, prefilled from its kind. The secret is left empty: the admin types it.
 const emptyProvider = (type) => ({
   id: type.id,
-  enabled: true,
+  // Disabled by default, as the backend has it: the admin switches it on once the test has passed.
+  enabled: false,
   label: type.label,
   icon: type.icon,
   issuerUrl: '',
   clientId: '',
   clientSecret: '',
-  scopes: [...type.scopes],
+  scopes: type.scopes,
   usernameClaim: 'preferred_username',
   displayNameClaim: 'name',
   emailClaim: 'email',
@@ -152,32 +157,49 @@ const LDAP_DEFAULTS = {
   adminGroups: []
 }
 
-const isHttpsUrl = (value) => {
+// The backend takes https issuers, and http only for a loopback address.
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+const isIssuerUrl = (value) => {
   try {
-    return new URL(value).protocol === 'https:'
+    const url = new URL(value)
+    return url.protocol === 'https:' || (url.protocol === 'http:' && LOOPBACK_HOSTS.includes(url.hostname))
   } catch {
     return false
   }
 }
+
+// The scopes of a provider are one text, separated by spaces, as the backend stores them.
+const scopeList = (text) => (text ?? '').split(/\s+/).filter(Boolean)
+
+// The backend uses GitHub's own OAuth endpoints for a GITHUB provider without an issuer, or with GitHub's.
+const usesGitHub = (provider) =>
+  provider.icon === 'GITHUB' && (provider.issuerUrl.trim() === '' || provider.issuerUrl.trim().replace(/\/$/, '') === GITHUB_ISSUER)
 
 const isLdapUrl = (value) => /^ldaps?:\/\/\S+$/.test(value)
 
 /*
  * The problems of one provider, keyed by field. An empty object means the provider can be saved.
  * A provider that already has a secret keeps it when the field still shows the placeholder.
+ * The rules are the ones the backend applies: GitHub's own endpoints need a client id and a secret,
+ * any other provider needs an issuer and a client id. The secret is optional for a public client.
  */
 const validateProvider = (provider, { takenIds = [] } = {}) => {
   const problems = {}
   if (!PROVIDER_ID_PATTERN.test(provider.id)) {
-    problems.id = 'Use 2 to 40 lowercase letters, digits or dashes, starting with a letter'
+    problems.id = 'Use 1 to 64 lowercase letters, digits or dashes'
   } else if (takenIds.includes(provider.id)) {
     problems.id = 'Another provider already has this id'
   }
   if (!provider.label.trim()) problems.label = 'Enter a label, as users read it on the sign in button'
-  if (!isHttpsUrl(provider.issuerUrl)) problems.issuerUrl = 'Enter the issuer, starting with https://'
+  const githubEndpoints = usesGitHub(provider)
+  if (!githubEndpoints && !isIssuerUrl(provider.issuerUrl.trim())) {
+    problems.issuerUrl = provider.issuerUrl.trim() === ''
+      ? 'Enter the issuer, starting with https://'
+      : 'Enter the issuer, starting with https:// (http:// is only accepted for localhost)'
+  }
   if (!provider.clientId.trim()) problems.clientId = 'Enter the client id from the provider'
-  if (!provider.clientSecret) problems.clientSecret = 'Enter the client secret from the provider'
-  if (!provider.scopes.includes('openid')) problems.scopes = 'Include the openid scope'
+  if (githubEndpoints && !provider.clientSecret) problems.clientSecret = 'Enter the client secret of the GitHub OAuth app'
+  if (!githubEndpoints && !scopeList(provider.scopes).includes('openid')) problems.scopes = 'Include the openid scope'
   const badDomain = provider.allowedEmailDomains.find(domain => !EMAIL_DOMAIN_PATTERN.test(domain))
   if (badDomain !== undefined) problems.allowedEmailDomains = `Enter domains such as example.org, not "${badDomain}"`
   return problems
@@ -227,6 +249,8 @@ const removeProvider = (list, id) => list.filter(provider => provider.id !== id)
 
 export {
   LDAP_DEFAULTS,
+  OIDC_SCOPES,
+  PROVIDER_ID_PATTERN,
   PROVIDER_TYPES,
   SECRET_PLACEHOLDER,
   callbackUrlFor,
@@ -235,6 +259,8 @@ export {
   providerTypeOf,
   removeProvider,
   replaceProvider,
+  scopeList,
+  usesGitHub,
   validateLdap,
   validateProvider
 }
