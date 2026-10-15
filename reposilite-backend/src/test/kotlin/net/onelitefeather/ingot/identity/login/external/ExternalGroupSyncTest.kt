@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.identity.login.external
 import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
+import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import net.onelitefeather.ingot.identity.login.MutableClock
 import net.onelitefeather.ingot.identity.login.external.ExternalOutcome.Succeeded
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -150,7 +151,7 @@ internal class ExternalGroupSyncTest {
             val team = fixture.identities.findTeam("oidc:corp:ops")!!
             assertThat(team.externalRef).isEqualTo("oidc:corp:ops")
             assertThat(fixture.memberships(team).map { it.source }).containsExactly(TeamMemberSource.SYNC)
-            assertThat(fixture.identities.loadAccess(fixture.alice, scopes = null).instanceAdmin).isTrue
+            assertThat(PermissionEvaluator.isInstanceAdmin(fixture.identities.loadAccess(fixture.alice, tokenNodes = null))).isTrue
         }
     }
 
@@ -170,7 +171,7 @@ internal class ExternalGroupSyncTest {
 
             fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = emptyList()))
 
-            assertThat(fixture.identities.loadAccess(fixture.alice, scopes = null).instanceAdmin).isFalse
+            assertThat(PermissionEvaluator.isInstanceAdmin(fixture.identities.loadAccess(fixture.alice, tokenNodes = null))).isFalse
         }
     }
 
@@ -182,7 +183,7 @@ internal class ExternalGroupSyncTest {
             fixture.accounts.resolve(identity(groups = listOf("ops"), adminGroups = listOf("ops")))
 
             assertThat(fixture.identities.findTeamById(manual.id)?.externalRef).describedAs("reference of the hand-made team").isNull()
-            assertThat(fixture.identities.loadAccess(fixture.alice, scopes = null).instanceAdmin).isFalse
+            assertThat(PermissionEvaluator.isInstanceAdmin(fixture.identities.loadAccess(fixture.alice, tokenNodes = null))).isFalse
             assertThat(fixture.log.single()).contains("skipped")
         }
     }

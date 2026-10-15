@@ -26,8 +26,8 @@ import net.onelitefeather.ingot.identity.storage.IdentityStore
 
 /**
  * The admin right of a team. It is the only place that decides how an admin group becomes an administrator: a synchronised
- * team holds the right, and a person never receives it directly. Today the right is the instance role of the team; under
- * ADR-INGT-0003 it becomes the permission node `ingot.admin.*` on the same team, and only this object changes.
+ * team holds the right, and a person never receives it directly. The right is the permission node `ingot.admin.*` on the
+ * team. The store's instance-role functions write and read that node, so this object does not touch nodes itself.
  */
 internal object AdminRights {
 

@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.identity.login.oidc
 
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
+import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.MutableClock
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
@@ -109,7 +110,7 @@ internal class OidcLoginServiceTest {
 
             val outcome = fixture.finish(started) as LoggedIn
 
-            assertThat(identities.loadAccess(outcome.principal, scopes = null).instanceAdmin).isTrue
+            assertThat(PermissionEvaluator.isInstanceAdmin(identities.loadAccess(outcome.principal, tokenNodes = null))).isTrue
         }
     }
 
