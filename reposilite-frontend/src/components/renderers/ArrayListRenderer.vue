@@ -84,40 +84,43 @@
       <div
         v-for="(element, index) in control.data"
         :key="`${control.path}-${index}`"
-        class="flex min-w-0 items-start gap-2"
+        class="min-w-0 rounded-corner-medium bg-surface-container-low p-4"
       >
-        <details
-          class="min-w-0 flex-1 rounded-corner-medium bg-surface-container-low p-4"
-          open
-        >
-          <summary class="cursor-pointer md-title-medium text-on-surface">
-            {{ childLabelForIndex(index) || `${itemLabel} ${index + 1}` }}
-          </summary>
-          <div class="mt-4 flex flex-col gap-4">
-            <DispatchRenderer
-              :schema="control.schema"
-              :uischema="childUiSchema"
-              :path="composePaths(control.path, `${index}`)"
-              :enabled="control.enabled"
-              :renderers="control.renderers"
-              :cells="control.cells"
-            />
-          </div>
-        </details>
-        <MdIconButton
-          class="mt-2 shrink-0"
-          :aria-label="`Remove ${itemLabel.toLowerCase()} ${index + 1}`"
-          :disabled="!control.enabled"
-          @click="removeAt(index)"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+        <!-- The remove button sits inside the card, so every card spans the same width as the fields. -->
+        <div class="flex items-start gap-2">
+          <details
+            class="min-w-0 flex-1"
+            open
           >
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-          </svg>
-        </MdIconButton>
+            <summary class="cursor-pointer md-title-medium text-on-surface">
+              {{ childLabelForIndex(index) || `${itemLabel} ${index + 1}` }}
+            </summary>
+            <div class="mt-4 flex flex-col gap-4">
+              <DispatchRenderer
+                :schema="control.schema"
+                :uischema="childUiSchema"
+                :path="composePaths(control.path, `${index}`)"
+                :enabled="control.enabled"
+                :renderers="control.renderers"
+                :cells="control.cells"
+              />
+            </div>
+          </details>
+          <MdIconButton
+            class="shrink-0"
+            :aria-label="`Remove ${itemLabel.toLowerCase()} ${index + 1}`"
+            :disabled="!control.enabled"
+            @click="removeAt(index)"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+            </svg>
+          </MdIconButton>
+        </div>
       </div>
     </div>
   </section>

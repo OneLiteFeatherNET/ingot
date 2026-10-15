@@ -8,7 +8,14 @@
       :disabled="!control.enabled"
       @update:model-value="setPresent"
     />
-    <div v-if="present && control.visible" class="border-1 rounded-lg mt-1">
+    <!--
+      The fields of an optional object sit under their switch row as an indented sub-group: a 16px
+      inset with a subtle rule, no border and no second title, because the switch row already names them.
+    -->
+    <div
+      v-if="present && control.visible"
+      class="mt-1 ml-4 border-l border-outline-variant pl-4"
+    >
       <DispatchRenderer
         :visible="control.visible"
         :enabled="control.enabled"
@@ -26,7 +33,8 @@
 import {DispatchRenderer, rendererProps, useJsonFormsControlWithDetail} from '@jsonforms/vue'
 import SwitchField from './SwitchField.vue'
 import {useVanillaControl} from '@dzikoysk/vue-vanilla'
-import {ref} from 'vue'
+import {provide, ref} from 'vue'
+import {OPTIONAL_PATH_KEY} from './util'
 import {and, rankWith, schemaMatches, uiTypeIs} from '@jsonforms/core'
 import includes from 'lodash/includes'
 import {findUISchema} from '@jsonforms/core/src/reducers'
@@ -41,6 +49,7 @@ export default {
     const control = useVanillaControl(useJsonFormsControlWithDetail(props))
     const present = ref(control.control.value.data !== undefined)
     const setPresent = (value) => { present.value = value }
+    provide(OPTIONAL_PATH_KEY, control.control.value.path)
     return {
       ...control,
       present,
