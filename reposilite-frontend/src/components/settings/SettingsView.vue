@@ -15,8 +15,8 @@
   -->
 
 <script setup>
-import { computed, inject, provide, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, inject, provide, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { JsonForms } from '@jsonforms/vue'
 import download from 'downloadjs'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
@@ -25,6 +25,7 @@ import MdButton from '../md/MdButton.vue'
 import SettingsTabs from './SettingsTabs.vue'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
+import RepositoryWizard from './RepositoryWizard.vue'
 import { collectionsOf, entryLayout, idText, validateNewId } from './collections'
 import { property } from '../../helpers/vue-extensions'
 
@@ -58,6 +59,7 @@ const emit = defineEmits(['update:domain'])
 const { store: sharedStore, renderers, configurationStyles } = useConfiguration()
 const store = inject(configurationStoreKey, null) ?? sharedStore
 const router = useRouter()
+const route = useRoute()
 
 /*
  * 'styles' is the injection key useStyles() of @dzikoysk/vue-vanilla looks up, so every
@@ -135,6 +137,25 @@ const selectEntry = (collection, id) => {
 const backToList = () => {
   router.push({ name: 'settings', params: { domain: activeDomain.value } })
 }
+
+/*
+ * The maven repositories are created through the guided wizard instead of the id dialog. The
+ * wizard is opened by "New repository", or by a link with ?new=repository, such as the checklist
+ * on the dashboard. That link is consumed once the wizard opens, so closing it does not reopen it.
+ */
+const wizardOpen = ref(false)
+const openRepositoryWizard = () => { wizardOpen.value = true }
+const guidedCreateFor = (collection) => (activeDomain.value === 'maven' && collection.key === 'repositories'
+  ? openRepositoryWizard
+  : null)
+
+watch([() => route.query.new, activeDomain], ([requested, domain]) => {
+  if (requested !== 'repository' || domain !== 'maven') return
+  const query = { ...route.query }
+  delete query.new
+  router.replace({ name: route.name, params: route.params, query })
+  openRepositoryWizard()
+}, { immediate: true })
 
 const createEntry = (collection, id) => {
   const domain = activeDomain.value
@@ -279,6 +300,7 @@ watch(
           :back-href="backHref"
           :renderers="renderers"
           :validator="store.configurationValidator"
+          :guided-create="guidedCreateFor(list)"
           @select="selectEntry(list, $event)"
           @back="backToList"
           @create="createEntry(list, $event)"
@@ -322,6 +344,11 @@ watch(
         </template>
       </FactoryResetModal>
     </section>
+
+    <RepositoryWizard
+      v-if="activeDomain === 'maven'"
+      v-model="wizardOpen"
+    />
 
     <div
       v-if="hasUnsavedChanges"

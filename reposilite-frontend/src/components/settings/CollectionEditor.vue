@@ -15,11 +15,12 @@
   -->
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import EntryList from './EntryList.vue'
 import EntryDetail from './EntryDetail.vue'
 import { entryAddresses, idText } from './collections'
 import { tagsInUse } from '../../store/maven/repositories'
+import { guidedCreateKey } from './guidedCreate'
 
 /*
  * One collection as a list-detail layout. From 840px the list and the detail sit side by side, the
@@ -64,10 +65,17 @@ const props = defineProps({
   validator: {
     type: Object,
     required: true
+  },
+  // A guided flow that replaces the id dialog of "New entry", or null for the plain dialog. See guidedCreate.js.
+  guidedCreate: {
+    type: Function,
+    default: null
   }
 })
 
 const emit = defineEmits(['select', 'create', 'change', 'delete', 'back'])
+
+provide(guidedCreateKey, computed(() => props.guidedCreate))
 
 const selectedKey = ref(null)
 const addresses = computed(() => entryAddresses(props.entries, props.keys))

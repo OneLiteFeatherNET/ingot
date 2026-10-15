@@ -249,3 +249,6 @@ export function useTokens() {
   if (!shared) shared = createTokenStore({ getClient: () => client.value })
   return shared
 }
+
+/** Lets a component receive another token store than the shared one, which tests use for a fresh store. */
+export const tokenStoreKey = Symbol('token-store')

@@ -15,12 +15,13 @@
   -->
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { validateNewId } from './collections'
 import { SCRIM_STYLE } from './dialog'
+import { guidedCreateKey } from './guidedCreate'
 
 /*
  * Asks for the id of a new entry and nothing else. The id is the only field every entry needs,
@@ -47,15 +48,22 @@ const emit = defineEmits(['update:modelValue', 'create'])
 const id = ref('')
 const touched = ref(false)
 
+// A collection with a guided flow (the maven repositories) hands "New entry" to that flow instead.
+const guided = inject(guidedCreateKey, null)
+
 const error = computed(() => validateNewId(id.value, props.existingIds, props.noun))
 const shownError = computed(() => (touched.value ? error.value : ''))
 
 // Every opening starts from an empty field, so a refused id from an earlier attempt does not linger.
 watch(() => props.modelValue, (open) => {
-  if (open) {
-    id.value = ''
-    touched.value = false
+  if (!open) return
+  if (guided?.value) {
+    emit('update:modelValue', false)
+    guided.value()
+    return
   }
+  id.value = ''
+  touched.value = false
 })
 
 const onInput = (value) => {
@@ -75,7 +83,7 @@ const submit = () => {
 
 <template>
   <VueFinalModal
-    :model-value="modelValue"
+    :model-value="modelValue && !guided?.value"
     teleport-to="body"
     :overlay-style="SCRIM_STYLE"
     class="flex min-h-full items-center justify-center p-4"
