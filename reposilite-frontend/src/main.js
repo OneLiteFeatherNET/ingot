@@ -37,8 +37,8 @@ app.config.globalProperties.drop = (path) =>
     .join('/')
 
 // The settings have to be in hand before anything reads them, and the router takes its base
-// path from them. When this dashboard is served by the server itself they are already
-// substituted into the bundle and this resolves immediately.
+// path from them. They are fetched in both deployments, bounded by a timeout, so a slow or
+// missing settings endpoint delays the first render only that long.
 loadFrontendSettings().then(async () => {
   // The operator's colours and icon go in before the first render, so the page never paints
   // the default theme first.
