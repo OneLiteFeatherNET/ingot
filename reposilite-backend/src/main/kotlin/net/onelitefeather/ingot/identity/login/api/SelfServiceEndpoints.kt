@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.identity.login.api
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequestError
+import com.reposilite.shared.badRequestProblems
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.token.AccessTokenFacade
@@ -206,7 +207,8 @@ private fun tokenResponse(outcome: OwnTokenOutcome, nameTakenMessage: String): R
         is OwnTokenOutcome.Issued -> outcome.dto.asSuccess()
         is OwnTokenOutcome.Rotated -> outcome.dto.asSuccess()
         OwnTokenOutcome.NameTaken -> errorResponse(CONFLICT, nameTakenMessage.ifEmpty { "A token with this name already exists" })
-        is OwnTokenOutcome.Invalid -> badRequestError(outcome.problem)
+        is OwnTokenOutcome.Invalid ->
+            if (outcome.problems.isEmpty()) badRequestError(outcome.problem) else badRequestProblems(outcome.problem, outcome.problems)
         OwnTokenOutcome.NotFound -> notFoundError("Token not found")
         OwnTokenOutcome.Deleted -> notFoundError("Token not found")
     }

@@ -80,6 +80,9 @@ internal class PermissionNodeIntegrationTest : ReposiliteSpecification() {
 
         assertThat(refused.status).isEqualTo(BAD_REQUEST.code)
         assertThat(refused.body.get("message").asText()).contains("ingot.admin.billing").contains("ingot.*")
+        assertThat(refused.body.get("problems").map { it.get("node").asText() })
+            .describedAs("one problem per invalid row")
+            .containsExactly("ingot.admin.billing", "ingot.*")
     }
 
     @Test
@@ -160,5 +163,6 @@ internal class PermissionNodeIntegrationTest : ReposiliteSpecification() {
 
         assertThat(refused.status).isEqualTo(BAD_REQUEST.code)
         assertThat(refused.body.get("message").asText()).contains("nodes")
+        assertThat(refused.body.has("problems")).describedAs("only a refused list carries problems").isFalse()
     }
 }

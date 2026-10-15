@@ -36,10 +36,12 @@ import com.reposilite.audit.api.AuditEvent
 import com.reposilite.plugin.Extensions
 import com.reposilite.shared.EntityTag
 import com.reposilite.shared.EntityTagSigner
+import com.reposilite.shared.ErrorProblem
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.shared.badRequestError
+import com.reposilite.shared.badRequestProblems
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenSecurityProvider
@@ -218,7 +220,7 @@ class IdentityFacade(
             if (raw.isEmpty()) return badRequestError("Nodes cannot be empty, omit them for an unrestricted token")
             parseNodes(raw)
         }
-        if (parsedNodes != null && parsedNodes.isErr) return badRequestError(parsedNodes.error.message)
+        if (parsedNodes != null && parsedNodes.isErr) return badRequestProblems(parsedNodes.error.message, parsedNodes.error.problems.orEmpty())
         val tokenNodes = parsedNodes?.orNull() ?: scopes?.let { ScopeRules.nodesOf(it) }
         val givenSecret = request.secret
         if (givenSecret != null && givenSecret.isBlank()) return badRequestError("Secret cannot be blank")
@@ -536,12 +538,19 @@ class IdentityFacade(
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
         if (parents == null) return badRequestError("Parents are required, send an empty list to remove all parents")
-        val duplicates = parents.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
-        if (duplicates.isNotEmpty()) return badRequestError("Parents listed twice: ${duplicates.sorted().joinToString()}")
-
-        val parentTeams = parents.map { parentName ->
-            publicTeam(parentName) ?: return badRequestError("Unknown team '$parentName' as parent, parents must be existing teams")
+        val duplicates = parents.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.sorted()
+        if (duplicates.isNotEmpty()) {
+            return badRequestProblems(
+                "Parents listed twice: ${duplicates.joinToString()}",
+                duplicates.map { ErrorProblem(it, "Parent '$it' is listed twice") },
+            )
         }
+        val found = parents.associateWith { publicTeam(it) }
+        val unknown = found.filterValues { it == null }.keys.map { ErrorProblem(it, "Unknown team '$it' as parent, parents must be existing teams") }
+        if (unknown.isNotEmpty()) {
+            return badRequestProblems(unknown.joinToString("; ") { it.message }, unknown)
+        }
+        val parentTeams = found.values.filterNotNull()
         val graph = store.listAllParents().toMutableMap()
         graph[team.id] = parentTeams.map { it.id }.toSet()
         when (val problem = TeamHierarchy.problemOf(graph)) {
@@ -706,13 +715,23 @@ class IdentityFacade(
     private fun publicTeam(name: String): TeamRecord? =
         store.findTeam(name)?.takeUnless { it.isPrivate }
 
-    /** Validates a node list. Every problem is listed, so the operator fixes them in one round. */
+    /**
+     * Validates a node list. Every problem is listed, so the operator fixes them in one round: the message joins them, and
+     * the answer carries one [ErrorProblem] per invalid node, so that the editor can show each one next to its row.
+     */
     private fun parseNodes(nodes: List<NodeDto>?): IdentityResult<List<NodeRule>> {
         if (nodes == null) return badRequestError("Nodes are required, send an empty list to remove all nodes")
-        val problems = nodes.mapNotNull { NodePattern.problemOf(it.node) }
-        if (problems.isNotEmpty()) return badRequestError("Invalid permission nodes: ${problems.joinToString("; ")}")
-        val duplicates = nodes.groupingBy { it.node }.eachCount().filterValues { it > 1 }.keys
-        if (duplicates.isNotEmpty()) return badRequestError("Nodes listed twice: ${duplicates.sorted().joinToString()}")
+        val problems = nodes.mapNotNull { node -> NodePattern.problemOf(node.node)?.let { ErrorProblem(node.node, it) } }
+        if (problems.isNotEmpty()) {
+            return badRequestProblems("Invalid permission nodes: ${problems.joinToString("; ") { it.message }}", problems)
+        }
+        val duplicates = nodes.groupingBy { it.node }.eachCount().filterValues { it > 1 }.keys.sorted()
+        if (duplicates.isNotEmpty()) {
+            return badRequestProblems(
+                "Nodes listed twice: ${duplicates.joinToString()}",
+                duplicates.map { ErrorProblem(it, "Node '$it' is listed twice") },
+            )
+        }
         return nodes.map { NodeRule(it.node, it.allowed) }.asSuccess()
     }
 

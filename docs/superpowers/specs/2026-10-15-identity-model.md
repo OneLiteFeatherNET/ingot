@@ -531,7 +531,7 @@ draft of the change, it wins.
 or `*`, which allows everything. `ingot.admin.*` is the former instance admin. A wildcard is allowed only as a whole segment
 (`ingot.repository.*.read`, `ingot.repository.releases.*`). The repository part is everything between the prefix and the final
 action segment, so repository names may contain dots. A denied node is stored with `allowed: false` and displayed as
-`-node`. A node that does not follow this grammar is refused with 400, and the answer lists every problem.
+`-node`. A node that does not follow this grammar is refused with 400, and the answer lists every problem (below).
 
 **Evaluation.** A requested node is decided by the sources in order: the principal's own nodes; the nodes and the path or
 legacy grants of its teams; the nodes of inherited teams, nearest parent first, up to eight levels. Within the first source
@@ -575,8 +575,12 @@ The check needs a concrete node: a wildcard is 400. Instance admins may check an
 principal, and gets 403 for another one. `source` is one of `USER`, `TEAM`, `INHERITED_TEAM`, `LEGACY`, `TOKEN` or `DEFAULT`.
 The trace lists every candidate of every level consulted, with `matched` and the reason.
 
-Node lists are validated as a whole. Each problem is listed in the 400 message, and a node listed twice is a problem too. An
-unchanged list writes nothing and records no audit event. A change emits `NODES_CHANGED` with `added` and `removed` as
+Node lists are validated as a whole. Each problem is listed in the 400 message, and a node listed twice is a problem too.
+The 400 of a refused list is `{ "status": 400, "message": "<the joined text>", "problems": [ { "node": "<the node as sent>",
+"message": "<why>" } ] }`, with one entry per invalid row (a node listed twice gives one entry for that node). `problems` is
+additive and is left out of every other error. The same shape answers a refused parent list (7.6, parents), where `node` is the
+parent team's name, and a refused token node list. Clients that read only `message` keep working. An unchanged list writes
+nothing and records no audit event. A change emits `NODES_CHANGED` with `added` and `removed` as
 `node=allowed` or `node=denied` pairs. A parent change emits `TEAM_UPDATED` with `changed: ["parents"]`.
 
 **Token narrowing.** `POST /api/identity/principals/{name}/tokens` and `POST /api/identity/me/tokens` accept `nodes`. An empty
@@ -888,7 +892,7 @@ token on any instance produce exactly one new token.
 
 ### 13.5 API contract
 
-All paths are relative to the base path. Error bodies are `{"status": <int>, "message": "<text>"}`. Responses that set
+All paths are relative to the base path. Error bodies are `{"status": <int>, "message": "<text>"}`, plus `problems` for a refused node or parent list (7.6). Responses that set
 cookies set all three cookies of 13.4. The status codes are 200 for creation, like the token API; phase 1 already
 recorded that deviation.
 
@@ -900,7 +904,7 @@ recorded that deviation.
       "setupRequired": false }
 ```
 
-`setupRequired` is true while no user exists. Later providers (OIDC, LDAP) add entries with a `loginUrl`.
+`setupRequired` is true while no user exists, and the local provider is listed only once a user exists (14.3). Later providers (OIDC, LDAP) add entries with a `loginUrl`.
 
 `POST /api/auth/login` (public), body `{"provider": "local", "username": "...", "password": "..."}`
 

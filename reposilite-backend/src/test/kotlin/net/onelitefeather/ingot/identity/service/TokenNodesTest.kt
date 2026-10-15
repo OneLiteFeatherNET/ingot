@@ -81,6 +81,7 @@ internal class TokenNodesTest {
 
             assertThat(result.error.status).describedAs("status").isEqualTo(400)
             assertThat(result.error.message).describedAs("names the node").contains("billing")
+            assertThat(result.error.problems.orEmpty().map { it.node }).describedAs("problem of the row").containsExactly("ingot.admin.billing")
             assertThat(store.findToken("ci-bad")).describedAs("nothing stored").isNull()
         }
     }

@@ -132,6 +132,36 @@ internal class PermissionNodeAdministrationTest {
     }
 
     @Test
+    fun `answers each invalid node as a problem of its own row`() {
+        withService { service, _, _ ->
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+
+            val result = service.replaceTeamNodes(
+                "deployers",
+                listOf(NodeDto("ingot.repository.releases", true), NodeDto("ingot.admin.users", true), NodeDto("ingot.admin.billing", true)),
+                ifMatch = null,
+            )
+
+            val problems = result.error.problems.orEmpty()
+            assertThat(problems.map { it.node }).describedAs("one problem per invalid row, valid rows absent").containsExactly("ingot.repository.releases", "ingot.admin.billing")
+            assertThat(problems.single { it.node == "ingot.admin.billing" }.message)
+                .describedAs("the row message names the node")
+                .contains("billing")
+        }
+    }
+
+    @Test
+    fun `answers a node listed twice as a problem of that row`() {
+        withService { service, _, _ ->
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+
+            val result = service.replaceTeamNodes("deployers", listOf(NodeDto("*", true), NodeDto("*", false)), ifMatch = null)
+
+            assertThat(result.error.problems.orEmpty().map { it.node }).describedAs("the repeated row").containsExactly("*")
+        }
+    }
+
+    @Test
     fun `a refused node list stores nothing`() {
         withService { service, _, _ ->
             service.createTeam(CreateTeamRequest(name = "deployers"))
@@ -289,6 +319,19 @@ internal class PermissionNodeAdministrationTest {
             val result = service.replaceTeamParents("deployers", listOf("nobody"), ifMatch = null)
 
             assertThat(result.error.status).describedAs("unknown parent").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `answers each unknown parent as a problem of its own row`() {
+        withService { service, _, _ ->
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "release-managers"))
+
+            val result = service.replaceTeamParents("deployers", listOf("release-managers", "nobody", "ghost"), ifMatch = null)
+
+            assertThat(result.error.problems.orEmpty().map { it.node }).describedAs("one problem per unknown parent").containsExactly("nobody", "ghost")
+            assertThat(result.error.message).describedAs("joined text").contains("nobody").contains("ghost")
         }
     }
 

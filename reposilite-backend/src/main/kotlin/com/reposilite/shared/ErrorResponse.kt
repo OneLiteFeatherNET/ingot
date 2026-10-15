@@ -23,14 +23,29 @@ import io.javalin.http.HttpStatus.UNAUTHORIZED
 import panda.std.Result
 import panda.std.asError
 
-data class ErrorResponse(val status: Int, val message: String) {
+/**
+ * An error answer. [problems] is set only when a list was refused: one entry per problem, with the item it belongs to.
+ * It is additive, so clients that read `status` and `message` keep working, and it is left out of every other answer.
+ */
+data class ErrorResponse(
+    val status: Int,
+    val message: String,
+    val problems: List<ErrorProblem>? = null,
+) {
 
     constructor(code: HttpStatus, message: String) : this(code.code, message)
 
     fun updateMessage(transform: (String) -> String): ErrorResponse =
-        ErrorResponse(status, transform(message))
+        ErrorResponse(status, transform(message), problems)
 
 }
+
+/** One problem of a refused list. [node] names the item it belongs to, such as a permission node or a parent team. */
+data class ErrorProblem(val node: String, val message: String)
+
+/** A bad request whose list has [problems]. [message] is the joined text, which is what the answer has always carried. */
+fun <V> badRequestProblems(message: String, problems: List<ErrorProblem>): Result<V, ErrorResponse> =
+    ErrorResponse(BAD_REQUEST.code, message, problems).asError()
 
 fun <V> errorResponse(status: HttpStatus, message: String): Result<V, ErrorResponse> =
     Result.error(ErrorResponse(status.code, message))

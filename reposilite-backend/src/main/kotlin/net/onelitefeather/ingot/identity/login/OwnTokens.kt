@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.identity.login
 
+import com.reposilite.shared.ErrorProblem
 import net.onelitefeather.ingot.identity.api.NodeDto
 import net.onelitefeather.ingot.identity.evaluation.NodeRules
 import net.onelitefeather.ingot.identity.evaluation.ScopeRules
@@ -47,7 +48,8 @@ sealed interface OwnTokenOutcome {
 
     data object NameTaken : OwnTokenOutcome
 
-    data class Invalid(val problem: String) : OwnTokenOutcome
+    /** [problems] lists the invalid nodes one by one, when the request carried a node list. */
+    data class Invalid(val problem: String, val problems: List<ErrorProblem> = emptyList()) : OwnTokenOutcome
 
 }
 
@@ -81,7 +83,9 @@ class OwnTokens internal constructor(
         val nodes = request.nodes?.let { raw ->
             if (raw.isEmpty()) return OwnTokenOutcome.Invalid("Nodes cannot be empty, omit them for an unrestricted token")
             val rules = raw.map { NodeRule(it.node, it.allowed) }
-            NodeRules.problemsOf(rules).takeIf { it.isNotEmpty() }?.let { return OwnTokenOutcome.Invalid("Invalid permission nodes: ${it.joinToString("; ")}") }
+            NodeRules.problemsOf(rules).takeIf { it.isNotEmpty() }?.let { problems ->
+                return OwnTokenOutcome.Invalid("Invalid permission nodes: ${problems.joinToString("; ") { it.message }}", problems)
+            }
             rules
         }
         if (identities.findToken(name) != null) {

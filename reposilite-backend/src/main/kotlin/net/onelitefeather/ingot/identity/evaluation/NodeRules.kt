@@ -15,17 +15,18 @@
  */
 package net.onelitefeather.ingot.identity.evaluation
 
+import com.reposilite.shared.ErrorProblem
 import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.model.NodeRule
 
 /** Validation of node lists as the administration API reports it: every problem, in one list. */
 object NodeRules {
 
-    /** The problems of the list, one message each. Empty when every node is valid and no node is listed twice. */
-    fun problemsOf(nodes: List<NodeRule>): List<String> {
-        val problems = nodes.mapNotNull { NodePattern.problemOf(it.node) }.toMutableList()
+    /** The problems of the list, one per node. Empty when every node is valid and no node is listed twice. */
+    fun problemsOf(nodes: List<NodeRule>): List<ErrorProblem> {
+        val problems = nodes.mapNotNull { rule -> NodePattern.problemOf(rule.node)?.let { ErrorProblem(rule.node, it) } }.toMutableList()
         nodes.groupingBy { it.node }.eachCount().filterValues { it > 1 }.keys.sorted().forEach {
-            problems += "Node '$it' is listed twice"
+            problems += ErrorProblem(it, "Node '$it' is listed twice")
         }
         return problems
     }
