@@ -82,7 +82,7 @@ const {
   hasUnsavedChanges,
   changeCount,
   invalidDomains,
-  snapshots,
+  savedSettings,
   secretsHidden
 } = store
 
@@ -217,7 +217,7 @@ const downloadSettingsOf = (source) => {
   download(serializeSettings(settings), settingsFileName(clock()), 'application/json')
 }
 
-const downloadSaved = () => downloadSettingsOf(snapshots.value)
+const downloadSaved = () => downloadSettingsOf(savedSettings.value)
 const downloadDraft = () => {
   if (invalidDomains.value.length === 0) downloadSettingsOf(configurations.value)
 }
@@ -257,7 +257,7 @@ const factoryReset = () => store.factoryReset()
  */
 const reviewOpen = ref(false)
 const changes = computed(() => diffSettings(
-  settingsByDomain(domains.value, snapshots.value),
+  settingsByDomain(domains.value, savedSettings.value),
   settingsByDomain(domains.value, configurations.value),
   store.schemas.value
 ))
@@ -270,7 +270,7 @@ watch(() => changes.value.length, (count) => {
 
 const revertChange = (change) => {
   const domain = change.domain
-  store.setDomainData(domain, revertDraftChange(configurations.value[domain], snapshots.value[domain], change))
+  store.setDomainData(domain, revertDraftChange(configurations.value[domain], savedSettings.value[domain], change))
   store.validateDomain(domain)
 }
 

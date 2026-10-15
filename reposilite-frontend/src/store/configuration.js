@@ -140,6 +140,17 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   ))
   const hasUnsavedChanges = computed(() => hasChanges.value)
 
+  /*
+   * The one place a domain takes the state the server confirmed: the draft, the saved snapshot and the tag the
+   * write will carry move together, so a later save can never pair a tag with a state it does not describe.
+   */
+  const setSavedState = (domain, server, etag) => {
+    configurations.value[domain] = server
+    snapshots.value[domain] = cloneJson(server)
+    etags.value[domain] = etag
+    delete validity.value[domain]
+  }
+
   const fetchConfiguration = async () => {
     try {
       const { data: domainNames } = await client.value.settings.domains()
@@ -152,16 +163,9 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
       }))
 
       domains.value = domainNames
-      loaded.forEach(({ domain, schema, configuration, etag }) => {
-        schemas.value[domain] = schema
-        configurations.value[domain] = configuration
-        etags.value[domain] = etag
-      })
-      loaded.forEach(({ domain }) => {
-        const withDefaultValues = withDefaults(domain, cloneJson(configurations.value[domain]))
-        configurations.value[domain] = withDefaultValues
-        snapshots.value[domain] = cloneJson(withDefaultValues)
-        delete validity.value[domain]
+      loaded.forEach(({ domain, schema }) => { schemas.value[domain] = schema })
+      loaded.forEach(({ domain, configuration, etag }) => {
+        setSavedState(domain, withDefaults(domain, cloneJson(configuration)), etag)
       })
       if (!domainNames.includes(selectedDomain.value)) selectedDomain.value = domainNames[0]
       secretsHidden.value = serverHidesSecrets() === true
@@ -183,9 +187,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
 
   /* Makes the server state the draft and the snapshot of a domain, and keeps the tag it came with. */
   const adoptServerState = async (domain, server, etag) => {
-    configurations.value[domain] = server
-    snapshots.value[domain] = cloneJson(server)
-    etags.value[domain] = etag
+    setSavedState(domain, server, etag)
     // The dashboard shows its appearance from these settings, so the admin sees the result now.
     if (domain === 'frontend') {
       setAppearance(server.appearance)
@@ -420,13 +422,14 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   }
 
   /* What the server last confirmed for a domain, or undefined before it has loaded. Unsaved edits never show here. */
-  const savedConfiguration = (domain) => snapshots.value[domain]
+  const savedSettings = computed(() => snapshots.value)
+  const savedConfiguration = (domain) => savedSettings.value[domain]
 
   return {
     domains,
     schemas,
     configurations,
-    snapshots,
+    savedSettings,
     secretsHidden,
     selectedDomain,
     configurationValidator,

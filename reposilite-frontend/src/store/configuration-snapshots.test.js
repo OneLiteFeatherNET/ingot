@@ -60,7 +60,7 @@ describe('configuration store snapshots', () => {
 
     store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE' })
 
-    expect(store.snapshots.value.maven.repositories[0].visibility, 'the saved state is not the draft').toBe('PUBLIC')
+    expect(store.savedSettings.value.maven.repositories[0].visibility, 'the saved state is not the draft').toBe('PUBLIC')
     expect(store.configurations.value.maven.repositories[0].visibility).toBe('PRIVATE')
   })
 
@@ -72,7 +72,7 @@ describe('configuration store snapshots', () => {
 
     await store.saveConfiguration()
 
-    expect(store.snapshots.value.maven.repositories[0].visibility).toBe('PRIVATE')
+    expect(store.savedSettings.value.maven.repositories[0].visibility).toBe('PRIVATE')
   })
 
   it('reports that the server hides secrets, as the injected flag says', async () => {
@@ -105,7 +105,7 @@ describe('configuration store snapshots', () => {
 
     expect(store.configurations.value.maven.repositories[0].visibility).toBe('PRIVATE')
     expect(store.hasUnsavedChanges.value, 'the import is an unsaved change').toBe(true)
-    expect(store.snapshots.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect(store.savedSettings.value.maven.repositories[0].visibility).toBe('PUBLIC')
     expect(writes).toBe(0)
   })
 })
