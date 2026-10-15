@@ -61,6 +61,7 @@ import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.api.UpdatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.UpdateTeamRequest
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
+import net.onelitefeather.ingot.identity.login.BearerSecret
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -192,18 +193,26 @@ class IdentityFacade(
             if (names.isEmpty()) return badRequestError("Scopes cannot be empty, omit them for an unrestricted token")
             names.map { parseAction(it) ?: return badRequestError("Unknown scope '$it', supported: ${Action.entries.joinToString { action -> action.name }}") }.toSet()
         }
-        val secret = request.secret ?: AccessTokenSecurityProvider.generateSecret()
-        if (secret.isBlank()) return badRequestError("Secret cannot be blank")
+        val givenSecret = request.secret
+        if (givenSecret != null && givenSecret.isBlank()) return badRequestError("Secret cannot be blank")
 
+        // A generated secret carries the id of its row, so the row is written first and the hash after it. Until then the
+        // row verifies nothing, which is the safe state to be in if the request is interrupted. A secret the caller gives
+        // is stored as it comes, in one write.
         val created = store.createToken(
             principalId = principal.id,
             name = name,
-            secretHash = AccessTokenSecurityProvider.encodeSecret(secret),
+            secretHash = givenSecret?.let { AccessTokenSecurityProvider.encodeSecret(it) }.orEmpty(),
             scopes = scopes,
             expiresAt = request.expiresAt,
             createdAt = LocalDate.now(clock),
             description = request.description.orEmpty(),
         ) ?: return errorResponse(CONFLICT, "Token '$name' already exists")
+
+        val secret = givenSecret ?: BearerSecret.create(created.id)
+        if (givenSecret == null) {
+            store.saveToken(created.copy(secretHash = AccessTokenSecurityProvider.encodeSecret(secret)))
+        }
 
         extensions.emitEvent(AuditEvent(action = TOKEN_CREATED, actor = actor, details = mapOf("token" to name, "principal" to principal.name)))
         // The secret goes out in this response only. The audit record names the token and never its secret.

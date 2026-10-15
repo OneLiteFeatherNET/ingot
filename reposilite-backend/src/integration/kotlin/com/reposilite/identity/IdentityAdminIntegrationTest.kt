@@ -37,6 +37,7 @@ import kong.unirest.core.Unirest.get
 import kong.unirest.core.Unirest.patch
 import kong.unirest.core.Unirest.post
 import kong.unirest.core.Unirest.put
+import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -205,6 +206,22 @@ internal class IdentityAdminIntegrationTest : ReposiliteSpecification() {
         // then
         assertThat(response.status).isEqualTo(OK.code)
         assertThat(response.body.get("instanceRole").asBoolean()).isFalse
+    }
+
+    @Test
+    fun `a token created through the identity api without a secret authenticates as a bearer`() {
+        // given: a machine principal with a token that gets a generated secret
+        createPrincipal("bearer-bot")
+        val created = post(identity("/principals/bearer-bot/tokens"))
+            .basicAuth(admin.first, admin.second)
+            .body(mapOf("name" to "bearer-token"))
+            .asJacksonObject(CreatedTokenDto::class)
+
+        // when: the generated secret is sent as a bearer
+        val status = get("$base/api/auth/me").header("Authorization", "Bearer ${created.body.secret}").asString().status
+
+        // then: the bearer is accepted
+        assertThat(status).describedAs("status of a bearer with the generated secret").isEqualTo(OK.code)
     }
 
     @Test

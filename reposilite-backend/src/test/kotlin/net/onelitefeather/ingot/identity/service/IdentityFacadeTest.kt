@@ -30,6 +30,7 @@ import net.onelitefeather.ingot.identity.api.ReplaceGrantsRequest
 import net.onelitefeather.ingot.identity.api.UpdatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.UpdateTeamRequest
 import net.onelitefeather.ingot.identity.model.PrincipalKind
+import net.onelitefeather.ingot.identity.login.OwnTokens
 import net.onelitefeather.ingot.identity.model.TeamMemberSource
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
@@ -124,6 +125,25 @@ internal class IdentityFacadeTest {
             assertThat(service.listTokens("ci").orNull()?.map { it.name }).containsExactly("ci-token")
             assertThat(store.findToken("ci-token")?.secretHash).describedAs("stored secret").isNotEqualTo("s3cret-value")
             assertThat(AccessTokenSecurityProvider.matches(store.findToken("ci-token")!!.secretHash, "s3cret-value")).isTrue
+        }
+    }
+
+    @Test
+    fun `a token created without a secret gets a bearer secret that names the token`() {
+        withService { service, store ->
+            // given: a machine principal
+            service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci"))
+
+            // when: a token is created without a secret of its own
+            val created = service.createToken("ci", CreateTokenRequest(name = "ci-token"), AuditActor.SYSTEM_ACTOR).orNull()!!
+            val stored = store.findToken("ci-token")!!
+
+            // then: the secret has the form of the identity tokens, names the token by its id, and verifies against the hash
+            assertThat(created.secret).describedAs("secret of a generated token").startsWith("ingot_${stored.id}_")
+            assertThat(AccessTokenSecurityProvider.matches(stored.secretHash, created.secret)).describedAs("stored hash").isTrue
+            assertThat(OwnTokens(store, onTokenChanged = {}, audit = {}, clock = clock).nameOfBearer(created.secret))
+                .describedAs("the bearer lookup must find the token the secret names")
+                .isEqualTo("ci-token")
         }
     }
 
