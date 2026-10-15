@@ -150,10 +150,10 @@ The migration SHALL convert the scopes of each token into its node list: `READ` 
 `ingot.repository.*.deploy` and `ingot.repository.*.delete`; `DELETE` to `ingot.repository.*.delete`; `MANAGE_REPOSITORY` to
 `ingot.repository.*.manage`; `INSTANCE_ADMIN` to `ingot.admin.*`. A token without scopes SHALL keep no node list.
 
-#### Scenario: A write scope keeps deleting
+#### Scenario: A write scope does not delete
 
 - **WHEN** a token with the scope `WRITE` is migrated
-- **THEN** its node list allows `ingot.repository.*.deploy` and `ingot.repository.*.delete`
+- **THEN** its node list allows `ingot.repository.*.deploy` and does not allow `ingot.repository.*.delete`
 
 ### Requirement: Migration is guarded and verified
 

@@ -34,8 +34,8 @@ the repository part (or area), and the action. `*` alone has no literal part. So
 - `permission_node(id, subject_kind USER|MACHINE|TEAM, subject_id, node, allowed, created_at)`, unique on
   `(subject_kind, subject_id, node)`. Principal nodes of both kinds are the direct source, reported as `USER`.
 - `team_parent(team_id, parent_team_id)`, the inheritance edges. Unique pair, both ends cascade.
-- `principal_token.nodes` (text, JSON array of `{node, allowed}`, null = no narrowing). It is new. The existing `scopes`
-  column stays readable and is no longer written by the new code.
+- `principal_token.nodes` (text, JSON array of `{node, allowed}`, null = no narrowing). It is new and added with migration
+  002. The existing `scopes` column stays readable; new tokens write the node list of their scopes into both.
 - Tables are created on start like the others, and the schema change is additive.
 
 ## D3. Evaluation
@@ -128,8 +128,8 @@ fails.
 5. Token scopes become the token node list, one entry per scope, and `nodes` is written for every token whose `scopes` is not
    null:
    - `READ` to `ingot.repository.*.read`
-   - `WRITE` to `ingot.repository.*.deploy` and `ingot.repository.*.delete`. The old code deleted under the WRITE permission,
-     so a write-scoped token keeps deleting.
+   - `WRITE` to `ingot.repository.*.deploy` only. A write scope never covered DELETE, which has its own scope, so the
+     migration keeps the rights of the scopes exactly. Legacy route grants keep deleting, as LEGACY_WRITE includes DELETE.
    - `DELETE` to `ingot.repository.*.delete`
    - `MANAGE_REPOSITORY` to `ingot.repository.*.manage`
    - `INSTANCE_ADMIN` to `ingot.admin.*`
@@ -184,8 +184,7 @@ Contract details are in the identity model, section 7.6. In short:
 - Self-service tokens (`POST /api/identity/me/tokens`) and admin-created tokens (`POST /api/identity/principals/{name}/tokens`)
   accept `nodes`. An empty array is 400, like empty scopes. A node that fails D1 is 400 with the problem list.
 - `scopes` stays accepted. It is translated to nodes by the D7 mapping at the boundary, and the token stores the nodes. The
-  `scopes` in responses is derived: an action is listed when the token allows its wildcard node. It is `null` when the token
-  has no node list. Documented as approximate.
+  `scopes` in responses are the stored scopes, as before. A token created with nodes has no scopes.
 - The legacy `/api/tokens` endpoint keeps its output and has no node input. Its tokens narrow nothing.
 
 ## D12. Last usable instance admin
