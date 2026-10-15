@@ -18,6 +18,8 @@ package com.reposilite.maven.application
 
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.Min
+import com.reposilite.configuration.shared.api.Sensitive
+import com.reposilite.configuration.shared.api.SettingsKey
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.maven.StoragePolicy
 import com.reposilite.maven.RepositoryVisibility
@@ -45,6 +47,7 @@ data class MavenSettings(
 @Doc(title = "Maven Repository", description = "Settings for a given repository.")
 data class RepositorySettings(
     @Min(1)
+    @get:SettingsKey
     @get:Doc(title = "Id", description = "The id of this repository.")
     val id: String = "",
     @get:Doc(title = "Visibility", description = "The visibility of this repository.")
@@ -86,6 +89,7 @@ data class RepositorySettings(
 @Doc(title = "Mirrored Maven Repository", description = "Configuration of proxied host")
 data class MirroredRepositorySettings(
     @Min(1)
+    @get:SettingsKey
     @get:Doc(title = "Link", description = "Either the id of other local repository or the URL of a remote repository.")
     val reference: String = "",
     @get:Doc(title = "Store", description = "Ingot can store proxied artifacts locally to reduce response time and improve stability.")
@@ -105,6 +109,7 @@ data class MirroredRepositorySettings(
     // Results in converting 'authorization` property into 'allOf` component that is currently broken
     // ~ https://github.com/dzikoysk/reposilite/issues/1320
     val authorization: MirrorCredentials? = null,
+    @get:Sensitive
     @get:Doc(title = "HTTP Proxy", description = """
         Custom proxy configuration for HTTP/SOCKS client used by Ingot to connect to the mirrored repository. Examples: <br/>
         HTTP 127.0.0.1:1081 <br/>
@@ -125,6 +130,7 @@ data class MirrorCredentials(
     override val method: AuthenticationMethod = AuthenticationMethod.BASIC,
     @get:Doc(title = "Login", description = "Login or custom header name to use")
     override val login: String = "",
+    @get:Sensitive
     @get:Doc(title = "Password", description = "Raw password or header value used by HTTP client to connect to the given repository")
     override val password: String = ""
 ) : SharedSettings, RemoteCredentials

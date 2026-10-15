@@ -16,8 +16,13 @@
 
 package com.reposilite.configuration.shared.infrastructure
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
+import com.reposilite.configuration.shared.SettingsSecrets
 import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.configuration.shared.SharedSettingsReference
 import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.badRequestError
 import com.reposilite.web.api.ReposiliteRoute
@@ -30,10 +35,20 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
+import panda.std.Result
+import panda.std.asError
 import panda.std.asSuccess
+import panda.std.reactive.Reference
 import java.io.InputStream
 
-internal class SettingsEndpoints(private val sharedConfigurationFacade: SharedConfigurationFacade) : ReposiliteRoutes() {
+/**
+ * @param hideSecrets when enabled, the settings API replaces every secret with a placeholder on read and keeps the stored
+ * value when the placeholder is sent back, see [SettingsSecrets]
+ */
+internal class SettingsEndpoints(
+    private val sharedConfigurationFacade: SharedConfigurationFacade,
+    private val hideSecrets: Reference<Boolean>,
+) : ReposiliteRoutes() {
 
     @OpenApi(
         path = "/api/settings/domains",
@@ -91,10 +106,17 @@ internal class SettingsEndpoints(private val sharedConfigurationFacade: SharedCo
             OpenApiResponse(status = "404", description = "Returns 404 if non-existing configuration is requested")
         ]
     )
-    private val getConfiguration = ReposiliteRoute<SharedSettings>("/api/settings/domain/{name}", GET) {
+    private val getConfiguration = ReposiliteRoute<Any>("/api/settings/domain/{name}", GET) {
         managerOnly {
             response = sharedConfigurationFacade.getSettingsReference<SharedSettings>(requireParameter("name"))
-                ?.get()
+                ?.let { reference ->
+                    val settings = reference.get()
+                    if (hideSecrets.get()) {
+                        SettingsSecrets.mask(reference.type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings))
+                    } else {
+                        settings
+                    }
+                }
                 ?.asSuccess()
         }
     }
@@ -114,17 +136,52 @@ internal class SettingsEndpoints(private val sharedConfigurationFacade: SharedCo
             OpenApiResponse(status = "404", description = "Returns 404 if non-existing configuration is requested")
         ]
     )
-    private val updateConfiguration = ReposiliteRoute<SharedSettings>("/api/settings/domain/{name}", PUT) {
+    private val updateConfiguration = ReposiliteRoute<Any>("/api/settings/domain/{name}", PUT) {
         managerOnly {
             with(requireParameter("name")) {
                 response = ctx.body()
                     .takeIf { it.isNotEmpty() }
-                    ?.let { sharedConfigurationFacade.getSettingsReference<SharedSettings>(this)?.type }
-                    ?.let { sharedConfigurationFacade.updateSharedSettings(this, ctx.bodyAsClass(it)) }
-                    ?.mapErr { badRequest(it.toString()) }
+                    ?.let { sharedConfigurationFacade.getSettingsReference<SharedSettings>(this) }
+                    ?.let { reference ->
+                        if (hideSecrets.get()) {
+                            updateHidingSecrets(this, reference, ctx.body())
+                        } else {
+                            sharedConfigurationFacade.updateSharedSettings(this, ctx.bodyAsClass(reference.type))
+                                ?.mapErr { badRequest(it.toString()) }
+                        }
+                    }
                     ?: badRequestError("Body is empty")
             }
         }
+    }
+
+    /**
+     * Restores the placeholders of the incoming document from the stored settings before the update. A placeholder without a stored
+     * counterpart is rejected instead of being written as a literal value.
+     */
+    private fun updateHidingSecrets(
+        name: String,
+        reference: SharedSettingsReference<SharedSettings>,
+        body: String
+    ): Result<out Any, ErrorResponse> {
+        val incoming = runCatching { DEFAULT_OBJECT_MAPPER.readTree(body) }.getOrNull()
+            ?: return badRequest("Body is not a valid JSON document").asError()
+
+        val restored = SettingsSecrets.restore(
+            type = reference.type,
+            incoming = incoming,
+            stored = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
+        )
+        if (restored.isErr) {
+            return badRequest(restored.error).asError()
+        }
+
+        val settings = runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(restored.get(), reference.type) as SharedSettings }
+            .getOrElse { return badRequest("Body does not match the settings of '$name': ${it.message}").asError() }
+
+        return sharedConfigurationFacade.updateSharedSettings(name, settings)
+            ?.mapErr { badRequest(it.toString()) }
+            ?: badRequestError("Unknown settings domain '$name'")
     }
 
     override val routes = routes(listConfigurations, getConfiguration, updateConfiguration, getSchema)

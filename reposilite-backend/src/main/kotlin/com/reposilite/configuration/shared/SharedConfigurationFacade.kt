@@ -98,7 +98,7 @@ class SharedConfigurationFacade(
         failures.forEach { (ref, result) ->
             journalist.logger.error("Shared configuration | Cannot update '${ref.name}' due to ${result.error}")
             journalist.logger.debug("Shared configuration | Source:")
-            journalist.logger.debug(content)
+            journalist.logger.debug(SettingsSecrets.redactDocument(content, domainTypes()))
             failureFacade.throwException("Shared configuration", result.error)
         }
 
@@ -113,6 +113,11 @@ class SharedConfigurationFacade(
         getSettingsReference<S>(name)
             ?.update(body)
             ?.peek { sharedConfigurationProvider.updateConfiguration(renderConfiguration()) }
+
+    private fun domainTypes(): Map<String, Class<*>> =
+        getDomainNames()
+            .mapNotNull { name -> getSettingsReference<SharedSettings>(name)?.let { name to it.type } }
+            .toMap()
 
     private fun renderConfiguration(): String =
         getDomainNames()

@@ -40,4 +40,9 @@ data class FrontendSettingsResponse(
     val privacyPolicy: String,
     val icpLicense: String,
     val appearance: AppearanceSettings,
+    /**
+     * Whether the shared settings API replaces secrets with a placeholder, see the `hideSettingsSecrets` local configuration.
+     * A dashboard can use it to explain why a secret field shows a placeholder.
+     */
+    val secretsHidden: Boolean = false,
 )

@@ -164,6 +164,36 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
     }
 
     @Test
+    fun `should return stored secrets unchanged when hiding is not enabled`() {
+        // given: a stored LDAP search password and a permitted token
+        useFacade<SharedConfigurationFacade>()
+            .updateSharedSettings("authentication", AuthenticationSettings(ldap = LdapSettings(searchUserPassword = "ldap-secret")))
+        val (permittedName, permittedSecret) = useDefaultManagementToken()
+
+        // when: the domain is requested with the default local configuration
+        val response = Unirest.get("$base/api/settings/domain/authentication")
+            .basicAuth(permittedName, permittedSecret)
+            .asJacksonObject(AuthenticationSettings::class)
+
+        // then: the stored value is returned as it always was
+        assertSuccessResponse(OK, response) {
+            assertThat(it.ldap.searchUserPassword).isEqualTo("ldap-secret")
+        }
+    }
+
+    @Test
+    fun `should report that secrets are visible on the frontend settings by default`() {
+        // when: the public dashboard settings are requested
+        val response = Unirest.get("$base/api/frontend/settings").asString()
+
+        // then: the flag is present and false, so existing dashboards keep their behaviour
+        assertSuccessResponse(OK, response)
+        assertThat(ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(response.body).get("secretsHidden").asBoolean())
+            .describedAs("secretsHidden flag")
+            .isFalse
+    }
+
+    @Test
     fun `should reset configuration to default values`() {
         // given: a permitted token and a facade with custom configuration
         val (permittedName, permittedSecret) = useDefaultManagementToken()

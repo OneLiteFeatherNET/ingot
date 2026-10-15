@@ -145,6 +145,17 @@ class LocalConfiguration : Facade {
     @Description("# and you should always prioritize subdomain over this option.")
     val basePath = mutableReference("/")
 
+    /* Shared settings */
+
+    @Description("")
+    @Description("# Hide secret values in the shared settings API (/api/settings/domain/{name}).")
+    @Description("# When enabled, every non-empty secret is returned as ******** instead of its value: S3 access key, secret key")
+    @Description("# and endpoint, LDAP search user password, mirror passwords and mirror HTTP proxies. Empty secrets stay empty.")
+    @Description("# Sending ******** back keeps the stored value, so a read-modify-write round trip does not change it.")
+    @Description("# Secrets inside a repository or a mirror are matched by the repository id or the mirror reference.")
+    @Description("# Disabled by default, so existing API clients keep receiving the stored values.")
+    val hideSettingsSecrets = reference(false)
+
     /* Others */
 
     @Description("# Debug mode")

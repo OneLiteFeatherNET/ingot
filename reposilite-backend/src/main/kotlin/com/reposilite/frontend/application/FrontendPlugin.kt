@@ -92,7 +92,7 @@ internal class FrontendPlugin : ReposilitePlugin() {
 
                 // Registered whether or not this instance serves the dashboard itself: a
                 // detached dashboard needs it precisely when defaultFrontend is off.
-                routes.add(FrontendSettingsEndpoint(frontendFacade))
+                routes.add(FrontendSettingsEndpoint(frontendFacade, localConfiguration.hideSettingsSecrets))
 
                 if (localConfiguration.defaultFrontend.get()) {
                     // Resolved here and not in initialize: MavenPlugin depends on this plugin, so its facade exists only

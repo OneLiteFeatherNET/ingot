@@ -172,6 +172,24 @@ Shared configuration can be modified by access token with management permission 
 
 ![Dashboard / Configuration](/images/guides/web-interface-configuration.png)
 
+#### Hiding secrets in the settings API
+
+By default, the settings API (`/api/settings/domain/{name}`) returns stored secrets as they are: the S3 access key, secret key and endpoint,
+the LDAP search user password, mirror passwords and mirror HTTP proxies. Set `hideSettingsSecrets` in [local configuration](#local-configuration)
+to hide them:
+
+| Property | Environment variable | System property | Default |
+| :--: | :--: | :--: | :--: |
+| `hideSettingsSecrets` | `INGOT_LOCAL_HIDESETTINGSSECRETS` | `ingot.local.hideSettingsSecrets` | `false` |
+
+When enabled, every non-empty secret is returned as `********`, and an empty secret stays empty so it can be shown as not set.
+Sending `********` back keeps the stored value, so a read-modify-write round trip does not change it. Any other value, including an empty string,
+replaces the stored one. Secrets inside a repository or a mirror are matched by the repository id or the mirror reference, so reordering entries is safe.
+A new entry, or an entry whose id or reference was changed in the same request, must be sent with its real secret values: a placeholder
+for it is rejected with `400 Bad Request`. The public `/api/frontend/settings` response reports the switch as `secretsHidden`.
+
+The default stays `false`, so existing API clients keep receiving the stored values.
+
 #### Shared configuration as file
 
 Most users should use default configuration with shared configuration in database that offers support for hot-reloading and automatic updates, 

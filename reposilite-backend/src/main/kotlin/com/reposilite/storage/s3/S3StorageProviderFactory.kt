@@ -120,7 +120,7 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
             failureFacade.logger.error("  - Bucket: ${settings.bucketName}")
             failureFacade.logger.error("  - Key prefix: ${keyPrefix.ifEmpty { "<none>" }}")
             failureFacade.logger.error("  - Region: ${region.id()} (isGlobalRegion: ${region.isGlobalRegion})")
-            failureFacade.logger.error("  - Custom endpoint: $customEndpoint")
+            failureFacade.logger.error("  - Custom endpoint: ${maskSecret(settings.endpoint)}")
             failureFacade.logger.error("  - Path style access: $pathStyleAccessEnabled")
             failureFacade.logger.error("  - Access key: ${maskSecret(settings.accessKey)}")
             failureFacade.logger.error("  - Secret key: ${maskSecret(settings.secretKey)}")

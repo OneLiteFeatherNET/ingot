@@ -26,6 +26,7 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiResponse
 import panda.std.asSuccess
+import panda.std.reactive.Reference
 
 /**
  * Serves the dashboard's own presentation settings so it can run somewhere other than in
@@ -37,7 +38,10 @@ import panda.std.asSuccess
  * already. The authenticated /api/settings endpoints stay authenticated: those expose the
  * whole configuration, including the LDAP search password.
  */
-internal class FrontendSettingsEndpoint(private val frontendFacade: FrontendFacade) : ReposiliteRoutes() {
+internal class FrontendSettingsEndpoint(
+    private val frontendFacade: FrontendFacade,
+    private val secretsHidden: Reference<Boolean>,
+) : ReposiliteRoutes() {
 
     @OpenApi(
         tags = ["Frontend"],
@@ -54,7 +58,9 @@ internal class FrontendSettingsEndpoint(private val frontendFacade: FrontendFaca
         ]
     )
     private val findFrontendSettings = ReposiliteRoute<FrontendSettingsResponse>("/api/frontend/settings", GET) {
-        response = frontendFacade.createSettingsResponse().asSuccess()
+        response = frontendFacade.createSettingsResponse()
+            .copy(secretsHidden = secretsHidden.get())
+            .asSuccess()
     }
 
     override val routes = routes(findFrontendSettings)
