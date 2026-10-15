@@ -24,10 +24,22 @@ internal class InterleavingConfigurationRepository(
     private val delegate: ConfigurationRepository,
 ) : ConfigurationRepository by delegate {
 
+    private var scheduledCompareAndSave: (() -> Unit)? = null
     private var scheduledSaveIfAbsent: (() -> Unit)? = null
+
+    fun beforeNextCompareAndSave(action: () -> Unit) {
+        scheduledCompareAndSave = action
+    }
 
     fun beforeNextSaveIfAbsent(action: () -> Unit) {
         scheduledSaveIfAbsent = action
+    }
+
+    override fun compareAndSaveConfiguration(name: String, expectedRevision: Long?, configuration: String): Boolean {
+        val action = scheduledCompareAndSave
+        scheduledCompareAndSave = null
+        action?.invoke()
+        return delegate.compareAndSaveConfiguration(name, expectedRevision, configuration)
     }
 
     override fun saveConfigurationIfAbsent(name: String, configuration: String): Boolean {

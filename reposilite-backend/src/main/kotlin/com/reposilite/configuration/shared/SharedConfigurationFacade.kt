@@ -33,6 +33,7 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.toErrorResult
 import com.reposilite.status.FailureFacade
+import io.javalin.http.HttpStatus
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import io.javalin.openapi.JsonSchemaLoader
 import panda.std.Result
@@ -41,6 +42,7 @@ import panda.std.asError
 import panda.std.asSuccess
 import panda.std.ok
 import panda.std.reactive.MutableReference
+import java.util.ConcurrentModificationException
 import java.util.function.Supplier
 import kotlin.reflect.KClass
 
@@ -63,6 +65,13 @@ class SharedConfigurationFacade(
     private val extensions: Extensions = Extensions(journalist),
     private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
 ) : Facade {
+
+    private companion object {
+        /**
+         * Writes that lose a race against another instance are retried against the stored state this many times at most.
+         */
+        const val MAX_WRITE_ATTEMPTS = 10
+    }
 
     private val configHandlers = mutableMapOf<String, SharedSettingsReference<*>>()
 
@@ -151,12 +160,22 @@ class SharedConfigurationFacade(
      */
     fun <S : SharedSettings> updateSharedSettings(name: String, body: S, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Result<S, out Exception>? {
         synchronized(stateLock) {
-            refreshFromProvider()
-            val reference = getSettingsReference<S>(name) ?: return null
-            val before = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
-            return reference.update(body)
-                .peek { sharedConfigurationProvider.updateConfiguration(renderConfiguration()) }
-                .peek { recordSettingsChange(name, before, body, actor) }
+            repeat(MAX_WRITE_ATTEMPTS) {
+                val reference = getSettingsReference<S>(name) ?: return null
+                val revision = refreshFromProvider()
+                val before = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
+                val result = reference.update(body)
+                if (result.isErr) {
+                    return result
+                }
+
+                if (storeRendered(revision)) {
+                    recordSettingsChange(name, before, body, actor)
+                    return result
+                }
+            }
+
+            return ConcurrentModificationException("Settings domain '$name' kept changing while it was stored, try again").asError()
         }
     }
 
@@ -174,9 +193,13 @@ class SharedConfigurationFacade(
     }
 
     /**
-     * Replaces a domain with the settings returned by [transform], which receives the latest stored state. The precondition
-     * and the write run under one lock. When [ifMatch] is absent the write is unconditional, otherwise it is applied only
-     * while the entity tag still describes the stored state. The change is recorded for [actor] with the field names only.
+     * Replaces a domain with the settings returned by [transform], which receives the latest stored state and may run more
+     * than once. When [ifMatch] is absent the write is unconditional, otherwise it is applied only while the entity tag still
+     * describes the stored state. The change is recorded for [actor] with the field names only.
+     *
+     * The precondition is checked against the stored document, and the write is a compare-and-set on the revision of that
+     * document. A write that lost a race against another instance is therefore repeated against what that instance stored:
+     * a conditional write fails with 412 there, an unconditional one is applied on top of it.
      *
      * @return null when the domain does not exist, a 412 error when [ifMatch] no longer matches the stored state
      */
@@ -187,43 +210,67 @@ class SharedConfigurationFacade(
         transform: (current: S) -> Result<S, ErrorResponse>
     ): Result<SharedSettingsSnapshot<S>, ErrorResponse>? {
         synchronized(stateLock) {
-            val reference = getSettingsReference<S>(name) ?: return null
-            refreshFromProvider()
-            val current = reference.get()
-            if (!EntityTag.matches(ifMatch, current.entityTag())) {
-                return PRECONDITION_FAILED.toErrorResult("Settings domain '$name' has been changed since it was read, reload it and try again")
+            repeat(MAX_WRITE_ATTEMPTS) {
+                val reference = getSettingsReference<S>(name) ?: return null
+                val revision = refreshFromProvider()
+                val current = reference.get()
+                if (!EntityTag.matches(ifMatch, current.entityTag())) {
+                    return PRECONDITION_FAILED.toErrorResult("Settings domain '$name' has been changed since it was read, reload it and try again")
+                }
+
+                val transformed = transform(current)
+                if (transformed.isErr) {
+                    return transformed.map { it.snapshot() }
+                }
+
+                val applied = reference.update(transformed.get()).mapErr { badRequest(it.toString()) }
+                if (applied.isErr) {
+                    return applied.map { it.snapshot() }
+                }
+
+                if (storeRendered(revision)) {
+                    recordSettingsChange(name, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(current), applied.get(), actor)
+                    return applied.map { it.snapshot() }
+                }
             }
 
-            return transform(current).flatMap { settings ->
-                reference.update(settings)
-                    .mapErr { badRequest(it.toString()) }
-                    .peek { sharedConfigurationProvider.updateConfiguration(renderConfiguration()) }
-                    .peek { recordSettingsChange(name, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(current), settings, actor) }
-                    .map { it.snapshot() }
-            }
+            return HttpStatus.CONFLICT.toErrorResult("Settings domain '$name' kept changing while it was stored, reload it and try again")
         }
     }
 
     /**
      * A mutable provider, the remote database, can be written by another instance. Its stored document is read before a
      * precondition is evaluated or a document is rendered, so neither works from a copy that may be behind.
+     *
+     * @return the revision of the stored document, null when the provider has no shared revisions
      */
-    private fun refreshFromProvider() {
+    private fun refreshFromProvider(): Long? {
         if (!sharedConfigurationProvider.isMutable()) {
-            return
+            return null
         }
 
-        val stored = runCatching { DEFAULT_OBJECT_MAPPER.readTree(sharedConfigurationProvider.fetchConfiguration()) }.getOrNull()
-            ?: return
-
-        getDomainNames().forEach { name ->
-            val node = stored.get(name) ?: return@forEach
-            val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
-            runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(node, reference.type) }
-                .onSuccess { reference.update(it) }
-                .onFailure { journalist.logger.warn("Shared configuration | Cannot refresh '$name' from ${sharedConfigurationProvider.name()}: ${it.message}") }
+        val stored = sharedConfigurationProvider.fetchVersionedConfiguration()
+        val document = runCatching { DEFAULT_OBJECT_MAPPER.readTree(stored.content) }.getOrNull()
+        if (document != null) {
+            getDomainNames().forEach { name ->
+                val node = document.get(name) ?: return@forEach
+                val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
+                runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(node, reference.type) }
+                    .onSuccess { reference.update(it) }
+                    .onFailure { journalist.logger.warn("Shared configuration | Cannot refresh '$name' from ${sharedConfigurationProvider.name()}: ${it.message}") }
+            }
         }
+
+        return stored.revision
     }
+
+    /**
+     * Stores the rendered configuration if the stored document still has [expectedRevision], see [refreshFromProvider].
+     *
+     * @return false when another instance has stored a newer document in the meantime
+     */
+    private fun storeRendered(expectedRevision: Long?): Boolean =
+        sharedConfigurationProvider.compareAndUpdateConfiguration(renderConfiguration(), expectedRevision)
 
     private fun recordSettingsChange(name: String, before: JsonNode, body: SharedSettings, actor: AuditActor) {
         val fields = changedSettingPaths(before, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(body))

@@ -32,6 +32,12 @@ class ConfigurationFacade internal constructor(
     fun findConfigurationUpdateDate(name: String): Instant? =
         configurationRepository.findConfigurationUpdateDate(name)
 
+    fun findVersionedConfiguration(name: String): VersionedConfiguration? =
+        configurationRepository.findVersionedConfiguration(name)
+
+    fun compareAndSaveConfiguration(name: String, expectedRevision: Long?, configuration: String): Boolean =
+        configurationRepository.compareAndSaveConfiguration(name, expectedRevision, configuration)
+
     /**
      * Returns the configuration stored under [name], storing the result of [create] first when there is none. Concurrent
      * callers agree on one value: whoever stores first wins and everybody else reads that value back.
