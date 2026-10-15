@@ -20,8 +20,9 @@
  * permission. Route names are the contract the links and the other views build on.
  *
  * The section segments (dashboard, tokens, console, settings) are top level names that a
- * repository could also use. Inside the dashboard the browser still reaches such a repository
- * under /browse/<name>; a full page load of /<name> is answered by the server, not the dashboard.
+ * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
+ * page load of /<name> returns the dashboard document, and a repository with such a name is
+ * reached under /browse/<name> from inside the dashboard.
  */
 
 const ROUTES = [
