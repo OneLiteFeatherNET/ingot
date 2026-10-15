@@ -83,6 +83,13 @@ const uniqueById = (list) => {
   return [...byId.values()]
 }
 
+// A row with a description or tags has more than one line, and its avatar and trailing marks are
+// then aligned to the top of the text, as the MD3 list spec sets it, with 16px of padding.
+const isMultiLine = (repository) => repository.description !== '' || repository.tags.length > 0
+const rowLayout = (repository) => (isMultiLine(repository)
+  ? 'items-start py-4'
+  : 'items-center py-3')
+
 /*
  * Asks for the list once the session is known, and again when it changes, because a sign in can show
  * more repositories. A response that arrives after a newer request has started is dropped.
@@ -283,7 +290,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
             data-test="repository-row"
             :to="browseLocation(repository.id)"
             :aria-label="`Browse ${repository.id}`"
-            class="md-state-layer md-focus-ring-inset relative flex min-w-0 items-center gap-4 px-4 py-3 text-on-surface no-underline"
+            :class="['md-state-layer md-focus-ring-inset relative flex min-w-0 gap-4 px-4 text-on-surface no-underline', rowLayout(repository)]"
           >
             <span
               class="flex size-10 shrink-0 items-center justify-center rounded-corner-full bg-secondary-container text-on-secondary-container"
@@ -324,7 +331,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
             <span
               v-if="badgeOf(repository)"
               data-test="visibility"
-              class="inline-flex shrink-0 items-center gap-1 md-label-large text-on-surface-variant"
+              class="inline-flex shrink-0 self-center items-center gap-1 md-label-large text-on-surface-variant"
             >
               <svg
                 class="size-[18px]"
@@ -338,7 +345,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
               {{ badgeOf(repository).label }}
             </span>
             <svg
-              class="size-6 shrink-0 text-on-surface-variant"
+              class="size-6 shrink-0 self-center text-on-surface-variant"
               viewBox="0 0 24 24"
               fill="currentColor"
               aria-hidden="true"

@@ -199,6 +199,23 @@ describe('RepositoryOverview layout', () => {
     expect(row.classes()).toEqual(expect.arrayContaining(['overflow-x-auto', 'pt-2', 'pb-2', '-mt-2']))
   })
 
+  it('centres the avatar and the text of a one-line row vertically', async () => {
+    await mountAt('/')
+
+    const row = rowFor('archive')
+    expect(row.classes()).toContain('items-center')
+    expect(row.classes()).not.toContain('items-start')
+    expect(row.classes()).toContain('py-3')
+  })
+
+  it('top-aligns a multi-line row, with the avatar at the top of the text and 16px of padding', async () => {
+    await mountAt('/')
+
+    const row = rowFor('releases')
+    expect(row.classes()).toContain('items-start')
+    expect(row.classes()).not.toContain('items-center')
+    expect(row.classes()).toContain('py-4')
+  })
 })
 
 describe('RepositoryOverview search', () => {
