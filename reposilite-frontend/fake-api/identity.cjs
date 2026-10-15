@@ -500,7 +500,7 @@ router.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin)
     res.setHeader("Access-Control-Allow-Credentials", "true")
     res.setHeader("Access-Control-Allow-Headers", req.get("Access-Control-Request-Headers") || "Content-Type, X-CSRF-Token, If-Match, Authorization")
-    res.setHeader("Access-Control-Expose-Headers", "ETag")
+    res.setHeader("Access-Control-Expose-Headers", "ETag, Retry-After")
     res.setHeader("Vary", "Origin")
   }
   if (req.method === "OPTIONS") return res.status(204).end()
