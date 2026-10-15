@@ -518,6 +518,92 @@ role, appear. Team grants apply when `repository` is null or equal. `instanceAdm
 have `via` entries of source `INSTANCE_ADMIN`. The `effective` list is the union of the
 actions of the applying grants. The endpoint explains; it does not enforce anything.
 
+### 7.6 Permission nodes (phase 2b)
+
+Decision record: ADR-INGT-0003 (accepted). Teams and principals carry lists of permission nodes, each allowed or denied.
+Teams inherit from parent teams. A token narrows its owner through its own node list and never widens it. The repository roles
+and the instance role remain as predefined bundles for the user interface, and as the input of the migration. The change is
+described in `openspec/changes/add-permission-nodes`. This section is the contract as implemented; where it differs from the
+draft of the change, it wins.
+
+**Nodes.** A node is `ingot.repository.<repository>.<action>` with the action `read`, `deploy`, `delete` or `manage`;
+`ingot.admin.<area>` with the area `settings`, `users`, `teams`, `tokens`, `maintenance`, `audit`, `console` or `dashboard`;
+or `*`, which allows everything. `ingot.admin.*` is the former instance admin. A wildcard is allowed only as a whole segment
+(`ingot.repository.*.read`, `ingot.repository.releases.*`). The repository part is everything between the prefix and the final
+action segment, so repository names may contain dots. A denied node is stored with `allowed: false` and displayed as
+`-node`. A node that does not follow this grammar is refused with 400, and the answer lists every problem.
+
+**Evaluation.** A requested node is decided by the sources in order: the principal's own nodes; the nodes and the path or
+legacy grants of its teams; the nodes of inherited teams, nearest parent first, up to eight levels. Within the first source
+that holds a matching node, the most specific match decides, counted by its literal parts (`ingot.repository.releases.read`
+beats `ingot.repository.*.read`), and a denial wins a tie. No matching node denies. A token with its own node list is then
+applied as an intersection: the owner's answer and the token's answer must both allow. Disabled principals are denied
+everything. Instance admin means `ingot.admin.*` is allowed, token narrowing included.
+
+**Path requests.** A file request maps its action to a repository node: READ to `read`, WRITE to `deploy`, DELETE to `delete`,
+and manage operations to `manage`. Path-scoped grants and legacy route grants take part at their team's level, with their
+existing matching rules. Legacy routes keep the exact old prefix matching, so migrated tokens keep their rights. An instance
+admin passes every path check that its token allows.
+
+**Storage.** `permission_node(id, subject_kind USER|MACHINE|TEAM, subject_id, node, allowed, created_at)`, unique on subject and
+node. `team_parent(team_id, parent_team_id)`. `principal_token.nodes`, a JSON array of `{node, allowed}`, null when the token
+does not narrow. `team_grant` keeps path-scoped and legacy grants only.
+
+**Migration `002-permission-nodes`.** Runs once, in one transaction, after `001-access-tokens`, guarded by its marker row.
+Repository-wide team grants become nodes: READ gives `read`; DEPLOY gives `read` and `deploy`; MAINTAIN gives `read`, `deploy`
+and `delete`; ADMIN gives all four, on the repository or on `*`. Instance roles become the node `ingot.admin.*` of their subject.
+Token scopes become the token's node list: READ gives `ingot.repository.*.read`, WRITE gives `ingot.repository.*.deploy`,
+DELETE gives `ingot.repository.*.delete`, MANAGE_REPOSITORY gives `ingot.repository.*.manage`, and INSTANCE_ADMIN gives
+`ingot.admin.*`. The scopes stay in their column. A repository name that cannot be written as a node keeps its grant. A failed
+check rolls back the whole migration, marker included.
+
+**Endpoints.** All answers are JSON. Mutations take `If-Match` with the entity tag of the subject, and answer 412 on a
+mismatch. Manager areas: `users` for principal endpoints, `teams` for team endpoints, `tokens` for principal token
+endpoints, and the full admin `ingot.admin.*` for the others.
+
+| Method | Path | Body and result |
+|--------|------|-----------------|
+| GET, PUT | `/api/identity/principals/{name}/nodes` | `{ nodes: [{ node, allowed }] }`; PUT replaces the whole list |
+| GET, PUT | `/api/identity/teams/{name}/nodes` | `{ nodes: [{ node, allowed }] }`; PUT replaces the whole list |
+| GET, PUT | `/api/identity/teams/{name}/parents` | `{ parents: [teamName] }`; a cycle or a depth above 8 is 409, an unknown or private team is 400 |
+| GET | `/api/identity/nodes/catalog?prefix=` | `{ nodes: [{ node, description, kind }] }`, kind `STATIC`, `REPOSITORY` or `WILDCARD` |
+| GET | `/api/identity/nodes/templates` | `{ templates: [{ id, label, nodes }] }`, ids `read`, `deploy`, `maintain`, `admin`, `instance-admin` |
+| GET | `/api/identity/check?principal=&node=&token=` | `{ principal, node, allowed, decision: { source, subject, node, allowed, depth }, trace: [{ source, subject, node, allowed, matched, reason, depth }] }` |
+| PUT | `/api/identity/teams/{name}/grants` | path-scoped grants only; a repository-wide grant is 400 with a message that names the node endpoint |
+
+The check needs a concrete node: a wildcard is 400. Instance admins may check any principal. Any other caller may check its own
+principal, and gets 403 for another one. `source` is one of `USER`, `TEAM`, `INHERITED_TEAM`, `LEGACY`, `TOKEN` or `DEFAULT`.
+The trace lists every candidate of every level consulted, with `matched` and the reason.
+
+Node lists are validated as a whole. Each problem is listed in the 400 message, and a node listed twice is a problem too. An
+unchanged list writes nothing and records no audit event. A change emits `NODES_CHANGED` with `added` and `removed` as
+`node=allowed` or `node=denied` pairs. A parent change emits `TEAM_UPDATED` with `changed: ["parents"]`.
+
+**Token narrowing.** `POST /api/identity/principals/{name}/tokens` and `POST /api/identity/me/tokens` accept `nodes`. An empty
+list is 400. `scopes` is still accepted and becomes the node list of the token. Token responses (`TokenDto`) carry the list, or null. Token node lists are set at creation only; changing them later is open point O-22.
+
+**Last usable instance admin.** A usable admin is an enabled principal with an unexpired token whose node list is null or
+allows `ingot.admin.*`, and which is an admin through its own nodes or its teams' nodes. A change that would leave no usable
+admin is refused with 409, as in section 7.4.
+
+**Changed responses (additive).** Principal and team list rows carry `nodeCount` and `isAdmin`. Principal and team details carry
+`nodes`, `nodeCount` and `isAdmin`; team details carry `parents`. Token responses carry `nodes`. `/api/auth/me` carries `nodes`:
+the node patterns the owner may use, token narrowing included, for gating views. The patterns are for the interface; the
+exact answer for one node is the check endpoint. `instanceAdmin`, `instanceRole` and `grants` keep their values for one
+release and are deprecated. `instanceAdmin` is the direct or team-held `ingot.admin.*` node.
+
+**Deviations and open points.**
+
+- O-22: token node lists are set at creation only. An endpoint to change them is not part of this phase.
+- Path-scoped and legacy grants take part at their team's level, as candidates with the specificity of the requested
+  repository node. A denial from a closer source, such as the principal's own nodes, overrides them. At the same team level an
+  exact denial wins the tie.
+- The check and the list of node patterns describe nodes, not files. File access stays a path check.
+- A downgrade to a build before this phase does not see node rights, since the nodes and the token node lists are not read by
+  it. Path grants and legacy grants remain readable. The upgrade notes must say so; the page is not written yet.
+- The login providers must switch their admin mapping from the instance role to the node `ingot.admin.*` on the team, and must
+  not write nodes, parents or grants through team synchronisation (see the change's design document).
+
 ## 8. Behaviour details
 
 ### 8.1 Disabled principals
