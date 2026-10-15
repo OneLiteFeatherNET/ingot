@@ -328,6 +328,26 @@ describe('client identity namespace', () => {
     })
   })
 
+  describe('check', () => {
+    it('asks the check endpoint with the encoded principal and node', () => {
+      identity.check({ principal: 'a b', node: 'ingot.admin.users' })
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/check\?principal=a%20b&node=ingot\.admin\.users$/),
+        expect.anything()
+      )
+    })
+
+    it('adds the token only when one is given', () => {
+      identity.check({ principal: 'ci-bot', node: '*', token: 'deploy' })
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/check\?principal=ci-bot&node=\*&token=deploy$/),
+        expect.anything()
+      )
+    })
+  })
+
   describe('repositoryAccess', () => {
     it('reads who has access to a repository by its encoded name', () => {
       identity.repositoryAccess('my repo')

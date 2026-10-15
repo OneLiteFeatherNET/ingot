@@ -21,20 +21,21 @@ import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
 import SsoProvidersPanel from './SsoProvidersPanel.vue'
 import LdapPanel from './LdapPanel.vue'
+import CheckPermissionView from './check/CheckPermissionView.vue'
 
 /*
  * The Access section for instance admins: users, machine accounts and teams, as tabs. The tab
  * and the open principal come from the address, and a tab change goes through the router.
  *
  * Props:
- *   tab   users, machines, teams, sso or ldap
+ *   tab   users, machines, teams, sso, ldap or check (the permission check)
  *   name  the open user, machine account or team, if any
  */
 defineProps({
   tab: {
     type: String,
     default: 'users',
-    validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap'].includes(value)
+    validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap', 'check'].includes(value)
   },
   name: {
     type: String,
@@ -49,7 +50,8 @@ const TABS = [
   { key: 'machines', label: 'Machine accounts' },
   { key: 'teams', label: 'Teams' },
   { key: 'sso', label: 'SSO' },
-  { key: 'ldap', label: 'LDAP' }
+  { key: 'ldap', label: 'LDAP' },
+  { key: 'check', label: 'Check' }
 ]
 
 const select = (key) => router.push({ name: `access-${key}` })
@@ -97,9 +99,10 @@ const select = (key) => router.push({ name: `access-${key}` })
         v-else-if="tab === 'ldap'"
       />
       <TeamsPanel
-        v-else
+        v-else-if="tab === 'teams'"
         :name="name"
       />
+      <CheckPermissionView v-else />
     </div>
   </section>
 </template>

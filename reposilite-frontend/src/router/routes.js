@@ -40,6 +40,8 @@ const ROUTES = [
   { name: 'access-user', path: '/access/users/:name', meta: ACCESS },
   { name: 'access-machines', path: '/access/machines', meta: ACCESS },
   { name: 'access-machine', path: '/access/machines/:name', meta: ACCESS },
+  // The permission check: `principal`, `node` and `token` come from the query, so a check can be linked.
+  { name: 'access-check', path: '/access/check', meta: ACCESS },
   { name: 'access-teams', path: '/access/teams', meta: ACCESS },
   { name: 'access-team', path: '/access/teams/:name', meta: ACCESS },
   // The sign in providers of the instance. Each is a page of its own, so a deep link opens its tab.

@@ -78,7 +78,7 @@ describe('AccessView', () => {
   it('offers users, machine accounts and teams as tabs', async () => {
     await mountView({ tab: 'users' })
 
-    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP'])
+    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP', 'Check'])
   })
 
   it('opens the single sign on page from the SSO tab and shows its panel', async () => {
@@ -112,6 +112,27 @@ describe('AccessView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/access/sso')
+  })
+
+  it('moves to the check route from the Check tab', async () => {
+    await mountView({ tab: 'users' })
+
+    await tabs()[5].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('access-check')
+  })
+
+  it('shows the permission check on the check tab', async () => {
+    await mountView({ tab: 'check' }, '/access/check')
+
+    expect(wrapper.find('[data-test="check-form"]').exists()).toBe(true)
+  })
+
+  it('lists the principals of every kind for the check picker', async () => {
+    await mountView({ tab: 'check' }, '/access/check')
+
+    expect(principals.list, 'the check tab asks for all kinds').toHaveBeenCalledWith()
   })
 
   it('marks the tab of the address as selected', async () => {

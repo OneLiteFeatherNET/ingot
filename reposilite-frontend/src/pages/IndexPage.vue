@@ -214,6 +214,7 @@ const ACCESS_TABS = {
   'access-user': 'users',
   'access-machines': 'machines',
   'access-machine': 'machines',
+  'access-check': 'check',
   'access-teams': 'teams',
   'access-team': 'teams',
   'access-sso': 'sso',

@@ -421,6 +421,14 @@ describe('IndexPage view state from the URL', () => {
     expect(access.props('name')).toBeUndefined()
   })
 
+  it('hands the access view the check tab for the check address', async () => {
+    const { wrapper } = await mountAt('/access/check?principal=alice', { manager: true })
+
+    const access = wrapper.findComponent({ name: 'AccessStub' })
+
+    expect(access.props('tab')).toBe('check')
+  })
+
   it('follows the old tokens address to the machine accounts', async () => {
     const { wrapper, router } = await mountAt('/tokens/ci-bot', { manager: true })
 

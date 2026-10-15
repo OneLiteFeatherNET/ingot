@@ -95,9 +95,10 @@ describe('PrincipalDetail', () => {
   let legacyGet
   let nodes
   let teams
+  let router
 
   const mountDetail = async (props) => {
-    const router = await makeRouter()
+    router = await makeRouter()
     wrapper = mount(PrincipalDetail, { props, attachTo: document.body, global: { plugins: [router] } })
     await flushPromises()
   }
@@ -261,6 +262,30 @@ describe('PrincipalDetail', () => {
       await wrapper.find('[data-test="back"]').trigger('click')
 
       expect(wrapper.emitted('back')).toHaveLength(1)
+    })
+  })
+
+  describe('the check permission action', () => {
+    it('links a user to the permission check with the principal in the query', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.find('[data-test="check-permission"]').attributes('href')).toBe('/access/check?principal=alice')
+    })
+
+    it('navigates to the permission check for a machine account', async () => {
+      await mountDetail({ name: 'ci-bot', kind: 'MACHINE' })
+
+      await wrapper.find('[data-test="check-permission"]').trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.name).toBe('access-check')
+      expect(router.currentRoute.value.query).toEqual({ principal: 'ci-bot' })
+    })
+
+    it('is not a filled button', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.find('[data-test="check-permission"]').attributes('data-variant')).toBe('outlined')
     })
   })
 

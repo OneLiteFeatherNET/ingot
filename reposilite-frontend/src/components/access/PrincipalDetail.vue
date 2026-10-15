@@ -186,13 +186,29 @@ const admin = computed(() => isInstanceAdmin(detail.value))
               </TokenTag>
             </div>
           </div>
-          <PrincipalActionsMenu
-            :principal="detail"
-            :instance-admin="admin"
-            :api="api"
-            @changed="changed()"
-            @deleted="emit('deleted', detail)"
-          />
+          <div class="flex shrink-0 items-center gap-2">
+            <router-link
+              v-slot="{ href, navigate }"
+              :to="{ name: 'access-check', query: { principal: detail.name } }"
+              custom
+            >
+              <MdButton
+                variant="outlined"
+                :href="href"
+                data-test="check-permission"
+                @click="navigate"
+              >
+                Check permission
+              </MdButton>
+            </router-link>
+            <PrincipalActionsMenu
+              :principal="detail"
+              :instance-admin="admin"
+              :api="api"
+              @changed="changed()"
+              @deleted="emit('deleted', detail)"
+            />
+          </div>
         </div>
 
         <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 md-body-medium">

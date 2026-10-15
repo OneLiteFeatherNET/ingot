@@ -345,6 +345,13 @@ const createClient = (defaultName, defaultSecret) => {
           return get("/api/identity/nodes/templates")
         },
       },
+      // Asks whether a principal may use a node, optionally narrowed by one of its tokens. The answer
+      // is { allowed, decision, trace }: the decision and every step that led to it.
+      check({ principal, node, token }) {
+        const query = [`principal=${encodeURIComponent(principal)}`, `node=${encodeURIComponent(node)}`]
+        if (token) query.push(`token=${encodeURIComponent(token)}`)
+        return get(`/api/identity/check?${query.join("&")}`)
+      },
       // Who can reach a repository and through which team: { repository, visibility, entries }.
       repositoryAccess(repository) {
         return get(`/api/identity/repositories/${encodeURIComponent(repository)}/access`)
