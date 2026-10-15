@@ -32,13 +32,53 @@ vi.mock('../../store/session', () => ({
   })
 }))
 
+// The router is not part of this test, so the link component is replaced by one that hands its
+// slot a fixed address and a recorder for the navigation.
+const navigation = vi.hoisted(() => ({ navigate: null, target: null }))
+
+const RouterLinkStub = {
+  props: ['to'],
+  render() {
+    navigation.target = this.to
+    return this.$slots.default({ href: '/account', navigate: (...args) => navigation.navigate(...args) })
+  }
+}
+
+const mountPanel = () => mount(MenuPanel, { global: { stubs: { RouterLink: RouterLinkStub } } })
+
 describe('MenuPanel', () => {
   beforeEach(() => {
     session.logout = vi.fn()
+    navigation.navigate = vi.fn(event => event.preventDefault())
+    navigation.target = null
+  })
+
+  it('links to the account page by its route name', () => {
+    const wrapper = mountPanel()
+
+    const link = wrapper.findAll('a').find(anchor => anchor.text() === 'My account')
+
+    expect(link, 'the account page is one click from the header').toBeDefined()
+    expect(link.attributes('href')).toBe('/account')
+    expect(navigation.target).toEqual({ name: 'account' })
+  })
+
+  it('gives the compact account control an accessible name', () => {
+    const wrapper = mountPanel()
+
+    expect(wrapper.find('a[aria-label="My account"]').exists(), 'the icon-only link on small screens needs a name').toBe(true)
+  })
+
+  it('navigates through the router when the account link is pressed', async () => {
+    const wrapper = mountPanel()
+
+    await wrapper.findAll('a').find(anchor => anchor.text() === 'My account').trigger('click')
+
+    expect(navigation.navigate).toHaveBeenCalledTimes(1)
   })
 
   it('offers logout as a real button with its name as text', () => {
-    const wrapper = mount(MenuPanel)
+    const wrapper = mountPanel()
 
     const logout = wrapper.findAll('button').find(button => button.text() === 'Logout')
 
@@ -47,7 +87,7 @@ describe('MenuPanel', () => {
   })
 
   it('gives the compact logout control an accessible name', () => {
-    const wrapper = mount(MenuPanel)
+    const wrapper = mountPanel()
 
     const compact = wrapper.find('button[aria-label="Logout"]')
 
@@ -56,7 +96,7 @@ describe('MenuPanel', () => {
   })
 
   it('signs the user out when the logout button is pressed', async () => {
-    const wrapper = mount(MenuPanel)
+    const wrapper = mountPanel()
 
     await wrapper.findAll('button').find(button => button.text() === 'Logout').trigger('click')
 

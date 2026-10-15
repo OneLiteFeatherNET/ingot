@@ -41,8 +41,11 @@ const MORE_KEY = 'more'
 const visibleSections = (isManager) =>
   SECTIONS.filter(section => !section.manager || isManager)
 
+// Pages that are not in the navigation but have a name in the document title.
+const EXTRA_LABELS = { account: 'My account' }
+
 const sectionLabel = (key) =>
-  SECTIONS.find(section => section.key === key)?.label ?? key
+  SECTIONS.find(section => section.key === key)?.label ?? EXTRA_LABELS[key] ?? key
 
 /** The sections that sit under "More" in the bottom bar. */
 const isOverflow = (key) =>

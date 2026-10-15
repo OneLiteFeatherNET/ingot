@@ -19,7 +19,7 @@
  * read from `meta.section`, and `meta.manager` marks the routes that need the manager
  * permission. Route names are the contract the links and the other views build on.
  *
- * The section segments (dashboard, tokens, console, maintenance, audit, settings) are top level names that a
+ * The section segments (account, dashboard, tokens, console, maintenance, audit, settings) are top level names that a
  * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.
@@ -28,6 +28,8 @@
 const ROUTES = [
   { name: 'overview', path: '/', meta: { section: 'overview' } },
   { name: 'browse', path: '/browse/:qualifier(.*)*', meta: { section: 'overview' } },
+  // Open to every signed in principal. `signedIn` shows the sign in prompt to a visitor.
+  { name: 'account', path: '/account', meta: { section: 'account', signedIn: true } },
   { name: 'dashboard', path: '/dashboard', meta: { section: 'dashboard', manager: true } },
   { name: 'tokens', path: '/tokens', meta: { section: 'tokens', manager: true } },
   // `new` is reserved: it opens the create form rather than a token of that name.

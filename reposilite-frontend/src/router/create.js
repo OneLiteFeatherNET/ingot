@@ -16,7 +16,7 @@
 
 import { createRouter } from 'vue-router'
 import { ROUTES } from './routes'
-import { createManagerGuard } from './guard'
+import { createManagerGuard, createPasswordChangeGuard } from './guard'
 import { pageTitle } from './title'
 
 /*
@@ -36,6 +36,7 @@ const createAppRouter = ({
   whenSessionKnown = () => Promise.resolve(),
   isManager = () => false,
   isLogged = () => false,
+  mustChangePassword = () => false,
   notify = () => {}
 }) => {
   const router = createRouter({
@@ -50,6 +51,7 @@ const createAppRouter = ({
     return legacy(to.hash) ?? true
   })
 
+  router.beforeEach(createPasswordChangeGuard({ mustChangePassword }))
   router.beforeEach(createManagerGuard({ whenSessionKnown, isManager, isLogged, notify }))
 
   router.afterEach((to) => {

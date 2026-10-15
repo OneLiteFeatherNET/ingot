@@ -24,6 +24,7 @@ import MoonIcon from '../icons/MoonIcon.vue'
 import SunIcon from '../icons/SunIcon.vue'
 import ContrastIcon from '../icons/ContrastIcon.vue'
 import LogoutIcon from '../icons/LogoutIcon.vue'
+import AccountIcon from '../icons/AccountIcon.vue'
 import useTheme from "../../store/theme"
 
 const { theme, changeTheme } = useTheme()
@@ -63,6 +64,30 @@ const themeLabel = computed(() => ({
       <span class="font-medium text-on-surface">{{ signedInName }}</span>
     </span>
     <LoginModal v-if="!isLogged" />
+    <!-- A real link to the account page, so it opens in a new tab as well. -->
+    <router-link
+      v-if="isLogged"
+      v-slot="{ href, navigate }"
+      :to="{ name: 'account' }"
+      custom
+    >
+      <MdButton
+        variant="text"
+        class="max-sm:hidden"
+        :href="href"
+        @click="navigate"
+      >
+        My account
+      </MdButton>
+      <MdIconButton
+        aria-label="My account"
+        class="sm:hidden"
+        :href="href"
+        @click="navigate"
+      >
+        <AccountIcon />
+      </MdIconButton>
+    </router-link>
     <MdButton
       v-if="isLogged"
       variant="text"

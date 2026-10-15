@@ -42,6 +42,10 @@ describe('pageTitle', () => {
     expect(pageTitle({ name: 'settings-entry', params: {}, meta: { section: 'settings' } }, SITE)).toBe('Settings · Ingot Repository')
   })
 
+  it('names the account page', () => {
+    expect(pageTitle({ name: 'account', params: {}, meta: { section: 'account' } }, SITE)).toBe('My account · Ingot Repository')
+  })
+
   it('says the page was not found', () => {
     expect(pageTitle({ name: 'not-found', params: {}, meta: { section: null } }, SITE)).toBe('Not found · Ingot Repository')
   })

@@ -32,7 +32,7 @@ import { legacyLocation } from './legacy'
  */
 export function createIngotRouter() {
   const { basePath, title } = usePlaceholders()
-  const { isManager, isLogged } = useSession()
+  const { isManager, isLogged, mustChangePassword } = useSession()
 
   return createAppRouter({
     history: createWebHistory(basePath),
@@ -42,6 +42,7 @@ export function createIngotRouter() {
     whenSessionKnown,
     isManager: () => isManager.value,
     isLogged: () => isLogged.value,
+    mustChangePassword: () => mustChangePassword.value,
     notify: createInfoToast
   })
 }

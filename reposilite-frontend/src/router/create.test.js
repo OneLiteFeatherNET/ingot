@@ -44,6 +44,7 @@ describe('route to section mapping', () => {
   const cases = [
     ['/', 'overview'],
     ['/browse/releases/gav/0.1.0', 'overview'],
+    ['/account', 'account'],
     ['/dashboard', 'dashboard'],
     ['/tokens', 'tokens'],
     ['/tokens/ci-bot', 'tokens'],
@@ -229,5 +230,32 @@ describe('document title', () => {
     await router.push('/')
 
     expect(document.title).toBe('Ingot Repository')
+  })
+})
+
+describe('account route', () => {
+  it('is open to a signed in user who is not a manager', async () => {
+    const router = makeRouter({ isLogged: () => true })
+
+    await router.push('/account')
+
+    expect(router.currentRoute.value.name).toBe('account')
+    expect(router.currentRoute.value.meta.manager, 'the account page is not a manager section').toBeUndefined()
+  })
+
+  it('sends every other route to the account page while a new password is required', async () => {
+    const router = makeRouter({ isLogged: () => true, mustChangePassword: () => true })
+
+    await router.push('/browse/releases')
+
+    expect(router.currentRoute.value.name, 'the redirect replaces the requested route').toBe('account')
+  })
+
+  it('does not redirect when no new password is required', async () => {
+    const router = makeRouter({ isLogged: () => true, mustChangePassword: () => false })
+
+    await router.push('/browse/releases')
+
+    expect(router.currentRoute.value.name).toBe('browse')
   })
 })

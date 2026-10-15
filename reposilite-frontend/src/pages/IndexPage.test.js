@@ -23,11 +23,11 @@ import IndexPage from './IndexPage.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
 
 // The session is replaced by a plain flag, so each test decides whether the user is a manager.
-const session = vi.hoisted(() => ({ isManager: null, isLogged: null }))
+const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange: null }))
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 
 vi.mock('../store/session', () => ({
-  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged })
+  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange })
 }))
 
 vi.mock('../store/login', () => ({ openLogin: login.openLogin }))
@@ -75,6 +75,7 @@ vi.mock('../components/dashboard/DashboardView.vue', sectionStub('DashboardStub'
 vi.mock('../components/tokens/TokensView.vue', sectionStub('TokensStub', 'tokens'))
 vi.mock('../components/console/ConsoleView.vue', sectionStub('ConsoleStub', 'console'))
 vi.mock('../components/maintenance/MaintenanceView.vue', sectionStub('MaintenanceStub', 'maintenance'))
+vi.mock('../components/account/AccountView.vue', sectionStub('AccountStub', 'account'))
 vi.mock('../components/audit/AuditView.vue', sectionStub('AuditStub', 'audit'))
 vi.mock('../components/settings/SettingsView.vue', sectionStub('SettingsStub', 'settings'))
 
@@ -82,9 +83,10 @@ const QUALIFIER = { path: '', watchable: 0 }
 
 // Builds the router the application builds, on memory history, with the session answered
 // at once. The page is mounted directly, with the router beside it, as the app does.
-const mountAt = async (url, { manager = false, logged = manager } = {}) => {
+const mountAt = async (url, { manager = false, logged = manager, mustChange = false } = {}) => {
   session.isManager = ref(manager)
   session.isLogged = ref(logged)
+  session.mustChange = ref(mustChange)
   const router = createAppRouter({
     history: createMemoryHistory(),
     component: IndexPage,
@@ -254,6 +256,58 @@ describe('IndexPage manager routes', () => {
     await flushPromises()
 
     expect(shownSection(wrapper)).toBe('tokens')
+  })
+})
+
+describe('IndexPage account page', () => {
+  beforeEach(() => {
+    session.isManager = null
+    login.openLogin.mockClear()
+  })
+
+  it('opens the account page for a signed in user who is not a manager', async () => {
+    const { wrapper } = await mountAt('/account', { manager: false, logged: true })
+
+    expect(shownSection(wrapper)).toBe('account')
+  })
+
+  it('asks an anonymous visitor to sign in in place of the account page', async () => {
+    const { wrapper } = await mountAt('/account', { manager: false, logged: false })
+
+    expect(shownSection(wrapper), 'the account page must not render without a session').toBeNull()
+    expect(wrapper.text()).toContain('Sign in to open My account')
+    expect(login.openLogin).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call the account page a manager section', async () => {
+    const { wrapper } = await mountAt('/account', { manager: false, logged: false })
+
+    expect(wrapper.text()).not.toContain('only open to managers')
+  })
+
+  it('shows the account page after the visitor signs in, without a redirect', async () => {
+    const { wrapper, router } = await mountAt('/account', { manager: false, logged: false })
+
+    session.isLogged.value = true
+    await flushPromises()
+
+    expect(shownSection(wrapper)).toBe('account')
+    expect(router.currentRoute.value.fullPath).toBe('/account')
+  })
+
+  it('moves to the account page when the server asks for a new password after the page loaded', async () => {
+    const { router } = await mountAt('/browse/releases', { manager: false, logged: true })
+
+    session.mustChange.value = true
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('account')
+  })
+
+  it('opens the account page at once when a new password is required on arrival', async () => {
+    const { router } = await mountAt('/', { manager: false, logged: true, mustChange: true })
+
+    expect(router.currentRoute.value.name).toBe('account')
   })
 })
 

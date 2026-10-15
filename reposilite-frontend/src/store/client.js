@@ -152,6 +152,30 @@ const createClient = (defaultName, defaultSecret) => {
       ...(credentials || defaultAuthorization()),
     })
 
+  /*
+   * The token endpoints of one principal, in the shape the identity components take as their
+   * `api` prop: { list, create, revoke } and, where the server has the endpoint, rotate. The
+   * calls return the axios promise, so a caller reads `response.data`.
+   */
+  const tokenEndpoints = (base, { rotate = false } = {}) => {
+    const api = {
+      list() {
+        return get(base)
+      },
+      create(body) {
+        return axios.post(createURL(base), body, { ...defaultAuthorization() })
+      },
+      revoke(name) {
+        return axios.delete(createURL(`${base}/${encodeURIComponent(name)}`), { ...defaultAuthorization() })
+      },
+    }
+    if (rotate) {
+      api.rotate = (name) =>
+        axios.post(createURL(`${base}/${encodeURIComponent(name)}/rotate`), {}, { ...defaultAuthorization() })
+    }
+    return api
+  }
+
   return {
     auth: {
       me() {
@@ -177,6 +201,23 @@ const createClient = (defaultName, defaultSecret) => {
       },
       logout() {
         return axios.post(createURL("/api/auth/logout"), {}, { withCredentials: true })
+      },
+    },
+    identity: {
+      // The signed in principal looking after itself.
+      me: {
+        changePassword({ currentPassword, newPassword }) {
+          return axios.post(
+            createURL("/api/identity/me/password"),
+            { currentPassword, newPassword },
+            { ...defaultAuthorization() }
+          )
+        },
+        tokens: tokenEndpoints("/api/identity/me/tokens", { rotate: true }),
+      },
+      // The tokens of any principal, for an instance admin. The server has no rotate endpoint here.
+      principalTokens(principalName) {
+        return tokenEndpoints(`/api/identity/principals/${encodeURIComponent(principalName)}/tokens`)
       },
     },
     console: {

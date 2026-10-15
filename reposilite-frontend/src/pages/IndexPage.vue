@@ -59,6 +59,7 @@ const DashboardView = lazyView(() => import('../components/dashboard/DashboardVi
 const TokensView = lazyView(() => import('../components/tokens/TokensView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
+const AccountView = lazyView(() => import('../components/account/AccountView.vue'))
 
 // The icon of each section. The active one is drawn filled, the others outlined.
 const SECTION_ICONS = {
@@ -78,7 +79,7 @@ defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { isManager, isLogged } = useSession()
+const { isManager, isLogged, mustChangePassword } = useSession()
 
 /*
  * Everything this page shows follows from the route. The section comes from the route's meta,
@@ -86,7 +87,18 @@ const { isManager, isLogged } = useSession()
  * The views report changes back through the router, so the address always says what is shown.
  */
 const section = computed(() => route.meta.section ?? null)
-const sectionAllowed = computed(() => !route.meta.manager || isManager.value)
+const sectionAllowed = computed(() =>
+  (!route.meta.manager || isManager.value) && (!route.meta.signedIn || isLogged.value))
+
+// The server asks for a new password: the router closes every other page at navigation time, and
+// this follows when the flag arrives later, with the session that has just been read or started.
+const sendToAccount = () => {
+  if (mustChangePassword?.value && route.name !== 'account') {
+    router.replace({ name: 'account' })
+  }
+}
+onMounted(sendToAccount)
+watch(() => mustChangePassword?.value, sendToAccount)
 
 // The sign in dialog lives in the header of this page, so it is asked for once the page is on
 // screen. A request made earlier, while the router was still deciding, would reach nobody.
@@ -268,9 +280,18 @@ const activeLabel = computed(() => sectionLabel(section.value))
         >
           Sign in to open {{ activeLabel }}
         </h2>
-        <p class="md-body-large text-on-surface-variant">
+        <p
+          v-if="route.meta.manager"
+          class="md-body-large text-on-surface-variant"
+        >
           This section is only open to managers. Sign in with a token that has the manager
           permission, and you stay on this page.
+        </p>
+        <p
+          v-else
+          class="md-body-large text-on-surface-variant"
+        >
+          Sign in to see your profile, change your password and manage your tokens.
         </p>
         <MdButton
           variant="filled"
@@ -291,6 +312,7 @@ const activeLabel = computed(() => sectionLabel(section.value))
           :qualifier="qualifier"
         />
       </template>
+      <AccountView v-else-if="section === 'account'" />
       <DashboardView v-else-if="section === 'dashboard'" />
       <TokensView
         v-else-if="section === 'tokens'"

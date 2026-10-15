@@ -56,4 +56,17 @@ const createManagerGuard = ({
   }
 }
 
-export { managerAccess, createManagerGuard }
+/*
+ * While the server asks for a new password (mustChangePassword), every route but the account
+ * page redirects there. The flag is read as it stands: the guard does not wait for the session,
+ * so a plain page load is not held back, and the page itself sends the user to the account page
+ * when the flag arrives with the session.
+ */
+const createPasswordChangeGuard = ({ mustChangePassword }) => (to) => {
+  if (!mustChangePassword() || to.name === 'account') {
+    return true
+  }
+  return { name: 'account', replace: true }
+}
+
+export { managerAccess, createManagerGuard, createPasswordChangeGuard }

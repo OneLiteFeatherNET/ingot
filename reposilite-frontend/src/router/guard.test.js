@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { createManagerGuard, managerAccess } from './guard'
+import { createManagerGuard, createPasswordChangeGuard, managerAccess } from './guard'
 
 // The guard is handed a session it can read and a notice it can raise. Each test builds its
 // own, so nothing is shared between them and no real session or toast is touched.
@@ -90,5 +90,34 @@ describe('createManagerGuard', () => {
     finish()
     expect(await decision).toBe(true)
     expect(notify).not.toHaveBeenCalled()
+  })
+})
+
+describe('createPasswordChangeGuard', () => {
+  const guardFor = (mustChange) => createPasswordChangeGuard({ mustChangePassword: () => mustChange })
+
+  it('lets every route through when no new password is required', () => {
+    expect(guardFor(false)({ name: 'tokens' })).toBe(true)
+  })
+
+  it('sends any other route to the account page while a new password is required', () => {
+    expect(guardFor(true)({ name: 'overview' })).toEqual({ name: 'account', replace: true })
+  })
+
+  it('sends a manager route to the account page as well', () => {
+    expect(guardFor(true)(managerRoute)).toEqual({ name: 'account', replace: true })
+  })
+
+  it('lets the account page itself open, or the redirect would never end', () => {
+    expect(guardFor(true)({ name: 'account' })).toBe(true)
+  })
+
+  it('reads the flag at each navigation', () => {
+    let required = true
+    const guard = createPasswordChangeGuard({ mustChangePassword: () => required })
+
+    expect(guard({ name: 'overview' })).toEqual({ name: 'account', replace: true })
+    required = false
+    expect(guard({ name: 'overview' })).toBe(true)
   })
 })
