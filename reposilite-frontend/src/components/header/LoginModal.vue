@@ -15,10 +15,12 @@
   -->
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { useSession } from '../../store/session'
 import { loginRequests } from '../../store/login'
+import { now } from '../../helpers/clock'
+import { rateLimitMessage, rateLimitedUntil } from '../../helpers/rate-limit'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 
@@ -84,6 +86,47 @@ const passwordError = computed(() =>
 const confirmError = computed(() =>
   submitted.value && setupConfirm.value !== setupPassword.value)
 
+// After too many failed attempts the server answers 429 with the seconds to wait. The deadline
+// is kept as an instant, so the rest of the wait is always computed from the clock when the
+// dialog renders. A single timer renders it again when the shown minute changes or the wait ends;
+// it is cleared with the dialog. The wait outlives closing the dialog: it is the server's limit.
+const lockedUntil = ref(null)
+const tick = ref(0)
+let timer = null
+
+const remainingSeconds = () => {
+  tick.value // a dependency, so that the timer can render this again
+  if (lockedUntil.value === null) return 0
+  return Math.max(0, Math.ceil((lockedUntil.value - now().getTime()) / 1000))
+}
+const isLocked = () => remainingSeconds() > 0
+const lockMessage = () => (isLocked() ? rateLimitMessage(remainingSeconds()) : '')
+
+const scheduleTick = () => {
+  clearTimeout(timer)
+  timer = null
+  if (lockedUntil.value === null) return
+  const left = lockedUntil.value - now().getTime()
+  if (left <= 0) return
+  timer = setTimeout(() => {
+    tick.value++
+    scheduleTick()
+  }, (left % 60000 || 60000) + 50)
+}
+
+const lockFrom = (error) => {
+  lockedUntil.value = rateLimitedUntil(error, now().getTime())
+  scheduleTick()
+}
+
+onBeforeUnmount(() => clearTimeout(timer))
+
+// Every failed attempt sets or clears the deadline (lockFrom), so a deadline that has passed means
+// that the message in `failure` is the old rate limit text, which no longer applies.
+const limitExpired = () => lockedUntil.value !== null && !isLocked()
+const fieldError = () => isLocked() || (failure.value !== null && !limitExpired())
+const fieldErrorText = () => lockMessage() || (limitExpired() ? '' : failure.value ?? '')
+
 const forgetInput = () => {
   username.value = ''
   password.value = ''
@@ -139,12 +182,17 @@ const attempt = (action, failureMessage, fieldId) => {
     })
 }
 
-const signinWithPassword = () =>
-  attempt(
+const signinWithPassword = () => {
+  if (isLocked()) return Promise.resolve()
+  return attempt(
     () => signInWithPassword({ username: username.value, password: password.value }),
-    passwordFailureMessage,
+    (error) => {
+      lockFrom(error)
+      return passwordFailureMessage(error)
+    },
     'login-password'
   )
+}
 
 const signinWithToken = () =>
   attempt(() => signInWithToken(name.value, secret.value), loginFailureMessage, 'login-secret')
@@ -323,8 +371,8 @@ const overlayStyle = {
               type="password"
               autocomplete="current-password"
               required
-              :error="failure !== null"
-              :error-text="failure || ''"
+              :error="fieldError()"
+              :error-text="fieldErrorText()"
             />
           </form>
 
@@ -385,7 +433,7 @@ const overlayStyle = {
               v-if="hasForm"
               type="submit"
               :form="formId"
-              :disabled="busy"
+              :disabled="busy || (mode === 'password' && isLocked())"
             >
               {{ submitLabel }}
             </MdButton>

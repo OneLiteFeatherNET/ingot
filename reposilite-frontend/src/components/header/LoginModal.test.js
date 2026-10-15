@@ -20,6 +20,7 @@ import { VueFinalModal } from 'vue-final-modal'
 import LoginModal from './LoginModal.vue'
 import { openLogin } from '../../store/login'
 import { useSession } from '../../store/session'
+import { resetClock, setClock } from '../../helpers/clock'
 
 // The actions that reach the server are replaced; the state refs and the failure wording are the
 // real ones, so the dialog is tested with the mapping the app actually uses.
@@ -46,9 +47,9 @@ vi.mock('../../store/session', async (importOriginal) => {
 
 const LOCAL = { id: 'local', type: 'LOCAL', label: 'Password' }
 
-const rejection = (status) =>
+const rejection = (status, headers = {}) =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
-    response: { status, data: {} }
+    response: { status, data: {}, headers }
   })
 
 // The dialog is teleported to the end of the body, so it is queried from the document.
@@ -93,6 +94,7 @@ describe('LoginModal', () => {
   afterEach(() => {
     wrapper.unmount()
     document.body.innerHTML = ''
+    resetClock()
   })
 
   describe('the dialog', () => {
@@ -231,6 +233,112 @@ describe('LoginModal', () => {
       await openDialog()
 
       expect(field('login-password').value, 'a password must not outlive the dialog').toBe('')
+    })
+  })
+
+  describe('rate-limited password sign in', () => {
+    const START = Date.parse('2026-10-15T12:00:00Z')
+    let current
+
+    const tickTo = (offsetSeconds) => {
+      current = START + offsetSeconds * 1000
+    }
+
+    const submitLimited = async (headers) => {
+      current = START
+      setClock(() => new Date(current))
+      actions.signInWithPassword.mockRejectedValue(rejection(429, headers))
+      await openDialog()
+      type('login-username', 'alice')
+      type('login-password', 'wrong')
+      await submit()
+    }
+
+    const submitButton = () => buttonByLabel('Sign in')
+
+    it('says how many minutes to wait, rounded up', async () => {
+      await submitLimited({ 'retry-after': '121' })
+
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 3 minutes')
+    })
+
+    it('uses the singular for one minute', async () => {
+      await submitLimited({ 'retry-after': '30' })
+
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 1 minute')
+    })
+
+    it('disables the submit button while the wait lasts', async () => {
+      await submitLimited({ 'retry-after': '120' })
+
+      expect(submitButton().disabled, 'a locked sign in must not send another attempt').toBe(true)
+    })
+
+    it('keeps the password field and what was typed in it', async () => {
+      await submitLimited({ 'retry-after': '120' })
+
+      expect(field('login-password'), 'the field stays in the dialog').not.toBeNull()
+      expect(field('login-password').disabled).toBe(false)
+      expect(field('login-password').value).toBe('wrong')
+    })
+
+    it('does not send an attempt when the form is submitted during the wait', async () => {
+      await submitLimited({ 'retry-after': '120' })
+      actions.signInWithPassword.mockClear()
+
+      await submit()
+
+      expect(actions.signInWithPassword).not.toHaveBeenCalled()
+    })
+
+    it('counts the remaining wait down from the injected clock', async () => {
+      await submitLimited({ 'retry-after': '180' })
+
+      tickTo(70)
+      type('login-username', 'alice2')
+      await flushPromises()
+
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again in 2 minutes')
+      expect(submitButton().disabled).toBe(true)
+    })
+
+    it('enables the submit button and drops the message once the time has passed', async () => {
+      await submitLimited({ 'retry-after': '120' })
+
+      tickTo(120)
+      type('login-username', 'alice2')
+      await flushPromises()
+
+      expect(submitButton().disabled, 'the wait is over').toBe(false)
+      expect(field('login-password').getAttribute('aria-invalid'), 'the old limit is not an error any more').toBeNull()
+    })
+
+    it('sends the next attempt after the wait', async () => {
+      await submitLimited({ 'retry-after': '60' })
+      actions.signInWithPassword.mockReset().mockResolvedValue()
+
+      tickTo(60)
+      type('login-username', 'alice')
+      await submit()
+
+      expect(actions.signInWithPassword).toHaveBeenCalledWith({ username: 'alice', password: 'wrong' })
+    })
+
+    it('keeps the wait when the dialog is closed and opened again', async () => {
+      await submitLimited({ 'retry-after': '120' })
+
+      buttonByLabel('Cancel').click()
+      await flushPromises()
+      await openDialog()
+
+      expect(submitButton().disabled, 'closing the dialog is no way around the limit').toBe(true)
+    })
+
+    it('asks to try again later when the server gives no Retry-After', async () => {
+      await submitLimited({})
+
+      expect(helperOf('login-password')?.textContent.trim()).toBe('Too many attempts, try again later')
+      expect(submitButton().disabled, 'without a deadline the button cannot be locked').toBe(false)
     })
   })
 

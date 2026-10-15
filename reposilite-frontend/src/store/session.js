@@ -18,6 +18,7 @@ import { computed, ref, watch, watchEffect } from "vue"
 import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler } from './client'
 import { openSessionChannel } from './session-channel'
 import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
+import { rateLimitMessage, retryAfterSeconds } from '../helpers/rate-limit'
 
 // The access token of a token sign in. These two keys are the one legacy place where a secret
 // sits in localStorage; they are kept so existing token sessions survive, and they stay empty
@@ -169,11 +170,13 @@ const loginFailureMessage = (error) =>
     : errorMessage(error)
 
 // The wording for a rejected password. A disabled account answers 403, and both are shown
-// alike, so the message never tells whether a user exists.
-const passwordFailureMessage = (error) =>
-  [401, 403].includes(error?.response?.status)
-    ? 'Username or password is incorrect'
-    : errorMessage(error)
+// alike, so the message never tells whether a user exists. A 429 is the rate limit: its
+// Retry-After header says how long to wait.
+const passwordFailureMessage = (error) => {
+  const status = error?.response?.status
+  if (status === 429) return rateLimitMessage(retryAfterSeconds(error))
+  return [401, 403].includes(status) ? 'Username or password is incorrect' : errorMessage(error)
+}
 
 const setupFailureMessage = (error) => {
   switch (error?.response?.status) {
