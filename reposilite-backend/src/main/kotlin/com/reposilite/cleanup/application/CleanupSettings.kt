@@ -68,7 +68,7 @@ data class CleanupPolicy(
     val repositories: List<String> = emptyList(),
     @get:Doc(
         title = "Scope",
-        description = "SNAPSHOTS: snapshot versions, never one newer than the newest release. RELEASES: release versions. MIRROR_CACHE: copies stored from mirrored repositories."
+        description = "SNAPSHOTS: snapshot versions, never one newer than the newest release. RELEASES: release versions. MIRROR_CACHE: copies stored by a mirror since they are recorded; copies cached before that are never deleted."
     )
     val scope: CleanupScope = CleanupScope.RELEASES,
     @get:Doc(title = "Keep latest", description = "Keep the newest N versions of each artifact within the scope. Leave empty to set no count limit.")
@@ -124,7 +124,10 @@ data class CleanupPolicy(
  * - [SNAPSHOTS]: versions whose name ends with `-SNAPSHOT`. A snapshot of a version newer than the newest release
  *   of the same artifact is kept, because it belongs to work in progress.
  * - [RELEASES]: every version that is not a snapshot.
- * - [MIRROR_CACHE]: versions stored by a mirror of a repository that stores mirrored artifacts.
+ * - [MIRROR_CACHE]: copies that a mirror stored into a repository that stores mirrored artifacts. Only directories
+ *   with a recorded mirror store are considered. Versions cached before this was recorded have no record and are
+ *   never deleted, and a directory that holds deployed artifacts is never a copy. A copy's age is judged by its last
+ *   access, which is written at most once an hour when the copy is served.
  */
 enum class CleanupScope {
     SNAPSHOTS,

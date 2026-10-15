@@ -89,13 +89,76 @@ internal class CleanupServiceTest {
     )
 
     @Test
+    fun `should never plan a hosted version of a repository that also caches mirror copies`() {
+        // given: a repository with a cached copy 1.0 and a deployed 1.1, both old, and a mirror cache policy
+        val mixed = storage("mixed")
+        mixed.writeVersion("net/example/app", "1.0")
+        mixed.writeVersion("net/example/app", "1.1")
+        val policy = CleanupPolicy(id = "mirror", enabled = true, repositories = listOf("mixed"), scope = CleanupScope.MIRROR_CACHE, notDownloadedForDays = 30)
+        val target = CleanupTarget(
+            name = "mixed",
+            storage = mixed,
+            storesMirrors = true,
+            cachedVersions = mapOf("net/example/app/1.0" to Instant.parse("2026-08-01T00:00:00Z")),
+        )
+        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+
+        // when: the policy is previewed
+        val preview = cleanup.preview("mirror").orThrow()
+
+        // then: only the cached copy is planned, the deployed 1.1 is never a candidate
+        assertEquals(listOf("net/example/app/1.0"), preview.deletions.map { it.path })
+    }
+
+    @Test
+    fun `should judge a cached copy by its last access and not by the time its file was written`() {
+        // given: two cached copies that were both written just now, one last downloaded in August and one downloaded yesterday
+        val mirror = storage("central")
+        mirror.writeVersion("org/mirror/lib", "1.0")
+        mirror.writeVersion("org/mirror/lib", "2.0")
+        val policy = CleanupPolicy(id = "mirror", enabled = true, repositories = listOf("central"), scope = CleanupScope.MIRROR_CACHE, notDownloadedForDays = 30)
+        val target = CleanupTarget(
+            name = "central",
+            storage = mirror,
+            storesMirrors = true,
+            cachedVersions = mapOf(
+                "org/mirror/lib/1.0" to Instant.parse("2026-08-01T00:00:00Z"),
+                "org/mirror/lib/2.0" to Instant.parse("2026-10-14T00:00:00Z"),
+            ),
+        )
+        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+
+        // when: the policy is previewed
+        val preview = cleanup.preview("mirror").orThrow()
+
+        // then: the copy that was not downloaded for 30 days is planned, the copy downloaded yesterday is not
+        assertEquals(listOf("org/mirror/lib/1.0"), preview.deletions.map { it.path })
+    }
+
+    @Test
+    fun `should warn in the dry run that mirror copies without a record are never touched`() {
+        // given: a mirror cache policy on a repository that stores mirror copies
+        val mirror = storage("central")
+        mirror.writeVersion("org/mirror/lib", "1.0")
+        val policy = CleanupPolicy(id = "mirror", enabled = true, repositories = listOf("central"), scope = CleanupScope.MIRROR_CACHE, notDownloadedForDays = 30)
+        val target = CleanupTarget(name = "central", storage = mirror, storesMirrors = true, cachedVersions = emptyMap())
+        val cleanup = service(listOf(policy), listOf(target), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+
+        // when: the policy is previewed
+        val preview = cleanup.preview("mirror").orThrow()
+
+        // then: the warning says that copies cached before the record existed are never deleted
+        assertTrue(preview.warnings.any { it.contains("cached before") && it.contains("never deleted") }, preview.warnings.toString())
+    }
+
+    @Test
     fun `should plan the deletions of a dry run without deleting anything`() {
         // given: two releases of one artifact and a policy that keeps the newest one
         val releases = storage("releases")
         releases.writeVersion("net/example/app", "1.0")
         releases.writeVersion("net/example/app", "1.1")
         val calls = mutableListOf<String>()
-        val cleanup = service(listOf(keepOne()), listOf(CleanupTarget("releases", releases, cached = false)), removingDeleter(mapOf("releases" to releases), calls))
+        val cleanup = service(listOf(keepOne()), listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())), removingDeleter(mapOf("releases" to releases), calls))
 
         // when: the policy is previewed
         val preview = cleanup.preview("keep-one").orThrow()
@@ -115,7 +178,7 @@ internal class CleanupServiceTest {
         releases.writeVersion("net/example/app", "1.0")
         releases.writeVersion("net/example/app", "1.1")
         val calls = mutableListOf<String>()
-        val cleanup = service(listOf(keepOne()), listOf(CleanupTarget("releases", releases, cached = false)), removingDeleter(mapOf("releases" to releases), calls))
+        val cleanup = service(listOf(keepOne()), listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())), removingDeleter(mapOf("releases" to releases), calls))
 
         // when: the policy is run
         val run = cleanup.run("keep-one", actor, CleanupTrigger.MANUAL).orThrow()
@@ -142,7 +205,7 @@ internal class CleanupServiceTest {
         val actors = mutableListOf<CleanupActor>()
         val cleanup = service(
             listOf(keepOne()),
-            listOf(CleanupTarget("releases", releases, cached = false)),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
             VersionDeleter { _, _, deleterActor -> actors += deleterActor; Result.ok(Unit) },
         )
 
@@ -162,7 +225,7 @@ internal class CleanupServiceTest {
         releases.writeVersion("net/example/app", "1.2")
         val cleanup = service(
             listOf(keepOne()),
-            listOf(CleanupTarget("releases", releases, cached = false)),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
             VersionDeleter { _, path, _ ->
                 if (path.endsWith("1.0")) errorResponse(FORBIDDEN, "denied") else releases.removeFile(Location.of(path))
             },
@@ -186,7 +249,7 @@ internal class CleanupServiceTest {
         releases.writeVersion("net/example/app", "1.1")
         val cleanup = service(
             listOf(keepOne()),
-            listOf(CleanupTarget("releases", releases, cached = false)),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
             VersionDeleter { _, _, _ -> errorResponse(FORBIDDEN, "denied") },
         )
 
@@ -221,7 +284,7 @@ internal class CleanupServiceTest {
         lateinit var cleanup: CleanupService
         cleanup = service(
             listOf(keepOne()),
-            listOf(CleanupTarget("releases", releases, cached = false)),
+            listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())),
             VersionDeleter { _, path, _ ->
                 nested = cleanup.run("keep-one", actor, CleanupTrigger.MANUAL)
                 releases.removeFile(Location.of(path))
@@ -252,7 +315,7 @@ internal class CleanupServiceTest {
         // given: a mirror cache policy on a repository that stores no mirrored artifacts
         val releases = storage("releases")
         val policy = CleanupPolicy(id = "cache", enabled = true, repositories = listOf("releases"), scope = CleanupScope.MIRROR_CACHE, notDownloadedForDays = 30)
-        val cleanup = service(listOf(policy), listOf(CleanupTarget("releases", releases, cached = false)), VersionDeleter { _, _, _ -> Result.ok(Unit) })
+        val cleanup = service(listOf(policy), listOf(CleanupTarget("releases", releases, storesMirrors = false, cachedVersions = emptyMap())), VersionDeleter { _, _, _ -> Result.ok(Unit) })
 
         // when: the policy is previewed
         val preview = cleanup.preview("cache").orThrow()

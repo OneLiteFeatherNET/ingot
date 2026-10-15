@@ -40,6 +40,7 @@ import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 import panda.std.Result
 import java.io.InputStream
+import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
 class MavenFacade internal constructor(
@@ -49,6 +50,7 @@ class MavenFacade internal constructor(
     private val metadataService: MetadataService,
     private val latestService: LatestService,
     private val storageUsageService: StorageUsageService,
+    private val mirrorCache: MirrorCacheService,
 ) : Journalist, Facade {
 
     private val repositoryService = repositoryProvider.repositoryService
@@ -58,16 +60,20 @@ class MavenFacade internal constructor(
 
     fun findFile(lookupRequest: LookupRequest): Result<ResolvedDocument, ErrorResponse> =
         repositoryService.findFile(lookupRequest)
+            .peek { touchMirrorCopy(lookupRequest) }
 
     fun findData(lookupRequest: LookupRequest): Result<InputStream, ErrorResponse> =
         repositoryService.findInputStream(lookupRequest)
+            .peek { touchMirrorCopy(lookupRequest) }
 
     fun deployFile(deployRequest: DeployRequest): Result<Unit, ErrorResponse> =
         repositoryService.deployFile(deployRequest)
+            // a deployment makes the directory hold hosted content, so it is no longer a mirror copy
+            .peek { mirrorCache.forgetVersion(deployRequest.repository.name, deployRequest.gav.getParent().provenancePath()) }
 
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
         repositoryService.deleteFile(deleteRequest)
-            .peek { metadataService.reconcileAfterDelete(deleteRequest.repository, deleteRequest.gav) }
+            .peek { afterDelete(deleteRequest.repository, deleteRequest.gav) }
 
     /**
      * Deletes without an access token, for server side jobs such as scheduled cleanup. Every deletion path reconciles
@@ -75,7 +81,25 @@ class MavenFacade internal constructor(
      */
     internal fun deleteUnchecked(repository: Repository, gav: Location, by: String): Result<Unit, ErrorResponse> =
         repositoryService.deleteUnchecked(repository, gav, by)
-            .peek { metadataService.reconcileAfterDelete(repository, gav) }
+            .peek { afterDelete(repository, gav) }
+
+    /** The mirror copies of [repository] with their last access. Only these versions can be cleaned up as copies. */
+    internal fun mirrorCacheEntries(repository: String): Map<String, Instant> =
+        mirrorCache.cachedVersions(repository)
+
+    /** Every delete path brings the metadata and the mirror records up to date with the removed file or directory. */
+    private fun afterDelete(repository: Repository, gav: Location) {
+        metadataService.reconcileAfterDelete(repository, gav)
+        mirrorCache.forgetSubtree(repository.name, gav.provenancePath())
+    }
+
+    /** A served file refreshes the last access of its mirror copy, when the repository stores mirror copies. */
+    private fun touchMirrorCopy(lookupRequest: LookupRequest) {
+        val repository = getRepository(lookupRequest.repository) ?: return
+        if (repository.mirrorHosts.any { it.configuration.store }) {
+            mirrorCache.touch(repository.name, lookupRequest.gav.getParent().provenancePath())
+        }
+    }
 
     fun saveMetadata(saveMetadataRequest: SaveMetadataRequest): Result<Metadata, ErrorResponse> =
         metadataService.saveMetadata(saveMetadataRequest)

@@ -57,7 +57,8 @@ internal class CleanupPlugin : ReposilitePlugin() {
                     CleanupTarget(
                         name = repository.name,
                         storage = repository.storageProvider,
-                        cached = repository.mirrorHosts.any { it.configuration.store },
+                        storesMirrors = repository.mirrorHosts.any { it.configuration.store },
+                        cachedVersions = mavenFacade.mirrorCacheEntries(repository.name),
                     )
                 }
             },

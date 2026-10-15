@@ -31,6 +31,7 @@ import com.reposilite.maven.application.MavenComponents
 import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.MirrorCredentials
 import com.reposilite.maven.application.RepositorySettings
+import com.reposilite.maven.infrastructure.InMemoryMirrorCacheLedger
 import com.reposilite.plugin.Extensions
 import com.reposilite.shared.http.AuthenticationMethod.BASIC
 import com.reposilite.shared.errorResponse
@@ -163,7 +164,8 @@ internal abstract class MavenSpecification {
             mavenSettings = reference(MavenSettings(
                 repositories = repositories()
             )),
-            frontendSettings = reference(FrontendSettings())
+            frontendSettings = reference(FrontendSettings()),
+            mirrorCacheLedger = InMemoryMirrorCacheLedger(),
         ).mavenFacade()
     }
 

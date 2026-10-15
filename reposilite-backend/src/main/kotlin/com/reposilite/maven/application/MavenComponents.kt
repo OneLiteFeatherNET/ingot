@@ -24,6 +24,8 @@ import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.StorageTarget
 import com.reposilite.maven.StorageUsageService
 import com.reposilite.maven.MetadataService
+import com.reposilite.maven.MirrorCacheLedger
+import com.reposilite.maven.MirrorCacheService
 import com.reposilite.maven.MirrorService
 import com.reposilite.maven.ResolutionProvider
 import com.reposilite.maven.RepositoryProvider
@@ -55,7 +57,10 @@ internal class MavenComponents(
     private val ioService: ExecutorService,
     private val mavenSettings: Reference<MavenSettings>,
     private val frontendSettings: Reference<FrontendSettings>,
+    private val mirrorCacheLedger: MirrorCacheLedger,
 ) : PluginComponents {
+
+    private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
 
     private fun securityProvider(): RepositorySecurityProvider =
         RepositorySecurityProvider(accessTokenFacade)
@@ -69,6 +74,7 @@ internal class MavenComponents(
             failureFacade = failureFacade,
             clock = clock,
             ioService = ioService,
+            mirrorCache = mirrorCache,
         )
 
     private fun resolutionProvider(): ResolutionProvider =
@@ -110,6 +116,7 @@ internal class MavenComponents(
             metadataService = metadataService,
             latestService = latestService,
             storageUsageService = storageUsageService(repositoryProvider),
+            mirrorCache = mirrorCache,
         )
 
     private fun storageUsageService(repositoryProvider: RepositoryProvider): StorageUsageService =

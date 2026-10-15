@@ -29,18 +29,22 @@ import io.javalin.http.HttpStatus.CONFLICT
 import panda.std.Result
 import panda.std.asSuccess
 import java.time.Clock
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A repository as the cleanup sees it.
  *
- * @param cached true when the repository stores copies of mirrored artifacts
+ * @param storesMirrors true when the repository stores copies of mirrored artifacts
+ * @param cachedVersions the version directories that hold a recorded mirror copy, with their last access. A version
+ *   without a record is never a mirror copy, even in a repository that stores mirror copies.
  */
 internal data class CleanupTarget(
     val name: String,
     val storage: StorageProvider,
-    val cached: Boolean,
+    val storesMirrors: Boolean,
+    val cachedVersions: Map<String, Instant>,
 )
 
 /**
@@ -132,7 +136,7 @@ class CleanupService internal constructor(
         val allTargets = targets()
         val inventory = allTargets
             .filter { it.name in policy.repositories }
-            .flatMap { target -> CleanupInventory.versionsOf(target.name, target.storage.walkFiles(), target.cached) }
+            .flatMap { target -> CleanupInventory.versionsOf(target.name, target.storage.walkFiles(), target.cachedVersions) }
         return CleanupPlanner.plan(policy, inventory, clock) to warningsFor(policy, allTargets)
     }
 
@@ -141,8 +145,15 @@ class CleanupService internal constructor(
             val target = allTargets.firstOrNull { it.name == name }
             when {
                 target == null -> listOf("repository '$name' does not exist")
-                policy.scope == CleanupScope.MIRROR_CACHE && !target.cached ->
+                policy.scope == CleanupScope.MIRROR_CACHE && !target.storesMirrors ->
                     listOf("repository '$name' stores no mirrored artifacts, so the MIRROR_CACHE scope finds nothing there")
+                policy.scope == CleanupScope.MIRROR_CACHE && target.cachedVersions.isEmpty() ->
+                    listOf(
+                        "repository '$name' has no recorded mirror copies yet, so MIRROR_CACHE finds nothing there. " +
+                            "Copies cached before provenance was recorded are never deleted by MIRROR_CACHE"
+                    )
+                policy.scope == CleanupScope.MIRROR_CACHE ->
+                    listOf("copies cached before provenance was recorded are never deleted by MIRROR_CACHE, only copies with a recorded mirror store are considered")
                 else -> emptyList()
             }
         }

@@ -29,7 +29,11 @@ import java.time.Instant
  */
 internal object CleanupInventory {
 
-    fun versionsOf(repository: String, files: List<StoredFile>, cached: Boolean): List<ArtifactVersion> {
+    /**
+     * @param cachedVersions the version directories with a recorded mirror copy, mapped to their last access. A
+     *   version is cached only when its directory is in this map.
+     */
+    fun versionsOf(repository: String, files: List<StoredFile>, cachedVersions: Map<String, Instant>): List<ArtifactVersion> {
         val directoriesWithPom = files
             .asSequence()
             .filter { it.path.endsWith(".pom") }
@@ -62,7 +66,8 @@ internal object CleanupInventory {
                     path = directory,
                     sizeBytes = sizes[directory] ?: 0L,
                     lastModified = lastModified,
-                    cached = cached,
+                    lastAccessed = cachedVersions[directory],
+                    cached = directory in cachedVersions,
                 )
             }
             .sortedBy { it.path }

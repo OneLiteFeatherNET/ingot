@@ -18,6 +18,7 @@ package com.reposilite.cleanup
 
 import com.reposilite.storage.StoredFile
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -36,7 +37,7 @@ internal class CleanupInventoryTest {
         val files = listOf(file("net/example/app/1.0/app-1.0.jar"), file("net/example/app/1.0/app-1.0.pom"))
 
         // when: the inventory is built
-        val versions = CleanupInventory.versionsOf("releases", files, cached = false)
+        val versions = CleanupInventory.versionsOf("releases", files, cachedVersions = emptyMap())
 
         // then: the directory 1.0 is one version of net/example/app
         val version = versions.single()
@@ -52,7 +53,7 @@ internal class CleanupInventoryTest {
         val files = listOf(file("net/example/app/1.0/app-1.0.jar"))
 
         // when: the inventory is built
-        val versions = CleanupInventory.versionsOf("releases", files, cached = false)
+        val versions = CleanupInventory.versionsOf("releases", files, cachedVersions = emptyMap())
 
         // then: the directory is not a version
         assertTrue(versions.isEmpty())
@@ -68,7 +69,7 @@ internal class CleanupInventoryTest {
         )
 
         // when: the inventory is built
-        val version = CleanupInventory.versionsOf("releases", files, cached = false).single()
+        val version = CleanupInventory.versionsOf("releases", files, cachedVersions = emptyMap()).single()
 
         // then: the version weighs the sum of its files
         assertEquals(9L, version.sizeBytes)
@@ -83,7 +84,7 @@ internal class CleanupInventoryTest {
         )
 
         // when: the inventory is built
-        val version = CleanupInventory.versionsOf("releases", files, cached = false).single()
+        val version = CleanupInventory.versionsOf("releases", files, cachedVersions = emptyMap()).single()
 
         // then: the nested file is part of the version
         assertEquals(10L, version.sizeBytes)
@@ -98,7 +99,7 @@ internal class CleanupInventoryTest {
         )
 
         // when: the inventory is built
-        val version = CleanupInventory.versionsOf("releases", files, cached = false).single()
+        val version = CleanupInventory.versionsOf("releases", files, cachedVersions = emptyMap()).single()
 
         // then: the version is as recent as its newest file
         assertEquals(now.minus(Duration.ofDays(2)), version.lastModified)
@@ -113,7 +114,7 @@ internal class CleanupInventoryTest {
         )
 
         // when: the inventory is built
-        val versions = CleanupInventory.versionsOf("releases", files, cached = false)
+        val versions = CleanupInventory.versionsOf("releases", files, cachedVersions = emptyMap())
 
         // then: only the version directory is listed
         assertEquals(listOf("net/example/app/1.0"), versions.map { it.path })
@@ -125,22 +126,31 @@ internal class CleanupInventoryTest {
         val files = listOf(file("net/example/app/1.0/app-1.0.pom", ageDays = null))
 
         // when: the inventory is built
-        val versions = CleanupInventory.versionsOf("releases", files, cached = false)
+        val versions = CleanupInventory.versionsOf("releases", files, cachedVersions = emptyMap())
 
         // then: the version is not inventoried, so no policy can judge its age
         assertTrue(versions.isEmpty())
     }
 
     @Test
-    fun `should mark every version as cached when the repository stores mirror copies`() {
-        // given: one version in a mirror repository
-        val files = listOf(file("org/mirror/lib/2.0/lib-2.0.pom"))
+    fun `should mark a version as cached only when the repository holds a mirror record for it`() {
+        // given: two versions in a repository that also hosts deployed artifacts, only 1.0 has a mirror record
+        val files = listOf(
+            file("org/mirror/lib/1.0/lib-1.0.pom"),
+            file("org/mirror/lib/1.1/lib-1.1.pom"),
+        )
+        val lastAccess = Instant.parse("2026-08-01T00:00:00Z")
 
-        // when: the inventory is built for a repository that stores mirrored artifacts
-        val version = CleanupInventory.versionsOf("central", files, cached = true).single()
+        // when: the inventory is built with the mirror records of the repository
+        val versions = CleanupInventory.versionsOf("mixed", files, cachedVersions = mapOf("org/mirror/lib/1.0" to lastAccess))
 
-        // then: the version is a mirror cache entry
-        assertTrue(version.cached)
+        // then: 1.0 is a cached copy with its last access, and the deployed 1.1 is not cached and has no access record
+        val cached = versions.single { it.version == "1.0" }
+        val hosted = versions.single { it.version == "1.1" }
+        assertTrue(cached.cached)
+        assertEquals(lastAccess, cached.lastAccessed)
+        assertFalse(hosted.cached)
+        assertEquals(null, hosted.lastAccessed)
     }
 
 }

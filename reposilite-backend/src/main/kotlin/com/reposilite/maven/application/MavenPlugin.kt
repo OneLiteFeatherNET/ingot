@@ -23,6 +23,7 @@ import com.reposilite.frontend.DashboardPaths
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.PreservedBuildsListener
+import com.reposilite.maven.infrastructure.SqlMirrorCacheLedger
 import com.reposilite.maven.infrastructure.CacheCommand
 import com.reposilite.maven.infrastructure.MavenApiEndpoints
 import com.reposilite.maven.infrastructure.MavenEndpoints
@@ -65,7 +66,8 @@ internal class MavenPlugin : ReposilitePlugin() {
                 statisticsFacade = facade(),
                 ioService = reposilite().ioService,
                 mavenSettings = mavenSettings,
-                frontendSettings = sharedConfigurationFacade.getDomainSettings<FrontendSettings>()
+                frontendSettings = sharedConfigurationFacade.getDomainSettings<FrontendSettings>(),
+                mirrorCacheLedger = SqlMirrorCacheLedger(reposilite().database),
             ).mavenFacade()
 
         logger.info("")
