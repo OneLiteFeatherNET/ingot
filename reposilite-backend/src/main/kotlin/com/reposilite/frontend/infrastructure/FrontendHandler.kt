@@ -113,8 +113,15 @@ internal class ResourcesFrontendHandler(
         val repository = path.removePrefix("/").substringBefore('/')
 
         ReposiliteRoute<InputStream>(path, GET, HEAD) {
+            val repositoryExists = mavenFacade.getRepository(repository) != null
+            // On a shared path the answer depends on the fetch metadata, so caches must keep the answers apart.
+            // Other paths never get this header, which keeps their responses exactly as they were.
+            if (repositoryExists) {
+                ctx.res().setHeader("Vary", DashboardRouteDecision.varyHeader(ctx.res().getHeaders("Vary").toList()))
+            }
+
             val target = DashboardRouteDecision.decide(
-                repositoryExists = mavenFacade.getRepository(repository) != null,
+                repositoryExists = repositoryExists,
                 method = ctx.method(),
                 secFetchMode = ctx.header("Sec-Fetch-Mode"),
                 secFetchDest = ctx.header("Sec-Fetch-Dest"),

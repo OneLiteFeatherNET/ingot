@@ -40,6 +40,9 @@ internal enum class DashboardRouteTarget {
  */
 internal object DashboardRouteDecision {
 
+    /** The request headers that the answer of a colliding path depends on. */
+    private val FETCH_METADATA_HEADERS = listOf("Sec-Fetch-Mode", "Sec-Fetch-Dest")
+
     fun decide(
         repositoryExists: Boolean,
         method: HandlerType,
@@ -50,6 +53,22 @@ internal object DashboardRouteDecision {
         method == HandlerType.HEAD -> DashboardRouteTarget.MAVEN
         isTopLevelNavigation(secFetchMode, secFetchDest) -> DashboardRouteTarget.DASHBOARD
         else -> DashboardRouteTarget.MAVEN
+    }
+
+    /**
+     * Builds the Vary value for an answer on a path that a repository shares with the dashboard. The earlier values
+     * are kept in their order, and each fetch metadata header is appended unless it is already listed in any letter
+     * case. A wildcard already covers every request header, so it is returned unchanged.
+     */
+    fun varyHeader(existing: Collection<String>): String {
+        val names = existing.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }
+        if ("*" in names) return "*"
+
+        val merged = names.toMutableList()
+        FETCH_METADATA_HEADERS
+            .filterNot { header -> merged.any { it.equals(header, ignoreCase = true) } }
+            .forEach { merged += it }
+        return merged.joinToString(separator = ", ")
     }
 
     private fun isTopLevelNavigation(secFetchMode: String?, secFetchDest: String?): Boolean =

@@ -169,6 +169,81 @@ internal class DashboardRoutesIntegrationTest : DashboardRoutesSpecification() {
     }
 
     @Test
+    fun `should vary the dashboard answer on a colliding path on the fetch metadata headers`() {
+        // when: a browser navigates to a colliding path
+        val response = fetch("/settings", navigation = true)
+
+        // then: the dashboard answer says that it depends on the fetch metadata, so caches keep the two answers apart
+        assertThat(response.headers.get("Vary").joinToString(", "))
+            .describedAs("Vary of the navigation answer on a colliding path")
+            .contains("Sec-Fetch-Mode", "Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should vary the maven answer on a colliding path on the fetch metadata headers`() {
+        // given: an artifact deployed to the repository "settings"
+        val (repository, gav, file) = useDocument("settings", "gav/1.0", "a.jar", "artifact-content", store = true)
+
+        // when: a client without fetch metadata requests the artifact through the colliding path
+        val response = fetch("/$repository/$gav/$file")
+
+        // then: the Maven answer varies on the same headers, because the same path can be answered either way
+        assertThat(response.headers.get("Vary").joinToString(", "))
+            .describedAs("Vary of the Maven answer on a colliding path")
+            .contains("Sec-Fetch-Mode", "Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should vary the head answer on a colliding path on the fetch metadata headers`() {
+        // given: an artifact deployed to the repository "settings"
+        val (repository, gav, file) = useDocument("settings", "gav/1.0", "a.jar", "artifact-content", store = true)
+
+        // when: a HEAD request reaches the colliding path
+        val response = Unirest.head("$base/$repository/$gav/$file").asEmpty()
+
+        // then: HEAD is answered by Maven and varies on the fetch metadata headers as well
+        assertThat(response.headers.get("Vary").joinToString(", "))
+            .describedAs("Vary of the HEAD answer on a colliding path")
+            .contains("Sec-Fetch-Mode", "Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should vary the not found answer on a bare colliding path on the fetch metadata headers`() {
+        // when: the bare colliding path is requested without fetch metadata
+        val response = fetch("/settings")
+
+        // then: the answer is produced on a colliding path, so it carries the same Vary value
+        assertThat(response.headers.get("Vary").joinToString(", "))
+            .describedAs("Vary of the not found answer on a colliding path")
+            .contains("Sec-Fetch-Mode", "Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should not vary the dashboard answer on an app route without a colliding repository`() {
+        // when: an app route without a repository of the same id answers a navigation
+        val response = fetch("/dashboard", navigation = true)
+
+        // then: the answer keeps its headers as they were, without a Vary value for fetch metadata
+        assertThat(response.headers.get("Vary").joinToString(", "))
+            .describedAs("Vary of the dashboard answer on an unclaimed app route")
+            .doesNotContain("Sec-Fetch-Mode")
+    }
+
+    @Test
+    fun `should not vary a maven answer on a path that no app route claims`() {
+        // given: an artifact deployed to the repository "releases", which does not collide with any app route
+        val (repository, gav, file) = useDocument("releases", "gav/1.0", "a.jar", "artifact-content", store = true)
+
+        // when: the artifact is requested
+        val response = fetch("/$repository/$gav/$file")
+
+        // then: Maven answers without a Vary value for fetch metadata, exactly as before the dashboard routes existed
+        assertThat(response.headers.get("Vary").joinToString(", "))
+            .describedAs("Vary of a Maven answer outside the colliding paths")
+            .doesNotContain("Sec-Fetch-Mode")
+    }
+
+    @Test
     fun `should follow a repository that is added while the server runs`() {
         // given: no repository "dashboard" exists, so the app route answers a plain GET with the dashboard
         assertDashboardResponse("/dashboard")

@@ -103,4 +103,51 @@ internal class DashboardRouteDecisionTest {
         assertThat(target).describedAs("target of GET with mode=$mode dest=$dest").isEqualTo(MAVEN)
     }
 
+    @Test
+    fun `should vary on both fetch metadata headers when the response has no vary value yet`() {
+        // when: a colliding path answers and no Vary header was set before
+        val vary = DashboardRouteDecision.varyHeader(emptyList())
+
+        // then: the answer depends on exactly these two request headers
+        assertThat(vary).describedAs("Vary without an earlier value").isEqualTo("Sec-Fetch-Mode, Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should keep an existing vary value and append the fetch metadata headers`() {
+        // when: the response already varies on Accept-Encoding
+        val vary = DashboardRouteDecision.varyHeader(listOf("Accept-Encoding"))
+
+        // then: the earlier value survives and the fetch metadata headers follow it
+        assertThat(vary).describedAs("merged Vary").isEqualTo("Accept-Encoding, Sec-Fetch-Mode, Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should merge a comma separated vary value and several vary header lines`() {
+        // when: the earlier Vary value arrives as one comma separated line and as a second header line
+        val vary = DashboardRouteDecision.varyHeader(listOf("Accept-Encoding, Origin", "Accept-Language"))
+
+        // then: every earlier name is kept once, in order, followed by the fetch metadata headers
+        assertThat(vary)
+            .describedAs("merged Vary")
+            .isEqualTo("Accept-Encoding, Origin, Accept-Language, Sec-Fetch-Mode, Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should not repeat a fetch metadata header that is already listed in any letter case`() {
+        // when: the earlier value already names one of the headers in lower case
+        val vary = DashboardRouteDecision.varyHeader(listOf("sec-fetch-mode"))
+
+        // then: the header is kept as it was and only the missing one is added
+        assertThat(vary).describedAs("merged Vary").isEqualTo("sec-fetch-mode, Sec-Fetch-Dest")
+    }
+
+    @Test
+    fun `should keep a wildcard vary value unchanged`() {
+        // when: the earlier value is the wildcard, which already covers every request header
+        val vary = DashboardRouteDecision.varyHeader(listOf("*"))
+
+        // then: the wildcard is not diluted into a list
+        assertThat(vary).describedAs("merged Vary").isEqualTo("*")
+    }
+
 }
