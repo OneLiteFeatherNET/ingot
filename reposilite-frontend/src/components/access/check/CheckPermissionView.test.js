@@ -560,8 +560,15 @@ describe('CheckPermissionView', () => {
   })
 
   describe('an artifact path', () => {
+    const DEPLOYED = 'net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom'
+
     const switchToPath = async () => {
       await wrapper.find('[data-test="mode-path"]').trigger('click')
+      await flushPromises()
+    }
+
+    const chooseAction = async (action) => {
+      await wrapper.find('[data-test="artifact-action"] select').setValue(action)
       await flushPromises()
     }
 
@@ -582,65 +589,95 @@ describe('CheckPermissionView', () => {
       expect(wrapper.find('[data-test="artifact-path"] input').exists()).toBe(true)
     })
 
-    it('checks the node the path names, qualified by the repository', async () => {
+    it('sends the repository, the full path and the action as typed, without a node', async () => {
       await mountView()
       await type('principal-field', 'alice')
       await switchToPath()
 
       await type('artifact-repository', 'releases')
-      await type('artifact-path', 'net/onelitefeather/mycelium-bom')
+      await type('artifact-path', DEPLOYED)
+      await chooseAction('deploy')
       await submit()
 
       expect(identity.check).toHaveBeenCalledWith({
-        principal: 'alice',
-        node: 'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.read',
-        token: undefined
+        principal: 'alice', repository: 'releases', path: DEPLOYED, action: 'deploy', token: undefined
       })
+      expect(identity.check.mock.calls[0][0], 'the question names no node').not.toHaveProperty('node')
     })
 
-    it('checks an unqualified node when the repository is left empty', async () => {
+    it('asks for the repository once the path is typed, and keeps Check off', async () => {
       await mountView()
       await type('principal-field', 'alice')
       await switchToPath()
 
-      await type('artifact-path', 'net/lib')
-      await wrapper.find('[data-test="artifact-action"] select').setValue('deploy')
-      await submit()
+      await type('artifact-path', DEPLOYED)
 
-      expect(identity.check).toHaveBeenCalledWith({ principal: 'alice', node: 'ingot.artifact.net:lib.deploy', token: undefined })
-    })
-
-    it('shows the path problem on the path field and keeps the Check button off', async () => {
-      await mountView()
-      await type('principal-field', 'alice')
-      await switchToPath()
-
-      await type('artifact-path', 'mycelium-bom')
-
-      expect(wrapper.find('[data-test="artifact-path"]').text())
-        .toContain('Enter the artifact directory, for example net/onelitefeather/mycelium-bom')
+      expect(wrapper.find('[data-test="artifact-repository"]').text()).toContain('Enter the repository the path is in')
       expect(wrapper.find('[data-test="check"]').attributes('disabled')).toBeDefined()
     })
 
-    it('shows the artifact node it will check under the fields', async () => {
-      await mountView()
-      await switchToPath()
-
-      await type('artifact-path', 'net/onelitefeather/mycelium-bom')
-
-      expect(wrapper.find('[data-test="artifact-node"]').text())
-        .toBe('ingot.artifact.net.onelitefeather:mycelium-bom.read')
-    })
-
-    it('shows the artifact node in the verdict, not the path', async () => {
+    it('asks for a path when the repository is typed and the path is empty', async () => {
       await mountView()
       await type('principal-field', 'alice')
       await switchToPath()
-      await type('artifact-path', 'net/onelitefeather/mycelium-bom')
+
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', '  ')
+
+      expect(wrapper.find('[data-test="artifact-path"]').text())
+        .toContain('Enter the path of the file or directory inside the repository')
+      expect(wrapper.find('[data-test="check"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('shows the server refusal of a path on the path field', async () => {
+      identity.check.mockRejectedValue(failure(400, "The query parameter 'path' is required for a path check", []))
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', DEPLOYED)
+
       await submit()
 
-      expect(text('verdict-node')).toBe('ingot.artifact.net.onelitefeather:mycelium-bom.read')
+      expect(wrapper.find('[data-test="artifact-path"]').text())
+        .toContain("The query parameter 'path' is required for a path check")
+    })
+
+    it('shows the repository and the path of the question in the verdict', async () => {
+      identity.check.mockResolvedValue({ data: { ...ALLOWED, node: null, repository: 'releases', path: DEPLOYED, action: 'deploy' } })
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', DEPLOYED)
+      await chooseAction('deploy')
+      await submit()
+
+      expect(text('verdict-path')).toBe(`releases/${DEPLOYED}`)
+      expect(text('verdict-action')).toBe('deploy')
+    })
+
+    it('writes the path question into the address with replace', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', DEPLOYED)
+      await chooseAction('deploy')
+
+      await submit()
+
+      expect(router.currentRoute.value.query).toMatchObject({ principal: 'alice', repository: 'releases', path: DEPLOYED, action: 'deploy' })
+      expect(router.currentRoute.value.query).not.toHaveProperty('node')
+    })
+
+    it('runs the path check on load when the address holds a path question', async () => {
+      await mountView(`/access/check?principal=alice&repository=releases&path=${encodeURIComponent(DEPLOYED)}&action=deploy`)
+
+      expect(identity.check).toHaveBeenCalledTimes(1)
+      expect(identity.check).toHaveBeenCalledWith({
+        principal: 'alice', repository: 'releases', path: DEPLOYED, action: 'deploy', token: undefined
+      })
     })
   })
 })
-

@@ -30,18 +30,19 @@ import { ARTIFACT_ACTIONS, parseNode } from '../nodes/nodeGrammar'
 import { suggestNodes } from '../nodes/nodeList'
 import { permissionNodesApi } from '../nodes/permissionNodesApi'
 import ComboboxField from './ComboboxField.vue'
-import { artifactNodeFromPath } from './artifactPath'
+import { pathQueryOf } from './artifactPath'
 import { decisionSummary, kindLabel, problemMessages, traceSteps } from './checkTrace'
 
 /*
  * The permission check: pick a principal and a node (and optionally one of the principal's tokens),
  * and see whether the node is allowed, which rule decided, and the steps that led there.
  *
- * The question can also name an artifact by its directory: the path (repository optional, action
- * read, deploy or delete) becomes the artifact node the server decides. The address always holds the
- * node that is checked (`principal`, `node`, `token`), so a check can be linked. A route that arrives
- * with a principal and a node runs the check at once. Submitting writes the question into the address
- * with router.replace, so a repeated check adds no history entry.
+ * The question can also be a repository path: the repository, the path inside it as typed, and the action
+ * (read, deploy or delete). The server decides the path, so the view derives no coordinates. The address
+ * holds the question (`principal`, `node` or `repository`, `path` and `action`, and `token`), so a check can
+ * be linked. A route that arrives with a principal and a node, or a principal, repository and path, runs the
+ * check at once. Submitting writes the question into the address with router.replace, so a repeated check
+ * adds no history entry.
  */
 const route = useRoute()
 const router = useRouter()
@@ -56,9 +57,9 @@ const token = ref('')
 
 // 'node' asks the typed node; 'path' asks the node an artifact directory names.
 const mode = ref('node')
-const artifactRepository = ref('')
-const artifactPath = ref('')
-const artifactAction = ref('read')
+const repositoryText = ref('')
+const pathText = ref('')
+const actionText = ref('read')
 const ACTION_OPTIONS = ARTIFACT_ACTIONS.map(action => ({ value: action, label: action.charAt(0).toUpperCase() + action.slice(1) }))
 
 const principals = ref([])
@@ -78,26 +79,26 @@ let latest = 0
 let tokensRequest = 0
 let tokensFor = ''
 
-const keyOf = (principalName, nodeText, tokenName) => JSON.stringify([principalName, nodeText, tokenName])
-const queryKey = computed(() => keyOf(
-  textFromParam(route.query.principal),
-  textFromParam(route.query.node),
-  textFromParam(route.query.token)
-))
+// The question as the address holds it. A part the address leaves out is an empty text.
+const QUESTION_PARTS = ['principal', 'node', 'token', 'repository', 'path', 'action']
+const keyOf = (question) => JSON.stringify(QUESTION_PARTS.map(part => question[part] ?? ''))
+const questionFromRoute = () => Object.fromEntries(QUESTION_PARTS.map(part => [part, textFromParam(route.query[part])]))
+const queryKey = computed(() => keyOf(questionFromRoute()))
 let handledKey = queryKey.value
 
 const trimmedPrincipal = computed(() => principal.value.trim())
 const trimmedNode = computed(() => node.value.trim())
 
-const derived = computed(() => artifactNodeFromPath({
-  repository: artifactRepository.value,
-  path: artifactPath.value,
-  action: artifactAction.value
-}))
-// The path field shows its problem once something is typed there.
-const pathProblem = computed(() => (mode.value === 'path' && artifactPath.value.trim() !== '' ? derived.value.problem : ''))
-// The node that is checked: the typed one, or the one the artifact path names.
-const checkedNode = computed(() => (mode.value === 'path' ? derived.value.node : trimmedNode.value))
+const pathCheck = computed(() => pathQueryOf({ repository: repositoryText.value, path: pathText.value, action: actionText.value }))
+// Once anything is typed in the path fields, the problem of a field shows on that field.
+const pathTyped = computed(() => repositoryText.value.trim() !== '' || pathText.value.trim() !== '')
+const repositoryError = computed(() => (mode.value === 'path' && pathTyped.value && pathCheck.value.field === 'repository' ? pathCheck.value.problem : ''))
+// The server's refusal of the question shows on the path field, which is where the path question is typed.
+const pathError = computed(() => {
+  if (mode.value !== 'path') return ''
+  if (pathTyped.value && pathCheck.value.field === 'path') return pathCheck.value.problem
+  return nodeServerError.value
+})
 
 const nodeGrammarError = computed(() => {
   if (mode.value === 'path' || trimmedNode.value === '') return ''
@@ -106,9 +107,11 @@ const nodeGrammarError = computed(() => {
 })
 const nodeError = computed(() => nodeGrammarError.value || nodeServerError.value)
 
-const canCheck = computed(() =>
-  status.value !== 'loading' && trimmedPrincipal.value !== '' && checkedNode.value !== '' &&
-  nodeGrammarError.value === '' && pathProblem.value === '')
+// The question that is ready to be asked: a node, or a repository path.
+const questionReady = computed(() => (mode.value === 'path'
+  ? pathCheck.value.query !== null
+  : trimmedNode.value !== '' && nodeGrammarError.value === ''))
+const canCheck = computed(() => status.value !== 'loading' && trimmedPrincipal.value !== '' && questionReady.value)
 
 const principalOptions = computed(() =>
   filterPrincipals(principals.value, principal.value)
@@ -213,7 +216,9 @@ const fail = (error) => {
 
 const run = async () => {
   const request = ++latest
-  const target = { principal: trimmedPrincipal.value, node: checkedNode.value, token: token.value || undefined }
+  const target = mode.value === 'path'
+    ? { principal: trimmedPrincipal.value, ...pathCheck.value.query, token: token.value || undefined }
+    : { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value || undefined }
   clearErrors()
   result.value = null
   status.value = 'loading'
@@ -237,23 +242,36 @@ const chooseMode = (next) => {
 
 const submit = async () => {
   if (!canCheck.value) return
-  handledKey = keyOf(trimmedPrincipal.value, checkedNode.value, token.value)
+  const question = mode.value === 'path'
+    ? { principal: trimmedPrincipal.value, repository: pathCheck.value.query.repository, path: pathCheck.value.query.path, action: pathCheck.value.query.action, token: token.value }
+    : { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value }
+  handledKey = keyOf(question)
   router.replace({
     name: 'access-check',
-    query: { principal: textParam(trimmedPrincipal.value), node: textParam(checkedNode.value), token: textParam(token.value) }
+    query: Object.fromEntries(Object.entries(question).map(([part, value]) => [part, textParam(value)]))
   })
   await run()
 }
 
-// Takes the question from the address. With a principal and a node it is asked at once.
+// Takes the question from the address. A principal with a node, or with a repository and a path, is asked at once.
 const applyQuery = () => {
-  handledKey = queryKey.value
-  principal.value = textFromParam(route.query.principal)
-  node.value = textFromParam(route.query.node)
-  token.value = textFromParam(route.query.token)
+  const question = questionFromRoute()
+  handledKey = keyOf(question)
+  principal.value = question.principal
+  token.value = question.token
+  if (question.repository !== '' || question.path !== '') {
+    mode.value = 'path'
+    repositoryText.value = question.repository
+    pathText.value = question.path
+    actionText.value = question.action || 'read'
+    node.value = ''
+  } else {
+    mode.value = 'node'
+    node.value = question.node
+  }
   followTokens(trimmedPrincipal.value, true)
   clearErrors()
-  if (trimmedPrincipal.value !== '' && trimmedNode.value !== '') {
+  if (trimmedPrincipal.value !== '' && questionReady.value) {
     return run()
   }
   latest++
@@ -342,41 +360,36 @@ onMounted(() => {
       <template v-else>
         <div data-test="artifact-repository">
           <MdTextField
-            v-model="artifactRepository"
-            label="Repository (optional)"
+            v-model="repositoryText"
+            label="Repository"
             variant="outlined"
             autocomplete="off"
             spellcheck="false"
-            supporting-text="Leave empty to check every repository"
+            :error="repositoryError !== ''"
+            :error-text="repositoryError"
+            supporting-text="The repository the path is in"
           />
         </div>
         <div data-test="artifact-path">
           <MdTextField
-            v-model="artifactPath"
-            label="Artifact path"
+            v-model="pathText"
+            label="Path"
             variant="outlined"
             autocomplete="off"
             spellcheck="false"
-            :error="pathProblem !== ''"
-            :error-text="pathProblem"
-            supporting-text="The artifact directory, for example net/onelitefeather/mycelium-bom"
+            :error="pathError !== ''"
+            :error-text="pathError"
+            supporting-text="The full path of a file or directory, for example net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
           />
         </div>
         <div data-test="artifact-action">
           <MdSelect
-            v-model="artifactAction"
+            v-model="actionText"
             label="Action"
             :options="ACTION_OPTIONS"
-            supporting-text="Read, deploy or delete the artifact"
+            supporting-text="Read, deploy or delete"
           />
         </div>
-        <p
-          v-if="derived.node"
-          class="min-[840px]:col-span-2 m-0 break-all font-mono md-body-medium text-on-surface-variant"
-          data-test="artifact-node"
-        >
-          {{ derived.node }}
-        </p>
       </template>
       <div data-test="token-field">
         <MdSelect
@@ -451,9 +464,17 @@ onMounted(() => {
           </p>
           <p class="md-body-large break-words">
             <code
+              v-if="checked.node"
               class="font-mono"
               data-test="verdict-node"
             >{{ checked.node }}</code>
+            <template v-else>
+              <code
+                class="break-all font-mono"
+                data-test="verdict-path"
+              >{{ checked.repository }}/{{ checked.path }}</code>
+              (<span data-test="verdict-action">{{ checked.action }}</span>)
+            </template>
             for
             <strong data-test="verdict-principal">{{ checked.principal }}</strong>
             <template v-if="checked.token">

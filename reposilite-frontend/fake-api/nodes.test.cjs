@@ -697,3 +697,61 @@ describe("decision facts", () => {
     assert.deepEqual(result.trace.map(entry => entry.kind), ["ARTIFACT", "ARTIFACT"])
   })
 })
+
+describe("path requests", () => {
+  const FILE = "net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
+  const path = (repository, pathInRepository, action = "deploy") => nodes.pathRequest({ repository, path: pathInRepository, action })
+
+  it("is decided by the artifact node whose group covers the directory of the path", () => {
+    const result = nodes.evaluate({ node: path("releases", FILE), user: user([allow("ingot.artifact.net.onelitefeather.deploy")]) })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "ARTIFACT"])
+  })
+
+  it("is denied outside the group of every artifact node", () => {
+    const result = nodes.evaluate({ node: path("releases", "org/other/lib/1.0/lib-1.0.jar"), user: user([allow("ingot.artifact.net.onelitefeather.deploy")]) })
+    assert.equal(result.allowed, false)
+  })
+
+  it("does not cover a sibling group whose name only starts with the same letters", () => {
+    const result = nodes.evaluate({ node: path("releases", "net/onelitefeatherX/lib/1.0/lib-1.0.jar"), user: user([allow("ingot.artifact.net.onelitefeather.deploy")]) })
+    assert.equal(result.allowed, false)
+  })
+
+  it("is decided by the denial of an artifact node inside an allowed repository", () => {
+    const result = nodes.evaluate({
+      node: path("releases", FILE),
+      user: user([allow("ingot.repository.releases.deploy"), deny("ingot.artifact.net.onelitefeather:mycelium-bom.deploy")]),
+    })
+    assert.deepEqual([result.allowed, result.decision.decidingNode], [false, "ingot.artifact.net.onelitefeather:mycelium-bom.deploy"])
+  })
+
+  it("allows a path by a repository node, which covers every path of the repository", () => {
+    const result = nodes.evaluate({ node: path("releases", FILE), user: user([allow("ingot.repository.releases.deploy")]) })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "REPOSITORY"])
+  })
+
+  it("is not covered by a qualified artifact node of another repository", () => {
+    const result = nodes.evaluate({
+      node: path("releases", FILE),
+      user: user([allow("ingot.repository.snapshots.artifact.net.onelitefeather.deploy")]),
+    })
+    assert.equal(result.allowed, false)
+  })
+
+  it("is covered by no artifact node when the path leaves the repository with a parent segment", () => {
+    const result = nodes.evaluate({ node: path("releases", "net/../org/lib.jar"), user: user([allow("ingot.artifact.net.deploy")]) })
+    assert.equal(result.allowed, false)
+  })
+
+  it("is narrowed by a token that lists artifacts, as a node is", () => {
+    const token = { name: "ci", nodes: [allow("ingot.artifact.org.other.deploy")] }
+    const listed = nodes.evaluate({ node: path("releases", "org/other/lib/1.0/lib-1.0.jar"), user: user([allow("ingot.repository.releases.deploy")]), token })
+    const unlisted = nodes.evaluate({ node: path("releases", FILE), user: user([allow("ingot.repository.releases.deploy")]), token })
+    assert.deepEqual([listed.allowed, unlisted.allowed, unlisted.decision.source], [true, false, "TOKEN"])
+  })
+
+  it("keeps node requests as they were, given as text", () => {
+    const result = nodes.evaluate({ node: "ingot.repository.releases.deploy", user: user([allow("ingot.repository.releases.deploy")]) })
+    assert.deepEqual([result.allowed, result.decision.node], [true, "ingot.repository.releases.deploy"])
+  })
+})

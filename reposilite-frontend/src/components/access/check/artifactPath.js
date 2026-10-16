@@ -15,41 +15,32 @@
  */
 
 /*
- * The check tool's artifact path: the artifact directory (its groupId directories, then the artifactId)
- * becomes the node the server decides, qualified by the repository when one is given. The rules of the
- * groupId and the artifactId are the ones of the templates. Pure.
+ * The check by path: the repository the path is in (required, the server decides one repository), the path
+ * inside it as typed, and the action, read, deploy or delete. The server decides the path, so the groupId and
+ * the artifactId are never derived here. Pure.
  */
 
-import { artifactIdProblem, groupIdProblem } from '../nodes/artifactNodes'
 import { ARTIFACT_ACTIONS } from '../nodes/nodeGrammar'
 
 const REPOSITORY_NAME = /^[A-Za-z0-9_-]+$/
 
 /**
- * The node an artifact path names, as { node, problem }. node is empty while there is a problem. The
- * groupId is the directories above the last one, joined with '.', and the artifactId is the last one.
+ * The query of a path check, as { field, problem, query }. A problem names the field it belongs to (repository,
+ * path or action); the query is null while there is a problem. The path keeps its slashes and loses the spaces at
+ * its ends.
  */
-const artifactNodeFromPath = ({ repository = '', path = '', action = 'read' }) => {
+const pathQueryOf = ({ repository = '', path = '', action = 'read' }) => {
   const repo = String(repository ?? '').trim()
-  if (repo !== '' && !REPOSITORY_NAME.test(repo)) {
-    return { node: '', problem: "Use letters, digits, '_' and '-' in a repository name" }
+  const typedPath = String(path ?? '').trim()
+  if (repo === '') return { field: 'repository', problem: 'Enter the repository the path is in', query: null }
+  if (!REPOSITORY_NAME.test(repo)) {
+    return { field: 'repository', problem: "Use letters, digits, '_' and '-' in a repository name", query: null }
   }
+  if (typedPath === '') return { field: 'path', problem: 'Enter the path of the file or directory inside the repository', query: null }
   if (!ARTIFACT_ACTIONS.includes(action)) {
-    return { node: '', problem: `The action '${action}' is not an artifact action, choose read, deploy or delete` }
+    return { field: 'action', problem: `The action '${action}' is not an artifact action, choose read, deploy or delete`, query: null }
   }
-  const segments = String(path ?? '').split('/').filter(part => part !== '')
-  if (segments.length < 2) {
-    return { node: '', problem: 'Enter the artifact directory, for example net/onelitefeather/mycelium-bom' }
-  }
-  if (segments.some(part => part === '.' || part === '..')) {
-    return { node: '', problem: "Use the names of the directories, without '.' or '..' segments" }
-  }
-  const artifactId = segments[segments.length - 1]
-  const groupId = segments.slice(0, -1).join('.')
-  const problem = groupIdProblem(groupId) || artifactIdProblem(artifactId, groupId)
-  if (problem !== '') return { node: '', problem }
-  const prefix = repo === '' ? 'ingot.artifact.' : `ingot.repository.${repo}.artifact.`
-  return { node: `${prefix}${groupId}:${artifactId}.${action}`, problem: '' }
+  return { field: '', problem: '', query: { repository: repo, path: typedPath, action } }
 }
 
-export { artifactNodeFromPath }
+export { pathQueryOf }

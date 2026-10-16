@@ -15,56 +15,45 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { artifactNodeFromPath } from './artifactPath'
+import { pathQueryOf } from './artifactPath'
 
 /*
- * The check tool can take an artifact path instead of a node. The path is the artifact directory,
- * groupId directories then the artifactId, and it becomes the node the server decides.
+ * The check by path sends the question as it was typed: the repository (optional), the path inside
+ * it and the action. The server reads the directories of the path, so nothing here derives a groupId.
  */
 
-describe('artifactNodeFromPath', () => {
-  it('names the groupId from the directories above the artifactId and the artifactId from the last one', () => {
-    expect(artifactNodeFromPath({ repository: '', path: 'net/onelitefeather/mycelium-bom', action: 'read' }))
-      .toEqual({ node: 'ingot.artifact.net.onelitefeather:mycelium-bom.read', problem: '' })
+describe('pathQueryOf', () => {
+  it('sends the repository, the full path and the action as typed', () => {
+    expect(pathQueryOf({ repository: 'releases', path: 'net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom', action: 'deploy' }))
+      .toEqual({ field: '', problem: '', query: { repository: 'releases', path: 'net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom', action: 'deploy' } })
   })
 
-  it('qualifies the node with the repository when one is given', () => {
-    expect(artifactNodeFromPath({ repository: 'releases', path: 'net/onelitefeather/mycelium-bom', action: 'deploy' }))
-      .toEqual({ node: 'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.deploy', problem: '' })
+  it('does not derive a groupId or artifactId from the path', () => {
+    expect(pathQueryOf({ repository: 'releases', path: 'net/lib', action: 'read' }).query)
+      .toEqual({ repository: 'releases', path: 'net/lib', action: 'read' })
   })
 
-  it('ignores the slashes at the start and the end', () => {
-    expect(artifactNodeFromPath({ repository: '', path: '/net/example/lib/', action: 'delete' }).node)
-      .toBe('ingot.artifact.net.example:lib.delete')
+  it('asks for the repository when it is empty', () => {
+    expect(pathQueryOf({ repository: '  ', path: 'net/lib', action: 'read' }))
+      .toEqual({ field: 'repository', problem: 'Enter the repository the path is in', query: null })
   })
 
-  it('asks for the artifact directory when the path has one segment only', () => {
-    expect(artifactNodeFromPath({ repository: '', path: 'mycelium-bom', action: 'read' }))
-      .toEqual({ node: '', problem: 'Enter the artifact directory, for example net/onelitefeather/mycelium-bom' })
+  it('removes the spaces around the path but keeps its slashes', () => {
+    expect(pathQueryOf({ repository: 'releases', path: '  /net/lib/  ', action: 'read' }).query.path).toBe('/net/lib/')
   })
 
   it('asks for a path when it is empty', () => {
-    expect(artifactNodeFromPath({ repository: '', path: '  ', action: 'read' }).problem)
-      .toBe('Enter the artifact directory, for example net/onelitefeather/mycelium-bom')
-  })
-
-  it('refuses a parent segment', () => {
-    expect(artifactNodeFromPath({ repository: '', path: 'net/../lib', action: 'read' }).problem)
-      .toBe("Use the names of the directories, without '.' or '..' segments")
-  })
-
-  it('refuses a directory name the groupId rules do not allow', () => {
-    expect(artifactNodeFromPath({ repository: '', path: 'net/one*/lib', action: 'read' }).problem)
-      .toBe("Use '*' only as the whole groupId")
+    expect(pathQueryOf({ repository: 'releases', path: ' ', action: 'read' }))
+      .toEqual({ field: 'path', problem: 'Enter the path of the file or directory inside the repository', query: null })
   })
 
   it('refuses a repository name that is not a name', () => {
-    expect(artifactNodeFromPath({ repository: 'rel ases', path: 'net/lib', action: 'read' }).problem)
-      .toBe("Use letters, digits, '_' and '-' in a repository name")
+    expect(pathQueryOf({ repository: 'rel ases', path: 'net/lib', action: 'read' }))
+      .toEqual({ field: 'repository', problem: "Use letters, digits, '_' and '-' in a repository name", query: null })
   })
 
-  it('refuses an action that is not one of read, deploy and delete', () => {
-    expect(artifactNodeFromPath({ repository: '', path: 'net/lib', action: 'manage' }).problem)
-      .toBe("The action 'manage' is not an artifact action, choose read, deploy or delete")
+  it('refuses an action that is not read, deploy or delete', () => {
+    expect(pathQueryOf({ repository: 'releases', path: 'net/lib', action: 'manage' }))
+      .toEqual({ field: 'action', problem: "The action 'manage' is not an artifact action, choose read, deploy or delete", query: null })
   })
 })

@@ -191,22 +191,43 @@ const artifactCovers = (own, request) => {
   if (own.repository !== null && own.repository !== request.repository) return false
   if (own.action !== "*" && own.action !== request.action) return false
   const ownPath = pathOf(own)
-  const requestPath = pathOf(request)
+  const requestPath = coveredPath(request)
   return ownPath.length <= requestPath.length && ownPath.every((segment, index) => segment === requestPath[index])
 }
 
 /**
+ * The request of a repository path, as NodePattern.repositoryPath builds it: the repository action, with the segments of the
+ * path inside the repository. A path with a parent segment has no segments, so no artifact node covers it.
+ */
+const pathRequest = ({ repository, path, action }) => {
+  const segments = String(path ?? "").split("/").filter(part => part !== "")
+  return {
+    kind: "REPOSITORY", repository, action, area: null, text: `ingot.repository.${repository}.${action}`,
+    pathSegments: segments.includes("..") ? null : segments,
+  }
+}
+
+// A requested node is the text of a node, or a request object (a parsed node, or a path request) with its text.
+const requestOf = (node) => (typeof node === "string" ? { ...parseNode(node), text: node } : node)
+
+// The path a request covers: an artifact node covers its group and artifactId, a repository path its segments.
+const coveredPath = (request) => (request.kind === "ARTIFACT" ? pathOf(request) : request.pathSegments)
+
+/**
  * A pattern covers a requested node as NodePattern.matches does: '*' covers everything, a repository pattern covers a
  * repository node of the same repository (or any, for '*') and action, an admin pattern an admin node of the same area,
- * an artifact pattern an artifact node it covers (see artifactCovers). A requested node is concrete, so a '*' in it is a
- * literal. A node that does not parse matches nothing.
+ * an artifact pattern an artifact node or a repository path it covers (see artifactCovers). A requested node is concrete,
+ * so a '*' in it is a literal. A node that does not parse matches nothing.
  */
 const matches = (pattern, node) => {
   const own = parseNode(pattern)
-  const request = parseNode(node)
+  const request = requestOf(node)
   if (own.problem || request.problem) return false
   if (own.kind === "EVERYTHING") return true
-  if (own.kind === "ARTIFACT") return request.kind === "ARTIFACT" && artifactCovers(own, request)
+  if (own.kind === "ARTIFACT") {
+    const coverable = request.kind === "ARTIFACT" || (request.kind === "REPOSITORY" && request.pathSegments != null)
+    return coverable && artifactCovers(own, request)
+  }
   if (own.kind === "REPOSITORY") {
     return request.kind === "REPOSITORY" &&
       (own.repository === "*" || own.repository === request.repository) &&
@@ -324,7 +345,7 @@ const decideLayers = (layers, requested) => {
   const trace = []
   if (deciding < 0) {
     return {
-      decision: defaultDecision(requested),
+      decision: defaultDecision(requested.text),
       trace: [{ source: SOURCE.DEFAULT, subject: null, node: null, allowed: false, matched: true, reason: REASON.default, depth: 0, kind: null }],
     }
   }
@@ -396,11 +417,12 @@ const decisionExplanation = (allowed, node, kind, source, subject) =>
  * Returns { allowed, decision, trace }.
  */
 const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) => {
-  const principal = evaluatePrincipal({ node, user, memberTeams, teams })
+  const requested = requestOf(node)
+  const principal = evaluatePrincipal({ node: requested, user, memberTeams, teams })
   if (!token || !token.nodes || token.nodes.length === 0) {
     return { allowed: principal.decision.allowed, decision: principal.decision, trace: principal.trace }
   }
-  const candidates = candidatesOf(SOURCE.TOKEN, token.name, token.nodes, node, 0)
+  const candidates = candidatesOf(SOURCE.TOKEN, token.name, token.nodes, requested, 0)
   if (!principal.decision.allowed) {
     const skipped = candidates.map(candidate => entryOf(candidate, false, REASON.notConsulted))
     return { allowed: false, decision: principal.decision, trace: [...principal.trace, ...skipped] }
@@ -408,9 +430,9 @@ const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) =>
   const result = decideLayer(candidates)
   if (result === null) {
     const decision = {
-      source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0,
+      source: SOURCE.TOKEN, subject: token.name, node: requested.text, allowed: false, depth: 0,
       decidingNode: null, decidingKind: null,
-      explanation: `Denied: token '${token.name}' lists no node for '${node}'.`,
+      explanation: `Denied: token '${token.name}' lists no node for '${requested.text}'.`,
     }
     const entry = { source: SOURCE.TOKEN, subject: token.name, node: null, allowed: false, matched: true, reason: REASON.tokenDenied, depth: 0, kind: null }
     return { allowed: false, decision, trace: [...principal.trace, entry] }
@@ -426,7 +448,7 @@ const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) =>
   const decision = result.verdict
     ? principal.decision
     : {
-      source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0,
+      source: SOURCE.TOKEN, subject: token.name, node: requested.text, allowed: false, depth: 0,
       decidingNode: result.winner.node, decidingKind: winnerKind,
       explanation: decisionExplanation(false, result.winner.node, winnerKind, SOURCE.TOKEN, token.name),
     }
@@ -564,7 +586,7 @@ const templates = () => TEMPLATES.map(template => ({ ...template, nodes: [...tem
 
 module.exports = {
   MAX_TEAM_DEPTH, MAX_NODE_LENGTH, AREAS, ACTIONS, SOURCE, INSTANCE_ADMIN_NODE,
-  problemOf, validateEntries, matches, specificity,
+  problemOf, validateEntries, matches, specificity, pathRequest, parseNode,
   evaluate, isInstanceAdmin, effectiveNodes, ancestorsOf, defaultDecision,
   checkParents, buildCatalog, templates,
 }
