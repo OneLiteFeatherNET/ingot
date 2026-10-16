@@ -739,3 +739,131 @@ describe('NodeEditor artifact nodes', () => {
       .toBe("The groupId 'net' is refused by the server")
   })
 })
+
+describe('NodeEditor artifact templates', () => {
+  let wrapper
+
+  const ARTIFACT_TEMPLATES = () => [
+    { id: 'artifact-read', label: 'Read an artifact', nodes: ['ingot.artifact.{groupId}:{artifactId}.read'] },
+    {
+      id: 'repository-artifact-deploy',
+      label: 'Deploy an artifact in one repository',
+      nodes: [
+        'ingot.repository.{repository}.artifact.{groupId}:{artifactId}.read',
+        'ingot.repository.{repository}.artifact.{groupId}:{artifactId}.deploy'
+      ]
+    }
+  ]
+
+  const mountEditor = () => {
+    wrapper = mount(NodeEditor, {
+      props: {
+        nodes: [],
+        savedNodes: [],
+        catalog: CATALOG(),
+        templates: ARTIFACT_TEMPLATES(),
+        'onUpdate:nodes': (value) => wrapper.setProps({ nodes: value })
+      },
+      attachTo: document.body
+    })
+    return wrapper
+  }
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  const openTemplate = async (label) => {
+    await wrapper.find('[data-test="template-toggle"]').trigger('click')
+    await wrapper.findAll('[data-test="template-option"]')
+      .find(option => option.find('span').text() === label).trigger('click')
+  }
+  const field = (test) => wrapper.find(`[data-test="${test}"]`)
+  const apply = () => wrapper.find('[data-test="template-apply"]')
+  const lastDraft = () => wrapper.emitted('update:nodes').at(-1)[0]
+
+  it('asks for a groupId and an optional artifactId and adds the node as Allow', async () => {
+    mountEditor()
+
+    await openTemplate('Read an artifact')
+    await field('template-group').setValue('net.onelitefeather')
+    await field('template-artifact').setValue('mycelium-bom')
+    await apply().trigger('click')
+
+    expect(lastDraft()).toEqual([{ node: 'ingot.artifact.net.onelitefeather:mycelium-bom.read', allowed: true }])
+  })
+
+  it('leaves the artifactId out of the node when the field is empty', async () => {
+    mountEditor()
+
+    await openTemplate('Read an artifact')
+    await field('template-group').setValue('net.onelitefeather')
+    await apply().trigger('click')
+
+    expect(lastDraft()).toEqual([{ node: 'ingot.artifact.net.onelitefeather.read', allowed: true }])
+  })
+
+  it('shows the preview of the node in the groupId form', async () => {
+    mountEditor()
+
+    await openTemplate('Read an artifact')
+    await field('template-group').setValue('net')
+    await field('template-artifact').setValue('lib')
+
+    expect(wrapper.find('[data-test="template-panel"]').text()).toContain('Adds ingot.artifact.net:lib.read')
+  })
+
+  it('needs a groupId before the template can be added', async () => {
+    mountEditor()
+
+    await openTemplate('Read an artifact')
+
+    expect(apply().attributes('disabled')).toBeDefined()
+    expect(wrapper.emitted('update:nodes')).toBeUndefined()
+  })
+
+  it('refuses a wildcard inside the groupId with the message of the coordinate rules', async () => {
+    mountEditor()
+
+    await openTemplate('Read an artifact')
+    await field('template-group').setValue('net.*')
+
+    expect(wrapper.find('[data-test="template-panel"]').text()).toContain("Use '*' only as the whole groupId")
+    expect(apply().attributes('disabled')).toBeDefined()
+  })
+
+  it('refuses a colon in the groupId', async () => {
+    mountEditor()
+
+    await openTemplate('Read an artifact')
+    await field('template-group').setValue('net:lib')
+
+    expect(wrapper.find('[data-test="template-panel"]').text()).toContain("A groupId cannot contain ':'")
+  })
+
+  it('asks for the repository and the coordinates of the qualified template', async () => {
+    mountEditor()
+
+    await openTemplate('Deploy an artifact in one repository')
+    await field('template-repository').setValue('releases')
+    await field('template-group').setValue('net.onelitefeather')
+    await apply().trigger('click')
+
+    expect(lastDraft()).toEqual([
+      { node: 'ingot.repository.releases.artifact.net.onelitefeather.read', allowed: true },
+      { node: 'ingot.repository.releases.artifact.net.onelitefeather.deploy', allowed: true }
+    ])
+  })
+
+  it('refuses a wildcard repository for the qualified template', async () => {
+    mountEditor()
+
+    await openTemplate('Deploy an artifact in one repository')
+    await field('template-repository').setValue('*')
+    await field('template-group').setValue('net')
+
+    expect(wrapper.find('[data-test="template-panel"]').text()).toContain('The wildcard repository is not allowed')
+    expect(apply().attributes('disabled')).toBeDefined()
+  })
+})
