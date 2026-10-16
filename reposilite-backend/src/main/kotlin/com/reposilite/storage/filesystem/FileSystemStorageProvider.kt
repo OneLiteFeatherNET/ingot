@@ -56,7 +56,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.createTempFile
-import kotlin.io.path.deleteExisting
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
@@ -252,7 +251,8 @@ abstract class FileSystemStorageProvider protected constructor(
             .map { rootPath ->
                 when {
                     rootPath.isDirectory() -> rootPath.deleteRecursively()
-                    else -> rootPath.deleteExisting()
+                    // Removing what is already gone is not an error: upstream answers a repeated DELETE with success, and so must Ingot.
+                    else -> rootPath.deleteIfExists().let { }
                 }
             }
 
