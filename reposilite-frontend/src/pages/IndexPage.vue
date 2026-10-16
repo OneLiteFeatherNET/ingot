@@ -29,6 +29,7 @@ import MdNavigationBar from '../components/md/MdNavigationBar.vue'
 import MdNavigationRail from '../components/md/MdNavigationRail.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
 import OverviewIcon from '../components/icons/OverviewIcon.vue'
+import SearchIcon from '../components/icons/SearchIcon.vue'
 import DashboardIcon from '../components/icons/DashboardIcon.vue'
 import AccessIcon from '../components/icons/AccessIcon.vue'
 import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
@@ -63,10 +64,12 @@ const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
 const AccountView = lazyView(() => import('../components/account/AccountView.vue'))
+const SearchView = lazyView(() => import('../components/search/SearchView.vue'))
 
 // The icon of each section. The active one is drawn filled, the others outlined.
 const SECTION_ICONS = {
   overview: OverviewIcon,
+  search: SearchIcon,
   dashboard: DashboardIcon,
   access: AccessIcon,
   console: ConsoleIcon,
@@ -320,6 +323,7 @@ const activeLabel = computed(() => sectionLabel(section.value))
           :qualifier="qualifier"
         />
       </template>
+      <SearchView v-else-if="section === 'search'" />
       <AccountView v-else-if="section === 'account'" />
       <DashboardView v-else-if="section === 'dashboard'" />
       <AccessView

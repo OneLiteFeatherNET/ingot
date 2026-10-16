@@ -112,4 +112,24 @@ describe('MdChip', () => {
     const iconWrapper = wrapper.find('[data-test="icon"]').element.parentElement
     expect(iconWrapper.getAttribute('aria-hidden')).toBe('true')
   })
+
+  it('filter chip can report its state as a pressed toggle button instead of a checkbox', () => {
+    const wrapper = mount(MdChip, {
+      props: { variant: 'filter', selected: true, toggle: 'button' },
+      slots: { default: 'Snapshots' }
+    })
+
+    expect(wrapper.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.attributes('role'), 'a button keeps its native role').toBeUndefined()
+    expect(wrapper.attributes('aria-checked')).toBeUndefined()
+  })
+
+  it('filter chip reports an unselected toggle button as not pressed', () => {
+    const wrapper = mount(MdChip, {
+      props: { variant: 'filter', toggle: 'button' },
+      slots: { default: 'Snapshots' }
+    })
+
+    expect(wrapper.attributes('aria-pressed')).toBe('false')
+  })
 })

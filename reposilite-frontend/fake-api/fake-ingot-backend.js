@@ -25,6 +25,7 @@ const bodyParser = require('body-parser')
 const crypto = require("crypto")
 const audit = require("./audit.cjs")
 const identity = require("./identity.cjs")
+const { createSearch, sampleFiles } = require("./search.cjs")
 const { localDateOnWire } = require("./wire.cjs")
 
 const {
@@ -208,6 +209,24 @@ const listRepositories = (query, signedIn) => {
       .filter(repository => requiredTags.every(tag => repository.tags.includes(tag)))
       .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
   }
+}
+
+// The search is built per request from the repositories as they are configured now, so a repository edited in
+// the settings changes who may see its files.
+const answerSearch = (req, res, endpoint) => {
+  const publicRepositories = (mavenSettingsEntity.repositories ?? [])
+    .filter(repository => repository.visibility === 'PUBLIC')
+    .map(repository => repository.id)
+  const search = createSearch({
+    files: sampleFiles(),
+    publicRepositories,
+    state: process.env.INGOT_FAKE_API_SEARCH || 'ready'
+  })
+  const answer = (signedIn) => {
+    const { status, body } = search[endpoint](req.query, { signedIn })
+    res.status(status).send(body)
+  }
+  authorized(req, () => answer(true), () => answer(false))
 }
 
 const statisticsSeries = [
@@ -450,6 +469,11 @@ application
       .map(repository => repository.id)
     authorized(req, () => res.send({ members: membersFor(true) }), () => res.send({ members: membersFor(false) }))
   })
+  // The artifact search (spec section 6). Anonymous callers see the PUBLIC repositories and signed-in callers all
+  // of them. INGOT_FAKE_API_SEARCH picks the state to simulate: ready (default), building, missing, degraded, or
+  // disabled, which answers 404 as the real server does with INGOT_LOCAL_SEARCHENABLED=false.
+  .get('/api/maven/search', (req, res) => answerSearch(req, res, 'search'))
+  .get('/api/maven/search/files', (req, res) => answerSearch(req, res, 'files'))
   .put('/api/settings/domain/maven', (req, res) => { mavenSettingsEntity = req.body; res.send("") })
   .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
   .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))

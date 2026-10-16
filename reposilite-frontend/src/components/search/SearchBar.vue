@@ -15,24 +15,36 @@
   -->
 
 <script setup>
+import { ref } from 'vue'
+
 /*
  * The M3 search bar: a search landmark with a 56px pill on the raised surface and no outline. The
  * text is the value of the component; the default slot sits under the pill, where a page puts its
  * filter chips. Shared by the repository overview and the search page.
+ *
+ * The page decides what Enter and the other keys do: the bar reports a submit and passes the key
+ * presses of the input on, and `focus()` and `blur()` let the page move the focus in and out.
  */
 defineProps({
   modelValue: { type: String, default: '' },
   label: { type: String, required: true }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'submit', 'keydown'])
+
+const input = ref(null)
+
+defineExpose({
+  focus: () => input.value?.focus(),
+  blur: () => input.value?.blur()
+})
 </script>
 
 <template>
   <form
     role="search"
     class="flex flex-col gap-3"
-    @submit.prevent
+    @submit.prevent="emit('submit')"
   >
     <div class="flex h-14 items-center gap-2 rounded-corner-full bg-surface-container-high pl-4 pr-2 text-on-surface has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-secondary">
       <svg
@@ -44,6 +56,7 @@ const emit = defineEmits(['update:modelValue'])
         <path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 9.5 16a6.5 6.5 0 0 0 4.2-1.6l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
       </svg>
       <input
+        ref="input"
         type="search"
         class="md-embedded-input min-w-0 flex-1 md-body-large text-on-surface placeholder:text-on-surface-variant [&::-webkit-search-cancel-button]:hidden"
         :aria-label="label"
@@ -51,6 +64,7 @@ const emit = defineEmits(['update:modelValue'])
         autocomplete="off"
         :value="modelValue"
         @input="emit('update:modelValue', $event.target.value)"
+        @keydown="emit('keydown', $event)"
       >
       <button
         v-if="modelValue !== ''"

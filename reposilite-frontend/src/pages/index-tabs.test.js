@@ -24,13 +24,13 @@ const canWith = (nodes) => (node) => canUse(nodes, node)
 const labelsFor = (nodes) => visibleSections(canWith(nodes)).map(section => section.label)
 
 describe('visibleSections', () => {
-  it('offers only overview to a visitor who may use no admin node', () => {
-    expect(visibleSections(() => false).map(section => section.key)).toEqual(['overview'])
+  it('offers only overview and search to a visitor who may use no admin node', () => {
+    expect(visibleSections(() => false).map(section => section.key)).toEqual(['overview', 'search'])
   })
 
   it('offers every section to a visitor who may use all admin nodes, in the order of the navigation', () => {
     expect(labelsFor(['ingot.admin.*']))
-      .toEqual(['Overview', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings'])
+      .toEqual(['Overview', 'Search', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings'])
   })
 
   it('offers every section to an instance admin with the lone wildcard', () => {
@@ -53,8 +53,25 @@ describe('visibleSections', () => {
     expect(labelsFor(['ingot.admin.teams'])).toContain('Access')
   })
 
-  it('offers only overview to a user with repository nodes but no admin node', () => {
-    expect(labelsFor(['ingot.repository.releases.read'])).toEqual(['Overview'])
+  it('offers only overview and search to a user with repository nodes but no admin node', () => {
+    expect(labelsFor(['ingot.repository.releases.read'])).toEqual(['Overview', 'Search'])
+  })
+})
+
+describe('search section', () => {
+  it('sits next to overview and opens the search route', () => {
+    const keys = SECTIONS.map(section => section.key)
+
+    expect(keys.slice(0, 2)).toEqual(['overview', 'search'])
+    expect(SECTIONS.find(section => section.key === 'search')?.route).toBe('search')
+  })
+
+  it('is open to a visitor who is not a manager', () => {
+    expect(SECTIONS.find(section => section.key === 'search')?.manager).toBe(false)
+  })
+
+  it('names the section in the document title', () => {
+    expect(sectionLabel('search')).toBe('Search')
   })
 })
 
@@ -131,8 +148,9 @@ describe('section table', () => {
 
 describe('overflow', () => {
   it('moves the rare admin pages under More and keeps the daily ones in the bar', () => {
-    expect(SECTIONS.filter(section => isOverflow(section.key)).map(section => section.key)).toEqual(['maintenance', 'audit', 'settings'])
+    expect(SECTIONS.filter(section => isOverflow(section.key)).map(section => section.key)).toEqual(['console', 'maintenance', 'audit', 'settings'])
     expect(isOverflow('access')).toBe(false)
+    expect(isOverflow('search')).toBe(false)
     expect(isOverflow('unknown')).toBe(false)
   })
 

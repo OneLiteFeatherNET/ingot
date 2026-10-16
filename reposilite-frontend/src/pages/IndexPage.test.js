@@ -79,6 +79,7 @@ vi.mock('../components/console/ConsoleView.vue', sectionStub('ConsoleStub', 'con
 vi.mock('../components/maintenance/MaintenanceView.vue', sectionStub('MaintenanceStub', 'maintenance'))
 vi.mock('../components/account/AccountView.vue', sectionStub('AccountStub', 'account'))
 vi.mock('../components/audit/AuditView.vue', sectionStub('AuditStub', 'audit'))
+vi.mock('../components/search/SearchView.vue', sectionStub('SearchStub', 'search'))
 vi.mock('../components/settings/SettingsView.vue', sectionStub('SettingsStub', 'settings'))
 
 const QUALIFIER = { path: '', watchable: 0 }
@@ -125,9 +126,9 @@ const chooseLink = async (wrapper, label) => {
 
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
-const SECTION_LABELS = ['Overview', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']
+const SECTION_LABELS = ['Overview', 'Search', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']
 // The bottom bar keeps the daily sections and puts the rarer admin pages under More.
-const BAR_LABELS = ['Overview', 'Dashboard', 'Access', 'Console']
+const BAR_LABELS = ['Overview', 'Search', 'Dashboard', 'Access']
 
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
@@ -348,13 +349,13 @@ describe('IndexPage navigation', () => {
   it('shows Maintenance to a user with ingot.admin.maintenance', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.maintenance'] })
 
-    expect(railLabels(wrapper)).toEqual(['Overview', 'Maintenance'])
+    expect(railLabels(wrapper)).toEqual(['Overview', 'Search', 'Maintenance'])
   })
 
   it('hides Access from a user with no access node', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.console', 'ingot.admin.audit'] })
 
-    expect(railLabels(wrapper)).toEqual(['Overview', 'Console', 'Audit'])
+    expect(railLabels(wrapper)).toEqual(['Overview', 'Search', 'Console', 'Audit'])
   })
 
   it('shows every section to a user with ingot.admin.*', async () => {
@@ -369,14 +370,14 @@ describe('IndexPage navigation', () => {
     const [bar] = navigations(wrapper)
     await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
 
-    expect(bar.findAll('a').map(link => link.text())).toEqual(['Overview', 'Console'])
-    expect(wrapper.find('nav[aria-label="More sections"]').findAll('a').map(link => link.text())).toEqual(['Audit'])
+    expect(bar.findAll('a').map(link => link.text())).toEqual(['Overview', 'Search'])
+    expect(wrapper.find('nav[aria-label="More sections"]').findAll('a').map(link => link.text())).toEqual(['Console', 'Audit'])
   })
 
-  it('shows no navigation to a user with repository nodes only', async () => {
+  it('shows the public sections only to a user with repository nodes but no admin node', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.repository.releases.read'] })
 
-    expect(navigations(wrapper)).toHaveLength(0)
+    expect(railLabels(wrapper)).toEqual(['Overview', 'Search'])
   })
 
   it('shows the legacy manager every section when the session has no node list', async () => {
@@ -408,7 +409,7 @@ describe('IndexPage navigation', () => {
     await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
 
     const panel = wrapper.find('nav[aria-label="More sections"]')
-    expect(panel.findAll('a').map(link => link.text())).toEqual(['Maintenance', 'Audit', 'Settings'])
+    expect(panel.findAll('a').map(link => link.text())).toEqual(['Console', 'Maintenance', 'Audit', 'Settings'])
 
     await panel.findAll('a').find(link => link.text() === 'Audit').trigger('click')
 
@@ -417,10 +418,19 @@ describe('IndexPage navigation', () => {
     expect(router.currentRoute.value.name).toBe('audit')
   })
 
-  it('shows no navigation at all when the user has only one section', async () => {
+  it('offers a visitor Overview and Search, the two sections that need no sign in', async () => {
     const { wrapper } = await mountAt('/', { manager: false })
 
-    expect(navigations(wrapper), 'a single destination needs no navigation').toHaveLength(0)
+    expect(railLabels(wrapper)).toEqual(['Overview', 'Search'])
+  })
+
+  it('opens the search page from the rail without a sign in', async () => {
+    const { wrapper, router } = await mountAt('/', { manager: false })
+
+    await chooseLink(navigations(wrapper)[1], 'Search')
+
+    expect(router.currentRoute.value.fullPath).toBe('/search')
+    expect(shownSection(wrapper)).toBe('search')
   })
 
   it('marks the active section as the current page in both navigations', async () => {
@@ -585,10 +595,10 @@ describe('IndexPage bottom bar height', () => {
     wrapper.unmount()
   })
 
-  it('publishes zero when the user has only one section', async () => {
+  it('publishes the bar height to a visitor, who has the Overview and Search sections', async () => {
     const { wrapper } = await mountAt('/', { manager: false })
 
-    expect(rootBarHeight(), 'no bar means no offset').toBe('0px')
+    expect(rootBarHeight(), 'a bar with two destinations still takes its height').toBe('80px')
     wrapper.unmount()
   })
 

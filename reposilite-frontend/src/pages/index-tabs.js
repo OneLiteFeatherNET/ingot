@@ -20,19 +20,21 @@
  * route its link opens and whether a visitor has to be a manager to see it.
  *
  * The bottom bar on a phone holds five destinations at most. A section marked `overflow` is
- * kept out of it and sits under "More" instead. The rail beside the page has room for all of them,
- * seven destinations being the most a navigation rail holds. Maintenance, the audit log and Settings
- * are the rarer admin pages, so they overflow and the daily pages (overview, dashboard, access,
- * console) stay one tap away.
+ * kept out of it and sits under "More" instead. The rail beside the page has room for all of them.
+ * Search joined the sections with the artifact search (spec section 8.1), which makes eight for an
+ * administrator, one more than the seven that M3 recommends for a rail; the bar keeps its five by
+ * moving Console under More with Maintenance, the audit log and Settings. The daily pages (overview,
+ * search, dashboard, access) stay one tap away.
  */
 
 import { ACCESS_NODES, ADMIN_NODES, requiredNodes } from '../store/nodeAccess'
 
 const SECTIONS = [
   { key: 'overview', label: 'Overview', manager: false, route: 'overview' },
+  { key: 'search', label: 'Search', manager: false, route: 'search' },
   { key: 'dashboard', label: 'Dashboard', manager: true, node: ADMIN_NODES.dashboard, route: 'dashboard' },
   { key: 'access', label: 'Access', manager: true, anyNode: ACCESS_NODES, route: 'access' },
-  { key: 'console', label: 'Console', manager: true, node: ADMIN_NODES.console, route: 'console' },
+  { key: 'console', label: 'Console', manager: true, node: ADMIN_NODES.console, route: 'console', overflow: true },
   { key: 'maintenance', label: 'Maintenance', manager: true, node: ADMIN_NODES.maintenance, route: 'maintenance', overflow: true },
   { key: 'audit', label: 'Audit', manager: true, node: ADMIN_NODES.audit, route: 'audit', overflow: true },
   { key: 'settings', label: 'Settings', manager: true, node: ADMIN_NODES.settings, route: 'settings', overflow: true },

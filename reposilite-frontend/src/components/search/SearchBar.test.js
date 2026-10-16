@@ -76,4 +76,45 @@ describe('SearchBar', () => {
 
     expect(wrapper.find('[data-test="under-bar"]').exists()).toBe(true)
   })
+
+  it('reports a submit, so a page can run the query on Enter', async () => {
+    const wrapper = mountBar({ modelValue: 'nightly' })
+
+    await wrapper.trigger('submit')
+
+    expect(wrapper.emitted('submit')).toHaveLength(1)
+  })
+
+  it('hands the key presses of the input to the page', async () => {
+    const wrapper = mountBar()
+
+    await wrapper.find('input').trigger('keydown', { key: 'ArrowDown' })
+
+    expect(wrapper.emitted('keydown')?.[0][0].key).toBe('ArrowDown')
+  })
+
+  it('lets the page focus the input', () => {
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: '', label: 'Search things' },
+      attachTo: document.body
+    })
+
+    wrapper.vm.focus()
+
+    expect(document.activeElement).toBe(wrapper.find('input').element)
+    wrapper.unmount()
+  })
+
+  it('lets the page take the focus out of the input', () => {
+    const wrapper = mount(SearchBar, {
+      props: { modelValue: '', label: 'Search things' },
+      attachTo: document.body
+    })
+    wrapper.vm.focus()
+
+    wrapper.vm.blur()
+
+    expect(document.activeElement).not.toBe(wrapper.find('input').element)
+    wrapper.unmount()
+  })
 })

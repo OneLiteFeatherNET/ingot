@@ -423,6 +423,25 @@ const createClient = (defaultName, defaultSecret) => {
         return get(`/api/maven/repositories${query ? `?${query}` : ""}`)
       },
       /*
+       * One page of the artifact search. `query` is the query string of the page, already built from
+       * its address (see components/search/searchQuery.js), without the leading question mark.
+       */
+      search(query) {
+        return get(`/api/maven/search${query ? `?${query}` : ""}`)
+      },
+      /*
+       * The files of one version found by the search. The coordinates are required; the repository and
+       * origin filters of the search narrow the files the same way they narrowed the version.
+       */
+      searchFiles({ groupId, artifactId, version, origin = "all", repository = [], page = 0, size = 50 }) {
+        const params = new URLSearchParams({ groupId, artifactId, version })
+        if (origin !== "all") params.set("origin", origin)
+        for (const name of repository) params.append("repository", name)
+        if (page > 0) params.set("page", String(page))
+        if (size !== 50) params.set("size", String(size))
+        return get(`/api/maven/search/files?${params.toString()}`)
+      },
+      /*
        * The repositories a group references through loopback mirrors, in configuration order.
        */
       members(repository) {

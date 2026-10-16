@@ -27,7 +27,7 @@ internal class DashboardPathsTest {
         val reserved = DashboardPaths.RESERVED_SEGMENTS
 
         // then: the dashboard routes and the API and asset segments are all covered
-        assertThat(reserved).containsExactlyInAnyOrder("browse", "dashboard", "tokens", "console", "maintenance", "audit", "settings", "access", "account", "api", "assets")
+        assertThat(reserved).containsExactlyInAnyOrder("browse", "search", "dashboard", "tokens", "console", "maintenance", "audit", "settings", "access", "account", "api", "assets")
     }
 
     @Test
@@ -42,14 +42,14 @@ internal class DashboardPathsTest {
     }
 
     @Test
-    fun `should not reserve the search segment while its page is not built`() {
-        // when: the reserved segments and the routes are read
+    fun `should answer the search path with the dashboard`() {
+        // when: the dashboard route table and the reserved segments are read
         val reserved = DashboardPaths.RESERVED_SEGMENTS
         val routes = DashboardPaths.APP_ROUTES
 
-        // then: search stays free for repositories and has no dashboard route
-        assertThat(reserved).describedAs("reserved segments").doesNotContain("search")
-        assertThat(routes.filter { it.startsWith("/search") }).describedAs("search routes").isEmpty()
+        // then: the search page is a dashboard route without sub-paths, and its segment is reserved
+        assertThat(reserved).describedAs("reserved segments").contains("search")
+        assertThat(routes.filter { it.startsWith("/search") }).describedAs("search routes").containsExactly("/search")
     }
 
     @Test
@@ -147,12 +147,17 @@ internal class DashboardPathsTest {
     }
 
     @Test
-    fun `should not flag a repository named search`() {
-        // when: a repository with the id of the unbuilt search page is checked
-        val flagged = DashboardPaths.reservedRepositoryWarnings(listOf("search"))
+    fun `should warn about a repository named after the search route like any other dashboard route`() {
+        // when: a repository with the id of the search route is checked
+        val warning = DashboardPaths.reservedRepositoryWarnings(listOf("search")).single()
 
-        // then: nothing collides yet
-        assertThat(flagged).describedAs("warnings for the id search").isEmpty()
+        // then: the warning names the search route and the browse path that reaches the repository from the dashboard
+        assertThat(warning)
+            .describedAs("warning text for the search route")
+            .contains("'/search'")
+            .contains("'/browse/search'")
+            .contains("top-level browser navigation")
+            .contains("not rejected")
     }
 
     @Test

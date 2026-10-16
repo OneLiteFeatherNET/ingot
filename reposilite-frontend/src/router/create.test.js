@@ -44,6 +44,8 @@ describe('route to section mapping', () => {
   const cases = [
     ['/', 'overview'],
     ['/browse/releases/gav/0.1.0', 'overview'],
+    ['/search', 'search'],
+    ['/search?q=commons&origin=mirror', 'search'],
     ['/account', 'account'],
     ['/dashboard', 'dashboard'],
     ['/access/users', 'access'],
@@ -305,6 +307,18 @@ describe('document title', () => {
     await router.push('/')
 
     expect(document.title).toBe('Ingot Repository')
+  })
+})
+
+describe('search route', () => {
+  it('opens the search page for an anonymous visitor, who needs no sign in for it', async () => {
+    const router = makeRouter()
+
+    await router.push('/search?q=commons')
+
+    expect(router.currentRoute.value.name).toBe('search')
+    expect(router.currentRoute.value.meta.manager, 'search is not a manager section').toBeUndefined()
+    expect(router.currentRoute.value.query.q, 'the query stays in the address').toBe('commons')
   })
 })
 
