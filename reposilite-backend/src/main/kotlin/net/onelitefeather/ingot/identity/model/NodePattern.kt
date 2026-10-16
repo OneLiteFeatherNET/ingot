@@ -137,6 +137,19 @@ class NodePattern private constructor(
     private val isRepositoryScoped: Boolean
         get() = kind == Kind.REPOSITORY || kind == Kind.ARTIFACT
 
+    /** The path segments of the subtree an artifact node covers (empty for the groupId `*`), null for every other kind. */
+    val coveredSegments: List<String>?
+        get() = if (kind == Kind.ARTIFACT) pathSegments.orEmpty() else null
+
+    /**
+     * Whether this is an artifact node that grants [action] (`read`, `deploy` or `delete`) in [repository]: its action is
+     * that action or `*`, and it is unqualified or qualified for that repository.
+     */
+    fun isArtifactNodeFor(repository: String, action: String): Boolean =
+        kind == Kind.ARTIFACT &&
+            (this.repository == null || this.repository == repository) &&
+            (this.action == action || (this.action == WILDCARD && action in ARTIFACT_ACTIONS))
+
     override fun toString(): String = text
 
     companion object {
@@ -195,7 +208,11 @@ class NodePattern private constructor(
         /** Parses a valid node. Throws [IllegalArgumentException] with the reason when the node is not valid. */
         fun of(text: String): NodePattern = parse(text)
 
-        private fun segmentsOf(path: String): List<String>? =
+        /**
+         * The segments of a path inside a repository, normalised like every request location, or null for a path that cannot
+         * be normalised (a parent segment, for example). The same normalisation decides artifact nodes and listings.
+         */
+        fun segmentsOf(path: String): List<String>? =
             try {
                 Location.of(path).toString().split('/').filter { it.isNotEmpty() }
             } catch (exception: UnsupportedLocationException) {

@@ -129,7 +129,25 @@ internal class RepositoryService(
             .peek { extensions.emitEvent(DeleteEvent(repository, gav, by, cleanupRunId)) }
 
     fun findDetails(lookupRequest: LookupRequest): Result<FileDetails, ErrorResponse> =
-        resolve(lookupRequest) { repository, gav -> findDetails(lookupRequest.accessToken, repository, gav) }
+        resolve(
+            lookupRequest = lookupRequest,
+            onDenied = { repository, gav, denied -> findDirectoryOnTheWayToReadableSubtree(lookupRequest.accessToken, repository, gav, denied) },
+        ) { repository, gav -> findDetails(lookupRequest.accessToken, repository, gav) }
+
+    /**
+     * A directory the token may not read can still be opened when it lies on the way to a subtree the token may read through
+     * artifact nodes. Only the directory of the repository itself answers; anything else, a file or a missing path, is
+     * refused exactly as the read was, so the refusal reveals nothing about the path.
+     */
+    private fun findDirectoryOnTheWayToReadableSubtree(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location, denied: ErrorResponse): Result<FileDetails, ErrorResponse> =
+        if (securityProvider.canBrowseResource(accessToken, repository, gav).isOk) {
+            repository.storageProvider.getFileDetails(gav).orNull()
+                ?.takeIf { it.type == DIRECTORY }
+                ?.asSuccess()
+                ?: Result.error(denied)
+        } else {
+            Result.error(denied)
+        }
 
     fun findFile(lookupRequest: LookupRequest): Result<ResolvedDocument, ErrorResponse> =
         resolve(lookupRequest) { repository, gav ->
@@ -142,14 +160,22 @@ internal class RepositoryService(
             }
         }
 
-    private fun <T> resolve(lookupRequest: LookupRequest, block: (Repository, Location) -> Result<T, ErrorResponse>): Result<T, ErrorResponse> {
+    /** Runs [block] when the token may read the path. When it may not, [onDenied] answers; by default the answer is the refusal. */
+    private fun <T> resolve(
+        lookupRequest: LookupRequest,
+        onDenied: (Repository, Location, ErrorResponse) -> Result<T, ErrorResponse> = { _, _, denied -> Result.error(denied) },
+        block: (Repository, Location) -> Result<T, ErrorResponse>,
+    ): Result<T, ErrorResponse> {
         val (accessToken, repositoryName, gav) = lookupRequest
         val repository = repositoryProvider.getRepository(lookupRequest.repository) ?: return notFoundError("Repository $repositoryName not found")
 
-        return canAccessResource(lookupRequest.accessToken, repository.name, gav)
-            .onError { logger.debug("ACCESS | Unauthorized attempt of access (token: $accessToken) to $gav from ${repository.name}") }
-            .peek { extensions.emitEvent(PreResolveEvent(accessToken, repository, gav)) }
-            .flatMap { block(repository, gav) }
+        val access = canAccessResource(lookupRequest.accessToken, repository.name, gav)
+        if (access.isErr) {
+            logger.debug("ACCESS | Unauthorized attempt of access (token: $accessToken) to $gav from ${repository.name}")
+            return onDenied(repository, gav, access.error)
+        }
+        extensions.emitEvent(PreResolveEvent(accessToken, repository, gav))
+        return block(repository, gav)
     }
 
     fun canAccessResource(accessToken: AccessTokenIdentifier?, repository: String, gav: Location): Result<Unit, ErrorResponse> =

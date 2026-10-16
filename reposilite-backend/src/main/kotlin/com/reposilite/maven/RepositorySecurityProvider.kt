@@ -22,6 +22,8 @@ import com.reposilite.maven.RepositoryVisibility.PUBLIC
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.toErrorResponse
 import com.reposilite.shared.unauthorizedError
+import com.reposilite.storage.api.FileDetails
+import com.reposilite.storage.api.FileType
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
@@ -58,11 +60,35 @@ internal class RepositorySecurityProvider(private val accessTokenFacade: AccessT
             PRIVATE -> hasPermissionTo(accessToken, repository, gav, Action.READ)
         }
 
+    /**
+     * Decides whether a directory may be opened. Besides the read of the directory itself, a directory on the way to a
+     * subtree the token may read through artifact nodes may be opened, so that the subtree can be reached. A refused
+     * directory answers as it always did.
+     */
     fun canBrowseResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Result<Unit, ErrorResponse> =
         when (repository.visibility) {
             PUBLIC -> Result.ok(Unit)
-            HIDDEN -> hasPermissionTo(accessToken, repository, gav, Action.READ)
-            PRIVATE -> hasPermissionTo(accessToken, repository, gav, Action.READ)
+            HIDDEN, PRIVATE -> hasPermissionTo(accessToken, repository, gav, Action.READ)
+                .let { read -> if (read.isOk || !leadsToReadableSubtree(accessToken, repository, gav)) read else Result.ok(Unit) }
+        }
+
+    private fun leadsToReadableSubtree(accessToken: AccessTokenIdentifier?, repository: Repository, directory: Location): Boolean =
+        artifactListingFilter(accessToken, repository)?.leadsToReadable(directory.toString()) ?: false
+
+    private fun artifactListingFilter(accessToken: AccessTokenIdentifier?, repository: Repository): ArtifactListingFilter? =
+        accessToken?.let { ArtifactListingFilter.of(accessTokenFacade.subjectOf(it), repository.name) }
+
+    /**
+     * The entries of the directory [directory] the token may see, when artifact nodes take part in reading [repository]:
+     * the entries it may read and the directories on the way to a readable subtree. Null when they do not, and the entries
+     * keep the decisions they always had.
+     */
+    fun filterByArtifactNodes(accessToken: AccessTokenIdentifier?, repository: Repository, directory: Location, files: List<FileDetails>): List<FileDetails>? =
+        when (repository.visibility) {
+            PUBLIC -> null
+            HIDDEN, PRIVATE -> artifactListingFilter(accessToken, repository)?.let { filter ->
+                files.filter { filter.shows(directory.toString(), it.name, it.type == FileType.DIRECTORY) }
+            }
         }
 
     fun canModifyResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Boolean =

@@ -116,11 +116,16 @@ object PermissionEvaluator {
 
     /**
      * Whether the subject may see the repository named by [fragment], a repository fragment such as `/releases`. The legacy
-     * part is the old `AccessTokenFacade.canSee`, unchanged. Nodes and path grants add visibility on top of it.
+     * part is the old `AccessTokenFacade.canSee`, unchanged. Nodes and path grants add visibility on top of it, and so does
+     * a readable artifact subtree: a subject that may read part of the repository sees the repository.
      */
     fun canSee(subject: AccessSubject, fragment: String): Boolean {
         if (subject.disabled) return false
         val repository = fragment.removePrefix("/")
+        return canSeeWholeRepository(subject, fragment, repository) || readableArtifactSubtrees(subject, repository).isNotEmpty()
+    }
+
+    private fun canSeeWholeRepository(subject: AccessSubject, fragment: String, repository: String): Boolean {
         if (!tokenAllows(subject, NodePattern.repository(repository, "read"))) return false
         if (isInstanceAdmin(subject)) return true
         if (subject.levels.any { level -> level.grants.any { grantReaches(it, fragment) } }) return true
@@ -129,6 +134,35 @@ object PermissionEvaluator {
             nodeGrantMatch(grant, NodePattern.repository(repository, "read"), includeLegacy = true)
         }.allowed
     }
+
+    /**
+     * Whether any artifact node of the owner or the token speaks about reading in [repository], allowing or denying. A
+     * cheap check on the rules alone: a listing of a repository without such a rule keeps the decisions it always had.
+     */
+    fun hasArtifactReadRule(subject: AccessSubject, repository: String): Boolean {
+        if (subject.disabled) return false
+        return artifactReadRules(subject, repository).any()
+    }
+
+    /**
+     * The roots of the subtrees of [repository] the subject may read through artifact nodes, as path segments below the
+     * repository root (empty for the whole repository). Each allowed artifact read node of the owner or the token names a
+     * root; it counts when the full decision (denials, precedence, token narrowing) allows reading it. The listing leads
+     * into these roots, so a root a denial removes never shows a directory on the way to it.
+     */
+    fun readableArtifactSubtrees(subject: AccessSubject, repository: String): List<List<String>> {
+        if (subject.disabled) return emptyList()
+        return artifactReadRules(subject, repository)
+            .filter { it.allowed }
+            .mapNotNull { it.pattern.coveredSegments }
+            .distinct()
+            .filter { segments -> allows(subject, AccessRequest("/$repository/${segments.joinToString("/")}", Action.READ)) }
+            .toList()
+    }
+
+    private fun artifactReadRules(subject: AccessSubject, repository: String): Sequence<SourcedRule> =
+        (subject.levels.asSequence().flatMap { it.rules } + subject.tokenRules.orEmpty())
+            .filter { it.pattern.isArtifactNodeFor(repository, "read") }
 
     /**
      * Whether a grant reaches the repository of [fragment] at all, whatever its actions. Used by [canSee] and by the access

@@ -57,7 +57,16 @@ class MavenFacade internal constructor(
     private val repositoryService = repositoryProvider.repositoryService
 
     fun findDetails(lookupRequest: LookupRequest): Result<out FileDetails, ErrorResponse> =
-        repositoryService.findDetails(lookupRequest)
+        repositoryService.findDetails(lookupRequest).map { details -> withListableFiles(lookupRequest, details) }
+
+    /** A directory lists only what artifact nodes let the token see, when they take part in reading its repository. */
+    private fun withListableFiles(lookupRequest: LookupRequest, details: FileDetails): FileDetails {
+        val directory = details as? DirectoryInfo ?: return details
+        val repository = getRepository(lookupRequest.repository) ?: return details
+        return repositorySecurityProvider.filterByArtifactNodes(lookupRequest.accessToken, repository, lookupRequest.gav, directory.files)
+            ?.let { DirectoryInfo(directory.name, it) }
+            ?: details
+    }
 
     fun findFile(lookupRequest: LookupRequest): Result<ResolvedDocument, ErrorResponse> =
         repositoryService.findFile(lookupRequest)
@@ -132,13 +141,14 @@ class MavenFacade internal constructor(
 
     fun getAvailableFiles(request: LookupRequest, directoryInfo: DirectoryInfo): List<FileDetails> =
         getRepository(request.repository)!!.let { repository ->
-            directoryInfo.files.filter {
-                repositorySecurityProvider.canBrowseResource(
-                    accessToken = request.accessToken,
-                    repository = repository,
-                    gav = request.gav.resolve(it.name)
-                ).isOk
-            }
+            repositorySecurityProvider.filterByArtifactNodes(request.accessToken, repository, request.gav, directoryInfo.files)
+                ?: directoryInfo.files.filter {
+                    repositorySecurityProvider.canBrowseResource(
+                        accessToken = request.accessToken,
+                        repository = repository,
+                        gav = request.gav.resolve(it.name)
+                    ).isOk
+                }
         }
 
     fun createLatestBadge(lookupRequest: LatestBadgeRequest): Result<String, ErrorResponse> =
