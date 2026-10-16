@@ -1,0 +1,19 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Audit log of administrative and artifact events.",
+  "title" : "Audit",
+  "properties" : {
+    "retentionDays" : {
+      "type" : "integer",
+      "format" : "int32",
+      "description" : "Events older than this many days are deleted once a day. Set to 0 to keep every event.",
+      "title" : "Retention in days"
+    },
+    "recordActorAddress" : {
+      "type" : "boolean",
+      "description" : "Store the IP address of the client next to the actor of each event. Turn it off where\naddresses must not be kept at all.",
+      "title" : "Record client addresses"
+    }
+  }
+}

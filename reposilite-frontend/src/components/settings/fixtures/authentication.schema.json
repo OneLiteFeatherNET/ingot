@@ -1,0 +1,96 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Authenticator settings",
+  "title" : "Authentication",
+  "properties" : {
+    "bruteForceProtection" : {
+      "type" : "object",
+      "description" : "Rate limiting for failed authentication attempts",
+      "title" : "Brute Force Protection",
+      "properties" : {
+        "enabled" : {
+          "type" : "boolean",
+          "description" : "Enable brute force protection",
+          "title" : "Enabled"
+        },
+        "maxAttempts" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "Maximum failed authentication attempts before blocking an IP",
+          "title" : "Max Attempts"
+        },
+        "banDurationSeconds" : {
+          "type" : "integer",
+          "format" : "int64",
+          "description" : "Duration in seconds an IP is blocked after exceeding max attempts",
+          "title" : "Ban Duration Seconds"
+        }
+      }
+    },
+    "ldap" : {
+      "type" : "object",
+      "description" : "LDAP Authenticator settings",
+      "title" : "LDAP",
+      "properties" : {
+        "enabled" : {
+          "type" : "boolean",
+          "description" : "LDAP Authenticator is enabled",
+          "title" : "Enabled"
+        },
+        "ssl" : {
+          "type" : "boolean",
+          "description" : "Use SSL (LDAPS) to connect to LDAP server",
+          "title" : "SSL"
+        },
+        "hostname" : {
+          "type" : "string",
+          "description" : "LDAP server address",
+          "title" : "Hostname"
+        },
+        "port" : {
+          "type" : "integer",
+          "format" : "int32",
+          "description" : "LDAP server port",
+          "title" : "Port"
+        },
+        "baseDn" : {
+          "type" : "string",
+          "description" : "Base DN with users",
+          "title" : "Base DN"
+        },
+        "searchUserDn" : {
+          "type" : "string",
+          "description" : "User used to perform searches in LDAP server (requires permissions to read all LDAP entries)",
+          "title" : "Search-User DN"
+        },
+        "searchUserPassword" : {
+          "type" : "string",
+          "description" : "Search user's password",
+          "title" : "Search-User Password"
+        },
+        "typeAttribute" : {
+          "type" : "string",
+          "description" : "Attribute in LDAP that represents given type/group (objectClass)",
+          "title" : "Type Attribute"
+        },
+        "userAttribute" : {
+          "type" : "string",
+          "description" : "Attribute in LDAP that represents unique username used to create access token",
+          "title" : "User Attribute"
+        },
+        "userFilter" : {
+          "type" : "string",
+          "description" : "LDAP user filter",
+          "title" : "User Filter"
+        },
+        "userType" : {
+          "type" : "string",
+          "enum" : [ "PERSISTENT", "TEMPORARY", "PRINCIPAL" ],
+          "description" : "Should the created through LDAP access token be TEMPORARY or PERSISTENT",
+          "title" : "User Type"
+        }
+      }
+    }
+  }
+}

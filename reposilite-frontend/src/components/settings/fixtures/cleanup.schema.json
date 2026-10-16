@@ -1,0 +1,72 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Cleanup policies delete old versions from repositories. A policy only ever acts on the repositories it lists.",
+  "title" : "Cleanup",
+  "properties" : {
+    "policies" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "description" : "A rule that deletes old versions of artifacts from the listed repositories.",
+        "title" : "Cleanup Policy",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "Unique id of this policy. Letters, digits, dots, dashes and underscores; the id is used in the API and on the maintenance page.",
+            "title" : "Id"
+          },
+          "enabled" : {
+            "type" : "boolean",
+            "description" : "Only enabled policies with a schedule run on their own. Manual runs work either way.",
+            "title" : "Enabled"
+          },
+          "repositories" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "description" : "Ids of the repositories this policy acts on. An empty list means the policy acts on nothing.",
+            "title" : "Repositories"
+          },
+          "scope" : {
+            "type" : "string",
+            "enum" : [ "SNAPSHOTS", "RELEASES", "MIRROR_CACHE" ],
+            "description" : "SNAPSHOTS: snapshot versions, never one newer than the newest release. RELEASES: release versions. MIRROR_CACHE: copies stored by a mirror since they are recorded; copies cached before that are never deleted.",
+            "title" : "Scope"
+          },
+          "keepLatest" : {
+            "format" : "int32",
+            "description" : "Keep the newest N versions of each artifact within the scope. Leave empty to set no count limit.",
+            "title" : "Keep latest",
+            "type" : [ "integer", "null" ]
+          },
+          "olderThanDays" : {
+            "format" : "int32",
+            "description" : "Delete only versions last modified more than this many days ago. Leave empty to set no age limit.",
+            "title" : "Older than days",
+            "type" : [ "integer", "null" ]
+          },
+          "notDownloadedForDays" : {
+            "format" : "int32",
+            "description" : "Delete only versions that have not been downloaded for this many days. Without download records the file modification time is used. Most useful for MIRROR_CACHE.",
+            "title" : "Not downloaded for days",
+            "type" : [ "integer", "null" ]
+          },
+          "groupFilter" : {
+            "description" : "Regular expression that has to match the whole artifact path, for example net/onelitefeather/.*. Empty matches every artifact.",
+            "title" : "Group filter",
+            "type" : [ "string", "null" ]
+          },
+          "schedule" : {
+            "type" : "string",
+            "description" : "manual, or a daily time HH:mm in the time zone of the server, for example 04:30.",
+            "title" : "Schedule"
+          }
+        }
+      },
+      "description" : "The cleanup policies. Every policy is evaluated on its own.",
+      "title" : "Policies"
+    }
+  }
+}

@@ -1,0 +1,255 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Repositories settings",
+  "title" : "Maven",
+  "properties" : {
+    "repositories" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "description" : "Settings for a given repository.",
+        "title" : "Maven Repository",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "The id of this repository.",
+            "title" : "Id"
+          },
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "PUBLIC", "HIDDEN", "PRIVATE" ],
+            "description" : "The visibility of this repository.",
+            "title" : "Visibility"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Short plain-text description shown in the repository list.",
+            "title" : "Description"
+          },
+          "tags" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "description" : "Labels to group and find repositories, e.g. team or purpose.",
+            "title" : "Tags"
+          },
+          "redeployment" : {
+            "type" : "boolean",
+            "description" : "Does this repository accept redeployment of the same artifact version.",
+            "title" : "Redeployment"
+          },
+          "preserveSnapshots" : {
+            "type" : "boolean",
+            "description" : "By default, Ingot deletes all deprecated build files. If you'd like to preserve them, set this property to true.",
+            "title" : "Preserved snapshots"
+          },
+          "storageProvider" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "description" : "Local file system (disk) storage provider settings",
+              "title" : "File system Storage Provider",
+              "properties" : {
+                "type" : {
+                  "type" : "string",
+                  "const" : "fs"
+                },
+                "quota" : {
+                  "type" : "string",
+                  "description" : "Control the maximum amount of data stored in this repository. Supported formats: 90%, 500MB, 10GB (optional, by default: unlimited)",
+                  "title" : "Quota"
+                },
+                "mount" : {
+                  "type" : "string",
+                  "description" : "Use custom directory to locate the repository data (optional, by default it's './repositories/{name}')",
+                  "title" : "Mount"
+                }
+              }
+            }, {
+              "type" : "object",
+              "description" : "Amazon S3 storage provider settings",
+              "title" : "S3 Storage Provider",
+              "properties" : {
+                "type" : {
+                  "type" : "string",
+                  "const" : "s3"
+                },
+                "bucketName" : {
+                  "type" : "string",
+                  "description" : "The selected AWS bucket",
+                  "title" : "Bucket"
+                },
+                "endpoint" : {
+                  "type" : "string",
+                  "description" : "Overwrite the AWS endpoint (optional)",
+                  "title" : "Endpoint"
+                },
+                "accessKey" : {
+                  "type" : "string",
+                  "description" : "Overwrite AWS access-key used to authenticate (optional)",
+                  "title" : "Access Key"
+                },
+                "secretKey" : {
+                  "type" : "string",
+                  "description" : "Overwrite AWS secret-key used to authenticate (optional)",
+                  "title" : "Secret Key"
+                },
+                "region" : {
+                  "type" : "string",
+                  "description" : "Overwrite AWS region (optional)",
+                  "title" : "Region"
+                },
+                "prefix" : {
+                  "type" : "string",
+                  "description" : "Optional prefix prepended to all object keys, e.g. to scope data within a bucket shared with other services",
+                  "title" : "Key Prefix"
+                },
+                "sharedBucket" : {
+                  "type" : "boolean",
+                  "description" : "Namespace objects under the repository name so several repositories can share one bucket (optional)",
+                  "title" : "Shared Bucket"
+                },
+                "metadataCacheSettings" : {
+                  "description" : "Local metadata cache settings (optional). The default is no caching. NOTE: This cache is local only. If you run multiple instances, they will not share the cache!",
+                  "title" : "Local Metadata Cache",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean",
+                      "description" : "Enable the cache?",
+                      "title" : "Enabled"
+                    },
+                    "maximumSize" : {
+                      "type" : "integer",
+                      "format" : "int64",
+                      "description" : "Maximum number of cached entries",
+                      "title" : "Max Cache Entries"
+                    },
+                    "expireAfterAccessSeconds" : {
+                      "type" : "integer",
+                      "format" : "int64",
+                      "description" : "Expire cache entries after the specified number of seconds since last read access",
+                      "title" : "Expire After Access"
+                    },
+                    "expireAfterCreationSeconds" : {
+                      "type" : "integer",
+                      "format" : "int64",
+                      "description" : "Expire cache entries after the specified number of seconds since the initial download",
+                      "title" : "Expire After Creation"
+                    }
+                  },
+                  "type" : [ "object", "null" ]
+                }
+              }
+            } ],
+            "description" : "The storage type of this repository.",
+            "title" : "Storage provider"
+          },
+          "storagePolicy" : {
+            "type" : "string",
+            "enum" : [ "PRIORITIZE_UPSTREAM_METADATA", "STRICT" ],
+            "description" : "Defines how Ingot should handle requests to repository with configured mirrored repositories. <br/>\nPRIORITIZE_UPSTREAM_METADATA - try to fetch the latest version of the artifact from the remote repository <br/>\nSTRICT - prioritize cached version over upstream metadata (full offline mode)",
+            "title" : "Storage policy"
+          },
+          "metadataMaxAge" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Fetching metadata files with PRIORITIZE_UPSTREAM_METADATA may be slow, so you can use dedicated TTL threshold for them.<br/>\nIf set to \"0\" then a fetch is done always. (Default: 0 seconds)",
+            "title" : "Max age of metadata file"
+          },
+          "resolutionCacheMaxEntries" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Caches routing decisions for metadata reads (maven-metadata.xml, *.pom, *.module, Ivy XML)\nto speed up repeated requests. Size scales with the number of distinct GAVs touched\nthrough your mirrors, not with user traffic:<br/>\n0 — disabled (no mirrors, or caching not needed)<br/>\n128 — proxying a small fixed set of artifacts (single vendor SDK, internal repos)<br/>\n512 — proxying focused ecosystems (BOM + transitives, a few curated mirrors)<br/>\n2048+ — proxying broad ecosystems like Maven Central<br/>\n(Default: 0)",
+            "title" : "Resolution cache size"
+          },
+          "proxied" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "description" : "Configuration of proxied host",
+              "title" : "Mirrored Maven Repository",
+              "properties" : {
+                "reference" : {
+                  "type" : "string",
+                  "description" : "Either the id of other local repository or the URL of a remote repository.",
+                  "title" : "Link"
+                },
+                "store" : {
+                  "type" : "boolean",
+                  "description" : "Ingot can store proxied artifacts locally to reduce response time and improve stability.",
+                  "title" : "Store"
+                },
+                "allowedGroups" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "description" : "Allowed artifact groups. If none are given, all artifacts can be obtained from this mirror.",
+                  "title" : "Allowed Groups"
+                },
+                "allowedExtensions" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "string"
+                  },
+                  "description" : "List of accepted file extensions. If none are given, all files can be obtained from this mirror. Use the special value '&lt;none&gt;' to permit files without an extension (e.g. native binaries).",
+                  "title" : "Allowed Extensions"
+                },
+                "connectTimeout" : {
+                  "type" : "integer",
+                  "format" : "int32",
+                  "description" : "How long Ingot can wait for establishing the connection with a remote host. (In seconds)",
+                  "title" : "Connect Timeout"
+                },
+                "readTimeout" : {
+                  "type" : "integer",
+                  "format" : "int32",
+                  "description" : "How long Ingot can read data from remote proxy. (In seconds)",
+                  "title" : "Read Timeout"
+                },
+                "authorization" : {
+                  "description" : "The authorization credentials used to access mirrored repository.",
+                  "title" : "Mirror Credentials",
+                  "properties" : {
+                    "method" : {
+                      "type" : "string",
+                      "enum" : [ "BASIC", "CUSTOM_HEADER", "LOOPBACK_LINK" ],
+                      "description" : "Basic or custom header",
+                      "title" : "Method"
+                    },
+                    "login" : {
+                      "type" : "string",
+                      "description" : "Login or custom header name to use",
+                      "title" : "Login"
+                    },
+                    "password" : {
+                      "type" : "string",
+                      "description" : "Raw password or header value used by HTTP client to connect to the given repository",
+                      "title" : "Password"
+                    }
+                  },
+                  "type" : [ "object", "null" ]
+                },
+                "httpProxy" : {
+                  "type" : "string",
+                  "description" : "Custom proxy configuration for HTTP/SOCKS client used by Ingot to connect to the mirrored repository. Examples: <br/>\nHTTP 127.0.0.1:1081 <br/>\nSOCKS 127.0.0.1:1080 login password ",
+                  "title" : "HTTP Proxy"
+                },
+                "authenticatedFetchingOnly" : {
+                  "type" : "boolean",
+                  "description" : "Whether to require an authenticated connection before fetching uncached artifacts from the remote repository.<br/>\n_This should only ever be turned on in conjunction with the store option or with a secondary mirror host that has this option turned off.<br/>\nIf you are looking to hide this mirror from unauthenticated connections, please use repository visibility options instead._",
+                  "title" : "Authenticated Fetching Only"
+                }
+              }
+            },
+            "description" : "List of mirrored repositories associated with this repository.",
+            "title" : "Mirrored repositories"
+          }
+        }
+      },
+      "description" : "List of Maven repositories.",
+      "title" : "Repositories"
+    }
+  }
+}

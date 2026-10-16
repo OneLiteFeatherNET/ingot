@@ -25,6 +25,18 @@ const ID_PATTERN = /^[A-Za-z0-9._-]+$/
 
 const isObjectSchema = (schema) => schema?.type === 'object' && schema.properties !== undefined
 
+/*
+ * The backend generates most settings schemas with draft 2020-12 and declares it in `$schema`. The validator of the forms
+ * compiles draft 07 and throws on a declared dialect it does not know, so the form of the domain was never drawn. The
+ * keyword is left out instead: without it the schema is read as draft 07, which every keyword used here belongs to.
+ */
+export const formSchemaOf = (schema) => {
+  if (!schema || typeof schema !== 'object' || !('$schema' in schema)) return schema
+  const copy = { ...schema }
+  delete copy.$schema
+  return copy
+}
+
 /* A collection is an array of objects that carry an `id`: the entries are addressed by it. */
 export const collectionsOf = (schema) => Object.entries(schema?.properties ?? {})
   .filter(([, property]) => property?.type === 'array' && isObjectSchema(property.items) && 'id' in property.items.properties)
