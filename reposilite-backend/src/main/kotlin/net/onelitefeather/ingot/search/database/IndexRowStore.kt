@@ -16,10 +16,16 @@
 
 package net.onelitefeather.ingot.search.database
 
+import net.onelitefeather.ingot.search.Origin
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.max
+import org.jetbrains.exposed.v1.core.min
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
@@ -33,6 +39,17 @@ internal data class StoredRow(
     val lastModified: Long,
     val sha1: String?,
     val sha256: String?,
+)
+
+/** A row as a verify run reads it: what storage and the mirror ledger are compared with. */
+internal data class SampledRow(
+    val id: Long,
+    val repository: String,
+    val path: String,
+    val sizeBytes: Long,
+    val lastModified: Long,
+    val origin: Origin,
+    val sourceHost: String?,
 )
 
 /**
@@ -87,6 +104,40 @@ internal class IndexRowStore(private val database: Database) {
     fun repositories(): List<String> = transaction(database) {
         rows.select(rows.repository).withDistinct().map { it[rows.repository] }
     }
+
+    /** The smallest and largest row id, or null for an empty table. */
+    fun idRange(): LongRange? {
+        val bounds: List<Long?> = transaction(database) {
+            val row = rows.select(rows.id.min(), rows.id.max()).single()
+            listOf(row[rows.id.min()], row[rows.id.max()])
+        }
+        val low = bounds[0] ?: return null
+        val high = bounds[1] ?: return null
+        return low..high
+    }
+
+    /**
+     * Up to [limit] rows with consecutive ids from [startId] upwards. When the table ends before [limit] rows are found, the
+     * sample continues from the smallest id, so it never repeats a row and covers a small table completely.
+     */
+    fun sample(startId: Long, limit: Int): List<SampledRow> = transaction(database) {
+        val upper = rows.selectAll().where { rows.id greaterEq startId }.orderBy(rows.id, SortOrder.ASC).limit(limit).map { it.toSampled() }
+        if (upper.size >= limit) {
+            upper
+        } else {
+            upper + rows.selectAll().where { rows.id less startId }.orderBy(rows.id, SortOrder.ASC).limit(limit - upper.size).map { it.toSampled() }
+        }
+    }
+
+    private fun ResultRow.toSampled() = SampledRow(
+        id = this[rows.id],
+        repository = this[rows.repository],
+        path = this[rows.path],
+        sizeBytes = this[rows.sizeBytes],
+        lastModified = this[rows.lastModified],
+        origin = Origin.valueOf(this[rows.origin]),
+        sourceHost = this[rows.sourceHost],
+    )
 
     fun count(): Long = transaction(database) { rows.selectAll().count() }
 

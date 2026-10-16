@@ -40,6 +40,9 @@ internal object SearchStateKey {
 
     /** The single-run lock of verify runs. */
     const val VERIFY_ACTIVE = "verify.active"
+
+    /** A JSON summary of the last completed verify run: counts of each drift kind and the drift ratio. */
+    const val VERIFY_LAST_REPORT = "verify.last_report"
 }
 
 /**

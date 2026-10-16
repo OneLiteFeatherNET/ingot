@@ -41,12 +41,15 @@ import net.onelitefeather.ingot.search.outbox.OutboxWorker
 import net.onelitefeather.ingot.search.rebuild.RebuildScheduler
 import net.onelitefeather.ingot.search.rebuild.RebuildService
 import net.onelitefeather.ingot.search.runs.RunStore
+import net.onelitefeather.ingot.search.verify.VerifyScheduler
+import net.onelitefeather.ingot.search.verify.VerifyService
 import java.time.Clock
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.random.Random
 
 /**
  * Wires artifact search: the tables, the outbox sink that the write paths call, and the workers that drain the outbox
@@ -92,17 +95,33 @@ internal class SearchPlugin : ReposilitePlugin() {
         )
 
         val runs = RunStore(database, clock)
+        val rows = IndexRowStore(database)
+        val repositories = MavenRepositoryEntries(maven)
+        val claims = SqlScheduledJobClaims(database, clock, instanceId)
         val settings = facade<SharedConfigurationFacade>().getDomainSettings<SearchSettings>()
         val rebuild = RebuildService(
             owner = instanceId,
             runs = runs,
-            rows = IndexRowStore(database),
+            rows = rows,
             index = index,
             outbox = outbox,
-            repositories = MavenRepositoryEntries(maven),
+            repositories = repositories,
             ledger = ledger,
             state = state,
             clock = clock,
+        )
+        val verify = VerifyService(
+            owner = instanceId,
+            runs = runs,
+            rows = rows,
+            index = index,
+            outbox = outbox,
+            repositories = repositories,
+            ledger = ledger,
+            state = state,
+            clock = clock,
+            random = Random.Default,
+            sampleSize = { settings.get().verifySampleSize },
         )
         // The startup rules read the heartbeat, so they are decided before the first worker tick writes a new one.
         val startup = runCatching { rebuild.startupTrigger(settings.get().gapRebuild) }
@@ -112,17 +131,26 @@ internal class SearchPlugin : ReposilitePlugin() {
         val stopped = AtomicBoolean(false)
         event { _: ReposiliteDisposeEvent -> stopped.set(true) }
         schedulePolling(worker, stopped)
-        scheduleRebuilds(
-            RebuildScheduler(
-                clock = clock,
-                settings = { settings.get() },
-                claims = SqlScheduledJobClaims(database, clock, instanceId),
-                rebuild = rebuild,
-                startup = startup,
-                execute = { reposilite().ioService.execute { it() } },
-                onFailure = { logger.warn("SEARCH | $it") },
-            ),
+        val execute: (() -> Unit) -> Unit = { job -> reposilite().ioService.execute { job() } }
+        val rebuildScheduler = RebuildScheduler(
+            clock = clock,
+            settings = { settings.get() },
+            claims = claims,
+            rebuild = rebuild,
+            startup = startup,
+            execute = execute,
+            onFailure = { logger.warn("SEARCH | $it") },
         )
+        val verifyScheduler = VerifyScheduler(
+            clock = clock,
+            settings = { settings.get() },
+            claims = claims,
+            verify = verify,
+            runs = runs,
+            execute = execute,
+            onFailure = { logger.warn("SEARCH | $it") },
+        )
+        scheduleRuns(rebuildScheduler, verifyScheduler)
 
         val sink = OutboxArtifactIndexSink(outbox, state) { logger.warn(it) }
         val onListenerFailure: (Throwable) -> Unit = { failure ->
@@ -135,11 +163,12 @@ internal class SearchPlugin : ReposilitePlugin() {
         return SearchFacade(sink, runs::status)
     }
 
-    /** Ticks the rebuild scheduler every 30 seconds, as the cleanup scheduler does. The rebuild itself runs on the IO pool. */
-    private fun scheduleRebuilds(scheduler: RebuildScheduler) {
+    /** Ticks the rebuild and verify schedulers every 30 seconds, as the cleanup scheduler does. The runs themselves use the IO pool. */
+    private fun scheduleRuns(rebuild: RebuildScheduler, verify: VerifyScheduler) {
         val tick = reposilite().scheduler.scheduleWithFixedDelay({
-            runCatching { scheduler.tick() }.onFailure { logger.warn("SEARCH | Rebuild scheduler tick failed: ${it.message}") }
-        }, REBUILD_TICK_SECONDS, REBUILD_TICK_SECONDS, SECONDS)
+            runCatching { rebuild.tick() }.onFailure { logger.warn("SEARCH | Rebuild scheduler tick failed: ${it.message}") }
+            runCatching { verify.tick() }.onFailure { logger.warn("SEARCH | Verify scheduler tick failed: ${it.message}") }
+        }, SCHEDULER_TICK_SECONDS, SCHEDULER_TICK_SECONDS, SECONDS)
         event { _: ReposiliteDisposeEvent -> tick.cancel(false) }
     }
 
@@ -164,7 +193,7 @@ internal class SearchPlugin : ReposilitePlugin() {
 
     private companion object {
         const val DATABASE_ENGINE = "database"
-        const val REBUILD_TICK_SECONDS = 30L
+        const val SCHEDULER_TICK_SECONDS = 30L
     }
 
 }
