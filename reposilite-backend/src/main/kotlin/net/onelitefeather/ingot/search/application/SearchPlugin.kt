@@ -30,6 +30,7 @@ import com.reposilite.plugin.reposilite
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import net.onelitefeather.ingot.search.NoOpArtifactIndexSink
 import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
+import net.onelitefeather.ingot.search.database.DatabaseArtifactSearchEngine
 import net.onelitefeather.ingot.search.database.IndexRowStore
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateKey
@@ -160,7 +161,8 @@ internal class SearchPlugin : ReposilitePlugin() {
         event(DeployIndexListener(sink, onListenerFailure))
         event(DeleteIndexListener(sink, onListenerFailure))
 
-        return SearchFacade(sink, runs::status)
+        val search = DatabaseArtifactSearchEngine(database, clock)
+        return SearchFacade(sink, runs::status, search)
     }
 
     /** Ticks the rebuild and verify schedulers every 30 seconds, as the cleanup scheduler does. The runs themselves use the IO pool. */
