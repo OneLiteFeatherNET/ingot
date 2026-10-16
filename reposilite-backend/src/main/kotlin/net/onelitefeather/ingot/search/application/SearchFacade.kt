@@ -30,6 +30,8 @@ class SearchFacade internal constructor(
     val sink: ArtifactIndexSink,
     private val runStatus: () -> IndexRunStatus = { IndexRunStatus.EMPTY },
     val engine: ArtifactSearchEngine? = null,
+    /** The index administration of the Maintenance panel and the REST layer; null while search is disabled. */
+    internal val admin: SearchIndexAdmin? = null,
 ) : Facade {
 
     /** The live run with its cursor, counters and lease holder, the last 20 runs, and the last full rebuild. */

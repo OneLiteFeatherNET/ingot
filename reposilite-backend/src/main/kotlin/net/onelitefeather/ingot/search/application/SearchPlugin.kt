@@ -28,7 +28,10 @@ import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
+import com.reposilite.token.AccessTokenFacade
+import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.search.NoOpArtifactIndexSink
+import net.onelitefeather.ingot.search.api.SearchApiEndpoints
 import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
 import net.onelitefeather.ingot.search.database.DatabaseArtifactSearchEngine
 import net.onelitefeather.ingot.search.database.IndexRowStore
@@ -44,6 +47,7 @@ import net.onelitefeather.ingot.search.rebuild.RebuildService
 import net.onelitefeather.ingot.search.runs.RunStore
 import net.onelitefeather.ingot.search.verify.VerifyScheduler
 import net.onelitefeather.ingot.search.verify.VerifyService
+import org.jetbrains.exposed.v1.jdbc.Database
 import java.time.Clock
 import java.time.Duration
 import java.util.UUID
@@ -68,6 +72,15 @@ internal class SearchPlugin : ReposilitePlugin() {
         val clock = Clock.systemUTC()
         SearchSchema.ensure(database, clock)
 
+        val search = wire(database, clock)
+        // Registered in both states: a disabled instance answers 404 on every route instead of having none.
+        event { event: RoutingSetupEvent ->
+            event.registerRoutes(SearchApiEndpoints(search, facade<AccessTokenFacade>(), facade<MavenFacade>()))
+        }
+        return search
+    }
+
+    private fun wire(database: Database, clock: Clock): SearchFacade {
         val local = facade<LocalConfiguration>()
         if (!local.searchEnabled.get()) {
             logger.info("SEARCH | Artifact search is disabled by the local configuration")
@@ -162,7 +175,18 @@ internal class SearchPlugin : ReposilitePlugin() {
         event(DeleteIndexListener(sink, onListenerFailure))
 
         val search = DatabaseArtifactSearchEngine(database, clock)
-        return SearchFacade(sink, runs::status, search)
+        val admin = SearchIndexAdmin(
+            runs = runs,
+            rebuild = rebuild,
+            verify = verify,
+            outbox = outbox,
+            worker = worker,
+            rows = rows,
+            state = state,
+            repositories = repositories,
+            dispatch = execute,
+        )
+        return SearchFacade(sink, runs::status, search, admin)
     }
 
     /** Ticks the rebuild and verify schedulers every 30 seconds, as the cleanup scheduler does. The runs themselves use the IO pool. */
