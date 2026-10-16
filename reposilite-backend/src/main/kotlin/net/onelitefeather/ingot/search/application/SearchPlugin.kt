@@ -29,6 +29,7 @@ import com.reposilite.plugin.reposilite
 import net.onelitefeather.ingot.search.NoOpArtifactIndexSink
 import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
 import net.onelitefeather.ingot.search.database.SearchSchema
+import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.outbox.OutboxArtifactIndexSink
 import net.onelitefeather.ingot.search.outbox.OutboxPolicy
@@ -83,7 +84,15 @@ internal class SearchPlugin : ReposilitePlugin() {
         event { _: ReposiliteDisposeEvent -> stopped.set(true) }
         schedulePolling(worker, stopped)
 
-        return SearchFacade(OutboxArtifactIndexSink(outbox, state) { logger.warn(it) })
+        val sink = OutboxArtifactIndexSink(outbox, state) { logger.warn(it) }
+        val onListenerFailure: (Throwable) -> Unit = { failure ->
+            logger.warn("SEARCH | Index listener failed, the change is not queued: ${failure.message}")
+            runCatching { state.increment(SearchStateKey.DROPPED_ENQUEUES) }
+        }
+        event(DeployIndexListener(sink, onListenerFailure))
+        event(DeleteIndexListener(sink, onListenerFailure))
+
+        return SearchFacade(sink)
     }
 
     /** Runs one tick after another on the IO pool. The next tick comes after 2 seconds with work, after 10 seconds without. */
