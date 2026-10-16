@@ -20,7 +20,9 @@ import panda.std.Result
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.nio.charset.MalformedInputException
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets.UTF_8
 import kotlin.io.path.createTempFile
 import kotlin.io.path.inputStream
@@ -31,12 +33,6 @@ internal class LazyPlaceholderResolver(private val placeholders: Map<String, Str
     init {
         verifyPlaceholders()
     }
-
-    private val theLongestPlaceholderInBytes = placeholders.keys
-        .maxOfOrNull { it }
-        ?.toByteArray(Charsets.UTF_8)
-        ?.size
-        ?: 0
 
     fun createProcessedResource(input: InputStream): ResourceSupplier {
         val temporaryResourcePath = createTempFile("reposilite", "frontend-resource")
@@ -55,66 +51,34 @@ internal class LazyPlaceholderResolver(private val placeholders: Map<String, Str
     }
 
     fun process(input: InputStream, output: OutputStream) {
-        val buffer = ByteArray(1024)
+        // the assets are small enough to be processed as a whole, which avoids splitting placeholders across reads
+        val content = input.readBytes()
+        val text = decodeUtf8OrNull(content)
 
-        while (true) {
-            var readLength = input.read(buffer)
-                .takeIf { it != -1 }
-                ?: break
-
-            // check if current content may end with placeholder
-            val processedBuffer = when (readLength) {
-                buffer.size -> loadSlicedPlaceholders(input, buffer).also { readLength = it.size }
-                else -> buffer
-            }
-
-            try {
-                // try to decode content
-                var content = processedBuffer.decodeToString(
-                    endIndex = readLength,
-                    throwOnInvalidSequence = true
-                )
-
-                // resolve placeholders
-                for ((name, value) in placeholders) {
-                    content = content.replace(name, value)
-                }
-
-                // save processed content
-                val resolvedContentAsBytes = content.toByteArray(UTF_8)
-                output.write(resolvedContentAsBytes, 0, resolvedContentAsBytes.size)
-            } catch (exception: MalformedInputException) {
-                // given frame may contain invalid UTF-8 sequence, so we cannot decode it
-                output.write(processedBuffer, 0, readLength)
-            }
-        }
-    }
-
-    private fun loadSlicedPlaceholders(input: InputStream, buffer: ByteArray): ByteArray {
-        val borderlineStartIndex = buffer.size - theLongestPlaceholderInBytes + 1
-        val positionCount = buffer.size - borderlineStartIndex
-
-        for (index in 0 until positionCount) {
-            val placeholderStartIndex = borderlineStartIndex + index
-            val boundaryPlaceholder = buffer.copyOfRange(placeholderStartIndex, buffer.size).decodeToString() // .substring(placeholderStartIndex, content.length)
-
-            for (placeholder in placeholders.keys) {
-                if (placeholder.startsWith(boundaryPlaceholder)) {
-                    val missingBuffer = ByteArray(theLongestPlaceholderInBytes)
-                    val missingLength = input.read(missingBuffer)
-
-                    if (missingLength == -1) {
-                        return buffer
-                    }
-
-                    val contentWithMissingPlaceholder = buffer + missingBuffer
-                    return loadSlicedPlaceholders(input, contentWithMissingPlaceholder)
-                }
-            }
+        // binary assets (images, fonts) are copied as they are
+        if (text == null) {
+            output.write(content)
+            return
         }
 
-        return buffer
+        var resolved: String = text
+        for ((name, value) in placeholders) {
+            resolved = resolved.replace(name, value)
+        }
+
+        output.write(resolved.toByteArray(UTF_8))
     }
+
+    private fun decodeUtf8OrNull(content: ByteArray): String? =
+        try {
+            UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(content))
+                .toString()
+        } catch (exception: CharacterCodingException) {
+            null
+        }
 
     private fun verifyPlaceholders() {
         placeholders.keys.forEach { placeholder ->
