@@ -57,6 +57,29 @@ const loadedStore = async (client = fakeClient()) => {
   return store
 }
 
+describe('configuration store with the schema dialect of the backend', () => {
+  // The backend generates these schemas with draft 2020-12, which the draft 07 validator of the forms cannot compile.
+  const DIALECT_2020 = 'https://json-schema.org/draft/2020-12/schema'
+
+  it('validates a domain against a schema that declares the 2020-12 dialect', async () => {
+    const schema = { $schema: DIALECT_2020, type: 'object', properties: { port: { type: 'integer' } } }
+    const client = {
+      settings: {
+        domains: async () => ({ data: ['authentication'] }),
+        schema: async () => ({ data: schema }),
+        fetch: async () => ({ data: { port: 389 } }),
+        update: async () => ({ data: {} })
+      }
+    }
+    const store = await loadedStore(client)
+
+    expect(store.schemas.value.authentication.$schema, 'the dialect key is left out of the schema the form uses').toBeUndefined()
+    store.setDomainData('authentication', { port: 'not a number' })
+    store.validateDomain('authentication')
+    expect(store.invalidDomains.value, 'the domain is checked against its own schema').toEqual(['authentication'])
+  })
+})
+
 describe('configuration store', () => {
   it('selects the first settings tab by default, never the domain that is managed under Access', async () => {
     const server = { login: { ldap: {} }, maven: { name: 'server-maven' } }

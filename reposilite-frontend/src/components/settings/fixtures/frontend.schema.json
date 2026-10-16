@@ -1,0 +1,96 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Frontend settings",
+  "title" : "Frontend",
+  "properties" : {
+    "id" : {
+      "type" : "string",
+      "description" : "Repository id used in Maven repository configuration",
+      "title" : "Id"
+    },
+    "title" : {
+      "type" : "string",
+      "description" : "The title displayed on the frontend homepage.",
+      "title" : "Title"
+    },
+    "description" : {
+      "type" : "string",
+      "description" : "The description displayed on the frontend homepage.\nNote: HTML tags are not supported.",
+      "title" : "Description"
+    },
+    "organizationWebsite" : {
+      "type" : "string",
+      "description" : "Link to organization's website.",
+      "title" : "Organisation Website"
+    },
+    "organizationLogo" : {
+      "type" : "string",
+      "description" : "Link to organization's logo.",
+      "title" : "Organisation Logo"
+    },
+    "privacyPolicy" : {
+      "type" : "string",
+      "description" : "Link to your privacy policy displayed in the footer. Useful for EU GDPR compliance.",
+      "title" : "Privacy Policy"
+    },
+    "icpLicense" : {
+      "type" : "string",
+      "description" : "Web services in China require ICP license, a permit issued by the Chinese government to permit China-based websites to operate in China.\nIn order to fulfill the conditions, you should apply for ICP license from your service provider and fill in this parameter.",
+      "title" : "ICP License"
+    },
+    "appearance" : {
+      "type" : "object",
+      "description" : "Colours, logos, favicon and footer of the dashboard.",
+      "title" : "Appearance",
+      "properties" : {
+        "seedColor" : {
+          "type" : "string",
+          "description" : "Hex colour in the form #RRGGBB that the dashboard palette is derived from.\nLeave empty to keep the built-in Ingot theme.",
+          "title" : "Seed colour"
+        },
+        "schemeVariant" : {
+          "type" : "string",
+          "enum" : [ "TONAL_SPOT", "VIBRANT", "EXPRESSIVE", "NEUTRAL", "FIDELITY", "CONTENT", "MONOCHROME" ],
+          "description" : "How the palette is derived from the seed colour. Only applies when a seed colour is set.",
+          "title" : "Scheme variant"
+        },
+        "primaryColor" : {
+          "type" : "string",
+          "description" : "Hex colour in the form #RRGGBB that overrides the primary key colour. Leave empty to derive it.",
+          "title" : "Primary colour"
+        },
+        "secondaryColor" : {
+          "type" : "string",
+          "description" : "Hex colour in the form #RRGGBB that overrides the secondary key colour. Leave empty to derive it.",
+          "title" : "Secondary colour"
+        },
+        "tertiaryColor" : {
+          "type" : "string",
+          "description" : "Hex colour in the form #RRGGBB that overrides the tertiary key colour. Leave empty to derive it.",
+          "title" : "Tertiary colour"
+        },
+        "errorColor" : {
+          "type" : "string",
+          "description" : "Hex colour in the form #RRGGBB that overrides the error key colour. Leave empty to derive it.",
+          "title" : "Error colour"
+        },
+        "logoDark" : {
+          "type" : "string",
+          "description" : "Link to a logo shown in the dark theme. Leave empty to use the organisation logo.",
+          "title" : "Logo for dark theme"
+        },
+        "favicon" : {
+          "type" : "string",
+          "description" : "Link to the favicon of the dashboard. Leave empty to use the bundled favicon.",
+          "title" : "Favicon"
+        },
+        "footerText" : {
+          "type" : "string",
+          "description" : "Plain text shown in the footer of the dashboard. HTML is not rendered.",
+          "title" : "Footer text"
+        }
+      }
+    }
+  }
+}

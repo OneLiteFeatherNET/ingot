@@ -1,0 +1,19 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Statistics module configuration.",
+  "title" : "Statistics",
+  "properties" : {
+    "enabled" : {
+      "type" : "boolean",
+      "description" : "In a long run statistics can allocate quite a lot of space in database.\nIt's especially a thing for public repositories with a large number of different artifacts (like e.g. mirrored maven-central).\nIf you don't really care about statistics used in dashboard/badges, you can just simply disable it.",
+      "title" : "Enable statistics"
+    },
+    "resolvedRequestsInterval" : {
+      "type" : "string",
+      "enum" : [ "DAILY", "WEEKLY", "MONTHLY", "YEARLY" ],
+      "description" : "How often Ingot should divide recorded requests into separated groups.\nWith higher precision you can get more detailed timestamps, but it'll increase database size.\nIt's not that important for small repos with low traffic, but public instances should not use daily interval.",
+      "title" : "Resolved Requests Interval"
+    }
+  }
+}

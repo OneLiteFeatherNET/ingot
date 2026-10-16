@@ -15,12 +15,13 @@ import { default as OptionalRenderer, tester as optionalTester } from '../compon
 import { default as SectionRenderer, tester as sectionTester } from '../components/renderers/SectionRenderer.vue'
 import { default as BooleanSwitchRenderer, tester as booleanSwitchTester } from '../components/renderers/BooleanSwitchRenderer.vue'
 import { default as MdTextFieldRenderer, tester as mdTextFieldTester } from '../components/renderers/MdTextFieldRenderer.vue'
-import { collectionsOf, idText, validateNewId } from '../components/settings/collections'
+import { collectionsOf, formSchemaOf, idText, validateNewId } from '../components/settings/collections'
 import { default as MdSelectRenderer, tester as mdSelectTester, oneOfTester as mdOneOfSelectTester } from '../components/renderers/MdSelectRenderer.vue'
 import { default as MdColourFieldRenderer, tester as mdColourFieldTester } from '../components/renderers/MdColourFieldRenderer.vue'
 import { default as MdTextAreaRenderer, tester as mdTextAreaTester } from '../components/renderers/MdTextAreaRenderer.vue'
 import { default as TagsFieldRenderer, tester as tagsFieldTester } from '../components/renderers/TagsFieldRenderer.vue'
 import { default as AppearanceSectionRenderer, tester as appearanceSectionTester } from '../components/renderers/AppearanceSectionRenderer.vue'
+import { default as UnsupportedRenderer, tester as unsupportedTester } from '../components/renderers/UnsupportedRenderer.vue'
 import { invalidColourFields } from '../theme/settings'
 import { setAppearance, applyAppearance } from './appearance'
 import { etagOf, isPreconditionFailed } from './client'
@@ -148,7 +149,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
       }))
 
       domains.value = domainNames
-      loaded.forEach(({ domain, schema }) => { schemas.value[domain] = schema })
+      loaded.forEach(({ domain, schema }) => { schemas.value[domain] = formSchemaOf(schema) })
       loaded.forEach(({ domain, configuration, etag }) => {
         setSavedState(domain, withDefaults(domain, cloneJson(configuration)), etag)
       })
@@ -498,6 +499,8 @@ const renderers = markRaw([
     renderer: ObjectRenderer
   },
   ...vanillaRenderers,
+  // Last of all: a schema node that no renderer above can draw shows a pointer to the JSON download, not nothing.
+  { tester: unsupportedTester, renderer: UnsupportedRenderer },
 ])
 
 /*
