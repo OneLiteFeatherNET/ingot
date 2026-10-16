@@ -25,6 +25,7 @@ import com.reposilite.shared.stream.BoundedInputStreamLimitExceededException
 import com.reposilite.shared.toErrorResponse
 import com.reposilite.shared.toErrorResult
 import com.reposilite.storage.FilesComparator
+import com.reposilite.storage.StorageEntrySource
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.VersionComparator
 import com.reposilite.storage.api.DirectoryInfo
@@ -75,7 +76,7 @@ import kotlin.io.path.useDirectoryEntries
 abstract class FileSystemStorageProvider protected constructor(
     val journalist: Journalist,
     val rootDirectory: Path,
-) : StorageProvider {
+) : StorageProvider, StorageEntrySource by FileSystemEntrySource(rootDirectory) {
 
     private enum class LockMode {
         READ,
