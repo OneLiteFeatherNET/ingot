@@ -156,4 +156,32 @@ internal class ArtifactPermissionIntegrationTest : ReposiliteSpecification() {
         assertThat(deployStatus(owner, "releases", "org/other/lib/1.0/lib-1.0.jar")).describedAs("owner token").isEqualTo(OK.code)
         assertThat(deployStatus(narrowed, "releases", "org/other/lib/1.0/lib-1.0.jar")).describedAs("narrowed token").isEqualTo(FORBIDDEN.code)
     }
+
+    @Test
+    fun `the path check decides a full file path the way a deploy to that file is decided`() {
+        val alice = principalWithNodes(
+            "alice",
+            "ingot.repository.releases.deploy" to true,
+            "ingot.artifact.net.onelitefeather:mycelium-bom.deploy" to false,
+        )
+        val denied = "net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
+        val allowed = "net/onelitefeather/mycelium-api/1.8.9/mycelium-api-1.8.9.pom"
+
+        val deniedCheck = get(identity("/check?principal=alice&repository=releases&action=deploy&path=$denied"))
+            .basicAuth(admin.first, admin.second)
+            .asJacksonObject(JsonNode::class)
+        val allowedCheck = get(identity("/check?principal=alice&repository=releases&action=deploy&path=$allowed"))
+            .basicAuth(admin.first, admin.second)
+            .asJacksonObject(JsonNode::class)
+
+        assertThat(deniedCheck.status).isEqualTo(OK.code)
+        assertThat(deniedCheck.body.get("allowed").asBoolean()).describedAs("denied artifact").isFalse
+        assertThat(deniedCheck.body.get("decision").get("decidingNode").asText()).describedAs("deciding node")
+            .isEqualTo("ingot.artifact.net.onelitefeather:mycelium-bom.deploy")
+        assertThat(deniedCheck.body.get("decision").get("decidingKind").asText()).describedAs("deciding kind").isEqualTo("ARTIFACT")
+        assertThat(deployStatus(alice, "releases", denied)).describedAs("deploy of the same file").isEqualTo(FORBIDDEN.code)
+
+        assertThat(allowedCheck.body.get("allowed").asBoolean()).describedAs("sibling artifact").isTrue
+        assertThat(deployStatus(alice, "releases", allowed)).describedAs("deploy of the sibling file").isEqualTo(OK.code)
+    }
 }

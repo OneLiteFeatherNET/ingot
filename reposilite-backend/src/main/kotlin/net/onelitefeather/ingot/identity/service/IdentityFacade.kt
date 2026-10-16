@@ -86,6 +86,7 @@ import net.onelitefeather.ingot.identity.login.LocalLoginProvider
 import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.NODE_SUBJECT_TEAM
+import net.onelitefeather.ingot.identity.model.AccessSubject
 import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.model.NodeRule
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -138,6 +139,9 @@ class IdentityFacade(
 ) {
 
     private companion object {
+        /** The repository actions a path check decides, the ones a request for a path makes. */
+        private val PATH_CHECK_ACTIONS = setOf("read", "deploy", "delete")
+
         const val MAX_NAME_LENGTH = 255
         const val MAX_TEAM_NAME_LENGTH = 320
     }
@@ -637,12 +641,73 @@ class IdentityFacade(
         principal: String?,
         node: String?,
         token: String?,
+        repository: String? = null,
+        path: String? = null,
+        action: String? = null,
     ): IdentityResult<PermissionCheckDto> {
         if (principal.isNullOrBlank()) return badRequestError("The query parameter 'principal' is required")
+        if (repository != null || path != null) {
+            return pathPermissionCheck(caller, principal, node, token, repository, path, action)
+        }
         if (node.isNullOrBlank()) return badRequestError("The query parameter 'node' is required")
         if (node.contains(NodePattern.WILDCARD)) return badRequestError("The node to check must be concrete, without wildcards: '$node'")
         NodePattern.problemOf(node)?.let { return badRequestError("Invalid permission node: $it") }
 
+        val parsed = NodePattern.of(node)
+        return answerPermissionCheck(caller, principal, token, node = node, repository = null, path = null, action = null) { access ->
+            PermissionEvaluator.decide(access, parsed)
+        }
+    }
+
+    /**
+     * Decides a repository path for one principal. The path is the path inside the repository, as a request names it, and
+     * the action is read, deploy or delete: it is given by [action] or, when that is absent, taken from [node]. A node given
+     * with the path must be a concrete node with the same action; its other parts are not used.
+     */
+    private fun pathPermissionCheck(
+        caller: AccessTokenIdentifier,
+        principal: String,
+        node: String?,
+        token: String?,
+        repository: String?,
+        path: String?,
+        action: String?,
+    ): IdentityResult<PermissionCheckDto> {
+        if (repository.isNullOrBlank()) return badRequestError("The query parameter 'repository' is required for a path check")
+        if (repository.contains(NodePattern.WILDCARD)) {
+            return badRequestError("The repository of a path check must be a name, without wildcards: '$repository'")
+        }
+        NodePattern.problemOf("ingot.repository.$repository.read")?.let { return badRequestError("Invalid repository: $it") }
+        if (path.isNullOrBlank()) return badRequestError("The query parameter 'path' is required for a path check, naming a path inside the repository")
+        if (node != null) {
+            if (node.contains(NodePattern.WILDCARD)) return badRequestError("The node to check must be concrete, without wildcards: '$node'")
+            NodePattern.problemOf(node)?.let { return badRequestError("Invalid permission node: $it") }
+        }
+        val nodeAction = node?.let { NodePattern.of(it).action }
+        if (action != null && nodeAction != null && action != nodeAction) {
+            return badRequestError("The action of the node '$node' is $nodeAction, which differs from the action '$action'")
+        }
+        val chosen = action ?: nodeAction
+            ?: return badRequestError("The query parameter 'action' is required for a path check, or give a node whose action it takes")
+        if (chosen !in PATH_CHECK_ACTIONS) {
+            return badRequestError("The action '$chosen' of a path check is read, deploy or delete")
+        }
+        return answerPermissionCheck(caller, principal, token, node = null, repository = repository, path = path, action = chosen) { access ->
+            PermissionEvaluator.decidePath(access, repository, path, chosen)
+        }
+    }
+
+    /** Answers a check once its question is valid: the caller, the principal and the token are looked up, then [decide] decides. */
+    private fun answerPermissionCheck(
+        caller: AccessTokenIdentifier,
+        principal: String,
+        token: String?,
+        node: String?,
+        repository: String?,
+        path: String?,
+        action: String?,
+        decide: (AccessSubject) -> Decision,
+    ): IdentityResult<PermissionCheckDto> {
         val callerSubject = accessTokens.subjectOf(caller)
         if (!PermissionEvaluator.isInstanceAdmin(callerSubject) && callerSubject.principalName != principal) {
             return errorResponse(FORBIDDEN, "Only instance admins can check the nodes of other principals")
@@ -653,7 +718,7 @@ class IdentityFacade(
         }
 
         val access = store.loadAccess(subject, tokenNodes = tokenRecord?.nodes)
-        val decision = PermissionEvaluator.decide(access, NodePattern.of(node))
+        val decision = decide(access)
         return PermissionCheckDto(
             principal = subject.name,
             node = node,
@@ -680,6 +745,9 @@ class IdentityFacade(
                     kind = candidate.kind,
                 )
             },
+            repository = repository,
+            path = path,
+            action = action,
         ).asSuccess()
     }
 

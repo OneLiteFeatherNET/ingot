@@ -99,11 +99,27 @@ object PermissionEvaluator {
      * Decides one concrete node, for the permission check of the identity API. Grants count only where they cover the whole
      * repository: a path-scoped grant has no answer for a node, and the trace says so.
      */
-    fun decide(subject: AccessSubject, node: NodePattern): Decision {
+    fun decide(subject: AccessSubject, node: NodePattern): Decision =
+        decideWith(subject, node) { grant -> nodeGrantMatch(grant, node, includeLegacy = true) }
+
+    /**
+     * Decides one repository path for the permission check, with [action] the repository node action (read, deploy or
+     * delete). The node is the one [NodePattern.repositoryPath] gives for the path, so repository nodes and artifact nodes
+     * decide it as they decide a request. Unlike [decide], path-scoped grants count where they cover the path, as they do
+     * for a real request.
+     */
+    fun decidePath(subject: AccessSubject, repository: String, pathInRepository: String, action: String): Decision {
+        val requestAction = requireNotNull(nodeAction(action)) { "The action '$action' is not a repository action" }
+        val request = AccessRequest("/$repository/$pathInRepository", requestAction)
+        val node = NodePattern.repositoryPath(repository, action, pathInRepository)
+        return decideWith(subject, node) { grant -> pathGrantMatch(grant, request, repository, pathInRepository) }
+    }
+
+    private fun decideWith(subject: AccessSubject, node: NodePattern, grantMatch: (Grant) -> GrantMatch): Decision {
         if (subject.disabled) {
             return Decision(DecisionSource.DEFAULT, null, node.text, allowed = false, depth = 0, trace = emptyList())
         }
-        val owner = ownerDecision(subject, node) { grant -> nodeGrantMatch(grant, node, includeLegacy = true) }
+        val owner = ownerDecision(subject, node, grantMatch)
         val tokenRules = subject.tokenRules ?: return owner
         val token = decideRules(DecisionSource.TOKEN, subject.principalName.orEmpty(), 0, tokenRules, node)
         val trace = owner.trace + token.trace
