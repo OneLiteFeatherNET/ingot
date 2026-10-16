@@ -254,3 +254,51 @@ describe('FileList rows follow the md3 list spec', () => {
     expect(skeleton.classes(), 'a placeholder one-line row is 56px tall').toContain('min-h-14')
   })
 })
+
+describe('FileList includes section', () => {
+  it('lists the referenced repositories as links to their browse pages, in order', () => {
+    const wrapper = mountList({ files: { list: [], error: false }, members: ['releases', 'snapshots'] })
+
+    const targets = wrapper.findAllComponents(RouterLinkStub).map(link => link.props('to'))
+
+    expect(targets, 'the links follow the order of the references').toEqual([
+      { name: 'browse', params: { qualifier: ['releases'] } },
+      { name: 'browse', params: { qualifier: ['snapshots'] } }
+    ])
+  })
+
+  it('titles the references as Includes', () => {
+    const wrapper = mountList({ files: { list: [], error: false }, members: ['releases'] })
+
+    expect(wrapper.text(), 'the section is named').toContain('Includes')
+  })
+
+  it('shows the references in place of the empty-directory text', () => {
+    const wrapper = mountList({ files: { list: [], error: false }, members: ['releases'] })
+
+    expect(wrapper.text(), 'a group with references is not called empty').not.toContain('Directory is empty')
+  })
+
+  it('shows the references after the files of a group that holds files', () => {
+    const wrapper = mountList({ files: { list: [jar], error: false }, members: ['releases'] })
+
+    const text = wrapper.text()
+    expect(text.indexOf(jar.name), 'the own file comes first').toBeGreaterThanOrEqual(0)
+    expect(text.indexOf('Includes'), 'the references follow the files').toBeGreaterThan(text.indexOf(jar.name))
+  })
+
+  it('does not show the references while the listing loads', () => {
+    const wrapper = mountList({ loading: true, files: { list: [], error: false }, members: ['releases'] })
+
+    expect(wrapper.text(), 'a loading listing shows no references').not.toContain('Includes')
+  })
+
+  it('shows the empty-directory text as plain text with no icon beside it', () => {
+    const wrapper = mountList({ files: { list: [], error: false } })
+
+    const empty = wrapper.findAll('p').find(paragraph => paragraph.text() === 'Directory is empty')
+    expect(empty, 'the empty state is still stated').toBeDefined()
+    expect(wrapper.find('#browser-list').findAll('svg'), 'no icon is drawn in the empty state').toHaveLength(0)
+    expect(empty.text(), 'the text has no glyph outside printable ASCII').toMatch(/^[ -~]*$/)
+  })
+})

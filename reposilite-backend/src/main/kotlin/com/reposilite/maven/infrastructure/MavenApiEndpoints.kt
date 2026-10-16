@@ -24,8 +24,10 @@ import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.maven.api.PomDetails
 import com.reposilite.maven.api.RepositoryListQuery
 import com.reposilite.maven.api.RepositoryListResponse
+import com.reposilite.maven.api.RepositoryMembersResponse
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
@@ -132,6 +134,44 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
 
     @OpenApi(
         tags = ["Maven"],
+        path = "/api/maven/repositories/{repository}/members",
+        methods = [HttpMethod.GET],
+        summary = "List the repositories a group references",
+        description = "List the ids of the repositories that a group mirrors through loopback references, in configuration order. " +
+            "Only references the requesting token may list are included, and external proxies are never listed. " +
+            "A repository without loopback references has an empty list.",
+        pathParams = [
+            OpenApiParam(name = "repository", description = "Repository to inspect", required = true)
+        ],
+        responses = [
+            OpenApiResponse(
+                status = "200",
+                description = "Returns the visible repositories the group references",
+                content = [OpenApiContent(from = RepositoryMembersResponse::class)]
+            ),
+            OpenApiResponse(
+                status = "401",
+                description = "Returns 401 when the group itself is not visible to the caller",
+                content = [OpenApiContent(from = ErrorResponse::class)]
+            ),
+            OpenApiResponse(
+                status = "404",
+                description = "Returns 404 when the repository does not exist",
+                content = [OpenApiContent(from = ErrorResponse::class)]
+            )
+        ]
+    )
+    private val listMembers = ReposiliteRoute<RepositoryMembersResponse>("/api/maven/repositories/{repository}/members", GET) {
+        accessed {
+            response = when (val repository = parameter("repository")) {
+                null -> notFoundError("Repository not found")
+                else -> mavenFacade.findMembers(accessToken = this?.identifier, repository = repository)
+            }
+        }
+    }
+
+    @OpenApi(
+        tags = ["Maven"],
         path = "/api/maven/versions/{repository}/{gav}",
         methods = [HttpMethod.GET],
         pathParams = [
@@ -194,6 +234,6 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
         }
     }
 
-    override val routes = routes(findRepositories, findRepository, findInRepository, listRepositories, findVersions, generatePom)
+    override val routes = routes(findRepositories, findRepository, findInRepository, listRepositories, listMembers, findVersions, generatePom)
 
 }
