@@ -25,6 +25,7 @@ import com.reposilite.maven.api.Identifier
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.PreResolveEvent
 import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.maven.api.RepositoryMembersResponse
 import com.reposilite.maven.api.RepositorySummary
 import com.reposilite.maven.api.ResolvedDocument
 import com.reposilite.maven.api.ResolvedFileDataEvent
@@ -212,6 +213,27 @@ internal class RepositoryService(
             .map { RepositorySummary(id = it.name, visibility = it.visibility, description = it.description, tags = it.tags) }
             .filter { query.matches(it) }
             .sortedBy { it.id }
+
+    /**
+     * Lists the repositories a group references through loopback mirrors, in configuration order. The group itself
+     * has to be browsable by the token, and every reference goes through the same visibility rule as the repository
+     * list, so a reference the caller may not list is left out. External proxies are never part of the answer.
+     */
+    fun findMembers(accessToken: AccessTokenIdentifier?, repositoryName: String): Result<RepositoryMembersResponse, ErrorResponse> =
+        repositoryProvider.findRepository(repositoryName)
+            .flatMap { repository ->
+                securityProvider.canBrowseResource(accessToken, repository, Location.empty())
+                    .map {
+                        RepositoryMembersResponse(
+                            members = repository.mirrorHosts
+                                .filter { it.client is RepositoryLoopbackClient }
+                                .mapNotNull { repositoryProvider.getRepository(it.host) }
+                                .filter { securityProvider.canListRepository(accessToken, it) }
+                                .map { it.name }
+                                .distinct()
+                        )
+                    }
+            }
 
     /**
      * Lists the repositories the given token is allowed to see, each with its visibility.

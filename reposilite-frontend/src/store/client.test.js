@@ -177,3 +177,22 @@ describe('status probe', () => {
     expect(axios.get.mock.calls[0][1].validateStatus(401)).toBe(true)
   })
 })
+
+describe('client members call', () => {
+  let http
+
+  beforeEach(async () => {
+    vi.resetModules()
+    http = (await import('axios')).default
+    http.get.mockReset()
+    http.get.mockResolvedValue({ data: { members: [] } })
+  })
+
+  it('asks for the references of a group with the repository escaped in the path', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient().maven.members('public')
+
+    expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories\/public\/members$/)
+  })
+})

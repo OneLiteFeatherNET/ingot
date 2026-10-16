@@ -422,6 +422,12 @@ const createClient = (defaultName, defaultSecret) => {
         const query = params.toString()
         return get(`/api/maven/repositories${query ? `?${query}` : ""}`)
       },
+      /*
+       * The repositories a group references through loopback mirrors, in configuration order.
+       */
+      members(repository) {
+        return get(`/api/maven/repositories/${encodeURIComponent(repository)}/members`)
+      },
       content(gav) {
         return get(`/${gav}`)
       },

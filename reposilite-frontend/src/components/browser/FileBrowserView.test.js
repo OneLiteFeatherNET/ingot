@@ -298,3 +298,75 @@ describe('FileBrowserView toolbar', () => {
     expect(adjustments.attributes('title'), 'hovering the control names it').toBe('File browser adjustments')
   })
 })
+
+describe('FileBrowserView group references', () => {
+  const rootMounted = []
+
+  const clientWith = ({ details, members }) => ({
+    maven: {
+      details,
+      members,
+      download: () => Promise.reject(new Error('not used')),
+      delete: () => Promise.reject(new Error('not used'))
+    }
+  })
+
+  const mountAt = (path) => {
+    const wrapper = mount(FileBrowserView, {
+      props: { qualifier: { path, watchable: 0 } },
+      global: { stubs: { 'router-link': RouterLinkStub } }
+    })
+    rootMounted.push(wrapper)
+    return wrapper
+  }
+
+  beforeEach(() => {
+    sessionState.details.value = { routes: [] }
+  })
+
+  afterEach(() => {
+    rootMounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('asks the repository for its references when its root is browsed', async () => {
+    const members = vi.fn().mockResolvedValue({ data: { members: ['releases', 'snapshots'] } })
+    sessionState.client.value = clientWith({ details: () => Promise.resolve({ data: { files: [] } }), members })
+
+    mountAt('public')
+    await flushPromises()
+
+    expect(members, 'the root of the repository is asked for its references').toHaveBeenCalledWith('public')
+  })
+
+  it('shows the references of a group root with no files of its own', async () => {
+    const members = () => Promise.resolve({ data: { members: ['releases', 'snapshots'] } })
+    sessionState.client.value = clientWith({ details: () => Promise.resolve({ data: { files: [] } }), members })
+
+    const wrapper = mountAt('public')
+    await flushPromises()
+
+    expect(wrapper.text(), 'the references are shown').toContain('Includes')
+    expect(wrapper.text(), 'the references are named').toContain('snapshots')
+    expect(wrapper.text(), 'the group is not called empty').not.toContain('Directory is empty')
+  })
+
+  it('does not ask for references below the repository root', async () => {
+    const members = vi.fn().mockResolvedValue({ data: { members: [] } })
+    sessionState.client.value = clientWith({ details: () => Promise.resolve({ data: { files: [] } }), members })
+
+    mountAt('releases/net/example')
+    await flushPromises()
+
+    expect(members, 'a deeper directory has no references of its own').not.toHaveBeenCalled()
+  })
+
+  it('keeps the empty-directory text when the references cannot be read', async () => {
+    const members = () => Promise.reject(networkError())
+    sessionState.client.value = clientWith({ details: () => Promise.resolve({ data: { files: [] } }), members })
+
+    const wrapper = mountAt('public')
+    await flushPromises()
+
+    expect(wrapper.text(), 'a failed reference lookup leaves the listing as it was').toContain('Directory is empty')
+  })
+})
