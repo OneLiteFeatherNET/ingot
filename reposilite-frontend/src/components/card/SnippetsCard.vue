@@ -172,69 +172,75 @@ const selectTab = (tab) =>
         >
           <div
             :key="selectedTab"
-            class="relative"
           >
-            <!-- Stacked above the code block, which is a later sibling and would otherwise paint over it. -->
+            <!--
+              The copy action has a row of its own above the code, so it never sits over a line of
+              the snippet, and the code block below scrolls sideways without moving it.
+            -->
             <div
-              v-if="!loading"
-              class="absolute top-2 right-2 z-10"
-            >
-              <MdIconButton
-                aria-label="Copy snippet"
-                @click="copy"
-              >
-                <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
-              </MdIconButton>
-            </div>
-            <!-- The right padding keeps wrapped lines clear of the copy button. -->
-            <div
-              ref="codeBlock"
-              class="card-editor max-w-full overflow-auto font-mono md-body-small min-h-29 relative py-3 pl-4 pr-14 rounded-corner-medium bg-surface-container-highest text-on-surface"
+              class="rounded-corner-medium bg-surface-container-highest text-on-surface"
             >
               <div
-                v-if="loading"
-                class="skeleton-bars space-y-2.5 pt-1"
+                v-if="!loading"
+                class="flex justify-end px-2 pt-1"
+              >
+                <MdIconButton
+                  aria-label="Copy snippet"
+                  @click="copy"
+                >
+                  <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
+                </MdIconButton>
+              </div>
+              <!-- Preformatted: lines keep their indentation and are never broken, so long ones scroll sideways. -->
+              <div
+                ref="codeBlock"
+                class="card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small min-h-29 px-4 pb-3 pt-1"
               >
                 <div
-                  class="h-3 rounded bg-surface-container-high"
-                  style="width: 80%"
-                />
-                <div
-                  class="h-3 rounded bg-surface-container-high"
-                  style="width: 55%"
-                />
-                <div
-                  class="h-3 rounded bg-surface-container-high"
-                  style="width: 68%"
-                />
-                <div
-                  class="h-3 rounded bg-surface-container-high"
-                  style="width: 40%"
-                />
-              </div>
-              <template v-else>
-                <template
-                  v-for="entry in configurations"
-                  :key="entry.name"
+                  v-if="loading"
+                  class="skeleton-bars space-y-2.5 pt-1"
                 >
-                  <template v-if="entry.name === selectedTab">
-                    <RepositorySnippet
-                      v-if="data.type === 'repository'"
-                      ref="snippetRef"
-                      :configuration="entry"
-                      :data="data"
-                    />
-                    <ArtifactSnippet
-                      v-else-if="data.type === 'artifact'"
-                      ref="snippetRef"
-                      :configuration="entry"
-                      :data="data"
-                    />
+                  <div
+                    class="h-3 rounded bg-surface-container-high"
+                    style="width: 80%"
+                  />
+                  <div
+                    class="h-3 rounded bg-surface-container-high"
+                    style="width: 55%"
+                  />
+                  <div
+                    class="h-3 rounded bg-surface-container-high"
+                    style="width: 68%"
+                  />
+                  <div
+                    class="h-3 rounded bg-surface-container-high"
+                    style="width: 40%"
+                  />
+                </div>
+                <template v-else>
+                  <template
+                    v-for="entry in configurations"
+                    :key="entry.name"
+                  >
+                    <template v-if="entry.name === selectedTab">
+                      <RepositorySnippet
+                        v-if="data.type === 'repository'"
+                        ref="snippetRef"
+                        :configuration="entry"
+                        :data="data"
+                      />
+                      <ArtifactSnippet
+                        v-else-if="data.type === 'artifact'"
+                        ref="snippetRef"
+                        :configuration="entry"
+                        :data="data"
+                      />
+                    </template>
                   </template>
                 </template>
-              </template>
+              </div>
             </div>
-            <!-- Below the snippet, so a status line never sits over a wrapped line of it. -->
+            <!-- Below the snippet, so a status line never sits over a line of it. -->
             <p
               v-if="copyState === 'copied'"
               role="status"
@@ -287,17 +293,5 @@ const selectTab = (tab) =>
   border-radius: 20px;
   border: transparent;
   margin-top: 10px;
-}
-
-/*
- * A long snippet line wraps at the editor's edge, with its indentation kept, so every tag stays
- * readable without a sideways scrollbar. Wrapping is only how the text is drawn: the copy action
- * reads the text content, which is the snippet as written, one line per line.
- */
-.card-editor > pre {
-  white-space: pre-wrap;
-  /* Lines break at spaces and between the tags; a word only splits when it is wider than the editor. */
-  word-break: normal;
-  overflow-wrap: break-word;
 }
 </style>

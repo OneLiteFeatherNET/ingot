@@ -1,19 +1,3 @@
-/*
- * Copyright (c) 2026 OneLiteFeather
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import RepositorySnippet from './RepositorySnippet.vue'
@@ -40,10 +24,29 @@ describe('RepositorySnippet Maven text', () => {
     )
   })
 
-  it('lets the url wrap at the slash and before the placeholder, not inside a word', () => {
+  it('keeps the url on one line, without break opportunities inside it', () => {
     const pre = render('xml').find('pre').element
 
-    expect(pre.querySelectorAll('wbr').length).toBeGreaterThan(0)
-    expect(pre.textContent).toContain('http://localhost/releases')
+    expect(pre.querySelectorAll('wbr'), 'the url is not split into pieces').toHaveLength(0)
+    expect(pre.textContent).toContain('  <url>http://localhost/releases</url>\n')
+  })
+})
+
+describe('RepositorySnippet Gradle and SBT text', () => {
+  it('indents the Gradle Groovy block by four spaces and keeps its url whole', () => {
+    const text = render('groovy').find('pre').element.textContent
+
+    expect(text).toBe(
+      'maven {\n' +
+      '    name "releasesX"\n' +
+      '    url "http://localhost/releases"\n' +
+      '}\n'
+    )
+  })
+
+  it('writes the SBT resolver as one line, the way it is pasted into build.sbt', () => {
+    const text = render('scala').find('pre').element.textContent
+
+    expect(text).toBe('resolvers += "releases-x" at "http://localhost/releases"\n')
   })
 })

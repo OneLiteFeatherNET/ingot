@@ -120,10 +120,21 @@ describe('SnippetsCard surface', () => {
     expect(editor.classes()).not.toContain('text-ssm')
   })
 
-  it('keeps the right padding that clears the copy button from wrapped lines', async () => {
+  it('keeps the copy button out of the scrolling code block', async () => {
     await mountCard()
 
-    expect(wrapper.find('.card-editor').classes()).toContain('pr-14')
+    expect(wrapper.find('.card-editor button[aria-label="Copy snippet"]').exists(), 'the copy button never covers a line of code').toBe(false)
+    expect(copyButton().exists(), 'the copy action is still offered').toBe(true)
+  })
+
+  it('draws the snippet as preformatted text that scrolls sideways instead of wrapping', async () => {
+    await mountCard()
+    const editor = wrapper.find('.card-editor')
+
+    expect(editor.classes(), 'the whitespace of the snippet is kept as written').toContain('whitespace-pre')
+    expect(editor.classes(), 'the snippet is cut by scrolling, not by breaking words').toContain('overflow-x-auto')
+    expect(editor.classes(), 'the snippet keeps its normal word boundaries').toContain('break-normal')
+    expect(editor.classes(), 'no class forces the snippet to wrap').not.toEqual(expect.arrayContaining(['whitespace-pre-wrap', 'break-all', 'break-words']))
   })
 })
 
