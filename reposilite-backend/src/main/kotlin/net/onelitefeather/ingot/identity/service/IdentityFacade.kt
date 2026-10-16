@@ -77,6 +77,7 @@ import net.onelitefeather.ingot.identity.api.TemplatesDto
 import net.onelitefeather.ingot.identity.evaluation.AdminReachability
 import net.onelitefeather.ingot.identity.evaluation.Decision
 import net.onelitefeather.ingot.identity.evaluation.GRANT_KIND
+import net.onelitefeather.ingot.identity.evaluation.INSTANCE_ADMIN_KIND
 import net.onelitefeather.ingot.identity.evaluation.ScopeRules
 import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
@@ -756,6 +757,7 @@ class IdentityFacade(
         val verdict = if (decision.allowed) "Allowed" else "Denied"
         val by = when {
             decision.decidingKind == GRANT_KIND -> "by a role grant of ${decision.subject}"
+            decision.decidingKind == INSTANCE_ADMIN_KIND -> "by the instance administrator '${decision.decidingNode}' of ${decision.subject} (${decision.source.name})"
             decision.decidingNode != null -> "by the ${decision.decidingKind?.lowercase()} node '${decision.decidingNode}' of ${decision.subject} (${decision.source.name})"
             else -> "because no node or grant matches"
         }

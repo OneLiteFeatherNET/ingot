@@ -87,7 +87,7 @@ internal class PermissionDecisionTest {
 
     @Test
     fun `a more specific denial overrides a broader allowance in the same source`() {
-        val alice = subject(team(rule("ops", "*"), rule("ops", "ingot.repository.releases.delete", allowed = false)))
+        val alice = subject(team(rule("ops", "ingot.repository.*.*"), rule("ops", "ingot.repository.releases.delete", allowed = false)))
 
         assertThat(decide(alice, "ingot.repository.releases.delete").allowed).describedAs("denied exact").isFalse
         assertThat(decide(alice, "ingot.repository.releases.read").allowed).describedAs("other action").isTrue

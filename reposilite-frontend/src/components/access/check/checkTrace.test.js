@@ -159,7 +159,8 @@ describe('decision facts of an artifact decision', () => {
     ['REPOSITORY', 'Repository node'],
     ['ADMIN', 'Admin node'],
     ['EVERYTHING', 'Everything node'],
-    ['GRANT', 'Role grant']
+    ['GRANT', 'Role grant'],
+    ['INSTANCE_ADMIN', 'Instance administrator']
   ])('names the kind %s as %s', (kind, label) => {
     expect(kindLabel(kind)).toBe(label)
   })

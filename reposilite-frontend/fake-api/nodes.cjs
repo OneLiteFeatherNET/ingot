@@ -395,7 +395,10 @@ const kindOf = (node) => {
   return parsed.problem ? null : parsed.kind
 }
 
-const KIND_PHRASE = { ARTIFACT: "artifact node", REPOSITORY: "repository node", ADMIN: "admin node", EVERYTHING: "everything node" }
+const KIND_PHRASE = {
+  ARTIFACT: "artifact node", REPOSITORY: "repository node", ADMIN: "admin node", EVERYTHING: "everything node",
+  INSTANCE_ADMIN: "instance administrator",
+}
 
 // The denial of a request no node matches, with the same fields as a decided one. The explanation is the fake's own wording.
 const defaultDecision = (requested) => ({
@@ -416,7 +419,7 @@ const decisionExplanation = (allowed, node, kind, source, subject) =>
  *   token:       null, or { name, nodes }. A token without nodes does not narrow.
  * Returns { allowed, decision, trace }.
  */
-const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) => {
+const evaluateRules = ({ node, user, memberTeams = [], teams = [], token = null }) => {
   const requested = requestOf(node)
   const principal = evaluatePrincipal({ node: requested, user, memberTeams, teams })
   if (!token || !token.nodes || token.nodes.length === 0) {
@@ -455,8 +458,34 @@ const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) =>
   return { allowed: result.verdict, decision, trace: [...principal.trace, ...entries] }
 }
 
-/** Whether the evaluation allows the instance admin node (the instance role, directly or through teams). */
-const isInstanceAdmin = (context) => evaluate({ ...context, node: INSTANCE_ADMIN_NODE }).allowed
+/**
+ * Decides a request the way the backend's PermissionEvaluator.allows does: a repository request (a node or a path) is
+ * decided by its rules first, and an instance admin is allowed it when its token allows it. The shortcut is named as the
+ * deciding kind INSTANCE_ADMIN, with the admin rule as the deciding node.
+ */
+const evaluate = (context) => {
+  const requested = requestOf(context.node)
+  const decided = evaluateRules({ ...context, node: requested })
+  if (decided.allowed || requested.kind !== "REPOSITORY") {
+    return decided
+  }
+  if (!isInstanceAdmin(context)) return decided
+  // The token narrows first: a token that does not allow the request denies it.
+  if (context.token && context.token.nodes.length > 0) {
+    const narrowed = decideLayer(candidatesOf(SOURCE.TOKEN, context.token.name, context.token.nodes, requested, 0))
+    if (narrowed === null || !narrowed.verdict) return decided
+  }
+  const admin = evaluateRules({ ...context, node: INSTANCE_ADMIN_NODE, token: null }).decision
+  const decision = {
+    source: admin.source, subject: admin.subject, node: requested.text, allowed: true, depth: admin.depth,
+    decidingNode: admin.decidingNode, decidingKind: "INSTANCE_ADMIN",
+    explanation: decisionExplanation(true, admin.decidingNode, "INSTANCE_ADMIN", admin.source, admin.subject),
+  }
+  return { allowed: true, decision, trace: decided.trace }
+}
+
+/** Whether the evaluation allows the instance admin node (the instance role, directly or through teams). The rules decide it. */
+const isInstanceAdmin = (context) => evaluateRules({ ...context, node: INSTANCE_ADMIN_NODE }).allowed
 
 /**
  * The node patterns the subject is allowed, as PermissionEvaluator.effectiveNodes: every distinct rule pattern of the
@@ -473,7 +502,7 @@ const effectiveNodes = (context) => {
     ...(narrowing ? narrowing.nodes : []),
   ].map(entry => entry.node)
   return [...new Set(patterns)]
-    .filter(pattern => evaluate({ ...context, node: pattern }).allowed)
+    .filter(pattern => evaluateRules({ ...context, node: pattern }).allowed)
     .sort()
 }
 

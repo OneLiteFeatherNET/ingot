@@ -755,3 +755,47 @@ describe("path requests", () => {
     assert.deepEqual([result.allowed, result.decision.node], [true, "ingot.repository.releases.deploy"])
   })
 })
+
+describe("instance admin shortcut", () => {
+  const ADMIN = "ingot.admin.*"
+  const adminUser = (extra = []) => user([allow(ADMIN), ...extra])
+
+  it("allows an instance admin a repository node that no rule of its own covers", () => {
+    const result = nodes.evaluate({ node: READ, user: adminUser() })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "INSTANCE_ADMIN"])
+  })
+
+  it("names the admin rule as the deciding node, with the explanation of the shortcut", () => {
+    const result = nodes.evaluate({ node: READ, user: adminUser() })
+    assert.deepEqual(
+      [result.decision.decidingNode, result.decision.explanation],
+      [ADMIN, "Allowed by the instance administrator 'ingot.admin.*' of alice (USER)"],
+    )
+  })
+
+  it("is not restricted by a denial, as a real request is not", () => {
+    const result = nodes.evaluate({ node: READ, user: adminUser([deny(READ)]) })
+    assert.equal(result.allowed, true)
+  })
+
+  it("is narrowed by a token that does not list the request", () => {
+    const token = { name: "ci", nodes: [allow("ingot.repository.other.read")] }
+    const result = nodes.evaluate({ node: READ, user: adminUser(), token })
+    assert.equal(result.allowed, false)
+    assert.equal(result.decision.decidingKind, null)
+  })
+
+  it("is allowed a path request, which the shortcut covers as a node", () => {
+    const result = nodes.evaluate({ node: nodes.pathRequest({ repository: "private", path: "com/x.jar", action: "deploy" }), user: adminUser() })
+    assert.equal(result.decision.decidingKind, "INSTANCE_ADMIN")
+  })
+
+  it("does not make a subject without the admin node an instance admin", () => {
+    const result = nodes.evaluate({ node: READ, user: user([allow("ingot.repository.private.*")]) })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "REPOSITORY"])
+  })
+
+  it("does not list denied repository nodes as effective nodes of an instance admin", () => {
+    assert.deepEqual(nodes.effectiveNodes({ user: adminUser([deny(READ)]), memberTeams: [], teams: [] }), [ADMIN])
+  })
+})

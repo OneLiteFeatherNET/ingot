@@ -55,7 +55,8 @@ const KIND_LABELS = {
   REPOSITORY: 'Repository node',
   ADMIN: 'Admin node',
   EVERYTHING: 'Everything node',
-  GRANT: 'Role grant'
+  GRANT: 'Role grant',
+  INSTANCE_ADMIN: 'Instance administrator'
 }
 
 /** The readable name of the kind of the deciding rule. No kind (no node matched) reads as None. */

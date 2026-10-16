@@ -480,6 +480,20 @@ internal class NodeCatalogAndCheckTest {
         node: String? = null,
     ) = service.permissionCheck(admin, "alice", node, null, repository = repository, path = path, action = action)
 
+    @Test
+    fun `the check names the instance admin shortcut as the deciding kind, as a real request is allowed by it`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+
+            val check = service.permissionCheck(admin, "admin", "ingot.repository.releases.deploy", token = null).orNull()!!
+
+            assertThat(check.allowed).describedAs("allowed").isTrue
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("INSTANCE_ADMIN")
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.admin.*")
+            assertThat(check.decision.explanation).describedAs("explanation").contains("instance administrator").contains("admin")
+        }
+    }
+
     /** Creates an instance admin with a usable token and returns the identifier of that principal, for the check. */
     private fun bootstrapAdmin(service: IdentityFacade): AccessTokenIdentifier {
         val admin = service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "admin")).orNull()!!
