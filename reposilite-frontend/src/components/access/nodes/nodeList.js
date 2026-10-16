@@ -20,6 +20,8 @@
  * where an inherited node comes from. Pure.
  */
 
+import { ARTIFACT_ACTIONS, parseNode } from './nodeGrammar'
+
 const normalize = (text) => String(text ?? '').trim().toLowerCase()
 
 /** The entries whose node contains the query, ignoring case and outer spaces. */
@@ -32,8 +34,8 @@ const filterRows = (rows, query) => {
 /** True when the node is already in the list. */
 const hasNode = (rows, node) => (rows ?? []).some(row => row.node === node)
 
-const KIND_ORDER = ['STATIC', 'REPOSITORY', 'WILDCARD']
-const KIND_LABEL = { STATIC: 'Static', REPOSITORY: 'Repository', WILDCARD: 'Wildcard' }
+const KIND_ORDER = ['STATIC', 'REPOSITORY', 'ARTIFACT', 'WILDCARD']
+const KIND_LABEL = { STATIC: 'Static', REPOSITORY: 'Repository', ARTIFACT: 'Artifact', WILDCARD: 'Wildcard' }
 
 /**
  * The catalog entries to suggest for a text: not yet listed and containing the text (ignoring
@@ -57,7 +59,82 @@ const suggestNodes = (catalog, text, listed = [], limit = 12) => {
     .map(({ item }) => item)
 }
 
-/** Splits suggestions into the headed groups Static, Repository and Wildcard, in that order. */
+const ACTION_DESCRIPTION = {
+  read: 'Read the artifacts of this group or artifact',
+  deploy: 'Deploy into this group or artifact',
+  delete: 'Delete from this group or artifact',
+  '*': 'Every artifact action on this group or artifact'
+}
+
+const ARTIFACT_PREFIX = 'ingot.artifact.'
+const QUALIFIED_PREFIX = /^ingot\.repository\.[A-Za-z0-9_-]+\.artifact\./
+const ACTION_WORDS = [...ARTIFACT_ACTIONS, '*']
+
+/** The valid nodes made of a base (a text ending in '.') and one of the words, not listed yet. */
+const completionsFrom = (base, words, listed) => {
+  const taken = new Set(listed.map(row => row.node))
+  return words
+    .map(word => `${base}${word}`)
+    .filter(node => !taken.has(node) && parseNode(node).valid)
+    .map(node => ({ node, description: ACTION_DESCRIPTION[node.slice(node.lastIndexOf('.') + 1)], kind: 'ARTIFACT' }))
+}
+
+/**
+ * The completions of an artifact text, which the catalog does not list: the repository prefix of a qualified
+ * node (continue with '.artifact.'), and the actions after a groupId or artifactId. A continuation is marked
+ * `continuation`, because choosing it fills the field and adds no node.
+ */
+const artifactSuggestions = (text, catalog, listed = []) => {
+  const typed = String(text ?? '').trim()
+  const repositoryPart = typed.match(/^ingot\.repository\.([A-Za-z0-9_-]*)\.?$/)
+  if (repositoryPart) {
+    const partial = repositoryPart[1]
+    const repositories = repositoryNames(catalog).filter(name => name.startsWith(partial))
+    return repositories.map(name => ({
+      node: `ingot.repository.${name}.artifact.`,
+      description: `Artifact nodes on repository ${name}`,
+      kind: 'ARTIFACT',
+      continuation: true
+    }))
+  }
+  const head = typed.startsWith(ARTIFACT_PREFIX) ? ARTIFACT_PREFIX : typed.match(QUALIFIED_PREFIX)?.[0]
+  if (!head) return []
+  const rest = typed.slice(head.length)
+  if (rest === '') return []
+  const dot = rest.lastIndexOf('.')
+  // No dot yet: the groupId is being typed, so the actions follow it.
+  if (dot === -1) return completionsFrom(`${typed}.`, ACTION_WORDS, listed)
+  if (rest.slice(0, dot) === '') return []
+  const fragment = rest.slice(dot + 1)
+  if (fragment === '') return completionsFrom(typed, ACTION_WORDS, listed)
+  // A part of an action completes in place, anything else is a further part of the groupId.
+  if (ACTION_WORDS.some(word => word.startsWith(fragment))) {
+    return completionsFrom(typed.slice(0, typed.length - fragment.length), ACTION_WORDS.filter(word => word.startsWith(fragment)), listed)
+  }
+  return completionsFrom(`${typed}.`, ACTION_WORDS, listed)
+}
+
+/**
+ * The suggestions for the node field: the artifact completions first, then the catalog matches, in kind order
+ * (Static, Repository, Artifact, Wildcard), at most `limit`.
+ */
+const suggestWithArtifacts = (catalog, text, listed = [], limit = 12) => {
+  const completions = artifactSuggestions(text, catalog, listed)
+  const seen = new Set(completions.map(item => item.node))
+  const rest = suggestNodes(catalog, text, listed, limit).filter(item => !seen.has(item.node))
+  const merged = [...completions, ...rest]
+  const kindIndex = (item) => {
+    const index = KIND_ORDER.indexOf(item.kind)
+    return index === -1 ? KIND_ORDER.length : index
+  }
+  return merged
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => (kindIndex(left.item) - kindIndex(right.item)) || (left.index - right.index))
+    .map(({ item }) => item)
+    .slice(0, limit)
+}
+
+/** Splits suggestions into the headed groups Static, Repository, Artifact and Wildcard, in that order. */
 const groupSuggestions = (suggestions) =>
   KIND_ORDER
     .map(kind => ({ kind, label: KIND_LABEL[kind], options: suggestions.filter(item => item.kind === kind) }))
@@ -112,5 +189,6 @@ export {
   isOverridden,
   KIND_LABEL,
   repositoryNames,
-  suggestNodes
+  suggestNodes,
+  suggestWithArtifacts
 }

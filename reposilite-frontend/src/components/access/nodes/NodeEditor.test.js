@@ -666,3 +666,76 @@ describe('NodeEditor', () => {
     })
   })
 })
+
+describe('NodeEditor artifact nodes', () => {
+  let wrapper
+
+  const mountEditor = (props = {}) => {
+    wrapper = mount(NodeEditor, {
+      props: {
+        nodes: [],
+        savedNodes: [],
+        catalog: CATALOG(),
+        templates: [],
+        ...props,
+        'onUpdate:nodes': (value) => wrapper.setProps({ nodes: value })
+      }
+    })
+    return wrapper
+  }
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  const input = () => wrapper.find('input[role="combobox"]')
+  const options = () => wrapper.findAll('[role="option"]').map(option => option.find('code').text())
+
+  it('suggests the artifact actions after a groupId and adds the chosen one as Allow', async () => {
+    mountEditor()
+
+    await input().setValue('ingot.artifact.net.onelitefeather')
+    expect(options(), 'the deploy action is suggested').toContain('ingot.artifact.net.onelitefeather.deploy')
+    await wrapper.findAll('[role="option"]')
+      .find(option => option.find('code').text() === 'ingot.artifact.net.onelitefeather.deploy')
+      .trigger('click')
+
+    expect(wrapper.emitted('update:nodes').at(-1)[0]).toEqual([
+      { node: 'ingot.artifact.net.onelitefeather.deploy', allowed: true }
+    ])
+  })
+
+  it('fills the field with a repository continuation without adding a node', async () => {
+    mountEditor()
+
+    await input().setValue('ingot.repository.releases.')
+    const continuation = wrapper.findAll('[role="option"]')
+      .find(option => option.find('code').text() === 'ingot.repository.releases.artifact.')
+    await continuation.trigger('click')
+
+    expect(input().element.value).toBe('ingot.repository.releases.artifact.')
+    expect(wrapper.emitted('update:nodes'), 'nothing was added').toBeUndefined()
+  })
+
+  it('groups artifact suggestions under the heading Artifact', async () => {
+    mountEditor({
+      catalog: [...CATALOG(), { node: 'ingot.artifact.*.read', description: 'Read every artifact', kind: 'ARTIFACT' }]
+    })
+
+    await input().setValue('artifact')
+
+    expect(wrapper.findAll('[data-test="suggestion-heading"]').map(heading => heading.text())).toContain('Artifact')
+  })
+
+  it('shows the problem the server gave for an artifact row inline', () => {
+    mountEditor({
+      nodes: [{ node: 'ingot.artifact.net.onelitefeather.deploy', allowed: true }],
+      savedNodes: [{ node: 'ingot.artifact.net.onelitefeather.deploy', allowed: true }],
+      rowErrors: { 'ingot.artifact.net.onelitefeather.deploy': "The groupId 'net' is refused by the server" }
+    })
+
+    expect(wrapper.find('[data-node="ingot.artifact.net.onelitefeather.deploy"] [data-test="row-error"]').text())
+      .toBe("The groupId 'net' is refused by the server")
+  })
+})

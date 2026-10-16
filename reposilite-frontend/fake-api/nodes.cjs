@@ -30,6 +30,14 @@ const MAX_NODE_LENGTH = 255
 const AREAS = ["settings", "users", "teams", "tokens", "maintenance", "audit", "console", "dashboard"]
 const ACTIONS = ["read", "deploy", "delete", "manage"]
 
+// An artifact node has no manage action, as in the backend (NodePattern.ARTIFACT_ACTIONS).
+const ARTIFACT_ACTIONS = ["read", "deploy", "delete"]
+const ARTIFACT_TIER = 10000
+const ARTIFACT_PREFIX = "ingot.artifact."
+const ARTIFACT_HINT = "Use ingot.artifact.<groupId>[:<artifactId>].<read|deploy|delete|*>"
+const QUALIFIED_ARTIFACT_HINT = "Use ingot.repository.<repository>.artifact.<groupId>[:<artifactId>].<read|deploy|delete|*>"
+const NAME_PART = /^[A-Za-z0-9_-]+$/
+
 // The node that makes a subject an instance admin (the backend stores the instance role as this node).
 const INSTANCE_ADMIN_NODE = "ingot.admin.*"
 
@@ -46,9 +54,50 @@ const ADMIN_PREFIX = "ingot.admin."
 const WHITESPACE_OR_CONTROL = /[\p{Z}\u0000-\u001f\u007f-\u009f]/u
 
 /**
+ * Parses an artifact node (`<groupId>[:<artifactId>].<action>` after the prefix, with the repository of the qualified
+ * form or null). Returns { problem } for an invalid node, otherwise the ARTIFACT parts.
+ */
+const parseArtifact = (text, repository, body) => {
+  const qualifiedHint = repository === null ? ARTIFACT_HINT : QUALIFIED_ARTIFACT_HINT
+  if (repository === "*") {
+    return { problem: `The repository wildcard of '${text}' is not allowed for an artifact node, use 'ingot.artifact.<groupId>.<action>' for every repository` }
+  }
+  const split = body.lastIndexOf(".")
+  if (split <= 0) {
+    return { problem: `The artifact node '${text}' needs a groupId and an action, for example ingot.artifact.net.example.deploy. ${qualifiedHint}` }
+  }
+  const coordinate = body.slice(0, split)
+  const action = body.slice(split + 1)
+  if (action !== "*" && !ARTIFACT_ACTIONS.includes(action)) {
+    return { problem: `The action '${action}' of '${text}' is unknown for an artifact node, supported: ${ARTIFACT_ACTIONS.join(", ")} or *` }
+  }
+  const parts = coordinate.split(":")
+  if (parts.length > 2) return { problem: `The coordinate '${coordinate}' of '${text}' can contain only one ':' between the groupId and the artifactId` }
+  const groupId = parts[0]
+  const rawArtifactId = parts.length === 2 ? parts[1] : null
+  if (groupId === "") return { problem: `The groupId of '${text}' is empty` }
+  if (rawArtifactId === "") return { problem: `The artifactId of '${text}' is empty` }
+  const artifactId = rawArtifactId === "*" ? null : rawArtifactId
+  if (groupId === "*" && artifactId !== null) {
+    return { problem: `The groupId * with the artifactId '${artifactId}' in '${text}' is ambiguous, name the groupId of the artifact` }
+  }
+  for (const [label, value] of [["groupId", groupId], ["artifactId", artifactId]]) {
+    if (value === null || value === "*") continue
+    if (value.includes("*")) return { problem: `The ${label} '${value}' of '${text}' is invalid, a wildcard must be the whole ${label}` }
+    const names = value.split(".")
+    if (names.some(name => name === "")) return { problem: `The ${label} '${value}' of '${text}' has an empty segment` }
+    const bad = names.find(name => !NAME_PART.test(name))
+    if (bad !== undefined) {
+      return { problem: `The ${label} '${value}' of '${text}' has an invalid character in '${bad}', allowed are letters, digits, '_', '-' and '.'` }
+    }
+  }
+  return { kind: "ARTIFACT", repository, action, area: null, groupId, artifactId }
+}
+
+/**
  * Parses a node as NodePattern.parse does, in the same order of checks and with the same messages. Returns
  * { problem } for an invalid node, otherwise { kind, repository, action, area } where kind is EVERYTHING,
- * REPOSITORY or ADMIN and the parts that do not belong to the kind are null.
+ * REPOSITORY, ARTIFACT or ADMIN and the parts that do not belong to the kind are null.
  */
 const parseNode = (text) => {
   if (text.length === 0) return { problem: "The node is empty" }
@@ -58,8 +107,17 @@ const parseNode = (text) => {
     return { problem: `The node '${text}' starts with '-', negation is stored as allowed false and not in the name` }
   }
   if (text === "*") return { kind: "EVERYTHING", repository: null, action: null, area: null }
+  if (text.startsWith(ARTIFACT_PREFIX)) return parseArtifact(text, null, text.slice(ARTIFACT_PREFIX.length))
   if (text.startsWith(REPOSITORY_PREFIX)) {
     const rest = text.slice(REPOSITORY_PREFIX.length)
+    const segments = rest.split(".")
+    const artifactAt = segments.indexOf("artifact")
+    if (artifactAt === 0) {
+      return { problem: `The repository name before .artifact. is missing. ${QUALIFIED_ARTIFACT_HINT}` }
+    }
+    if (artifactAt > 0) {
+      return parseArtifact(text, segments.slice(0, artifactAt).join("."), segments.slice(artifactAt + 1).join("."))
+    }
     const split = rest.lastIndexOf(".")
     if (split <= 0) {
       return { problem: `The repository node '${text}' needs a repository and an action, for example ingot.repository.releases.read` }
@@ -81,7 +139,7 @@ const parseNode = (text) => {
     }
     return { kind: "ADMIN", repository: null, action: null, area }
   }
-  return { problem: `The node '${text}' is unknown, nodes start with 'ingot.repository.' or 'ingot.admin.', or are '*'` }
+  return { problem: `The node '${text}' is unknown, nodes start with 'ingot.repository.', 'ingot.artifact.' or 'ingot.admin.', or are '*'` }
 }
 
 /** The reason a node is not valid, or null when it is valid (NodePattern.problemOf). */
@@ -118,16 +176,37 @@ const validateEntries = (entries) => {
 
 // ---------------------------------------------------------------- matching
 
+// The path segments an artifact node covers: its groupId parts, and its artifactId when it has one.
+const pathOf = (artifact) => {
+  if (artifact.groupId === "*") return []
+  return [...artifact.groupId.split("."), ...(artifact.artifactId ? [artifact.artifactId] : [])]
+}
+
+/**
+ * An artifact pattern covers an artifact request when the action agrees, the repository agrees (an unqualified pattern
+ * covers every repository, a qualified one only its own) and the path of the pattern is a prefix of the request's path,
+ * compared by whole segments, so `net.example` does not cover `net.examples`.
+ */
+const artifactCovers = (own, request) => {
+  if (own.repository !== null && own.repository !== request.repository) return false
+  if (own.action !== "*" && own.action !== request.action) return false
+  const ownPath = pathOf(own)
+  const requestPath = pathOf(request)
+  return ownPath.length <= requestPath.length && ownPath.every((segment, index) => segment === requestPath[index])
+}
+
 /**
  * A pattern covers a requested node as NodePattern.matches does: '*' covers everything, a repository pattern covers a
- * repository node of the same repository (or any, for '*') and action, an admin pattern an admin node of the same area.
- * A requested node is concrete, so a '*' in it is a literal. A node that does not parse matches nothing.
+ * repository node of the same repository (or any, for '*') and action, an admin pattern an admin node of the same area,
+ * an artifact pattern an artifact node it covers (see artifactCovers). A requested node is concrete, so a '*' in it is a
+ * literal. A node that does not parse matches nothing.
  */
 const matches = (pattern, node) => {
   const own = parseNode(pattern)
   const request = parseNode(node)
   if (own.problem || request.problem) return false
   if (own.kind === "EVERYTHING") return true
+  if (own.kind === "ARTIFACT") return request.kind === "ARTIFACT" && artifactCovers(own, request)
   if (own.kind === "REPOSITORY") {
     return request.kind === "REPOSITORY" &&
       (own.repository === "*" || own.repository === request.repository) &&
@@ -136,11 +215,20 @@ const matches = (pattern, node) => {
   return request.kind === "ADMIN" && (own.area === "*" || own.area === request.area)
 }
 
-/** The literal parts of a pattern (NodePattern.specificity): 0 for '*', 2 plus one per literal part otherwise. */
+/**
+ * The literal parts of a pattern (NodePattern.specificity): 0 for '*', 2 plus one per literal part otherwise. An artifact
+ * node is in its own tier above them, ordered by qualified, artifactId, the groupId segments and a literal action, as
+ * the backend orders them (NodeSpecificity).
+ */
 const specificity = (pattern) => {
   const own = parseNode(pattern)
   if (own.problem) return 0
   if (own.kind === "EVERYTHING") return 0
+  if (own.kind === "ARTIFACT") {
+    const groupSegments = own.groupId === "*" ? 0 : own.groupId.split(".").length
+    return ARTIFACT_TIER + (own.repository !== null ? 1000 : 0) + (own.artifactId ? 100 : 0) +
+      groupSegments * 10 + (own.action !== "*" ? 1 : 0)
+  }
   if (own.kind === "REPOSITORY") return 2 + (own.repository !== "*" ? 1 : 0) + (own.action !== "*" ? 1 : 0)
   return 2 + (own.area !== "*" ? 1 : 0)
 }
@@ -407,6 +495,8 @@ const buildCatalog = (repositories, prefix = "") => {
       { node: `ingot.repository.${repository}.*`, description: `Every action on repository ${repository}`, kind: "REPOSITORY" },
     ]),
     ...ACTIONS.map(action => ({ node: `ingot.repository.*.${action}`, description: `${action} on every repository`, kind: "WILDCARD" })),
+    ...ARTIFACT_ACTIONS.map(action => ({ node: `ingot.artifact.*.${action}`, description: `${action} on every artifact in every repository`, kind: "ARTIFACT" })),
+    { node: "ingot.artifact.*.*", description: "Every artifact action on every artifact in every repository", kind: "ARTIFACT" },
   ]
   return entries.filter(entry => !prefix || entry.node.startsWith(prefix))
 }
@@ -419,6 +509,17 @@ const TEMPLATES = [
   { id: "maintain", label: "Maintain", nodes: [repositoryNode("read"), repositoryNode("deploy"), repositoryNode("delete")] },
   { id: "admin", label: "Admin", nodes: [repositoryNode("read"), repositoryNode("deploy"), repositoryNode("delete"), repositoryNode("manage")] },
   { id: "instance-admin", label: "Instance admin", nodes: ["ingot.admin.*"] },
+  { id: "artifact-read", label: "Read an artifact", nodes: ["ingot.artifact.{groupId}:{artifactId}.read"] },
+  {
+    id: "artifact-deploy",
+    label: "Deploy an artifact",
+    nodes: ["ingot.artifact.{groupId}:{artifactId}.read", "ingot.artifact.{groupId}:{artifactId}.deploy"],
+  },
+  {
+    id: "repository-artifact-deploy",
+    label: "Deploy an artifact in one repository",
+    nodes: ["ingot.repository.{repository}.artifact.{groupId}:{artifactId}.read", "ingot.repository.{repository}.artifact.{groupId}:{artifactId}.deploy"],
+  },
 ]
 
 /** A copy, so that a caller cannot change the templates. */
