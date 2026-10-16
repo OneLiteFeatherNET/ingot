@@ -31,16 +31,20 @@ import kotlin.io.path.fileStore
  * A repository whose usage is measured.
  *
  * @param quota the quota as configured (for example "100%" or "10GB"), null when the storage has none
+ * @param storageType the storage provider type as configured, "fs" for the file system or "s3" for object storage
+ * @param group true for a loopback group, which proxies other local repositories and stores nothing itself
  */
 internal data class StorageTarget(
     val id: String,
     val storage: StorageProvider,
     val quota: String?,
+    val storageType: String = "fs",
+    val group: Boolean = false,
 )
 
 /**
  * Usage of one repository. [quotaBytes] is null when the quota is unknown: no quota is configured, or the
- * configured value cannot be read.
+ * configured value cannot be read. [storageType] and [group] tell a client what the quota means, if anything.
  */
 data class RepositoryStorageUsage(
     val id: String,
@@ -48,6 +52,8 @@ data class RepositoryStorageUsage(
     val quota: String?,
     val quotaBytes: Long?,
     val fileCount: Long,
+    val storageType: String,
+    val group: Boolean,
 )
 
 /**
@@ -111,21 +117,21 @@ internal class StorageUsageService(
         return current()
     }
 
-    private fun measure(target: StorageTarget): RepositoryStorageUsage =
-        runCatching { target.storage.walkFiles() }
+    private fun measure(target: StorageTarget): RepositoryStorageUsage {
+        val files = runCatching { target.storage.walkFiles() }
             .onFailure { journalist.logger.warn("STORAGE | Cannot measure usage of ${target.id}: ${it.message}") }
-            .map { files ->
-                RepositoryStorageUsage(
-                    id = target.id,
-                    usedBytes = files.sumOf { it.sizeBytes },
-                    quota = target.quota,
-                    quotaBytes = quotaBytes(target),
-                    fileCount = files.size.toLong(),
-                )
-            }
-            .getOrElse {
-                RepositoryStorageUsage(target.id, usedBytes = 0, quota = target.quota, quotaBytes = quotaBytes(target), fileCount = 0)
-            }
+            .getOrElse { emptyList() }
+
+        return RepositoryStorageUsage(
+            id = target.id,
+            usedBytes = files.sumOf { it.sizeBytes },
+            quota = target.quota,
+            quotaBytes = quotaBytes(target),
+            fileCount = files.size.toLong(),
+            storageType = target.storageType,
+            group = target.group,
+        )
+    }
 
     /**
      * A percentage is taken of the total capacity of the disk the repository lives on, which is the same reference

@@ -121,6 +121,33 @@ internal class StorageUsageServiceTest {
     }
 
     @Test
+    fun `should report the storage type of each repository`() {
+        // given: a repository on object storage, which declares no quota
+        val releases = storage("releases")
+
+        // when: usage is computed
+        val repository = service(StorageTarget("releases", releases, quota = null, storageType = "s3")).refresh().join().repositories.single()
+
+        // then: the storage type is reported next to the figures
+        assertEquals("s3", repository.storageType)
+    }
+
+    @Test
+    fun `should mark a loopback group as having no own storage and no quota`() {
+        // given: a group repository whose own file system storage holds nothing, with a quota configured on it
+        val group = storage("onelitefeather")
+
+        // when: usage is computed for the group
+        val repository = service(StorageTarget("onelitefeather", group, quota = null, storageType = "fs", group = true))
+            .refresh().join().repositories.single()
+
+        // then: the group is flagged, and no quota or bar is reported for it
+        assertTrue(repository.group)
+        assertNull(repository.quota)
+        assertNull(repository.quotaBytes)
+    }
+
+    @Test
     fun `should report nothing computed before the first computation`() {
         // given: a service that has never computed
         val usage = service(StorageTarget("releases", storage("releases"), quota = null), executor = Executor { })

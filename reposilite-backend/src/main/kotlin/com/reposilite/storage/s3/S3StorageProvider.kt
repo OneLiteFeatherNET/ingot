@@ -140,9 +140,14 @@ class S3StorageProvider(
         }
 
     override fun getFileDetails(location: Location): Result<FileDetails, ErrorResponse> =
-        head(location)
-            .map { toDocumentInfo(location, it) }
-            .flatMapErr { listDirectoryDetails(location) }
+        when {
+            // The repository root is always a directory. Its key is the prefix, and a folder object created at
+            // that prefix would make a HEAD succeed and mistake the whole repository for a single empty file.
+            location.toString().isEmpty() -> listDirectoryDetails(location)
+            else -> head(location)
+                .map { toDocumentInfo(location, it) }
+                .flatMapErr { listDirectoryDetails(location) }
+        }
 
     private fun listDirectoryDetails(location: Location): Result<FileDetails, ErrorResponse> =
         listDirectory(
@@ -253,7 +258,8 @@ class S3StorageProvider(
 
             val pages = s3.listObjectsV2Paginator(request).toList()
             val directories = pages.flatMap { it.commonPrefixes() }.mapNotNull(onDirectory)
-            val files = pages.flatMap { it.contents() }.mapNotNull(onFile)
+            // Keys ending in '/' are folder objects written by consoles and tools, not entries of the repository.
+            val files = pages.flatMap { it.contents() }.filterNot { it.key().endsWith("/") }.mapNotNull(onFile)
             val entries = directories + files
 
             when {
