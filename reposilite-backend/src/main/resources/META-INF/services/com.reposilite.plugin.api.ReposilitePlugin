@@ -16,3 +16,4 @@ com.reposilite.web.application.WebPlugin
 com.reposilite.cleanup.application.CleanupPlugin
 com.reposilite.audit.application.AuditPlugin
 net.onelitefeather.ingot.identity.login.application.LoginPlugin
+net.onelitefeather.ingot.search.application.SearchPlugin

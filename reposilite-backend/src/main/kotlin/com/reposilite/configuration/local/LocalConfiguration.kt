@@ -156,6 +156,17 @@ class LocalConfiguration : Facade {
     @Description("# Disabled by default, so existing API clients keep receiving the stored values.")
     val hideSettingsSecrets = reference(false)
 
+    /* Search */
+
+    @Description("# Artifact search: an index of the stored files, kept current by an outbox that every replica drains.")
+    @Description("# false hides the search endpoints and stops the index workers. The search tables stay in the database.")
+    @Description("# Behaviour of the index (verify, rebuild schedule) is in the shared settings, domain 'search'.")
+    val searchEnabled = reference(true)
+
+    @Description("# Engine that answers artifact search. 'database' is the built-in engine.")
+    @Description("# Other engines are plugins that register under their id.")
+    val searchEngine = reference("database")
+
     /* Others */
 
     @Description("# Debug mode")
