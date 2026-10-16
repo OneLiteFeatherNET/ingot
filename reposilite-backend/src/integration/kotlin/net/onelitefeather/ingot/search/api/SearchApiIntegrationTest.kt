@@ -28,6 +28,7 @@ import net.onelitefeather.ingot.search.application.SearchIndexAdmin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.time.Instant
 
 /**
  * The search REST API over HTTP (artifact search spec, 6.1 to 6.3). The dashboard reads these shapes, so each test pins
@@ -248,11 +249,31 @@ internal class SearchApiIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `reports the last verify run with its instant in epoch seconds`() {
+        admin.dispatch = { job -> job() }
+        val before = Instant.now().epochSecond
+        val runId = post(index("/verify")).basicAuth(manager.first, manager.second).asJacksonObject(JsonNode::class).body.get("runId").asLong()
+
+        val lastVerify = get(index()).basicAuth(manager.first, manager.second).asJacksonObject(JsonNode::class).body.get("lastVerify")
+
+        assertThat(lastVerify.get("runId").asLong()).isEqualTo(runId)
+        // An Instant is epoch seconds on the wire, which is what the dashboard's apiTime helper reads.
+        assertThat(lastVerify.get("at").asDouble())
+            .describedAs("the verify report instant in epoch seconds")
+            .isBetween(before.toDouble() - SLACK_SECONDS, Instant.now().epochSecond.toDouble() + SLACK_SECONDS)
+    }
+
+    @Test
     fun `refuses a rebuild to a token without manager rights`() {
         val reader = useAuth("reader-token", "reader-secret")
 
         val response = post(index("/rebuild")).basicAuth(reader.first, reader.second).header("Content-Type", "application/json").body("{}").asString()
 
         assertThat(response.status).isEqualTo(403)
+    }
+
+    private companion object {
+        /** Slack around the wall clock: the assertion checks the unit of the instant, not its exact value. */
+        const val SLACK_SECONDS = 3600.0
     }
 }

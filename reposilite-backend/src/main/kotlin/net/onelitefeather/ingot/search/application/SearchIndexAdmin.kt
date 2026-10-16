@@ -28,6 +28,7 @@ import net.onelitefeather.ingot.search.runs.RepositoryEntries
 import net.onelitefeather.ingot.search.runs.RunStore
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.search.verify.VerifyService
+import java.time.Instant
 
 /**
  * What the index administration endpoints start and read (artifact search spec, 6.3). Starting a run takes its lock
@@ -85,7 +86,8 @@ internal class SearchIndexAdmin(
         val node = MAPPER.readTree(json)
         LastVerifyReport(
             runId = node.get("runId").asLong(),
-            at = node.get("at").asLong(),
+            // The report stores milliseconds; the API answers an Instant, which Jackson writes as epoch seconds.
+            at = Instant.ofEpochMilli(node.get("at").asLong()),
             sampled = node.get("sampled").asInt(),
             missing = node.get("missing").asInt(),
             changed = node.get("changed").asInt(),
@@ -117,10 +119,10 @@ internal data class IndexDetails(
     val lastVerify: LastVerifyReport?,
 )
 
-/** The last completed verify run (3.8). [at] is the time the report was written, in epoch milliseconds as stored. */
+/** The last completed verify run (3.8). [at] is the instant the report was written. */
 internal data class LastVerifyReport(
     val runId: Long,
-    val at: Long,
+    val at: Instant,
     val sampled: Int,
     val missing: Int,
     val changed: Int,
