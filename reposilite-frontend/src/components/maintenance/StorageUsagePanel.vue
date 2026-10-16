@@ -23,7 +23,7 @@ import MdCard from '../md/MdCard.vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import RefreshIcon from '../icons/RefreshIcon.vue'
 import { countLabel, formatBytes, formatDateTime } from './format'
-import { normalizeStorage, quotaFraction, quotaLabel, quotaNote } from './storage'
+import { hasQuota, normalizeStorage, quotaFraction, quotaNote, usageLine } from './storage'
 
 // While the server computes the figures, the panel asks again this often.
 const POLL_INTERVAL_MS = 2000
@@ -176,15 +176,15 @@ onBeforeUnmount(stopPolling)
             <span class="md-body-small text-on-surface-variant">{{ countLabel(row.fileCount, 'file') }}</span>
           </div>
           <p class="md-body-medium text-on-surface">
-            {{ formatBytes(row.usedBytes) }} used, quota {{ quotaLabel(row.quota) }}
+            {{ usageLine(row) }}
           </p>
           <MdLinearProgress
-            v-if="quotaFraction(row.usedBytes, row.quotaBytes) !== null"
+            v-if="hasQuota(row) && quotaFraction(row.usedBytes, row.quotaBytes) !== null"
             :value="quotaFraction(row.usedBytes, row.quotaBytes)"
             :label="`Usage of ${row.id}`"
           />
           <div
-            v-else
+            v-else-if="hasQuota(row)"
             class="h-1 rounded-corner-full bg-surface-container-highest"
             aria-hidden="true"
           />
