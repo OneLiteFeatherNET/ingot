@@ -424,6 +424,37 @@ describe('IndexPage navigation', () => {
     expect(railLabels(wrapper)).toEqual(['Overview', 'Search'])
   })
 
+  it('offers an anonymous visitor only Overview and Search in the bottom bar, without a More item', async () => {
+    const { wrapper } = await mountAt('/', { manager: false })
+
+    const [bar] = navigations(wrapper)
+
+    expect(bar.findAll('a').map(link => link.text()), 'the bar links').toEqual(['Overview', 'Search'])
+    expect(bar.findAll('button'), 'nothing is left over for More').toHaveLength(0)
+  })
+
+  it('shows an anonymous visitor none of the admin entries in the rail or the bar', async () => {
+    const { wrapper } = await mountAt('/', { manager: false })
+
+    const shown = navigations(wrapper).flatMap(nav => nav.findAll('a').map(link => link.text()))
+
+    for (const label of ['Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']) {
+      expect(shown, `${label} needs a sign in`).not.toContain(label)
+    }
+  })
+
+  it('keeps every entry of an admin reachable, in the bottom bar or under More', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const [bar] = navigations(wrapper)
+    await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
+
+    const inBar = bar.findAll('a').map(link => link.text())
+    const underMore = wrapper.find('nav[aria-label="More sections"]').findAll('a').map(link => link.text())
+
+    expect([...inBar, ...underMore].sort()).toEqual([...SECTION_LABELS].sort())
+  })
+
   it('opens the search page from the rail without a sign in', async () => {
     const { wrapper, router } = await mountAt('/', { manager: false })
 
