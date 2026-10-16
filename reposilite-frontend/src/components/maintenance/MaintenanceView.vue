@@ -18,6 +18,7 @@
 import { ref } from 'vue'
 import StorageUsagePanel from './StorageUsagePanel.vue'
 import CleanupPoliciesPanel from './CleanupPoliciesPanel.vue'
+import IndexPanel from './IndexPanel.vue'
 
 // A finished run changes the storage figures, so the storage panel is asked to reload.
 const storageRevision = ref(0)
@@ -26,9 +27,10 @@ const storageRevision = ref(0)
 <template>
   <div class="container mx-auto flex flex-col gap-6 pb-12 pt-7">
     <p class="md-body-large text-on-surface-variant">
-      Storage usage and cleanup for this Ingot instance. Only managers can see this page.
+      Storage usage, the search index and cleanup for this Ingot instance. Only managers can see this page.
     </p>
     <StorageUsagePanel :revision="storageRevision" />
+    <IndexPanel />
     <CleanupPoliciesPanel @ran="storageRevision += 1" />
   </div>
 </template>

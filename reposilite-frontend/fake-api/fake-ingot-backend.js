@@ -26,6 +26,7 @@ const crypto = require("crypto")
 const audit = require("./audit.cjs")
 const identity = require("./identity.cjs")
 const { createSearch, sampleFiles } = require("./search.cjs")
+const { createIndexAdmin } = require("./search-index.cjs")
 const { localDateOnWire } = require("./wire.cjs")
 
 const {
@@ -228,6 +229,21 @@ const answerSearch = (req, res, endpoint) => {
   }
   authorized(req, () => answer(true), () => answer(false))
 }
+
+// The index administration (spec section 6.3). INGOT_FAKE_API_SEARCH picks the index state, as for the search, and
+// `disabled` answers 404 on every route. A rebuild or verify advances on timers, so the Maintenance panel can poll it.
+const indexAdmin = createIndexAdmin({
+  repositories: () => (mavenSettingsEntity.repositories ?? []).map(repository => repository.id),
+  state: () => process.env.INGOT_FAKE_API_SEARCH || 'ready',
+  now: () => Date.now(),
+  schedule: (task, delay) => setTimeout(task, delay)
+})
+
+const answerIndex = (req, res, action) => authorized(req, () => {
+  const { status, body } = action()
+  if (status === 204) return res.status(204).end()
+  res.status(status).send(body)
+}, () => invalidCredentials(res))
 
 const statisticsSeries = [
   {
@@ -474,6 +490,10 @@ application
   // disabled, which answers 404 as the real server does with INGOT_LOCAL_SEARCHENABLED=false.
   .get('/api/maven/search', (req, res) => answerSearch(req, res, 'search'))
   .get('/api/maven/search/files', (req, res) => answerSearch(req, res, 'files'))
+  .get('/api/maven/search/index', (req, res) => answerIndex(req, res, () => indexAdmin.status()))
+  .post('/api/maven/search/index/rebuild', (req, res) => answerIndex(req, res, () => indexAdmin.startRebuild(req.body ?? {})))
+  .post('/api/maven/search/index/verify', (req, res) => answerIndex(req, res, () => indexAdmin.startVerify()))
+  .post('/api/maven/search/index/runs/:id/cancel', (req, res) => answerIndex(req, res, () => indexAdmin.cancel(req.params.id)))
   .put('/api/settings/domain/maven', (req, res) => { mavenSettingsEntity = req.body; res.send("") })
   .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
   .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))

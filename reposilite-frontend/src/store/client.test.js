@@ -243,3 +243,57 @@ describe('client search calls', () => {
     expect(http.get.mock.calls[0][0]).not.toContain('origin=')
   })
 })
+
+describe('client search index calls', () => {
+  let http
+
+  beforeEach(async () => {
+    vi.resetModules()
+    http = (await import('axios')).default
+    http.get.mockReset()
+    http.post.mockReset()
+    http.get.mockResolvedValue({ data: {} })
+    http.post.mockResolvedValue({ status: 202, data: { runId: 7 } })
+  })
+
+  it('reads the index status from the admin status endpoint', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.searchIndex()
+
+    expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index$/)
+  })
+
+  it('starts a rebuild of every repository with an empty body', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.startIndexRebuild({})
+
+    expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/rebuild$/)
+    expect(http.post.mock.calls[0][1]).toEqual({})
+  })
+
+  it('starts a rebuild of one repository by name in the body', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.startIndexRebuild({ repositories: ['releases'] })
+
+    expect(http.post.mock.calls[0][1]).toEqual({ repositories: ['releases'] })
+  })
+
+  it('starts a verify run with a POST to the verify endpoint', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.startIndexVerify()
+
+    expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/verify$/)
+  })
+
+  it('cancels a run by its id', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.cancelIndexRun(42)
+
+    expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/runs\/42\/cancel$/)
+  })
+})

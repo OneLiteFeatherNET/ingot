@@ -495,6 +495,32 @@ const createClient = (defaultName, defaultSecret) => {
         return axios.post(createURL("/api/maven/storage/refresh"), {}, {
           ...defaultAuthorization(),
         })
+      },
+      /*
+       * The status of the artifact search index, for an instance admin: state, lag, the active run, the
+       * last 20 runs and the last verify report. 404 when search is turned off on this instance.
+       */
+      searchIndex() {
+        return get("/api/maven/search/index")
+      },
+      /*
+       * Starts a rebuild. The body names repositories to rebuild, or is empty for all of them. The answer
+       * is 202 with { runId }; 409 while a rebuild or a verify run is live.
+       */
+      startIndexRebuild(body = {}) {
+        return axios.post(createURL("/api/maven/search/index/rebuild"), body, {
+          ...defaultAuthorization(),
+        })
+      },
+      startIndexVerify() {
+        return axios.post(createURL("/api/maven/search/index/verify"), {}, {
+          ...defaultAuthorization(),
+        })
+      },
+      cancelIndexRun(runId) {
+        return axios.post(createURL(`/api/maven/search/index/runs/${encodeURIComponent(runId)}/cancel`), {}, {
+          ...defaultAuthorization(),
+        })
       }
     },
     cleanup: {
