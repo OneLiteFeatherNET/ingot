@@ -289,6 +289,18 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
     }
 
     @Test
+    fun `should not reorigin a plain deploy into a directory without a mirror record`() {
+        // given: a hosted directory that was never a mirror copy
+        val repository = mavenFacade.getRepository(hosted)!!
+
+        // when: a file is deployed into it
+        assertOk(mavenFacade.deployFile(DeployRequest(repository, "$versionDirectory/hosted.jar".toLocation(), by, content("hosted"), generateChecksums = false)))
+
+        // then: no reorigin is queued, because no mirror record was dropped
+        assertThat(indexSink.callsOf("reorigin")).`as`("reorigin calls for a plain deploy").isEmpty()
+    }
+
+    @Test
     fun `should emit no delete event when snapshot pruning removes old builds`() {
         // given: a snapshot version with an old build that is no longer listed, and the pruning listener registered
         val repository = mavenFacade.getRepository(snapshots)!!

@@ -46,9 +46,8 @@ internal class InMemoryMirrorCacheLedger : MirrorCacheLedger {
     override fun markAccessed(repository: String, path: String, now: Instant): Boolean =
         rows.computeIfPresent(repository to path) { _, row -> row.copy(lastAccess = maxOf(row.lastAccess, now)) } != null
 
-    override fun deleteVersion(repository: String, path: String) {
-        rows.remove(repository to path)
-    }
+    override fun deleteVersion(repository: String, path: String): Boolean =
+        rows.remove(repository to path) != null
 
     override fun deleteSubtree(repository: String, path: String) {
         rows.keys.removeIf { (repo, entry) -> repo == repository && (entry == path || entry.startsWith("$path/")) }

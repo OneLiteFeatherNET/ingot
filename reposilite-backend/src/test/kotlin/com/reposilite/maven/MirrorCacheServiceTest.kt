@@ -42,6 +42,27 @@ internal class MirrorCacheServiceTest {
     }
 
     @Test
+    fun `should report a dropped record when a deployment forgets a cached directory`() {
+        // given: a cached copy of a version directory
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false)
+
+        // when: the directory is forgotten, as a deployment into it does
+        val dropped = cache.forgetVersion("central", "org/mirror/lib/2.0")
+
+        // then: the drop is reported, so the index reorigins the directory
+        assertThat(dropped).`as`("a record was dropped").isTrue()
+    }
+
+    @Test
+    fun `should report no dropped record when the directory was not cached`() {
+        // when: a directory without a record is forgotten
+        val dropped = cache.forgetVersion("central", "org/mirror/lib/2.0")
+
+        // then: nothing was dropped
+        assertThat(dropped).`as`("a record was dropped").isFalse()
+    }
+
+    @Test
     fun `should not record a directory that already holds hosted artifacts`() {
         // when: a mirror stores a file into a directory that holds deployed artifacts
         cache.recordStored("mixed", "com/example/app/1.0", holdsHostedArtifacts = true)

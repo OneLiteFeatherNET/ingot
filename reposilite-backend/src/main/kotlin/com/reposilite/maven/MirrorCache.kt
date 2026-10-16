@@ -67,8 +67,8 @@ internal interface MirrorCacheLedger {
      */
     fun markAccessed(repository: String, path: String, now: Instant): Boolean
 
-    /** Removes the row of exactly [path]. */
-    fun deleteVersion(repository: String, path: String)
+    /** Removes the row of exactly [path]. Returns true when a row was removed. */
+    fun deleteVersion(repository: String, path: String): Boolean
 
     /** Removes the row of [path] and the rows of every path below it. */
     fun deleteSubtree(repository: String, path: String)
@@ -115,10 +115,14 @@ internal class MirrorCacheService(
         }
     }
 
-    /** Called after a deployment into [versionPath]: the directory now holds hosted content and is no longer a copy. */
-    fun forgetVersion(repository: String, versionPath: String) {
-        ledger.deleteVersion(repository, versionPath)
+    /**
+     * Called after a deployment into [versionPath]: the directory now holds hosted content and is no longer a copy.
+     * Returns true when a copy record was dropped, which is the only case in which the index origin of the directory changes.
+     */
+    fun forgetVersion(repository: String, versionPath: String): Boolean {
+        val dropped = ledger.deleteVersion(repository, versionPath)
         lastWritten.remove(repository to versionPath)
+        return dropped
     }
 
     /** Called after [path] was deleted: the records of the path and of everything below it are dropped. */

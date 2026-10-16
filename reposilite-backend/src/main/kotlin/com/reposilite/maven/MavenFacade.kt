@@ -83,9 +83,10 @@ class MavenFacade internal constructor(
             // a deployment makes the directory hold hosted content, so it is no longer a mirror copy
             .peek {
                 val directory = deployRequest.gav.getParent().provenancePath()
-                mirrorCache.forgetVersion(deployRequest.repository.name, directory)
-                // the directory is hosted again, so the index reads its origin anew (artifact search spec, 3.5)
-                artifactIndexSink.reorigin(deployRequest.repository.name, directory)
+                // only a dropped copy record changes the origin of indexed rows, so a plain deploy queues nothing (artifact search spec, 3.5)
+                if (mirrorCache.forgetVersion(deployRequest.repository.name, directory)) {
+                    artifactIndexSink.reorigin(deployRequest.repository.name, directory)
+                }
             }
 
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =

@@ -108,11 +108,10 @@ internal class SqlMirrorCacheLedger(private val database: Database) : MirrorCach
             } > 0
         }
 
-    override fun deleteVersion(repository: String, path: String) {
+    override fun deleteVersion(repository: String, path: String): Boolean =
         transaction(database) {
             MirrorCacheEntryTable.deleteWhere { (repositoryId eq repository) and (entryPath eq path) }
-        }
-    }
+        } > 0
 
     override fun deleteSubtree(repository: String, path: String) {
         transaction(database) {
