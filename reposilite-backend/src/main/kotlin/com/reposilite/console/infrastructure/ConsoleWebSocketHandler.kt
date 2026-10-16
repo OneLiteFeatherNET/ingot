@@ -16,15 +16,12 @@
 package com.reposilite.console.infrastructure
 
 import com.reposilite.ReposiliteJournalist
-import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.auth.api.Credentials
 import com.reposilite.console.ConsoleFacade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extractFromString
-import com.reposilite.shared.unauthorized
 import com.reposilite.shared.unauthorizedError
-import com.reposilite.token.AccessTokenFacade
-import com.reposilite.token.AccessTokenPermission.MANAGER
+import com.reposilite.token.api.AccessTokenDto
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.websocket.WsConfig
@@ -38,6 +35,9 @@ import java.util.function.Consumer
 
 private const val AUTHORIZATION_PREFIX = "Authorization:"
 
+/** The session form of the first message, `Authorization:Session <jwt>`. A Bearer secret means a token, see the HTTP API. */
+private const val SESSION_PREFIX = "Session "
+
 private data class WsSession(
     val identifier: String,
     val subscriberId: Int,
@@ -45,8 +45,7 @@ private data class WsSession(
 
 internal class ConsoleWebSocketHandler(
     private val journalist: ReposiliteJournalist,
-    private val accessTokenFacade: AccessTokenFacade,
-    private val authenticationFacade: AuthenticationFacade,
+    private val consoleAuthenticator: ConsoleAuthenticator,
     private val consoleFacade: ConsoleFacade,
     private val forwardedIp: Reference<String>
 ) : Consumer<WsConfig> {
@@ -109,20 +108,17 @@ internal class ConsoleWebSocketHandler(
             return unauthorizedError("Unauthorized CLI access request from ${connection.getHost()} (missing credentials)")
         }
 
-        return extractFromString(authMessage.replaceFirst(AUTHORIZATION_PREFIX, ""))
-            .map { (name, secret) ->
-                Credentials(
-                    ip = connection.getHost(),
-                    name = name,
-                    secret = secret
-                )
+        val credentials = authMessage.removePrefix(AUTHORIZATION_PREFIX)
+        val host = connection.getHost()
+        val identity: Result<out AccessTokenDto, ErrorResponse> =
+            if (credentials.startsWith(SESSION_PREFIX)) {
+                consoleAuthenticator.authenticateSession(credentials.removePrefix(SESSION_PREFIX).trim(), host)
+            } else {
+                extractFromString(credentials)
+                    .map { (name, secret) -> Credentials(ip = host, name = name, secret = secret) }
+                    .flatMap { consoleAuthenticator.authenticate(it) }
             }
-            .flatMap { authenticationFacade.authenticateByCredentials(it) }
-            .filter(
-                { accessTokenFacade.hasPermission(it.identifier, MANAGER) },
-                { unauthorized("Unauthorized CLI access request from ${connection.getHost()}") }
-            )
-            .map { "${it.name}@${connection.getHost()}" }
+        return identity.map { "${it.name}@$host" }
     }
 
     private fun WsContext.getHost(): String =
