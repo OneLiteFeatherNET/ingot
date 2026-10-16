@@ -27,6 +27,7 @@ import Card from '../card/SnippetsCard.vue'
 import FileBrowserView from '../browser/FileBrowserView.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import SearchBar from '../search/SearchBar.vue'
 
 /*
  * The root of the file browser as a list of repositories. The list is loaded once from the overview
@@ -179,49 +180,12 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
         Repositories
       </h2>
 
-      <form
-        role="search"
-        class="mt-4 flex flex-col gap-3"
-        @submit.prevent
+      <SearchBar
+        class="mt-4"
+        label="Search by id, description or tag"
+        :model-value="text"
+        @update:model-value="setText"
       >
-        <!-- The M3 search bar: a 56px pill on the raised surface, without an outline. -->
-        <div class="flex h-14 items-center gap-2 rounded-corner-full bg-surface-container-high pl-4 pr-2 text-on-surface has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-secondary">
-          <svg
-            class="size-6 shrink-0 text-on-surface-variant"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 9.5 16a6.5 6.5 0 0 0 4.2-1.6l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-          </svg>
-          <input
-            type="search"
-            class="md-embedded-input min-w-0 flex-1 md-body-large text-on-surface placeholder:text-on-surface-variant [&::-webkit-search-cancel-button]:hidden"
-            aria-label="Search by id, description or tag"
-            placeholder="Search by id, description or tag"
-            autocomplete="off"
-            :value="text"
-            @input="setText($event.target.value)"
-          >
-          <button
-            v-if="text !== ''"
-            type="button"
-            class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant"
-            aria-label="Clear search"
-            @click="setText('')"
-          >
-            <svg
-              class="size-6"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-          </button>
-        </div>
-
         <div
           v-if="shownTags.length > 0"
           role="group"
@@ -239,7 +203,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
             {{ tag }}
           </MdChip>
         </div>
-      </form>
+      </SearchBar>
 
       <p
         v-if="!loading && !failure"
