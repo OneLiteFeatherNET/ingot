@@ -1173,7 +1173,7 @@ identity.get("/check", (req, res) => {
   }
   // A disabled principal is denied everything and has no candidates to show.
   const evaluation = principal.disabled
-    ? { allowed: false, decision: { source: nodeLogic.SOURCE.DEFAULT, subject: null, node, allowed: false, depth: 0 }, trace: [] }
+    ? { allowed: false, decision: nodeLogic.defaultDecision(node), trace: [] }
     : nodeLogic.evaluate({ ...contextOf(principal, token), node })
   reply(res, { principal: principal.name, node, allowed: evaluation.allowed, decision: evaluation.decision, trace: evaluation.trace })
 })

@@ -271,7 +271,10 @@ describe("evaluation", () => {
 
   it("denies by default when no node matches", () => {
     const result = check(READ, { entries: [allow("ingot.admin.users")] })
-    assert.deepEqual(result.decision, { source: "DEFAULT", subject: null, node: READ, allowed: false, depth: 0 })
+    assert.deepEqual(result.decision, {
+      source: "DEFAULT", subject: null, node: READ, allowed: false, depth: 0,
+      decidingNode: null, decidingKind: null, explanation: `Denied: no node matches '${READ}', so the default denial applies.`,
+    })
   })
 
   it("explains the default with the contract phrase", () => {
@@ -304,7 +307,7 @@ describe("evaluation", () => {
 
   it("carries exactly the fields of the contract in a trace entry", () => {
     const result = check(READ, { entries: [allow(READ)] })
-    assert.deepEqual(Object.keys(result.trace[0]).sort(), ["allowed", "depth", "matched", "node", "reason", "source", "subject"])
+    assert.deepEqual(Object.keys(result.trace[0]).sort(), ["allowed", "depth", "kind", "matched", "node", "reason", "source", "subject"])
   })
 
   it("does not count a team reachable at distance zero as inherited", () => {
@@ -644,5 +647,53 @@ describe("artifact nodes", () => {
   it("lists the artifact nodes of the catalog as valid nodes", () => {
     const catalogNodes = nodes.buildCatalog(["releases"]).filter(entry => entry.kind === "ARTIFACT").map(entry => entry.node)
     assert.deepEqual(catalogNodes, ["ingot.artifact.*.read", "ingot.artifact.*.deploy", "ingot.artifact.*.delete", "ingot.artifact.*.*"])
+  })
+})
+
+describe("decision facts", () => {
+  const DEPLOY = "ingot.artifact.net.onelitefeather:internal.deploy"
+
+  it("names the deciding artifact node, its kind and the subject in one sentence", () => {
+    const result = nodes.evaluate({
+      node: DEPLOY,
+      user: { name: "alice", nodes: [allow("ingot.artifact.net.onelitefeather.deploy"), deny(DEPLOY)] },
+    })
+    assert.deepEqual(
+      [result.decision.decidingNode, result.decision.decidingKind, result.decision.explanation],
+      [DEPLOY, "ARTIFACT", `Denied by the artifact node '${DEPLOY}' of alice (USER)`],
+    )
+  })
+
+  it("explains an allow by the repository node of a team", () => {
+    const result = nodes.evaluate({ node: READ, user: user(), memberTeams: [team("developers", [allow(READ)])], teams: [] })
+    assert.equal(result.decision.explanation, `Allowed by the repository node '${READ}' of developers (TEAM)`)
+    assert.equal(result.decision.decidingKind, "REPOSITORY")
+  })
+
+  it("names no deciding node for the default denial", () => {
+    const result = check(DEPLOY, { entries: [] })
+    assert.deepEqual([result.decision.decidingNode, result.decision.decidingKind], [null, null])
+  })
+
+  it("names the token node that denies, with the token as subject", () => {
+    const token = { name: "ci", nodes: [deny(DEPLOY)] }
+    const result = check(DEPLOY, { entries: [allow(DEPLOY)], token })
+    assert.deepEqual(
+      [result.decision.source, result.decision.decidingNode, result.decision.decidingKind],
+      ["TOKEN", DEPLOY, "ARTIFACT"],
+    )
+    assert.equal(result.decision.explanation, `Denied by the artifact node '${DEPLOY}' of ci (TOKEN)`)
+  })
+
+  it("names no deciding node when a token lists no node for the request", () => {
+    const token = { name: "ci", nodes: [allow("ingot.artifact.net.other.read")] }
+    const result = check(DEPLOY, { entries: [allow(DEPLOY)], token })
+    assert.deepEqual([result.decision.decidingNode, result.decision.decidingKind], [null, null])
+    assert.equal(result.decision.explanation, `Denied: token 'ci' lists no node for '${DEPLOY}'.`)
+  })
+
+  it("gives each trace entry the kind of its node", () => {
+    const result = check(DEPLOY, { entries: [allow("ingot.artifact.net.onelitefeather.deploy"), deny(DEPLOY)] })
+    assert.deepEqual(result.trace.map(entry => entry.kind), ["ARTIFACT", "ARTIFACT"])
   })
 })

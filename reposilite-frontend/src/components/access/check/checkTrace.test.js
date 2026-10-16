@@ -17,7 +17,7 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect } from 'vitest'
-import { decisionSummary, problemMessages, sourceLabel, traceSteps } from './checkTrace'
+import { decisionSummary, kindLabel, problemMessages, sourceLabel, traceSteps } from './checkTrace'
 
 const TRACE = [
   { source: 'USER', subject: 'alice', node: 'ingot.repository.private.read', allowed: true, matched: true, reason: 'User node beats team node' },
@@ -87,12 +87,28 @@ describe('traceSteps', () => {
 describe('decisionSummary', () => {
   it('reads the source, subject, node and depth of the decision', () => {
     expect(decisionSummary({ source: 'INHERITED_TEAM', subject: 'developers', node: 'ingot.admin.users', allowed: true, depth: 2 }))
-      .toEqual({ sourceLabel: 'Inherited team', subject: 'developers', node: 'ingot.admin.users', depth: 2 })
+      .toEqual({
+        sourceLabel: 'Inherited team',
+        subject: 'developers',
+        node: 'ingot.admin.users',
+        depth: 2,
+        decidingNode: null,
+        decidingKind: null,
+        explanation: null
+      })
   })
 
   it('leaves the subject, node and depth of a default decision empty', () => {
     expect(decisionSummary({ source: 'DEFAULT', subject: null, node: null, allowed: false, depth: null }))
-      .toEqual({ sourceLabel: 'Default', subject: null, node: null, depth: null })
+      .toEqual({
+        sourceLabel: 'Default',
+        subject: null,
+        node: null,
+        depth: null,
+        decidingNode: null,
+        decidingKind: null,
+        explanation: null
+      })
   })
 })
 
@@ -109,5 +125,46 @@ describe('problemMessages', () => {
 
   it('finds nothing for an error without an answer', () => {
     expect(problemMessages(new Error('offline'))).toEqual([])
+  })
+})
+
+describe('decision facts of an artifact decision', () => {
+  const DECISION = {
+    source: 'USER',
+    subject: 'alice',
+    node: 'ingot.artifact.net.onelitefeather:mycelium-bom.deploy',
+    allowed: false,
+    depth: 0,
+    decidingNode: 'ingot.artifact.net.onelitefeather:internal.deploy',
+    decidingKind: 'ARTIFACT',
+    explanation: "Denied by the artifact node 'ingot.artifact.net.onelitefeather:internal.deploy' of alice (USER)"
+  }
+
+  it('reads the deciding node, its kind and the explanation of the decision', () => {
+    const summary = decisionSummary(DECISION)
+
+    expect(summary.decidingNode).toBe('ingot.artifact.net.onelitefeather:internal.deploy')
+    expect(summary.decidingKind).toBe('ARTIFACT')
+    expect(summary.explanation).toBe("Denied by the artifact node 'ingot.artifact.net.onelitefeather:internal.deploy' of alice (USER)")
+  })
+
+  it('leaves the deciding fields empty when the decision names none', () => {
+    const summary = decisionSummary({ source: 'DEFAULT', subject: null, node: null, allowed: false, depth: null })
+
+    expect([summary.decidingNode, summary.decidingKind, summary.explanation]).toEqual([null, null, null])
+  })
+
+  it.each([
+    ['ARTIFACT', 'Artifact node'],
+    ['REPOSITORY', 'Repository node'],
+    ['ADMIN', 'Admin node'],
+    ['EVERYTHING', 'Everything node'],
+    ['GRANT', 'Role grant']
+  ])('names the kind %s as %s', (kind, label) => {
+    expect(kindLabel(kind)).toBe(label)
+  })
+
+  it('shows no kind as None', () => {
+    expect(kindLabel(null)).toBe('None')
   })
 })

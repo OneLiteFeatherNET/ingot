@@ -513,4 +513,134 @@ describe('CheckPermissionView', () => {
       expect(text('verdict-text')).toBe('Allowed')
     })
   })
+
+  describe('the deciding node', () => {
+    const DEPLOY = 'ingot.artifact.net.onelitefeather:mycelium-bom.deploy'
+    const DECIDING = {
+      allowed: false,
+      decision: {
+        source: 'USER',
+        subject: 'alice',
+        node: DEPLOY,
+        allowed: false,
+        depth: 0,
+        decidingNode: 'ingot.artifact.net.onelitefeather.deploy',
+        decidingKind: 'ARTIFACT',
+        explanation: "Denied by the artifact node 'ingot.artifact.net.onelitefeather.deploy' of alice (USER)"
+      },
+      trace: [
+        { source: 'USER', subject: 'alice', node: 'ingot.artifact.net.onelitefeather.deploy', allowed: false, matched: true, reason: 'Specific beats wildcard' }
+      ]
+    }
+
+    it('shows the deciding node and its kind in the summary', async () => {
+      identity.check.mockResolvedValue({ data: DECIDING })
+
+      await mountView(`/access/check?principal=alice&node=${DEPLOY}`)
+
+      expect([text('summary-deciding-node'), text('summary-deciding-kind')])
+        .toEqual(['ingot.artifact.net.onelitefeather.deploy', 'Artifact node'])
+    })
+
+    it('shows the explanation of the decision in one sentence', async () => {
+      identity.check.mockResolvedValue({ data: DECIDING })
+
+      await mountView(`/access/check?principal=alice&node=${DEPLOY}`)
+
+      expect(text('explanation')).toBe("Denied by the artifact node 'ingot.artifact.net.onelitefeather.deploy' of alice (USER)")
+    })
+
+    it('shows None for the deciding node when no node matched', async () => {
+      identity.check.mockResolvedValue({ data: DENIED })
+
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      expect([text('summary-deciding-node'), text('summary-deciding-kind')]).toEqual(['None', 'None'])
+    })
+  })
+
+  describe('an artifact path', () => {
+    const switchToPath = async () => {
+      await wrapper.find('[data-test="mode-path"]').trigger('click')
+      await flushPromises()
+    }
+
+    it('offers the node and the artifact path as two ways to ask', async () => {
+      await mountView()
+
+      expect(wrapper.find('[data-test="mode-node"]').attributes('aria-checked')).toBe('true')
+      expect(wrapper.find('[data-test="mode-path"]').exists()).toBe(true)
+    })
+
+    it('replaces the node field with the repository, the path and the action', async () => {
+      await mountView()
+
+      await switchToPath()
+
+      expect(wrapper.find('[data-test="node-field"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="artifact-repository"] input').exists()).toBe(true)
+      expect(wrapper.find('[data-test="artifact-path"] input').exists()).toBe(true)
+    })
+
+    it('checks the node the path names, qualified by the repository', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', 'net/onelitefeather/mycelium-bom')
+      await submit()
+
+      expect(identity.check).toHaveBeenCalledWith({
+        principal: 'alice',
+        node: 'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.read',
+        token: undefined
+      })
+    })
+
+    it('checks an unqualified node when the repository is left empty', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+
+      await type('artifact-path', 'net/lib')
+      await wrapper.find('[data-test="artifact-action"] select').setValue('deploy')
+      await submit()
+
+      expect(identity.check).toHaveBeenCalledWith({ principal: 'alice', node: 'ingot.artifact.net:lib.deploy', token: undefined })
+    })
+
+    it('shows the path problem on the path field and keeps the Check button off', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+
+      await type('artifact-path', 'mycelium-bom')
+
+      expect(wrapper.find('[data-test="artifact-path"]').text())
+        .toContain('Enter the artifact directory, for example net/onelitefeather/mycelium-bom')
+      expect(wrapper.find('[data-test="check"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('shows the artifact node it will check under the fields', async () => {
+      await mountView()
+      await switchToPath()
+
+      await type('artifact-path', 'net/onelitefeather/mycelium-bom')
+
+      expect(wrapper.find('[data-test="artifact-node"]').text())
+        .toBe('ingot.artifact.net.onelitefeather:mycelium-bom.read')
+    })
+
+    it('shows the artifact node in the verdict, not the path', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+      await type('artifact-path', 'net/onelitefeather/mycelium-bom')
+      await submit()
+
+      expect(text('verdict-node')).toBe('ingot.artifact.net.onelitefeather:mycelium-bom.read')
+    })
+  })
 })
+

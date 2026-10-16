@@ -22,20 +22,26 @@ import { textFromParam, textParam } from '../../../router/url-state'
 import { useSession } from '../../../store/session'
 import MdButton from '../../md/MdButton.vue'
 import MdSelect from '../../md/MdSelect.vue'
+import MdTextField from '../../md/MdTextField.vue'
+import SegmentedControl from '../../tokens/SegmentedControl.vue'
+import SegmentedOption from '../../tokens/SegmentedOption.vue'
 import { detailOf, filterPrincipals } from '../accessPrincipals'
-import { parseNode } from '../nodes/nodeGrammar'
+import { ARTIFACT_ACTIONS, parseNode } from '../nodes/nodeGrammar'
 import { suggestNodes } from '../nodes/nodeList'
 import { permissionNodesApi } from '../nodes/permissionNodesApi'
 import ComboboxField from './ComboboxField.vue'
-import { decisionSummary, problemMessages, traceSteps } from './checkTrace'
+import { artifactNodeFromPath } from './artifactPath'
+import { decisionSummary, kindLabel, problemMessages, traceSteps } from './checkTrace'
 
 /*
  * The permission check: pick a principal and a node (and optionally one of the principal's tokens),
  * and see whether the node is allowed, which rule decided, and the steps that led there.
  *
- * The address holds the question (`principal`, `node`, `token`), so a check can be linked. A
- * route that arrives with a principal and a node runs the check at once. Submitting writes the
- * question into the address with router.replace, so a repeated check adds no history entry.
+ * The question can also name an artifact by its directory: the path (repository optional, action
+ * read, deploy or delete) becomes the artifact node the server decides. The address always holds the
+ * node that is checked (`principal`, `node`, `token`), so a check can be linked. A route that arrives
+ * with a principal and a node runs the check at once. Submitting writes the question into the address
+ * with router.replace, so a repeated check adds no history entry.
  */
 const route = useRoute()
 const router = useRouter()
@@ -47,6 +53,13 @@ const SUGGESTIONS = 12
 const principal = ref('')
 const node = ref('')
 const token = ref('')
+
+// 'node' asks the typed node; 'path' asks the node an artifact directory names.
+const mode = ref('node')
+const artifactRepository = ref('')
+const artifactPath = ref('')
+const artifactAction = ref('read')
+const ACTION_OPTIONS = ARTIFACT_ACTIONS.map(action => ({ value: action, label: action.charAt(0).toUpperCase() + action.slice(1) }))
 
 const principals = ref([])
 const catalog = ref([])
@@ -76,15 +89,26 @@ let handledKey = queryKey.value
 const trimmedPrincipal = computed(() => principal.value.trim())
 const trimmedNode = computed(() => node.value.trim())
 
+const derived = computed(() => artifactNodeFromPath({
+  repository: artifactRepository.value,
+  path: artifactPath.value,
+  action: artifactAction.value
+}))
+// The path field shows its problem once something is typed there.
+const pathProblem = computed(() => (mode.value === 'path' && artifactPath.value.trim() !== '' ? derived.value.problem : ''))
+// The node that is checked: the typed one, or the one the artifact path names.
+const checkedNode = computed(() => (mode.value === 'path' ? derived.value.node : trimmedNode.value))
+
 const nodeGrammarError = computed(() => {
-  if (trimmedNode.value === '') return ''
+  if (mode.value === 'path' || trimmedNode.value === '') return ''
   const parsed = parseNode(trimmedNode.value)
   return parsed.valid ? '' : parsed.problems[0].message
 })
 const nodeError = computed(() => nodeGrammarError.value || nodeServerError.value)
 
 const canCheck = computed(() =>
-  status.value !== 'loading' && trimmedPrincipal.value !== '' && trimmedNode.value !== '' && nodeGrammarError.value === '')
+  status.value !== 'loading' && trimmedPrincipal.value !== '' && checkedNode.value !== '' &&
+  nodeGrammarError.value === '' && pathProblem.value === '')
 
 const principalOptions = computed(() =>
   filterPrincipals(principals.value, principal.value)
@@ -106,6 +130,7 @@ const tokenOptions = computed(() => {
 
 const steps = computed(() => traceSteps(result.value?.trace))
 const summary = computed(() => decisionSummary(result.value?.decision))
+const summaryKind = computed(() => kindLabel(summary.value.decidingKind))
 const allowed = computed(() => result.value?.allowed === true)
 
 const loadPrincipals = async () => {
@@ -188,7 +213,7 @@ const fail = (error) => {
 
 const run = async () => {
   const request = ++latest
-  const target = { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value || undefined }
+  const target = { principal: trimmedPrincipal.value, node: checkedNode.value, token: token.value || undefined }
   clearErrors()
   result.value = null
   status.value = 'loading'
@@ -205,12 +230,17 @@ const run = async () => {
   }
 }
 
+const chooseMode = (next) => {
+  mode.value = next
+  clearErrors()
+}
+
 const submit = async () => {
   if (!canCheck.value) return
-  handledKey = keyOf(trimmedPrincipal.value, trimmedNode.value, token.value)
+  handledKey = keyOf(trimmedPrincipal.value, checkedNode.value, token.value)
   router.replace({
     name: 'access-check',
-    query: { principal: textParam(trimmedPrincipal.value), node: textParam(trimmedNode.value), token: textParam(token.value) }
+    query: { principal: textParam(trimmedPrincipal.value), node: textParam(checkedNode.value), token: textParam(token.value) }
   })
   await run()
 }
@@ -276,7 +306,28 @@ onMounted(() => {
         data-test="principal-field"
         @update:model-value="onPrincipal"
       />
+      <div
+        class="min-[840px]:col-span-2"
+      >
+        <SegmentedControl label="Check by">
+          <SegmentedOption
+            :on="mode === 'node'"
+            data-test="mode-node"
+            @click="chooseMode('node')"
+          >
+            Node
+          </SegmentedOption>
+          <SegmentedOption
+            :on="mode === 'path'"
+            data-test="mode-path"
+            @click="chooseMode('path')"
+          >
+            Artifact path
+          </SegmentedOption>
+        </SegmentedControl>
+      </div>
       <ComboboxField
+        v-if="mode === 'node'"
         :model-value="node"
         label="Node"
         mono
@@ -288,6 +339,45 @@ onMounted(() => {
         data-test="node-field"
         @update:model-value="onNode"
       />
+      <template v-else>
+        <div data-test="artifact-repository">
+          <MdTextField
+            v-model="artifactRepository"
+            label="Repository (optional)"
+            variant="outlined"
+            autocomplete="off"
+            spellcheck="false"
+            supporting-text="Leave empty to check every repository"
+          />
+        </div>
+        <div data-test="artifact-path">
+          <MdTextField
+            v-model="artifactPath"
+            label="Artifact path"
+            variant="outlined"
+            autocomplete="off"
+            spellcheck="false"
+            :error="pathProblem !== ''"
+            :error-text="pathProblem"
+            supporting-text="The artifact directory, for example net/onelitefeather/mycelium-bom"
+          />
+        </div>
+        <div data-test="artifact-action">
+          <MdSelect
+            v-model="artifactAction"
+            label="Action"
+            :options="ACTION_OPTIONS"
+            supporting-text="Read, deploy or delete the artifact"
+          />
+        </div>
+        <p
+          v-if="derived.node"
+          class="min-[840px]:col-span-2 m-0 break-all font-mono md-body-medium text-on-surface-variant"
+          data-test="artifact-node"
+        >
+          {{ derived.node }}
+        </p>
+      </template>
       <div data-test="token-field">
         <MdSelect
           :model-value="token"
@@ -414,7 +504,32 @@ onMounted(() => {
         >
           {{ summary.depth ?? 'None' }}
         </dd>
+        <dt class="text-on-surface-variant">
+          Deciding node
+        </dt>
+        <dd
+          class="m-0 break-all font-mono text-on-surface"
+          data-test="summary-deciding-node"
+        >
+          {{ summary.decidingNode ?? 'None' }}
+        </dd>
+        <dt class="text-on-surface-variant">
+          Kind
+        </dt>
+        <dd
+          class="m-0 text-on-surface"
+          data-test="summary-deciding-kind"
+        >
+          {{ summaryKind }}
+        </dd>
       </dl>
+      <p
+        v-if="summary.explanation"
+        class="m-0 md-body-large text-on-surface"
+        data-test="explanation"
+      >
+        {{ summary.explanation }}
+      </p>
 
       <div class="flex flex-col gap-3">
         <h4 class="md-title-medium text-on-surface">

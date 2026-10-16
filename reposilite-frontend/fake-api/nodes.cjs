@@ -324,8 +324,8 @@ const decideLayers = (layers, requested) => {
   const trace = []
   if (deciding < 0) {
     return {
-      decision: { source: SOURCE.DEFAULT, subject: null, node: requested, allowed: false, depth: 0 },
-      trace: [{ source: SOURCE.DEFAULT, subject: null, node: null, allowed: false, matched: true, reason: REASON.default, depth: 0 }],
+      decision: defaultDecision(requested),
+      trace: [{ source: SOURCE.DEFAULT, subject: null, node: null, allowed: false, matched: true, reason: REASON.default, depth: 0, kind: null }],
     }
   }
   const layer = layers[deciding]
@@ -350,14 +350,42 @@ const decideLayers = (layers, requested) => {
     for (const candidate of other.candidates) trace.push(entryOf(candidate, false, REASON.notConsulted))
   }
   const winner = result.winner
+  const kind = kindOf(winner.node)
   return {
-    decision: { source: winner.source, subject: winner.subject, node: winner.node, allowed: result.verdict, depth: winner.depth },
+    decision: {
+      source: winner.source, subject: winner.subject, node: winner.node, allowed: result.verdict, depth: winner.depth,
+      decidingNode: winner.node, decidingKind: kind,
+      explanation: decisionExplanation(result.verdict, winner.node, kind, winner.source, winner.subject),
+    },
     trace,
   }
 }
 
 const entryOf = (candidate, matched, reason) =>
-  ({ source: candidate.source, subject: candidate.subject, node: candidate.node, allowed: candidate.allowed, matched, reason, depth: candidate.depth })
+  ({
+    source: candidate.source, subject: candidate.subject, node: candidate.node, allowed: candidate.allowed, matched, reason,
+    depth: candidate.depth, kind: kindOf(candidate.node),
+  })
+
+// The kind of a node as the backend names it in a decision and a trace entry, or null for no node.
+const kindOf = (node) => {
+  if (node === null || node === undefined) return null
+  const parsed = parseNode(node)
+  return parsed.problem ? null : parsed.kind
+}
+
+const KIND_PHRASE = { ARTIFACT: "artifact node", REPOSITORY: "repository node", ADMIN: "admin node", EVERYTHING: "everything node" }
+
+// The denial of a request no node matches, with the same fields as a decided one. The explanation is the fake's own wording.
+const defaultDecision = (requested) => ({
+  source: SOURCE.DEFAULT, subject: null, node: requested, allowed: false, depth: 0,
+  decidingNode: null, decidingKind: null,
+  explanation: `Denied: no node matches '${requested}', so the default denial applies.`,
+})
+
+// The one sentence that says which node decided, in the words of the backend's explanation.
+const decisionExplanation = (allowed, node, kind, source, subject) =>
+  `${allowed ? "Allowed" : "Denied"} by the ${KIND_PHRASE[kind] ?? "node"} '${node}' of ${subject} (${source})`
 
 /**
  * Evaluates a node for a principal.
@@ -379,8 +407,12 @@ const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) =>
   }
   const result = decideLayer(candidates)
   if (result === null) {
-    const decision = { source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0 }
-    const entry = { source: SOURCE.TOKEN, subject: token.name, node: null, allowed: false, matched: true, reason: REASON.tokenDenied, depth: 0 }
+    const decision = {
+      source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0,
+      decidingNode: null, decidingKind: null,
+      explanation: `Denied: token '${token.name}' lists no node for '${node}'.`,
+    }
+    const entry = { source: SOURCE.TOKEN, subject: token.name, node: null, allowed: false, matched: true, reason: REASON.tokenDenied, depth: 0, kind: null }
     return { allowed: false, decision, trace: [...principal.trace, entry] }
   }
   const tokenReason = result.verdict ? REASON.tokenAllowed : REASON.tokenDeniedExplicit
@@ -390,9 +422,14 @@ const evaluate = ({ node, user, memberTeams = [], teams = [], token = null }) =>
     if (isDeciding) return entryOf(candidate, true, winnerReason)
     return entryOf(candidate, false, candidate.specificity === result.top ? REASON.tie : REASON.specific)
   })
+  const winnerKind = kindOf(result.winner.node)
   const decision = result.verdict
     ? principal.decision
-    : { source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0 }
+    : {
+      source: SOURCE.TOKEN, subject: token.name, node, allowed: false, depth: 0,
+      decidingNode: result.winner.node, decidingKind: winnerKind,
+      explanation: decisionExplanation(false, result.winner.node, winnerKind, SOURCE.TOKEN, token.name),
+    }
   return { allowed: result.verdict, decision, trace: [...principal.trace, ...entries] }
 }
 
@@ -528,6 +565,6 @@ const templates = () => TEMPLATES.map(template => ({ ...template, nodes: [...tem
 module.exports = {
   MAX_TEAM_DEPTH, MAX_NODE_LENGTH, AREAS, ACTIONS, SOURCE, INSTANCE_ADMIN_NODE,
   problemOf, validateEntries, matches, specificity,
-  evaluate, isInstanceAdmin, effectiveNodes, ancestorsOf,
+  evaluate, isInstanceAdmin, effectiveNodes, ancestorsOf, defaultDecision,
   checkParents, buildCatalog, templates,
 }
