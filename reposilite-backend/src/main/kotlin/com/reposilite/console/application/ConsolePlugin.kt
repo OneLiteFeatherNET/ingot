@@ -16,10 +16,12 @@
 package com.reposilite.console.application
 
 import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.console.HelpCommand
 import com.reposilite.console.LevelCommand
 import com.reposilite.console.StopCommand
 import com.reposilite.console.api.CommandsSetupEvent
+import com.reposilite.console.infrastructure.ConsoleAuthenticator
 import com.reposilite.console.infrastructure.ConsoleWebSocketHandler
 import com.reposilite.console.infrastructure.ConsoleEndpoint
 import com.reposilite.console.infrastructure.ConsoleSseHandler
@@ -33,11 +35,13 @@ import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
+import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.HttpServerInitializationEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import com.reposilite.web.application.WebSettings
+import net.onelitefeather.ingot.identity.login.LoginFacade
 
-@Plugin(name = "console", dependencies = [ "shared-configuration", "failure", "access-token", "authentication" ])
+@Plugin(name = "console", dependencies = [ "shared-configuration", "failure", "access-token", "authentication", "login" ])
 internal class ConsolePlugin : ReposilitePlugin() {
 
     override fun initialize(): Facade {
@@ -50,10 +54,15 @@ internal class ConsolePlugin : ReposilitePlugin() {
         )
         val consoleFacade = consoleComponents.consoleFacade()
 
+        val consoleAuthenticator = ConsoleAuthenticator(
+            accessTokenFacade = facade<AccessTokenFacade>(),
+            authenticationFacade = facade<AuthenticationFacade>(),
+            loginFacade = facade<LoginFacade>(),
+        )
+
         val client = ConsoleSseHandler(
             journalist = journalist,
-            accessTokenFacade = facade(),
-            authenticationFacade = facade(),
+            consoleAuthenticator = consoleAuthenticator,
             forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp },
             scheduler = reposilite().scheduler
         )
@@ -82,8 +91,7 @@ internal class ConsolePlugin : ReposilitePlugin() {
                 "/api/console/sock",
                 ConsoleWebSocketHandler(
                     journalist = reposilite().journalist,
-                    accessTokenFacade = facade(),
-                    authenticationFacade = facade(),
+                    consoleAuthenticator = consoleAuthenticator,
                     consoleFacade = consoleFacade,
                     forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp }
                 )

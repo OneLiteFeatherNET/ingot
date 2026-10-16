@@ -1,13 +1,10 @@
 package com.reposilite.console.infrastructure
 
 import com.reposilite.ReposiliteJournalist
-import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.auth.api.Credentials
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extractFromHeader
-import com.reposilite.shared.unauthorized
-import com.reposilite.token.AccessTokenFacade
-import com.reposilite.token.AccessTokenPermission
+import com.reposilite.token.api.AccessTokenDto
 import io.javalin.http.Context
 import io.javalin.http.Header
 import io.javalin.http.sse.SseClient
@@ -15,6 +12,7 @@ import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
+import net.onelitefeather.ingot.identity.session.SessionCookies
 import panda.std.Result
 import panda.std.reactive.Reference
 import java.util.concurrent.ScheduledExecutorService
@@ -31,8 +29,7 @@ data class SseSession(
 
 internal class ConsoleSseHandler(
     private val journalist: ReposiliteJournalist,
-    private val accessTokenFacade: AccessTokenFacade,
-    private val authenticationFacade: AuthenticationFacade,
+    private val consoleAuthenticator: ConsoleAuthenticator,
     private val forwardedIp: Reference<String>,
     private val scheduler: ScheduledExecutorService
 ) {
@@ -52,7 +49,7 @@ internal class ConsoleSseHandler(
     @OpenApi(
         path = "/api/console/log",
         methods = [HttpMethod.GET],
-        headers = [OpenApiParam(name = "Authorization", description = "Name and secret provided as basic auth credentials", required = true)],
+        headers = [OpenApiParam(name = "Authorization", description = "Name and secret provided as basic auth credentials. Without it, the session cookie of a browser login is used.", required = false)],
         description = "Streams the output of logs through an SSE Connection.",
         responses = [
             OpenApiResponse(
@@ -96,20 +93,22 @@ internal class ConsoleSseHandler(
             }
     }
 
+    /**
+     * A request with an Authorization header is authenticated by it, as before. A browser cannot set that header on an
+     * EventSource, so without one the session cookie of the login authenticates the stream.
+     */
     private fun authenticateContext(connection: Context): Result<String, ErrorResponse> {
-        return extractFromHeader(connection.header(Header.AUTHORIZATION))
-            .map { (name, secret) ->
-                Credentials(
-                    ip = connection.ip(),
-                    name = name,
-                    secret = secret
-                )
+        val ip = connection.ip()
+        val authorization = connection.header(Header.AUTHORIZATION)
+        val sessionToken = connection.cookie(SessionCookies.SESSION)
+        val identity: Result<out AccessTokenDto, ErrorResponse> =
+            if (authorization == null && sessionToken != null) {
+                consoleAuthenticator.authenticateSession(sessionToken, ip)
+            } else {
+                extractFromHeader(authorization)
+                    .map { (name, secret) -> Credentials(ip = ip, name = name, secret = secret) }
+                    .flatMap { consoleAuthenticator.authenticate(it) }
             }
-            .flatMap { authenticationFacade.authenticateByCredentials(it) }
-            .filter(
-                { accessTokenFacade.hasPermission(it.identifier, AccessTokenPermission.MANAGER) },
-                { unauthorized("Unauthorized CLI access request from ${connection.ip()}") }
-            )
-            .map { "${it.name}@${connection.ip()}" }
+        return identity.map { "${it.name}@$ip" }
     }
 }
