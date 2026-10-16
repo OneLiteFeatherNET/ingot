@@ -21,7 +21,11 @@ import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.LatestService
 import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.StorageTarget
+import com.reposilite.maven.StorageUsageService
 import com.reposilite.maven.MetadataService
+import com.reposilite.maven.MirrorCacheLedger
+import com.reposilite.maven.MirrorCacheService
 import com.reposilite.maven.MirrorService
 import com.reposilite.maven.ResolutionProvider
 import com.reposilite.maven.RepositoryProvider
@@ -32,6 +36,7 @@ import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
+import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.token.AccessTokenFacade
 import panda.std.reactive.Reference
 import java.nio.file.Path
@@ -52,13 +57,16 @@ internal class MavenComponents(
     private val ioService: ExecutorService,
     private val mavenSettings: Reference<MavenSettings>,
     private val frontendSettings: Reference<FrontendSettings>,
+    private val mirrorCacheLedger: MirrorCacheLedger,
 ) : PluginComponents {
+
+    private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
 
     private fun securityProvider(): RepositorySecurityProvider =
         RepositorySecurityProvider(accessTokenFacade)
 
     private fun metadataService(): MetadataService =
-        MetadataService(securityProvider())
+        MetadataService(securityProvider(), clock, journalist)
 
     private fun mirrorService(): MirrorService =
         MirrorService(
@@ -66,6 +74,7 @@ internal class MavenComponents(
             failureFacade = failureFacade,
             clock = clock,
             ioService = ioService,
+            mirrorCache = mirrorCache,
         )
 
     private fun resolutionProvider(): ResolutionProvider =
@@ -105,7 +114,32 @@ internal class MavenComponents(
             repositorySecurityProvider = securityProvider,
             repositoryProvider = repositoryProvider,
             metadataService = metadataService,
-            latestService = latestService
+            latestService = latestService,
+            storageUsageService = storageUsageService(repositoryProvider),
+            mirrorCache = mirrorCache,
         )
+
+    private fun storageUsageService(repositoryProvider: RepositoryProvider): StorageUsageService =
+        StorageUsageService(
+            journalist = journalist,
+            clock = clock,
+            targets = {
+                repositoryProvider.getRepositories().map { repository ->
+                    StorageTarget(
+                        id = repository.name,
+                        storage = repository.storageProvider,
+                        quota = configuredQuota(repository.name),
+                    )
+                }
+            },
+            executor = ioService,
+        )
+
+    /** The quota as written in the settings. Only the file system storage has one; object storage reports none. */
+    private fun configuredQuota(repository: String): String? =
+        mavenSettings.get().repositories
+            .firstOrNull { it.id == repository }
+            ?.storageProvider
+            ?.let { (it as? FileSystemStorageProviderSettings)?.quota }
 
 }

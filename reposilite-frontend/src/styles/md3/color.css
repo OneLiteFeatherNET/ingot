@@ -1,0 +1,350 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * MD3 colour roles for the OneLiteFeather scheme. The accent roles (primary, secondary,
+ * tertiary, error, inverse-primary, surface-tint and the fixed roles) are the official OLF
+ * Material 3 tables, generated from the OLF Pink #EC008B with SchemeVibrant at contrast 0.
+ * The neutral roles are not in the official table: they come from a near-neutral palette at
+ * the source hue (357) with chroma 3, so the surfaces stay white and grey and do not take a
+ * pink tint. DESIGN.md explains the override. The hex values here are the source of truth.
+ * Every role is also a Tailwind colour utility through the @theme inline block below, for
+ * example bg-surface-container or text-on-surface-variant.
+ */
+
+:root {
+  --md-sys-color-primary: #ac1c67;
+  --md-sys-color-on-primary: #ffeff2;
+  --md-sys-color-primary-container: #ff6eac;
+  --md-sys-color-on-primary-container: #4b0028;
+  --md-sys-color-primary-fixed: #ff6eac;
+  --md-sys-color-primary-fixed-dim: #f55aa0;
+  --md-sys-color-on-primary-fixed: #000000;
+  --md-sys-color-on-primary-fixed-variant: #5c0033;
+  --md-sys-color-secondary: #94387c;
+  --md-sys-color-on-secondary: #ffeef5;
+  --md-sys-color-secondary-container: #ffbfe6;
+  --md-sys-color-on-secondary-container: #7b2266;
+  --md-sys-color-secondary-fixed: #ffbfe6;
+  --md-sys-color-secondary-fixed-dim: #ffa9e1;
+  --md-sys-color-on-secondary-fixed: #630851;
+  --md-sys-color-on-secondary-fixed-variant: #872c70;
+  --md-sys-color-tertiary: #4d4fb7;
+  --md-sys-color-on-tertiary: #f4f1ff;
+  --md-sys-color-tertiary-container: #a7a9ff;
+  --md-sys-color-on-tertiary-container: #1f1d8a;
+  --md-sys-color-tertiary-fixed: #a7a9ff;
+  --md-sys-color-tertiary-fixed-dim: #9799ff;
+  --md-sys-color-on-tertiary-fixed: #060061;
+  --md-sys-color-on-tertiary-fixed-variant: #292993;
+  --md-sys-color-error: #b41340;
+  --md-sys-color-on-error: #ffefef;
+  --md-sys-color-error-container: #f74b6d;
+  --md-sys-color-on-error-container: #510017;
+  --md-sys-color-background: #fff8f8;
+  --md-sys-color-on-background: #1f1a1c;
+  --md-sys-color-surface: #fff8f8;
+  --md-sys-color-on-surface: #1f1a1c;
+  --md-sys-color-surface-variant: #eedfe2;
+  --md-sys-color-on-surface-variant: #4e4447;
+  --md-sys-color-surface-tint: #ac1c67;
+  --md-sys-color-surface-dim: #e1d8d9;
+  --md-sys-color-surface-bright: #fff8f8;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #fbf1f2;
+  --md-sys-color-surface-container: #f5eced;
+  --md-sys-color-surface-container-high: #efe6e7;
+  --md-sys-color-surface-container-highest: #eae0e1;
+  --md-sys-color-inverse-surface: #342f30;
+  --md-sys-color-inverse-on-surface: #f8eeef;
+  --md-sys-color-inverse-primary: #fc5fa5;
+  --md-sys-color-outline: #807477;
+  --md-sys-color-outline-variant: #d2c3c6;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+}
+
+.dark {
+  --md-sys-color-primary: #ff88b7;
+  --md-sys-color-on-primary: #600036;
+  --md-sys-color-primary-container: #ff6eac;
+  --md-sys-color-on-primary-container: #4b0028;
+  --md-sys-color-primary-fixed: #ff6eac;
+  --md-sys-color-primary-fixed-dim: #f55aa0;
+  --md-sys-color-on-primary-fixed: #000000;
+  --md-sys-color-on-primary-fixed-variant: #5c0033;
+  --md-sys-color-secondary: #f88cd6;
+  --md-sys-color-on-secondary: #5f024d;
+  --md-sys-color-secondary-container: #7b2166;
+  --md-sys-color-on-secondary-container: #ffbde5;
+  --md-sys-color-secondary-fixed: #ffbfe6;
+  --md-sys-color-secondary-fixed-dim: #ffa9e1;
+  --md-sys-color-on-secondary-fixed: #630851;
+  --md-sys-color-on-secondary-fixed-variant: #872c70;
+  --md-sys-color-tertiary: #9496ff;
+  --md-sys-color-on-tertiary: #0d037e;
+  --md-sys-color-tertiary-container: #8688f4;
+  --md-sys-color-on-tertiary-container: #050054;
+  --md-sys-color-tertiary-fixed: #a7a9ff;
+  --md-sys-color-tertiary-fixed-dim: #9799ff;
+  --md-sys-color-on-tertiary-fixed: #060061;
+  --md-sys-color-on-tertiary-fixed-variant: #292993;
+  --md-sys-color-error: #ff6e84;
+  --md-sys-color-on-error: #490013;
+  --md-sys-color-error-container: #a70138;
+  --md-sys-color-on-error-container: #ffb2b9;
+  --md-sys-color-background: #161213;
+  --md-sys-color-on-background: #eae0e1;
+  --md-sys-color-surface: #161213;
+  --md-sys-color-on-surface: #eae0e1;
+  --md-sys-color-surface-variant: #4e4447;
+  --md-sys-color-on-surface-variant: #d2c3c6;
+  --md-sys-color-surface-tint: #ff88b7;
+  --md-sys-color-surface-dim: #161213;
+  --md-sys-color-surface-bright: #3d3839;
+  --md-sys-color-surface-container-lowest: #110d0e;
+  --md-sys-color-surface-container-low: #1f1a1c;
+  --md-sys-color-surface-container: #231e20;
+  --md-sys-color-surface-container-high: #2d292a;
+  --md-sys-color-surface-container-highest: #383335;
+  --md-sys-color-inverse-surface: #eae0e1;
+  --md-sys-color-inverse-on-surface: #342f30;
+  --md-sys-color-inverse-primary: #b1216a;
+  --md-sys-color-outline: #9b8d90;
+  --md-sys-color-outline-variant: #4e4447;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+}
+
+/*
+ * High contrast, for a system that asks for more contrast. The accent roles, the fixed roles
+ * and the text and outline roles come from the official OLF table at contrast 1.0
+ * (SchemeVibrant). The surfaces keep their standard values, so the page does not change
+ * colour, only the contrast of the content on it. The fixed roles switch here as well, since
+ * the standard ones are the only theme-invariant values.
+ *
+ * Medium contrast (0.5) was generated too, but prefers-contrast has no middle step, so it is
+ * not emitted. DESIGN.md records the values. The light rule is :root:not(.dark), so a root
+ * that carries both the light and dark classes keeps the dark values.
+ */
+@media (prefers-contrast: more) {
+  :root:not(.dark) {
+    --md-sys-color-primary: #450025;
+    --md-sys-color-on-primary: #ffc5d8;
+    --md-sys-color-primary-container: #9a0559;
+    --md-sys-color-on-primary-container: #ffffff;
+    --md-sys-color-inverse-primary: #ffadca;
+    --md-sys-color-secondary: #410035;
+    --md-sys-color-on-secondary: #ffc3e7;
+    --md-sys-color-secondary-container: #842a6e;
+    --md-sys-color-on-secondary-container: #ffffff;
+    --md-sys-color-tertiary: #0a0077;
+    --md-sys-color-on-tertiary: #d1d0ff;
+    --md-sys-color-tertiary-container: #4041a9;
+    --md-sys-color-on-tertiary-container: #ffffff;
+    --md-sys-color-error: #470013;
+    --md-sys-color-on-error: #ffc6cb;
+    --md-sys-color-error-container: #a00035;
+    --md-sys-color-on-error-container: #ffffff;
+    --md-sys-color-surface-tint: #450025;
+    --md-sys-color-primary-fixed: #9a0559;
+    --md-sys-color-primary-fixed-dim: #86004d;
+    --md-sys-color-on-primary-fixed: #ffffff;
+    --md-sys-color-on-primary-fixed-variant: #ffffff;
+    --md-sys-color-secondary-fixed: #842a6e;
+    --md-sys-color-secondary-fixed-dim: #761d62;
+    --md-sys-color-on-secondary-fixed: #ffffff;
+    --md-sys-color-on-secondary-fixed-variant: #ffffff;
+    --md-sys-color-tertiary-fixed: #4041a9;
+    --md-sys-color-tertiary-fixed-dim: #34349d;
+    --md-sys-color-on-tertiary-fixed: #ffffff;
+    --md-sys-color-on-tertiary-fixed-variant: #ffffff;
+    --md-sys-color-on-surface: #000000;
+    --md-sys-color-on-background: #000000;
+    --md-sys-color-on-surface-variant: #372e31;
+    --md-sys-color-outline: #675b5e;
+  }
+
+  .dark {
+    --md-sys-color-primary: #ffdde6;
+    --md-sys-color-on-primary: #5c0033;
+    --md-sys-color-primary-container: #ff74af;
+    --md-sys-color-on-primary-container: #000000;
+    --md-sys-color-inverse-primary: #720040;
+    --md-sys-color-secondary: #ffdcef;
+    --md-sys-color-on-secondary: #570047;
+    --md-sys-color-secondary-container: #e980c8;
+    --md-sys-color-on-secondary-container: #000000;
+    --md-sys-color-tertiary: #e5e3ff;
+    --md-sys-color-on-tertiary: #1a1686;
+    --md-sys-color-tertiary-container: #989aff;
+    --md-sys-color-on-tertiary-container: #000000;
+    --md-sys-color-error: #ffdddf;
+    --md-sys-color-on-error: #5f001c;
+    --md-sys-color-error-container: #ff798c;
+    --md-sys-color-on-error-container: #000000;
+    --md-sys-color-surface-tint: #ffdde6;
+    --md-sys-color-primary-fixed: #ff74af;
+    --md-sys-color-primary-fixed-dim: #f95da3;
+    --md-sys-color-on-primary-fixed: #000000;
+    --md-sys-color-on-primary-fixed-variant: #000000;
+    --md-sys-color-secondary-fixed: #ffbfe6;
+    --md-sys-color-secondary-fixed-dim: #ffa9e1;
+    --md-sys-color-on-secondary-fixed: #000000;
+    --md-sys-color-on-secondary-fixed-variant: #21001a;
+    --md-sys-color-tertiary-fixed: #a7a9ff;
+    --md-sys-color-tertiary-fixed-dim: #9799ff;
+    --md-sys-color-on-tertiary-fixed: #000000;
+    --md-sys-color-on-tertiary-fixed-variant: #000000;
+    --md-sys-color-on-surface: #ffffff;
+    --md-sys-color-on-background: #ffffff;
+    --md-sys-color-on-surface-variant: #eedfe2;
+    --md-sys-color-outline: #b6a8ab;
+  }
+}
+
+
+/*
+ * @theme inline writes var(--md-sys-color-*) straight into the utilities. Without
+ * "inline" Tailwind resolves the variable where @theme is declared, and the dark values
+ * on .dark would never reach a utility.
+ */
+@theme inline {
+  --color-primary: var(--md-sys-color-primary);
+  --color-on-primary: var(--md-sys-color-on-primary);
+  --color-primary-container: var(--md-sys-color-primary-container);
+  --color-on-primary-container: var(--md-sys-color-on-primary-container);
+  --color-primary-fixed: var(--md-sys-color-primary-fixed);
+  --color-primary-fixed-dim: var(--md-sys-color-primary-fixed-dim);
+  --color-on-primary-fixed: var(--md-sys-color-on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--md-sys-color-on-primary-fixed-variant);
+  --color-secondary: var(--md-sys-color-secondary);
+  --color-on-secondary: var(--md-sys-color-on-secondary);
+  --color-secondary-container: var(--md-sys-color-secondary-container);
+  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+  --color-secondary-fixed: var(--md-sys-color-secondary-fixed);
+  --color-secondary-fixed-dim: var(--md-sys-color-secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--md-sys-color-on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--md-sys-color-on-secondary-fixed-variant);
+  --color-tertiary: var(--md-sys-color-tertiary);
+  --color-on-tertiary: var(--md-sys-color-on-tertiary);
+  --color-tertiary-container: var(--md-sys-color-tertiary-container);
+  --color-on-tertiary-container: var(--md-sys-color-on-tertiary-container);
+  --color-tertiary-fixed: var(--md-sys-color-tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--md-sys-color-tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--md-sys-color-on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--md-sys-color-on-tertiary-fixed-variant);
+  --color-error: var(--md-sys-color-error);
+  --color-on-error: var(--md-sys-color-on-error);
+  --color-error-container: var(--md-sys-color-error-container);
+  --color-on-error-container: var(--md-sys-color-on-error-container);
+  --color-background: var(--md-sys-color-background);
+  --color-on-background: var(--md-sys-color-on-background);
+  --color-surface: var(--md-sys-color-surface);
+  --color-on-surface: var(--md-sys-color-on-surface);
+  --color-surface-variant: var(--md-sys-color-surface-variant);
+  --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
+  --color-surface-tint: var(--md-sys-color-surface-tint);
+  --color-surface-dim: var(--md-sys-color-surface-dim);
+  --color-surface-bright: var(--md-sys-color-surface-bright);
+  --color-surface-container-lowest: var(--md-sys-color-surface-container-lowest);
+  --color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --color-surface-container: var(--md-sys-color-surface-container);
+  --color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
+  --color-inverse-surface: var(--md-sys-color-inverse-surface);
+  --color-inverse-on-surface: var(--md-sys-color-inverse-on-surface);
+  --color-inverse-primary: var(--md-sys-color-inverse-primary);
+  --color-outline: var(--md-sys-color-outline);
+  --color-outline-variant: var(--md-sys-color-outline-variant);
+  --color-scrim: var(--md-sys-color-scrim);
+  --color-shadow: var(--md-sys-color-shadow);
+}
+
+/*
+ * Status colours that MD3 does not define. The dashboard needs a success tone (copied
+ * confirmations) and a warning tone (console warnings, path mismatches). They are for text.
+ * The light values keep at least 5:1 contrast on the surface, surface-container-low and
+ * surface-container-highest roles, and the dark values keep at least 6:1 on the dark
+ * surfaces. Use the MD3 error roles for failures; this pair is not a substitute for them.
+ */
+:root {
+  --md-ext-color-success: #166534;
+  --md-ext-color-warning: #854d0e;
+}
+
+.dark {
+  --md-ext-color-success: #4ade80;
+  --md-ext-color-warning: #eab308;
+}
+
+/*
+ * Series colours for the charts: eight hues spaced about 45 degrees apart, so that the series
+ * stay apart from one another. The first series is the OLF pink itself. Each other hue was
+ * harmonised toward #ec008b with Blend.harmonize, and the light values take tone 40 and the
+ * dark values tone 80 of its tonal palette. src/store/palette.js reads them by name, in order.
+ * Generated once with a throwaway script; the values here are the source of truth. They are
+ * not role colours, so they have no Tailwind utility. DESIGN.md has the table.
+ */
+:root {
+  --md-ext-color-chart-1: #b8006b;
+  --md-ext-color-chart-2: #006590;
+  --md-ext-color-chart-3: #815500;
+  --md-ext-color-chart-4: #566500;
+  --md-ext-color-chart-5: #006a68;
+  --md-ext-color-chart-6: #9c4504;
+  --md-ext-color-chart-7: #4253c3;
+  --md-ext-color-chart-8: #8040ad;
+}
+
+.dark {
+  --md-ext-color-chart-1: #ffb0cc;
+  --md-ext-color-chart-2: #88ceff;
+  --md-ext-color-chart-3: #feba50;
+  --md-ext-color-chart-4: #bad14d;
+  --md-ext-color-chart-5: #69d8d5;
+  --md-ext-color-chart-6: #ffb690;
+  --md-ext-color-chart-7: #bbc3ff;
+  --md-ext-color-chart-8: #e3b5ff;
+}
+
+/*
+ * The OLF gradient is a brand element, not a UI role, so it has no Tailwind colour utility.
+ * It is for the hero and the brand bar. Components stay on the MD3 roles: a button on a
+ * gradient hero is still a primary filled button. The gradient is the four-stop standard
+ * from the brand guide, running at 135 degrees.
+ */
+:root {
+  --olf-gradient: linear-gradient(135deg, #f7931d 0%, #ec008b 33%, #91268f 66%, #2a388f 100%);
+}
+
+/* A 4px band at the top edge of a section, the brand bar from the brand guide. */
+.olf-brand-bar {
+  height: 4px;
+  background: var(--olf-gradient);
+}
+
+/* Forced colours drop background images, so the bar takes a system colour instead. */
+@media (forced-colors: active) {
+  .olf-brand-bar {
+    background: Highlight;
+  }
+}
+
+@theme inline {
+  --color-success: var(--md-ext-color-success);
+  --color-warning: var(--md-ext-color-warning);
+}

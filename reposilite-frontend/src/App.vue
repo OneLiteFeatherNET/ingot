@@ -15,37 +15,43 @@
   -->
 
 <script setup>
+import { watchEffect } from 'vue'
 import { useHead } from '@unhead/vue'
 import { useSession } from "./store/session"
 import useTheme from "./store/theme"
 import useQualifier from "./store/qualifier"
 import usePlaceholders from './store/placeholders'
+import { createErrorToast, errorMessage } from './helpers/toast'
+import MdSnackbar from './components/md/MdSnackbar.vue'
 
-const { title, description, icpLicense, privacyPolicy } = usePlaceholders()
+// The footer and the legal line are drawn by the page (see PageFooter), so they sit in the
+// content sheet when the navigation frame shows.
+const { description } = usePlaceholders()
 const { theme, fetchColorMode } = useTheme()
 const { initializeSession } = useSession()
 const { qualifier } = useQualifier()
 
+// The document title belongs to the router now: it names the section or the browsed path.
 useHead({
-  title, 
   description
 })
 fetchColorMode()
-initializeSession().catch(() => {})
+// The dark token set is keyed on `.dark`. The class is mirrored onto the document root so
+// that the body, and any overscroll beyond the app, follow the theme as well.
+watchEffect(() => document.documentElement.classList.toggle('dark', theme.isDark))
+// A rejected stored secret is already handled by the session. Anything else means the
+// server could not be asked, and the page should say so instead of quietly showing nothing.
+initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${errorMessage(error)}`))
 </script>
 
 <template>
-  <div v-bind:class="{ 'dark': theme.isDark }">
-    <div class="min-h-screen dark:bg-black dark:text-white">
-      <router-view 
-        class="router-view-full "
+  <div :class="{ 'dark': theme.isDark }">
+    <div class="min-h-screen bg-surface text-on-surface">
+      <router-view
+        class="router-view-full"
         :qualifier="qualifier"
       />
-      <div v-if="icpLicense || privacyPolicy" class="absolute h-8 pb-2 w-full text-center text-xs dark:bg-black dark:text-white">
-        <a v-if="icpLicense" href="https://beian.miit.gov.cn" target="_blank">{{ icpLicense }}</a>
-        <span v-if="icpLicense && privacyPolicy" class="mx-1">·</span>
-        <a v-if="privacyPolicy" :href="privacyPolicy" target="_blank">Privacy Policy</a>
-      </div>
+      <MdSnackbar />
     </div>
   </div>
 </template>

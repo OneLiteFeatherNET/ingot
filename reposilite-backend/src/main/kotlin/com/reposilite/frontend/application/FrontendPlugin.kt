@@ -24,7 +24,11 @@ import com.reposilite.frontend.infrastructure.CustomFrontendHandler
 import com.reposilite.frontend.infrastructure.FrontendSettingsEndpoint
 import com.reposilite.frontend.infrastructure.NotFoundHandler
 import com.reposilite.frontend.infrastructure.ResourcesFrontendHandler
+import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.infrastructure.MavenEndpoints
+import com.reposilite.plugin.api.EventListener
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.Priorities
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
@@ -76,33 +80,51 @@ internal class FrontendPlugin : ReposilitePlugin() {
                 ?.also { copyResourceTo(FAVICON, it) }
         }
 
-        event { event: RoutingSetupEvent ->
-            val routes = mutableSetOf<ReposiliteRoutes>()
+        event(object : EventListener<RoutingSetupEvent> {
 
-            // Registered whether or not this instance serves the dashboard itself: a
-            // detached dashboard needs it precisely when defaultFrontend is off.
-            routes.add(FrontendSettingsEndpoint(frontendFacade))
+            // Javalin answers a request with the first registered endpoint that matches it, and listeners run
+            // in priority order. MavenPlugin registers /{repository}/<gav> at DEFAULT priority, so the dashboard
+            // is registered at HIGH: its app routes win for reserved segments whatever order plugins load in.
+            override fun priority(): Double = Priorities.HIGH
 
-            if (localConfiguration.defaultFrontend.get()) {
+            override fun onCall(event: RoutingSetupEvent) {
+                val routes = mutableSetOf<ReposiliteRoutes>()
+
+                // Registered whether or not this instance serves the dashboard itself: a
+                // detached dashboard needs it precisely when defaultFrontend is off.
+                routes.add(FrontendSettingsEndpoint(frontendFacade, localConfiguration.hideSettingsSecrets))
+
+                if (localConfiguration.defaultFrontend.get()) {
+                    // Resolved here and not in initialize: MavenPlugin depends on this plugin, so its facade exists only
+                    // by the time routes are registered. The dashboard routes hand colliding repository requests to Maven.
+                    val mavenFacade = facade<MavenFacade>()
+
+                    routes.add(
+                        ResourcesFrontendHandler(
+                            failureFacade = failureFacade,
+                            frontendFacade = frontendFacade,
+                            resourcesDirectory = FRONTEND_DIRECTORY,
+                            mavenFacade = mavenFacade,
+                            mavenEndpoints = MavenEndpoints(
+                                mavenFacade = mavenFacade,
+                                frontendFacade = frontendFacade,
+                                compressionStrategy = localConfiguration.compressionStrategy.get()
+                            ),
+                        )
+                    )
+                }
+
                 routes.add(
-                    ResourcesFrontendHandler(
+                    CustomFrontendHandler(
                         failureFacade = failureFacade,
                         frontendFacade = frontendFacade,
-                        resourcesDirectory = FRONTEND_DIRECTORY
+                        directory = staticDirectory(event.reposilite)
                     )
                 )
+
+                event.registerRoutes(routes)
             }
-
-            routes.add(
-                CustomFrontendHandler(
-                    failureFacade = failureFacade,
-                    frontendFacade = frontendFacade,
-                    directory = staticDirectory(event.reposilite)
-                )
-            )
-
-            event.registerRoutes(routes)
-        }
+        })
 
         event { event: HttpServerInitializationEvent ->
             event.config.routes.exception(NotFoundResponse::class.java, NotFoundHandler(frontendFacade))

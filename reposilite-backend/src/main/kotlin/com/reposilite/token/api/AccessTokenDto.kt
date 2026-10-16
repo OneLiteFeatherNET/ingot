@@ -17,6 +17,7 @@
 package com.reposilite.token.api
 
 import com.reposilite.token.AccessTokenIdentifier
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 
@@ -28,7 +29,7 @@ data class AccessTokenDto(
     val expiresAt: Instant? = null,
 ) {
 
-    fun isExpired(): Boolean =
-        expiresAt != null && Instant.now().isAfter(expiresAt)
+    fun isExpired(clock: Clock = Clock.systemUTC()): Boolean =
+        expiresAt != null && Instant.now(clock).isAfter(expiresAt)
 
 }

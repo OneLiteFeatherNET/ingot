@@ -1,10 +1,9 @@
 # Serves the dashboard and hands everything else to the server.
 #
-# The split works because routing in the dashboard is hash based: whatever the user
-# navigates to, the browser only ever asks this container for the document root, the hashed
-# assets and the favicon. Repository paths are arbitrary top level names, so they cannot be
-# told apart from dashboard routes by prefix, which is why the default here is to proxy and
-# the exceptions are enumerated rather than the other way round.
+# The dashboard routes by path, so a reload of one of its addresses asks this container for
+# the document. Those addresses are enumerated below and answered with the document; every
+# other path is a repository path, which is arbitrary, and belongs to the server. A repository
+# named like a dashboard section is still reachable inside the dashboard under /browse/.
 #
 # Proxying rather than pointing the browser straight at the server keeps both on one origin.
 # The dashboard derives its API base from window.location, so a second origin would mean
@@ -67,6 +66,14 @@ server {
 
     location = /index.html {
         add_header Cache-Control "no-cache" always;
+    }
+
+    # The dashboard's own addresses: a reload of one of them gets the document, which then
+    # reads the address itself. `expires -1` sets the cache headers without replacing the
+    # security headers of the server block, which an add_header here would do.
+    location ~ ^/(browse|dashboard|tokens|console|settings)(/|$) {
+        expires -1;
+        try_files /index.html =404;
     }
 
     # Everything else belongs to the server: the API, every repository path, javadocs, badges.

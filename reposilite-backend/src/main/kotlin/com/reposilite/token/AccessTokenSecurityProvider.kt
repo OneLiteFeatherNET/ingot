@@ -22,7 +22,12 @@ import java.util.Base64
 
 object AccessTokenSecurityProvider {
 
-    private const val bcryptStrength = 10
+    /** Work factor used in production. Lowered only by the test harness, see `ReposiliteParameters.tokenHashStrength`. */
+    const val DEFAULT_BCRYPT_STRENGTH = 10
+
+    /** The lowest work factor BCrypt accepts. Hashing at [DEFAULT_BCRYPT_STRENGTH] dominates the runtime of token tests. */
+    const val MIN_BCRYPT_STRENGTH = 4
+
     private val bcryptHasher = BCrypt.with(BCrypt.Version.VERSION_2A)
     private val bcryptVerifier = BCrypt.verifyer(BCrypt.Version.VERSION_2A)
 
@@ -32,7 +37,7 @@ object AccessTokenSecurityProvider {
         return Base64.getEncoder().encodeToString(secret)
     }
 
-    fun encodeSecret(secret: String): String =
+    fun encodeSecret(secret: String, bcryptStrength: Int = DEFAULT_BCRYPT_STRENGTH): String =
         bcryptHasher.hashToString(bcryptStrength, secret.toCharArray())
 
     fun matches(encryptedSecret: String, rawSecret: String): Boolean =

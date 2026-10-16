@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 OneLiteFeather
+ * Copyright (c) 2023 dzikoysk
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,68 +14,57 @@
  * limitations under the License.
  */
 
-/**
- * Colours for everything the dashboard plots.
+/*
+ * Colours for everything the dashboard plots, read from the Material Design 3 roles and the
+ * chart tokens.
  *
- * The two categorical ramps are not a light set and a free-hand dark set: they are the
- * same eight hues, each stepped for the surface it is drawn on. Both were checked against
- * the surfaces the charts actually use (white cards on #f5f5f5, gray-900 cards on black)
- * for the lightness band, a chroma floor, colour-vision separation between neighbouring
- * slots, and contrast. Reordering the slots or dropping one in changes those results, so
- * treat the order as part of the data and re-validate before touching it.
+ * Canvas cannot resolve a `var(...)` reference, so the charts need the concrete value of
+ * each role. It is read from the root element on every call, which means a theme switch
+ * (which rewrites the role values under `.dark`) is picked up by the next render, with no
+ * second copy of the scheme to keep in step.
  *
- * In light mode aqua, yellow and magenta sit below 3:1 against a white card. That is
- * allowed only while every series carries a visible label, which is why the multi-series
- * chart always draws its legend.
+ * The categorical order is part of the data: the first series takes the first chart token.
+ * The chart tokens are a dedicated set of eight hues, harmonised toward the seed, and are
+ * not derived from the MD3 roles: the accent roles sit too close together to tell series
+ * apart. See DESIGN.md, the chart section.
  */
-const CATEGORICAL_LIGHT = [
-  '#2a78d6', // blue
-  '#eb6834', // orange
-  '#1baf7a', // aqua
-  '#eda100', // yellow
-  '#e87ba4', // magenta
-  '#008300', // green
-  '#4a3aa7', // violet
-  '#e34948'  // red
-]
 
-const CATEGORICAL_DARK = [
-  '#3987e5',
-  '#d95926',
-  '#199e70',
-  '#c98500',
-  '#d55181',
-  '#008300',
-  '#9085e9',
-  '#e66767'
-]
+const FALLBACK = 'CanvasText'
+
+const readVariable = (name) => {
+  if (typeof document === 'undefined') return FALLBACK
+  const root = document.documentElement
+  const resolved = getComputedStyle(root).getPropertyValue(name).trim()
+  const value = resolved || root.style.getPropertyValue(name).trim()
+  return value || FALLBACK
+}
+
+const role = (name) => readVariable(`--md-sys-color-${name}`)
+
+const CHART_SERIES = 8
 
 /**
  * Reserved for state, never for a series. Each one is paired with a word in the interface
- * so the colour is never the only thing carrying the meaning.
+ * so the colour is never the only thing carrying the meaning. These are CSS references,
+ * so a template can use them directly in a style binding, and they follow the theme on
+ * their own.
  */
 export const STATUS = {
-  good: '#0ca30c',
-  warning: '#fab219',
-  serious: '#ec835a',
-  critical: '#d03b3b'
+  good: 'var(--md-ext-color-success)',
+  warning: 'var(--md-ext-color-warning)',
+  critical: 'var(--md-sys-color-error)'
 }
 
-/** Axis, grid and label colours. Deliberately recessive: the data is the ink. */
-const CHROME_LIGHT = {
-  axis: '#898781',
-  grid: '#e1e0d9',
-  baseline: '#c3c2b7',
-  text: '#52514e'
-}
+/** Resolved colours for the categorical series, in the order they are assigned. */
+export const categorical = () =>
+  Array.from({ length: CHART_SERIES }, (_, index) => readVariable(`--md-ext-color-chart-${index + 1}`))
 
-const CHROME_DARK = {
-  axis: '#898781',
-  grid: '#2c2c2a',
-  baseline: '#383835',
-  text: '#c3c2b7'
-}
-
-export const categorical = (isDark) => (isDark ? CATEGORICAL_DARK : CATEGORICAL_LIGHT)
-
-export const chrome = (isDark) => (isDark ? CHROME_DARK : CHROME_LIGHT)
+/** Axis, grid, label and tooltip colours. Deliberately recessive: the data is the ink. */
+export const chrome = () => ({
+  axis: role('on-surface-variant'),
+  grid: role('outline-variant'),
+  baseline: role('outline'),
+  text: role('on-surface'),
+  tooltipSurface: role('inverse-surface'),
+  tooltipText: role('inverse-on-surface')
+})

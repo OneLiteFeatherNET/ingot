@@ -21,37 +21,40 @@ import org.junit.jupiter.api.extension.AfterEachCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.Extension
 import org.junit.jupiter.api.extension.ExtensionContext
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.postgresql.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 
 /**
  * Integrations used in remote stack:
- * - PostgreSQL
+ * - PostgreSQL, one schema per test
  * - Local file system
  */
-@Testcontainers
 internal class ExperimentalRemoteSpecificationJunitExtension : Extension, BeforeEachCallback, AfterEachCallback {
 
-    @Container
-    private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:latest"))
+    private val namespace = ExtensionContext.Namespace.create(ExperimentalRemoteSpecificationJunitExtension::class.java)
 
     override fun beforeEach(context: ExtensionContext) {
-        postgres.start()
+        val postgres = SharedContainers.postgres
+        val schema = IsolatedResources.createPostgresSchema(postgres)
+        context.getStore(namespace).put(SCHEMA_KEY, schema)
 
         context.also {
             val instance = it.requiredTestInstance
             val type = instance::class.java
 
             type.getField("_extensionInitialized").set(instance, true)
-            type.getField("_database").set(instance, "postgresql ${postgres.host}:${postgres.getMappedPort(5432)} ${postgres.databaseName} ${postgres.username} ${postgres.password}")
+            type.getField("_database").set(instance, postgres.schemaToken(schema))
             type.getField("_storageProvider").set(instance, FileSystemStorageProviderSettings())
         }
     }
 
     override fun afterEach(context: ExtensionContext) {
-        postgres.stop()
+        val schema = context.getStore(namespace).remove(SCHEMA_KEY, String::class.java)
+        if (schema != null) {
+            IsolatedResources.dropPostgresSchema(SharedContainers.postgres, schema)
+        }
+    }
+
+    private companion object {
+        const val SCHEMA_KEY = "schema"
     }
 
 }

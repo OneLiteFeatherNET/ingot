@@ -17,12 +17,15 @@ package com.reposilite.maven
 
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
+import com.reposilite.maven.api.DeleteEvent
 import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.Identifier
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.PreResolveEvent
+import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.maven.api.RepositorySummary
 import com.reposilite.maven.api.ResolvedDocument
 import com.reposilite.maven.api.ResolvedFileDataEvent
 import com.reposilite.maven.api.ResolvedFileEvent
@@ -103,14 +106,26 @@ internal class RepositoryService(
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
         with(deleteRequest) {
             when {
-                securityProvider.canModifyResource(accessToken, repository, gav) ->
-                    repository.storageProvider
-                        .removeFile(gav)
-                        .peek { logger.info("DELETE | File $gav has been deleted from ${repository.name} by ${deleteRequest.by}") }
-                        .peek { resolutionProvider.invalidate(repository, gav) }
+                securityProvider.canDeleteResource(accessToken, repository, gav) -> deleteUnchecked(repository, gav, by, cleanupRunId)
                 else -> unauthorizedError("Unauthorized access request")
             }
         }
+
+    /**
+     * Removes a file without checking an access token. Only server side jobs that act for the operator use it, such as
+     * the scheduled cleanup policies; every request goes through [deleteFile].
+     */
+    internal fun deleteUnchecked(
+        repository: Repository,
+        gav: Location,
+        by: String,
+        cleanupRunId: String? = null,
+    ): Result<Unit, ErrorResponse> =
+        repository.storageProvider
+            .removeFile(gav)
+            .peek { logger.info("DELETE | File $gav has been deleted from ${repository.name} by $by") }
+            .peek { resolutionProvider.invalidate(repository, gav) }
+            .peek { extensions.emitEvent(DeleteEvent(repository, gav, by, cleanupRunId)) }
 
     fun findDetails(lookupRequest: LookupRequest): Result<FileDetails, ErrorResponse> =
         resolve(lookupRequest) { repository, gav -> findDetails(lookupRequest.accessToken, repository, gav) }
@@ -186,6 +201,17 @@ internal class RepositoryService(
             statisticsFacade.incrementResolvedRequest(IncrementResolvedRequest(identifier))
         }
     }
+
+    /**
+     * Lists the repositories the given token may see and that match the query, sorted by id. Visibility is applied
+     * before the query, so a filter cannot reveal a repository the caller is not allowed to list.
+     */
+    fun listRepositories(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): List<RepositorySummary> =
+        repositoryProvider.getRepositories()
+            .filter { securityProvider.canListRepository(accessToken, it) }
+            .map { RepositorySummary(id = it.name, visibility = it.visibility, description = it.description, tags = it.tags) }
+            .filter { query.matches(it) }
+            .sortedBy { it.id }
 
     /**
      * Lists the repositories the given token is allowed to see, each with its visibility.

@@ -17,7 +17,7 @@
 package com.reposilite.frontend.application
 
 import com.reposilite.configuration.shared.api.Doc
-import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.api.ValidatedSettings
 import io.javalin.openapi.JsonSchema
 
 @JsonSchema(requireNonNulls = false)
@@ -46,4 +46,11 @@ data class FrontendSettings(
         In order to fulfill the conditions, you should apply for ICP license from your service provider and fill in this parameter.
     """)
     val icpLicense: String = "",
-) : SharedSettings
+    @get:Doc(title = "Appearance", description = "Colours, logos, favicon and footer of the dashboard.")
+    val appearance: AppearanceSettings = AppearanceSettings(),
+) : ValidatedSettings {
+
+    override fun violations(): List<String> =
+        appearance.violations()
+
+}

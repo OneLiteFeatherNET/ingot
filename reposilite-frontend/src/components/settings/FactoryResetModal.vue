@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 import { property } from '../../helpers/vue-extensions'
-import CloseIcon from '../icons/CloseIcon.vue'
+import MdButton from '../md/MdButton.vue'
 
 const props = defineProps({
   callback: property(Function, true)
@@ -10,6 +10,16 @@ const props = defineProps({
 
 const showFactoryReset = ref(false)
 
+// The scrim is the MD3 role colour at 32%. The modal's own stylesheet paints the overlay in a
+// fixed black, so the colour goes in as an inline style that wins over it.
+const overlayStyle = {
+  backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)'
+}
+
+/*
+ * The reset saves at once to every instance, so the dialog states that plainly. The callback
+ * runs the save; the dialog closes and the result shows in the settings action bar.
+ */
 const factoryReset = () => {
   props.callback()
   showFactoryReset.value = false
@@ -23,35 +33,59 @@ export default {
 </script>
 
 <template>
-  <div id="adjustments-modal">
+  <div id="factory-reset">
     <VueFinalModal
       v-model="showFactoryReset"
       v-bind="$attrs"
-      class="flex justify-center iems-center"
+      teleport-to="body"
+      :overlay-style="overlayStyle"
+      class="flex min-h-full items-center justify-center p-4"
     >
-      <div class="relative border bg-white dark:bg-gray-900 border-gray-100 dark:border-black m-w-20 py-5 px-10 rounded-2xl shadow-xl text-center">
-        <div>
-          <h1 class="font-bold pb-4">Factory reset</h1>
-          <p>Do you really want to reset whole configuration to the default values?</p>
-          <div class="factory-reset-confirm flex mx-auto w-full">
-            <button class="mx-auto" @click="factoryReset">Yes</button>
-            <button class="mx-auto" @click="showFactoryReset = false">No</button>
-          </div>
+      <!-- The role sits on the card: the modal root always carries role="dialog" of its own. -->
+      <div
+        class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="factory-reset-title"
+        aria-describedby="factory-reset-body"
+      >
+        <h2
+          id="factory-reset-title"
+          class="md-headline-small text-on-surface"
+        >
+          Reset all to defaults?
+        </h2>
+        <div
+          id="factory-reset-body"
+          class="mt-4 flex flex-col gap-3 md-body-medium text-on-surface-variant"
+        >
+          <p>
+            Every setting on all your instances goes back to its default value. The reset is
+            saved immediately to all instances and cannot be undone.
+          </p>
+          <p>
+            Unsaved edits in any tab are discarded.
+          </p>
         </div>
-        <button class="absolute top-0 right-0 mt-5 mr-9" @click="showFactoryReset = false">
-          <CloseIcon />
-        </button>
+        <div class="mt-6 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            class="md-state-layer md-focus-ring relative inline-flex min-h-12 items-center justify-center rounded-corner-full px-6 md-label-large text-primary"
+            @click="showFactoryReset = false"
+          >
+            Cancel
+          </button>
+          <MdButton
+            variant="error"
+            @click="factoryReset"
+          >
+            Reset all to defaults
+          </MdButton>
+        </div>
       </div>
     </VueFinalModal>
     <div @click="showFactoryReset = true">
-      <slot name="button"></slot>
+      <slot name="button" />
     </div>
   </div>
 </template>
-
-<style scoped>
-@reference "../../style.css";
-.factory-reset-confirm button {
-  @apply mt-6 bg-gray-200 dark:bg-gray-700 px-20 py-2 rounded-lg;
-}
-</style>

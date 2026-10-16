@@ -17,16 +17,21 @@
 <script setup>
 import { computed } from 'vue'
 import { useSession } from '../../store/session'
-import MenuButton from './MenuButton.vue'
+import MdButton from '../md/MdButton.vue'
+import MdIconButton from '../md/MdIconButton.vue'
 import LoginModal from './LoginModal.vue'
 import MoonIcon from '../icons/MoonIcon.vue'
 import SunIcon from '../icons/SunIcon.vue'
 import ContrastIcon from '../icons/ContrastIcon.vue'
 import LogoutIcon from '../icons/LogoutIcon.vue'
+import AccountIcon from '../icons/AccountIcon.vue'
 import useTheme from "../../store/theme"
 
 const { theme, changeTheme } = useTheme()
-const { token, isLogged, logout } = useSession()
+const { token, isLogged, logout, principal } = useSession()
+
+// A cookie session has no token name; the principal's display name stands in for it.
+const signedInName = computed(() => principal?.value?.displayName || principal?.value?.name || token.value.name)
 
 const NEXT_MODE = { light: 'dark', dark: 'auto', auto: 'light' }
 
@@ -43,37 +48,71 @@ const themeLabel = computed(() => ({
 </script>
 
 <template>
-  <nav class="flex flex-row max-sm:max-w-[100px] max-sm:flex-wrap max-sm:flex-1 max-sm:justify-end max-sm:min-w-1/2">
-    <div v-if="isLogged" class="pt-[0.275rem] px-2 max-sm:hidden">
-      Welcome 
-      <span class="font-bold underline">{{ token.name }}</span>
-    </div>
-    <LoginModal>
-      <template v-slot:button>
-        <MenuButton v-if="!isLogged">
-          Sign in
-        </MenuButton>
-      </template>
-    </LoginModal>
-    <MenuButton v-if="isLogged" @click="logout()" class="max-sm:hidden">
-      Logout
-    </MenuButton>
-    <div
+  <!--
+    min-w-0 lets the group give way to the title, and a long name is cut rather than pushing the
+    theme toggle out of the header.
+  -->
+  <nav
+    aria-label="Account"
+    class="flex min-w-0 flex-row items-center gap-1"
+  >
+    <span
       v-if="isLogged"
-      class="hidden px-[0.675rem] pt-[0.2rem] mr-1.5 cursor-pointer rounded-full bg-white dark:bg-gray-900 max-h-[35px] max-sm:block max-sm:pt-1.5"
+      class="min-w-0 truncate px-3 md-body-large text-on-surface-variant max-sm:hidden"
     >
-      <LogoutIcon @click="logout()"/>
-    </div>
-    <button
-      type="button"
-      class="default-button flex h-[35px] w-[40px] items-center justify-center rounded-full"
+      Welcome
+      <span class="font-medium text-on-surface">{{ signedInName }}</span>
+    </span>
+    <LoginModal v-if="!isLogged" />
+    <!-- A real link to the account page, so it opens in a new tab as well. -->
+    <router-link
+      v-if="isLogged"
+      v-slot="{ href, navigate }"
+      :to="{ name: 'account' }"
+      custom
+    >
+      <MdButton
+        variant="text"
+        class="max-sm:hidden"
+        :href="href"
+        @click="navigate"
+      >
+        My account
+      </MdButton>
+      <MdIconButton
+        aria-label="My account"
+        class="sm:hidden"
+        :href="href"
+        @click="navigate"
+      >
+        <AccountIcon />
+      </MdIconButton>
+    </router-link>
+    <MdButton
+      v-if="isLogged"
+      variant="text"
+      class="max-sm:hidden"
+      @click="logout()"
+    >
+      Logout
+    </MdButton>
+    <!-- On small screens the text action gives way to an icon with the same name. -->
+    <MdIconButton
+      v-if="isLogged"
+      aria-label="Logout"
+      class="sm:hidden"
+      @click="logout()"
+    >
+      <LogoutIcon />
+    </MdIconButton>
+    <MdIconButton
       :aria-label="themeLabel"
       :title="themeLabel"
       @click="toggleTheme()"
     >
       <SunIcon v-if="theme.mode === 'light'" />
-      <MoonIcon v-else-if="theme.mode === 'dark'" class="pl-0.5" />
+      <MoonIcon v-else-if="theme.mode === 'dark'" />
       <ContrastIcon v-else />
-    </button>
+    </MdIconButton>
   </nav>
 </template>

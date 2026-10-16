@@ -17,8 +17,19 @@
 package com.reposilite.maven
 
 import com.reposilite.maven.api.DeployEvent
+import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.plugin.api.EventListener
 
+/**
+ * Removes the files of older builds from SNAPSHOT directories of repositories that do not preserve snapshots, and
+ * reconciles the version-level metadata with what is left.
+ *
+ * Event sequence of one snapshot deploy: the client stores its `maven-metadata.xml`, which emits the [DeployEvent] this
+ * listener handles. The stored metadata is the source for the pruning, and the reconciliation runs right after the
+ * pruning, so it never writes an older copy of the metadata. The client then uploads the checksums of its metadata,
+ * which emit their own events and are handled as well, because they describe the content the client sent and not the
+ * reconciled one.
+ */
 internal class PreservedBuildsListener(private val mavenFacade: MavenFacade) : EventListener<DeployEvent> {
 
     override fun onCall(event: DeployEvent) {
@@ -26,14 +37,19 @@ internal class PreservedBuildsListener(private val mavenFacade: MavenFacade) : E
             .takeUnless { it.preserveSnapshots }
             ?: return
 
-        val gav = event.gav
-            .takeIf { it.toString().endsWith("-SNAPSHOT/maven-metadata.xml") }
-            ?: return
+        val versionDirectory = event.gav.getParent()
+        val fileName = event.gav.getSimpleName()
+        if (!versionDirectory.getSimpleName().endsWith(SNAPSHOT_SUFFIX) || fileName !in versionMetadataFiles) {
+            return
+        }
 
-        val artifactDirectory = gav.locationBeforeLast("/")
+        if (fileName != METADATA_FILE) {
+            mavenFacade.reconcileSnapshotVersion(repository, versionDirectory)
+            return
+        }
 
-        mavenFacade.findMetadata(repository, artifactDirectory)
-            .merge(repository.storageProvider.getFiles(artifactDirectory)) { metadata, files -> metadata to files }
+        mavenFacade.findMetadata(repository, versionDirectory)
+            .merge(repository.storageProvider.getFiles(versionDirectory)) { metadata, files -> metadata to files }
             .peek { (metadata, files) ->
                 val snapshotToPreserve = metadata.versioning?.snapshot?.timestamp ?: return@peek
 
@@ -43,6 +59,8 @@ internal class PreservedBuildsListener(private val mavenFacade: MavenFacade) : E
                     .map { repository.storageProvider.removeFile(it) }
                     .count()
                     .also { mavenFacade.logger.info("DEPLOY | Preserved Builds Listener | $it deprecated file(s) have been removed") }
+
+                mavenFacade.reconcileSnapshotVersion(repository, versionDirectory)
             }
             .onError { throw RuntimeException(it.toString()) } // not sure how to handle failures of events yet
     }

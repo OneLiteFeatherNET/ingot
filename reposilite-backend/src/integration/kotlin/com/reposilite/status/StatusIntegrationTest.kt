@@ -23,17 +23,21 @@ import com.reposilite.ExperimentalRemoteSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.VERSION
+import com.reposilite.status.api.FailuresResponse
 import com.reposilite.status.api.HealthResponse
 import com.reposilite.status.api.InstanceStatusResponse
 import com.reposilite.status.api.StatusSnapshot
 import com.reposilite.status.specification.StatusIntegrationSpecification
 import com.reposilite.token.AccessTokenPermission.MANAGER
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.UNAUTHORIZED
+import kong.unirest.core.Unirest.delete
 import kong.unirest.core.Unirest.get
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.time.Instant
 
 @ExtendWith(ExperimentalRemoteSpecificationJunitExtension::class)
 internal class ExperimentalRemoteStatusIntegrationTest : StatusIntegrationTest()
@@ -99,6 +103,64 @@ internal abstract class StatusIntegrationTest : StatusIntegrationSpecification()
         // then: it responds with 200 and a healthy status
         assertThat(response.status).isEqualTo(OK.code)
         assertThat(response.body.status).isEqualTo("UP")
+    }
+
+    @Test
+    fun `should reject failure listing without credentials and without manager permission`() {
+        // when: failures are requested without credentials
+        val anonymousResponse = get("$base/api/status/failures").asString()
+
+        // then: service rejects the request
+        assertThat(anonymousResponse.status).isEqualTo(UNAUTHORIZED.code)
+
+        // given: a token without management permission
+        val (name, secret) = useAuth("unauthorized-token", "secret")
+
+        // when: failures are requested with that token
+        val response = get("$base/api/status/failures").basicAuth(name, secret).asString()
+
+        // then: service rejects the request
+        assertThat(response.status).isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `should list recorded failures with their details`() {
+        // given: no failures recorded yet, and one failure reported by the server
+        val failures = useFacade<FailureFacade>()
+        failures.clearFailures()
+        failures.throwException("/api/maven/details", IllegalStateException("repository is broken"))
+        val (name, secret) = useAuth("name", "secret", listOf(MANAGER))
+
+        // when: failures are requested by a manager
+        val response = get("$base/api/status/failures")
+            .basicAuth(name, secret)
+            .asJacksonObject(FailuresResponse::class)
+
+        // then: the failure is listed with its source, type, message, count and a parseable timestamp
+        assertThat(response.status).isEqualTo(OK.code)
+        val failure = response.body.failures.single()
+        assertThat(failure.source).isEqualTo("/api/maven/details")
+        assertThat(failure.type).isEqualTo("IllegalStateException")
+        assertThat(failure.message).isEqualTo("repository is broken")
+        assertThat(failure.count).isEqualTo(1)
+        assertThat(failure.stacktrace).contains("  at ")
+        assertThat(Instant.parse(failure.timestamp)).isNotNull
+    }
+
+    @Test
+    fun `should clear recorded failures on request of a manager`() {
+        // given: a recorded failure and a manager token
+        val failures = useFacade<FailureFacade>()
+        failures.clearFailures()
+        failures.throwException("/api/maven/details", RuntimeException("boom"))
+        val (name, secret) = useAuth("name", "secret", listOf(MANAGER))
+
+        // when: failures are cleared by a manager
+        val deleteResponse = delete("$base/api/status/failures").basicAuth(name, secret).asString()
+
+        // then: the request succeeds and no failure is left
+        assertThat(deleteResponse.status).isEqualTo(OK.code)
+        assertThat(failures.hasFailures()).isFalse
     }
 
 }

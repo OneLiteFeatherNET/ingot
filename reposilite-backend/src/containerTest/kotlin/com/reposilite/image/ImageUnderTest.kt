@@ -28,6 +28,7 @@ import java.time.Duration
 import java.util.Base64
 import org.testcontainers.containers.BindMode
 import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.Network
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
@@ -45,6 +46,12 @@ object ImageUnderTest {
      * upgrade rehearsal is pointed at a newer starting point.
      */
     val upstream: DockerImageName = named("ingot.upstream.image")
+
+    /**
+     * The previous Ingot release, the starting point of the rehearsal for an operator who already runs Ingot. It has no
+     * identity tables, so its upgrade is the first run of the identity migration.
+     */
+    val previous: DockerImageName = named("ingot.previous.image")
 
     private fun named(property: String): DockerImageName =
         DockerImageName.parse(
@@ -69,6 +76,7 @@ fun serverContainer(
     port: Int = DEFAULT_SERVER_PORT,
     environment: Map<String, String> = emptyMap(),
     runAs: String? = null,
+    network: Network? = null,
 ): GenericContainer<*> =
     GenericContainer(image)
         .withExposedPorts(port)
@@ -76,9 +84,23 @@ fun serverContainer(
         .apply {
             data?.let { withFileSystemBind(it.path.toString(), "/app/data", BindMode.READ_WRITE) }
             runAs?.let { user -> withCreateContainerCmdModifier { it.withUser(user) } }
+            // Reaches an external database by the alias the test gave it, for the MariaDB rehearsal.
+            network?.let { withNetwork(it) }
         }
         .waitingFor(Wait.forHttp("/").forPort(port).forStatusCode(200))
         .withStartupTimeout(Duration.ofMinutes(3))
+
+/**
+ * Starts the container, and when it does not come up, fails with the container's own output. The reason a server exits
+ * is written to its log, and a wait strategy's timeout does not show it.
+ */
+fun GenericContainer<*>.startOrExplain(): GenericContainer<*> =
+    try {
+        start()
+        this
+    } catch (failure: Exception) {
+        throw IllegalStateException("container did not start, its output was:\n$logs", failure)
+    }
 
 /** Where a started container can be reached from the test process. */
 fun GenericContainer<*>.baseUrl(port: Int = DEFAULT_SERVER_PORT): String =
@@ -163,6 +185,9 @@ object Http {
                 .PUT(BodyPublishers.ofString(body))
                 .build()
         )
+
+    fun delete(url: String, credentials: Pair<String, String>? = null): Response =
+        send(request(url, credentials).DELETE().build())
 
     fun putJson(url: String, json: String, credentials: Pair<String, String>? = null): Response =
         send(

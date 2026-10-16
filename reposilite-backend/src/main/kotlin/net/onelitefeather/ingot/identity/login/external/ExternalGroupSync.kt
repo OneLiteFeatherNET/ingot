@@ -1,0 +1,165 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.onelitefeather.ingot.identity.login.external
+
+import com.reposilite.audit.api.AuditAction.LAST_ADMIN_REVOKED_BY_PROVIDER
+import com.reposilite.audit.api.AuditAction.TEAM_MEMBERSHIP_CHANGED
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
+import net.onelitefeather.ingot.identity.evaluation.AdminReachability
+import net.onelitefeather.ingot.identity.model.PrincipalRecord
+import net.onelitefeather.ingot.identity.model.TeamMemberSource
+import net.onelitefeather.ingot.identity.model.TeamRecord
+import net.onelitefeather.ingot.identity.storage.IdentityStore
+
+/**
+ * The admin right of a team. It is the only place that decides how an admin group becomes an administrator: a synchronised
+ * team holds the right, and a person never receives it directly. The right is the permission node `ingot.admin.*` on the
+ * team. The store's instance-role functions write and read that node, so this object does not touch nodes itself.
+ */
+internal object AdminRights {
+
+    fun grant(identities: IdentityStore, teamId: Int) {
+        identities.grantInstanceRole(principalId = null, teamId = teamId)
+    }
+
+    fun revoke(identities: IdentityStore, teamId: Int) {
+        identities.revokeInstanceRole(principalId = null, teamId = teamId)
+    }
+
+    fun holders(identities: IdentityStore): Set<Int> =
+        identities.listInstanceRoleTeamIds()
+
+}
+
+/**
+ * Keeps the teams of one provider in step with the groups of a login.
+ *
+ * A team takes part when its external reference starts with the prefix of the provider (`oidc:<id>:` or `ldap:`), and its
+ * reference is `<prefix><group>`. At each login the principal gets a `SYNC` membership in every such team whose group it has,
+ * and loses the `SYNC` memberships of the teams whose group it no longer has. `MANUAL` memberships and teams of other
+ * references are never touched.
+ *
+ * Admin groups: each listed group gets its team on demand, with the admin right (see [AdminRights]). For a team of this
+ * provider the right follows the list: granted while the group is listed, revoked when it is not.
+ *
+ * Every membership the sync adds or removes is audited as `TEAM_MEMBERSHIP_CHANGED`, once per team, with the actor
+ * `system:<provider>`. A login that changes nothing writes nothing.
+ *
+ * The provider stays authoritative. When a sync leaves no usable instance admin (see [AdminReachability]) although there was
+ * one before, the revocation is still performed, and every principal that lost its admin right is reported with a warning
+ * that names the way back in, and audited as `LAST_ADMIN_REVOKED_BY_PROVIDER`. Nothing is refused, so a directory that removes
+ * its admins is never overruled by Ingot.
+ */
+internal class ExternalGroupSync(
+    private val identities: IdentityStore,
+    private val log: (String) -> Unit,
+    private val warn: (String) -> Unit = {},
+    private val audit: (AuditEvent) -> Unit = {},
+) {
+
+    fun apply(principal: PrincipalRecord, provider: String, prefix: String, groups: Set<String>, adminGroups: Set<String>) {
+        val adminsBefore = usableAdmins()
+        ensureAdminTeams(prefix, adminGroups)
+        applyAdminRights(prefix, adminGroups)
+        applyMemberships(principal, provider, prefix, groups)
+        reportLastAdminRevoked(provider, adminsBefore)
+    }
+
+    private fun usableAdmins(): Set<Int> =
+        AdminReachability.usableAdmins(identities.adminReachabilityInput(), identities.now())
+
+    /**
+     * When no usable admin is left after the sync, every admin of [before] lost the right in this sync: nothing else
+     * changes the rights between the two reads. A system without an admin before the sync is not reported.
+     */
+    private fun reportLastAdminRevoked(provider: String, before: Set<Int>) {
+        if (before.isEmpty() || usableAdmins().isNotEmpty()) return
+        before.mapNotNull { identities.findPrincipalById(it) }.sortedBy { it.name }.forEach { lost ->
+            warn(
+                "Provider $provider removed the last usable instance admin ${lost.name}: its synchronised admin group no longer " +
+                    "grants ingot.admin.*. Restore the group at the provider, or start with --token name:secret to regain access."
+            )
+            audit(
+                AuditEvent(
+                    action = LAST_ADMIN_REVOKED_BY_PROVIDER,
+                    actor = AuditActor.named("system:$provider", null),
+                    details = mapOf("provider" to provider, "principal" to lost.name),
+                )
+            )
+        }
+    }
+
+    private fun ensureAdminTeams(prefix: String, adminGroups: Set<String>) {
+        adminGroups.forEach { group ->
+            val reference = prefix + group
+            if (identities.listTeams().any { it.externalRef == reference }) return@forEach
+            // A team of the same name that was made by hand is not taken over: it has no reference, so it is not ours.
+            val created = identities.createTeam(name = reference, description = "Synchronised from the group $reference", externalRef = reference)
+            if (created == null) {
+                log("Admin group $reference skipped: a team of that name exists without the external reference")
+            } else {
+                log("Created the synchronised admin team $reference")
+            }
+        }
+    }
+
+    private fun applyAdminRights(prefix: String, adminGroups: Set<String>) {
+        val holders = AdminRights.holders(identities)
+        identities.listTeams().forEach { team ->
+            val reference = team.externalRef ?: return@forEach
+            if (!reference.startsWith(prefix)) return@forEach
+            val listed = reference.removePrefix(prefix) in adminGroups
+            val holds = team.id in holders
+            when {
+                listed && !holds -> AdminRights.grant(identities, team.id)
+                !listed && holds -> AdminRights.revoke(identities, team.id)
+            }
+        }
+    }
+
+    private fun applyMemberships(principal: PrincipalRecord, provider: String, prefix: String, groups: Set<String>) {
+        val teams = identities.listTeams()
+        val wanted = teams.filter { team -> team.externalRef?.let { it.startsWith(prefix) && it.removePrefix(prefix) in groups } == true }
+        val wantedIds = wanted.map { it.id }.toSet()
+        val providerTeamIds = teams.filter { it.externalRef?.startsWith(prefix) == true }.map { it.id }.toSet()
+
+        val memberships = identities.membershipsOf(principal.id)
+        val synced = memberships.filter { it.source == TeamMemberSource.SYNC }.map { it.teamId }.toSet()
+        val dropped = memberships
+            .filter { it.source == TeamMemberSource.SYNC && it.teamId in providerTeamIds && it.teamId !in wantedIds }
+            .map { it.teamId }
+        dropped.forEach { identities.removeMember(it, principal.id) }
+
+        wantedIds.forEach { identities.addMember(it, principal.id, TeamMemberSource.SYNC) }
+
+        val joined = wantedIds - synced
+        audit(provider, principal, teams, joined = joined, left = dropped.toSet())
+    }
+
+    private fun audit(provider: String, principal: PrincipalRecord, teams: List<TeamRecord>, joined: Set<Int>, left: Set<Int>) {
+        val byId = teams.associateBy { it.id }
+        val actor = AuditActor.named("system:$provider", null)
+        (joined + left).forEach { teamId ->
+            val team = byId[teamId] ?: return@forEach
+            val added = if (teamId in joined) listOf(principal.name) else emptyList()
+            val removed = if (teamId in left) listOf(principal.name) else emptyList()
+            audit(AuditEvent(action = TEAM_MEMBERSHIP_CHANGED, actor = actor, details = mapOf("team" to team.name, "added" to added, "removed" to removed)))
+        }
+    }
+
+}

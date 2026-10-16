@@ -16,10 +16,11 @@
 
 import { ref } from "vue"
 import { createURL } from '../client'
+import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
 import { useSession } from "../session.js"
 
-const { client } = useSession()
+const { client, authMode } = useSession()
 
 const connection = ref()
 const command = ref("")
@@ -33,6 +34,16 @@ const command = ref("")
  */
 const status = ref('idle')
 const failure = ref(null)
+// Set when the session check answers 401 after the stream failed. The reader can fix that
+// with the sign in button, which a generic "stream closed" message would never tell them.
+const sessionExpired = ref(false)
+
+/*
+ * The command history belongs to the session, not to the view. The view is mounted each time
+ * its tab is opened, and a history created per mount would start empty on every visit.
+ */
+const history = ref([''])
+const historyIdx = ref(0)
 
 export default function useConsole() {
   const consoleAddress = createURL("/api/console/log")
@@ -52,9 +63,6 @@ export default function useConsole() {
     status.value = 'closed'
   }
 
-  const history = ref([''])
-  const historyIdx = ref(0)
-
   const addCommandToHistory = (command) => {
     if (history.value[history.value.length - 1] == '')
       history.value.pop()
@@ -63,9 +71,18 @@ export default function useConsole() {
   }
 
   const execute = () => {
-    addCommandToHistory(command.value)
-    client.value.console.execute(command.value)
+    const sent = command.value
+    addCommandToHistory(sent)
     command.value = ''
+
+    return client.value.console.execute(sent)
+      .catch(error => {
+        console.error(error)
+        // The text goes back so it can be fixed and sent again, unless the reader has already
+        // started typing the next command, which must not be overwritten.
+        if (command.value === '') command.value = sent
+        createErrorToast(`Command not sent: ${errorMessage(error)}`)
+      })
   }
 
   const previousCommand = () =>
@@ -91,15 +108,32 @@ export default function useConsole() {
   const onError = ref()
   const onClose = ref()
 
+  // An EventSource error carries no status code, so a 401 cannot be read from the stream. The
+  // session is asked directly instead. Its answer only counts while the stream still reports
+  // the failure: a reconnect that started in the meantime has nothing to explain.
+  const checkSession = () =>
+    client.value.auth.me()
+      .catch(error => {
+        if (error?.response?.status !== 401 || status.value !== 'error') return
+        sessionExpired.value = true
+        failure.value = 'Your session has expired. Sign in again, then reconnect.'
+      })
+
+  // A cookie session has no token to send: the browser attaches the HttpOnly session cookie to
+  // the stream (withCredentials). A token session, or one not known yet, sends the token as before.
+  const streamOptions = (token) =>
+    authMode?.value === 'cookie'
+      ? { withCredentials: true }
+      : { headers: { Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}` } }
+
   const connect = (token) => {
     status.value = 'connecting'
     failure.value = null
+    sessionExpired.value = false
 
     try {
       connection.value = new Eventsource(consoleAddress, {
-        headers: {
-          Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}`
-        },
+        ...streamOptions(token),
         // No automatic retry, on purpose. A stream that fails because the server is
         // struggling is the worst moment to start reconnecting in a loop. The view offers
         // a button instead, so the retry happens when somebody decides it should.
@@ -114,30 +148,31 @@ export default function useConsole() {
         }
 
         status.value = 'open'
-        onOpen?.value()
+        onOpen.value?.()
       }
 
       connection.value.addEventListener("log", (event) => {
         if (!event.data.toString().includes("GET /api/status/instance from"))
-          onMessage?.value(event.data)
+          onMessage.value?.(event.data)
       })
 
       connection.value.onerror = (error) => {
         status.value = 'error'
         failure.value = describe(error)
-        onError?.value(error)
+        onError.value?.(error)
+        checkSession()
       }
 
       connection.value.onclose = () => {
         // An error already says more than a close does, so it keeps the field.
         if (status.value !== 'error') status.value = 'closed'
-        onClose?.value()
+        onClose.value?.()
       }
 
     } catch (error) {
       status.value = 'error'
       failure.value = describe(error)
-      onError?.value(error)
+      onError.value?.(error)
     }
   }
 
@@ -147,6 +182,7 @@ export default function useConsole() {
     close,
     status,
     failure,
+    sessionExpired,
     onOpen,
     onMessage,
     onError,

@@ -20,14 +20,21 @@ import com.fasterxml.jackson.annotation.JsonFormat
 import com.reposilite.token.AccessTokenType.PERSISTENT
 import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.token.application.AccessTokenPlugin.Companion.MAX_TOKEN_NAME
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 
 const val UNINITIALIZED_ENTITY_ID: Int = -1
 
+/**
+ * Where a token lives. [PRINCIPAL] is not a token at all: it names a user principal whose browser session is the caller.
+ * Its value is the principal id. It never has a token row, so the facade answers every lookup for it from the identity
+ * tables only, and it cannot be created as a token.
+ */
 enum class AccessTokenType {
     PERSISTENT,
-    TEMPORARY
+    TEMPORARY,
+    PRINCIPAL
 }
 
 data class AccessTokenIdentifier(
@@ -49,8 +56,8 @@ data class AccessToken(
         check(!name.contains(":")) { "Access token name cannot contain ':' character" }
     }
 
-    fun isExpired(): Boolean =
-        expiresAt != null && Instant.now().isAfter(expiresAt)
+    fun isExpired(clock: Clock = Clock.systemUTC()): Boolean =
+        expiresAt != null && Instant.now(clock).isAfter(expiresAt)
 
     fun toDto(): AccessTokenDto =
         AccessTokenDto(

@@ -18,6 +18,10 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
+import MdButton from '../md/MdButton.vue'
+import MdCard from '../md/MdCard.vue'
+import FailuresSheet from './FailuresSheet.vue'
+import InstanceHealthRow from './InstanceHealthRow.vue'
 import StatTile from './StatTile.vue'
 
 // Five seconds, where this used to ask once a second. Memory, threads and uptime do not
@@ -120,56 +124,108 @@ const failures = computed(() => {
     ? { status: 'good', label: 'None recorded' }
     : { status: 'critical', label: count === 1 ? '1 failure recorded' : `${count} failures recorded` }
 })
+
+// The tile opens the list only when there is something in it. An empty tile has no action, so it
+// is not announced as a button either.
+const failuresOpen = ref(false)
+const hasFailures = computed(() => instanceStatus.value?.failuresCount > 0)
+const openFailures = () => {
+  if (hasFailures.value) failuresOpen.value = true
+}
 </script>
 
 <template>
   <!--
+    The first request failed, so there is nothing to show and nothing coming. Placeholders
+    here would promise a result that is not on its way; the card says so and offers a retry.
+  -->
+  <MdCard
+    v-if="!instanceStatus && failed"
+    variant="outlined"
+    role="alert"
+    class="flex flex-wrap items-center justify-between gap-3"
+  >
+    <p class="md-body-large text-on-surface">
+      Cannot load instance status. The server may be down or unreachable.
+    </p>
+    <MdButton
+      variant="tonal"
+      @click="requestStatus()"
+    >
+      Retry
+    </MdButton>
+  </MdCard>
+
+  <!--
     Loading placeholder with the same shape as the result, so the row does not jump into
     place once the first response lands.
   -->
-  <div v-if="!instanceStatus" class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-    <div
+  <div
+    v-else-if="!instanceStatus"
+    class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+  >
+    <MdCard
       v-for="slot in 5"
       :key="`status-placeholder-${slot}`"
-      class="h-28 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+      variant="outlined"
+      class="h-28"
     >
       <div class="skeleton-bars">
-        <div class="h-3 w-20 rounded bg-gray-200 dark:bg-gray-800" />
-        <div class="mt-3 h-6 w-24 rounded bg-gray-200 dark:bg-gray-800" />
+        <div class="h-3 w-20 rounded-corner-extra-small bg-surface-container-high" />
+        <div class="mt-3 h-6 w-24 rounded-corner-extra-small bg-surface-container-high" />
       </div>
-    </div>
+    </MdCard>
   </div>
 
-  <div v-else class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-    <StatTile
-      label="Used memory"
-      :value="memory.value"
-      :detail="memory.detail"
-      :ratio="memory.ratio"
-    />
-    <StatTile
-      label="Used threads"
-      :value="threads.value"
-      :detail="threads.detail"
-      :ratio="threads.ratio"
-    />
-    <StatTile
-      label="Failures"
-      :value="`${instanceStatus.failuresCount}`"
-      :status="failures.status"
-      :status-label="failures.label"
-    />
-    <StatTile
-      label="Uptime"
-      :value="prettyUptime(instanceStatus.uptime)"
-      detail="Since the last restart"
-    />
-    <StatTile
-      label="Version"
-      :value="instanceStatus.version"
-      :status="versionState.status"
-      :status-label="versionState.label"
-      link="https://github.com/OneLiteFeatherNET/ingot/releases"
+  <div
+    v-else
+    class="flex flex-col gap-3"
+  >
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <StatTile
+        label="Used memory"
+        :value="memory.value"
+        :detail="memory.detail"
+        :ratio="memory.ratio"
+      />
+      <StatTile
+        label="Used threads"
+        :value="threads.value"
+        :detail="threads.detail"
+        :ratio="threads.ratio"
+      />
+      <StatTile
+        label="Failures"
+        :value="`${instanceStatus.failuresCount}`"
+        :status="failures.status"
+        :status-label="failures.label"
+        :role="hasFailures ? 'button' : undefined"
+        :tabindex="hasFailures ? 0 : undefined"
+        :aria-haspopup="hasFailures ? 'dialog' : undefined"
+        :aria-label="hasFailures ? `Failures: ${instanceStatus.failuresCount} recorded. Show details` : undefined"
+        :class="hasFailures ? 'cursor-pointer hover:border-outline md-focus-ring' : undefined"
+        @click="openFailures"
+        @keydown.enter.prevent="openFailures"
+        @keydown.space.prevent="openFailures"
+      />
+      <StatTile
+        label="Uptime"
+        :value="prettyUptime(instanceStatus.uptime)"
+        detail="Since the last restart"
+      />
+      <StatTile
+        label="Version"
+        :value="instanceStatus.version"
+        :status="versionState.status"
+        :status-label="versionState.label"
+        link="https://github.com/OneLiteFeatherNET/ingot/releases"
+      />
+    </div>
+
+    <InstanceHealthRow />
+    <FailuresSheet
+      v-model="failuresOpen"
+      @cleared="requestStatus()"
     />
   </div>
 </template>

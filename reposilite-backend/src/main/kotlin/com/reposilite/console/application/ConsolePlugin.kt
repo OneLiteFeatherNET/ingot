@@ -36,7 +36,6 @@ import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.HttpServerInitializationEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import com.reposilite.web.application.WebSettings
-import io.javalin.http.sse.SseClient
 
 @Plugin(name = "console", dependencies = [ "shared-configuration", "failure", "access-token", "authentication" ])
 internal class ConsolePlugin : ReposilitePlugin() {
@@ -109,7 +108,7 @@ internal class ConsolePlugin : ReposilitePlugin() {
 
         event { _: ReposiliteDisposeEvent ->
             consoleFacade.commandExecutor.stop()
-            client.users.keys.forEach(SseClient::close)
+            client.closeAll()
         }
 
         return consoleFacade

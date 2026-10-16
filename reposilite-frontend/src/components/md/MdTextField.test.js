@@ -1,0 +1,276 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { describe, it, expect } from 'vitest'
+import { h, defineComponent } from 'vue'
+import { mount } from '@vue/test-utils'
+import MdTextField from './MdTextField.vue'
+
+describe('MdTextField', () => {
+  it('associates the label with the input through for and id', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Repository' } })
+
+    const input = wrapper.find('input')
+    const label = wrapper.find('label')
+    expect(input.attributes('id')).toBeTruthy()
+    expect(label.attributes('for')).toBe(input.attributes('id'))
+  })
+
+  it('gives two fields in the same app different generated ids', () => {
+    // Generated ids are unique per app, so both fields are mounted under one parent.
+    const Pair = defineComponent({
+      render: () => [
+        h(MdTextField, { label: 'First' }),
+        h(MdTextField, { label: 'Second' })
+      ]
+    })
+    const wrapper = mount(Pair)
+
+    const [first, second] = wrapper.findAll('input').map((input) => input.attributes('id'))
+    expect(first).not.toBe(second)
+  })
+
+  it('uses the id prop when one is given', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name', id: 'token-name' } })
+
+    expect(wrapper.find('input').attributes('id')).toBe('token-name')
+    expect(wrapper.find('label').attributes('for')).toBe('token-name')
+  })
+
+  it('shows the model value in the input', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name', modelValue: 'ci-token' } })
+
+    expect(wrapper.find('input').element.value).toBe('ci-token')
+  })
+
+  it('emits update:modelValue with the typed value', async () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name' } })
+
+    await wrapper.find('input').setValue('deploy')
+
+    expect(wrapper.emitted('update:modelValue')[0]).toEqual(['deploy'])
+  })
+
+  it('shows supporting text when there is no error', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Name', supportingText: 'Shown in the token list' }
+    })
+
+    expect(wrapper.text()).toContain('Shown in the token list')
+  })
+
+  it('shows error text and sets aria-invalid in the error state', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Name', error: true, errorText: 'Name is required' }
+    })
+
+    expect(wrapper.text()).toContain('Name is required')
+    expect(wrapper.find('input').attributes('aria-invalid')).toBe('true')
+  })
+
+  it('hides the supporting text in the error state', () => {
+    const wrapper = mount(MdTextField, {
+      props: {
+        label: 'Name',
+        error: true,
+        errorText: 'Name is required',
+        supportingText: 'Shown in the token list'
+      }
+    })
+
+    expect(wrapper.text()).not.toContain('Shown in the token list')
+  })
+
+  it('does not set aria-invalid while there is no error', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name', errorText: 'Name is required' } })
+
+    expect(wrapper.find('input').attributes('aria-invalid')).toBeUndefined()
+  })
+
+  it('links the visible helper text through aria-describedby', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Name', supportingText: 'Shown in the token list' }
+    })
+
+    const helper = wrapper.find('p')
+    expect(wrapper.find('input').attributes('aria-describedby')).toBe(helper.attributes('id'))
+  })
+
+  it('renders the leading icon slot before the input', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Search' },
+      slots: { 'leading-icon': () => h('svg', { 'data-test': 'lead' }) }
+    })
+
+    expect(wrapper.find('[data-test="lead"]').exists()).toBe(true)
+  })
+
+  it('renders the trailing icon slot', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Search' },
+      slots: { 'trailing-icon': () => h('svg', { 'data-test': 'trail' }) }
+    })
+
+    expect(wrapper.find('[data-test="trail"]').exists()).toBe(true)
+  })
+
+  it('forwards constraint attributes to the input element', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Count' },
+      attrs: { min: '1', max: '99', step: '1', pattern: '[0-9]+', maxlength: '2', inputmode: 'numeric' }
+    })
+
+    const input = wrapper.find('input')
+    expect(input.attributes('min')).toBe('1')
+    expect(input.attributes('max')).toBe('99')
+    expect(input.attributes('step')).toBe('1')
+    expect(input.attributes('pattern')).toBe('[0-9]+')
+    expect(input.attributes('maxlength')).toBe('2')
+    expect(input.attributes('inputmode')).toBe('numeric')
+  })
+
+  it('keeps class and style on the root element instead of the input', () => {
+    const wrapper = mount(MdTextField, {
+      props: { label: 'Name' },
+      attrs: { class: 'w-48', style: 'margin-top: 4px' }
+    })
+
+    expect(wrapper.classes()).toContain('w-48')
+    expect(wrapper.attributes('style')).toContain('margin-top: 4px')
+    expect(wrapper.find('input').classes()).not.toContain('w-48')
+    expect(wrapper.find('input').attributes('style')).toBeUndefined()
+  })
+
+  it('outlined variant draws the outline border on the input', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'outlined' } })
+
+    expect(wrapper.find('input').classes()).toContain('border-outline')
+  })
+
+  describe('focus indicator', () => {
+    // The MD3 reference (`_md-comp-filled-text-field.scss`, `_md-comp-outlined-text-field.scss`,
+    // v0_192) sets both focus indicators to 2px. A 1px border in the primary role plus a 1px
+    // inset shadow in the same role draws that 2px line.
+    it('draws the filled focus active indicator as a 2px primary line', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name' } })
+
+      expect(wrapper.find('input').classes()).toContain('focus:border-primary')
+      expect(wrapper.find('input').classes()).toContain('focus:shadow-[inset_0_-1px_0_0_var(--md-sys-color-primary)]')
+    })
+
+    it('draws the outlined focus outline as a 2px primary line', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', variant: 'outlined' } })
+
+      expect(wrapper.find('input').classes()).toContain('focus:border-primary')
+      expect(wrapper.find('input').classes()).toContain('focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]')
+    })
+  })
+
+  describe('leading and trailing icons', () => {
+    it('insets the leading icon 12px from the edge', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Search' },
+        slots: { 'leading-icon': () => h('svg', { 'data-test': 'lead' }) }
+      })
+
+      const iconWrapper = wrapper.find('[data-test="lead"]').element.parentElement
+      expect(iconWrapper.className).toContain('left-3')
+      expect(iconWrapper.className).not.toContain('left-4')
+    })
+
+    it('insets the trailing icon 12px from the edge', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Search' },
+        slots: { 'trailing-icon': () => h('svg', { 'data-test': 'trail' }) }
+      })
+
+      const iconWrapper = wrapper.find('[data-test="trail"]').element.parentElement
+      expect(iconWrapper.className).toContain('right-3')
+      expect(iconWrapper.className).not.toContain('right-4')
+    })
+  })
+
+  describe('disabled state', () => {
+    it('gives the filled container a 4 percent on-surface fill', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('input').classes()).toContain('disabled:bg-on-surface/4')
+    })
+
+    it('gives the filled active indicator and the outlined outline 38 and 12 percent on-surface', () => {
+      const filled = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+      const outlined = mount(MdTextField, { props: { label: 'Name', variant: 'outlined', disabled: true } })
+
+      expect(filled.find('input').classes()).toContain('disabled:border-on-surface/38')
+      expect(outlined.find('input').classes()).toContain('disabled:border-on-surface/12')
+    })
+
+    it('sets the input text to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('input').classes()).toContain('disabled:text-on-surface/38')
+      expect(wrapper.find('input').classes()).not.toContain('disabled:opacity-[0.38]')
+    })
+
+    it('sets the label to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('label').classes()).toContain('text-on-surface/38')
+      expect(wrapper.find('label').classes()).not.toContain('text-on-surface-variant')
+    })
+
+    it('sets the supporting text to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Name', disabled: true, supportingText: 'Shown in the token list' }
+      })
+
+      expect(wrapper.find('p').classes()).toContain('text-on-surface/38')
+    })
+
+    it('sets the leading and trailing icons to 38 percent on-surface', () => {
+      const wrapper = mount(MdTextField, {
+        props: { label: 'Search', disabled: true },
+        slots: {
+          'leading-icon': () => h('svg', { 'data-test': 'lead' }),
+          'trailing-icon': () => h('svg', { 'data-test': 'trail' })
+        }
+      })
+
+      expect(wrapper.find('[data-test="lead"]').element.parentElement.className).toContain('text-on-surface/38')
+      expect(wrapper.find('[data-test="trail"]').element.parentElement.className).toContain('text-on-surface/38')
+    })
+
+    it('disables the input element', () => {
+      const wrapper = mount(MdTextField, { props: { label: 'Name', disabled: true } })
+
+      expect(wrapper.find('input').attributes('disabled')).toBeDefined()
+    })
+  })
+
+  it('styles a date input with the theme colour scheme and the primary accent', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Expiry date', type: 'date' } })
+
+    const classes = wrapper.find('input').classes()
+    expect(classes, 'the browser picker follows the dashboard theme').toEqual(expect.arrayContaining(['[color-scheme:light]', 'dark:[color-scheme:dark]']))
+    expect(classes, 'the picker selection uses the primary role').toContain('accent-primary')
+  })
+
+  it('leaves a text input without the date styling', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Name' } })
+
+    expect(wrapper.find('input').classes()).not.toContain('accent-primary')
+  })
+})

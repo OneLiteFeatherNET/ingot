@@ -21,6 +21,7 @@ import com.reposilite.auth.Authenticator
 import com.reposilite.auth.BasicAuthenticator
 import com.reposilite.auth.LdapAuthenticator
 import com.reposilite.journalist.Journalist
+import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.status.FailureFacade
 import com.reposilite.token.AccessTokenFacade
@@ -54,12 +55,16 @@ class AuthenticationComponents(
             ldapAuthenticator()
         )
 
-    fun authenticationFacade(authenticators: SortedSet<Authenticator> = authenticators()): AuthenticationFacade =
+    fun authenticationFacade(
+        authenticators: SortedSet<Authenticator> = authenticators(),
+        extensions: Extensions = Extensions(journalist),
+    ): AuthenticationFacade =
         AuthenticationFacade(
             journalist = journalist,
             authenticators = authenticators,
             accessTokenFacade = accessTokenFacade,
-            bruteForceProtectionSettings = authenticationSettings.computed { it.bruteForceProtection }
+            bruteForceProtectionSettings = authenticationSettings.computed { it.bruteForceProtection },
+            extensions = extensions,
         )
 
 }

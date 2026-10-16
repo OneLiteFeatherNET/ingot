@@ -17,6 +17,7 @@
 package com.reposilite.configuration.shared.infrastructure
 
 import com.reposilite.configuration.ConfigurationFacade
+import com.reposilite.configuration.VersionedConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationProvider
 import java.time.Instant
 
@@ -35,9 +36,21 @@ internal class RemoteSharedConfigurationProvider(
         fetchConfiguration()
     }
 
-    override fun fetchConfiguration(): String {
+    override fun compareAndUpdateConfiguration(content: String, expectedRevision: Long?): Boolean {
+        val stored = configurationFacade.compareAndSaveConfiguration(CONFIGURATION_NAME, expectedRevision, content)
+        if (stored) {
+            fetchConfiguration()
+        }
+        return stored
+    }
+
+    override fun fetchConfiguration(): String =
+        fetchVersionedConfiguration().content
+
+    override fun fetchVersionedConfiguration(): VersionedConfiguration {
         refreshUpdateTime()
-        return configurationFacade.findConfiguration(CONFIGURATION_NAME) ?: ""
+        return configurationFacade.findVersionedConfiguration(CONFIGURATION_NAME)
+            ?: VersionedConfiguration(content = "", revision = null)
     }
 
     private fun refreshUpdateTime() {

@@ -16,22 +16,32 @@
 
 package com.reposilite.frontend.infrastructure
 
+import com.reposilite.frontend.DashboardPaths
+import com.reposilite.frontend.DashboardRouteDecision
+import com.reposilite.frontend.DashboardRouteTarget.DASHBOARD
+import com.reposilite.frontend.DashboardRouteTarget.MAVEN
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.frontend.Source
+import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.infrastructure.MavenEndpoints
+import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extensions.encoding
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.toLocation
 import com.reposilite.storage.getExtension
 import com.reposilite.storage.inputStream
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import io.javalin.community.routing.Route.GET
+import io.javalin.community.routing.Route.HEAD
 import io.javalin.http.ContentType
 import io.javalin.http.Context
 import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
 import panda.std.Result
+import panda.std.asError
 import panda.std.asSuccess
 import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
@@ -76,14 +86,18 @@ internal sealed class FrontendHandler(
 internal class ResourcesFrontendHandler(
     failureFacade: FailureFacade,
     frontendFacade: FrontendFacade,
-    private val resourcesDirectory: String
+    private val resourcesDirectory: String,
+    private val mavenFacade: MavenFacade,
+    private val mavenEndpoints: MavenEndpoints,
 ) : FrontendHandler(frontendFacade, failureFacade) {
 
-    private val defaultHandler = ReposiliteRoute<InputStream>("/", GET) {
+    private val notFoundHandler = NotFoundHandler(frontendFacade)
+
+    private val defaultHandler = ReposiliteRoute<InputStream>("/", GET, HEAD) {
         response = respondWithBundledResource(ctx, "index.html")
     }
 
-    private val indexHandler = ReposiliteRoute<InputStream>("/index.html", GET) {
+    private val indexHandler = ReposiliteRoute<InputStream>("/index.html", GET, HEAD) {
         response = respondWithBundledResource(ctx, "index.html")
     }
 
@@ -91,12 +105,61 @@ internal class ResourcesFrontendHandler(
         response = respondWithBundledResource(ctx, "assets/${ctx.pathParam("path")}")
     }
 
+    // Javalin answers a request with the first endpoint that matches it, and never falls through to the next one.
+    // So every app route needs HEAD as well, and a route whose first segment names a repository has to hand the
+    // request to Maven itself when DashboardRouteDecision says so. Without that hand-over, a repository "settings"
+    // would receive the dashboard for every Maven and Gradle request under /settings/.
+    private val appRoutes = DashboardPaths.APP_ROUTES.map { path ->
+        val repository = path.removePrefix("/").substringBefore('/')
+
+        ReposiliteRoute<InputStream>(path, GET, HEAD) {
+            val repositoryExists = mavenFacade.getRepository(repository) != null
+            // On a shared path the answer depends on the fetch metadata, so caches must keep the answers apart.
+            // Other paths never get this header, which keeps their responses exactly as they were.
+            if (repositoryExists) {
+                ctx.res().setHeader("Vary", DashboardRouteDecision.varyHeader(ctx.res().getHeaders("Vary").toList()))
+            }
+
+            val target = DashboardRouteDecision.decide(
+                repositoryExists = repositoryExists,
+                method = ctx.method(),
+                secFetchMode = ctx.header("Sec-Fetch-Mode"),
+                secFetchDest = ctx.header("Sec-Fetch-Dest"),
+            )
+
+            when (target) {
+                DASHBOARD -> response = respondWithBundledResource(ctx, "index.html")
+                MAVEN -> answerFromMaven(repository)
+            }
+        }
+    }
+
+    /**
+     * Answers like the Maven route for `/{repository}/<gav>` does, with the same access check and the same
+     * response bodies. Maven matches only paths that have a gav, so a bare app path such as `/settings` is no
+     * Maven request: it gets the not-found page that any unclaimed path gets. The DSL route wrapper turns a thrown
+     * exception into a 500, so that page is written directly rather than thrown as a NotFoundResponse.
+     */
+    private fun ContextDsl<InputStream>.answerFromMaven(repository: String) {
+        val gav = ctx.pathParamMap().values.singleOrNull()
+        if (gav == null) {
+            notFoundHandler.handle(ctx)
+            return
+        }
+
+        accessed {
+            Location.ofRequest(gav)
+                .peek { mavenEndpoints.findFile(ctx, this?.identifier, repository, it) }
+                .onError { response = it.asError() }
+        }
+    }
+
     private fun respondWithBundledResource(ctx: Context, uri: String): Result<InputStream, ErrorResponse> =
         respondWithResource(ctx, uri) {
             FrontendFacade::class.java.getResourceAsStream("/$resourcesDirectory/$uri") ?: "".toByteArray().inputStream()
         }
 
-    override val routes = routes(defaultHandler, indexHandler, assetsHandler)
+    override val routes = routes(defaultHandler, indexHandler, assetsHandler, *appRoutes.toTypedArray())
 
 }
 

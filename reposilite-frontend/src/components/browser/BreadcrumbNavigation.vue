@@ -16,39 +16,84 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
 import { property } from '../../helpers/vue-extensions'
+import { browseLocation, parentPathOf } from '../../router/paths'
+import MdIconButton from '../md/MdIconButton.vue'
+import BrowserIcon from './BrowserIcon.vue'
 
-defineProps({
-  parentPath: property(String, true)
+// The repository path being browsed, without a leading slash, as the file browser knows it.
+const props = defineProps({
+  path: property(String, true)
 })
 
-const route = useRoute()
+const segments = computed(() => props.path.split('/').filter(segment => segment !== ''))
 
-const breadcrumbs = computed(() => {
-  const crumbs = route.path.split('/')
-
-  return crumbs.map((name, index) => ({
-    link: crumbs.slice(0, index + 1).join('/') || '/',
-    name: index === crumbs.length - 1 ? name : name + '/'
+// The root first, then one crumb per directory. The last one is the directory being viewed.
+// `segment` is the directory name as it is in the path. `name` adds the separator shown after
+// it, and is what the crumb displays. The full segment is kept as a title, because a long one
+// is cut with an ellipsis.
+const trail = computed(() => [
+  { key: '', to: { name: 'overview' }, segment: '/', name: '/', current: segments.value.length === 0 },
+  ...segments.value.map((segment, index) => ({
+    key: segments.value.slice(0, index + 1).join('/'),
+    to: browseLocation(segments.value.slice(0, index + 1).join('/')),
+    segment,
+    name: index === segments.value.length - 1 ? segment : segment + '/',
+    current: index === segments.value.length - 1
   }))
-})
+])
+
+const parentLocation = computed(() => browseLocation(parentPathOf(props.path)))
 </script>
 
 <template>
-  <div class="">
-    <p class="pb-3 font-semibold">
-      <span class="select-none">
-        <router-link to="/">Index of </router-link>
-      </span>
-      <span class="select-text">
-        <router-link v-for="crumb of breadcrumbs" :key="crumb.link" :to="crumb.link">
-          <span class="hover:transition-colors hover:duration-200 hover:text-purple-500">{{ crumb.name }}</span>
+  <nav
+    aria-label="Breadcrumb"
+    class="flex min-w-0 flex-wrap items-center gap-y-1 md-title-medium"
+  >
+    <router-link
+      :to="{ name: 'overview' }"
+      class="md-state-layer md-focus-ring inline-flex min-h-12 items-center rounded-corner-small px-2 py-1 text-on-surface-variant hover:text-primary"
+    >
+      Index of
+    </router-link>
+    <ol class="flex min-w-0 flex-wrap items-center">
+      <li
+        v-for="crumb of trail"
+        :key="crumb.key"
+        class="flex min-w-0 max-w-full items-center"
+      >
+        <span
+          v-if="crumb.current"
+          class="block min-w-0 truncate px-1 py-1 text-on-surface"
+          :title="crumb.segment"
+          :aria-current="'page'"
+        >{{ crumb.name }}</span>
+        <router-link
+          v-else
+          :to="crumb.to"
+          :title="crumb.segment"
+          class="md-focus-ring inline-flex min-h-12 min-w-0 max-w-full items-center rounded-corner-small px-1 py-1 text-on-surface hover:text-primary"
+        >
+          <span class="min-w-0 truncate">{{ crumb.name }}</span>
         </router-link>
-      </span>
-      <router-link :to="parentPath">
-        <span class="font-normal text-xl text-gray-500 select-none"> ⤴ </span>
-      </router-link>
-    </p>
-  </div>
+      </li>
+    </ol>
+    <!-- The icon button is the link itself, so a click still navigates through the router. -->
+    <router-link
+      v-slot="{ href, navigate }"
+      :to="parentLocation"
+      custom
+    >
+      <MdIconButton
+        :href="href"
+        aria-label="Parent directory"
+        title="Parent directory"
+        class="ml-1"
+        @click="navigate"
+      >
+        <BrowserIcon name="arrowUp" />
+      </MdIconButton>
+    </router-link>
+  </nav>
 </template>

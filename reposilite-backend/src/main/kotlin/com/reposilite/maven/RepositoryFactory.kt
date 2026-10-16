@@ -45,6 +45,8 @@ internal class RepositoryFactory(
         Repository(
             name = repositoryName.ifEmpty { UUID.randomUUID().toString() },
             visibility = configuration.visibility,
+            description = configuration.description,
+            tags = configuration.tags,
             redeployment = configuration.redeployment,
             preserveSnapshots = configuration.preserveSnapshots,
             mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) },

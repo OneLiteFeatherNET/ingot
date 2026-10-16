@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 dzikoysk
+ * Copyright (c) 2026 OneLiteFeather
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,22 @@
  * limitations under the License.
  */
 
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from "vitest/config"
+import vue from "@vitejs/plugin-vue"
 
+// Kept apart from vite.config.js on purpose: the build config carries the production
+// placeholders and plugins that a unit test has no use for.
 export default defineConfig({
+  plugins: [vue()],
   test: {
-    environment: 'jsdom'
-  }
+    environment: "jsdom",
+    include: ["src/**/*.test.js"],
+    // @material/material-color-utilities 0.4 imports some of its own modules without a file
+    // extension. Node's loader cannot resolve those, so the package goes through Vite, which can.
+    server: {
+      deps: {
+        inline: ["@material/material-color-utilities"],
+      },
+    },
+  },
 })

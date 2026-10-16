@@ -17,6 +17,7 @@
 package com.reposilite.storage.s3
 
 import com.reposilite.configuration.shared.api.Doc
+import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.storage.StorageProviderSettings
 import io.javalin.openapi.Custom
 
@@ -39,10 +40,13 @@ data class S3StorageProviderSettings(
     override val type: String = "s3",
     @get:Doc(title = "Bucket", description = "The selected AWS bucket")
     val bucketName: String = "",
+    @get:Sensitive
     @get:Doc(title = "Endpoint", description = "Overwrite the AWS endpoint (optional)")
     val endpoint: String = "",
+    @get:Sensitive
     @get:Doc(title = "Access Key", description = "Overwrite AWS access-key used to authenticate (optional)")
     val accessKey: String = "",
+    @get:Sensitive
     @get:Doc(title = "Secret Key", description = "Overwrite AWS secret-key used to authenticate (optional)")
     val secretKey: String = "",
     @get:Doc(title = "Region", description = "Overwrite AWS region (optional)")

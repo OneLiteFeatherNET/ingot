@@ -26,16 +26,16 @@ import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.storage.StorageProviderSettings
-import io.javalin.util.JavalinBindException
+import com.reposilite.token.AccessTokenSecurityProvider
 import net.dzikoysk.cdn.KCdnFactory
 import net.dzikoysk.cdn.source.Source
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import panda.std.Result
+import panda.std.ResultAssertions.assertOk
 import panda.std.reactive.ReferenceUtils
 import java.io.File
-import java.util.concurrent.ThreadLocalRandom
 
 /**
  * This is a dirty launcher of Reposilite instance for integration tests.
@@ -48,6 +48,12 @@ internal abstract class ReposiliteRunner {
 
     companion object {
         val DEFAULT_TOKEN = "manager" to "manager-secret"
+
+        /** Stands in for an upstream that no test has started yet. Tests replace it through [useUpstreamPort]. */
+        const val UNSTARTED_UPSTREAM_PORT = 0
+
+        fun upstreamReference(port: Int): String =
+            "http://localhost:$port/releases"
     }
 
     @TempDir
@@ -68,11 +74,8 @@ internal abstract class ReposiliteRunner {
         }
 
         val logger = PrintStreamLogger(System.out, System.err, Channel.ALL, false)
-        var launchResult: Result<Reposilite, Exception>
-
-        do {
-            launchResult = prepareInstance(logger)
-        } while (launchResult.errorToOption().`is`(JavalinBindException::class.java).isPresent)
+        // Port 0: the OS picks a free port and the server reports it back, so nothing has to be retried.
+        assertOk(prepareInstance(logger))
     }
 
     private fun prepareInstance(logger: Logger): Result<Reposilite, Exception> {
@@ -80,8 +83,9 @@ internal abstract class ReposiliteRunner {
         parameters.tokenEntries = arrayOf("${DEFAULT_TOKEN.first}:${DEFAULT_TOKEN.second}")
         parameters.workingDirectoryName = reposiliteWorkingDirectory.absolutePath
         parameters.testEnv = true
-        parameters.port = 10000 + 2 * ThreadLocalRandom.current().nextInt(30_000 / 2)
+        parameters.port = 0
         parameters.database = _database
+        parameters.tokenHashStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH
         parameters.run()
         overrideParameters(parameters)
 
@@ -103,7 +107,7 @@ internal abstract class ReposiliteRunner {
                 id = "proxied",
                 proxied = listOf(
                     MirroredRepositorySettings(
-                        reference = "http://localhost:${parameters.port + 1}/releases"
+                        reference = upstreamReference(UNSTARTED_UPSTREAM_PORT)
                     )
                 )
             )
@@ -111,7 +115,7 @@ internal abstract class ReposiliteRunner {
                 id = "proxied-stored",
                 proxied = listOf(
                     MirroredRepositorySettings(
-                        reference = "http://localhost:${parameters.port + 1}/releases",
+                        reference = upstreamReference(UNSTARTED_UPSTREAM_PORT),
                         store = true,
                     )
                 )

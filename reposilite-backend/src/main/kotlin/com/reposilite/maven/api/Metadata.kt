@@ -15,6 +15,7 @@
  */
 package com.reposilite.maven.api
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
@@ -58,6 +59,11 @@ internal fun Metadata.extractSnapshotVersions(): VersionSequence? =
         ?.filterNotNull()
         ?.let { VersionSequence(true, it) }
 
+/*
+ * Absent values are left out instead of being written as empty elements, so that a missing release
+ * is not published as an empty string.
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @JacksonXmlRootElement(localName = "versioning")
 data class Versioning(
     val release: String? = null,

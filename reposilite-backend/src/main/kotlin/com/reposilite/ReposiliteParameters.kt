@@ -21,6 +21,7 @@ import com.reposilite.configuration.local.LocalConfigurationMode
 import com.reposilite.configuration.local.infrastructure.LOCAL_CONFIGURATION_FILE
 import com.reposilite.configuration.shared.infrastructure.SHARED_CONFIGURATION_FILE
 import com.reposilite.journalist.Channel
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.api.CreateAccessTokenRequest
 import picocli.CommandLine.Command
@@ -97,6 +98,13 @@ class ReposiliteParameters : Runnable {
 
     @Option(names = ["--test-env", "--debug", "-d"], description = ["Enable test mode"])
     var testEnv = false
+
+    /**
+     * BCrypt work factor for hashing persistent token secrets. It is deliberately not a command-line option and
+     * not read from any configuration file or environment variable, so an operator cannot weaken production hashing.
+     * Only the integration test harness lowers it.
+     */
+    var tokenHashStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH
 
     @Option(names = ["--disable-interactive-console", "--disable-it"], description = ["Disable interactive console"])
     var disableInteractiveConsole = false

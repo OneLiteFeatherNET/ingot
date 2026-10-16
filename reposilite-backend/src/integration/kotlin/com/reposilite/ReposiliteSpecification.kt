@@ -16,7 +16,9 @@
 
 package com.reposilite
 
+import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.Metadata
 import com.reposilite.maven.api.SaveMetadataRequest
@@ -64,6 +66,24 @@ internal abstract class ReposiliteSpecification : ReposiliteRunner() {
 
     val base: String
         get() = "http://localhost:${reposilite.parameters.port}"
+
+    /**
+     * Points the proxied repositories of this test at an upstream that the test has started on [port].
+     * Upstreams bind an OS-chosen port, so the reference is only known once they run.
+     */
+    protected fun useUpstreamPort(port: Int) {
+        reposilite.extensions.facade<SharedConfigurationFacade>()
+            .getDomainSettings<MavenSettings>()
+            .update { old ->
+                old.copy(
+                    repositories = old.repositories.map { repository ->
+                        repository.copy(
+                            proxied = repository.proxied.map { it.copy(reference = upstreamReference(port)) }
+                        )
+                    }
+                )
+            }
+    }
 
     fun useDefaultManagementToken(): Pair<String, String> =
         "manager" to "manager-secret"

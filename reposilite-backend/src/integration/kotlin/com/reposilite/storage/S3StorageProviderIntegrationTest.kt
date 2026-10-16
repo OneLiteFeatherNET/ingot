@@ -16,6 +16,9 @@
 
 package com.reposilite.storage
 
+import com.reposilite.IsolatedResources
+import com.reposilite.SharedContainers
+import com.reposilite.s3Endpoint
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.api.DirectoryInfo
@@ -25,24 +28,16 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.testcontainers.containers.GenericContainer
-import org.testcontainers.containers.wait.strategy.Wait
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import panda.std.ResultAssertions.assertOk
 import java.io.File
 
-@Testcontainers
 internal class S3StorageProviderIntegrationTest : StorageProviderIntegrationTest() {
 
     @TempDir
     lateinit var rootDirectory: File
 
-    @Container
-    val floci: GenericContainer<*> = GenericContainer(DockerImageName.parse("floci/floci:latest"))
-        .withExposedPorts(4566)
-        .waitingFor(Wait.forListeningPort())
+    // JUnit creates a new instance per test method, so every test gets a bucket of its own on the shared Floci.
+    private val bucket = IsolatedResources.newBucketName("storage-test")
 
     @BeforeEach
     fun setup() {
@@ -56,8 +51,8 @@ internal class S3StorageProviderIntegrationTest : StorageProviderIntegrationTest
             workingDirectory = rootDirectory.toPath(),
             repository = "test-repository",
             storageSettings = S3StorageProviderSettings(
-                bucketName = "test-repository",
-                endpoint = "http://${floci.host}:${floci.getMappedPort(4566)}",
+                bucketName = bucket,
+                endpoint = SharedContainers.floci.s3Endpoint(),
                 accessKey = "test",
                 secretKey = "test",
                 region = "us-east-1"
@@ -137,8 +132,8 @@ internal class S3StorageProviderIntegrationTest : StorageProviderIntegrationTest
             workingDirectory = rootDirectory.toPath(),
             repository = repository,
             storageSettings = S3StorageProviderSettings(
-                bucketName = "shared-bucket",
-                endpoint = "http://${floci.host}:${floci.getMappedPort(4566)}",
+                bucketName = bucket,
+                endpoint = SharedContainers.floci.s3Endpoint(),
                 accessKey = "test",
                 secretKey = "test",
                 region = "us-east-1",

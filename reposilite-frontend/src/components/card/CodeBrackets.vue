@@ -28,11 +28,5 @@ defineProps({
 </script>
 
 <template>
-  <span>{{start}}</span><slot/><span>{{end}}</span>
+  <span class="text-on-surface-variant">{{ start }}</span><slot /><span class="text-on-surface-variant">{{ end }}</span>
 </template>
-
-<style scoped>
-span {
-  color: #5f6364;
-}
-</style>

@@ -16,6 +16,7 @@
 
 package com.reposilite.frontend
 
+import com.reposilite.frontend.application.AppearanceSettings
 import com.reposilite.frontend.application.FrontendSettings
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -69,6 +70,62 @@ internal class FrontendFacadeTest {
 
         // then: the contribution reaches a dashboard that is not served by this instance
         assertThat(placeholders["{{REPOSILITE.JAVADOC_SUFFIXES}}"]).isEqualTo("-javadoc.jar")
+    }
+
+    @Test
+    fun `should fall back to the bundled favicon when none is configured`() {
+        // given: an instance without a configured favicon
+        val facade = facade()
+
+        // when: the placeholders for the bundled assets are collected
+        val placeholders = facade.createAssetPlaceholders()
+
+        // then: the favicon placeholder resolves to the file bundled next to the dashboard
+        assertThat(placeholders["{{REPOSILITE.FAVICON}}"]).isEqualTo("favicon.png")
+    }
+
+    @Test
+    fun `should point the favicon placeholder at the configured favicon`() {
+        // given: an instance with an operator supplied favicon
+        val facade = facade(FrontendSettings(appearance = AppearanceSettings(favicon = "https://example.com/icon.png")))
+
+        // when: the placeholders for the bundled assets are collected
+        val placeholders = facade.createAssetPlaceholders()
+
+        // then: the configured favicon replaces the bundled one
+        assertThat(placeholders["{{REPOSILITE.FAVICON}}"]).isEqualTo("https://example.com/icon.png")
+    }
+
+    @Test
+    fun `should keep the favicon placeholder out of the api response`() {
+        // given: an instance with an operator supplied favicon
+        val facade = facade(FrontendSettings(appearance = AppearanceSettings(favicon = "https://example.com/icon.png")))
+
+        // when: the placeholders for the api are collected
+        val placeholders = facade.createPlaceholders(escapeForJs = false)
+
+        // then: the placeholder map of the api is unchanged by the favicon
+        assertThat(placeholders.keys).doesNotContain("{{REPOSILITE.FAVICON}}")
+    }
+
+    @Test
+    fun `should answer the settings request with the identity and the appearance`() {
+        // given: an instance with a title and an appearance
+        val facade = facade(
+            FrontendSettings(
+                title = "Team Repository",
+                appearance = AppearanceSettings(seedColor = "#1A2B3C", footerText = "Hosted by Team"),
+            )
+        )
+
+        // when: the settings response is built
+        val response = facade.createSettingsResponse()
+
+        // then: the frontend gets the values as plain fields, and the appearance under its own name
+        assertThat(response.title).isEqualTo("Team Repository")
+        assertThat(response.appearance.seedColor).isEqualTo("#1A2B3C")
+        assertThat(response.appearance.footerText).isEqualTo("Hosted by Team")
+        assertThat(response.placeholders["{{REPOSILITE.TITLE}}"]).isEqualTo("Team Repository")
     }
 
     @Test

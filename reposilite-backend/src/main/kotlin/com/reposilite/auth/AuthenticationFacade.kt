@@ -17,25 +17,36 @@
 package com.reposilite.auth
 
 import com.google.common.cache.Cache
+import com.google.common.base.Ticker
 import com.google.common.cache.CacheBuilder
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
 import com.reposilite.auth.api.Credentials
 import com.reposilite.auth.api.SessionDetails
+import com.reposilite.auth.api.SessionGrant
+import com.reposilite.auth.api.SessionPrincipal
 import com.reposilite.auth.application.BruteForceProtectionSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
+import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.shared.unauthorizedError
 import com.reposilite.token.AccessTokenFacade
+import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.api.AccessTokenDto
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
+import java.time.Clock
+import java.time.Duration
 import java.util.SortedSet
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit.HOURS
-import java.util.concurrent.TimeUnit.MINUTES
+import java.util.concurrent.TimeUnit.NANOSECONDS
 
 private data class FailedAttempt(
     val count: Int,
@@ -46,16 +57,41 @@ class AuthenticationFacade(
     private val journalist: Journalist,
     private val authenticators: SortedSet<Authenticator>,
     private val accessTokenFacade: AccessTokenFacade,
-    private val bruteForceProtectionSettings: Reference<BruteForceProtectionSettings> = Reference.reference(BruteForceProtectionSettings())
+    private val bruteForceProtectionSettings: Reference<BruteForceProtectionSettings> = Reference.reference(BruteForceProtectionSettings()),
+    private val extensions: Extensions = Extensions(journalist),
+    private val clock: Clock = Clock.systemUTC(),
+    private val ticker: Ticker = Ticker.systemTicker(),
 ) : Journalist, Facade {
 
+    companion object {
+        /**
+         * Upper bound for a cached successful authentication, counted from the moment it was cached. Measured from the
+         * write and not from the last hit, so that a credential in continuous use is checked again once per bound.
+         */
+        val CREDENTIAL_CACHE_MAX_AGE: Duration = Duration.ofMinutes(1)
+    }
+
+    /**
+     * Successful authentications, keyed by the presented credentials. An entry is only a shortcut: every change of its token
+     * made on this instance drops the entries of that token at once (see [forgetCachedCredentials]), and every hit is checked
+     * against the expiry of the token. Other instances of a cluster are not told about a change, so their entries can keep
+     * working for up to one minute after the change was made elsewhere.
+     */
     private val authenticationCache: Cache<Credentials, AccessTokenDto> =
         CacheBuilder
             .newBuilder()
             .maximumSize(16)
             .concurrencyLevel(2)
-            .expireAfterAccess(1, MINUTES)
+            .expireAfterWrite(CREDENTIAL_CACHE_MAX_AGE.toNanos(), NANOSECONDS)
+            .ticker(ticker)
             .build()
+
+    /**
+     * Guards the pairing of a cache write with the generation it was computed under, so that a result read before a
+     * change cannot be cached after that change dropped the entries.
+     */
+    private val cacheLock = Any()
+    private val tokenGeneration = AtomicLong()
 
     private val failedAttempts: Cache<String, FailedAttempt> by lazy {
         CacheBuilder
@@ -65,18 +101,23 @@ class AuthenticationFacade(
             .build()
         }
 
+    init {
+        accessTokenFacade.onTokenChanged { forgetCachedCredentials(it) }
+    }
+
     fun registerAuthenticator(authenticator: Authenticator) {
         this.authenticators.add(authenticator)
     }
 
     fun authenticateByCredentials(credentials: Credentials): Result<out AccessTokenDto, ErrorResponse> {
         if (isBruteForceBlocked(credentials.ip)) {
+            recordRejectedLogin(credentials)
             return unauthorizedError("Invalid authorization credentials")
         }
 
+        val generation = tokenGeneration.get()
         val result =
-            authenticationCache
-                .getIfPresent(credentials)
+            cachedAuthentication(credentials)
                 ?.asSuccess()
                 ?: authenticators
                     .asSequence()
@@ -87,11 +128,58 @@ class AuthenticationFacade(
                             .onError { logger.debug("${credentials.name}@${credentials.ip} failed to authenticate with ${authenticator.realm()} realm due to $it") }
                     }
                     .firstOrNull { it.isOk }
-                    ?.peek { authenticationCache.put(credentials, it) }
+                    ?.peek { cacheAuthentication(credentials, it, generation) }
                 ?: unauthorizedError("Invalid authorization credentials")
 
         trackBruteForceAttempt(ip = credentials.ip, success = result.isOk)
+        if (result.isErr) {
+            recordRejectedLogin(credentials)
+        }
+        // Cache hits count as use too: the facade throttles the write, so a busy cache does not write more often.
+        result.peek { accessTokenFacade.recordTokenUsage(it.identifier, credentials.ip) }
         return result
+    }
+
+    private fun cachedAuthentication(credentials: Credentials): AccessTokenDto? {
+        val cached = authenticationCache.getIfPresent(credentials) ?: return null
+        if (cached.isExpired(clock)) {
+            authenticationCache.invalidate(credentials)
+            return null
+        }
+        return cached
+    }
+
+    private fun cacheAuthentication(credentials: Credentials, accessToken: AccessTokenDto, generation: Long) {
+        synchronized(cacheLock) {
+            if (tokenGeneration.get() == generation) {
+                authenticationCache.put(credentials, accessToken)
+            }
+        }
+    }
+
+    /**
+     * Called after every change of a token. Drops the cached credentials of that name, whichever secret or address they
+     * were presented with, and bumps the generation so that an authentication still in flight is not cached.
+     */
+    private fun forgetCachedCredentials(tokenName: String) {
+        synchronized(cacheLock) {
+            tokenGeneration.incrementAndGet()
+            authenticationCache.asMap().keys.removeIf { it.name == tokenName }
+        }
+    }
+
+    /**
+     * Only the attempted name and address are recorded. The secret is part of the credentials and
+     * stays out of the audit log.
+     */
+    private fun recordRejectedLogin(credentials: Credentials) {
+        extensions.emitEvent(
+            AuditEvent(
+                action = AuditAction.LOGIN_FAILED,
+                actor = AuditActor.named(credentials.name, credentials.ip),
+                success = false,
+            )
+        )
     }
 
     private fun isBruteForceBlocked(ip: String): Boolean {
@@ -142,10 +230,17 @@ class AuthenticationFacade(
     fun getSessionDetails(identifier: AccessTokenIdentifier): Result<SessionDetails, ErrorResponse> =
         accessTokenFacade.getAccessTokenById(identifier)
             ?.let {
+                val subject = accessTokenFacade.subjectOf(it.identifier)
                 SessionDetails(
                     accessToken = it,
                     permissions = accessTokenFacade.getPermissions(it.identifier),
-                    routes = accessTokenFacade.getRoutes(it.identifier)
+                    routes = accessTokenFacade.getRoutes(it.identifier),
+                    principal = SessionPrincipal(id = subject.principalId, kind = subject.kind.name, name = subject.principalName ?: it.name),
+                    teams = subject.teams,
+                    nodes = PermissionEvaluator.effectiveNodes(subject),
+                    grants = subject.levels.flatMap { it.grants }.map { grant ->
+                        SessionGrant(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name)
+                    },
                 )
             }
             ?.asSuccess()

@@ -26,6 +26,7 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiResponse
 import panda.std.asSuccess
+import panda.std.reactive.Reference
 
 /**
  * Serves the dashboard's own presentation settings so it can run somewhere other than in
@@ -37,26 +38,29 @@ import panda.std.asSuccess
  * already. The authenticated /api/settings endpoints stay authenticated: those expose the
  * whole configuration, including the LDAP search password.
  */
-internal class FrontendSettingsEndpoint(private val frontendFacade: FrontendFacade) : ReposiliteRoutes() {
+internal class FrontendSettingsEndpoint(
+    private val frontendFacade: FrontendFacade,
+    private val secretsHidden: Reference<Boolean>,
+) : ReposiliteRoutes() {
 
     @OpenApi(
         tags = ["Frontend"],
         path = "/api/frontend/settings",
         methods = [HttpMethod.GET],
         summary = "Fetch the dashboard presentation settings",
-        description = "Returns the values a dashboard needs to render itself. Public, because a bundled dashboard already exposes all of them to anonymous visitors.",
+        description = "Returns the values a dashboard needs to render itself, including its appearance. Public, because a bundled dashboard already exposes all of them to anonymous visitors.",
         responses = [
             OpenApiResponse(
                 status = "200",
-                description = "Presentation settings, keyed by placeholder token",
+                description = "Presentation settings, as plain fields and as placeholder tokens",
                 content = [OpenApiContent(from = FrontendSettingsResponse::class)]
             )
         ]
     )
     private val findFrontendSettings = ReposiliteRoute<FrontendSettingsResponse>("/api/frontend/settings", GET) {
-        response = FrontendSettingsResponse(
-            placeholders = frontendFacade.createPlaceholders(escapeForJs = false)
-        ).asSuccess()
+        response = frontendFacade.createSettingsResponse()
+            .copy(secretsHidden = secretsHidden.get())
+            .asSuccess()
     }
 
     override val routes = routes(findFrontendSettings)

@@ -35,16 +35,27 @@ export default function useLog() {
     }
   })
 
+  // A separator is a marker in the output, not a line from the server, so the filters and the
+  // level switches never hide it.
+  const isSeparator = entry => entry.kind === 'separator'
+
   const log = computed(() => {
     return rawLog
-      .filter(entry => entry.text.toLowerCase().includes(filter.value.toLowerCase()))
-      .filter(entry => levels[entry.level].enabled)
+      .filter(entry => isSeparator(entry) || entry.text.toLowerCase().includes(filter.value.toLowerCase()))
+      .filter(entry => isSeparator(entry) || levels[entry.level].enabled)
   })
+
+  const hasLines = computed(() => rawLog.some(entry => !isSeparator(entry)))
 
   const logMessage = value => {
     const segments = parseAnsi(value)
     const text = segments.map(segment => segment.text).join('')
-    rawLog.push({ id: id.value++, segments, text, level: getLevel(value) })
+    rawLog.push({ id: id.value++, kind: 'line', segments, text, level: getLevel(value) })
+  }
+
+  // The label is ours and constant, and like every other line it is rendered as text.
+  const addSeparator = label => {
+    rawLog.push({ id: id.value++, kind: 'separator', message: label, text: label, level: null })
   }
 
   const clearLog = () => {
@@ -54,8 +65,12 @@ export default function useLog() {
   return {
     levels,
     log,
+    hasLines,
     filter,
     logMessage,
+    addSeparator,
     clearLog
   }
 }
+
+export { levelNames }

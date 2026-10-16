@@ -40,12 +40,15 @@ RUN npm run build
 # The remaining placeholders sit in the document head, which is rendered before the app can
 # fetch anything, so an untouched build would show a raw token in the browser tab until Vue
 # takes over. They are replaced with neutral text; the real values arrive with the settings
-# and the app applies them.
+# and the app applies them. The base element is the exception: it has to be the mount point
+# the build was made for, or the favicon of a deep link resolves below it.
 RUN set -eu; \
     index=build/frontend/reposilite-frontend/index.html; \
     sed -i \
         -e 's/{{REPOSILITE.TITLE}}/Ingot Repository/g' \
         -e 's|{{REPOSILITE.DESCRIPTION}}|Maven repository powered by Ingot|g' \
+        -e 's|{{REPOSILITE.FAVICON}}|favicon.png|g' \
+        -e "s|{{REPOSILITE.BASE_PATH}}|${INGOT_BASE_PATH}|g" \
         "$index"; \
     ! grep -q '{{REPOSILITE\.' "$index"
 

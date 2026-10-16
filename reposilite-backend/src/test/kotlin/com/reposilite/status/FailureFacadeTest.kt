@@ -16,9 +16,13 @@
 
 package com.reposilite.status
 
+import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.status.specification.FailureSpecification
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 
 internal class FailureFacadeTest : FailureSpecification() {
 
@@ -35,5 +39,119 @@ internal class FailureFacadeTest : FailureSpecification() {
         assertThat(failureFacade.hasFailures()).isTrue
         assertThat(failureFacade.getFailures().iterator().next().contains(message)).isTrue
     }
+
+    @Test
+    fun `should timestamp a failure with the injected clock`() {
+        // given: a clock frozen at a known instant
+        val facade = FailureFacade(InMemoryLogger(), MutableClock(Instant.parse("2026-03-01T10:15:30Z")))
+
+        // when: a failure is recorded
+        facade.throwException("PATH /com/reposilite", RuntimeException("boom"))
+
+        // then: the record carries the instant reported by the clock
+        assertThat(facade.getFailureRecords().single().timestamp).isEqualTo(Instant.parse("2026-03-01T10:15:30Z"))
+    }
+
+    @Test
+    fun `should describe a failure by its source, exception type and message`() {
+        // given: a failure reported for a request
+        val facade = FailureFacade(InMemoryLogger(), MutableClock(Instant.EPOCH))
+
+        // when: the failure is recorded
+        facade.throwException("/api/maven/details", IllegalStateException("repository is broken"))
+
+        // then: the record names the source, the exception class and its message
+        val record = facade.getFailureRecords().single()
+        assertThat(record.source).isEqualTo("/api/maven/details")
+        assertThat(record.type).isEqualTo("IllegalStateException")
+        assertThat(record.message).isEqualTo("repository is broken")
+    }
+
+    @Test
+    fun `should include the stacktrace of the failure`() {
+        // given: a facade and an exception raised with a stacktrace
+        val facade = FailureFacade(InMemoryLogger(), MutableClock(Instant.EPOCH))
+
+        // when: the failure is recorded
+        facade.throwException("/api/maven/details", RuntimeException("boom"))
+
+        // then: the stacktrace lists the frames of the exception
+        assertThat(facade.getFailureRecords().single().stacktrace).contains("  at ")
+    }
+
+    @Test
+    fun `should aggregate identical failures into a single record with a count`() {
+        // given: a facade and an identical failure
+        val facade = FailureFacade(InMemoryLogger(), MutableClock(Instant.EPOCH))
+        val exception = RuntimeException("same")
+
+        // when: the failure is recorded three times
+        repeat(3) { facade.throwException("/com/reposilite", exception) }
+
+        // then: one record remains and counts every occurrence
+        assertThat(facade.getFailureRecords()).hasSize(1)
+        assertThat(facade.getFailureRecords().single().count).isEqualTo(3)
+    }
+
+    @Test
+    fun `should list failures newest first`() {
+        // given: two failures recorded at different instants
+        val clock = MutableClock(Instant.parse("2026-03-01T10:00:00Z"))
+        val facade = FailureFacade(InMemoryLogger(), clock)
+        facade.throwException("first", RuntimeException("first"))
+        clock.current = Instant.parse("2026-03-01T11:00:00Z")
+        facade.throwException("second", RuntimeException("second"))
+
+        // when: the records are requested
+        val sources = facade.getFailureRecords().map { it.source }
+
+        // then: the most recent failure comes first
+        assertThat(sources).containsExactly("second", "first")
+    }
+
+    @Test
+    fun `should move a recurring failure to the top with the time of its latest occurrence`() {
+        // given: an old failure followed by a newer one
+        val clock = MutableClock(Instant.parse("2026-03-01T10:00:00Z"))
+        val facade = FailureFacade(InMemoryLogger(), clock)
+        val recurring = RuntimeException("recurring")
+        facade.throwException("recurring", recurring)
+        clock.current = Instant.parse("2026-03-01T11:00:00Z")
+        facade.throwException("other", RuntimeException("other"))
+
+        // when: the old failure happens again
+        clock.current = Instant.parse("2026-03-01T12:00:00Z")
+        facade.throwException("recurring", recurring)
+
+        // then: it is listed first, with the time of its latest occurrence and the total count
+        val top = facade.getFailureRecords().first()
+        assertThat(top.source).isEqualTo("recurring")
+        assertThat(top.timestamp).isEqualTo(Instant.parse("2026-03-01T12:00:00Z"))
+        assertThat(top.count).isEqualTo(2)
+    }
+
+    @Test
+    fun `should remove every recorded failure when cleared`() {
+        // given: a facade holding a failure
+        val facade = FailureFacade(InMemoryLogger(), MutableClock(Instant.EPOCH))
+        facade.throwException("/com/reposilite", RuntimeException("boom"))
+
+        // when: the failures are cleared
+        facade.clearFailures()
+
+        // then: nothing is left to report
+        assertThat(facade.hasFailures()).isFalse
+        assertThat(facade.getFailureRecords()).isEmpty()
+    }
+
+}
+
+private class MutableClock(var current: Instant) : Clock() {
+
+    override fun getZone(): ZoneId = ZoneId.of("UTC")
+
+    override fun withZone(zone: ZoneId): Clock = this
+
+    override fun instant(): Instant = current
 
 }

@@ -98,6 +98,15 @@ dependencies {
     val bcrypt = "0.10.2"
     implementation("at.favre.lib:bcrypt:$bcrypt")
 
+    // Argon2id for local login passwords. Declared explicitly although bcrypt already brings the same version in: the
+    // login code calls it directly, so it must not depend on a transitive version that another library could change.
+    val bouncyCastle = "1.84"
+    implementation("org.bouncycastle:bcprov-jdk18on:$bouncyCastle")
+
+    // JWT for browser sessions (HS256 only). Verification pins the algorithm, so an unsigned token is never accepted.
+    val nimbus = "10.9.1"
+    implementation("com.nimbusds:nimbus-jose-jwt:$nimbus")
+
     val expressible = "1.3.6"
     api("org.panda-lang:expressible:$expressible")
     api("org.panda-lang:expressible-kt:$expressible")
@@ -295,6 +304,16 @@ licenseReport {
     allowedLicensesFile = file("allowed-licenses.json")
 }
 
+// Set in the root build: true in CI, or with -Pcoverage=true, or when testCoverage is requested.
+val ingotTestCoverageEnabled = rootProject.extra["ingotTestCoverageEnabled"] as Boolean
+
+tasks.withType<Test>().configureEach {
+    // Without coverage the agent is not attached at all, which saves its instrumentation on every class load.
+    extensions.configure(JacocoTaskExtension::class) {
+        isEnabled = ingotTestCoverageEnabled
+    }
+}
+
 tasks.test {
     extensions.configure(JacocoTaskExtension::class) {
         setDestinationFile(file("${project.layout.buildDirectory.get()}/jacoco/jacoco.exec"))
@@ -333,6 +352,7 @@ testing {
                     systemProperty("ingot.image", providers.systemProperty("ingot.image").getOrElse("ingot:ci"))
                     systemProperty("ingot.dashboard.image", providers.systemProperty("ingot.dashboard.image").getOrElse("ingot-dashboard:ci"))
                     systemProperty("ingot.upstream.image", providers.systemProperty("ingot.upstream.image").getOrElse("dzikoysk/reposilite:3.5.28"))
+                    systemProperty("ingot.previous.image", providers.systemProperty("ingot.previous.image").getOrElse("ghcr.io/onelitefeathernet/ingot:1.1.0"))
 
                     // One container at a time, and several of them per test. Running the
                     // classes in parallel would just contend for the same Docker daemon.
@@ -358,6 +378,7 @@ dependencies {
 }
 
 tasks.jacocoTestReport {
+    onlyIf { ingotTestCoverageEnabled }
     reports {
         html.required.set(false)
         csv.required.set(false)
@@ -370,6 +391,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
+    onlyIf { ingotTestCoverageEnabled }
     violationRules {
         rule {
             limit {

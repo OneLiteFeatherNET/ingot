@@ -15,8 +15,9 @@
  */
 
 import { watch, reactive } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useSession } from './session'
+import { qualifierOf } from '../router/paths'
 
 const qualifier = reactive({
   watchable: 0,
@@ -25,12 +26,6 @@ const qualifier = reactive({
 
 const refreshQualifier = () =>
   qualifier.watchable++
-
-const getParentPath = () =>
-  `/${(qualifier.path.endsWith('/') ? qualifier.path.slice(0, -1) : qualifier.path)}`
-    .split("/")
-    .slice(0, -1)
-    .join('/') || '/'
 
 const { details } = useSession()
 
@@ -41,15 +36,17 @@ watch(
 
 export default function useQualifier() {
   const route = useRoute()
-  const router = useRouter()
 
-  const redirectTo = (path) => {
-    router.push(path)
-  }
-
+  // The path comes from the browse route. Overview and the other sections have no qualifier,
+  // which reads as the root of the repository. Every view that calls this reads the same path,
+  // so only a change of path reloads the listing; a second view on the same path would
+  // otherwise request the same directory again.
   watch(
-    () => route.params.qualifier,
+    () => qualifierOf(route.params),
     newQualifier => {
+      if (qualifier.path === newQualifier) {
+        return
+      }
       qualifier.path = newQualifier
       refreshQualifier()
     },
@@ -58,8 +55,6 @@ export default function useQualifier() {
 
   return {
     qualifier,
-    getParentPath,
-    refreshQualifier,
-    redirectTo
+    refreshQualifier
   }
 }

@@ -20,11 +20,33 @@ import com.reposilite.journalist.Channel
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.plugin.api.Facade
-import java.util.concurrent.ConcurrentHashMap
+import java.time.Clock
+import java.time.Instant
 
-class FailureFacade(private val journalist: Journalist) : Journalist, Facade {
+/**
+ * One aggregated failure. Occurrences that render identically are folded into the same record:
+ * [timestamp] is the latest occurrence and [count] the number of occurrences.
+ */
+data class FailureRecord(
+    val id: Long,
+    val timestamp: Instant,
+    val source: String,
+    val type: String,
+    val message: String?,
+    val stacktrace: String,
+    val count: Int
+)
 
-    private val exceptions = ConcurrentHashMap.newKeySet<String>()
+class FailureFacade(
+    private val journalist: Journalist,
+    private val clock: Clock = Clock.systemUTC()
+) : Journalist, Facade {
+
+    private val lock = Any()
+
+    // key: the rendered failure as the console shows it
+    private val failures = LinkedHashMap<String, FailureRecord>()
+    private var lastId = 0L
 
     fun throwException(identifier: String, throwable: Throwable) =
         throwException(identifier, Channel.ERROR, throwable)
@@ -33,10 +55,24 @@ class FailureFacade(private val journalist: Journalist) : Journalist, Facade {
         logger.log(channel, identifier)
         logger.exception(channel, throwable)
 
-        arrayOf("failure $identifier", exceptionToString(throwable))
+        val rendered = arrayOf("failure $identifier", exceptionToString(throwable))
             .joinToString(separator = System.lineSeparator())
             .trim()
-            .let { exceptions.add(it) }
+        val now = clock.instant()
+
+        synchronized(lock) {
+            val existing = failures[rendered]
+            failures[rendered] = existing?.copy(timestamp = now, count = existing.count + 1)
+                ?: FailureRecord(
+                    id = ++lastId,
+                    timestamp = now,
+                    source = identifier,
+                    type = throwable.javaClass.simpleName,
+                    message = throwable.message,
+                    stacktrace = exceptionToString(throwable),
+                    count = 1
+                )
+        }
     }
 
     private fun exceptionToString(throwable: Throwable?): String =
@@ -56,10 +92,21 @@ class FailureFacade(private val journalist: Journalist) : Journalist, Facade {
             ?: "<unknown stacktrace>"
 
     fun hasFailures() =
-        exceptions.isNotEmpty()
+        synchronized(lock) { failures.isNotEmpty() }
 
     fun getFailures(): Collection<String> =
-        exceptions
+        synchronized(lock) { failures.keys.toList() }
+
+    /**
+     * Recorded failures, newest first.
+     */
+    fun getFailureRecords(): List<FailureRecord> =
+        synchronized(lock) {
+            failures.values.sortedWith(compareByDescending<FailureRecord> { it.timestamp }.thenByDescending { it.id })
+        }
+
+    fun clearFailures() =
+        synchronized(lock) { failures.clear() }
 
     override fun getLogger(): Logger =
         journalist.logger

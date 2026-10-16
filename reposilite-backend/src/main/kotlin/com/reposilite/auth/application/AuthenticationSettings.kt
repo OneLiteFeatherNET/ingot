@@ -17,6 +17,7 @@
 package com.reposilite.auth.application
 
 import com.reposilite.configuration.shared.api.Doc
+import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.token.AccessTokenType
 import com.reposilite.token.AccessTokenType.PERSISTENT
@@ -54,6 +55,7 @@ data class LdapSettings(
     val baseDn: String = "dc=company,dc=com",
     @get:Doc(title = "Search-User DN", description = "User used to perform searches in LDAP server (requires permissions to read all LDAP entries)")
     val searchUserDn: String = "cn=reposilite,ou=admins,dc=domain,dc=com",
+    @get:Sensitive
     @get:Doc(title = "Search-User Password", description = "Search user's password")
     val searchUserPassword: String = "reposilite-admin-secret",
     @get:Doc(title = "Type Attribute", description = "Attribute in LDAP that represents given type/group (objectClass)")

@@ -15,12 +15,60 @@
   -->
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSession } from '../../store/session'
-import useLog from '../../store/console/log'
+import useLog, { levelNames } from '../../store/console/log'
 import useConsole from '../../store/console/connection'
+import { openLogin } from '../../store/login'
+import { isNearBottom } from './scroll'
+import { enabledFromLevelParam, levelParam } from '../../router/url-state'
+import MdButton from '../md/MdButton.vue'
+import MdChip from '../md/MdChip.vue'
+import MdIconButton from '../md/MdIconButton.vue'
+import MdTextField from '../md/MdTextField.vue'
 
-const { levels, log, logMessage, filter, clearLog } = useLog()
+const props = defineProps({
+  /**
+   * The levels the address shows, as a comma list. Absent means every level is shown.
+   */
+  level: {
+    type: String,
+    default: undefined
+  },
+  /**
+   * The text the output is filtered by.
+   */
+  search: {
+    type: String,
+    default: ''
+  }
+})
+
+const emit = defineEmits(['update:level', 'update:search'])
+
+const { levels, log, hasLines, logMessage, filter, addSeparator } = useLog()
+
+// The address and the switches agree. Whenever the address changes, the switches and the
+// filter take its values; whenever a switch or the filter changes, the address is told.
+const applyAddress = () => {
+  const shown = enabledFromLevelParam(props.level, levelNames)
+  levelNames.forEach(name => {
+    levels[name].enabled = shown.includes(name)
+  })
+  filter.value = props.search
+}
+watch(() => [props.level, props.search], applyAddress, { immediate: true })
+
+const shownLevels = () => levelNames.filter(name => levels[name].enabled)
+
+watch(
+  () => [levelNames.map(name => levels[name].enabled).join(), filter.value],
+  () => {
+    const level = levelParam(shownLevels(), levelNames)
+    if (level !== props.level) emit('update:level', level)
+    if (filter.value !== props.search) emit('update:search', filter.value)
+  }
+)
 
 const {
   onOpen, onMessage, onClose, onError,
@@ -28,6 +76,7 @@ const {
   close,
   status,
   failure,
+  sessionExpired,
   command,
   execute,
   previousCommand,
@@ -39,11 +88,33 @@ const scrollToEnd = () => {
   if (console) console.scrollTop = console.scrollHeight
 }
 
+// Whether the reader is at the end of the output. New lines are only pulled into view while
+// they are, so somebody reading earlier output is not dragged down by every line that arrives.
+const atBottom = ref(true)
+
+const updateFollowing = (event) => {
+  atBottom.value = isNearBottom(event.currentTarget)
+}
+
+const jumpToLatest = () => {
+  scrollToEnd()
+  atBottom.value = true
+}
+
 const setupConnection = () => {
-  onOpen.value = () => clearLog()
+  // A reconnect keeps what was already printed. The gap is marked rather than hidden, so the
+  // reader can tell output that came before the drop from output after it.
+  onOpen.value = () => {
+    if (hasLines.value) addSeparator('Reconnected')
+  }
   onMessage.value = message => {
+    // Decided before the line lands: the scroll event for the new line has not fired yet, so
+    // the flag still says where the reader was.
+    const following = atBottom.value
     logMessage(message)
-    nextTick(() => scrollToEnd())
+    nextTick(() => {
+      if (following) scrollToEnd()
+    })
   }
   // The connection used to announce itself through three toasts, one of which landed on
   // the header while the panel below stayed an empty white rectangle. The state belongs
@@ -61,7 +132,22 @@ onBeforeUnmount(close)
 
 const connecting = computed(() => status.value === 'connecting')
 const disconnected = computed(() => status.value === 'error' || status.value === 'closed')
-const awaitingFirstLine = computed(() => status.value === 'open' && log.value.length === 0)
+// Two different emptinesses. Nothing has been printed yet, so waiting is right. Lines have
+// arrived but the filter or the level switches hide all of them, and waiting would be wrong:
+// the output exists, it is just not on show.
+const awaitingFirstLine = computed(() => status.value === 'open' && !hasLines.value)
+const noLinesMatch = computed(() =>
+  status.value === 'open' && hasLines.value && !log.value.some(entry => entry.kind !== 'separator'))
+
+const announcement = computed(() => {
+  switch (status.value) {
+    case 'connecting': return 'Connecting to the remote console.'
+    case 'open': return 'Connected to the remote console.'
+    case 'error':
+    case 'closed': return 'Not connected to the remote console.'
+    default: return ''
+  }
+})
 
 /*
  * The panel used to be 36rem tall on every screen, which overflows a laptop and leaves a
@@ -93,123 +179,192 @@ onMounted(() => {
 
 onBeforeUnmount(() => window.removeEventListener('resize', measurePanel))
 
-/*
- * Warn and Error are the two levels a reader looks for first, so they keep a colour while
- * they are on. The colour never carries the state on its own: a chip that is on has a solid
- * border, a filled marker and a heavier label, and one that is off has a dashed border, a
- * hollow marker and muted text, whatever its level.
- */
-const ENABLED_LEVEL_COLOURS = {
-  Warn: 'text-yellow-700 dark:text-yellow-500',
-  Error: 'text-red-700 dark:text-red-400'
-}
-
-const chipClasses = (level) =>
-  level.enabled
-    ? `border-solid border-gray-400 bg-white font-semibold dark:border-gray-500 dark:bg-gray-900 ${ENABLED_LEVEL_COLOURS[level.name] ?? 'text-gray-800 dark:text-gray-100'}`
-    : 'border-dashed border-gray-300 bg-transparent font-normal text-gray-500 dark:border-gray-700 dark:text-gray-400'
+const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Z'
 </script>
 
 <template>
-  <div class="container mx-auto px-15 pt-7 pb-12 text-xs max-sm:px-4">
-    <div class="flex w-full flex-col justify-between py-2 text-sm xl:flex-row">
-      <label class="w-full xl:w-1/2 xl:mr-5">
-        <span class="sr-only">Filter log output</span>
-        <input
+  <div class="container mx-auto pt-7 pb-12">
+    <div class="flex w-full flex-col gap-3 pb-3 xl:flex-row xl:items-start xl:justify-between">
+      <div class="w-full xl:mr-5 xl:w-1/2">
+        <MdTextField
           v-model="filter"
-          placeholder="Filter"
-          class="w-full rounded-lg bg-white px-4 py-1 dark:bg-gray-900"
+          label="Filter log output"
+          variant="outlined"
+        />
+      </div>
+      <div
+        role="group"
+        aria-label="Log levels"
+        class="flex w-full flex-row flex-wrap items-center gap-2 xl:w-1/2 xl:justify-end"
+      >
+        <MdChip
+          v-for="entry in levels"
+          :key="entry.name"
+          variant="filter"
+          :selected="entry.enabled"
+          @click="entry.enabled = !entry.enabled"
         >
-      </label>
-      <div class="flex w-full flex-row flex-wrap items-center gap-2 pt-2 xl:w-1/2 xl:justify-end xl:pt-0">
-        <button
-          v-for="level in levels"
-          :key="level.name"
-          type="button"
-          :aria-pressed="level.enabled"
-          class="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 font-sans text-xs focus-visible:outline-2 focus-visible:outline-offset-2"
-          :class="chipClasses(level)"
-          @click="level.enabled = !level.enabled"
-        >
-          <span
-            aria-hidden="true"
-            class="h-1.5 w-1.5 shrink-0 rounded-full"
-            :class="level.enabled ? 'bg-current' : 'ring-1 ring-current'"
-          />
-          {{ level.name }}
-          <span class="tabular-nums">{{ level.count }}</span>
-        </button>
+          {{ entry.name }}
+          <span class="tabular-nums">{{ entry.count }}</span>
+        </MdChip>
       </div>
     </div>
 
-    <div
+    <section
       ref="panel"
-      class="flex flex-col rounded-lg bg-white dark:bg-gray-900"
+      aria-label="Remote console"
+      class="flex flex-col overflow-hidden rounded-corner-medium bg-surface-container-highest"
       :style="{ height: panelHeight }"
     >
-      <!-- scrollToEnd() drives this element by id, so it has to stay the one that scrolls. -->
-      <div
-        id="console"
-        class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono text-xs"
-        aria-live="polite"
+      <!--
+        The one live region in the view, and it carries the connection state only. The log
+        itself is not announced: a busy server would otherwise read out every line it prints.
+      -->
+      <p
+        class="sr-only"
+        role="status"
       >
-        <p
-          v-for="entry in log"
-          :key="entry.id"
-          class="whitespace-nowrap"
-        ><span
-          v-for="(segment, index) in entry.segments"
-          :key="index"
-          :class="segment.classes"
-        >{{ segment.text }}</span></p>
+        {{ announcement }}
+      </p>
 
-        <!--
+      <div
+        v-if="connecting || disconnected"
+        class="flex flex-wrap items-center gap-3 px-4 py-3 md-body-medium"
+        :class="disconnected ? 'bg-error-container text-on-error-container' : 'bg-surface-container-high text-on-surface-variant'"
+      >
+        <template v-if="connecting">
+          <span>Connecting to the remote console...</span>
+        </template>
+        <template v-else>
+          <div class="min-w-0 flex-1">
+            <p class="md-title-small">
+              Not connected to the remote console
+            </p>
+            <p class="pt-0.5">
+              {{ failure || 'The stream was closed.' }}
+              Log output stops until the connection is restored. Anything already printed
+              stays visible below.
+            </p>
+          </div>
+          <MdButton
+            v-if="sessionExpired"
+            variant="filled"
+            @click="openLogin()"
+          >
+            Sign in
+          </MdButton>
+          <MdButton
+            variant="tonal"
+            @click="setupConnection()"
+          >
+            Reconnect
+          </MdButton>
+        </template>
+      </div>
+
+      <div class="relative flex min-h-0 flex-1 flex-col">
+        <!-- scrollToEnd() drives this element by id, so it has to stay the one that scrolls. -->
+        <div
+          id="console"
+          role="region"
+          aria-label="Console output"
+          tabindex="0"
+          class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap px-4 py-2 font-mono md-body-small text-on-surface"
+          @scroll="updateFollowing"
+        >
+          <template
+            v-for="entry in log"
+            :key="entry.id"
+          >
+            <p
+              v-if="entry.kind === 'separator'"
+              class="whitespace-normal py-1 font-sans text-on-surface-variant"
+            >
+              {{ entry.message }}
+            </p>
+            <!--
+              Log text is bound with interpolation only, never v-html: interpolation escapes
+              the line, and the classes come from the fixed table in store/console/ansi.js.
+              whitespace-pre keeps the spacing of the line and does not wrap it.
+            -->
+            <p
+              v-else
+              class="whitespace-pre"
+            ><span
+              v-for="(segment, index) in entry.segments"
+              :key="index"
+              :class="segment.classes"
+            >{{ segment.text }}</span></p>
+          </template>
+
+          <!--
           whitespace-normal on each of these: the panel around them keeps pre-wrap so log
           lines survive verbatim, and without resetting it the indentation of this template
           is rendered as part of the sentence.
         -->
-        <p v-if="connecting" class="whitespace-normal font-sans text-gray-500 dark:text-gray-400">
-          Connecting to the remote console...
-        </p>
-
-        <p v-else-if="awaitingFirstLine" class="whitespace-normal font-sans text-gray-500 dark:text-gray-400">
-          Connected. Waiting for the first log line.
-        </p>
-
-        <div v-else-if="disconnected" class="max-w-prose whitespace-normal font-sans">
-          <p class="font-semibold text-gray-800 dark:text-gray-100">
-            Not connected to the remote console
-          </p>
-          <p class="pt-1 text-gray-500 dark:text-gray-400">
-            {{ failure || 'The stream was closed.' }}
-            Log output stops until the connection is restored. Anything already printed
-            stays visible above.
-          </p>
-          <button
-            class="mt-3 rounded-md bg-blue-700 px-3 py-2 font-medium text-white hover:bg-blue-800"
-            @click="setupConnection()"
+          <p
+            v-if="awaitingFirstLine"
+            class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
           >
-            Reconnect
-          </button>
+            Connected. Waiting for the first log line.
+          </p>
+
+          <p
+            v-else-if="noLinesMatch"
+            class="whitespace-normal font-sans md-body-medium text-on-surface-variant"
+          >
+            No lines match the filter. Clear the filter or switch a level back on to see the output.
+          </p>
+        </div>
+
+        <div
+          v-if="!atBottom"
+          class="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center"
+        >
+          <MdButton
+            variant="tonal"
+            class="pointer-events-auto shadow-elevation-1"
+            @click="jumpToLatest"
+          >
+            Jump to latest
+          </MdButton>
         </div>
       </div>
 
-      <hr class="dark:border-gray-800">
-
-      <label>
-        <span class="sr-only">Console command</span>
-        <input
+      <div class="flex items-start gap-2 border-t border-outline-variant p-3">
+        <MdTextField
           id="consoleInput"
           v-model="command"
+          label="Console command"
+          variant="outlined"
+          class="min-w-0 flex-1"
           :disabled="disconnected"
-          :placeholder="disconnected ? 'Reconnect to run commands' : `Type command or '?' to get help`"
-          class="w-full rounded-b-lg bg-white px-4 py-2 disabled:cursor-not-allowed disabled:text-gray-400 dark:bg-gray-900 dark:text-white"
+          :supporting-text="disconnected ? 'Reconnect to run commands' : `Type a command or '?' for help`"
           autocomplete="off"
           @keyup.enter="execute()"
           @keyup.up="previousCommand()"
           @keyup.down="nextCommand()"
+        />
+        <MdIconButton
+          variant="filled"
+          aria-label="Send command"
+          class="mt-1"
+          :disabled="disconnected || command.trim() === ''"
+          @click="execute()"
         >
-      </label>
-    </div>
+          <svg
+            viewBox="0 -960 960 960"
+            class="size-6"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              fill="currentColor"
+              :d="SEND_ICON"
+            />
+          </svg>
+        </MdIconButton>
+      </div>
+    </section>
   </div>
 </template>

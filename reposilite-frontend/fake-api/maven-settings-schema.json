@@ -20,6 +20,25 @@
             "title": "Visibility",
             "description": "The visibility of this repository."
           },
+          "description": {
+            "type": "string",
+            "default": "",
+            "maxLength": 280,
+            "title": "Description",
+            "description": "A short description of this repository, shown in the repository overview. Up to 280 characters."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"
+            },
+            "maxItems": 10,
+            "uniqueItems": true,
+            "default": [],
+            "title": "Tags",
+            "description": "Labels that group this repository. Lower case letters, digits and hyphens, up to 32 characters each, at most 10."
+          },
           "redeployment": {
             "type": "boolean",
             "title": "Redeployment",

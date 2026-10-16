@@ -31,6 +31,7 @@ import com.reposilite.maven.application.MavenComponents
 import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.MirrorCredentials
 import com.reposilite.maven.application.RepositorySettings
+import com.reposilite.maven.infrastructure.InMemoryMirrorCacheLedger
 import com.reposilite.plugin.Extensions
 import com.reposilite.shared.http.AuthenticationMethod.BASIC
 import com.reposilite.shared.errorResponse
@@ -46,6 +47,7 @@ import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.RepositoryDirectoryInfo
 import com.reposilite.storage.api.toLocation
+import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenPermission
 import com.reposilite.token.AccessTokenType.TEMPORARY
@@ -102,7 +104,7 @@ internal abstract class MavenSpecification {
     private val accessTokenFacade = AccessTokenComponents(
         journalist = logger,
         database = null
-    ).accessTokenFacade()
+    ).accessTokenFacade(bcryptStrength = AccessTokenSecurityProvider.MIN_BCRYPT_STRENGTH)
 
     private val authenticationFacade = AuthenticationComponents(
         journalist = logger,
@@ -163,7 +165,8 @@ internal abstract class MavenSpecification {
             mavenSettings = reference(MavenSettings(
                 repositories = repositories()
             )),
-            frontendSettings = reference(FrontendSettings())
+            frontendSettings = reference(FrontendSettings()),
+            mirrorCacheLedger = InMemoryMirrorCacheLedger(),
         ).mavenFacade()
     }
 

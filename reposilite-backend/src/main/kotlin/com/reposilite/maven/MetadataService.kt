@@ -24,6 +24,9 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator
 import com.fasterxml.jackson.module.kotlin.kotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.reposilite.journalist.Journalist
+import com.reposilite.journalist.Logger
+import com.reposilite.maven.api.Checksum
 import com.reposilite.maven.api.GeneratePomRequest
 import com.reposilite.maven.api.LatestVersionResponse
 import com.reposilite.maven.api.METADATA_FILE
@@ -45,10 +48,19 @@ import com.reposilite.storage.api.Location
 import panda.std.Result
 import panda.std.Result.supplyThrowing
 import panda.std.mapToUnit
+import java.time.Clock
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-internal class MetadataService(private val repositorySecurityProvider: RepositorySecurityProvider) {
+/** The version-level metadata file and its checksum files, as named in a directory. */
+internal val versionMetadataFiles: List<String> =
+    listOf(METADATA_FILE) + Checksum.entries.map { "$METADATA_FILE.${it.extension}" }
+
+internal class MetadataService(
+    private val repositorySecurityProvider: RepositorySecurityProvider,
+    private val clock: Clock,
+    private val journalist: Journalist,
+) : Journalist {
 
     private val xml by lazy {
         XmlMapper.xmlBuilder()
@@ -165,7 +177,174 @@ internal class MetadataService(private val repositorySecurityProvider: Repositor
             ?: metadata.extractSnapshotVersions()
             ?: VersionSequence(false, emptySequence())
 
+    /**
+     * Brings the metadata of a hosted repository in line with a file or directory that has just been deleted.
+     *
+     * - a deleted version directory is removed from the artifact-level metadata
+     * - a deleted file inside a SNAPSHOT directory drops its snapshot entries from the version-level metadata
+     * - a version whose directory holds no artifact file any more is removed from the artifact-level metadata
+     *
+     * Proxied repositories are left alone, their metadata belongs to the upstream. Failures are logged, never thrown,
+     * because the file itself has already been deleted at this point.
+     */
+    fun reconcileAfterDelete(repository: Repository, gav: Location) {
+        try {
+            val name = gav.getSimpleName()
+            val parent = gav.getParent()
+            if (repository.mirrorHosts.isNotEmpty() || parent == Location.empty() || name.isMetadataOrChecksumFile()) {
+                return
+            }
+
+            // gav was a version directory, its parent is the artifact directory
+            dropVersionFromArtifactMetadata(repository, parent, name)
+
+            // gav was a file, its parent is the version directory
+            val versionDirectory = parent
+            val versionName = versionDirectory.getSimpleName()
+            if (versionName.endsWith(SNAPSHOT_SUFFIX)) {
+                pruneSnapshotMetadata(repository, versionDirectory)
+            }
+
+            val artifactDirectory = versionDirectory.getParent()
+            if (artifactDirectory != Location.empty() && isListedVersion(repository, artifactDirectory, versionName) && !hasArtifactFiles(repository, versionDirectory)) {
+                dropVersionFromArtifactMetadata(repository, artifactDirectory, versionName)
+            }
+        } catch (exception: Exception) {
+            logger.warn("METADATA | Cannot reconcile metadata after deleting $gav from ${repository.name}: ${exception.message}")
+        }
+    }
+
+    private fun dropVersionFromArtifactMetadata(repository: Repository, artifactDirectory: Location, version: String) {
+        val metadata = readMetadata(repository, artifactDirectory) ?: return
+        if (metadata.versioning?.versions?.contains(version) != true) {
+            return
+        }
+
+        val updated = metadata.removeVersion(version, lastUpdatedTimestamp(clock))
+        if (updated.versioning?.versions.isNullOrEmpty()) {
+            deleteMetadataFiles(repository, artifactDirectory)
+            removeDirectoryIfEmpty(repository, artifactDirectory)
+            logger.info("METADATA | Removed $version from $artifactDirectory in ${repository.name}, no version is left so maven-metadata.xml and its checksums are deleted")
+            return
+        }
+
+        writeMetadata(repository, artifactDirectory, updated, "Removed $version from maven-metadata.xml of $artifactDirectory in ${repository.name}")
+    }
+
+    /**
+     * Brings the version-level metadata of a SNAPSHOT directory in line with the files stored there. The preserved builds
+     * listener calls it after it has removed old builds from a repository that does not preserve snapshots.
+     *
+     * The entries of the build named by `<snapshot>` are kept even when their files are not stored yet, because the metadata
+     * may list an entry before its file has arrived. The checksums of the metadata are rewritten
+     * whenever they do not describe the stored metadata: a client sends the checksums of its own content right after the
+     * metadata, so they can describe content that has been reconciled in the meantime.
+     *
+     * Proxied repositories are left alone, like in [reconcileAfterDelete]. Failures are logged, never thrown, because the
+     * client's upload has already been stored at this point.
+     */
+    fun reconcileSnapshotVersion(repository: Repository, versionDirectory: Location) {
+        if (repository.mirrorHosts.isNotEmpty()) {
+            return
+        }
+
+        try {
+            pruneSnapshotMetadata(repository, versionDirectory, keepNewestBuild = true)
+            syncMetadataChecksums(repository, versionDirectory)
+        } catch (exception: Exception) {
+            logger.warn("METADATA | Cannot reconcile snapshot metadata of $versionDirectory in ${repository.name}: ${exception.message}")
+        }
+    }
+
+    private fun pruneSnapshotMetadata(repository: Repository, versionDirectory: Location, keepNewestBuild: Boolean = false) {
+        val metadata = readMetadata(repository, versionDirectory) ?: return
+        val artifactId = metadata.artifactId ?: return
+        val newestBuild = metadata.versioning?.snapshot.takeIf { keepNewestBuild }
+        val missing = metadata.versioning?.snapshotVersions.orEmpty().filter { entry ->
+            !entry.isBuildOf(newestBuild) &&
+                snapshotFileName(artifactId, entry)?.let { !repository.storageProvider.exists(versionDirectory.resolve(it)) } == true
+        }
+        if (missing.isEmpty()) {
+            return
+        }
+
+        val updated = metadata.pruneSnapshotVersions(isPresent = { it !in missing }, lastUpdated = lastUpdatedTimestamp(clock))
+        writeMetadata(repository, versionDirectory, updated, "Removed ${missing.size} snapshot entries from maven-metadata.xml of $versionDirectory in ${repository.name}")
+    }
+
+    /**
+     * Rewrites the checksums of the stored version-level metadata when any of them does not describe its content.
+     */
+    private fun syncMetadataChecksums(repository: Repository, versionDirectory: Location) {
+        val storage = repository.storageProvider
+        val metadataFile = versionDirectory.resolve(METADATA_FILE)
+        val stored = storage.getFile(metadataFile)
+        if (!stored.isOk) {
+            return
+        }
+
+        val content = stored.get().use { it.readBytes() }
+        val isStale = Checksum.entries.any { checksum ->
+            val checksumFile = metadataFile.resolveSibling("$METADATA_FILE.${checksum.extension}")
+            val current = storage.getFile(checksumFile).map { it.use { data -> data.readBytes().decodeToString() } }
+            !current.isOk || current.get() != checksum.generate(content.inputStream())
+        }
+        if (!isStale) {
+            return
+        }
+
+        repository.writeFileChecksums(metadataFile, content)
+            .peek { repository.resolutionCache?.invalidate(metadataFile) }
+            .onError { logger.warn("METADATA | Cannot rewrite checksums of $metadataFile in ${repository.name}: ${it.message}") }
+    }
+
+    private fun isListedVersion(repository: Repository, artifactDirectory: Location, version: String): Boolean =
+        readMetadata(repository, artifactDirectory)?.versioning?.versions?.contains(version) == true
+
+    private fun readMetadata(repository: Repository, directory: Location): Metadata? =
+        findMetadata(repository, directory).let { if (it.isOk) it.get() else null }
+
+    private fun writeMetadata(repository: Repository, directory: Location, metadata: Metadata, description: String) {
+        saveMetadata(SaveMetadataRequest(repository = repository, gav = directory, metadata = metadata))
+            .peek { logger.info("METADATA | $description") }
+            .onError { logger.warn("METADATA | Cannot write maven-metadata.xml of $directory in ${repository.name}: ${it.message}") }
+    }
+
+    private fun deleteMetadataFiles(repository: Repository, directory: Location) {
+        val storage = repository.storageProvider
+        versionMetadataFiles
+            .map { directory.resolve(it) }
+            .filter { storage.exists(it) }
+            .forEach { file -> storage.removeFile(file).onError { logger.warn("METADATA | Cannot delete $file: ${it.message}") } }
+    }
+
+    private fun removeDirectoryIfEmpty(repository: Repository, directory: Location) {
+        val files = repository.storageProvider.getFiles(directory)
+        if (files.isOk && files.get().isEmpty()) {
+            repository.storageProvider.removeFile(directory).onError { logger.warn("METADATA | Cannot delete empty directory $directory: ${it.message}") }
+        }
+    }
+
+    /**
+     * A version directory still holds artifacts as long as it contains anything besides its own metadata and checksums.
+     */
+    private fun hasArtifactFiles(repository: Repository, directory: Location): Boolean {
+        val storage = repository.storageProvider
+        if (!storage.exists(directory)) {
+            return false
+        }
+
+        val files = storage.getFiles(directory)
+        return files.isOk && files.get().any { !it.getSimpleName().isMetadataOrChecksumFile() }
+    }
+
+    private fun String.isMetadataOrChecksumFile(): Boolean =
+        this == METADATA_FILE || Checksum.entries.any { endsWith(".${it.extension}") }
+
     private fun Location.resolveMetadataFile(): Location =
         if (endsWith(METADATA_FILE)) this else resolve(METADATA_FILE)
+
+    override fun getLogger(): Logger =
+        journalist.logger
 
 }

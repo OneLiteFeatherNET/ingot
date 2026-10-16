@@ -85,7 +85,7 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
         }
 
         event { event: RoutingSetupEvent ->
-            event.registerRoutes(SettingsEndpoints(sharedConfigurationFacade))
+            event.registerRoutes(SettingsEndpoints(sharedConfigurationFacade, localConfiguration.hideSettingsSecrets))
         }
 
         return sharedConfigurationFacade

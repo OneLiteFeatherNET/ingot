@@ -1,8 +1,29 @@
 {
   "repositories": [
     {
+      "id": "mirror-cache",
+      "visibility": "PUBLIC",
+      "description": "Read-through copies of Maven Central, cleaned nightly.",
+      "tags": ["cache", "mirror"],
+      "redeployment": false,
+      "preserveSnapshots": false,
+      "storageProvider": { "type": "s3", "bucketName": "test" },
+      "proxied": [
+        {
+          "reference": "https://repo.maven.apache.org/maven2",
+          "store": true,
+          "allowedGroups": [],
+          "connectTimeout": 3,
+          "readTimeout": 15,
+          "httpProxy": ""
+        }
+      ]
+    },
+    {
       "id": "releases",
       "visibility": "PUBLIC",
+      "description": "Released artifacts for the public.",
+      "tags": ["team-core", "public"],
       "redeployment": false,
       "preserveSnapshots": false,
       "storageProvider": { "type": "s3", "bucketName": "test" },
@@ -16,6 +37,33 @@
           "httpProxy": ""
         }
       ]
+    },
+    {
+      "id": "snapshots",
+      "visibility": "PUBLIC",
+      "description": "Nightly and CI builds, pruned after 30 days.",
+      "tags": ["team-core", "ci"],
+      "redeployment": true,
+      "preserveSnapshots": false,
+      "storageProvider": { "type": "fs" }
+    },
+    {
+      "id": "private",
+      "visibility": "PRIVATE",
+      "description": "Internal libraries, not for the public.",
+      "tags": ["internal"],
+      "redeployment": false,
+      "preserveSnapshots": false,
+      "storageProvider": { "type": "fs" }
+    },
+    {
+      "id": "archive",
+      "visibility": "HIDDEN",
+      "description": "",
+      "tags": [],
+      "redeployment": false,
+      "preserveSnapshots": true,
+      "storageProvider": { "type": "fs" }
     }
   ]
 }

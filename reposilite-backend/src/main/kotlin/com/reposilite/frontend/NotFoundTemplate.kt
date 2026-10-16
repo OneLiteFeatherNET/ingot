@@ -26,12 +26,10 @@ object NotFoundTemplate {
 
     fun createNotFoundPage(basePath: String, originUri: String, details: String): String {
         val uri = HtmlEscaping.decodeRequestPath(originUri).replace(uriFormatter, "/")
-        // The request URI is percent-encoded, so it is decoded first and encoded again per segment (no double encoding).
-        // The base path and the fragment route are encoded separately, because the fragment separator must stay unencoded.
-        val basePathWithSlash = basePath + (if (basePath.endsWith("/")) "" else "/")
-        val dashboardUrl = HtmlEscaping.escape(
-            HtmlEscaping.encodePath(basePathWithSlash) + "#" + HtmlEscaping.encodePath(uri)
-        )
+        // The dashboard routes by path, so the link is the browse route of the requested address.
+        // Percent-encode the path first, then HTML-escape it for both the attribute and the visible text.
+        val dashboardPath = HtmlEscaping.encodePath(basePath + (if (basePath.endsWith("/")) "" else "/") + "browse/" + uri.trimStart('/'))
+        val dashboardUrl = HtmlEscaping.escape(dashboardPath)
 
         @Language("html")
         val response = """

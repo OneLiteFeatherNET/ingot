@@ -18,6 +18,8 @@
 import { computed } from 'vue'
 import { STATUS } from '../../store/palette'
 import LinkIcon from '../icons/LinkIcon.vue'
+import MdCard from '../md/MdCard.vue'
+import StatusLabel from './StatusLabel.vue'
 
 const props = defineProps({
   label: {
@@ -60,27 +62,29 @@ const props = defineProps({
 const meterWidth = computed(() =>
   props.ratio === null ? '0%' : `${Math.min(100, Math.max(0, props.ratio * 100))}%`)
 
-// The meter track and its fill are steps of one hue, so the fill reads as "more of the
-// same" rather than as a second category. It only turns to a state colour once the reading
-// is one the operator has to act on.
+// The meter fill is the primary role until the reading is one the operator has to act on,
+// and only then does it turn to a state colour.
 const meterColor = computed(() => {
   if (props.ratio === null) return null
   if (props.ratio >= 0.9) return STATUS.critical
   if (props.ratio >= 0.75) return STATUS.warning
-  return '#2a78d6'
+  return 'var(--md-sys-color-primary)'
 })
 </script>
 
 <template>
-  <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+  <MdCard
+    variant="outlined"
+    class="flex min-w-0 flex-col"
+  >
     <div class="flex items-center gap-1.5">
-      <span class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ label }}</span>
+      <span class="md-label-large text-on-surface-variant">{{ label }}</span>
       <a
         v-if="link"
         :href="link"
         target="_blank"
         rel="noopener"
-        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+        class="md-state-layer md-focus-ring inline-flex size-6 items-center justify-center rounded-corner-full text-on-surface-variant hover:text-on-surface"
         :aria-label="`${label}: open in a new tab`"
       >
         <LinkIcon class="w-3" />
@@ -91,25 +95,39 @@ const meterColor = computed(() => {
       Tabular figures on purpose: several of these values are replaced while the reader is
       looking at them, and proportional digits make the whole tile twitch on every poll.
     -->
-    <p class="pt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">{{ value }}</p>
+    <p class="pt-1 md-headline-medium tabular-nums text-on-surface">
+      {{ value }}
+    </p>
 
     <div
       v-if="ratio !== null"
-      class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
+      class="mt-2 h-1.5 w-full overflow-hidden rounded-corner-full bg-surface-container-highest"
       role="meter"
       :aria-valuenow="Math.round(ratio * 100)"
       aria-valuemin="0"
       aria-valuemax="100"
       :aria-label="`${label}: ${Math.round(ratio * 100)} percent of the limit`"
     >
-      <div class="h-full rounded-full" :style="{ width: meterWidth, backgroundColor: meterColor }" />
+      <div
+        class="h-full rounded-corner-full"
+        :style="{ width: meterWidth, backgroundColor: meterColor }"
+      />
     </div>
 
-    <p v-if="detail" class="pt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ detail }}</p>
-
-    <p v-if="status" class="flex items-center gap-1.5 pt-1.5 text-xs text-gray-600 dark:text-gray-300">
-      <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: STATUS[status] }" aria-hidden="true" />
-      {{ statusLabel }}
+    <p
+      v-if="detail"
+      class="pt-1.5 md-body-small text-on-surface-variant"
+    >
+      {{ detail }}
     </p>
-  </div>
+
+    <p
+      v-if="status"
+      class="pt-1.5 md-body-small text-on-surface-variant"
+    >
+      <StatusLabel :color="STATUS[status]">
+        {{ statusLabel }}
+      </StatusLabel>
+    </p>
+  </MdCard>
 </template>

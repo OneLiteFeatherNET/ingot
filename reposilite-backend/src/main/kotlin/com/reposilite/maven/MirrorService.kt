@@ -48,6 +48,7 @@ internal class MirrorService(
     private val failureFacade: FailureFacade,
     private val clock: Clock,
     private val ioService: ExecutorService,
+    private val mirrorCache: MirrorCacheService,
 ) : Journalist {
 
     private data class FetchKey(
@@ -152,15 +153,36 @@ internal class MirrorService(
         searchInRemoteRepositories(repository, gav, accessToken, hosts) { (host, config, client) ->
             client
                 .get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
-                .flatMap { data -> repository.storageProvider.putFile(gav, data) }
+                .flatMap { data -> putMirroredFile(repository, gav, data) }
                 .mapErr { error -> error.updateMessage { "$host: $it" } }
         }
 
     private fun storeFile(repository: Repository, gav: Location, data: InputStream): Result<InputStream, ErrorResponse> =
-        repository
-            .storageProvider
-            .putFile(gav, data)
+        putMirroredFile(repository, gav, data)
             .flatMap { repository.storageProvider.getFile(gav) }
+
+    /**
+     * Stores a fetched copy and records that its version directory holds a mirror copy. A directory that already held
+     * deployed artifacts is not recorded, and metadata files never mark a directory.
+     */
+    private fun putMirroredFile(repository: Repository, gav: Location, data: InputStream): Result<Unit, ErrorResponse> {
+        val directory = gav.getParent()
+        val holdsHostedArtifacts = holdsArtifacts(repository, directory)
+        return repository.storageProvider.putFile(gav, data)
+            .peek {
+                if (!gav.getSimpleName().isMetadataOrChecksumFileName()) {
+                    mirrorCache.recordStored(repository.name, directory.provenancePath(), holdsHostedArtifacts)
+                }
+            }
+    }
+
+    private fun holdsArtifacts(repository: Repository, directory: Location): Boolean {
+        if (directory == Location.empty()) {
+            return false
+        }
+        val files = repository.storageProvider.getFiles(directory)
+        return files.isOk && files.get().any { !it.getSimpleName().isMetadataOrChecksumFileName() }
+    }
 
     private fun <V> searchInRemoteRepositories(
         repository: Repository,

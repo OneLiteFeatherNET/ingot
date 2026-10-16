@@ -18,6 +18,16 @@ package com.reposilite.configuration
 
 import java.time.Instant
 
+/**
+ * A stored document together with its revision. The revision counts the writes of the document, so a writer can tell
+ * whether the document it read is still the stored one. It is null when the provider has no shared storage to count
+ * writes in.
+ */
+data class VersionedConfiguration(
+    val content: String,
+    val revision: Long?,
+)
+
 interface ConfigurationRepository {
 
     fun saveConfiguration(name: String, configuration: String)
@@ -25,5 +35,25 @@ interface ConfigurationRepository {
     fun findConfiguration(name: String): String?
 
     fun findConfigurationUpdateDate(name: String): Instant?
+
+    /**
+     * @return the stored document and its revision, null when nothing is stored under [name]
+     */
+    fun findVersionedConfiguration(name: String): VersionedConfiguration?
+
+    /**
+     * Stores [configuration] only while the stored revision equals [expectedRevision], a null [expectedRevision] meaning that
+     * nothing is stored yet. The check and the write form one atomic step of the storage.
+     *
+     * @return true when the document was stored, false when another writer has changed it since it was read
+     */
+    fun compareAndSaveConfiguration(name: String, expectedRevision: Long?, configuration: String): Boolean
+
+    /**
+     * Stores [configuration] under [name] unless something is already stored there, atomically with respect to other writers.
+     *
+     * @return true when this call stored the document
+     */
+    fun saveConfigurationIfAbsent(name: String, configuration: String): Boolean
 
 }

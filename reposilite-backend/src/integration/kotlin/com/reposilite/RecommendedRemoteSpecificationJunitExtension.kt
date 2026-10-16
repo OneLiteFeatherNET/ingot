@@ -21,44 +21,38 @@ import org.junit.jupiter.api.extension.AfterEachCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.Extension
 import org.junit.jupiter.api.extension.ExtensionContext
-import org.testcontainers.containers.GenericContainer
-import org.testcontainers.containers.wait.strategy.Wait
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.mariadb.MariaDBContainer
-import org.testcontainers.utility.DockerImageName
 
 /**
  * Integrations used in remote stack:
- * - MariaDB
- * - AWS S3 through Floci
+ * - MariaDB, one database per test
+ * - AWS S3 through Floci, one bucket per test
+ *
+ * The containers are shared by the whole test JVM (see [SharedContainers]); this extension only
+ * creates and drops what belongs to a single test method.
  */
-@Testcontainers
 internal class RecommendedRemoteSpecificationJunitExtension : Extension, BeforeEachCallback, AfterEachCallback {
 
-    @Container
-    private val mariaDb = MariaDBContainer(DockerImageName.parse("mariadb:latest"))
-
-    @Container
-    private val floci: GenericContainer<*> = GenericContainer(DockerImageName.parse("floci/floci:latest"))
-        .withExposedPorts(4566)
-        .waitingFor(Wait.forListeningPort())
+    private val namespace = ExtensionContext.Namespace.create(RecommendedRemoteSpecificationJunitExtension::class.java)
 
     override fun beforeEach(context: ExtensionContext) {
-        mariaDb.start()
-        floci.start()
+        val mariaDb = SharedContainers.mariaDb
+        val floci = SharedContainers.floci
+
+        val database = IsolatedResources.createMariaDbDatabase(mariaDb)
+        val bucket = IsolatedResources.newBucketName("test-repository")
+        context.getStore(namespace).put(DATABASE_KEY, database)
 
         context.also {
             val instance = it.requiredTestInstance
             val type = instance::class.java
 
             type.getField("_extensionInitialized").set(instance, true)
-            type.getField("_database").set(instance, "mariadb ${mariaDb.host}:${mariaDb.getMappedPort(3306)} ${mariaDb.databaseName} ${mariaDb.username} ${mariaDb.password}")
+            type.getField("_database").set(instance, mariaDb.databaseToken(database))
             type.getField("_storageProvider").set(
                 instance,
                 S3StorageProviderSettings(
-                    bucketName = "test-repository",
-                    endpoint = "http://${floci.host}:${floci.getMappedPort(4566)}",
+                    bucketName = bucket,
+                    endpoint = floci.s3Endpoint(),
                     accessKey = "test",
                     secretKey = "test",
                     region = "us-east-1",
@@ -69,8 +63,14 @@ internal class RecommendedRemoteSpecificationJunitExtension : Extension, BeforeE
     }
 
     override fun afterEach(context: ExtensionContext) {
-        mariaDb.stop()
-        floci.stop()
+        val database = context.getStore(namespace).remove(DATABASE_KEY, String::class.java)
+        if (database != null) {
+            IsolatedResources.dropMariaDbDatabase(SharedContainers.mariaDb, database)
+        }
+    }
+
+    private companion object {
+        const val DATABASE_KEY = "database"
     }
 
 }

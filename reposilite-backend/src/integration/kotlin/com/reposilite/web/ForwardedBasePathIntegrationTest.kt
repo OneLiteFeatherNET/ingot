@@ -78,9 +78,9 @@ internal class ForwardedBasePathIntegrationTest : ReposiliteSpecification() {
             .header(FORWARDED_PREFIX_HEADER, "/ignored-value")
             .asString()
 
-        // then: the dashboard link uses the configured base path
+        // then: the dashboard link uses the configured base path and the path-based browse route
         assertThat(response.status).isEqualTo(NOT_FOUND.code)
-        assertThat(response.body).contains("/maven/#")
+        assertThat(response.body).contains("href=\"/maven/browse/releases/unknown-gav/unknown-file\"")
     }
 
     @Test
@@ -88,10 +88,10 @@ internal class ForwardedBasePathIntegrationTest : ReposiliteSpecification() {
         // when: a missing resource is requested directly, without the forwarded header
         val response = get("$base/releases/unknown-gav/unknown-file").asString()
 
-        // then: the dashboard link falls back to the root
+        // then: the dashboard link falls back to the root and the path-based browse route
         assertThat(response.status).isEqualTo(NOT_FOUND.code)
-        assertThat(response.body).contains("href=\"/#")
-        assertThat(response.body).doesNotContain("/maven/#")
+        assertThat(response.body).contains("href=\"/browse/releases/unknown-gav/unknown-file\"")
+        assertThat(response.body).doesNotContain("/maven/browse")
     }
 
 }

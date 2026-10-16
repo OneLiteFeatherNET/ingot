@@ -17,6 +17,7 @@
 package com.reposilite.maven.api
 
 import com.reposilite.maven.Repository
+import com.reposilite.plugin.api.Event
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 
@@ -24,5 +25,17 @@ data class DeleteRequest(
     val accessToken: AccessTokenIdentifier,
     val repository: Repository,
     val gav: Location,
-    val by: String
+    val by: String,
+    val cleanupRunId: String? = null,
 )
+
+/**
+ * Called once for every file that has been removed from a repository. [by] is the session identifier of the caller.
+ * [cleanupRunId] is set when a cleanup run removed the file, so listeners can tell the deletions of a run apart.
+ */
+class DeleteEvent(
+    val repository: Repository,
+    val gav: Location,
+    val by: String,
+    val cleanupRunId: String? = null,
+) : Event

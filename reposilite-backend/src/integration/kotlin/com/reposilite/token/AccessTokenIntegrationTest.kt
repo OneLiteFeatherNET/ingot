@@ -32,8 +32,10 @@ import com.reposilite.token.api.SecretType
 import com.reposilite.token.specification.AccessTokenIntegrationSpecification
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
+import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import kong.unirest.core.Unirest.delete
 import kong.unirest.core.Unirest.get
+import kong.unirest.core.Unirest.patch
 import kong.unirest.core.Unirest.put
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -70,6 +72,94 @@ internal abstract class AccessTokenIntegrationTest : AccessTokenIntegrationSpeci
         assertSuccessResponse(OK, response) { tokens ->
             assertThat(tokens.size).isEqualTo(2)
         }
+    }
+
+    private fun currentTokenEntityTag(tokenName: String): String {
+        val (name, secret) = useDefaultManagementToken()
+        return get("$base/api/tokens/$tokenName")
+            .basicAuth(name, secret)
+            .asString()
+            .headers
+            .getFirst("ETag")
+    }
+
+    @Test
+    fun `should return an entity tag with the token details`() {
+        // given: an existing token
+        useToken("reposilite", "secret")
+
+        // when: its details are requested
+        val etag = currentTokenEntityTag("reposilite")
+
+        // then: the response carries a strong entity tag
+        assertThat(etag).matches("\"[0-9a-f]{64}\"")
+    }
+
+    @Test
+    fun `should update token metadata when if-match carries the current entity tag`() {
+        // given: an existing token and its current entity tag
+        useToken("reposilite", "secret")
+        val (name, secret) = useDefaultManagementToken()
+        val current = currentTokenEntityTag("reposilite")
+
+        // when: the metadata is patched with that tag
+        val response = patch("$base/api/tokens/reposilite")
+            .basicAuth(name, secret)
+            .header("If-Match", current)
+            .body(mapOf("description" to "conditional"))
+            .asEmpty()
+
+        // then: the patch is applied and the response carries the tag of the stored token
+        assertSuccessResponse(OK, response)
+        assertThat(response.headers.getFirst("ETag")).isNotEqualTo(current)
+        assertThat(currentTokenEntityTag("reposilite")).isEqualTo(response.headers.getFirst("ETag"))
+    }
+
+    @Test
+    fun `should reject a token patch with a stale entity tag`() {
+        // given: an entity tag read before another admin changes the token
+        useToken("reposilite", "secret")
+        val (name, secret) = useDefaultManagementToken()
+        val stale = currentTokenEntityTag("reposilite")
+        assertSuccessResponse(OK, patch("$base/api/tokens/reposilite")
+            .basicAuth(name, secret)
+            .body(mapOf("description" to "other-admin"))
+            .asEmpty())
+
+        // when: a patch with the stale tag arrives
+        val response = patch("$base/api/tokens/reposilite")
+            .basicAuth(name, secret)
+            .header("If-Match", stale)
+            .body(mapOf("description" to "overwrite"))
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: it is rejected with 412 and the error names the token
+        assertErrorResponse(PRECONDITION_FAILED, response)
+        assertThat(response.body.message).contains("reposilite")
+    }
+
+    @Test
+    fun `should reject a token put with a stale entity tag`() {
+        // given: an entity tag read before another admin changes the token
+        useToken("reposilite", "secret")
+        val (name, secret) = useDefaultManagementToken()
+        val stale = currentTokenEntityTag("reposilite")
+        assertSuccessResponse(OK, patch("$base/api/tokens/reposilite")
+            .basicAuth(name, secret)
+            .body(mapOf("description" to "other-admin"))
+            .asEmpty())
+
+        // when: a put with the stale tag arrives
+        val response = put("$base/api/tokens/reposilite")
+            .basicAuth(name, secret)
+            .header("If-Match", stale)
+            .body(CreateAccessTokenWithNoNameRequest(PERSISTENT, secret = "rotated"))
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: it is rejected with 412 and the secret is not rotated
+        assertErrorResponse(PRECONDITION_FAILED, response)
+        val facade = useFacade<AccessTokenFacade>()
+        assertThat(facade.secretMatches(facade.getAccessToken("reposilite")!!.identifier, "secret")).isTrue
     }
 
     @Test

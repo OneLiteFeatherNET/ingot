@@ -20,6 +20,7 @@ import com.reposilite.maven.RepositoryVisibility.HIDDEN
 import com.reposilite.maven.RepositoryVisibility.PRIVATE
 import com.reposilite.maven.RepositoryVisibility.PUBLIC
 import com.reposilite.maven.api.Checksum
+import com.reposilite.maven.api.DeleteEvent
 import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.GeneratePomRequest
@@ -288,6 +289,61 @@ internal class MavenFacadeTest : MavenSpecification() {
 
             // then: file has been deleted
             assertOk(response)
+        }
+
+    }
+
+    @Nested
+    inner class Deletions {
+
+        @Test
+        fun `should emit one delete event for a file deleted with a token`() {
+            // given: a repository with a file and a listener for delete events
+            val fileSpec = addFileToRepository(FileSpec(PUBLIC.name, "/gav/file.pom", "content"))
+            val deleted = recordDeleteEvents()
+            val authentication = createAccessToken("name", "secret", PUBLIC.name, "gav", WRITE)
+
+            // when: the file is deleted by a caller with the write permission
+            assertOk(mavenFacade.deleteFile(DeleteRequest(authentication, fileSpec.repository(), fileSpec.gav(), "test@test")))
+
+            // then: exactly one event names the caller, and it is not part of a cleanup run
+            assertThat(deleted).hasSize(1)
+            assertThat(deleted.single().by).isEqualTo("test@test")
+            assertThat(deleted.single().cleanupRunId).isNull()
+        }
+
+        @Test
+        fun `should emit one delete event for a cleanup deletion and tag it with the run`() {
+            // given: a repository with a file and a listener for delete events
+            val fileSpec = addFileToRepository(FileSpec(PUBLIC.name, "/gav/file.pom", "content"))
+            val deleted = recordDeleteEvents()
+
+            // when: the scheduler removes the file through the unchecked path of the cleanup run
+            assertOk(mavenFacade.deleteUnchecked(fileSpec.repository(), fileSpec.gav(), "cleanup-scheduler", cleanupRunId = "run-1"))
+
+            // then: exactly one event carries the run it belongs to
+            assertThat(deleted).hasSize(1)
+            assertThat(deleted.single().cleanupRunId).isEqualTo("run-1")
+        }
+
+        @Test
+        fun `should emit no delete event when the caller may not delete the file`() {
+            // given: a repository with a file and a listener for delete events
+            val fileSpec = addFileToRepository(FileSpec(PUBLIC.name, "/gav/file.pom", "content"))
+            val deleted = recordDeleteEvents()
+            val authentication = createAccessToken("invalid", "invalid", "invalid", "invalid", WRITE)
+
+            // when: the file is deleted with credentials that do not match
+            assertError(mavenFacade.deleteFile(DeleteRequest(authentication, fileSpec.repository(), fileSpec.gav(), "test@test")))
+
+            // then: nothing was deleted, so nothing is announced
+            assertThat(deleted).isEmpty()
+        }
+
+        private fun recordDeleteEvents(): MutableList<DeleteEvent> {
+            val deleted = mutableListOf<DeleteEvent>()
+            extensions.registerEvent { event: DeleteEvent -> deleted += event }
+            return deleted
         }
 
     }

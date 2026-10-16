@@ -12,6 +12,7 @@ import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kong.unirest.core.Unirest.get
 import kotlinx.coroutines.runBlocking
@@ -24,6 +25,10 @@ internal class LocalMavenMirrorsIntegrationTest : MavenMirrorsIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenMirrorsIntegrationTest : MavenMirrorsIntegrationTest()
+
+/** How long the upstream waits for the clients to be in flight, and how long a client waits for its answer. */
+private const val GATE_TIMEOUT_SECONDS = 10L
+private const val RESPONSE_TIMEOUT_SECONDS = 30L
 
 internal abstract class MavenMirrorsIntegrationTest : MavenIntegrationSpecification() {
 
@@ -63,12 +68,13 @@ internal abstract class MavenMirrorsIntegrationTest : MavenIntegrationSpecificat
         val gav = "com/reposilite/broken.jar"
         val started = CountDownLatch(1)
         val upstream = Javalin.start { config ->
-            config.jetty.port = reposilite.parameters.port + 1
+            config.jetty.port = 0
             config.events.serverStarted { started.countDown() }
             config.routes.head("/releases/$gav") { ctx -> ctx.contentType("application/java-archive").header("Content-Length", "100").status(200) }
             config.routes.get("/releases/$gav") { ctx -> ctx.status(500).result("upstream temporarily unavailable") }
         }
         assertThat(started.await(10, TimeUnit.SECONDS)).isTrue
+        useUpstreamPort(upstream.port())
 
         try {
             // when: client requests the artifact through the proxy
@@ -83,34 +89,48 @@ internal abstract class MavenMirrorsIntegrationTest : MavenIntegrationSpecificat
 
     @Test
     fun `should not duplicate concurrent mirror downloads for the same artifact`() {
-        // given: a remote server that counts how many times the artifact is fetched
+        // given: a remote server that holds its answer until all five clients have sent their request,
+        // so that the downloads really overlap, and counts how many times the artifact is fetched
+        val clients = 5
         val gav = "com/reposilite/concurrent.jar"
         val content = "concurrent-content"
         val upstreamHits = AtomicInteger(0)
         val started = CountDownLatch(1)
+        val clientsSent = CountDownLatch(clients)
+        val gateOpened = AtomicBoolean(false)
         val upstream = Javalin.start { config ->
-            config.jetty.port = reposilite.parameters.port + 1
+            config.jetty.port = 0
             config.events.serverStarted { started.countDown() }
             config.routes.head("/releases/$gav") { ctx ->
                 ctx.contentType("application/java-archive").header("Content-Length", content.length.toString()).status(200)
             }
             config.routes.get("/releases/$gav") { ctx ->
                 upstreamHits.incrementAndGet()
-                Thread.sleep(300)
+                gateOpened.set(clientsSent.await(GATE_TIMEOUT_SECONDS, TimeUnit.SECONDS))
                 ctx.result(content)
             }
         }
         assertThat(started.await(10, TimeUnit.SECONDS)).isTrue
+        useUpstreamPort(upstream.port())
 
         try {
             // when: five clients request the same artifact in parallel through a storing mirror
-            val executor = Executors.newFixedThreadPool(5)
+            val executor = Executors.newFixedThreadPool(clients)
             try {
-                val responses = (1..5)
-                    .map { executor.submit(Callable { get("$base/proxied-stored/$gav").asString() }) }
-                    .map { it.get(30, TimeUnit.SECONDS) }
+                val responses = (1..clients)
+                    .map {
+                        executor.submit(Callable {
+                            clientsSent.countDown()
+                            get("$base/proxied-stored/$gav").asString()
+                        })
+                    }
+                    .map { it.get(RESPONSE_TIMEOUT_SECONDS, TimeUnit.SECONDS) }
 
-                // then: every client gets the artifact and the upstream is contacted only once
+                // then: the upstream answered while every client was in flight, every client gets the artifact,
+                // and the upstream is contacted only once
+                assertThat(gateOpened.get())
+                    .describedAs("all $clients clients were in flight before the upstream answered")
+                    .isTrue
                 assertThat(responses).allSatisfy { response ->
                     assertThat(response.status).isEqualTo(200)
                     assertThat(response.body).isEqualTo(content)

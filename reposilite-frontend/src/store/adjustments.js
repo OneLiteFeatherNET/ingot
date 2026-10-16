@@ -23,14 +23,28 @@ watchEffect(() => localStorage.setItem('reversedFileOrder', reversedFileOrder.va
 const displayHashFiles = ref(localStorage.getItem('displayHashFiles') === 'true')
 watchEffect(() => localStorage.setItem('displayHashFiles', displayHashFiles.value))
 
+const UTILITY_EXTENSIONS = ['.asc', '.md5', '.sha1', '.sha256', '.sha512']
+
+/*
+ * Checksum and signature files that sit next to an artifact. They are hidden by default,
+ * which is why a directory holding only these looks empty unless the count is shown.
+ */
+const isUtilityFile = (file) =>
+  UTILITY_EXTENSIONS.some(ext => file.name.endsWith(ext))
+
 export function useAdjustments() {
+  /*
+   * The number of entries the current adjustments hide. Counted on the unfiltered listing,
+   * so an empty-looking directory can say what is in it.
+   */
+  const countHiddenFiles = (files) =>
+    displayHashFiles.value ? 0 : files.filter(isUtilityFile).length
+
   const applyAdjustments = (files) => {
     if (!displayHashFiles.value) {
-      files = files.filter(file => 
-        !['.asc', '.md5', '.sha1', '.sha256', '.sha512'].some(ext => file.name.endsWith(ext))
-      )
+      files = files.filter(file => !isUtilityFile(file))
     }
-  
+
     if (reversedFileOrder.value) {
       const semverComparator = createSemverComparator(
         true,
@@ -47,6 +61,7 @@ export function useAdjustments() {
   return {
     reversedFileOrder,
     displayHashFiles,
-    applyAdjustments
+    applyAdjustments,
+    countHiddenFiles
   }
 }

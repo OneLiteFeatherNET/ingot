@@ -17,20 +17,50 @@
 package com.reposilite.configuration.infrastructure
 
 import com.reposilite.configuration.ConfigurationRepository
+import com.reposilite.configuration.VersionedConfiguration
 import java.time.Instant
 
 internal class InMemoryConfigurationRepository : ConfigurationRepository {
 
-    private val settings = HashMap<String, Pair<Instant, String>>()
+    private class Entry(val updateDate: Instant, val content: String, val revision: Long)
+
+    private val settings = HashMap<String, Entry>()
 
     override fun saveConfiguration(name: String, configuration: String) {
-        settings[name] = Pair(Instant.now(), configuration)
+        synchronized(settings) {
+            settings[name] = Entry(Instant.now(), configuration, revision = (settings[name]?.revision ?: 0L) + 1)
+        }
     }
 
     override fun findConfiguration(name: String): String? =
-        settings[name]?.second
+        synchronized(settings) { settings[name]?.content }
 
     override fun findConfigurationUpdateDate(name: String): Instant? =
-        settings[name]?.first
+        synchronized(settings) { settings[name]?.updateDate }
+
+    override fun findVersionedConfiguration(name: String): VersionedConfiguration? =
+        synchronized(settings) {
+            settings[name]?.let { VersionedConfiguration(content = it.content, revision = it.revision) }
+        }
+
+    override fun compareAndSaveConfiguration(name: String, expectedRevision: Long?, configuration: String): Boolean =
+        synchronized(settings) {
+            if (settings[name]?.revision != expectedRevision) {
+                return false
+            }
+
+            settings[name] = Entry(Instant.now(), configuration, revision = (expectedRevision ?: 0L) + 1)
+            true
+        }
+
+    override fun saveConfigurationIfAbsent(name: String, configuration: String): Boolean =
+        synchronized(settings) {
+            if (settings.containsKey(name)) {
+                return false
+            }
+
+            settings[name] = Entry(Instant.now(), configuration, revision = 1)
+            true
+        }
 
 }

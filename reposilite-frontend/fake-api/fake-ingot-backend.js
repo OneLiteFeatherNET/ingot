@@ -23,6 +23,8 @@ const express = require("express")
 const expressWs = require("express-ws")
 const bodyParser = require('body-parser')
 const crypto = require("crypto")
+const audit = require("./audit.cjs")
+const identity = require("./identity.cjs")
 
 const {
   respond,
@@ -40,11 +42,83 @@ expressWs(application)
 let uploadedFiles = []
 let mavenSettingsSchema = require('./maven-settings-schema.json')
 let mavenSettingsEntity = require('./maven-settings-entity.json')
+let frontendSettingsSchema = require('./frontend-settings-schema.json')
+// The access view of a repository in the identity API reads the repositories as they are edited here.
+identity.connectRepositories(() => mavenSettingsEntity.repositories ?? [])
+// Defaults mirror FrontendSettings and AppearanceSettings on the server.
+let frontendSettingsEntity = {
+  id: 'ingot-repository',
+  title: 'Ingot Repository',
+  description: 'Public Maven repository hosted through Ingot',
+  organizationWebsite: 'https://github.com/OneLiteFeatherNET',
+  organizationLogo: 'https://avatars.githubusercontent.com/u/103827826?s=200&v=4',
+  privacyPolicy: 'https://example.com/privacy',
+  icpLicense: '国ICP备000000000号',
+  appearance: {
+    seedColor: '',
+    schemeVariant: 'VIBRANT',
+    primaryColor: '',
+    secondaryColor: '',
+    tertiaryColor: '',
+    errorColor: '',
+    logoDark: '',
+    favicon: '',
+    footerText: ''
+  }
+}
+
+// 8887 unless INGOT_FAKE_API_PORT says otherwise, which lets a second copy run beside the first.
+// The dashboard in development reads the same variable (see vite.config.js).
+const FAKE_API_PORT = Number(process.env.INGOT_FAKE_API_PORT) || 8887
 
 let uptime = 1000
 let memory = 20
 let threads = 10
-let failures = 0
+// Recorded failures as the server keeps them: newest first in the listing, each with the time it
+// happened stored as an age, so the timestamps stay recent however long the stub has been running.
+const FAILURE_STACK = (message, type, frames) =>
+  [`  by ${type}: ${message}`, ...frames.map(frame => `  at ${frame}`)].join("\n")
+
+let recordedFailures = [
+  {
+    id: 3,
+    ageMs: 2 * 60 * 1000,
+    source: "/api/maven/details/releases",
+    type: "IllegalStateException",
+    message: "Repository releases is not ready",
+    count: 1,
+    stacktrace: FAILURE_STACK("Repository releases is not ready", "IllegalStateException", [
+      "com.reposilite.maven.MavenFacade.details(MavenFacade.kt:118)",
+      "com.reposilite.maven.infrastructure.MavenEndpoints.details(MavenEndpoints.kt:64)",
+      "io.javalin.http.JavalinServlet.handle(JavalinServlet.kt:38)",
+    ]),
+  },
+  {
+    id: 2,
+    ageMs: 47 * 60 * 1000,
+    source: "/com/reposilite/private/example/1.0/example-1.0.jar",
+    type: "NullPointerException",
+    message: null,
+    count: 4,
+    stacktrace: FAILURE_STACK("null", "NullPointerException", [
+      "com.reposilite.storage.StorageProvider.read(StorageProvider.kt:27)",
+      "com.reposilite.maven.RepositoryProvider.resolve(RepositoryProvider.kt:81)",
+      "com.reposilite.maven.infrastructure.MavenEndpoints.findFile(MavenEndpoints.kt:37)",
+    ]),
+  },
+  {
+    id: 1,
+    ageMs: 26 * 60 * 60 * 1000,
+    source: "S3 Storage Provider failed with IO Exception",
+    type: "SdkClientException",
+    message: "Unable to execute HTTP request: Connection refused",
+    count: 1,
+    stacktrace: FAILURE_STACK("Unable to execute HTTP request: Connection refused", "SdkClientException", [
+      "software.amazon.awssdk.core.exception.SdkClientException.create(SdkClientException.java:44)",
+      "com.reposilite.storage.s3.S3StorageProvider.write(S3StorageProvider.kt:121)",
+    ]),
+  },
+]
 
 const todayLocalDate = () => {
   const now = new Date()
@@ -115,6 +189,26 @@ setInterval(() => {
   recordSnapshot()
 }, 5000)
 
+// The repositories a caller may see, filtered and sorted the way the real endpoint does it.
+const listRepositories = (query, signedIn) => {
+  const text = String(query.q ?? '').trim().toLowerCase()
+  const requiredTags = [query.tag ?? []].flat().map(tag => String(tag).toLowerCase()).filter(tag => tag !== '')
+  return {
+    repositories: (mavenSettingsEntity.repositories ?? [])
+      .filter(repository => repository.visibility === 'PUBLIC' || signedIn)
+      .map(repository => ({
+        id: repository.id,
+        visibility: repository.visibility,
+        description: repository.description ?? '',
+        tags: repository.tags ?? []
+      }))
+      .filter(repository => text === ''
+        || [repository.id, repository.description, ...repository.tags].some(value => value.toLowerCase().includes(text)))
+      .filter(repository => requiredTags.every(tag => repository.tags.includes(tag)))
+      .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0))
+  }
+}
+
 const statisticsSeries = [
   {
     name: 'Releases',
@@ -139,6 +233,124 @@ const statisticsSeries = [
   }
 ]
 
+// Storage and cleanup. The real server leaves null fields out of its JSON, and the stub does the
+// same (omitNulls), so the dashboard's reading of missing fields is exercised as well.
+const omitNulls = (value) =>
+  Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== null && entry !== undefined))
+
+const MIB = 1024 * 1024
+const GIB = 1024 * MIB
+
+let storageState = {
+  computedAt: "2026-10-15T09:30:00Z",
+  computing: false,
+  repositories: [
+    { id: "releases", usedBytes: Math.round(2.1 * GIB), quota: "10GB", quotaBytes: 10 * GIB, fileCount: 1834 },
+    { id: "snapshots", usedBytes: 640 * MIB, quota: "100%", quotaBytes: GIB, fileCount: 977 },
+    { id: "mirror-cache", usedBytes: Math.round(3.4 * GIB), quota: null, quotaBytes: null, fileCount: 9120 },
+  ],
+}
+
+const storageBody = () =>
+  omitNulls({
+    computedAt: storageState.computedAt,
+    computing: storageState.computing,
+    totalBytes: storageState.repositories.reduce((sum, row) => sum + row.usedBytes, 0),
+    repositories: storageState.repositories.map(omitNulls),
+  })
+
+// Computing takes a few seconds, so the dashboard's progress state and its polling are visible.
+const startStorageComputation = () => {
+  if (storageState.computing) return
+  storageState.computing = true
+  setTimeout(() => {
+    storageState.computing = false
+    storageState.computedAt = new Date().toISOString()
+  }, 3000)
+}
+
+const cleanupSchema = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Cleanup",
+  "description": "Cleanup policies that delete artifacts on demand or on a schedule",
+  "properties": {
+    "policies": {
+      "type": "array",
+      "title": "Policies",
+      "items": {
+        "type": "object",
+        "title": "Policy",
+        "properties": {
+          "id": { "type": "string", "title": "Id" },
+          "enabled": { "type": "boolean", "title": "Enabled" },
+          "repositories": { "type": "array", "title": "Repositories", "items": { "type": "string" } },
+          "scope": { "type": "string", "title": "Scope", "enum": ["SNAPSHOTS", "RELEASES", "MIRROR_CACHE"] },
+          "keepLatest": { "type": "integer", "title": "Keep latest", "minimum": 1 },
+          "olderThanDays": { "type": "integer", "title": "Older than days", "minimum": 1 },
+          "notDownloadedForDays": { "type": "integer", "title": "Not downloaded for days", "minimum": 1 },
+          "groupFilter": { "type": "string", "title": "Group filter" },
+          "schedule": { "type": "string", "title": "Schedule" },
+        },
+        "required": ["id"],
+      },
+    },
+  },
+}
+
+let cleanupDomain = {
+  policies: [
+    { id: "snapshots-weekly", enabled: false, repositories: ["snapshots"], scope: "SNAPSHOTS", keepLatest: 3, olderThanDays: 30, notDownloadedForDays: null, groupFilter: "", schedule: "manual" },
+    { id: "mirror-cache-nightly", enabled: true, repositories: ["mirror-cache"], scope: "MIRROR_CACHE", keepLatest: null, olderThanDays: null, notDownloadedForDays: 60, groupFilter: "net/onelitefeather/.*", schedule: "03:30" },
+    { id: "releases-yearly", enabled: false, repositories: ["releases"], scope: "RELEASES", keepLatest: null, olderThanDays: 365, notDownloadedForDays: null, groupFilter: null, schedule: "manual" },
+  ],
+}
+
+// What a dry run of each policy would delete. A policy without an entry deletes nothing.
+const PREVIEWS = {
+  "snapshots-weekly": {
+    deletions: [
+      { repository: "snapshots", path: "net/x/app/1.0-SNAPSHOT", version: "1.0-SNAPSHOT", sizeBytes: 1024, reason: "beyond the newest 3 versions; older than 30 days" },
+      { repository: "snapshots", path: "net/x/app/1.1-SNAPSHOT", version: "1.1-SNAPSHOT", sizeBytes: 1024, reason: "beyond the newest 3 versions; older than 30 days" },
+    ],
+    warnings: [],
+  },
+  "mirror-cache-nightly": {
+    deletions: [
+      { repository: "mirror-cache", path: "net/onelitefeather/lib/2.3.0", version: "2.3.0", sizeBytes: 524288, reason: "not downloaded for 60 days" },
+    ],
+    warnings: ["repository 'mirror-cache' has no mirror that stores artifacts"],
+  },
+  "releases-yearly": {
+    deletions: [],
+    warnings: ["repository 'releases' has no mirror that stores artifacts"],
+  },
+}
+
+let runSequence = 4
+let cleanupRuns = [
+  { id: 1, policyId: "mirror-cache-nightly", trigger: "SCHEDULED", startedAt: "2026-10-15T03:30:00Z", finishedAt: "2026-10-15T03:30:09Z", status: "SUCCEEDED", deletedCount: 412, deletedBytes: 1181116006, failures: [] },
+  { id: 2, policyId: "snapshots-weekly", trigger: "MANUAL", startedAt: "2026-10-14T16:00:00Z", finishedAt: "2026-10-14T16:00:04Z", status: "PARTIAL", deletedCount: 2, deletedBytes: 2048, failures: ["net/x/app/0.9-SNAPSHOT: the file is locked by an upload"] },
+  { id: 3, policyId: "snapshots-weekly", trigger: "MANUAL", startedAt: "2026-10-08T16:00:00Z", finishedAt: "2026-10-08T16:00:15Z", status: "FAILED", deletedCount: 0, deletedBytes: 0, failures: ["The storage backend did not answer within 15 seconds", "Retry the run once the backend is reachable"] },
+  { id: 4, policyId: "releases-yearly", trigger: "MANUAL", startedAt: "2026-10-01T11:20:00Z", finishedAt: "2026-10-01T11:20:02Z", status: "SUCCEEDED", deletedCount: 0, deletedBytes: 0, failures: [] },
+]
+
+const policyNotFound = (res) => res.status(404).send({ status: 404, message: "Policy not found" })
+
+const findPolicy = (id) => cleanupDomain.policies.find(policy => policy.id === id)
+
+const previewOf = (policy) => {
+  const sample = PREVIEWS[policy.id] ?? { deletions: [], warnings: [] }
+  return {
+    policyId: policy.id,
+    evaluatedAt: new Date().toISOString(),
+    count: sample.deletions.length,
+    totalBytes: sample.deletions.reduce((sum, row) => sum + row.sizeBytes, 0),
+    deletions: sample.deletions,
+    warnings: sample.warnings,
+  }
+}
+
 application
   .get("/", (req, res) => res.send("Ingot stub API"))
   .use((req, res, next) => {
@@ -154,16 +366,97 @@ application
   .use(express.text())
   .use(bodyParser.raw({ limit: '100mb', extended: true }))
   .use(bodyParser.json())
-  .get('/api/settings/domains', (req, res) => res.send(['maven']))
+  // Cookie sessions, CSRF, setup, /api/auth/* and /api/identity/*. See identity.cjs.
+  .use(identity.router)
+  .get('/api/settings/domains', (req, res) => res.send(['maven', 'frontend', 'cleanup', 'login']))
+  .get('/api/settings/schema/cleanup', (req, res) => res.send(cleanupSchema))
+  .get('/api/settings/domain/cleanup', (req, res) => res.send(omitNulls({ policies: cleanupDomain.policies.map(omitNulls) })))
+  .put('/api/settings/domain/cleanup', (req, res) => {
+    cleanupDomain = { policies: (req.body.policies ?? []).map(policy => ({ ...policy })) }
+    res.send("")
+  })
+  .get('/api/maven/storage', (req, res) => {
+    authorized(req, () => res.send(storageBody()), () => invalidCredentials(res))
+  })
+  .post('/api/maven/storage/refresh', (req, res) => {
+    authorized(req, () => {
+      startStorageComputation()
+      res.status(202).send(storageBody())
+    }, () => invalidCredentials(res))
+  })
+  .post('/api/cleanup/policies/:id/dry-run', (req, res) => {
+    authorized(req, () => {
+      const policy = findPolicy(req.params.id)
+      policy ? res.send(previewOf(policy)) : policyNotFound(res)
+    }, () => invalidCredentials(res))
+  })
+  .post('/api/cleanup/policies/:id/run', (req, res) => {
+    authorized(req, () => {
+      const policy = findPolicy(req.params.id)
+      if (!policy) return policyNotFound(res)
+      const preview = previewOf(policy)
+      const run = {
+        id: ++runSequence,
+        policyId: policy.id,
+        trigger: "MANUAL",
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        status: "SUCCEEDED",
+        deletedCount: preview.count,
+        deletedBytes: preview.totalBytes,
+        failures: [],
+      }
+      cleanupRuns = [run, ...cleanupRuns]
+      audit.recordEvent({
+        action: 'CLEANUP_RUN',
+        actor: 'admin',
+        actorAddress: '10.0.0.2',
+        repository: policy.repositories.length === 1 ? policy.repositories[0] : null,
+        details: { runId: `manual-${run.id}`, policy: policy.id, scope: policy.scope, trigger: 'MANUAL', status: run.status, deletedCount: run.deletedCount, deletedBytes: run.deletedBytes },
+        success: true,
+      })
+      res.send(omitNulls(run))
+    }, () => invalidCredentials(res))
+  })
+  .get('/api/cleanup/runs', (req, res) => {
+    authorized(req, () => {
+      const runs = cleanupRuns
+        .filter(run => !req.query.policy || run.policyId === req.query.policy)
+        .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+        .slice(0, req.query.policy ? 20 : undefined)
+      res.send(runs.map(omitNulls))
+    }, () => invalidCredentials(res))
+  })
   .get('/api/settings/schema/maven', (req, res) => res.send(mavenSettingsSchema))
   .get('/api/settings/domain/maven', (req, res) => res.send(mavenSettingsEntity))
+  // Overview of the repositories. Anonymous callers see PUBLIC repositories; signed-in callers
+  // also see PRIVATE and HIDDEN ones, as the real server shows them to managers. q matches id,
+  // description and tags without regard to case, and every tag parameter must match (AND).
+  // INGOT_FAKE_API_LEGACY=1 answers 404 instead, to exercise the fallback of an older backend.
+  .get('/api/maven/repositories', (req, res) => {
+    if (process.env.INGOT_FAKE_API_LEGACY) return res.status(404).send({ status: 404, message: 'Not found' })
+    authorized(req, () => res.send(listRepositories(req.query, true)), () => res.send(listRepositories(req.query, false)))
+  })
   .put('/api/settings/domain/maven', (req, res) => { mavenSettingsEntity = req.body; res.send("") })
+  .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
+  .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))
+  .put('/api/settings/domain/frontend', (req, res) => { frontendSettingsEntity = req.body; res.send("") })
+  .get('/api/audit', (req, res) =>
+    authorized(req, () => res.send(audit.queryEvents(req.query)), () => invalidCredentials(res))
+  )
+  .get('/api/audit/export', (req, res) =>
+    authorized(
+      req,
+      () => res.type('text/csv').attachment('ingot-audit.csv').send(audit.exportCsv(req.query)),
+      () => invalidCredentials(res)
+    )
+  )
   .get('/api/tokens', (req, res) =>
-    authorized(req, () => res.send(accessTokens), () => invalidCredentials(res))
+    authorized(req, () => res.send(accessTokens.concat(identity.legacyTokenViews())), () => invalidCredentials(res))
   )
   .get('/api/tokens/:name', (req, res) =>
     authorized(req, () => {
-      const token = accessTokens.find(entry => entry.name === req.params.name)
+      const token = accessTokens.concat(identity.legacyTokenViews()).find(entry => entry.name === req.params.name)
       token ? res.send(token) : res.status(404).send({ status: 404, message: "Token not found" })
     }, () => invalidCredentials(res))
   )
@@ -329,7 +622,7 @@ application
     authorized(
       req,
       () =>
-        res.send({
+        res.send(identity.decorateTokenMe({
           accessToken: {
             id: 1,
             name: "name",
@@ -355,7 +648,7 @@ application
               },
             },
           ],
-        }),
+        })),
       () => invalidCredentials(res)
     )
   })
@@ -373,7 +666,7 @@ application
           maxMemory: MAX_MEMORY_MB,
           usedThreads: threads,
           maxThreads: MAX_THREADS,
-          failuresCount: failures
+          failuresCount: recordedFailures.length
         })
       },
       () => invalidCredentials(res)
@@ -388,24 +681,82 @@ application
       () => invalidCredentials(res)
     )
   })
+  .get("/api/status/failures", (req, res) => {
+    authorized(
+      req,
+      () => {
+        res.send({
+          failures: [...recordedFailures]
+            .sort((a, b) => a.ageMs - b.ageMs)
+            .map(({ id, ageMs, source, type, message, count, stacktrace }) => ({
+              id,
+              timestamp: new Date(Date.now() - ageMs).toISOString(),
+              source,
+              type,
+              message,
+              stacktrace,
+              count,
+            })),
+        })
+      },
+      () => invalidCredentials(res)
+    )
+  })
+  .delete("/api/status/failures", (req, res) => {
+    authorized(
+      req,
+      () => {
+        recordedFailures = []
+        res.send({})
+      },
+      () => invalidCredentials(res)
+    )
+  })
+  // Public, like the real endpoint: the dashboard reads it without credentials.
+  .get("/api/status/health", (req, res) => {
+    res.send({ status: "UP" })
+  })
+  // Stands in for the Swagger UI plugin, which serves its page at /swagger.
+  .get("/swagger", (req, res) => {
+    res.type("html").send('<!doctype html><html><head><title>Ingot API</title></head><body><div id="swagger-ui"></div></body></html>')
+  })
+  // Stands in for the Prometheus plugin, which answers 401 to anonymous scrapes.
+  .get("/metrics", (req, res) => {
+    authorized(
+      req,
+      () => {
+        res.type("text/plain").send(`# TYPE ingot_failures_recorded gauge\ningot_failures_recorded ${recordedFailures.length}\n`)
+      },
+      () => invalidCredentials(res)
+    )
+  })
   // Public on purpose, mirroring the real server: a detached dashboard reads its own
   // settings here before it has any credentials.
-  .get("/api/frontend/settings", (req, res) =>
+  .get("/api/frontend/settings", (req, res) => {
+    const settings = frontendSettingsEntity
     res.send({
       placeholders: {
         "{{REPOSILITE.BASE_PATH}}": "/",
         "{{REPOSILITE.VITE_BASE_PATH}}": ".",
-        "{{REPOSILITE.ID}}": "ingot-repository",
-        "{{REPOSILITE.TITLE}}": "Ingot Repository",
-        "{{REPOSILITE.DESCRIPTION}}": "Public Maven repository hosted through Ingot",
-        "{{REPOSILITE.ORGANIZATION_WEBSITE}}": "https://github.com/OneLiteFeatherNET",
-        "{{REPOSILITE.ORGANIZATION_LOGO}}": "https://avatars.githubusercontent.com/u/103827826?s=200&v=4",
-        "{{REPOSILITE.ICP_LICENSE}}": "\u56fdICP\u5907000000000\u53f7",
-        "{{REPOSILITE.PRIVACY_POLICY}}": "https://example.com/privacy",
+        "{{REPOSILITE.ID}}": settings.id,
+        "{{REPOSILITE.TITLE}}": settings.title,
+        "{{REPOSILITE.DESCRIPTION}}": settings.description,
+        "{{REPOSILITE.ORGANIZATION_WEBSITE}}": settings.organizationWebsite,
+        "{{REPOSILITE.ORGANIZATION_LOGO}}": settings.organizationLogo,
+        "{{REPOSILITE.ICP_LICENSE}}": settings.icpLicense,
+        "{{REPOSILITE.PRIVACY_POLICY}}": settings.privacyPolicy,
         "{{REPOSILITE.JAVADOC_SUFFIXES}}": "-javadoc.jar,-groovydoc.jar"
-      }
+      },
+      id: settings.id,
+      title: settings.title,
+      description: settings.description,
+      organizationWebsite: settings.organizationWebsite,
+      organizationLogo: settings.organizationLogo,
+      privacyPolicy: settings.privacyPolicy,
+      icpLicense: settings.icpLicense,
+      appearance: settings.appearance
     })
-  )
+  })
   .get("/api/statistics/resolved/all", (req, res) => {
     authorized(
       req,
@@ -475,6 +826,6 @@ application
       message: "Not found",
     })
   )
-  .listen(8887)
+  .listen(FAKE_API_PORT)
 
-console.log("Ingot stub API started on port 8887")
+console.log(`Ingot stub API started on port ${FAKE_API_PORT}`)

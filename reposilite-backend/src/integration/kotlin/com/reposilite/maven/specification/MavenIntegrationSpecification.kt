@@ -34,7 +34,8 @@ internal abstract class MavenIntegrationSpecification : ReposiliteSpecification(
             config.events.serverStarted { serverStartedJob.complete() }
             config.routes.head("/$repository/$gav") { ctx -> ctx.result(content) }
             config.routes.get("/$repository/$gav") { ctx -> ctx.result(content) }
-        }.start(reposilite.parameters.port + 1)
+        }.start(0)
+        useUpstreamPort(application.port())
 
         serverStartedJob.join()
         block(gav, content)

@@ -18,11 +18,14 @@ package com.reposilite.status.infrastructure
 
 import com.reposilite.status.FailureFacade
 import com.reposilite.status.StatusFacade
+import com.reposilite.status.api.FailureResponse
+import com.reposilite.status.api.FailuresResponse
 import com.reposilite.status.api.HealthResponse
 import com.reposilite.status.api.InstanceStatusResponse
 import com.reposilite.status.api.StatusSnapshot
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import io.javalin.community.routing.Route.DELETE
 import io.javalin.community.routing.Route.GET
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
@@ -64,6 +67,49 @@ internal class StatusEndpoints(
     }
 
     @OpenApi(
+        path = "/api/status/failures",
+        methods = [HttpMethod.GET],
+        summary = "Lists the recorded failures, newest first. Note: Requires Manager",
+        tags = ["Status"],
+        responses = [
+            OpenApiResponse(status = "200", content = [OpenApiContent(from = FailuresResponse::class)])
+        ]
+    )
+    private val listFailures = ReposiliteRoute<FailuresResponse>("/api/status/failures", GET) {
+        managerOnly {
+            response = FailuresResponse(
+                failures = failureFacade.getFailureRecords().map { record ->
+                    FailureResponse(
+                        id = record.id,
+                        timestamp = record.timestamp.toString(),
+                        source = record.source,
+                        type = record.type,
+                        message = record.message,
+                        stacktrace = record.stacktrace,
+                        count = record.count
+                    )
+                }
+            ).asSuccess()
+        }
+    }
+
+    @OpenApi(
+        path = "/api/status/failures",
+        methods = [HttpMethod.DELETE],
+        summary = "Clears all recorded failures. Note: Requires Manager",
+        tags = ["Status"],
+        responses = [
+            OpenApiResponse(status = "200")
+        ]
+    )
+    private val clearFailures = ReposiliteRoute<Unit>("/api/status/failures", DELETE) {
+        managerOnly {
+            failureFacade.clearFailures()
+            response = Unit.asSuccess()
+        }
+    }
+
+    @OpenApi(
         path = "/api/status/health",
         methods = [HttpMethod.GET],
         responses = [
@@ -78,6 +124,6 @@ internal class StatusEndpoints(
         }
     }
 
-    override val routes = routes(getInstanceStatus, getStatusSnapshots, getHealth)
+    override val routes = routes(getInstanceStatus, getStatusSnapshots, listFailures, clearFailures, getHealth)
 
 }

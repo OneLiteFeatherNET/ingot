@@ -15,116 +15,504 @@
   -->
 
 <script setup>
-import { ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { VueFinalModal } from 'vue-final-modal'
-import { createSuccessToast, errorMessage } from '../../helpers/toast'
 import { useSession } from '../../store/session'
-import CloseIcon from '../icons/CloseIcon.vue'
+import { createURL } from '../../store/client'
+import { loginRequests } from '../../store/login'
+import { now } from '../../helpers/clock'
+import { rateLimitMessage, rateLimitedUntil } from '../../helpers/rate-limit'
+import MdButton from '../md/MdButton.vue'
+import MdTextField from '../md/MdTextField.vue'
+import SegmentedControl from '../tokens/SegmentedControl.vue'
+import SegmentedOption from '../tokens/SegmentedOption.vue'
+import ProviderIcon from '../icons/ProviderIcon.vue'
+import { providerLoginHref } from './providerLinks'
 
-const { login } = useSession()
+/*
+ * One dialog, three faces. First run (the server says setupRequired) it is "Set up Ingot".
+ * Otherwise it offers the password providers (the Ingot account and an LDAP directory, one form
+ * with a switch when both exist), then an "or" divider and one button per single sign on provider,
+ * and a link to the older access token form. A provider button is a link that starts the provider's
+ * login with the current page as the return address. A password never leaves these refs: they are
+ * cleared whenever the dialog closes, and nothing is written to a storage.
+ */
+const {
+  signInWithPassword,
+  signInWithToken,
+  completeSetup,
+  loadProviders,
+  providers,
+  setupRequired,
+  loginFailureMessage,
+  passwordFailureMessage,
+  setupFailureMessage
+} = useSession()
+
+const MIN_PASSWORD_LENGTH = 12
+
 const showLogin = ref(false)
+
+// Other views ask for the dialog through openLogin(); see store/login.js.
+watch(loginRequests, () => {
+  showLogin.value = true
+})
+
+const view = ref('password')
+const busy = ref(false)
+const failure = ref(null)
+const providersFailed = ref(false)
+const root = ref(null)
+
+const username = ref('')
+const password = ref('')
 const name = ref('')
 const secret = ref('')
-const failure = ref(null)
-const busy = ref(false)
 
-const close = () => {
-  showLogin.value = false
+const setupCode = ref('')
+const setupUsername = ref('')
+const setupDisplayName = ref('')
+const setupPassword = ref('')
+const setupConfirm = ref('')
+const submitted = ref(false)
+
+const route = useRoute()
+
+// The providers that take a username and a password: the Ingot account and the LDAP directory.
+const localProvider = computed(() => providers.value.find(provider => provider.type === 'LOCAL'))
+const passwordProviders = computed(() =>
+  providers.value.filter(provider => provider.type === 'LOCAL' || provider.type === 'LDAP'))
+// The single sign on providers. Each one is a link to its own login, never a form.
+const ssoProviders = computed(() => providers.value.filter(provider => provider.type === 'OIDC'))
+const hasPasswordForm = computed(() => passwordProviders.value.length > 0)
+
+// The provider the form signs in with. The switch changes it; the Ingot account is the default.
+const selectedProviderId = ref(null)
+const activeProvider = computed(() =>
+  passwordProviders.value.find(provider => provider.id === selectedProviderId.value)
+    ?? localProvider.value
+    ?? passwordProviders.value[0])
+const providerTitle = (provider) => (provider.type === 'LOCAL' ? 'Ingot account' : provider.label)
+const selectProvider = (id) => {
+  selectedProviderId.value = id
   failure.value = null
 }
 
+// Where a provider sends the visitor back: the page they are on, with its query.
+const ssoHref = (provider) => (provider.loginUrl
+  ? providerLoginHref(provider.loginUrl, route?.fullPath ?? '/', createURL)
+  : undefined)
+
+const mode = computed(() => (setupRequired.value ? 'setup' : view.value))
+const title = computed(() => ({
+  setup: 'Set up Ingot',
+  password: 'Sign in',
+  token: 'Sign in with access token'
+}[mode.value]))
+const formId = computed(() => `login-form-${mode.value}`)
+
+const passwordError = computed(() =>
+  submitted.value && setupPassword.value.length < MIN_PASSWORD_LENGTH)
+const confirmError = computed(() =>
+  submitted.value && setupConfirm.value !== setupPassword.value)
+
+// After too many failed attempts the server answers 429 with the seconds to wait. The deadline
+// is kept as an instant, so the rest of the wait is always computed from the clock when the
+// dialog renders. A single timer renders it again when the shown minute changes or the wait ends;
+// it is cleared with the dialog. The wait outlives closing the dialog: it is the server's limit.
+const lockedUntil = ref(null)
+const tick = ref(0)
+let timer = null
+
+const remainingSeconds = () => {
+  tick.value // a dependency, so that the timer can render this again
+  if (lockedUntil.value === null) return 0
+  return Math.max(0, Math.ceil((lockedUntil.value - now().getTime()) / 1000))
+}
+const isLocked = () => remainingSeconds() > 0
+const lockMessage = () => (isLocked() ? rateLimitMessage(remainingSeconds()) : '')
+
+const scheduleTick = () => {
+  clearTimeout(timer)
+  timer = null
+  if (lockedUntil.value === null) return
+  const left = lockedUntil.value - now().getTime()
+  if (left <= 0) return
+  timer = setTimeout(() => {
+    tick.value++
+    scheduleTick()
+  }, (left % 60000 || 60000) + 50)
+}
+
+const lockFrom = (error) => {
+  lockedUntil.value = rateLimitedUntil(error, now().getTime())
+  scheduleTick()
+}
+
+onBeforeUnmount(() => clearTimeout(timer))
+
+// Every failed attempt sets or clears the deadline (lockFrom), so a deadline that has passed means
+// that the message in `failure` is the old rate limit text, which no longer applies.
+const limitExpired = () => lockedUntil.value !== null && !isLocked()
+const fieldError = () => isLocked() || (failure.value !== null && !limitExpired())
+const fieldErrorText = () => lockMessage() || (limitExpired() ? '' : failure.value ?? '')
+
+const forgetInput = () => {
+  username.value = ''
+  password.value = ''
+  name.value = ''
+  secret.value = ''
+  setupCode.value = ''
+  setupUsername.value = ''
+  setupDisplayName.value = ''
+  setupPassword.value = ''
+  setupConfirm.value = ''
+  submitted.value = false
+  failure.value = null
+  view.value = 'password'
+  selectedProviderId.value = null
+}
+
+const close = () => {
+  showLogin.value = false
+  forgetInput()
+}
+
+// The first field is only in the document once the dialog has opened, so focus waits for that.
+const focusFirst = () => root.value?.querySelector('input')?.focus()
+const focusField = (id) => nextTick().then(() => document.getElementById(id)?.focus())
+
+watch(showLogin, open => {
+  if (!open) return
+  providersFailed.value = false
+  Promise.resolve(loadProviders()).catch(() => {
+    providersFailed.value = true
+  })
+})
+
+const switchView = (next) => {
+  view.value = next
+  failure.value = null
+  nextTick().then(focusFirst)
+}
+
 // The failure belongs in the dialog, not in a toast: the form that has to be corrected is
-// right here, and a toast about it appears somewhere else entirely and then leaves.
-const signin = (name, secret) => {
+// right here, and a toast about it appears somewhere else entirely and then leaves. Focus
+// moves to the field that carries the message, so that it is read out.
+const attempt = (action, failureMessage, fieldId) => {
   busy.value = true
   failure.value = null
-
-  return login(name, secret)
-    .then(() => createSuccessToast(`Dashboard accessed as ${name}`))
+  return action()
     .then(() => close())
     .catch(error => {
-      failure.value = errorMessage(error)
+      failure.value = failureMessage(error)
+      return focusField(fieldId)
     })
     .finally(() => {
       busy.value = false
     })
 }
-</script>
 
-<script>
-export default {
-  inheritAttrs: false,
+const signinWithPassword = () => {
+  if (isLocked()) return Promise.resolve()
+  const provider = activeProvider.value.id
+  return attempt(
+    () => signInWithPassword({ provider, username: username.value, password: password.value }),
+    (error) => {
+      lockFrom(error)
+      return passwordFailureMessage(error)
+    },
+    'login-password'
+  )
+}
+
+const signinWithToken = () =>
+  attempt(() => signInWithToken(name.value, secret.value), loginFailureMessage, 'login-secret')
+
+const setup = () => {
+  submitted.value = true
+  if (passwordError.value || confirmError.value) {
+    return Promise.resolve()
+  }
+  const request = {
+    setupCode: setupCode.value,
+    username: setupUsername.value,
+    password: setupPassword.value
+  }
+  if (setupDisplayName.value) {
+    request.displayName = setupDisplayName.value
+  }
+  return attempt(() => completeSetup(request), setupFailureMessage, 'setup-code')
+}
+
+const submit = () => {
+  if (mode.value === 'setup') return setup()
+  if (mode.value === 'token') return signinWithToken()
+  return signinWithPassword()
+}
+
+const submitLabel = computed(() => {
+  if (mode.value === 'setup') return busy.value ? 'Setting up...' : 'Set up'
+  return busy.value ? 'Signing in...' : 'Sign in'
+})
+
+// A scrim in the role colour. The modal's own stylesheet paints the overlay in a fixed black
+// and is not layered, so the colour goes in as an inline style that wins over it.
+const overlayStyle = {
+  backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)'
 }
 </script>
 
 <template>
-  <div id="login-modal">
+  <div>
+    <MdButton
+      variant="tonal"
+      @click="showLogin = true"
+    >
+      Sign in
+    </MdButton>
     <VueFinalModal
       v-model="showLogin"
-      v-bind="$attrs"
       class="flex items-center justify-center"
+      content-class="w-full px-6"
+      teleport-to="body"
+      :overlay-style="overlayStyle"
+      aria-labelledby="login-title"
+      @opened="focusFirst"
+      @closed="forgetInput"
     >
-      <div class="relative rounded-2xl border border-gray-100 bg-white px-10 py-5 shadow-xl dark:border-black dark:bg-gray-900">
-        <p class="pb-4 text-center text-xl font-bold">Login with access token</p>
+      <!-- The 24px side inset is set on the modal's content wrapper; the dialog caps at 560px. -->
+      <div
+        ref="root"
+        class="mx-auto max-h-[90dvh] w-full min-w-70 max-w-140 overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+      >
+        <h2
+          id="login-title"
+          class="md-headline-small"
+        >
+          {{ title }}
+        </h2>
 
-        <form class="flex w-96 flex-col max-sm:w-65" @submit.prevent="signin(name, secret)">
-          <label class="flex flex-col text-left text-sm">
-            <span class="pb-1 text-gray-600 dark:text-gray-300">Name</span>
-            <input
-              v-model="name"
-              type="text"
-              autocomplete="username"
-              class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-            >
-          </label>
-
-          <label class="flex flex-col pt-3 text-left text-sm">
-            <span class="pb-1 text-gray-600 dark:text-gray-300">Secret</span>
-            <input
-              v-model="secret"
-              type="password"
-              autocomplete="current-password"
-              class="rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-            >
-          </label>
-
+        <form
+          v-if="mode === 'setup'"
+          :id="formId"
+          class="mt-6 flex flex-col gap-4"
+          @submit.prevent="submit()"
+        >
+          <MdTextField
+            id="setup-code"
+            v-model="setupCode"
+            label="Setup code"
+            type="text"
+            autocomplete="off"
+            supporting-text="Find it in the server log"
+            required
+          />
+          <MdTextField
+            id="setup-username"
+            v-model="setupUsername"
+            label="Admin username"
+            type="text"
+            autocomplete="username"
+            required
+          />
+          <MdTextField
+            id="setup-display-name"
+            v-model="setupDisplayName"
+            label="Display name (optional)"
+            type="text"
+            autocomplete="name"
+          />
+          <MdTextField
+            id="setup-password"
+            v-model="setupPassword"
+            label="Password"
+            type="password"
+            autocomplete="new-password"
+            supporting-text="At least 12 characters"
+            :error="passwordError"
+            error-text="Use at least 12 characters"
+            required
+          />
+          <MdTextField
+            id="setup-confirm"
+            v-model="setupConfirm"
+            label="Confirm password"
+            type="password"
+            autocomplete="new-password"
+            :error="confirmError"
+            error-text="Passwords do not match"
+            required
+          />
           <p
             v-if="failure"
-            class="pt-3 text-left text-sm text-red-600 dark:text-red-400"
             role="alert"
+            class="md-body-medium text-error"
           >
             {{ failure }}
           </p>
-
-          <button
-            type="submit"
-            :disabled="busy"
-            class="mt-4 cursor-pointer rounded-md bg-blue-700 py-2 font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-700/60"
-          >
-            {{ busy ? 'Signing in...' : 'Sign in' }}
-          </button>
-
-          <button
-            type="button"
-            class="pt-3 text-xs text-blue-600 dark:text-blue-300"
-            @click="close()"
-          >
-            Back to index
-          </button>
         </form>
 
-        <button
-          type="button"
-          class="absolute top-0 right-0 mt-5 mr-5"
-          aria-label="Close the login dialog"
-          @click="close()"
+        <form
+          v-else-if="mode === 'token'"
+          :id="formId"
+          class="mt-6 flex flex-col gap-4"
+          @submit.prevent="submit()"
         >
-          <CloseIcon />
-        </button>
+          <MdTextField
+            id="login-name"
+            v-model="name"
+            label="Name"
+            type="text"
+            autocomplete="username"
+            required
+            :error="failure !== null"
+          />
+          <MdTextField
+            id="login-secret"
+            v-model="secret"
+            label="Secret"
+            type="password"
+            autocomplete="current-password"
+            required
+            :error="failure !== null"
+            :error-text="failure || ''"
+          />
+        </form>
+
+        <template v-else>
+          <SegmentedControl
+            v-if="passwordProviders.length > 1"
+            label="Sign in method"
+            class="mt-6 w-full"
+          >
+            <SegmentedOption
+              v-for="provider in passwordProviders"
+              :key="provider.id"
+              :on="provider.id === activeProvider.id"
+              class="flex-1 justify-center"
+              @click="selectProvider(provider.id)"
+            >
+              {{ providerTitle(provider) }}
+            </SegmentedOption>
+          </SegmentedControl>
+
+          <form
+            v-if="hasPasswordForm"
+            :id="formId"
+            class="mt-4 flex flex-col gap-4"
+            @submit.prevent="submit()"
+          >
+            <MdTextField
+              id="login-username"
+              v-model="username"
+              label="Username"
+              type="text"
+              autocomplete="username"
+              required
+              :error="failure !== null"
+            />
+            <MdTextField
+              id="login-password"
+              v-model="password"
+              label="Password"
+              type="password"
+              autocomplete="current-password"
+              required
+              :error="fieldError()"
+              :error-text="fieldErrorText()"
+            />
+            <MdButton
+              type="submit"
+              class="w-full"
+              :disabled="busy || isLocked()"
+            >
+              {{ submitLabel }}
+            </MdButton>
+          </form>
+
+          <div
+            v-if="hasPasswordForm && ssoProviders.length > 0"
+            data-test="divider"
+            aria-hidden="true"
+            class="mt-6 flex items-center gap-3"
+          >
+            <span class="h-px flex-1 bg-outline-variant" />
+            <span class="md-label-medium text-on-surface-variant">or</span>
+            <span class="h-px flex-1 bg-outline-variant" />
+          </div>
+
+          <ul
+            v-if="ssoProviders.length > 0"
+            class="mt-6 flex list-none flex-col gap-2 p-0"
+          >
+            <li
+              v-for="provider in ssoProviders"
+              :key="provider.id"
+              class="flex"
+            >
+              <MdButton
+                variant="outlined"
+                class="w-full"
+                :href="ssoHref(provider)"
+                :disabled="!provider.loginUrl"
+              >
+                <template #icon>
+                  <ProviderIcon
+                    :icon="provider.icon"
+                    class="size-6!"
+                  />
+                </template>
+                Continue with {{ provider.label }}
+              </MdButton>
+            </li>
+          </ul>
+
+          <p
+            v-if="providersFailed"
+            role="alert"
+            class="mt-4 md-body-medium text-error"
+          >
+            Sign in options could not be loaded
+          </p>
+        </template>
+
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+          <MdButton
+            v-if="mode === 'password'"
+            variant="text"
+            @click="switchView('token')"
+          >
+            Use an access token instead
+          </MdButton>
+          <MdButton
+            v-else-if="mode === 'token'"
+            variant="text"
+            @click="switchView('password')"
+          >
+            Use a password instead
+          </MdButton>
+          <span v-else />
+
+          <div class="flex justify-end gap-2">
+            <MdButton
+              variant="text"
+              @click="close()"
+            >
+              Cancel
+            </MdButton>
+            <MdButton
+              v-if="mode !== 'password'"
+              type="submit"
+              :form="formId"
+              :disabled="busy"
+            >
+              {{ submitLabel }}
+            </MdButton>
+          </div>
+        </div>
       </div>
     </VueFinalModal>
-    <div @click="showLogin = true">
-      <slot name="button"></slot>
-    </div>
   </div>
 </template>

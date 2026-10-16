@@ -16,11 +16,29 @@
 
 package com.reposilite.configuration.shared
 
+import com.reposilite.configuration.VersionedConfiguration
+
 interface SharedConfigurationProvider {
 
     fun updateConfiguration(content: String)
 
     fun fetchConfiguration(): String
+
+    /**
+     * The stored document together with the revision it was read at. Providers without shared storage have no revisions.
+     */
+    fun fetchVersionedConfiguration(): VersionedConfiguration =
+        VersionedConfiguration(content = fetchConfiguration(), revision = null)
+
+    /**
+     * Stores [content] only while the stored document still has [expectedRevision], a null revision meaning that nothing
+     * is stored yet. Returns false when another writer has stored a newer document since it was read, in which case
+     * nothing is written. Providers without shared storage cannot be written concurrently and always accept the write.
+     */
+    fun compareAndUpdateConfiguration(content: String, expectedRevision: Long?): Boolean {
+        updateConfiguration(content)
+        return true
+    }
 
     fun isUpdateRequired(): Boolean
 

@@ -1,3 +1,4 @@
+import org.gradle.api.GradleException
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -40,6 +41,34 @@ plugins {
 //
 // Do not edit this by hand. The marker comment is what Release Please looks for.
 val projectVersion = "1.1.1" // x-release-please-version
+
+// Test JVM settings. A local run stays light; CI keeps what it had before, and the difference is
+// deliberate and documented on each setting below.
+//
+// - `-PtestOutput=true` prints the standard streams of the test JVMs. CI always does.
+// - `-Pcoverage=true` attaches the JaCoCo agent and writes the reports. CI always does, and so does
+//   `testCoverage`, the aggregate that needs the execution data.
+// - `integration` forks: `-PtestForks=N` or env `INGOT_TEST_FORKS` win, otherwise 4 locally and half the
+//   cores in CI, as before. Every fork starts its own containers, so more forks is not free.
+// - `test` forks: half the cores, capped at 8. Unit tests are cheap to run in parallel.
+// - Test JVMs get a 1 GiB heap. Nothing here needs more, and it bounds the total when forks run side by side.
+val isCi: Boolean = !System.getenv("CI").isNullOrEmpty()
+val testOutputRequested: Boolean = findProperty("testOutput")?.toString()?.toBoolean() == true
+val coverageRequested: Boolean =
+    findProperty("coverage")?.toString()?.toBoolean() == true ||
+        gradle.startParameter.taskNames.any { it == "testCoverage" || it.endsWith(":testCoverage") }
+val coverageEnabled: Boolean = isCi || coverageRequested
+val halfCores: Int = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+
+fun integrationForks(): Int {
+    val raw = findProperty("testForks")?.toString() ?: System.getenv("INGOT_TEST_FORKS")
+    if (raw.isNullOrBlank()) return if (isCi) halfCores else 4
+    return raw.trim().toIntOrNull()?.takeIf { it > 0 }
+        ?: throw GradleException("testForks / INGOT_TEST_FORKS must be a positive integer, was '$raw'")
+}
+
+// Read by the reposilite-backend build, which owns the JaCoCo agent and report tasks.
+extra["ingotTestCoverageEnabled"] = coverageEnabled
 
 allprojects {
     apply(plugin = "java-library")
@@ -163,12 +192,11 @@ subprojects {
             showExceptions = true
             showCauses = true
             showStackTraces = true
-            showStandardStreams = true
+            showStandardStreams = testOutputRequested || isCi
         }
 
-        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2)
-            .takeIf { it > 0 }
-            ?: 1
+        maxParallelForks = if (name == "integration") integrationForks() else halfCores.coerceAtMost(8)
+        maxHeapSize = "1g"
 
         useJUnitPlatform()
     }

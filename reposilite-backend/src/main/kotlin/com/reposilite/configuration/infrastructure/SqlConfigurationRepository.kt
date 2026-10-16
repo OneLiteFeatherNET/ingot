@@ -17,8 +17,12 @@
 package com.reposilite.configuration.infrastructure
 
 import com.reposilite.configuration.ConfigurationRepository
+import com.reposilite.configuration.VersionedConfiguration
 import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
 import org.jetbrains.exposed.v1.javatime.datetime
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
@@ -37,28 +41,27 @@ internal class SqlConfigurationRepository(private val database: Database) : Conf
         val name = varchar("name", 32).uniqueIndex()
         val updateDate = datetime("updateDate")
         val content = text("content")
+        // Added after the first release: existing rows start at revision 0, so a writer that read them can still compare and set.
+        val revision = long("revision").default(0L)
     }
 
     init {
         transaction(database) {
             SchemaUtils.create(SettingsTable)
-            SchemaUtils.addMissingColumnsStatements(SettingsTable)
+            SchemaUtils.createMissingTablesAndColumns(SettingsTable)
         }
     }
 
     override fun saveConfiguration(name: String, configuration: String) {
         transaction(database) {
-            if (findSharedConfigurationContent(name) == null) {
-                SettingsTable.insert {
-                    it[SettingsTable.name] = name
-                    it[SettingsTable.updateDate] = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
-                    it[SettingsTable.content] = configuration
-                }
-            } else {
-                SettingsTable.update(where = { SettingsTable.name eq name }, body = {
-                    it[SettingsTable.updateDate] = LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
-                    it[SettingsTable.content] = configuration
-                })
+            val updated = SettingsTable.update(where = { SettingsTable.name eq name }, body = {
+                it[SettingsTable.updateDate] = now()
+                it[SettingsTable.content] = configuration
+                it.update(SettingsTable.revision, SettingsTable.revision + 1L)
+            })
+
+            if (updated == 0) {
+                insertDocument(name, configuration, revision = 1L)
             }
         }
     }
@@ -82,5 +85,53 @@ internal class SqlConfigurationRepository(private val database: Database) : Conf
                 .map { it.toInstant(ZoneOffset.UTC) }
                 .firstOrNull()
         }
+
+    override fun findVersionedConfiguration(name: String): VersionedConfiguration? =
+        transaction(database) {
+            SettingsTable.selectAll()
+                .where { SettingsTable.name eq name }
+                .map { VersionedConfiguration(content = it[SettingsTable.content], revision = it[SettingsTable.revision]) }
+                .firstOrNull()
+        }
+
+    override fun compareAndSaveConfiguration(name: String, expectedRevision: Long?, configuration: String): Boolean {
+        if (expectedRevision == null) {
+            return saveConfigurationIfAbsent(name, configuration)
+        }
+
+        return transaction(database) {
+            // A single conditional UPDATE: the revision is compared and advanced in the same statement, so two writers that
+            // read the same revision cannot both win, whatever the instances and isolation levels in between.
+            SettingsTable.update(
+                where = { (SettingsTable.name eq name) and (SettingsTable.revision eq expectedRevision) },
+                body = {
+                    it[SettingsTable.updateDate] = now()
+                    it[SettingsTable.content] = configuration
+                    it.update(SettingsTable.revision, SettingsTable.revision + 1L)
+                }
+            ) == 1
+        }
+    }
+
+    override fun saveConfigurationIfAbsent(name: String, configuration: String): Boolean =
+        try {
+            transaction(database) { insertDocument(name, configuration, revision = 1L) }
+            true
+        } catch (exception: ExposedSQLException) {
+            // The unique index on the name rejected the insert: another writer stored the document first.
+            false
+        }
+
+    private fun insertDocument(name: String, configuration: String, revision: Long) {
+        SettingsTable.insert {
+            it[SettingsTable.name] = name
+            it[SettingsTable.updateDate] = now()
+            it[SettingsTable.content] = configuration
+            it[SettingsTable.revision] = revision
+        }
+    }
+
+    private fun now(): LocalDateTime =
+        LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
 
 }

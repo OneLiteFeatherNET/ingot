@@ -18,13 +18,12 @@ import { createApp } from 'vue'
 import { createHead } from '@unhead/vue/client'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
-import Tabs from 'vue3-tabs'
 import App from './App.vue'
-import router from './router'
+import { createIngotRouter } from './router'
 import { loadFrontendSettings } from './store/placeholders'
+import { applyAppearance } from './store/appearance'
 
 import './style.css'
-import 'mosha-vue-toastify/dist/style.css'
 import 'vue-final-modal/style.css'
 
 const app = createApp(App)
@@ -37,14 +36,16 @@ app.config.globalProperties.drop = (path) =>
     .slice(0, -1)
     .join('/')
 
-// The settings have to be in hand before anything reads them, and the API client reads
-// them at module scope. When this dashboard is served by the server itself they are already
-// substituted into the bundle and this resolves immediately.
-loadFrontendSettings().then(() => {
+// The settings have to be in hand before anything reads them, and the router takes its base
+// path from them. They are fetched in both deployments, bounded by a timeout, so a slow or
+// missing settings endpoint delays the first render only that long.
+loadFrontendSettings().then(async () => {
+  // The operator's colours and icon go in before the first render, so the page never paints
+  // the default theme first.
+  await applyAppearance()
   app
     .use(createHead())
     .use(VueAxios, axios)
-    .use(Tabs)
-    .use(router)
+    .use(createIngotRouter())
     .mount('#app')
 })

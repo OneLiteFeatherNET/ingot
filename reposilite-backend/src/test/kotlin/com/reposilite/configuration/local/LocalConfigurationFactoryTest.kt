@@ -19,6 +19,28 @@ internal class LocalConfigurationFactoryTest {
     }
 
     @Test
+    fun `should hide settings secrets by default`() {
+        // given: a default local configuration
+
+        // when: no external property is applied
+
+        // then: secrets stay visible, as they always were, so existing API clients keep working
+        assertThat(LocalConfiguration().hideSettingsSecrets.get()).isFalse
+    }
+
+    @Test
+    fun `should apply hide settings secrets external property`() {
+        // given: a default local configuration
+        val localConfiguration = LocalConfiguration()
+
+        // when: the switch is set through its external property name
+        applyProperty(localConfiguration, "HIDESETTINGSSECRETS", "true")
+
+        // then: the property is updated
+        assertThat(localConfiguration.hideSettingsSecrets.get()).isTrue
+    }
+
+    @Test
     fun `should apply int external property`() {
         // given: a default local configuration
         val localConfiguration = LocalConfiguration()

@@ -27,6 +27,7 @@ Due to this fact, you cannot override routes registered by Ingot using static fi
 | \{\{REPOSILITE.ID}} | Description |
 | \{\{REPOSILITE.ORGANIZATION_WEBSITE}} | Link to organization website |
 | \{\{REPOSILITE.ORGANIZATION_LOGO}} | Link to an image with logo |
+| \{\{REPOSILITE.FAVICON}} | Link to the favicon, the configured one or the bundled `favicon.png` |
 
 #### Custom frontend
 

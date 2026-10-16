@@ -23,11 +23,14 @@ import com.reposilite.token.AccessTokenRepository
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.Route
 import com.reposilite.token.UNINITIALIZED_ENTITY_ID
+import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class InMemoryAccessTokenRepository : AccessTokenRepository {
+internal class InMemoryAccessTokenRepository(
+    private val clock: Clock = Clock.systemUTC(),
+) : AccessTokenRepository {
 
     private val tokens = ConcurrentHashMap<Int, AccessToken>()
     private val permissions = CopyOnWriteArrayList<Pair<Int, AccessTokenPermission>>()
@@ -50,7 +53,7 @@ internal class InMemoryAccessTokenRepository : AccessTokenRepository {
 
     override fun findAccessTokenById(id: AccessTokenIdentifier): AccessToken? {
         val token = tokens[id.value] ?: return null
-        if (token.isExpired()) {
+        if (token.isExpired(clock)) {
             evict(token.identifier)
             return null
         }
@@ -59,7 +62,7 @@ internal class InMemoryAccessTokenRepository : AccessTokenRepository {
 
     override fun findAccessTokenByName(name: String): AccessToken? {
         val token = tokens.values.firstOrNull { it.name == name } ?: return null
-        if (token.isExpired()) {
+        if (token.isExpired(clock)) {
             evict(token.identifier)
             return null
         }
@@ -101,13 +104,13 @@ internal class InMemoryAccessTokenRepository : AccessTokenRepository {
             .toSet()
 
     override fun findAll(): Collection<AccessToken> {
-        val expired = tokens.values.filter { it.isExpired() }
+        val expired = tokens.values.filter { it.isExpired(clock) }
         expired.forEach { evict(it.identifier) }
         return tokens.values.toList()
     }
 
     override fun countAccessTokens(): Long {
-        val expired = tokens.values.filter { it.isExpired() }
+        val expired = tokens.values.filter { it.isExpired(clock) }
         expired.forEach { evict(it.identifier) }
         return tokens.size.toLong()
     }

@@ -39,3 +39,22 @@ data class StatusSnapshot(
 data class HealthResponse(
     val status: String
 )
+
+data class FailuresResponse(
+    val failures: List<FailureResponse>
+)
+
+data class FailureResponse(
+    val id: Long,
+    /** ISO-8601 instant of the latest occurrence */
+    val timestamp: String,
+    /** Request URI or subsystem that reported the failure */
+    val source: String,
+    /** Simple name of the exception class */
+    val type: String,
+    val message: String?,
+    /** Rendered exception chain, truncated to the frames the server keeps */
+    val stacktrace: String,
+    /** Number of occurrences folded into this record */
+    val count: Int
+)

@@ -15,53 +15,75 @@
   -->
 
 <script setup>
-import { ref } from 'vue'
-import Toggle from '@vueform/toggle'
+import { ref, useId } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
-import '@vueform/toggle/themes/default.css'
 import { useAdjustments } from '../../store/adjustments'
-import CloseIcon from '../icons/CloseIcon.vue'
+import BrowserIcon from './BrowserIcon.vue'
+import MdButton from '../md/MdButton.vue'
+import MdIconButton from '../md/MdIconButton.vue'
+import MdSwitch from '../md/MdSwitch.vue'
 
 const { reversedFileOrder, displayHashFiles } = useAdjustments()
 const showAdjustments = ref(false)
-</script>
-
-<script>
-export default {
-  inheritAttrs: false
-}
+const titleId = useId()
 </script>
 
 <template>
-  <div id="adjustments-modal">
+  <div>
+    <MdIconButton
+      aria-label="File browser adjustments"
+      title="File browser adjustments"
+      @click="showAdjustments = true"
+    >
+      <BrowserIcon name="tune" />
+    </MdIconButton>
     <VueFinalModal
       v-model="showAdjustments"
-      v-bind="$attrs"
-      class="flex justify-center iems-center"
+      teleport-to="body"
+      :overlay-class="'vfm__overlay bg-scrim/32!'"
+      class="flex items-center justify-center p-4"
     >
-      <div class="relative border bg-white dark:bg-gray-900 border-gray-100 dark:border-black m-w-20 py-5 px-10 rounded-2xl shadow-xl text-center">
-        <div>
-          <h1 class="font-bold pb-4">File browser adjustments</h1>
-          <hr class>
-          <div class="flex justify-between pt-6">
-            <p class="pr-7">Sort files from newest to oldest</p>
-            <Toggle v-model="reversedFileOrder" class="ml-10"/>
-          </div>
-          <div class="flex justify-between pt-6">
-            <p class="pr-7">
-              Display utility files such as 
-              <span class="font-italic font-mono bg-gray-200 dark:bg-black px-2 py-0.5 m-2 rounded-lg">.asc/.md5/.sha1/.sha256/.sha512</span>
-            </p>
-            <Toggle v-model="displayHashFiles" class="ml-10"/>
-          </div>
+      <div
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        class="w-full max-w-lg rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+      >
+        <h2
+          :id="titleId"
+          class="md-headline-small"
+        >
+          File browser adjustments
+        </h2>
+
+        <div class="mt-4 divide-y divide-outline-variant">
+          <MdSwitch
+            v-model="reversedFileOrder"
+            class="min-h-16 justify-between py-3 flex-row-reverse"
+          >
+            <span>Sort files from newest to oldest</span>
+          </MdSwitch>
+
+          <MdSwitch
+            v-model="displayHashFiles"
+            class="min-h-16 justify-between py-3 flex-row-reverse"
+          >
+            <span>
+              Display utility files such as
+              <span class="font-mono text-on-surface-variant">.asc/.md5/.sha1/.sha256/.sha512</span>
+            </span>
+          </MdSwitch>
         </div>
-        <button class="absolute top-0 right-0 mt-5 mr-9" @click="showAdjustments = false">
-          <CloseIcon />
-        </button>
+
+        <div class="mt-6 flex justify-end">
+          <MdButton
+            variant="text"
+            @click="showAdjustments = false"
+          >
+            Done
+          </MdButton>
+        </div>
       </div>
     </VueFinalModal>
-    <div @click="showAdjustments = true">
-      <slot name="button"></slot>
-    </div>
   </div>
 </template>

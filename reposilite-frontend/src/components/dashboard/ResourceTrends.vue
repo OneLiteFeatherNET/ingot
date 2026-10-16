@@ -37,6 +37,8 @@ const requestSnapshots = () =>
     })
     .catch(error => {
       console.error(error)
+      // Both charts share this request, so one failure is one error on each card. The toast
+      // is still one per outage, not one per poll.
       if (!failed.value) {
         failed.value = true
         createErrorToast('Cannot load status snapshots statistics')
@@ -69,7 +71,11 @@ const threadsSeries = computed(() => [{
   data: snapshots.value.map(record => [record.at, record.threads])
 }])
 
-const loading = computed(() => snapshots.value === null)
+// A failed first request ends the placeholders and shows the error. A failure after data has
+// arrived keeps the last good snapshots on screen and only reports through the toast.
+const loading = computed(() => snapshots.value === null && !failed.value)
+const errorMessage = computed(() =>
+  snapshots.value === null && failed.value ? 'Cannot load resource history.' : '')
 const empty = computed(() => snapshots.value !== null && snapshots.value.length === 0)
 </script>
 
@@ -79,16 +85,23 @@ const empty = computed(() => snapshots.value !== null && snapshots.value.length 
       title="Memory"
       subtitle="Megabytes in use, recent history"
       :loading="loading"
+      :error="errorMessage"
       :empty-message="empty ? 'No snapshots recorded yet. The first one appears a few minutes after startup.' : ''"
+      @retry="requestSnapshots"
     >
-      <TimeSeriesChart :series="memorySeries" unit="MB" />
+      <TimeSeriesChart
+        :series="memorySeries"
+        unit="MB"
+      />
     </ChartCard>
 
     <ChartCard
       title="Threads"
       subtitle="Threads in use, recent history"
       :loading="loading"
+      :error="errorMessage"
       :empty-message="empty ? 'No snapshots recorded yet. The first one appears a few minutes after startup.' : ''"
+      @retry="requestSnapshots"
     >
       <TimeSeriesChart :series="threadsSeries" />
     </ChartCard>

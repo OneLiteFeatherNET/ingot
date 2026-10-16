@@ -51,6 +51,12 @@ class UpstreamMigrationTest {
         }
     }
 
+    @Test
+    @DisplayName("a realistic installation keeps its tokens, routes, repositories and settings across the switch and the rollback")
+    fun `realistic installation survives the switch and the rollback`(@TempDir directory: Path) {
+        UpgradeScenario(ImageUnderTest.upstream).run(directory)
+    }
+
     /**
      * Runs the upstream image and leaves behind what a real instance has: an initialised
      * database, a persistent access token, and a published artifact.
@@ -123,9 +129,7 @@ class UpstreamMigrationTest {
             // Both products rewrite this file on startup, so the header comments end up
             // branded differently and that is expected. A changed setting is not: it would
             // silently reconfigure an instance that only meant to change its image.
-            assertThat(settingsOf(data.read("configuration.cdn")))
-                .describedAs("our image rewrote configured values, not just its own comments")
-                .isEqualTo(settingsOf(configurationBefore))
+            assertConfigurationKept(configurationBefore, data.read("configuration.cdn"))
 
             // /var/log/reposilite is part of the contract: log shippers and volume mounts
             // point at it, and an image that stops writing there takes them with it.
@@ -159,11 +163,6 @@ class UpstreamMigrationTest {
         }
     }
 
-    /** The configuration without its comments, which are branded and expected to differ. */
-    private fun settingsOf(configuration: String): List<String> =
-        configuration.lines()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && !it.startsWith("#") }
 
     private companion object {
         const val BOOTSTRAP_NAME = "bootstrap"

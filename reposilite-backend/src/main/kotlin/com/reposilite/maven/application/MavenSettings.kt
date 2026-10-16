@@ -18,7 +18,10 @@ package com.reposilite.maven.application
 
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.Min
+import com.reposilite.configuration.shared.api.Sensitive
+import com.reposilite.configuration.shared.api.SettingsKey
 import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.api.ValidatedSettings
 import com.reposilite.maven.StoragePolicy
 import com.reposilite.maven.RepositoryVisibility
 import com.reposilite.maven.RepositoryVisibility.PRIVATE
@@ -40,15 +43,25 @@ data class MavenSettings(
         RepositorySettings("snapshots"),
         RepositorySettings("private", visibility = PRIVATE),
     )
-) : SharedSettings
+) : ValidatedSettings {
+
+    override fun violations(): List<String> =
+        repositories.flatMap { it.violations() }
+
+}
 
 @Doc(title = "Maven Repository", description = "Settings for a given repository.")
 data class RepositorySettings(
     @Min(1)
+    @get:SettingsKey
     @get:Doc(title = "Id", description = "The id of this repository.")
     val id: String = "",
     @get:Doc(title = "Visibility", description = "The visibility of this repository.")
     val visibility: RepositoryVisibility = PUBLIC,
+    @get:Doc(title = "Description", description = "Short plain-text description shown in the repository list.")
+    val description: String = "",
+    @get:Doc(title = "Tags", description = "Labels to group and find repositories, e.g. team or purpose.")
+    val tags: List<String> = emptyList(),
     @get:Doc(title = "Redeployment", description = "Does this repository accept redeployment of the same artifact version.")
     val redeployment: Boolean = false,
     @get:Doc(title = "Preserved snapshots", "By default, Ingot deletes all deprecated build files. If you'd like to preserve them, set this property to true.")
@@ -81,11 +94,46 @@ data class RepositorySettings(
     val resolutionCacheMaxEntries: Int = 0,
     @get:Doc(title = "Mirrored repositories", description = "List of mirrored repositories associated with this repository.")
     val proxied: List<MirroredRepositorySettings> = listOf()
-) : SharedSettings
+) : SharedSettings {
+
+    /**
+     * Describes every rule of [description] and [tags] that this repository breaks, each message
+     * naming the repository. An empty list accepts the repository.
+     */
+    fun violations(): List<String> {
+        val violations = mutableListOf<String>()
+
+        if (description.length > DESCRIPTION_MAX_LENGTH) {
+            violations += "repository '$id': description must be at most $DESCRIPTION_MAX_LENGTH characters, but has ${description.length}"
+        }
+
+        if (tags.size > TAGS_MAX_COUNT) {
+            violations += "repository '$id': at most $TAGS_MAX_COUNT tags are allowed, but ${tags.size} were given"
+        }
+
+        tags.filterNot { TAG_FORMAT.matches(it) }.forEach { tag ->
+            violations += "repository '$id': tag '$tag' is not valid, tags use 1 to 32 lowercase letters, digits or hyphens and start with a letter or digit"
+        }
+
+        tags.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach { tag ->
+            violations += "repository '$id': tag '$tag' is listed more than once"
+        }
+
+        return violations
+    }
+
+    companion object {
+        const val DESCRIPTION_MAX_LENGTH = 280
+        const val TAGS_MAX_COUNT = 10
+        private val TAG_FORMAT = Regex("[a-z0-9][a-z0-9-]{0,31}")
+    }
+
+}
 
 @Doc(title = "Mirrored Maven Repository", description = "Configuration of proxied host")
 data class MirroredRepositorySettings(
     @Min(1)
+    @get:SettingsKey
     @get:Doc(title = "Link", description = "Either the id of other local repository or the URL of a remote repository.")
     val reference: String = "",
     @get:Doc(title = "Store", description = "Ingot can store proxied artifacts locally to reduce response time and improve stability.")
@@ -105,6 +153,7 @@ data class MirroredRepositorySettings(
     // Results in converting 'authorization` property into 'allOf` component that is currently broken
     // ~ https://github.com/dzikoysk/reposilite/issues/1320
     val authorization: MirrorCredentials? = null,
+    @get:Sensitive
     @get:Doc(title = "HTTP Proxy", description = """
         Custom proxy configuration for HTTP/SOCKS client used by Ingot to connect to the mirrored repository. Examples: <br/>
         HTTP 127.0.0.1:1081 <br/>
@@ -125,6 +174,7 @@ data class MirrorCredentials(
     override val method: AuthenticationMethod = AuthenticationMethod.BASIC,
     @get:Doc(title = "Login", description = "Login or custom header name to use")
     override val login: String = "",
+    @get:Sensitive
     @get:Doc(title = "Password", description = "Raw password or header value used by HTTP client to connect to the given repository")
     override val password: String = ""
 ) : SharedSettings, RemoteCredentials

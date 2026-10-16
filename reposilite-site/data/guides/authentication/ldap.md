@@ -7,6 +7,10 @@ LDAP support in Ingot is quite limited.
 It's stale and oldish tool with a very specific approach to domain configuration.
 If you feel that current implementation could be improved or slightly changed, let us know.
 
+This page covers the LDAP Basic authentication of Maven clients (`authentication.ldap`). To let people sign in to the
+dashboard with their directory password, use the LDAP login of [external login providers](external-login), which is configured
+separately under `login.ldap`.
+
 First of all, you have to enable LDAP authenticator in [shared settings](). 
 Then, you can configure configuration to your LDAP server.
 

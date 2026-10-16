@@ -18,6 +18,7 @@
 import InstanceStatusPanel from './InstanceStatusPanel.vue'
 import ResourceTrends from './ResourceTrends.vue'
 import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
+import GettingStartedCard from './GettingStartedCard.vue'
 </script>
 
 <!--
@@ -29,25 +30,42 @@ import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
   unmounting rather than by checking which tab is selected.
 -->
 <template>
-  <div class="container mx-auto px-15 pt-7 pb-12 max-sm:px-4">
+  <div class="container mx-auto pt-7 pb-12">
+    <GettingStartedCard class="mb-6" />
+
     <section aria-labelledby="instance-status-heading">
-      <h1 id="instance-status-heading" class="pb-3 text-lg font-bold text-gray-900 dark:text-gray-50">
+      <h2
+        id="instance-status-heading"
+        class="pb-3 md-title-large text-on-surface"
+      >
         Instance status
-      </h1>
+      </h2>
       <InstanceStatusPanel />
     </section>
 
-    <section class="pt-6" aria-labelledby="resources-heading">
-      <h1 id="resources-heading" class="pb-3 text-lg font-bold text-gray-900 dark:text-gray-50">
+    <section
+      class="pt-6"
+      aria-labelledby="resources-heading"
+    >
+      <h2
+        id="resources-heading"
+        class="pb-3 md-title-large text-on-surface"
+      >
         Resources
-      </h1>
+      </h2>
       <ResourceTrends />
     </section>
 
-    <section class="pt-6" aria-labelledby="traffic-heading">
-      <h1 id="traffic-heading" class="pb-3 text-lg font-bold text-gray-900 dark:text-gray-50">
+    <section
+      class="pt-6"
+      aria-labelledby="traffic-heading"
+    >
+      <h2
+        id="traffic-heading"
+        class="pb-3 md-title-large text-on-surface"
+      >
         Traffic
-      </h1>
+      </h2>
       <ResolvedRequestsChart />
     </section>
   </div>

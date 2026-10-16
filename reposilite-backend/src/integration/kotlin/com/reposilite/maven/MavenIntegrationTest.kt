@@ -24,11 +24,12 @@ import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.maven.specification.MavenIntegrationSpecification
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extensions.maxAge
-import com.reposilite.storage.api.DocumentInfo
 import io.javalin.http.HttpStatus.NOT_FOUND
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kong.unirest.core.HeaderNames.CACHE_CONTROL
 import kong.unirest.core.HeaderNames.CONTENT_LENGTH
 import kong.unirest.core.Unirest.delete
@@ -36,6 +37,7 @@ import kong.unirest.core.Unirest.get
 import kong.unirest.core.Unirest.head
 import kong.unirest.core.Unirest.put
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -44,6 +46,9 @@ internal class LocalMavenIntegrationTest : MavenIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenIntegrationTest : MavenIntegrationTest()
+
+/** Upper bound for each concurrent upload, so that a stuck request fails the test rather than the build. */
+private const val UPLOAD_TIMEOUT_SECONDS = 60L
 
 internal abstract class MavenIntegrationTest : MavenIntegrationSpecification() {
 
@@ -92,34 +97,40 @@ internal abstract class MavenIntegrationTest : MavenIntegrationSpecification() {
     @Test
     fun `should accept deploy request with valid credentials` () {
         val calls = useFacade<LocalConfiguration>().webThreadPool.get() * 3
-        val completed = CountDownLatch(calls)
-
-        repeat(calls) { idx ->
+        // Assertions made on the worker threads only count when their futures are awaited: an exception
+        // inside runAsync is otherwise swallowed. Each future is bounded, so a stuck upload fails the test
+        // instead of hanging the build.
+        val uploads = (0 until calls).map { idx ->
             CompletableFuture.runAsync {
-                try {
-                    // given: file to upload and valid credentials
-                    val (repository, gav, file) = useDocument("releases", "com/reposilite", "$idx.jar")
-                    val (name, secret) = useDefaultManagementToken()
-                    val (content, length) = useFile(file, 8)
+                // given: file to upload and valid credentials
+                val (repository, gav, file) = useDocument("releases", "com/reposilite", "$idx.jar")
+                val (name, secret) = useDefaultManagementToken()
+                val (content, length) = useFile(file, 8)
 
-                    // when: client wants to upload artifact
-                    val response = put("$base/$repository/$gav/$file")
-                        .body(content.inputStream())
-                        .basicAuth(name, secret)
-                        .asObject(DocumentInfo::class.java)
+                // when: client wants to upload artifact
+                val response = put("$base/$repository/$gav/$file")
+                    .body(content.inputStream())
+                    .basicAuth(name, secret)
+                    .asEmpty()
 
-                    // then: service properly accepts connection and deploys file
-                    assertThat(response.isSuccess).isTrue
-                    assertThat(response.body.name).isEqualTo(file)
-                    assertThat(response.body.contentLength).isEqualTo(length)
-                    assertThat(get("$base/$repository/$gav/$file").asString().isSuccess).isTrue
-                } finally {
-                    completed.countDown()
-                }
+                // then: service properly accepts connection and deploys file, the deploy answers without a body
+                assertThat(response.isSuccess).describedAs("deploy of $file answered with HTTP ${response.status}").isTrue
+
+                val stored = get("$base/$repository/$gav/$file").asBytes()
+                assertThat(stored.isSuccess).isTrue
+                assertThat(stored.body.size.toLong()).isEqualTo(length)
             }
         }
 
-        completed.await()
+        uploads.forEachIndexed { idx, upload ->
+            try {
+                upload.get(UPLOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            } catch (timeout: TimeoutException) {
+                fail("concurrent upload #$idx did not finish within $UPLOAD_TIMEOUT_SECONDS seconds", timeout)
+            } catch (failed: ExecutionException) {
+                throw failed.cause ?: failed
+            }
+        }
     }
 
     @Test

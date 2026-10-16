@@ -25,6 +25,7 @@ import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.web.api.HttpServerConfigurationEvent
+import io.javalin.http.Header
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import com.reposilite.web.infrastructure.ApiCacheBypassHandler
@@ -102,7 +103,8 @@ internal object JavalinConfiguration {
             journalist = reposilite.logger,
             failureFacade = extensionManager.facade(),
             accessTokenFacade = extensionManager.facade(),
-            authenticationFacade = extensionManager.facade()
+            authenticationFacade = extensionManager.facade(),
+            loginFacade = extensionManager.facade()
         )
 
         val dslRoutes = extensionManager.emitEvent(RoutingSetupEvent(reposilite))
@@ -169,6 +171,8 @@ internal object JavalinConfiguration {
         config.bundledPlugins.enableCors { cors ->
             cors.addRule {
                 it.anyHost()
+                // Separately deployed dashboards read entity tags for optimistic concurrency, browsers hide them otherwise
+                it.exposeHeader(Header.ETAG)
             }
         }
     }
