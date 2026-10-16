@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.search.application
 import com.reposilite.maven.api.DeleteEvent
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.indexChanged
+import com.reposilite.maven.isChecksumSidecar
 import com.reposilite.maven.provenancePath
 import com.reposilite.plugin.api.EventListener
 import net.onelitefeather.ingot.search.ArtifactIndexSink
@@ -38,8 +39,9 @@ internal class DeployIndexListener(
 }
 
 /**
- * Queues the removal of a file or directory. Cleanup runs emit one event per directory and are covered as well. Never
- * throws, for the same reason as [DeployIndexListener].
+ * Queues the removal of a file or directory. A removed checksum sidecar changes its base file, whose checksum is read
+ * again by the worker, so the base file is queued instead of the sidecar path. Cleanup runs emit one event per directory
+ * and are covered as well. Never throws, for the same reason as [DeployIndexListener].
  */
 internal class DeleteIndexListener(
     private val sink: ArtifactIndexSink,
@@ -47,7 +49,12 @@ internal class DeleteIndexListener(
 ) : EventListener<DeleteEvent> {
 
     override fun onCall(event: DeleteEvent) =
-        guarded(onFailure) { sink.removed(event.repository.name, event.gav.provenancePath()) }
+        guarded(onFailure) {
+            when {
+                event.gav.isChecksumSidecar() -> sink.indexChanged(event.repository.name, event.gav)
+                else -> sink.removed(event.repository.name, event.gav.provenancePath())
+            }
+        }
 
 }
 

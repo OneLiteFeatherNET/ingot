@@ -94,6 +94,35 @@ internal class IndexEventListenersTest : MavenSpecification() {
     }
 
     @Test
+    fun `should queue the base file when its checksum sidecar is deleted`() {
+        // given: a stored jar with its sha1 sidecar, and a delete listener over a sink that records
+        addFileToRepository(FileSpec(hosted, baseJar, "jar"))
+        addFileToRepository(FileSpec(hosted, "$baseJar.sha1", "checksum"))
+        val sink = RecordingArtifactIndexSink()
+        extensions.registerEvent(DeleteIndexListener(sink) {})
+
+        // when: the sidecar is removed on its own
+        assertOk(mavenFacade.deleteUnchecked(repository(hosted), "$baseJar.sha1".toLocation(), "cleanup", cleanupRunId = "run-4"))
+
+        // then: the base file is queued for a re-read, so its sha1 is cleared, and the sidecar path is not removed
+        assertThat(sink.recorded).containsExactly(IndexCall("changed", hosted, baseJar))
+    }
+
+    @Test
+    fun `should queue nothing when the checksum of maven metadata is deleted`() {
+        // given: a stored version metadata checksum and a delete listener over a sink that records
+        addFileToRepository(FileSpec(hosted, "$versionDirectory/maven-metadata.xml.sha1", "checksum"))
+        val sink = RecordingArtifactIndexSink()
+        extensions.registerEvent(DeleteIndexListener(sink) {})
+
+        // when: the checksum is removed
+        assertOk(mavenFacade.deleteUnchecked(repository(hosted), "$versionDirectory/maven-metadata.xml.sha1".toLocation(), "cleanup", cleanupRunId = "run-5"))
+
+        // then: nothing is queued, because metadata is not an indexed row
+        assertThat(sink.recorded).`as`("index calls for maven metadata checksums").isEmpty()
+    }
+
+    @Test
     fun `should queue one removal per directory of a cleanup run`() {
         // given: a version directory with two files and a delete listener over a sink that records
         addFileToRepository(FileSpec(hosted, baseJar, "jar"))

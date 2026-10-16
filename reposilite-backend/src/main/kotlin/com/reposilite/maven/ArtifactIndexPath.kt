@@ -27,13 +27,21 @@ import net.onelitefeather.ingot.search.ArtifactIndexSink
  * map to null (artifact search spec, 3.5).
  */
 internal fun Location.artifactIndexPath(): String? {
-    val name = getSimpleName()
-    val checksumSuffix = Checksum.entries.map { ".${it.extension}" }.firstOrNull { name.endsWith(it) }
-    val baseName = checksumSuffix?.let { name.removeSuffix(it) } ?: name
+    val baseName = baseFileName()
     if (baseName.startsWith(METADATA_FILE)) {
         return null
     }
     return resolveSibling(baseName).provenancePath()
+}
+
+/** Whether this location is a checksum sidecar such as `app-1.0.0.jar.sha1`. */
+internal fun Location.isChecksumSidecar(): Boolean =
+    Checksum.entries.any { getSimpleName().endsWith(".${it.extension}") }
+
+private fun Location.baseFileName(): String {
+    val name = getSimpleName()
+    val checksumSuffix = Checksum.entries.map { ".${it.extension}" }.firstOrNull { name.endsWith(it) }
+    return checksumSuffix?.let { name.removeSuffix(it) } ?: name
 }
 
 /** Tells the index that [location] of [repository] was written, unless the write is not an artifact. */
