@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.1](https://github.com/OneLiteFeatherNET/ingot/compare/v1.1.0...v1.1.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **console:** render log output as text instead of html ([#16](https://github.com/OneLiteFeatherNET/ingot/issues/16)) ([1364ee2](https://github.com/OneLiteFeatherNET/ingot/commit/1364ee2f0fed3ba303266cb6ee62d710df66c738))
+* **deps:** update dependencies with known vulnerabilities ([#19](https://github.com/OneLiteFeatherNET/ingot/issues/19)) ([05a6160](https://github.com/OneLiteFeatherNET/ingot/commit/05a616027d56cedabb79d8895b82e090bcc67fc6))
+* escape request paths in generated html pages ([#17](https://github.com/OneLiteFeatherNET/ingot/issues/17)) ([5b1ccad](https://github.com/OneLiteFeatherNET/ingot/commit/5b1ccadd359c5ed2d612299605748ed918d045cb))
+* **storage:** answer a repeated delete of a missing file with success ([#18](https://github.com/OneLiteFeatherNET/ingot/issues/18)) ([1744fc1](https://github.com/OneLiteFeatherNET/ingot/commit/1744fc11f67d28be11887c33bfc1a01ee9c4b9b2))
+
 ## [1.1.0](https://github.com/OneLiteFeatherNET/ingot/compare/v1.0.0...v1.1.0) (2026-08-09)
 
 
