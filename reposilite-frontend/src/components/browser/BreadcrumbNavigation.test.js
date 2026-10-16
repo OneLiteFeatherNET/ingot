@@ -87,9 +87,71 @@ describe('BreadcrumbNavigation', () => {
 
   it('links every ancestor directory', async () => {
     wrapper = await mountBreadcrumb()
-    const linkTexts = wrapper.findAll('a').map(link => link.text())
+    const linkTexts = wrapper.findAll('ol a').map(link => link.text())
 
-    expect(linkTexts, 'the ancestors are still reachable').toEqual(expect.arrayContaining(['/', 'releases/', 'net/']))
+    expect(linkTexts, 'the ancestors are still reachable').toEqual(['Index of', 'releases', 'net'])
+  })
+
+  it('shows the segments with the path separator between them, and no slash inside a name', async () => {
+    wrapper = await mountBreadcrumb()
+    // The separators are part of their crumb's list item, so the names are read from the crumbs themselves.
+    const names = wrapper.findAll('ol a, ol [aria-current="page"]').map(crumb => crumb.text())
+
+    expect(names, 'the trail reads as plain segment names').toEqual(['Index of', 'releases', 'net', 'example'])
+  })
+
+  it('draws one muted separator between each pair of crumbs and hides it from assistive technology', async () => {
+    wrapper = await mountBreadcrumb()
+    const separators = wrapper.findAll('ol span[aria-hidden="true"]')
+
+    expect(separators.length, 'there is one separator per boundary').toBe(3)
+    for (const separator of separators) {
+      expect(separator.text(), 'the separator is a slash').toBe('/')
+      expect(separator.classes(), 'the separator is a muted MD3 token').toContain('text-outline')
+    }
+  })
+
+  it('keeps the separators out of the links, so a link name is only the directory', async () => {
+    wrapper = await mountBreadcrumb()
+    const linkNames = wrapper.findAll('ol a').map(link => link.text())
+
+    for (const name of linkNames) {
+      expect(name, `the link ${name} carries no separator`).not.toContain('/')
+    }
+  })
+
+  it('marks the segment being viewed as the current page and the only one', async () => {
+    wrapper = await mountBreadcrumb()
+    const current = wrapper.findAll('[aria-current="page"]')
+
+    expect(current.map(item => item.text()), 'exactly the last segment is the current page').toEqual(['example'])
+  })
+
+  it('names the trail as breadcrumb navigation', async () => {
+    wrapper = await mountBreadcrumb()
+
+    expect(wrapper.element.tagName, 'the trail is a nav element').toBe('NAV')
+    expect(wrapper.attributes('aria-label')).toBe('Breadcrumb')
+    expect(wrapper.find('nav ol').exists(), 'the segments form an ordered list').toBe(true)
+  })
+
+  it('lets a long path wrap between segments, not inside them', async () => {
+    wrapper = await mountBreadcrumb('releases/net/onelitefeather/mycelium-bom/1.8.9')
+    const list = wrapper.find('ol')
+
+    expect(list.classes(), 'the segments flow onto the next line when there is no room').toContain('flex-wrap')
+    for (const item of wrapper.findAll('ol li')) {
+      expect(item.classes(), `the crumb ${item.text()} may shrink but is not split`).toContain('max-w-full')
+    }
+    expect(wrapper.html(), 'no crumb forces a break inside its name').not.toMatch(/break-all|break-words|wrap-anywhere/)
+  })
+
+  it('shows Index of as the current page at the top of the tree', async () => {
+    wrapper = await mountBreadcrumb('')
+    const current = wrapper.find('[aria-current="page"]')
+
+    expect(current.text(), 'at the top the page is the index itself').toBe('Index of')
+    expect(current.element.tagName, 'the index is not a link to itself').not.toBe('A')
   })
 
   it('keeps a long directory name on one line with an ellipsis and its full name in the title', async () => {
@@ -103,21 +165,21 @@ describe('BreadcrumbNavigation', () => {
 
   it('gives every ancestor crumb its full name as a title', async () => {
     wrapper = await mountBreadcrumb('releases/net/example')
-    const ancestors = wrapper.findAll('ol a')
+    const ancestors = wrapper.findAll('ol a').filter(link => link.text() !== 'Index of')
 
-    expect(ancestors.map(link => link.attributes('title'))).toEqual(['/', 'releases', 'net'])
+    expect(ancestors.map(link => link.attributes('title'))).toEqual(['releases', 'net'])
   })
 
   it('points each ancestor crumb at its browse URL', async () => {
     wrapper = await mountBreadcrumb()
-    const net = wrapper.findAll('ol a').find(link => link.text() === 'net/')
+    const net = wrapper.findAll('ol a').find(link => link.text() === 'net')
 
     expect(net.attributes('href'), 'the crumb links to the browse URL of its directory').toBe('/browse/releases/net')
   })
 
-  it('points the root crumb at overview', async () => {
+  it('points the Index of crumb at overview', async () => {
     wrapper = await mountBreadcrumb()
-    const root = wrapper.findAll('a').find(link => link.text() === '/')
+    const root = wrapper.findAll('a').find(link => link.text() === 'Index of')
 
     expect(root.attributes('href')).toBe('/')
   })
