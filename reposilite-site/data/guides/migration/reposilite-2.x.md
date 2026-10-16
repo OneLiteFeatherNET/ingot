@@ -53,4 +53,4 @@ Reposilite 2.x stored access tokens & statistics in local files and those are in
 There's no option to migrate statistics, but a dedicated plugin can help you with tokens:
 
 * [Ingot / Plugins - Migration plugin](/plugin/migration)
-* [Guide / Upgrading](/guide/upgrading#upgrade-from-reposilite-2x), for the import steps and how to check them
+The import steps and how to check them are in the Ingot documentation (GitBook space, how-to "Upgrade from Reposilite 2.x").

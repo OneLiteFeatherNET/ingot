@@ -18,7 +18,6 @@ const categories = [
       'docker',
       'split-containers',
       'kubernetes',
-      'upgrading',
     ]
   },
   {
