@@ -17,15 +17,18 @@
 package com.reposilite.maven
 
 import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.shared.ErrorResponse
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
+import io.javalin.http.HttpStatus
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import panda.std.Result
 import java.io.File
 import java.time.Clock
 import java.time.Instant
@@ -212,6 +215,30 @@ internal class StorageUsageServiceTest {
         val current = usage.current()
         assertEquals(3L, current.totalBytes)
         assertTrue(current.computing)
+    }
+
+    @Test
+    fun `should log a warning with the repository id and the reason when the root cannot be read`() {
+        // given: a repository on object storage whose root listing fails, so it would silently measure as empty
+        val unreadable = object : StorageProvider by storage("broken") {
+            override fun getFileDetails(location: Location) =
+                Result.error<com.reposilite.storage.api.FileDetails, ErrorResponse>(
+                    ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "bucket listing refused")
+                )
+        }
+
+        // when: usage is computed
+        val repository = service(StorageTarget("broken", unreadable, quota = null, storageType = "s3"))
+            .refresh().join().repositories.single()
+
+        // then: the figures are zero, and a warning names the repository, the path and the reason
+        assertEquals(0L, repository.usedBytes)
+        assertEquals(0L, repository.fileCount)
+        val warnings = logger.messages.map { it.value }.filter { it.contains("Cannot read") }
+        assertEquals(1, warnings.size, "expected exactly one warning, got ${logger.messages.map { it.value }}")
+        assertTrue(warnings.single().contains("broken"), warnings.single())
+        assertTrue(warnings.single().contains("'/'"), warnings.single())
+        assertTrue(warnings.single().contains("bucket listing refused"), warnings.single())
     }
 
 }

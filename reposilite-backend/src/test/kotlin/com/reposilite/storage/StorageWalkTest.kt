@@ -17,10 +17,19 @@
 package com.reposilite.storage
 
 import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.shared.ErrorResponse
+import com.reposilite.storage.api.DirectoryInfo
+import com.reposilite.storage.api.DocumentInfo
+import com.reposilite.storage.api.FileDetails
+import com.reposilite.storage.api.Location
+import com.reposilite.storage.api.SimpleDirectoryInfo
+import io.javalin.http.ContentType
+import io.javalin.http.HttpStatus
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import panda.std.Result
 import java.io.File
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeBytes
@@ -29,6 +38,36 @@ internal class StorageWalkTest {
 
     @TempDir
     lateinit var root: File
+
+    /** A storage whose listings are scripted per path; a path without an entry is reported as not found. */
+    private class FakeStorage(private val details: Map<String, Result<out FileDetails, ErrorResponse>>) :
+        StorageProvider by Unsupported {
+
+        override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> =
+            details[location.toString()] ?: Result.error(ErrorResponse(HttpStatus.NOT_FOUND, "no listing scripted for '$location'"))
+
+    }
+
+    private object Unsupported : StorageProvider {
+        override fun putFile(location: Location, inputStream: java.io.InputStream) = throw UnsupportedOperationException()
+        override fun getFile(location: Location) = throw UnsupportedOperationException()
+        override fun getFileDetails(location: Location) = throw UnsupportedOperationException()
+        override fun removeFile(location: Location) = throw UnsupportedOperationException()
+        override fun getFiles(location: Location) = throw UnsupportedOperationException()
+        override fun getLastModifiedTime(location: Location) = throw UnsupportedOperationException()
+        override fun getFileSize(location: Location) = throw UnsupportedOperationException()
+        override fun exists(location: Location) = throw UnsupportedOperationException()
+        override fun usage() = throw UnsupportedOperationException()
+        override fun canHold(contentLength: Long) = throw UnsupportedOperationException()
+    }
+
+    private fun document(name: String, size: Long) = DocumentInfo(name, ContentType.APPLICATION_OCTET_STREAM, size)
+
+    private fun listing(name: String, vararg entries: FileDetails): Result<out FileDetails, ErrorResponse> =
+        Result.ok(DirectoryInfo(name, entries.toList()))
+
+    private fun failure(message: String): Result<out FileDetails, ErrorResponse> =
+        Result.error(ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, message))
 
     private fun storage() =
         FileSystemStorageProviderFactory.of(InMemoryLogger(), root.toPath(), "100%")
@@ -71,6 +110,54 @@ internal class StorageWalkTest {
 
         // then: the modification time is known
         assertEquals(true, file.lastModified != null)
+    }
+
+    @Test
+    fun `should report the root and the error message when the root cannot be listed`() {
+        // given: a storage whose root listing fails
+        val storage = FakeStorage(mapOf("" to failure("bucket listing refused")))
+        val unreadable = mutableListOf<Pair<String, String>>()
+
+        // when: the tree is walked
+        val files = storage.walkFiles { path, reason -> unreadable += path to reason }
+
+        // then: nothing is listed and the callback names the root with the error message
+        assertEquals(emptyList<StoredFile>(), files)
+        assertEquals(listOf("" to "bucket listing refused"), unreadable)
+    }
+
+    @Test
+    fun `should report the root and its type when the root is not a directory`() {
+        // given: a storage whose root is a single document
+        val storage = FakeStorage(mapOf("" to Result.ok(document("root", 1))))
+        val unreadable = mutableListOf<Pair<String, String>>()
+
+        // when: the tree is walked
+        val files = storage.walkFiles { path, reason -> unreadable += path to reason }
+
+        // then: nothing is listed and the callback names the root with the actual type
+        assertEquals(emptyList<StoredFile>(), files)
+        assertEquals(listOf("" to "not a directory: DocumentInfo"), unreadable)
+    }
+
+    @Test
+    fun `should report a nested directory that cannot be listed and still measure the rest`() {
+        // given: a root with a readable file, a readable directory and a directory whose listing fails
+        val storage = FakeStorage(
+            mapOf(
+                "" to listing("", document("top.txt", 2), SimpleDirectoryInfo("com"), SimpleDirectoryInfo("org")),
+                "com" to failure("access denied"),
+                "org" to listing("org", document("a.bin", 7)),
+            )
+        )
+        val unreadable = mutableListOf<Pair<String, String>>()
+
+        // when: the tree is walked
+        val files = storage.walkFiles { path, reason -> unreadable += path to reason }
+
+        // then: the broken directory is reported by path and the other files are still measured
+        assertEquals(listOf("com" to "access denied"), unreadable)
+        assertEquals(mapOf("top.txt" to 2L, "org/a.bin" to 7L), files.associate { it.path to it.sizeBytes })
     }
 
 }
