@@ -57,6 +57,12 @@ dependencies {
         implementation("org.bouncycastle:bcprov-jdk18on:1.85") {
             because("CVE-2026-8763 and CVE-2026-13506 are fixed in 1.85")
         }
+        implementation("org.bouncycastle:bcpkix-jdk18on:1.85") {
+            because("it has to match bcprov-jdk18on; the modules are released together and mixing versions is unsupported")
+        }
+        implementation("org.bouncycastle:bcutil-jdk18on:1.85") {
+            because("it has to match bcprov-jdk18on; the modules are released together and mixing versions is unsupported")
+        }
         implementation("org.apache.httpcomponents.core5:httpcore5:5.4.3") {
             because("CVE-2026-54399 is fixed in 5.4.3")
         }
