@@ -54,7 +54,7 @@ RUN set -eu; \
 
 # nginx-unprivileged already runs as a non-root user and listens above 1024, rather than
 # starting as root and dropping privileges the way the stock nginx image does.
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:a6c3ec0c0d249d68b0682df854d4a9e222b90fb607dc3fcf2f1d2fcbc85d347e AS run
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:378d0c32f6562f7fd9629170797f57d2b953aa09be983b3daaf4809bb039ca00 AS run
 
 # Where to reach the server, and how to resolve it. 127.0.0.11 is Docker's embedded DNS; on
 # Kubernetes this wants the cluster resolver instead.

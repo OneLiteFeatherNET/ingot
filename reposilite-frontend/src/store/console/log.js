@@ -15,24 +15,16 @@
  */
 
 import { computed, ref, reactive } from 'vue'
-import Convert from 'ansi-to-html'
+import { parseAnsi } from './ansi'
 
 const levelNames = ['Other', 'Trace', 'Debug', 'Info', 'Warn', 'Error']
 const levels  = reactive({})
 const filter = ref('')
 const id = ref(0)
 const rawLog = reactive([])
-const convert = new Convert()
 
 const getLevel = message =>
   levelNames.find(level => message.includes(`${level.toUpperCase()} | `)) ?? 'Other'
-
-const sanitizeMessage = (message) => convert.toHtml(
-  message
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll(' ', '&nbsp;')
-)
 
 export default function useLog() {
   levelNames.forEach(level => {
@@ -49,19 +41,21 @@ export default function useLog() {
 
   const log = computed(() => {
     return rawLog
-      .filter(entry => isSeparator(entry) || entry.message.toLowerCase().includes(filter.value.toLowerCase()))
+      .filter(entry => isSeparator(entry) || entry.text.toLowerCase().includes(filter.value.toLowerCase()))
       .filter(entry => isSeparator(entry) || levels[entry.level].enabled)
   })
 
   const hasLines = computed(() => rawLog.some(entry => !isSeparator(entry)))
 
   const logMessage = value => {
-    rawLog.push({ id: id.value++, kind: 'line', message: sanitizeMessage(value), level: getLevel(value) })
+    const segments = parseAnsi(value)
+    const text = segments.map(segment => segment.text).join('')
+    rawLog.push({ id: id.value++, kind: 'line', segments, text, level: getLevel(value) })
   }
 
-  // The label is ours and constant, which is why a separator is never rendered as HTML.
+  // The label is ours and constant, and like every other line it is rendered as text.
   const addSeparator = label => {
-    rawLog.push({ id: id.value++, kind: 'separator', message: label, level: null })
+    rawLog.push({ id: id.value++, kind: 'separator', message: label, text: label, level: null })
   }
 
   const clearLog = () => {
@@ -73,7 +67,6 @@ export default function useLog() {
     log,
     hasLines,
     filter,
-    sanitizeMessage,
     logMessage,
     addSeparator,
     clearLog

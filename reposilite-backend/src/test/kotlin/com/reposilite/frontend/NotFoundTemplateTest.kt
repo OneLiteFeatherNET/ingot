@@ -98,4 +98,43 @@ internal class NotFoundTemplateTest {
             .contains("href=\"/browse/releases/my%20lib/1.0\"")
             .doesNotContain("%2520")
     }
+
+    @Test
+    fun `should escape the base path in the href`() {
+        // when: the configured base path contains a quote
+        val page = NotFoundTemplate.createNotFoundPage("/ingot\"x", "/releases", "")
+
+        // then: the base path cannot end the attribute
+        assertThat(page)
+            .`as`("base path must be percent-encoded in the href")
+            .contains("href=\"/ingot%22x/browse/releases\"")
+            .doesNotContain("href=\"/ingot\"")
+    }
+
+    @Test
+    fun `should escape tags and apostrophes of a path shown as link text`() {
+        // when: the requested path carries an apostrophe and an image tag with an event handler
+        val page = NotFoundTemplate.createNotFoundPage("/", "/releases/o'brien/<img onerror=alert(1)>", "")
+
+        // then: the visible text and the href show the escaped value, no raw tag reaches the markup
+        assertThat(page)
+            .`as`("the raw tag must not reach the markup")
+            .doesNotContain("<img")
+            .`as`("apostrophe must be escaped in the href")
+            .contains("href=\"/browse/releases/o&#39;brien/%3Cimg%20onerror=alert(1)%3E\"")
+            .`as`("link text must carry the same escaped value")
+            .contains(">/browse/releases/o&#39;brien/%3Cimg%20onerror=alert(1)%3E</a>")
+    }
+
+    @Test
+    fun `should keep a percent encoded request path encoded exactly once below a mount point`() {
+        // when: the servlet container hands over the raw, percent-encoded request URI
+        val page = NotFoundTemplate.createNotFoundPage("/ingot", "/releases/my%20lib/1.0", "")
+
+        // then: the link keeps the single encoding of the space under the base path
+        assertThat(page)
+            .`as`("space must stay encoded exactly once")
+            .contains("href=\"/ingot/browse/releases/my%20lib/1.0\"")
+            .doesNotContain("%2520")
+    }
 }

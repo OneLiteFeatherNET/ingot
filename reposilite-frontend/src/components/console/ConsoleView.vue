@@ -282,11 +282,19 @@ const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240
             >
               {{ entry.message }}
             </p>
+            <!--
+              Log text is bound with interpolation only, never v-html: interpolation escapes
+              the line, and the classes come from the fixed table in store/console/ansi.js.
+              whitespace-pre keeps the spacing of the line and does not wrap it.
+            -->
             <p
               v-else
-              class="whitespace-nowrap"
-              v-html="entry.message"
-            />
+              class="whitespace-pre"
+            ><span
+              v-for="(segment, index) in entry.segments"
+              :key="index"
+              :class="segment.classes"
+            >{{ segment.text }}</span></p>
           </template>
 
           <!--

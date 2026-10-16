@@ -40,7 +40,7 @@ plugins {
 // downgrade from the 3.5.x the sources came from; see VERSIONING.md.
 //
 // Do not edit this by hand. The marker comment is what Release Please looks for.
-val projectVersion = "1.1.0" // x-release-please-version
+val projectVersion = "1.1.1" // x-release-please-version
 
 // Test JVM settings. A local run stays light; CI keeps what it had before, and the difference is
 // deliberate and documented on each setting below.

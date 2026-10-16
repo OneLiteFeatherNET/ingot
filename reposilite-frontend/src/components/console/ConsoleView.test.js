@@ -104,6 +104,33 @@ describe('ConsoleView', () => {
     expect(output, 'the gap in the stream should be marked in the log').toContain('Reconnected')
   })
 
+  describe('log text', () => {
+    it('renders markup in a log line as literal text instead of elements', async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      emitLine(stream, '<img src=x onerror=alert(1)> &amp;')
+      await flushPromises()
+
+      const output = wrapper.find('#console')
+      expect(output.text(), 'the payload must show up verbatim').toContain('<img src=x onerror=alert(1)> &amp;')
+      expect(output.find('img').exists(), 'a log line must never create elements').toBe(false)
+    })
+
+    it('colours a segment with a class instead of an inline style', async () => {
+      await mountView()
+      const stream = FakeEventSource.instances[0]
+      stream.onopen()
+      emitLine(stream, '\u001b[31mERROR\u001b[0m done')
+      await flushPromises()
+
+      const coloured = wrapper.find('#console span')
+      expect(coloured.text(), 'only the coloured part sits in the span').toBe('ERROR')
+      expect(coloured.classes().join(' '), 'the colour comes from the fixed class table').toContain('text-red-700')
+      expect(coloured.attributes('style'), 'no inline style may come from the log').toBeUndefined()
+    })
+  })
+
   describe('empty output', () => {
     it('says the first line is awaited while nothing has been printed', async () => {
       await mountView()

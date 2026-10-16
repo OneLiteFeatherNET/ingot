@@ -37,7 +37,7 @@ EOF
 # revision in one place instead of duplicating them into build arguments.
 
 # Run stage
-FROM eclipse-temurin:21-jre-noble@sha256:ca397720325ceefe39ce397f186759fc87d9efafb2dc4ce53315980844c2f4f2 AS run
+FROM eclipse-temurin:21-jre-noble@sha256:000fd431958bc81a24abe1e8e5f0f0fd3ae365a594bd50aadb20696805f9408c AS run
 
 # Setup runtime environment.
 #

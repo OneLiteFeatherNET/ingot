@@ -48,8 +48,31 @@ dependencies {
     //
     // Both stay on the line their consumers expect. netty 4.2.x and jetty 12.1.x are not
     // interchangeable with what the AWS SDK and Javalin compile against.
-    implementation(platform("io.netty:netty-bom:4.1.136.Final"))
+    implementation(platform("io.netty:netty-bom:4.1.137.Final"))
     implementation(platform("org.eclipse.jetty:jetty-bom:12.1.12"))
+
+    // Transitive libraries with no direct declaration. A constraint raises them to the first
+    // release that fixes the advisory without waiting for the projects that pull them in.
+    constraints {
+        implementation("org.bouncycastle:bcprov-jdk18on:1.85") {
+            because("CVE-2026-8763 and CVE-2026-13506 are fixed in 1.85")
+        }
+        implementation("org.bouncycastle:bcpkix-jdk18on:1.85") {
+            because("it has to match bcprov-jdk18on; the modules are released together and mixing versions is unsupported")
+        }
+        implementation("org.bouncycastle:bcutil-jdk18on:1.85") {
+            because("it has to match bcprov-jdk18on; the modules are released together and mixing versions is unsupported")
+        }
+        implementation("org.apache.httpcomponents.core5:httpcore5:5.4.3") {
+            because("CVE-2026-54399 is fixed in 5.4.3")
+        }
+        implementation("org.apache.httpcomponents.core5:httpcore5-h2:5.4.3") {
+            because("CVE-2026-54428 is reported against httpcore5-h2 5.4 and is no longer reported at 5.4.3")
+        }
+        implementation("org.apache.httpcomponents.client5:httpclient5:5.6.3") {
+            because("CVE-2026-64607 is fixed in 5.6.3")
+        }
+    }
 
 //    val detekt = "1.23.5"
 //    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:$detekt")
@@ -118,7 +141,7 @@ dependencies {
     // Drivers
     implementation("com.zaxxer:HikariCP:7.0.2")
     implementation("org.xerial:sqlite-jdbc:3.49.1.0") // note: 3.50.3.0 is broken
-    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.8")
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.9")
     implementation("org.postgresql:postgresql:42.7.13")
     implementation("com.h2database:h2:2.3.232")
     implementation("com.mysql:mysql-connector-j:9.7.0") {
@@ -126,7 +149,7 @@ dependencies {
     }
     implementation("com.google.protobuf:protobuf-java:4.35.0")
 
-    val jackson = "2.21.5"
+    val jackson = "2.21.7"
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jackson")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jackson")
