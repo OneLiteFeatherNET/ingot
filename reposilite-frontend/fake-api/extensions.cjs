@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+const { instantOnWire } = require('./wire.cjs')
+
 const respond = (response) =>
   (_, res) => res.send(response)
 
@@ -37,8 +39,10 @@ const invalidCredentials = (res) =>
 const sendMessage = (connection, message) =>
   connection.send(`${new Date().toDateString()} ${message}`)
 
+// A stored file carries the instant it was stored at, sent as epoch seconds like every Instant (see wire.cjs).
+const FAKE_STORED_AT = '2026-10-14T09:12:00Z'
 const createFileDetails = (name, contentType, contentLength) =>
-  ({ type: 'FILE', name, contentType, contentLength })
+  ({ type: 'FILE', name, contentType, contentLength, lastModifiedTime: instantOnWire(FAKE_STORED_AT) })
 
 const createDirectoryDetails = (name, files) =>
   ({ type: 'DIRECTORY', name, files })

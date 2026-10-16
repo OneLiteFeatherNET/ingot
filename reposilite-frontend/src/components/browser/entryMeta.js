@@ -15,6 +15,7 @@
  */
 
 import prettyBytes from 'pretty-bytes'
+import { instantToDate } from '../../helpers/apiTime'
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
@@ -30,20 +31,6 @@ const describeSize = (file) => {
   return typeof file?.contentLength === 'number' && file.contentLength >= 0
     ? prettyBytes(file.contentLength)
     : ''
-}
-
-/*
- * The API sends lastModifiedTime as Unix epoch seconds, possibly with a fraction. That is how
- * Jackson writes java.time.Instant, for the local filesystem and S3 alike. A JavaScript Date
- * counts milliseconds, so the value has to be scaled before it becomes a date.
- */
-const modifiedDate = (epochSeconds) => {
-  if (typeof epochSeconds !== 'number' || !Number.isFinite(epochSeconds) || epochSeconds <= 0) {
-    return null
-  }
-
-  const modified = new Date(epochSeconds * 1000)
-  return Number.isNaN(modified.getTime()) ? null : modified
 }
 
 /*
@@ -63,7 +50,7 @@ const describeEntry = (file) => {
     parts.push(size)
   }
 
-  const modified = modifiedDate(file?.lastModifiedTime)
+  const modified = instantToDate(file?.lastModifiedTime)
   if (modified) {
     parts.push(dateFormat.format(modified))
   }

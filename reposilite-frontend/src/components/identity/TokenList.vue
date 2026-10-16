@@ -23,6 +23,7 @@ import CreateTokenDialog from './CreateTokenDialog.vue'
 import RevokeTokenDialog from './RevokeTokenDialog.vue'
 import RotateTokenDialog from './RotateTokenDialog.vue'
 import SecretOnceDialog from './SecretOnceDialog.vue'
+import { instantToDate, localDateToDate } from '../../helpers/apiTime'
 import { formatDate, formatDateTime, formatRelative } from './identityTokens'
 
 /*
@@ -126,6 +127,23 @@ const scopeText = (token) =>
   token.scopes === null || token.scopes === undefined ? null : token.scopes
 
 defineExpose({ reload: load })
+// The wire values of a token: createdAt is a LocalDate, expiresAt and lastUsedAt are Instants.
+const createdDay = (token) => {
+  const date = localDateToDate(token.createdAt)
+  return date ? formatDate(date) : ''
+}
+const expiryDay = (token) => {
+  const date = instantToDate(token.expiresAt)
+  return date ? formatDate(date) : ''
+}
+const lastUsedTitle = (token) => {
+  const date = instantToDate(token.lastUsedAt)
+  return date ? formatDateTime(date) : undefined
+}
+const lastUsedText = (token) => {
+  const date = instantToDate(token.lastUsedAt)
+  return date ? formatRelative(date) : 'Never used'
+}
 </script>
 
 <template>
@@ -214,13 +232,13 @@ defineExpose({ reload: load })
             <div class="contents min-[480px]:flex min-[480px]:flex-col">
               <dt>Created</dt>
               <dd class="m-0 text-on-surface">
-                {{ formatDate(token.createdAt) }}
+                {{ createdDay(token) }}
               </dd>
             </div>
             <div class="contents min-[480px]:flex min-[480px]:flex-col">
               <dt>Expires</dt>
               <dd class="m-0 text-on-surface">
-                {{ token.expiresAt ? formatDate(token.expiresAt) : 'Never' }}
+                {{ token.expiresAt ? expiryDay(token) : 'Never' }}
               </dd>
             </div>
             <div class="contents min-[480px]:flex min-[480px]:flex-col">
@@ -228,9 +246,9 @@ defineExpose({ reload: load })
               <dd
                 class="m-0 text-on-surface"
                 data-test="last-used"
-                :title="token.lastUsedAt ? formatDateTime(token.lastUsedAt) : undefined"
+                :title="lastUsedTitle(token)"
               >
-                {{ token.lastUsedAt ? formatRelative(token.lastUsedAt) : 'Never used' }}
+                {{ lastUsedText(token) }}
                 <span
                   v-if="token.lastUsedAt && token.lastUsedIp"
                   class="text-on-surface-variant"

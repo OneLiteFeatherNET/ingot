@@ -19,6 +19,9 @@ import { mount, flushPromises } from '@vue/test-utils'
 import TokenList from './TokenList.vue'
 import { setClock, resetClock } from '../../helpers/clock'
 
+// The API sends an Instant as epoch seconds: the fixtures carry the same number.
+const wireInstant = (iso) => Date.parse(iso) / 1000
+
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
@@ -28,16 +31,16 @@ vi.mock('../../helpers/toast', () => ({
 const LAPTOP = {
   name: 'laptop',
   description: 'my laptop',
-  createdAt: '2026-10-04T09:00:00Z',
-  expiresAt: '2027-01-02T00:00:00Z',
+  createdAt: [2026, 10, 4],
+  expiresAt: wireInstant('2027-01-02T00:00:00Z'),
   scopes: ['READ', 'WRITE'],
-  lastUsedAt: '2026-10-14T08:30:00Z'
+  lastUsedAt: wireInstant('2026-10-14T08:30:00Z')
 }
 
 const CI = {
   name: 'ci',
   description: '',
-  createdAt: '2026-10-05',
+  createdAt: [2026, 10, 5],
   expiresAt: null,
   scopes: null,
   lastUsedAt: null

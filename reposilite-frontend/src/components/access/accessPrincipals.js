@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { instantToDate } from '../../helpers/apiTime'
 import { formatDateTime, formatRelative } from '../identity/identityTokens'
 
 /*
@@ -34,8 +35,11 @@ const filterPrincipals = (principals, query) => {
     normalize(principal.name).includes(needle) || normalize(principal.displayName).includes(needle))
 }
 
-const labelOf = (value, never) =>
-  value ? { text: formatRelative(value), title: formatDateTime(value) } : { text: never, title: undefined }
+// The values are the Instants the API sends (epoch seconds); a missing one has no date.
+const labelOf = (value, never) => {
+  const date = instantToDate(value)
+  return date ? { text: formatRelative(date), title: formatDateTime(date) } : { text: never, title: undefined }
+}
 
 /** The last sign-in of a principal: a relative text, and the absolute time as the tooltip. */
 const seenLabel = (lastSeenAt) => labelOf(lastSeenAt, 'Never signed in')
@@ -43,7 +47,7 @@ const seenLabel = (lastSeenAt) => labelOf(lastSeenAt, 'Never signed in')
 /** The last use of a machine account: a relative text, and the absolute time as the tooltip. */
 const usedLabel = (lastUsedAt) => labelOf(lastUsedAt, 'Never used')
 
-const time = (value) => new Date(value).getTime()
+const time = (value) => instantToDate(value)?.getTime() ?? -Infinity
 
 /** The most recent lastUsedAt among the tokens, or null when none was ever used. */
 const newestLastUsed = (tokens) =>

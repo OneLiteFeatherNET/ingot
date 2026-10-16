@@ -25,6 +25,7 @@ const bodyParser = require('body-parser')
 const crypto = require("crypto")
 const audit = require("./audit.cjs")
 const identity = require("./identity.cjs")
+const { localDateOnWire } = require("./wire.cjs")
 
 const {
   respond,
@@ -626,7 +627,7 @@ application
           accessToken: {
             id: 1,
             name: "name",
-            createdAt: Date.now(),
+            createdAt: localDateOnWire(new Date().toISOString()),
             description: "Description",
           },
           permissions: [
