@@ -33,6 +33,20 @@ const describeSize = (file) => {
 }
 
 /*
+ * The API sends lastModifiedTime as Unix epoch seconds, possibly with a fraction. That is how
+ * Jackson writes java.time.Instant, for the local filesystem and S3 alike. A JavaScript Date
+ * counts milliseconds, so the value has to be scaled before it becomes a date.
+ */
+const modifiedDate = (epochSeconds) => {
+  if (typeof epochSeconds !== 'number' || !Number.isFinite(epochSeconds) || epochSeconds <= 0) {
+    return null
+  }
+
+  const modified = new Date(epochSeconds * 1000)
+  return Number.isNaN(modified.getTime()) ? null : modified
+}
+
+/*
  * The supporting line of a file row: its size and when it was last modified. Directories
  * carry neither, so their line is empty. Unknown values are left out rather than shown as
  * zero bytes or the epoch.
@@ -49,11 +63,9 @@ const describeEntry = (file) => {
     parts.push(size)
   }
 
-  if (file?.lastModifiedTime) {
-    const modified = new Date(file.lastModifiedTime)
-    if (!Number.isNaN(modified.getTime())) {
-      parts.push(dateFormat.format(modified))
-    }
+  const modified = modifiedDate(file?.lastModifiedTime)
+  if (modified) {
+    parts.push(dateFormat.format(modified))
   }
 
   return parts.join(' · ')
