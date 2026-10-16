@@ -117,4 +117,43 @@ internal class ArtifactPermissionIntegrationTest : ReposiliteSpecification() {
         assertThat(check.body.get("decision").get("explanation").asText()).describedAs("explanation").contains("Denied")
         assertThat(check.body.get("trace").map { it.get("kind").asText() }).describedAs("trace kinds").contains("ARTIFACT", "REPOSITORY")
     }
+
+    @Test
+    fun `a token narrowed to one artifact deploys that artifact and not a sibling in the same group`() {
+        principalWithNodes("alice", "ingot.repository.releases.deploy" to true)
+        val narrowed = tokenOf("alice", tokenName = "alice-bom", secret = "alice-bom-secret", "ingot.artifact.net.onelitefeather:mycelium-bom.deploy" to true)
+
+        assertThat(deployStatus(narrowed, "releases", "net/onelitefeather/mycelium-bom/1.0/mycelium-bom-1.0.jar")).describedAs("the artifact").isEqualTo(OK.code)
+        assertThat(deployStatus(narrowed, "releases", "net/onelitefeather/mycelium-api/1.0/mycelium-api-1.0.jar")).describedAs("sibling artifact").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a token narrowed to an artifact of one repository is denied in another repository`() {
+        principalWithNodes("alice", "ingot.repository.*.deploy" to true)
+        val narrowed = tokenOf(
+            "alice", tokenName = "alice-releases", secret = "alice-releases-secret",
+            "ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.deploy" to true,
+        )
+
+        assertThat(deployStatus(narrowed, "releases", "net/onelitefeather/mycelium-bom/1.0/mycelium-bom-1.0.jar")).describedAs("releases").isEqualTo(OK.code)
+        assertThat(deployStatus(narrowed, "snapshots", "net/onelitefeather/mycelium-bom/1.0-SNAPSHOT/mycelium-bom-1.0-SNAPSHOT.jar")).describedAs("snapshots").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a token cannot deploy through an artifact node its owner lacks`() {
+        principalWithNodes("alice", "ingot.artifact.net.onelitefeather:mycelium-bom.deploy" to true)
+        val wide = tokenOf("alice", tokenName = "alice-wide", secret = "alice-wide-secret", "ingot.artifact.net.onelitefeather.deploy" to true)
+
+        assertThat(deployStatus(wide, "releases", "net/onelitefeather/mycelium-bom/1.0/mycelium-bom-1.0.jar")).describedAs("owner may").isEqualTo(OK.code)
+        assertThat(deployStatus(wide, "releases", "net/onelitefeather/mycelium-api/1.0/mycelium-api-1.0.jar")).describedAs("owner may not").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
+    fun `a token with no artifact node for the path is denied although its owner may deploy`() {
+        val owner = principalWithNodes("alice", "ingot.repository.releases.deploy" to true)
+        val narrowed = tokenOf("alice", tokenName = "alice-bom", secret = "alice-bom-secret", "ingot.artifact.net.onelitefeather:mycelium-bom.deploy" to true)
+
+        assertThat(deployStatus(owner, "releases", "org/other/lib/1.0/lib-1.0.jar")).describedAs("owner token").isEqualTo(OK.code)
+        assertThat(deployStatus(narrowed, "releases", "org/other/lib/1.0/lib-1.0.jar")).describedAs("narrowed token").isEqualTo(FORBIDDEN.code)
+    }
 }
