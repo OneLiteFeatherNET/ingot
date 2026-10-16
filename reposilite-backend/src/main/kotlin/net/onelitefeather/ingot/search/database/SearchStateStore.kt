@@ -31,6 +31,15 @@ internal object SearchStateKey {
 
     /** Enqueue failures since the last completed rebuild. */
     const val DROPPED_ENQUEUES = "dropped_enqueues"
+
+    /** Epoch milliseconds of the last completed full rebuild. Absent until one completed. */
+    const val LAST_FULL_REBUILD = "last_full_rebuild"
+
+    /** The single-run lock of rebuilds: the live run id, with a lease. */
+    const val REBUILD_ACTIVE = "rebuild.active"
+
+    /** The single-run lock of verify runs. */
+    const val VERIFY_ACTIVE = "verify.active"
 }
 
 /**

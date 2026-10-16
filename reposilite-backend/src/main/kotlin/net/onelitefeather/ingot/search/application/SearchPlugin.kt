@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.search.application
 
 import com.reposilite.configuration.local.LocalConfiguration
+import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.infrastructure.SqlMirrorCacheLedger
 import com.reposilite.plugin.api.Facade
@@ -26,8 +27,10 @@ import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
+import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import net.onelitefeather.ingot.search.NoOpArtifactIndexSink
 import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
+import net.onelitefeather.ingot.search.database.IndexRowStore
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
@@ -35,10 +38,14 @@ import net.onelitefeather.ingot.search.outbox.OutboxArtifactIndexSink
 import net.onelitefeather.ingot.search.outbox.OutboxPolicy
 import net.onelitefeather.ingot.search.outbox.OutboxStore
 import net.onelitefeather.ingot.search.outbox.OutboxWorker
+import net.onelitefeather.ingot.search.rebuild.RebuildScheduler
+import net.onelitefeather.ingot.search.rebuild.RebuildService
+import net.onelitefeather.ingot.search.runs.RunStore
 import java.time.Clock
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit.MILLISECONDS
+import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -70,19 +77,52 @@ internal class SearchPlugin : ReposilitePlugin() {
 
         val state = SearchStateStore(database, clock)
         val outbox = OutboxStore(database, clock)
+        val instanceId = UUID.randomUUID().toString()
+        val maven = facade<MavenFacade>()
+        val ledger = SqlMirrorCacheLedger(database)
+        val index = DatabaseArtifactIndex(database)
         val worker = OutboxWorker(
-            owner = UUID.randomUUID().toString(),
+            owner = instanceId,
             outbox = outbox,
-            index = DatabaseArtifactIndex(database),
-            storage = MavenIndexStorage(facade<MavenFacade>(), clock),
-            origins = LedgerOriginLookup(SqlMirrorCacheLedger(database)),
+            index = index,
+            storage = MavenIndexStorage(maven, clock),
+            origins = LedgerOriginLookup(ledger),
             state = state,
             clock = clock,
         )
 
+        val runs = RunStore(database, clock)
+        val settings = facade<SharedConfigurationFacade>().getDomainSettings<SearchSettings>()
+        val rebuild = RebuildService(
+            owner = instanceId,
+            runs = runs,
+            rows = IndexRowStore(database),
+            index = index,
+            outbox = outbox,
+            repositories = MavenRepositoryEntries(maven),
+            ledger = ledger,
+            state = state,
+            clock = clock,
+        )
+        // The startup rules read the heartbeat, so they are decided before the first worker tick writes a new one.
+        val startup = runCatching { rebuild.startupTrigger(settings.get().gapRebuild) }
+            .onFailure { logger.warn("SEARCH | Could not decide the startup rebuild: ${it.message}") }
+            .getOrNull()
+
         val stopped = AtomicBoolean(false)
         event { _: ReposiliteDisposeEvent -> stopped.set(true) }
         schedulePolling(worker, stopped)
+        scheduleRebuilds(
+            RebuildScheduler(
+                clock = clock,
+                settings = { settings.get() },
+                claims = SqlScheduledJobClaims(database, clock, instanceId),
+                rebuild = rebuild,
+                startup = startup,
+                execute = { reposilite().ioService.execute { it() } },
+                onFailure = { logger.warn("SEARCH | $it") },
+            ),
+        )
 
         val sink = OutboxArtifactIndexSink(outbox, state) { logger.warn(it) }
         val onListenerFailure: (Throwable) -> Unit = { failure ->
@@ -92,7 +132,15 @@ internal class SearchPlugin : ReposilitePlugin() {
         event(DeployIndexListener(sink, onListenerFailure))
         event(DeleteIndexListener(sink, onListenerFailure))
 
-        return SearchFacade(sink)
+        return SearchFacade(sink, runs::status)
+    }
+
+    /** Ticks the rebuild scheduler every 30 seconds, as the cleanup scheduler does. The rebuild itself runs on the IO pool. */
+    private fun scheduleRebuilds(scheduler: RebuildScheduler) {
+        val tick = reposilite().scheduler.scheduleWithFixedDelay({
+            runCatching { scheduler.tick() }.onFailure { logger.warn("SEARCH | Rebuild scheduler tick failed: ${it.message}") }
+        }, REBUILD_TICK_SECONDS, REBUILD_TICK_SECONDS, SECONDS)
+        event { _: ReposiliteDisposeEvent -> tick.cancel(false) }
     }
 
     /** Runs one tick after another on the IO pool. The next tick comes after 2 seconds with work, after 10 seconds without. */
@@ -116,6 +164,7 @@ internal class SearchPlugin : ReposilitePlugin() {
 
     private companion object {
         const val DATABASE_ENGINE = "database"
+        const val REBUILD_TICK_SECONDS = 30L
     }
 
 }

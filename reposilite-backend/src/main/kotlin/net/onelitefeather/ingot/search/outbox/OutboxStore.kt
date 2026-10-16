@@ -31,6 +31,7 @@ import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -143,6 +144,21 @@ internal class OutboxStore(
         }
     }
 
+    /**
+     * The members of [paths] in [repository] that have an entry a worker will still apply. A dead letter is not pending:
+     * no worker takes it again, and only a rebuild can repair its row.
+     */
+    fun pendingPaths(repository: String, paths: Collection<String>): Set<String> {
+        if (paths.isEmpty()) return emptySet()
+        return transaction(database) {
+            paths.chunked(PATH_CHUNK).flatMap { chunk ->
+                outbox.select(outbox.path)
+                    .where { (outbox.repository eq repository) and (outbox.path inList chunk) and (outbox.attempts less OutboxPolicy.MAX_ATTEMPTS) }
+                    .map { it[outbox.path] }
+            }.toSet()
+        }
+    }
+
     /** Entries that may still be claimed. */
     fun pending(): Long = transaction(database) {
         outbox.selectAll().where { outbox.attempts less OutboxPolicy.MAX_ATTEMPTS }.count()
@@ -167,6 +183,7 @@ internal class OutboxStore(
 
     private companion object {
         const val LAST_ERROR_LENGTH = 512
+        const val PATH_CHUNK = 500
     }
 
 }

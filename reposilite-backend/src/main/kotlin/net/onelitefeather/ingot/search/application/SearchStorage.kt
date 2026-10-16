@@ -18,13 +18,16 @@ package net.onelitefeather.ingot.search.application
 
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.MirrorCacheLedger
+import com.reposilite.storage.StorageEntrySource
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.outbox.IndexStorage
+import com.reposilite.storage.entrySource
 import net.onelitefeather.ingot.search.outbox.OriginLookup
 import net.onelitefeather.ingot.search.outbox.StoredFile
+import net.onelitefeather.ingot.search.runs.RepositoryEntries
 import java.nio.charset.StandardCharsets
 import java.time.Clock
 import java.time.Instant
@@ -73,5 +76,14 @@ internal class LedgerOriginLookup(private val ledger: MirrorCacheLedger) : Origi
     override fun provenance(repository: String, directory: String): Provenance =
         if (ledger.contains(repository, directory)) Provenance(Origin.MIRROR, ledger.sourceHost(repository, directory))
         else Provenance.HOSTED
+
+}
+
+/** The flat storage listings of the configured Maven repositories, one entry source per repository (artifact search spec, 3.6). */
+internal class MavenRepositoryEntries(private val maven: MavenFacade) : RepositoryEntries {
+
+    override fun names(): List<String> = maven.getRepositories().map { it.name }
+
+    override fun source(repository: String): StorageEntrySource? = maven.getRepository(repository)?.storageProvider?.entrySource()
 
 }
