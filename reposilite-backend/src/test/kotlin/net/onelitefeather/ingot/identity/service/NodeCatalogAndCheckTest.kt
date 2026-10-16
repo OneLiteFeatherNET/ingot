@@ -232,6 +232,59 @@ internal class NodeCatalogAndCheckTest {
     }
 
     @Test
+    fun `the check names the artifact node that decides an artifact request`() {
+        withService { service, _ ->
+            // given: alice may deploy to releases, except below net.onelitefeather
+            val admin = bootstrapAdmin(service)
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.replaceTeamNodes(
+                "deployers",
+                listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.artifact.net.onelitefeather.deploy", false)),
+                ifMatch = null,
+            )
+            service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
+
+            // when
+            val check = service.permissionCheck(admin, "alice", "ingot.artifact.net.onelitefeather:mycelium-bom.deploy", token = null).orNull()!!
+
+            // then
+            assertThat(check.allowed).describedAs("allowed").isFalse
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.artifact.net.onelitefeather.deploy")
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("ARTIFACT")
+            assertThat(check.decision.explanation).describedAs("explanation").contains("Denied").contains("ingot.artifact.net.onelitefeather.deploy")
+            assertThat(check.trace.map { it.kind }).describedAs("trace kinds").containsOnly("REPOSITORY", "ARTIFACT")
+        }
+    }
+
+    @Test
+    fun `the check names the repository node that allows an artifact request in a repository`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
+
+            val check = service.permissionCheck(admin, "alice", "ingot.repository.releases.artifact.org.other:lib.deploy", token = null).orNull()!!
+
+            assertThat(check.allowed).describedAs("allowed").isTrue
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.repository.releases.deploy")
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("REPOSITORY")
+        }
+    }
+
+    @Test
+    fun `the check refuses an artifact node with a wildcard group`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+
+            val result = service.permissionCheck(admin, "admin", "ingot.artifact.*.deploy", token = null)
+
+            assertThat(result.error.status).describedAs("status").isEqualTo(400)
+            assertThat(result.error.message).describedAs("names the wildcard rule").contains("concrete")
+        }
+    }
+
+    @Test
     fun `the check answers 404 for an unknown principal`() {
         withService { service, _ ->
             val admin = bootstrapAdmin(service)

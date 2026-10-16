@@ -75,6 +75,8 @@ import net.onelitefeather.ingot.identity.api.PermissionCheckDto
 import net.onelitefeather.ingot.identity.api.TemplateDto
 import net.onelitefeather.ingot.identity.api.TemplatesDto
 import net.onelitefeather.ingot.identity.evaluation.AdminReachability
+import net.onelitefeather.ingot.identity.evaluation.Decision
+import net.onelitefeather.ingot.identity.evaluation.GRANT_KIND
 import net.onelitefeather.ingot.identity.evaluation.ScopeRules
 import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
@@ -662,6 +664,9 @@ class IdentityFacade(
                 node = decision.node,
                 allowed = decision.allowed,
                 depth = decision.depth,
+                decidingNode = decision.decidingNode,
+                decidingKind = decision.decidingKind,
+                explanation = explain(decision),
             ),
             trace = decision.trace.map { candidate ->
                 CheckTraceDto(
@@ -672,9 +677,21 @@ class IdentityFacade(
                     matched = candidate.matched,
                     reason = candidate.reason,
                     depth = candidate.depth,
+                    kind = candidate.kind,
                 )
             },
         ).asSuccess()
+    }
+
+    /** The decision of a check in one sentence, naming the node or grant that decided. */
+    private fun explain(decision: Decision): String {
+        val verdict = if (decision.allowed) "Allowed" else "Denied"
+        val by = when {
+            decision.decidingKind == GRANT_KIND -> "by a role grant of ${decision.subject}"
+            decision.decidingNode != null -> "by the ${decision.decidingKind?.lowercase()} node '${decision.decidingNode}' of ${decision.subject} (${decision.source.name})"
+            else -> "because no node or grant matches"
+        }
+        return "$verdict $by"
     }
 
     // access explanation

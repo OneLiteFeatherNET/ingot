@@ -239,12 +239,20 @@ data class TemplatesDto(
     val templates: List<TemplateDto>,
 )
 
+/**
+ * The decision of a check. [decidingNode] is the text of the node that decided and [decidingKind] its kind (`ARTIFACT`,
+ * `REPOSITORY`, `ADMIN`, `EVERYTHING`, or `GRANT` for a role grant, which has no node); both are null when no node
+ * matched and the default denial applied. [explanation] is the decision in one sentence.
+ */
 data class CheckDecisionDto(
     val source: String,
     val subject: String?,
     val node: String,
     val allowed: Boolean,
     val depth: Int,
+    val decidingNode: String? = null,
+    val decidingKind: String? = null,
+    val explanation: String? = null,
 )
 
 /** One candidate the decision looked at: whether it matched the requested node, and why it did or did not decide. */
@@ -256,6 +264,7 @@ data class CheckTraceDto(
     val matched: Boolean,
     val reason: String,
     val depth: Int,
+    val kind: String? = null,
 )
 
 data class PermissionCheckDto(
