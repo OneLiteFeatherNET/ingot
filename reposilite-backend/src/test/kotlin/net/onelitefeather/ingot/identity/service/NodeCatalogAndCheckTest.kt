@@ -26,6 +26,7 @@ import net.onelitefeather.ingot.identity.api.CreatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.CreateTeamRequest
 import net.onelitefeather.ingot.identity.api.CreateTokenRequest
 import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -106,11 +107,37 @@ internal class NodeCatalogAndCheckTest {
     }
 
     @Test
-    fun `the templates are the five predefined bundles in order`() {
+    fun `the templates are the five repository bundles followed by the artifact bundles`() {
         withService { service, _ ->
             val templates = service.nodeTemplates().orNull()!!.templates
 
-            assertThat(templates.map { it.id }).containsExactly("read", "deploy", "maintain", "admin", "instance-admin")
+            assertThat(templates.map { it.id }).containsExactly(
+                "read", "deploy", "maintain", "admin", "instance-admin",
+                "artifact-read", "artifact-deploy", "repository-artifact-deploy",
+            )
+        }
+    }
+
+    @Test
+    fun `the artifact templates are valid nodes once their placeholders are filled`() {
+        withService { service, _ ->
+            val templates = service.nodeTemplates().orNull()!!.templates.filter { it.id.contains("artifact") }
+
+            val filled = templates.flatMap { it.nodes }.map {
+                it.replace("{repository}", "releases").replace("{groupId}", "net.example").replace("{artifactId}", "lib")
+            }
+            assertThat(filled).describedAs("filled artifact nodes").isNotEmpty()
+            filled.forEach { node -> assertThat(NodePattern.problemOf(node)).describedAs("problem of $node").isNull() }
+        }
+    }
+
+    @Test
+    fun `the catalog lists the artifact actions over every artifact`() {
+        withService { service, _ ->
+            val nodes = service.nodeCatalog(null).orNull()!!.nodes.filter { it.kind == "ARTIFACT" }.map { it.node }
+
+            assertThat(nodes).describedAs("artifact nodes")
+                .containsExactlyInAnyOrder("ingot.artifact.*.read", "ingot.artifact.*.deploy", "ingot.artifact.*.delete", "ingot.artifact.*.*")
         }
     }
 
@@ -201,6 +228,59 @@ internal class NodeCatalogAndCheckTest {
             val result = service.permissionCheck(admin, "admin", "ingot.repository.*.read", token = null)
 
             assertThat(result.error.status).describedAs("status").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `the check names the artifact node that decides an artifact request`() {
+        withService { service, _ ->
+            // given: alice may deploy to releases, except below net.onelitefeather
+            val admin = bootstrapAdmin(service)
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.replaceTeamNodes(
+                "deployers",
+                listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.artifact.net.onelitefeather.deploy", false)),
+                ifMatch = null,
+            )
+            service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
+
+            // when
+            val check = service.permissionCheck(admin, "alice", "ingot.artifact.net.onelitefeather:mycelium-bom.deploy", token = null).orNull()!!
+
+            // then
+            assertThat(check.allowed).describedAs("allowed").isFalse
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.artifact.net.onelitefeather.deploy")
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("ARTIFACT")
+            assertThat(check.decision.explanation).describedAs("explanation").contains("Denied").contains("ingot.artifact.net.onelitefeather.deploy")
+            assertThat(check.trace.map { it.kind }).describedAs("trace kinds").containsOnly("REPOSITORY", "ARTIFACT")
+        }
+    }
+
+    @Test
+    fun `the check names the repository node that allows an artifact request in a repository`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
+
+            val check = service.permissionCheck(admin, "alice", "ingot.repository.releases.artifact.org.other:lib.deploy", token = null).orNull()!!
+
+            assertThat(check.allowed).describedAs("allowed").isTrue
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.repository.releases.deploy")
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("REPOSITORY")
+        }
+    }
+
+    @Test
+    fun `the check refuses an artifact node with a wildcard group`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+
+            val result = service.permissionCheck(admin, "admin", "ingot.artifact.*.deploy", token = null)
+
+            assertThat(result.error.status).describedAs("status").isEqualTo(400)
+            assertThat(result.error.message).describedAs("names the wildcard rule").contains("concrete")
         }
     }
 

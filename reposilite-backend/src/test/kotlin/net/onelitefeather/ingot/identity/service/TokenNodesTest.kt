@@ -27,6 +27,7 @@ import net.onelitefeather.ingot.identity.api.CreatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.CreateTeamRequest
 import net.onelitefeather.ingot.identity.api.CreateTokenRequest
 import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.NodeRule
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
@@ -117,6 +118,103 @@ internal class TokenNodesTest {
     }
 
     @Test
+    fun `a token narrowed to one artifact deploys to that artifact only, where its owner may`() {
+        withService { service, store, accessTokens ->
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
+            service.createToken("alice", CreateTokenRequest(name = "alice-bom", nodes = listOf(NodeDto("ingot.artifact.net.onelitefeather:mycelium-bom.deploy", true))))
+            val token = persistentIdentifier(store, "alice-bom")
+
+            assertThat(deploys(accessTokens, token, "/releases/net/onelitefeather/mycelium-bom/1.0/a.jar")).describedAs("the artifact").isTrue
+            assertThat(deploys(accessTokens, token, "/releases/net/onelitefeather/mycelium-api/1.0/a.jar")).describedAs("sibling artifact of the group").isFalse
+            assertThat(deploys(accessTokens, token, "/releases/org/other/lib/1.0/a.jar")).describedAs("another group").isFalse
+        }
+    }
+
+    @Test
+    fun `a token with only an artifact node is denied the artifact when its owner may not deploy there`() {
+        withService { service, store, accessTokens ->
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.artifact.net.onelitefeather:mycelium-bom.deploy", false)), ifMatch = null)
+            service.createToken("alice", CreateTokenRequest(name = "alice-bom", nodes = listOf(NodeDto("ingot.artifact.net.onelitefeather:mycelium-bom.deploy", true))))
+            val token = persistentIdentifier(store, "alice-bom")
+
+            assertThat(deploys(accessTokens, token, "/releases/net/onelitefeather/mycelium-bom/1.0/a.jar")).describedAs("owner is denied").isFalse
+        }
+    }
+
+    @Test
+    fun `a token cannot gain rights through an artifact node its owner lacks`() {
+        withService { service, store, accessTokens ->
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.artifact.net.onelitefeather:mycelium-bom.deploy", true)), ifMatch = null)
+            service.createToken(
+                "alice",
+                CreateTokenRequest(
+                    name = "alice-wide",
+                    nodes = listOf(NodeDto("ingot.artifact.net.onelitefeather.deploy", true), NodeDto("ingot.artifact.org.other.deploy", true)),
+                ),
+            )
+            val token = persistentIdentifier(store, "alice-wide")
+
+            assertThat(deploys(accessTokens, token, "/releases/net/onelitefeather/mycelium-bom/1.0/a.jar")).describedAs("owner and token agree").isTrue
+            assertThat(deploys(accessTokens, token, "/releases/net/onelitefeather/mycelium-api/1.0/a.jar")).describedAs("token is broader than the owner").isFalse
+            assertThat(deploys(accessTokens, token, "/releases/org/other/lib/1.0/a.jar")).describedAs("group only the token lists").isFalse
+        }
+    }
+
+    @Test
+    fun `a token narrowed to an artifact of one repository is denied in another repository`() {
+        withService { service, store, accessTokens ->
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.*.deploy", true)), ifMatch = null)
+            service.createToken(
+                "alice",
+                CreateTokenRequest(name = "alice-releases", nodes = listOf(NodeDto("ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.deploy", true))),
+            )
+            val token = persistentIdentifier(store, "alice-releases")
+
+            assertThat(deploys(accessTokens, token, "/releases/net/onelitefeather/mycelium-bom/1.0/a.jar")).describedAs("releases").isTrue
+            assertThat(deploys(accessTokens, token, "/snapshots/net/onelitefeather/mycelium-bom/1.0/a.jar")).describedAs("snapshots").isFalse
+        }
+    }
+
+    @Test
+    fun `a token narrowed to an artifact deploy node cannot read`() {
+        withService { service, store, accessTokens ->
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.*", true)), ifMatch = null)
+            service.createToken("alice", CreateTokenRequest(name = "alice-bom", nodes = listOf(NodeDto("ingot.artifact.net.onelitefeather:mycelium-bom.deploy", true))))
+            val token = persistentIdentifier(store, "alice-bom")
+
+            assertThat(accessTokens.hasAccessTo(token, "/releases/net/onelitefeather/mycelium-bom/1.0/a.jar", Action.READ)).describedAs("read").isFalse
+        }
+    }
+
+    @Test
+    fun `the check names the artifact node of the token that narrows its owner`() {
+        withService { service, _, _ ->
+            val admin = bootstrapAdmin(service)
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
+            service.createToken(
+                "alice",
+                CreateTokenRequest(
+                    name = "alice-narrow",
+                    nodes = listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.artifact.net.onelitefeather.deploy", false)),
+                ),
+            )
+
+            val check = service.permissionCheck(admin, "alice", "ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.deploy", token = "alice-narrow").orNull()!!
+
+            assertThat(check.allowed).describedAs("narrowed").isFalse
+            assertThat(check.decision.source).describedAs("source").isEqualTo("TOKEN")
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.artifact.net.onelitefeather.deploy")
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("ARTIFACT")
+        }
+    }
+
+    @Test
     fun `a principal holding only the users area may administer users and nothing else`() {
         withService { service, _, accessTokens ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
@@ -144,6 +242,12 @@ internal class TokenNodesTest {
             assertThat(result.error.status).describedAs("last usable admin").isEqualTo(409)
         }
     }
+
+    private fun persistentIdentifier(store: IdentityStore, tokenName: String): AccessTokenIdentifier =
+        AccessTokenIdentifier(type = AccessTokenType.PERSISTENT, value = store.findToken(tokenName)!!.id)
+
+    private fun deploys(accessTokens: AccessTokenFacade, identifier: AccessTokenIdentifier, path: String): Boolean =
+        accessTokens.hasAccessTo(identifier, path, Action.WRITE)
 
     /** Creates an instance admin with a usable token and returns the identifier of that principal. */
     private fun bootstrapAdmin(service: IdentityFacade): AccessTokenIdentifier {
