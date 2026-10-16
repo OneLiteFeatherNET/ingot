@@ -22,7 +22,8 @@ import io.javalin.openapi.JsonSchema
 
 /**
  * The directory of the browser login (`login.ldap`). It is independent of `authentication.ldap`, which serves the Basic
- * authentication of Maven clients. Nothing is copied between the two.
+ * authentication of Maven clients. Nothing is copied between the two. While this one is off, the legacy settings serve the
+ * dashboard login too, see [LdapDirectories]; once it is on, it takes precedence.
  */
 @JsonSchema(requireNonNulls = false)
 data class LdapLoginSettings(

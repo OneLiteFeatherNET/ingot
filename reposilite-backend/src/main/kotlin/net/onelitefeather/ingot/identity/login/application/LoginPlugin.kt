@@ -1,6 +1,8 @@
 package net.onelitefeather.ingot.identity.login.application
 
 import com.reposilite.audit.api.AuditEvent
+import com.reposilite.auth.LdapAuthenticator
+import com.reposilite.auth.application.AuthenticationSettings
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.token.AccessTokenFacade
@@ -25,7 +27,7 @@ import net.onelitefeather.ingot.identity.login.api.ProviderTestEndpoints
 import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
-import net.onelitefeather.ingot.identity.login.ldap.LdapLoginProvider
+import net.onelitefeather.ingot.identity.login.ldap.LdapDirectories
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
 import net.onelitefeather.ingot.identity.login.oidc.IdTokenValidator
 import net.onelitefeather.ingot.identity.login.oidc.JdkHttpFetcher
@@ -44,7 +46,7 @@ import java.util.Base64
 
 @Plugin(
     name = "login",
-    dependencies = ["access-token", "authentication", "configuration", "shared-configuration", "audit", "local-configuration"],
+    dependencies = ["access-token", "authentication", "failure", "configuration", "shared-configuration", "audit", "local-configuration"],
     settings = LoginSettings::class,
 )
 class LoginPlugin : ReposilitePlugin() {
@@ -77,6 +79,24 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // The legacy authentication.ldap settings serve the dashboard login while login.ldap is off, so that an upgrade from
+        // 1.1 needs no change. The password check must stay on: it is what makes a bind with the user's password the login.
+        val accessTokenFacade = facade<AccessTokenFacade>()
+        val directories = database?.let { database ->
+            LdapDirectories(
+                login = { loginSettings.get().ldap },
+                legacy = LdapAuthenticator(
+                    journalist = this,
+                    ldapSettings = facade<SharedConfigurationFacade>().getDomainSettings<AuthenticationSettings>().computed { it.ldap },
+                    accessTokenFacade = accessTokenFacade,
+                    failureFacade = facade(),
+                    disableUserPasswordAuthentication = false,
+                ),
+                accounts = externalAccounts,
+                identities = IdentityStore(database),
+            )
+        }
+
         val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
@@ -85,16 +105,8 @@ class LoginPlugin : ReposilitePlugin() {
                 settings = loginSettings,
                 clock = clock,
                 audit = audit,
-                externalPasswordProviders = {
-                    val ldap = loginSettings.get().ldap
-                    if (externalAccounts != null && ldap.enabled && ldap.missingField() == null) {
-                        listOf(LdapLoginProvider(ldap, externalAccounts))
-                    } else {
-                        emptyList()
-                    }
-                },
+                externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
-                    val ldap = loginSettings.get().ldap
                     val oidc = oidcCatalog.announced().map {
                         ProviderAnnouncement(
                             id = it.id,
@@ -104,12 +116,7 @@ class LoginPlugin : ReposilitePlugin() {
                             loginUrl = "/api/auth/oidc/${it.id}/login",
                         )
                     }
-                    val directory = if (ldap.enabled && ldap.missingField() == null) {
-                        listOf(ProviderAnnouncement(id = LdapLoginProvider.ID, type = LoginProviderType.LDAP, label = ldap.label.ifBlank { "LDAP" }, icon = "LDAP"))
-                    } else {
-                        emptyList()
-                    }
-                    oidc + directory
+                    oidc + listOfNotNull(directories?.announcement())
                 },
             )
         }
@@ -145,7 +152,6 @@ class LoginPlugin : ReposilitePlugin() {
             null
         }
 
-        val accessTokenFacade = facade<AccessTokenFacade>()
         val ownTokens = database?.let { database ->
             OwnTokens(
                 identities = IdentityStore(database),
@@ -173,6 +179,9 @@ class LoginPlugin : ReposilitePlugin() {
         event { _: ReposiliteInitializeEvent ->
             // Skipped provider entries are named once per start, with their reason, before anything else is logged.
             oidcCatalog.report()
+            if (directories?.legacyActive() == true) {
+                logger.info("Dashboard login accepts LDAP passwords from the legacy authentication.ldap settings. Move them to login.ldap, which takes precedence once enabled.")
+            }
             loginFacade.issueSetupCode()?.let { code ->
                 logger.info("")
                 logger.info("--- First administrator")

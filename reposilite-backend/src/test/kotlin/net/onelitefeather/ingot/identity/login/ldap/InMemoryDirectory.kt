@@ -55,6 +55,10 @@ internal class InMemoryDirectory : AutoCloseable {
     val url: String
         get() = "ldap://127.0.0.1:${server.listenPort}"
 
+    /** The port the directory listens on, for settings that take a host and a port. */
+    val port: Int
+        get() = server.listenPort
+
     /** Adds an entry, for tests that need a user or a group of their own. */
     fun add(vararg lines: String) {
         server.add(*lines)

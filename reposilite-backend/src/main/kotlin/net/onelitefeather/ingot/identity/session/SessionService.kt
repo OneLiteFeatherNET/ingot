@@ -66,7 +66,7 @@ class SessionService internal constructor(
 
     /**
      * Exchanges a refresh token for a new session. Returns `null` for an unknown, expired, revoked or spent token, for a
-     * family that has reached its absolute lifetime, and for a principal that is no longer an active user. A spent token
+     * family that has reached its absolute lifetime, and for a principal that is no longer active. A spent token
      * revokes its whole family.
      */
     fun refresh(refreshToken: String, ip: String?, userAgent: String?): SessionTokens? {
@@ -108,7 +108,7 @@ class SessionService internal constructor(
         store.revokeAllOfPrincipal(principalId, Instant.now(clock))
     }
 
-    /** The verified claims of a session token whose principal is still an active user, or `null`. */
+    /** The verified claims of a session token whose principal is still active, or `null`. */
     fun authenticate(sessionJwt: String): VerifiedSession? {
         val verified = signer.verify(sessionJwt) ?: return null
         return verified.takeIf { activePrincipal(it.principalId) != null }
@@ -156,8 +156,14 @@ class SessionService internal constructor(
     private fun actorOf(principalId: Int, ip: String?): AuditActor =
         AuditActor.named(identities.findPrincipalById(principalId)?.name ?: AuditActor.ANONYMOUS, ip)
 
+    /**
+     * The principal of a session, if it may still hold one: a user or a machine principal that is not disabled. A machine
+     * principal is allowed because the only producer of a machine login is the legacy LDAP provider, which signs in as the
+     * principal that owns the token of the directory user. That is the identity of the Maven path, so its rights stay
+     * those of 1.1.0.
+     */
     private fun activePrincipal(principalId: Int): PrincipalRecord? =
-        identities.findPrincipalById(principalId)?.takeIf { it.kind == PrincipalKind.USER && !it.disabled }
+        identities.findPrincipalById(principalId)?.takeIf { (it.kind == PrincipalKind.USER || it.kind == PrincipalKind.MACHINE) && !it.disabled }
 
 }
 
