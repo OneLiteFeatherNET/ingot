@@ -21,6 +21,7 @@ import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import TokenList from '../identity/TokenList.vue'
+import { instantToDate } from '../../helpers/apiTime'
 import { formatDate } from '../identity/identityTokens'
 import TokenTag from '../tokens/TokenTag.vue'
 import LegacyGrantsPanel from './LegacyGrantsPanel.vue'
@@ -114,6 +115,11 @@ const changed = () => {
 const title = computed(() => detail.value?.displayName || props.name)
 const seen = computed(() => seenLabel(detail.value?.lastSeenAt ?? null))
 const used = computed(() => usedLabel(newestLastUsed(detail.value?.tokens)))
+// createdAt is an Instant on the wire: epoch seconds, read through the shared helper.
+const createdText = computed(() => {
+  const date = instantToDate(detail.value?.createdAt)
+  return date ? formatDate(date) : 'Unknown'
+})
 const admin = computed(() => isInstanceAdmin(detail.value))
 </script>
 
@@ -251,7 +257,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
             Created
           </dt>
           <dd class="m-0 text-on-surface">
-            {{ detail.createdAt ? formatDate(detail.createdAt) : 'Unknown' }}
+            {{ createdText }}
           </dd>
           <dt class="text-on-surface-variant">
             {{ isMachine ? 'Last used' : 'Last sign-in' }}

@@ -15,6 +15,7 @@
  */
 
 import prettyBytes from 'pretty-bytes'
+import { instantToDate } from '../../helpers/apiTime'
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
@@ -49,11 +50,9 @@ const describeEntry = (file) => {
     parts.push(size)
   }
 
-  if (file?.lastModifiedTime) {
-    const modified = new Date(file.lastModifiedTime)
-    if (!Number.isNaN(modified.getTime())) {
-      parts.push(dateFormat.format(modified))
-    }
+  const modified = instantToDate(file?.lastModifiedTime)
+  if (modified) {
+    parts.push(dateFormat.format(modified))
   }
 
   return parts.join(' · ')

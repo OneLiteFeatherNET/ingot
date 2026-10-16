@@ -29,6 +29,9 @@ import {
   validatePrincipalName
 } from './accessPrincipals'
 
+// The API sends an Instant as epoch seconds: the fixtures carry the same number.
+const wireInstant = (iso) => Date.parse(iso) / 1000
+
 const ALICE = { name: 'alice', displayName: 'Alice Example' }
 const BOB = { name: 'bob', displayName: 'Robert Builder' }
 const CI = { name: 'ci-bot', displayName: '' }
@@ -65,7 +68,7 @@ describe('relative labels', () => {
   })
 
   it('names a last sign-in relative to the clock and keeps the absolute time as the tooltip', () => {
-    expect(seenLabel('2026-10-12T12:00:00Z')).toEqual({
+    expect(seenLabel(wireInstant('2026-10-12T12:00:00Z'))).toEqual({
       text: '3 days ago',
       title: '2026-10-12 12:00 UTC'
     })
@@ -76,7 +79,7 @@ describe('relative labels', () => {
   })
 
   it('names the last use of a machine relative to the clock', () => {
-    expect(usedLabel('2026-10-15T09:00:00Z')).toEqual({
+    expect(usedLabel(wireInstant('2026-10-15T09:00:00Z'))).toEqual({
       text: '3 hours ago',
       title: '2026-10-15 09:00 UTC'
     })
@@ -90,12 +93,12 @@ describe('relative labels', () => {
 describe('newestLastUsed', () => {
   it('picks the most recent use among the tokens', () => {
     const tokens = [
-      { lastUsedAt: '2026-10-01T00:00:00Z' },
-      { lastUsedAt: '2026-10-14T00:00:00Z' },
+      { lastUsedAt: wireInstant('2026-10-01T00:00:00Z') },
+      { lastUsedAt: wireInstant('2026-10-14T00:00:00Z') },
       { lastUsedAt: null }
     ]
 
-    expect(newestLastUsed(tokens)).toBe('2026-10-14T00:00:00Z')
+    expect(newestLastUsed(tokens)).toBe(wireInstant('2026-10-14T00:00:00Z'))
   })
 
   it('is null when no token was ever used', () => {

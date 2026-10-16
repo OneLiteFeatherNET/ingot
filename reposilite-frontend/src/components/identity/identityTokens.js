@@ -120,39 +120,27 @@ const buildCreateBody = ({ name, description = '', preset, customDate = '', scop
   return body
 }
 
-const toDate = (value) => {
-  if (Array.isArray(value)) {
-    const [year, month, day] = value
-    return new Date(Date.UTC(year, month - 1, day))
-  }
-  return new Date(value)
-}
-
 const pad = (number) => String(number).padStart(2, '0')
 
-/** A UTC calendar date such as 2026-10-15, whatever shape the server sent. */
-const formatDate = (value) => {
-  const date = toDate(value)
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
-}
+/** A UTC calendar date such as 2026-10-15. Takes a Date: the wire value is read by helpers/apiTime first. */
+const formatDate = (date) =>
+  `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
 
 /** A UTC date and time such as 2026-10-15 09:05 UTC. */
-const formatDateTime = (value) => {
-  const date = toDate(value)
-  return `${formatDate(value)} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`
-}
+const formatDateTime = (date) =>
+  `${formatDate(date)} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`
 
 /**
  * A localised day such as "14 Jan 2027" (en-GB). The day is taken in UTC, the zone the token's
  * expiry is compared in, so every viewer sees the same date. An undefined locale uses the
  * browser default.
  */
-const formatExpiryDate = (value, locale) => new Intl.DateTimeFormat(locale, {
+const formatExpiryDate = (date, locale) => new Intl.DateTimeFormat(locale, {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
   timeZone: 'UTC'
-}).format(toDate(value))
+}).format(date)
 
 const RELATIVE_UNITS = [
   { unit: 'year', ms: 365 * DAY_MS },
@@ -163,8 +151,8 @@ const RELATIVE_UNITS = [
 ]
 
 /** How long ago a moment was, such as "3 days ago", counted from the injected clock. */
-const formatRelative = (value, at = now()) => {
-  const elapsed = at.getTime() - toDate(value).getTime()
+const formatRelative = (date, at = now()) => {
+  const elapsed = at.getTime() - date.getTime()
   const match = RELATIVE_UNITS.find(entry => elapsed >= entry.ms)
   if (!match) return 'just now'
   const count = Math.floor(elapsed / match.ms)

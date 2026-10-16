@@ -23,6 +23,9 @@ import { setClock, resetClock } from '../../helpers/clock'
 import PrincipalActionsMenu from './PrincipalActionsMenu.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 
+// The API sends an Instant as epoch seconds: the fixtures carry the same number.
+const wireInstant = (iso) => Date.parse(iso) / 1000
+
 // The session is replaced by a ref of the client, so each test decides what the server answers.
 const holder = vi.hoisted(() => ({ session: null }))
 
@@ -47,12 +50,12 @@ const makeRouter = async (url) => {
 }
 
 // The list items as the server answers them: the flat principal and the summaries a row shows.
-const ALICE = { id: 2, kind: 'USER', name: 'alice', displayName: 'Alice Example', disabled: false, createdAt: '2026-10-02T09:00:00Z', lastSeenAt: '2026-10-12T12:00:00Z', instanceAdmin: false, instanceRole: false, tokenCount: 0, providers: ['local'] }
-const BOB = { id: 3, kind: 'USER', name: 'bob', displayName: 'Robert Builder', disabled: true, createdAt: '2026-10-03T09:00:00Z', lastSeenAt: null, instanceAdmin: false, instanceRole: false, tokenCount: 0, providers: ['local'] }
-const ADMIN = { id: 1, kind: 'USER', name: 'admin', displayName: 'Administrator', disabled: false, createdAt: '2026-10-01T09:00:00Z', lastSeenAt: '2026-10-15T08:00:00Z', instanceAdmin: true, instanceRole: true, tokenCount: 0, providers: ['local'] }
+const ALICE = { id: 2, kind: 'USER', name: 'alice', displayName: 'Alice Example', disabled: false, createdAt: wireInstant('2026-10-02T09:00:00Z'), lastSeenAt: wireInstant('2026-10-12T12:00:00Z'), instanceAdmin: false, instanceRole: false, tokenCount: 0, providers: ['local'] }
+const BOB = { id: 3, kind: 'USER', name: 'bob', displayName: 'Robert Builder', disabled: true, createdAt: wireInstant('2026-10-03T09:00:00Z'), lastSeenAt: null, instanceAdmin: false, instanceRole: false, tokenCount: 0, providers: ['local'] }
+const ADMIN = { id: 1, kind: 'USER', name: 'admin', displayName: 'Administrator', disabled: false, createdAt: wireInstant('2026-10-01T09:00:00Z'), lastSeenAt: wireInstant('2026-10-15T08:00:00Z'), instanceAdmin: true, instanceRole: true, tokenCount: 0, providers: ['local'] }
 
-const CI = { id: 4, kind: 'MACHINE', name: 'ci-bot', displayName: 'CI bot', disabled: false, createdAt: '2026-10-04T09:00:00Z', lastSeenAt: '2026-10-14T12:00:00Z', instanceAdmin: false, instanceRole: false, tokenCount: 3, providers: [] }
-const IDLE = { id: 5, kind: 'MACHINE', name: 'idle-bot', displayName: '', disabled: false, createdAt: '2026-10-04T09:00:00Z', lastSeenAt: null, instanceAdmin: false, instanceRole: false, tokenCount: 1, providers: [] }
+const CI = { id: 4, kind: 'MACHINE', name: 'ci-bot', displayName: 'CI bot', disabled: false, createdAt: wireInstant('2026-10-04T09:00:00Z'), lastSeenAt: wireInstant('2026-10-14T12:00:00Z'), instanceAdmin: false, instanceRole: false, tokenCount: 3, providers: [] }
+const IDLE = { id: 5, kind: 'MACHINE', name: 'idle-bot', displayName: '', disabled: false, createdAt: wireInstant('2026-10-04T09:00:00Z'), lastSeenAt: null, instanceAdmin: false, instanceRole: false, tokenCount: 1, providers: [] }
 
 // What the detail view reads when a row is opened. The list never asks for it.
 const DETAILS = {
@@ -64,8 +67,8 @@ const DETAILS = {
     teams: ['developers'],
     instanceRole: false,
     tokens: [
-      { name: 'old', lastUsedAt: '2026-10-01T12:00:00Z' },
-      { name: 'new', lastUsedAt: '2026-10-14T12:00:00Z' },
+      { name: 'old', lastUsedAt: wireInstant('2026-10-01T12:00:00Z') },
+      { name: 'new', lastUsedAt: wireInstant('2026-10-14T12:00:00Z') },
       { name: 'unused', lastUsedAt: null }
     ]
   },
@@ -163,7 +166,7 @@ describe('PrincipalsPanel', () => {
     })
 
     it('shows no instance admin chip when the list item lacks the flags', async () => {
-      principals.list.mockResolvedValue({ data: [{ id: 2, kind: 'USER', name: 'alice', displayName: 'Alice Example', disabled: false, createdAt: '2026-10-02T09:00:00Z', lastSeenAt: null }] })
+      principals.list.mockResolvedValue({ data: [{ id: 2, kind: 'USER', name: 'alice', displayName: 'Alice Example', disabled: false, createdAt: wireInstant('2026-10-02T09:00:00Z'), lastSeenAt: null }] })
 
       await mountPanel({ kind: 'USER' })
 
