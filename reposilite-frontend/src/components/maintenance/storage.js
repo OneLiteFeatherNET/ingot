@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { formatBytes } from './format'
+
 // The backend leaves out null fields, so every nullable value is read with `?? null`.
 export const normalizeStorage = (wire) => ({
   computedAt: wire?.computedAt ?? null,
@@ -24,9 +26,17 @@ export const normalizeStorage = (wire) => ({
     usedBytes: row.usedBytes ?? 0,
     quota: row.quota ?? null,
     quotaBytes: row.quotaBytes ?? null,
-    fileCount: row.fileCount ?? 0
+    fileCount: row.fileCount ?? 0,
+    storageType: row.storageType ?? null,
+    group: row.group === true
   }))
 })
+
+/*
+ * Only a file system repository has a quota. Object storage has none, and a loopback group stores nothing
+ * itself, so neither gets a quota, a bar or a limit.
+ */
+export const hasQuota = (row) => row.storageType === 'fs' && !row.group
 
 /*
  * The share of the quota in use, between 0 and 1, or null when no bar can be drawn: the quota
@@ -38,11 +48,20 @@ export const quotaFraction = (usedBytes, quotaBytes) => {
   return Math.min(1, used / quotaBytes)
 }
 
-export const quotaLabel = (quota) => quota ?? 'Unlimited'
+/*
+ * The line under a repository's name: the used size, then what limits it in words. A group says it has no
+ * own storage, object storage shows the size alone, and a file system repository shows its quota or "no limit".
+ */
+export const usageLine = (row) => {
+  const used = `${formatBytes(row.usedBytes)} used`
+  if (row.group) return `${used}, group, no own storage`
+  if (!hasQuota(row)) return used
+  return `${used}, ${row.quota ? `quota ${row.quota}` : 'no limit'}`
+}
 
 export const quotaNote = (row) => {
-  if (row.quotaBytes != null) return null
+  if (!hasQuota(row) || row.quotaBytes != null) return null
   return row.quota == null
-    ? 'No quota is set, so there is no bar.'
+    ? 'No limit is set, so there is no bar.'
     : 'The quota size is not known, so there is no bar.'
 }
