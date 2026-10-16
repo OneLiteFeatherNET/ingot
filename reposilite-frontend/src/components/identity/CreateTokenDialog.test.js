@@ -233,4 +233,143 @@ describe('CreateTokenDialog', () => {
 
     expect(api.create.mock.calls[0][0].expiresAt).toBe('2031-06-15T23:59:59.000Z')
   })
+
+  describe('advanced: limit to artifacts', () => {
+    const limit = () => field('create-token-limit')
+    const actionBox = (word) => field(`create-token-action-${word}`)
+    const groupField = () => field('create-token-artifact-group')
+    const artifactField = () => field('create-token-artifact-id')
+    const repositoryField = () => field('create-token-artifact-repository')
+    const switchLimit = async () => {
+      limit().click()
+      await flushPromises()
+    }
+    const tick = async (word) => {
+      actionBox(word).click()
+      await flushPromises()
+    }
+
+    it('hides the artifact fields until the limit is switched on', async () => {
+      expect(groupField(), 'no groupId field while the limit is off').toBeNull()
+
+      await switchLimit()
+
+      expect(groupField()).not.toBeNull()
+      expect(artifactField()).not.toBeNull()
+      expect(repositoryField()).not.toBeNull()
+    })
+
+    it('keeps the body free of nodes while the limit is off', async () => {
+      type('create-token-name', 'laptop')
+      await submit()
+
+      expect('nodes' in api.create.mock.calls[0][0]).toBe(false)
+    })
+
+    it('sends one qualified node for each action when a repository is given', async () => {
+      type('create-token-name', 'ci')
+      await switchLimit()
+      type('create-token-artifact-repository', 'releases')
+      type('create-token-artifact-group', 'net.onelitefeather')
+      type('create-token-artifact-id', 'mycelium-bom')
+      await tick('read')
+      await tick('deploy')
+      await submit()
+
+      expect(api.create.mock.calls[0][0].nodes).toEqual([
+        { node: 'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.read', allowed: true },
+        { node: 'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.deploy', allowed: true }
+      ])
+    })
+
+    it('sends the unqualified node and no artifactId when those fields are empty', async () => {
+      type('create-token-name', 'ci')
+      await switchLimit()
+      type('create-token-artifact-group', 'net.onelitefeather')
+      await tick('delete')
+      await submit()
+
+      expect(api.create.mock.calls[0][0].nodes).toEqual([
+        { node: 'ingot.artifact.net.onelitefeather.delete', allowed: true }
+      ])
+    })
+
+    it('sends no scopes while the artifact limit is on, because the nodes replace them', async () => {
+      type('create-token-name', 'ci')
+      await switchLimit()
+      type('create-token-artifact-group', 'net')
+      await tick('read')
+      await submit()
+
+      expect(api.create.mock.calls[0][0].scopes).toBeNull()
+    })
+
+    it('asks for a groupId and sends nothing without one', async () => {
+      type('create-token-name', 'ci')
+      await switchLimit()
+      await tick('read')
+      await submit()
+
+      expect(api.create, 'a token without a groupId is not sent').not.toHaveBeenCalled()
+      expect(dialog().textContent).toContain('Enter a groupId')
+    })
+
+    it('refuses a colon in the groupId', async () => {
+      type('create-token-name', 'ci')
+      await switchLimit()
+      type('create-token-artifact-group', 'net:lib')
+      await tick('read')
+      await submit()
+
+      expect(api.create).not.toHaveBeenCalled()
+      expect(dialog().textContent).toContain("A groupId cannot contain ':'")
+    })
+
+    it('refuses a wildcard inside the groupId', async () => {
+      type('create-token-name', 'ci')
+      await switchLimit()
+      type('create-token-artifact-group', 'net.*')
+      await tick('read')
+      await submit()
+
+      expect(api.create).not.toHaveBeenCalled()
+      expect(dialog().textContent).toContain("Use '*' only as the whole groupId")
+    })
+
+    it('needs at least one action', async () => {
+      type('create-token-name', 'ci')
+      await switchLimit()
+      type('create-token-artifact-group', 'net')
+      await submit()
+
+      expect(api.create).not.toHaveBeenCalled()
+      expect(dialog().textContent).toContain('Choose at least one action')
+    })
+
+    it('disables the access presets while the limit is on, and says why', async () => {
+      await switchLimit()
+
+      expect(field('create-token-access-read').disabled, 'Read only is off while the artifacts decide').toBe(true)
+      expect(dialog().textContent).toContain('The artifacts below decide what this token may do')
+    })
+
+    it('shows the problems the server gives for a refused node inside the dialog', async () => {
+      api.create.mockRejectedValue(Object.assign(new Error('failed'), {
+        response: {
+          status: 400,
+          data: {
+            message: 'Invalid permission nodes',
+            problems: [{ node: 'ingot.artifact.net.read', message: "The groupId 'net' is refused by the server" }]
+          }
+        }
+      }))
+      type('create-token-name', 'ci')
+      await switchLimit()
+      type('create-token-artifact-group', 'net')
+      await tick('read')
+      await submit()
+
+      expect(dialog().textContent).toContain("The groupId 'net' is refused by the server")
+    })
+  })
 })

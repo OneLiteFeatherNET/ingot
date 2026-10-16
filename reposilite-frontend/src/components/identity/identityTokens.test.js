@@ -18,6 +18,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { setClock, resetClock } from '../../helpers/clock'
 import {
   DEFAULT_EXPIRY,
+  artifactNodeTexts,
   EXPIRY_PRESETS,
   buildCreateBody,
   customDateLimits,
@@ -177,3 +178,66 @@ describe('identityTokens', () => {
     })
   })
 })
+
+describe('artifactNodeTexts', () => {
+  it('writes one qualified node per action, in the order read, deploy, delete', () => {
+    expect(artifactNodeTexts({
+      repository: 'releases', groupId: 'net.onelitefeather', artifactId: 'mycelium-bom', actions: ['deploy', 'read']
+    })).toEqual({
+      nodes: [
+        'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.read',
+        'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.deploy'
+      ],
+      problems: []
+    })
+  })
+
+  it('writes the unqualified form when no repository is given', () => {
+    expect(artifactNodeTexts({ repository: '', groupId: 'net', artifactId: '', actions: ['delete'] }).nodes)
+      .toEqual(['ingot.artifact.net.delete'])
+  })
+
+  it('leaves out the artifactId and its colon when it is empty', () => {
+    expect(artifactNodeTexts({ repository: '', groupId: 'net.onelitefeather', artifactId: '', actions: ['read'] }).nodes)
+      .toEqual(['ingot.artifact.net.onelitefeather.read'])
+  })
+
+  it('reports a missing action and writes no node', () => {
+    expect(artifactNodeTexts({ repository: '', groupId: 'net', artifactId: '', actions: [] }))
+      .toEqual({ nodes: [], problems: ['Choose at least one action'] })
+  })
+
+  it('reports the groupId and the artifactId with the rules of their fields', () => {
+    expect(artifactNodeTexts({ repository: '', groupId: 'net.*', artifactId: '', actions: ['read'] }).problems)
+      .toEqual(["Use '*' only as the whole groupId"])
+    expect(artifactNodeTexts({ repository: '', groupId: 'net', artifactId: 'a:b', actions: ['read'] }).problems)
+      .toEqual(["An artifactId cannot contain ':'"])
+  })
+
+  it('reports a repository name that is not a name', () => {
+    expect(artifactNodeTexts({ repository: 'rel*ases', groupId: 'net', artifactId: '', actions: ['read'] }).problems)
+      .toEqual(["Use letters, digits, '_' and '-' in a repository name"])
+  })
+})
+
+describe('buildCreateBody with artifact nodes', () => {
+  it('sends the nodes as Allow and no scopes when they are given', () => {
+    setClock(() => FIXED)
+
+    expect(buildCreateBody({
+      name: 'ci', preset: 'never', scopes: [], nodes: ['ingot.artifact.net.read']
+    })).toEqual({
+      name: 'ci',
+      expiresAt: null,
+      scopes: null,
+      nodes: [{ node: 'ingot.artifact.net.read', allowed: true }]
+    })
+  })
+
+  it('leaves the nodes out of the body when none are given', () => {
+    setClock(() => FIXED)
+
+    expect('nodes' in buildCreateBody({ name: 'ci', preset: 'never', scopes: [] })).toBe(false)
+  })
+})
+
