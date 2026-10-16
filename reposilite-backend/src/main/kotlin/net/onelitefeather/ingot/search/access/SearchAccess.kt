@@ -15,6 +15,8 @@
  */
 package net.onelitefeather.ingot.search.access
 
+import net.onelitefeather.ingot.identity.model.NodePattern
+
 /**
  * What one caller may see in the artifact search index (artifact search spec, 5.2). The value holds no evaluator types, so
  * an external engine can translate it without depending on the identity model. A caller gets one value per request,
@@ -23,7 +25,8 @@ package net.onelitefeather.ingot.search.access
 data class SearchAccess(val repositories: List<RepositoryAccess>) {
 
     /** The in-memory form of the row filter: whether a row of [repository] at [path] is returned. */
-    fun matches(repository: String, path: String): Boolean = TODO("task 14: compile caller grants into a row filter")
+    fun matches(repository: String, path: String): Boolean =
+        repositories.any { it.repository == repository && it.path.matches(path) }
 
     companion object {
         /** The value of a caller that sees nothing. */
@@ -68,3 +71,19 @@ sealed interface PathPredicate {
 
 /** One step of [PathPredicate.Precedence]: when [condition] holds for the path, the path is [allowed] or denied. */
 data class PrecedenceRule(val condition: PathPredicate, val allowed: Boolean)
+
+/**
+ * The in-memory form of a condition on a normalised path. It has the meaning of the SQL rendering: a [PathPredicate.Subtree]
+ * compares segments, the other variants compare text as their rendering does.
+ */
+internal fun PathPredicate.matches(path: String): Boolean = when (this) {
+    PathPredicate.All -> true
+    PathPredicate.Never -> false
+    is PathPredicate.Exact -> path == prefix || path.startsWith("$prefix/")
+    is PathPredicate.Subtree -> NodePattern.segmentsOf(path)
+        ?.let { it.size >= segments.size && it.subList(0, segments.size) == segments }
+        ?: false
+    is PathPredicate.Legacy -> path.startsWith(prefix, ignoreCase = true)
+    is PathPredicate.Conjunction -> parts.all { it.matches(path) }
+    is PathPredicate.Precedence -> rules.firstOrNull { it.condition.matches(path) }?.allowed ?: false
+}
