@@ -27,18 +27,22 @@ private const val INNODB_MAX_KEY_BYTES = 3072
  *   (PostgreSQL quotes the name itself), or null when the vendor's default already compares code points
  * @property bytesPerCharacter the bytes one character of the declared character set can take
  * @property maxIndexKeyBytes the largest index key the vendor accepts, or null when the profile sets no limit
+ * @property namedUpsertKeys whether an upsert names its conflict key (`ON CONFLICT (...)`). MySQL, MariaDB and H2 in
+ *   MySQL mode, which production always runs, refuse named keys and take the conflict from any unique key of the
+ *   statement (`ON DUPLICATE KEY UPDATE`).
  */
 internal enum class SearchDialect(
     val vendor: String,
     val binaryCollation: String?,
     val bytesPerCharacter: Int,
     val maxIndexKeyBytes: Int?,
+    val namedUpsertKeys: Boolean,
 ) {
-    SQLITE(vendor = "sqlite", binaryCollation = null, bytesPerCharacter = 1, maxIndexKeyBytes = null),
-    H2(vendor = "h2", binaryCollation = null, bytesPerCharacter = 1, maxIndexKeyBytes = null),
-    MYSQL(vendor = "mysql", binaryCollation = "utf8mb4_bin", bytesPerCharacter = 4, maxIndexKeyBytes = INNODB_MAX_KEY_BYTES),
-    MARIADB(vendor = "mariadb", binaryCollation = "utf8mb4_bin", bytesPerCharacter = 4, maxIndexKeyBytes = INNODB_MAX_KEY_BYTES),
-    POSTGRESQL(vendor = "postgresql", binaryCollation = "C", bytesPerCharacter = 1, maxIndexKeyBytes = null);
+    SQLITE(vendor = "sqlite", binaryCollation = null, bytesPerCharacter = 1, maxIndexKeyBytes = null, namedUpsertKeys = true),
+    H2(vendor = "h2", binaryCollation = null, bytesPerCharacter = 1, maxIndexKeyBytes = null, namedUpsertKeys = false),
+    MYSQL(vendor = "mysql", binaryCollation = "utf8mb4_bin", bytesPerCharacter = 4, maxIndexKeyBytes = INNODB_MAX_KEY_BYTES, namedUpsertKeys = false),
+    MARIADB(vendor = "mariadb", binaryCollation = "utf8mb4_bin", bytesPerCharacter = 4, maxIndexKeyBytes = INNODB_MAX_KEY_BYTES, namedUpsertKeys = false),
+    POSTGRESQL(vendor = "postgresql", binaryCollation = "C", bytesPerCharacter = 1, maxIndexKeyBytes = null, namedUpsertKeys = true);
 
     companion object {
 

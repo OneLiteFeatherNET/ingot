@@ -28,8 +28,8 @@ import java.util.Locale
 
 /**
  * Writes rows straight into a test database, so a test states the rows it reads and nothing else. The rows are plain
- * inserts, not the production upsert: the upsert names its conflict keys, which H2 in MySQL mode refuses, and the read
- * side of the engine is what these tests cover. The state rows go through the production store.
+ * inserts, not the production upsert, so the read side of the engine is tested without depending on the writer. The
+ * state rows go through the production store.
  */
 internal class IndexFixture(private val database: Database, private val clock: Clock) {
 

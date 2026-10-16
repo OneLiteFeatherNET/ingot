@@ -25,7 +25,6 @@ import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.database.SearchTables
-import net.onelitefeather.ingot.search.database.SqliteFileDatabase
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -38,10 +37,11 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * One tick of the worker against a SQLite index, with storage and the mirror ledger replaced by fakes whose content the
- * test sets (artifact search spec, 3.3, 3.7 and 10.2).
+ * One tick of the worker against an index, with storage and the mirror ledger replaced by fakes whose content the test sets
+ * (artifact search spec, 3.3, 3.7 and 10.2). The subclasses pick the database vendor: SQLite and H2 in the MySQL mode
+ * that production runs.
  */
-internal class OutboxWorkerTest {
+internal abstract class OutboxWorkerTest {
 
     private val start = Instant.parse("2026-10-16T10:00:00Z")
     private val clock = MutableClock(start)
@@ -96,10 +96,13 @@ internal class OutboxWorkerTest {
         fun rowPaths(): Set<String> = rows().map { it[tables.artifact.path] }.toSet()
     }
 
+    /** Opens a fresh database of the vendor under test in [file] and closes it after [block]. */
+    protected abstract fun withDatabase(file: Path, block: (Database) -> Unit)
+
     private fun withHarness(name: String, block: Harness.() -> Unit) {
-        SqliteFileDatabase(directory.resolve("$name.db")).use { shared ->
-            SearchSchema.ensure(shared.database, clock)
-            Harness(shared.database).block()
+        withDatabase(directory.resolve("$name.db")) { database ->
+            SearchSchema.ensure(database, clock)
+            Harness(database).block()
         }
     }
 

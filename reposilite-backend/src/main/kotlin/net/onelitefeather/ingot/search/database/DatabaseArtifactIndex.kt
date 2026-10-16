@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.search.database
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.outbox.ArtifactIndexWriter
 import net.onelitefeather.ingot.search.outbox.IndexAction
+import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -43,7 +44,8 @@ import java.util.Locale
  */
 internal class DatabaseArtifactIndex(private val database: Database) : ArtifactIndexWriter {
 
-    private val rows = SearchTables(SearchDialect.of(database.vendor)).artifact
+    private val dialect = SearchDialect.of(database.vendor)
+    private val rows = SearchTables(dialect).artifact
 
     override fun apply(actions: List<IndexAction>) {
         if (actions.isEmpty()) return
@@ -72,9 +74,14 @@ internal class DatabaseArtifactIndex(private val database: Database) : ArtifactI
             .map { it[rows.path] }
     }
 
+    /**
+     * Inserts the row or replaces the one with the same `(repository, path_hash)`. The vendor decides how the conflict is
+     * named: [SearchDialect.namedUpsertKeys] says whether the statement lists the key or relies on the unique index.
+     */
     private fun upsert(row: IndexRow) {
         val file = row.file
-        rows.upsert(rows.repository, rows.pathHash) {
+        val conflictKeys = if (dialect.namedUpsertKeys) arrayOf<Column<*>>(rows.repository, rows.pathHash) else emptyArray()
+        rows.upsert(*conflictKeys) {
             it[rows.repository] = file.repository
             it[rows.path] = file.path
             it[rows.pathLc] = file.path.lowercase(Locale.ROOT)
