@@ -225,7 +225,10 @@ data class CatalogDto(
     val nodes: List<CatalogEntryDto>,
 )
 
-/** A predefined node bundle for the user interface. `{repository}` stands for the repository the bundle is applied to. */
+/**
+ * A predefined node bundle for the user interface. `{repository}` stands for the repository the bundle is applied to,
+ * `{groupId}` and `{artifactId}` for the coordinates of the artifact (the artifactId part is optional).
+ */
 data class TemplateDto(
     val id: String,
     val label: String,

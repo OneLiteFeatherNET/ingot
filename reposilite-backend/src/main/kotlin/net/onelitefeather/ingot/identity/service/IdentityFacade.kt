@@ -594,6 +594,10 @@ class IdentityFacade(
         NodePattern.REPOSITORY_ACTIONS.forEach { action ->
             entries += CatalogEntryDto("ingot.repository.*.$action", "$action on every repository", "WILDCARD")
         }
+        NodePattern.ARTIFACT_ACTIONS.forEach { action ->
+            entries += CatalogEntryDto("ingot.artifact.*.$action", "$action on every artifact in every repository", "ARTIFACT")
+        }
+        entries += CatalogEntryDto("ingot.artifact.*.*", "Every artifact action on every artifact in every repository", "ARTIFACT")
         val filtered = entries.filter { prefix.isNullOrEmpty() || it.node.startsWith(prefix) }
         return CatalogDto(filtered).asSuccess()
     }
@@ -604,6 +608,10 @@ class IdentityFacade(
         val deploy = "ingot.repository.{repository}.deploy"
         val delete = "ingot.repository.{repository}.delete"
         val manage = "ingot.repository.{repository}.manage"
+        val artifactRead = "ingot.artifact.{groupId}:{artifactId}.read"
+        val artifactDeploy = "ingot.artifact.{groupId}:{artifactId}.deploy"
+        val repositoryArtifactRead = "ingot.repository.{repository}.artifact.{groupId}:{artifactId}.read"
+        val repositoryArtifactDeploy = "ingot.repository.{repository}.artifact.{groupId}:{artifactId}.deploy"
         return TemplatesDto(
             listOf(
                 TemplateDto("read", "Read", listOf(read)),
@@ -611,6 +619,9 @@ class IdentityFacade(
                 TemplateDto("maintain", "Maintain", listOf(read, deploy, delete)),
                 TemplateDto("admin", "Admin", listOf(read, deploy, delete, manage)),
                 TemplateDto("instance-admin", "Instance admin", listOf("ingot.admin.*")),
+                TemplateDto("artifact-read", "Read an artifact", listOf(artifactRead)),
+                TemplateDto("artifact-deploy", "Deploy an artifact", listOf(artifactRead, artifactDeploy)),
+                TemplateDto("repository-artifact-deploy", "Deploy an artifact in one repository", listOf(repositoryArtifactRead, repositoryArtifactDeploy)),
             ),
         ).asSuccess()
     }

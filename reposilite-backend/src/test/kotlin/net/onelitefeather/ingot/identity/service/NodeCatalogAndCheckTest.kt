@@ -26,6 +26,7 @@ import net.onelitefeather.ingot.identity.api.CreatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.CreateTeamRequest
 import net.onelitefeather.ingot.identity.api.CreateTokenRequest
 import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -106,11 +107,37 @@ internal class NodeCatalogAndCheckTest {
     }
 
     @Test
-    fun `the templates are the five predefined bundles in order`() {
+    fun `the templates are the five repository bundles followed by the artifact bundles`() {
         withService { service, _ ->
             val templates = service.nodeTemplates().orNull()!!.templates
 
-            assertThat(templates.map { it.id }).containsExactly("read", "deploy", "maintain", "admin", "instance-admin")
+            assertThat(templates.map { it.id }).containsExactly(
+                "read", "deploy", "maintain", "admin", "instance-admin",
+                "artifact-read", "artifact-deploy", "repository-artifact-deploy",
+            )
+        }
+    }
+
+    @Test
+    fun `the artifact templates are valid nodes once their placeholders are filled`() {
+        withService { service, _ ->
+            val templates = service.nodeTemplates().orNull()!!.templates.filter { it.id.contains("artifact") }
+
+            val filled = templates.flatMap { it.nodes }.map {
+                it.replace("{repository}", "releases").replace("{groupId}", "net.example").replace("{artifactId}", "lib")
+            }
+            assertThat(filled).describedAs("filled artifact nodes").isNotEmpty()
+            filled.forEach { node -> assertThat(NodePattern.problemOf(node)).describedAs("problem of $node").isNull() }
+        }
+    }
+
+    @Test
+    fun `the catalog lists the artifact actions over every artifact`() {
+        withService { service, _ ->
+            val nodes = service.nodeCatalog(null).orNull()!!.nodes.filter { it.kind == "ARTIFACT" }.map { it.node }
+
+            assertThat(nodes).describedAs("artifact nodes")
+                .containsExactlyInAnyOrder("ingot.artifact.*.read", "ingot.artifact.*.deploy", "ingot.artifact.*.delete", "ingot.artifact.*.*")
         }
     }
 
