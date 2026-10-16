@@ -29,6 +29,7 @@ import net.onelitefeather.ingot.search.runs.RunStore
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.search.verify.VerifyService
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * What the index administration endpoints start and read (artifact search spec, 6.3). Starting a run takes its lock
@@ -45,10 +46,19 @@ internal class SearchIndexAdmin(
     private val state: SearchStateStore,
     private val repositories: RepositoryEntries,
     dispatch: (() -> Unit) -> Unit,
+    private val paused: AtomicBoolean,
 ) {
 
     /** Runs a started run. Replaced in tests, which decide when a run executes. */
     var dispatch: (() -> Unit) -> Unit = dispatch
+
+    /**
+     * Stops the background poller of this replica from claiming outbox entries. The explicit [drainOutbox] still works. Tests
+     * set it so that the outbox moves only when they tick it.
+     */
+    var pollingPaused: Boolean
+        get() = paused.get()
+        set(value) = paused.set(value)
 
     /** Starts a rebuild of [repositories], or of every repository for null, unless a rebuild or verify run is live. */
     fun startRebuild(repositories: List<String>?): RunStart {

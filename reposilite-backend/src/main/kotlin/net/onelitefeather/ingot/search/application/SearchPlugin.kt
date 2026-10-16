@@ -143,8 +143,9 @@ internal class SearchPlugin : ReposilitePlugin() {
             .getOrNull()
 
         val stopped = AtomicBoolean(false)
+        val pollingPaused = AtomicBoolean(false)
         event { _: ReposiliteDisposeEvent -> stopped.set(true) }
-        schedulePolling(worker, stopped)
+        schedulePolling(worker, stopped, pollingPaused)
         val execute: (() -> Unit) -> Unit = { job -> reposilite().ioService.execute { job() } }
         val rebuildScheduler = RebuildScheduler(
             clock = clock,
@@ -185,6 +186,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             state = state,
             repositories = repositories,
             dispatch = execute,
+            paused = pollingPaused,
         )
         return SearchFacade(sink, runs::status, search, admin)
     }
@@ -198,14 +200,17 @@ internal class SearchPlugin : ReposilitePlugin() {
         event { _: ReposiliteDisposeEvent -> tick.cancel(false) }
     }
 
-    /** Runs one tick after another on the IO pool. The next tick comes after 2 seconds with work, after 10 seconds without. */
-    private fun schedulePolling(worker: OutboxWorker, stopped: AtomicBoolean) {
+    /**
+     * Runs one tick after another on the IO pool. The next tick comes after 2 seconds with work, after 10 seconds without.
+     * While [paused] is set a tick claims nothing, so the outbox moves only by explicit ticks of [SearchIndexAdmin].
+     */
+    private fun schedulePolling(worker: OutboxWorker, stopped: AtomicBoolean, paused: AtomicBoolean) {
         fun scheduleNext(delay: Duration) {
             if (stopped.get()) return
             reposilite().scheduler.schedule({
                 reposilite().ioService.execute {
                     val claimed = try {
-                        worker.tick().claimed
+                        if (paused.get()) 0 else worker.tick().claimed
                     } catch (failure: Exception) {
                         logger.warn("SEARCH | Outbox tick failed: ${failure.message}")
                         0
