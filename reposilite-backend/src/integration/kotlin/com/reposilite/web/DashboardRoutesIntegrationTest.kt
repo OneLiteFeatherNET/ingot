@@ -78,6 +78,7 @@ internal class DashboardRoutesIntegrationTest : DashboardRoutesSpecification() {
         listOf(
             "/browse",
             "/browse/releases/gav",
+            "/search",
             "/dashboard",
             "/tokens",
             "/tokens/manager",
