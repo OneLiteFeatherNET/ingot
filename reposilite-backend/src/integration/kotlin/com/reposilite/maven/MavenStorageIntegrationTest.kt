@@ -20,6 +20,9 @@ package com.reposilite.maven
 
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.ReposiliteSpecification
+import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.maven.application.MavenSettings
+import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.infrastructure.StorageUsageResponse
 import io.javalin.http.HttpStatus.ACCEPTED
 import io.javalin.http.HttpStatus.OK
@@ -67,6 +70,41 @@ internal class MavenStorageIntegrationTest : ReposiliteSpecification() {
 
         val snapshots = body.repositories.single { it.id == "snapshots" }
         assertThat(snapshots.usedBytes).isEqualTo(0L)
+    }
+
+    @Test
+    fun `should report a loopback group as having no own storage and no quota`() {
+        // given: the snapshots repository proxies the releases repository, which makes it a loopback group
+        reposilite.extensions.facade<SharedConfigurationFacade>()
+            .getDomainSettings<MavenSettings>()
+            .update { old ->
+                old.copy(
+                    repositories = old.repositories.map { repository ->
+                        if (repository.id == "snapshots") repository.copy(proxied = listOf(MirroredRepositorySettings(reference = "releases")))
+                        else repository
+                    }
+                )
+            }
+        val (token, secret) = useDefaultManagementToken()
+
+        // when: a refresh is requested, and the computation it started is awaited
+        Unirest.post("$base/api/maven/storage/refresh").basicAuth(token, secret).asEmpty()
+        mavenFacade.refreshStorageUsage().join()
+
+        // then: the group is flagged and reports no quota, while a plain file system repository keeps its quota
+        val body = Unirest.get("$base/api/maven/storage")
+            .basicAuth(token, secret)
+            .asJacksonObject(StorageUsageResponse::class)
+            .body
+
+        val group = body.repositories.single { it.id == "snapshots" }
+        assertThat(group.group).isTrue
+        assertThat(group.quota).isNull()
+        assertThat(group.storageType).isEqualTo("fs")
+
+        val releases = body.repositories.single { it.id == "releases" }
+        assertThat(releases.group).isFalse
+        assertThat(releases.quota).isEqualTo("100%")
     }
 
 }

@@ -23,6 +23,9 @@ import { setClock, resetClock } from '../../helpers/clock'
 import PrincipalDetail from './PrincipalDetail.vue'
 import { NODES, answer, failure, makeNodesApi } from './teamTestKit'
 
+// The API sends an Instant as epoch seconds: the fixtures carry the same number.
+const wireInstant = (iso) => Date.parse(iso) / 1000
+
 // The session is replaced by a ref of the client, so each test decides what the server answers.
 const holder = vi.hoisted(() => ({ session: null }))
 
@@ -52,8 +55,8 @@ const ALICE = {
   name: 'alice',
   displayName: 'Alice Example',
   disabled: false,
-  createdAt: '2026-10-02T09:00:00Z',
-  lastSeenAt: '2026-10-12T12:00:00Z',
+  createdAt: wireInstant('2026-10-02T09:00:00Z'),
+  lastSeenAt: wireInstant('2026-10-12T12:00:00Z'),
   teams: ['developers', 'release'],
   instanceRole: true,
   tokens: []
@@ -65,11 +68,11 @@ const CI = {
   name: 'ci-bot',
   displayName: 'CI bot',
   disabled: true,
-  createdAt: '2026-10-04T09:00:00Z',
+  createdAt: wireInstant('2026-10-04T09:00:00Z'),
   lastSeenAt: null,
   teams: ['developers'],
   instanceRole: false,
-  tokens: [{ name: 'deploy', lastUsedAt: '2026-10-14T12:00:00Z', lastUsedIp: '192.0.2.10' }]
+  tokens: [{ name: 'deploy', lastUsedAt: wireInstant('2026-10-14T12:00:00Z'), lastUsedIp: '192.0.2.10' }]
 }
 
 // The team tree behind the principals: developers inherits from staff, release stands alone.

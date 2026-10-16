@@ -98,7 +98,8 @@ const expiryNote = computed(() => {
   if (isNever.value) return NEVER_WARNING
   if (customIssue.value !== '') return ''
   const expiresAt = expiresAtFor({ preset: preset.value, customDate: customDate.value })
-  return `Expires on ${formatExpiryDate(expiresAt, props.locale)}`
+  // The expiry is the ISO string this dialog built itself, not a wire value from the API.
+  return `Expires on ${formatExpiryDate(new Date(expiresAt), props.locale)}`
 })
 
 const reset = () => {

@@ -30,6 +30,7 @@ import {
   validateCustomDate,
   validateTokenName
 } from './identityTokens'
+import { instantToDate, localDateToDate } from '../../helpers/apiTime'
 
 // 2026-06-15 12:00:00 UTC. The helpers must read the time only through the clock helper.
 const FIXED = new Date(Date.UTC(2026, 5, 15, 12))
@@ -141,20 +142,21 @@ describe('identityTokens', () => {
   })
 
   describe('dates', () => {
-    it('formats an ISO timestamp as a UTC date', () => {
-      expect(formatDate('2026-10-15T23:30:00Z')).toBe('2026-10-15')
+    // The formatters take the Date the API value names: see helpers/apiTime for the wire shapes.
+    it('formats a date as a UTC calendar day', () => {
+      expect(formatDate(new Date('2026-10-15T23:30:00Z'))).toBe('2026-10-15')
     })
 
-    it('formats a plain date string unchanged', () => {
-      expect(formatDate('2026-10-04')).toBe('2026-10-04')
+    it('formats the day of a year, month and day array the API sends for a LocalDate', () => {
+      expect(formatDate(localDateToDate([2026, 1, 9]))).toBe('2026-01-09')
     })
 
-    it('formats the year, month and day triple of an older token', () => {
-      expect(formatDate([2026, 1, 9])).toBe('2026-01-09')
+    it('formats an instant the API sends as epoch seconds', () => {
+      expect(formatDate(instantToDate(Date.parse('2026-10-15T23:30:00Z') / 1000))).toBe('2026-10-15')
     })
 
     it('formats a timestamp with the time of day in UTC', () => {
-      expect(formatDateTime('2026-10-15T09:05:00Z')).toBe('2026-10-15 09:05 UTC')
+      expect(formatDateTime(new Date('2026-10-15T09:05:00Z'))).toBe('2026-10-15 09:05 UTC')
     })
   })
 
@@ -171,7 +173,7 @@ describe('identityTokens', () => {
     ])('counts %s from the injected clock as %s', (value, expected) => {
       setClock(() => FIXED)
 
-      expect(formatRelative(value)).toBe(expected)
+      expect(formatRelative(new Date(value))).toBe(expected)
     })
   })
 })

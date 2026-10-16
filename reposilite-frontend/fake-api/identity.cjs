@@ -30,6 +30,7 @@ const { basicAuth } = require("./extensions.cjs")
 const audit = require("./audit.cjs")
 const loginProviders = require("./login-providers.cjs")
 const nodeLogic = require("./nodes.cjs")
+const { instantOnWire, localDateOnWire } = require("./wire.cjs")
 
 const SETUP_MODE = process.env.INGOT_FAKE_SETUP === "1"
 const SETUP_CODE = "fake-setup-123456"
@@ -322,7 +323,7 @@ const effectiveNodes = (principal, token = null) =>
 
 const principalDto = (principal) => ({
   id: principal.id, kind: principal.kind, name: principal.name, displayName: principal.displayName,
-  disabled: principal.disabled, createdAt: principal.createdAt, lastSeenAt: principal.lastSeenAt,
+  disabled: principal.disabled, createdAt: instantOnWire(principal.createdAt), lastSeenAt: instantOnWire(principal.lastSeenAt),
 })
 
 // A list row: the flat principal and the summaries a list shows, so that no detail is read per row.
@@ -340,8 +341,8 @@ const principalListItem = (principal) => ({
 })
 
 const tokenDto = (token) => ({
-  name: token.name, description: token.description, createdAt: token.createdAt,
-  expiresAt: token.expiresAt, scopes: token.scopes, lastUsedAt: token.lastUsedAt, lastUsedIp: token.lastUsedIp,
+  name: token.name, description: token.description, createdAt: localDateOnWire(token.createdAt),
+  expiresAt: instantOnWire(token.expiresAt), scopes: token.scopes, lastUsedAt: instantOnWire(token.lastUsedAt), lastUsedIp: token.lastUsedIp,
   // A token that does not narrow its owner has no node list.
   nodes: token.nodes.length > 0 ? token.nodes.map(entry => ({ ...entry })) : null,
 })
@@ -392,7 +393,7 @@ const legacyTokenViews = () =>
       name: token.name,
       createdAt: [year, month, day],
       description: token.description,
-      expiresAt: token.expiresAt ? Math.floor(Date.parse(token.expiresAt) / 1000) : null,
+      expiresAt: instantOnWire(token.expiresAt),
       permissions: [],
       routes: token.legacyRoutes.map(route => ({
         path: route.path,
@@ -514,7 +515,7 @@ const startSession = (res, principal) => {
   res.cookie("ingot_session", sessionId, { ...COOKIE_BASE, httpOnly: true, maxAge: SESSION_TTL_MS })
   res.cookie("ingot_refresh", refreshId, { ...COOKIE_BASE, httpOnly: true, maxAge: REFRESH_TTL_MS })
   res.cookie("ingot_csrf", csrf, { ...COOKIE_BASE, httpOnly: false, maxAge: REFRESH_TTL_MS })
-  const body = { principal: principalSummary(principal), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() }
+  const body = { principal: principalSummary(principal), expiresAt: instantOnWire(new Date(now + SESSION_TTL_MS).toISOString()) }
   if (principal.mustChangePassword) body.mustChangePassword = true
   return body
 }
@@ -597,7 +598,7 @@ const meBody = (actor) => {
     ]
   })
   const body = {
-    accessToken: { id: principal.id, name: principal.name, createdAt: Date.parse(principal.createdAt), description: principal.displayName },
+    accessToken: { id: principal.id, name: principal.name, createdAt: localDateOnWire(principal.createdAt), description: principal.displayName },
     permissions: actor.admin ? [{ identifier: "access-token:manager" }] : [],
     routes,
     principal: principalSummary(principal),
@@ -1191,6 +1192,8 @@ module.exports = {
   router,
   legacyTokenViews,
   decorateTokenMe,
+  // The views as the API sends them, for wire-format.test: fake-api/wire.test.cjs.
+  wire: { principalDto, tokenDto, startSession },
   // The repositories come from the maven settings of the main file, which the dashboard can edit.
   connectRepositories: (supplier) => { repositoriesOf = supplier },
 }

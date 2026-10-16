@@ -25,6 +25,7 @@ const bodyParser = require('body-parser')
 const crypto = require("crypto")
 const audit = require("./audit.cjs")
 const identity = require("./identity.cjs")
+const { localDateOnWire } = require("./wire.cjs")
 
 const {
   respond,
@@ -437,6 +438,18 @@ application
     if (process.env.INGOT_FAKE_API_LEGACY) return res.status(404).send({ status: 404, message: 'Not found' })
     authorized(req, () => res.send(listRepositories(req.query, true)), () => res.send(listRepositories(req.query, false)))
   })
+  // The repositories a group references through loopback mirrors, in configuration order. A reference is
+  // listed only when the caller may see it, and external proxy URLs are never listed, as on the real server.
+  .get('/api/maven/repositories/:repository/members', (req, res) => {
+    const repositories = mavenSettingsEntity.repositories ?? []
+    const group = repositories.find(repository => repository.id === req.params.repository)
+    if (!group) return res.status(404).send({ status: 404, message: 'Repository not found' })
+    const membersFor = (signedIn) => [...new Set((group.proxied ?? []).map(entry => entry.reference))]
+      .map(reference => repositories.find(repository => repository.id === reference))
+      .filter(repository => repository && (repository.visibility === 'PUBLIC' || signedIn))
+      .map(repository => repository.id)
+    authorized(req, () => res.send({ members: membersFor(true) }), () => res.send({ members: membersFor(false) }))
+  })
   .put('/api/settings/domain/maven', (req, res) => { mavenSettingsEntity = req.body; res.send("") })
   .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
   .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))
@@ -515,6 +528,11 @@ application
   .get(
     "/api/maven/details/snapshots",
     respond(createDirectoryDetails("/snapshot", []))
+  )
+  // A group stores nothing itself, so its root is empty and the page shows what it references instead.
+  .get(
+    "/api/maven/details/public",
+    respond(createDirectoryDetails("/public", []))
   )
   .get("/api/maven/details/private", (req, res) => {
     authorized(
@@ -626,7 +644,7 @@ application
           accessToken: {
             id: 1,
             name: "name",
-            createdAt: Date.now(),
+            createdAt: localDateOnWire(new Date().toISOString()),
             description: "Description",
           },
           permissions: [

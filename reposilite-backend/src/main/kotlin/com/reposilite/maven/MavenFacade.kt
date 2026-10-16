@@ -28,6 +28,7 @@ import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.Metadata
 import com.reposilite.maven.api.RepositoryListQuery
 import com.reposilite.maven.api.RepositoryListResponse
+import com.reposilite.maven.api.RepositoryMembersResponse
 import com.reposilite.maven.api.ResolvedDocument
 import com.reposilite.maven.api.SaveMetadataRequest
 import com.reposilite.maven.api.VersionLookupRequest
@@ -155,6 +156,10 @@ class MavenFacade internal constructor(
 
     fun listRepositories(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): RepositoryListResponse =
         RepositoryListResponse(repositoryService.listRepositories(accessToken, query))
+
+    /** The repositories [repository] references through loopback mirrors, as far as the token may see them. */
+    fun findMembers(accessToken: AccessTokenIdentifier?, repository: String): Result<RepositoryMembersResponse, ErrorResponse> =
+        repositoryService.findMembers(accessToken, repository)
 
     fun getRepository(name: String) =
         repositoryService.repositoryProvider.getRepository(name)

@@ -1,0 +1,18 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "General web settings",
+  "title" : "Web",
+  "properties" : {
+    "forwardedIp" : {
+      "type" : "string",
+      "description" : "Any kind of proxy services change real ip.\nThe origin ip should be available in one of the headers. <br />\nNginx: X-Forwarded-For <br />\nCloudflare: CF-Connecting-IP <br />\nPopular: X-Real-IP",
+      "title" : "Forwarded IP"
+    },
+    "forwardedPrefix" : {
+      "type" : "string",
+      "description" : "Name of the header a reverse proxy uses to advertise the sub-path Ingot is mounted under\n(e.g. X-Forwarded-Prefix). When set, requests carrying it render the repository index and 404\nlinks under the configured base path, while direct requests render them at the root, so a single\ninstance works both ways. Leave empty to disable. <br />\nStandard: X-Forwarded-Prefix",
+      "title" : "Forwarded Prefix Header"
+    }
+  }
+}

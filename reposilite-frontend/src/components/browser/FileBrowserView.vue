@@ -53,6 +53,34 @@ const canUpload = computed(() => {
     && hasPermissionTo(`/${props.qualifier.path}`, 'route:write')
 })
 
+// The root of a repository is the only place a group lists the repositories it references.
+const isRepositoryRoot = (path) => path.length > 0 && !path.includes('/')
+
+const members = ref([])
+
+// Asked again when the session changes, since what a caller may see of the references changes with it.
+// A failed request leaves the listing as it was, with no references and no error of its own.
+watch(
+  () => [props.qualifier.path, details.value, sessionReady.value],
+  () => {
+    const path = props.qualifier.path
+    if (!sessionReady.value || !isRepositoryRoot(path)) {
+      members.value = []
+      return
+    }
+
+    const isStale = () => path !== props.qualifier.path
+    new Promise(resolve => resolve(client.value.maven.members(path)))
+      .then(response => {
+        if (!isStale()) members.value = response.data.members ?? []
+      })
+      .catch(() => {
+        if (!isStale()) members.value = []
+      })
+  },
+  { immediate: true }
+)
+
 // bumped by the retry action, so a failed listing can be requested again
 const attempt = ref(0)
 const retry = () => attempt.value++
@@ -158,6 +186,7 @@ const toggleCompactMode = () => {
         :compact-mode="fileBrowserCompactMode"
         :loading="loading"
         :hidden-count="hiddenCount"
+        :members="members"
         @retry="retry"
       />
       <BrowserUpload

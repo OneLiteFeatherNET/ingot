@@ -1,0 +1,21 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "type" : "object",
+  "description" : "Javadoc settings",
+  "title" : "Javadoc",
+  "properties" : {
+    "enabled" : {
+      "type" : "boolean",
+      "description" : "Enable javadoc integration",
+      "title" : "Enabled"
+    },
+    "suffixes" : {
+      "type" : "array",
+      "items" : {
+        "type" : "string"
+      },
+      "description" : "Artifact file suffixes served through the javadoc viewer, e.g. -javadoc.jar, -groovydoc.jar, -docs.zip.",
+      "title" : "Suffixes"
+    }
+  }
+}

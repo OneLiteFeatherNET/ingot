@@ -124,22 +124,22 @@ internal class MavenComponents(
             journalist = journalist,
             clock = clock,
             targets = {
+                val configured = mavenSettings.get().repositories
+                val localNames = configured.map { it.id }.toSet()
                 repositoryProvider.getRepositories().map { repository ->
+                    val settings = configured.firstOrNull { it.id == repository.name }
+                    // A group proxies other local repositories, so it has no content of its own and no quota to meet.
+                    val group = settings?.proxied.orEmpty().any { it.reference.trim().removeSuffix("/") in localNames }
                     StorageTarget(
                         id = repository.name,
                         storage = repository.storageProvider,
-                        quota = configuredQuota(repository.name),
+                        quota = if (group) null else (settings?.storageProvider as? FileSystemStorageProviderSettings)?.quota,
+                        storageType = settings?.storageProvider?.type ?: "fs",
+                        group = group,
                     )
                 }
             },
             executor = ioService,
         )
-
-    /** The quota as written in the settings. Only the file system storage has one; object storage reports none. */
-    private fun configuredQuota(repository: String): String? =
-        mavenSettings.get().repositories
-            .firstOrNull { it.id == repository }
-            ?.storageProvider
-            ?.let { (it as? FileSystemStorageProviderSettings)?.quota }
 
 }

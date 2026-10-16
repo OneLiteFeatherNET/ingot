@@ -41,8 +41,8 @@ const storageBody = (overrides = {}) => ({
   computing: false,
   totalBytes: 13000,
   repositories: [
-    { id: 'releases', usedBytes: 2500, quota: '10kB', quotaBytes: 10000, fileCount: 42 },
-    { id: 'mirror', usedBytes: 10500, quota: null, quotaBytes: null, fileCount: 7 }
+    { id: 'releases', usedBytes: 2500, quota: '10kB', quotaBytes: 10000, fileCount: 42, storageType: 'fs', group: false },
+    { id: 'mirror', usedBytes: 10500, quota: null, quotaBytes: null, fileCount: 7, storageType: 's3', group: false }
   ],
   ...overrides
 })
@@ -111,7 +111,7 @@ describe('StorageUsagePanel', () => {
   it('caps the bar at a full bar when usage is above the quota', async () => {
     session.client = fakeClient({
       storage: vi.fn(() => Promise.resolve({
-        data: storageBody({ repositories: [{ id: 'releases', usedBytes: 12000, quota: '10kB', quotaBytes: 10000, fileCount: 1 }] })
+        data: storageBody({ repositories: [{ id: 'releases', usedBytes: 12000, quota: '10kB', quotaBytes: 10000, fileCount: 1, storageType: 'fs', group: false }] })
       }))
     })
     await mountPanel()
@@ -122,7 +122,7 @@ describe('StorageUsagePanel', () => {
   it('draws no bar, and says so, when the quota is not known in bytes', async () => {
     session.client = fakeClient({
       storage: vi.fn(() => Promise.resolve({
-        data: storageBody({ repositories: [{ id: 'releases', usedBytes: 2500, quota: '10GB', fileCount: 1 }] })
+        data: storageBody({ repositories: [{ id: 'releases', usedBytes: 2500, quota: '10GB', quotaBytes: null, fileCount: 1, storageType: 'fs', group: false }] })
       }))
     })
     await mountPanel()
@@ -131,10 +131,38 @@ describe('StorageUsagePanel', () => {
     expect(rowOf('releases').text()).toContain('The quota size is not known, so there is no bar.')
   })
 
-  it('shows a repository without a quota as unlimited', async () => {
+  it('shows only the used size for object storage, which has no quota', async () => {
     await mountPanel()
 
-    expect(rowOf('mirror').text()).toContain('Unlimited')
+    expect(rowOf('mirror').text()).toContain(`${prettyBytes(10500)} used`)
+    expect(rowOf('mirror').text()).not.toContain('quota')
+    expect(rowOf('mirror').text()).not.toContain('no limit')
+    expect(rowOf('mirror').find('[role="progressbar"]').exists()).toBe(false)
+  })
+
+  it('says a file system repository without a limit has no limit', async () => {
+    session.client = fakeClient({
+      storage: vi.fn(() => Promise.resolve({
+        data: storageBody({ repositories: [{ id: 'releases', usedBytes: 2500, quota: null, quotaBytes: null, fileCount: 1, storageType: 'fs', group: false }] })
+      }))
+    })
+    await mountPanel()
+
+    expect(rowOf('releases').text()).toContain('no limit')
+  })
+
+  it('says a loopback group has no own storage and shows no quota for it', async () => {
+    session.client = fakeClient({
+      storage: vi.fn(() => Promise.resolve({
+        data: storageBody({ repositories: [{ id: 'onelitefeather', usedBytes: 0, quota: null, quotaBytes: null, fileCount: 0, storageType: 'fs', group: true }] })
+      }))
+    })
+    await mountPanel()
+
+    expect(rowOf('onelitefeather').text()).toContain('group, no own storage')
+    expect(rowOf('onelitefeather').text()).not.toContain('quota')
+    expect(rowOf('onelitefeather').text()).not.toContain('100%')
+    expect(rowOf('onelitefeather').find('[role="progressbar"]').exists()).toBe(false)
   })
 
   it('says the figures are not computed yet and offers a refresh when none exist', async () => {

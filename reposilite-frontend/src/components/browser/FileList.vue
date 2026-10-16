@@ -34,10 +34,14 @@ const props = defineProps({
   files: property(Object, true),
   compactMode: property(Boolean, true),
   loading: property(Boolean, true),
-  hiddenCount: property(Number, false)
+  hiddenCount: property(Number, false),
+  // The repositories a group references, shown on the root of a repository only.
+  members: property(Array, false)
 })
 
 const router = useRouter()
+const references = computed(() => props.members ?? [])
+const hasReferences = computed(() => references.value.length > 0)
 // The not-found actions go to the directory above the one that is missing, and to the first
 // segment of the browsed path, which is the repository itself.
 const parentLocation = computed(() => browseLocation(parentPathOf(props.qualifier.path)))
@@ -199,11 +203,41 @@ const entryUrl = (file) =>
       </MdButton>
     </div>
     <p
-      v-else-if="isEmpty"
+      v-else-if="isEmpty && !hasReferences"
       class="px-4 pt-4 md-body-large text-on-surface-variant"
     >
       Directory is empty
     </p>
+    <section
+      v-if="!loading && !files.error && hasReferences"
+      id="browser-includes"
+      aria-labelledby="browser-includes-title"
+      class="px-4 pt-6"
+    >
+      <h2
+        id="browser-includes-title"
+        class="md-title-small text-on-surface-variant"
+      >
+        Includes
+      </h2>
+      <ul class="mt-3 rounded-corner-medium bg-surface-container-low p-1">
+        <li
+          v-for="member in references"
+          :key="member"
+        >
+          <router-link
+            :to="browseLocation(member)"
+            class="md-state-layer md-focus-ring flex min-h-14 items-center gap-4 rounded-corner-medium px-4 text-on-surface"
+          >
+            <BrowserIcon
+              name="folder"
+              class="text-on-surface-variant"
+            />
+            <span class="md-body-large">{{ member }}</span>
+          </router-link>
+        </li>
+      </ul>
+    </section>
     <section
       v-if="!loading && files.error"
       role="alert"

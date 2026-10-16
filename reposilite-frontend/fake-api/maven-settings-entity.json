@@ -64,6 +64,21 @@
       "redeployment": false,
       "preserveSnapshots": true,
       "storageProvider": { "type": "fs" }
+    },
+    {
+      "id": "public",
+      "visibility": "PUBLIC",
+      "description": "Group of the release and snapshot repositories, the one place to browse them together.",
+      "tags": ["group"],
+      "redeployment": false,
+      "preserveSnapshots": false,
+      "storageProvider": { "type": "fs" },
+      "proxied": [
+        { "reference": "releases", "store": false, "allowedGroups": [], "connectTimeout": 3, "readTimeout": 15, "httpProxy": "" },
+        { "reference": "private", "store": false, "allowedGroups": [], "connectTimeout": 3, "readTimeout": 15, "httpProxy": "" },
+        { "reference": "https://repo.maven.apache.org/maven2", "store": false, "allowedGroups": [], "connectTimeout": 3, "readTimeout": 15, "httpProxy": "" },
+        { "reference": "snapshots", "store": false, "allowedGroups": [], "connectTimeout": 3, "readTimeout": 15, "httpProxy": "" }
+      ]
     }
   ]
 }

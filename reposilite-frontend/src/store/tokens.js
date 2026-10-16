@@ -17,6 +17,7 @@
 import { ref } from 'vue'
 import { useSession } from './session'
 import { createSuccessToast, createErrorToast, errorMessage } from '../helpers/toast'
+import { instantToDate } from '../helpers/apiTime'
 import { etagOf, isPreconditionFailed } from './client'
 
 const tokenIsManager = (token) =>
@@ -38,10 +39,6 @@ const groupedToRequestRoutes = (grouped) =>
     .filter(route => route.read || route.write)
     .map(route => ({ path: route.path, permissions: [route.read && 'r', route.write && 'w'].filter(Boolean) }))
 
-const toMs = (value) =>
-  Array.isArray(value) ? Date.UTC(value[0], value[1] - 1, value[2])
-    : typeof value === 'number' ? (value < 1e12 ? value * 1000 : value)
-    : new Date(value).getTime()
 
 /** Trims a route path and makes sure it starts with a slash. A blank path stays blank. */
 export const normalizeRoutePath = (path) => {
@@ -138,7 +135,8 @@ export function createTokenStore({ getClient, notify = defaultNotify }) {
     description: token.description || '',
     permissions: tokenIsManager(token) ? ['access-token:manager'] : [],
     routes: groupedToRequestRoutes(groupRoutes(token)),
-    expiresAt: token.expiresAt ? new Date(toMs(token.expiresAt)).toISOString() : null,
+    // expiresAt is an Instant on the wire: epoch seconds.
+    expiresAt: instantToDate(token.expiresAt)?.toISOString() ?? null,
   })
 
   /*
@@ -240,7 +238,6 @@ export function createTokenStore({ getClient, notify = defaultNotify }) {
     regenerateSecret,
     groupRoutes,
     tokenIsManager,
-    toMs,
     errorMessage
   }
 }
