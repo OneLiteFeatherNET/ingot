@@ -23,18 +23,28 @@ import java.util.concurrent.ConcurrentHashMap
 /** Keeps the provenance in memory. Used by tests, where no instance database exists. */
 internal class InMemoryMirrorCacheLedger : MirrorCacheLedger {
 
-    /** Key: repository and version path. Value: last access. */
-    private val rows = ConcurrentHashMap<Pair<String, String>, Instant>()
+    private data class Row(val lastAccess: Instant, val sourceHost: String?)
 
-    override fun insertIfAbsent(repository: String, path: String, now: Instant) {
-        rows.putIfAbsent(repository to path, now)
+    /** Key: repository and version path. */
+    private val rows = ConcurrentHashMap<Pair<String, String>, Row>()
+
+    override fun insertIfAbsent(repository: String, path: String, now: Instant, sourceHost: String?) {
+        rows.putIfAbsent(repository to path, Row(now, sourceHost))
     }
 
     override fun contains(repository: String, path: String): Boolean =
         rows.containsKey(repository to path)
 
+    override fun sourceHost(repository: String, path: String): String? =
+        rows[repository to path]?.sourceHost
+
+    override fun sourceHosts(repository: String): Map<String, String?> =
+        rows.entries
+            .filter { (key, _) -> key.first == repository }
+            .associate { (key, row) -> key.second to row.sourceHost }
+
     override fun markAccessed(repository: String, path: String, now: Instant): Boolean =
-        rows.computeIfPresent(repository to path) { _, lastAccess -> maxOf(lastAccess, now) } != null
+        rows.computeIfPresent(repository to path) { _, row -> row.copy(lastAccess = maxOf(row.lastAccess, now)) } != null
 
     override fun deleteVersion(repository: String, path: String) {
         rows.remove(repository to path)
@@ -47,6 +57,6 @@ internal class InMemoryMirrorCacheLedger : MirrorCacheLedger {
     override fun find(repository: String): Map<String, Instant> =
         rows.entries
             .filter { (key, _) -> key.first == repository }
-            .associate { (key, lastAccess) -> key.second to lastAccess }
+            .associate { (key, row) -> key.second to row.lastAccess }
 
 }

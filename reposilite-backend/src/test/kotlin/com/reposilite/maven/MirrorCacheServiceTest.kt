@@ -138,6 +138,37 @@ internal class MirrorCacheServiceTest {
     }
 
     @Test
+    fun `should record the upstream host the copy was fetched from`() {
+        // when: a copy is stored from a mirror host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false, sourceHost = "mirror.example.org")
+
+        // then: the directory keeps that host
+        assertThat(ledger.sourceHost("central", "org/mirror/lib/2.0")).isEqualTo("mirror.example.org")
+    }
+
+    @Test
+    fun `should keep the upstream host of the first copy when a later copy comes from another host`() {
+        // given: a directory stored from the first host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false, sourceHost = "first.example.org")
+
+        // when: a later file of the same directory is fetched from a second host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false, sourceHost = "second.example.org")
+
+        // then: the directory keeps the first host
+        assertThat(ledger.sourceHost("central", "org/mirror/lib/2.0")).isEqualTo("first.example.org")
+    }
+
+    @Test
+    fun `should record a copy without a host when the upstream host is unknown`() {
+        // when: a copy is stored without a host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false)
+
+        // then: the copy is recorded and carries no host
+        assertThat(cache.cachedVersions("central")).containsOnlyKeys("org/mirror/lib/2.0")
+        assertThat(ledger.sourceHost("central", "org/mirror/lib/2.0")).`as`("source host").isNull()
+    }
+
+    @Test
     fun `should not record a path that is too long for the ledger`() {
         // when: a copy with a path beyond the ledger limit is stored
         cache.recordStored("central", "a".repeat(MAX_PROVENANCE_PATH_LENGTH + 1), holdsHostedArtifacts = false)
