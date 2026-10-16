@@ -21,16 +21,18 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * The index sink of the maven tests. It records every call in order and can be told to fail on every call, the way a
- * broken database would. [onCall] runs after the record is made and before a failure is thrown.
+ * broken database would.
  */
 internal class RecordingArtifactIndexSink(
     private val failure: Throwable? = null,
-    private val onCall: (IndexCall) -> Unit = {},
 ) : ArtifactIndexSink {
 
     data class IndexCall(val operation: String, val repository: String, val path: String)
 
     val recorded = CopyOnWriteArrayList<IndexCall>()
+
+    /** Runs after each call is recorded and before a failure is thrown, so a test can inspect the state at that moment. */
+    var onCall: (IndexCall) -> Unit = {}
 
     override fun changed(repository: String, path: String) = record("changed", repository, path)
 
@@ -38,7 +40,7 @@ internal class RecordingArtifactIndexSink(
 
     override fun reorigin(repository: String, directory: String) = record("reorigin", repository, directory)
 
-    fun recorded(operation: String): List<IndexCall> =
+    fun callsOf(operation: String): List<IndexCall> =
         recorded.filter { it.operation == operation }
 
     private fun record(operation: String, repository: String, path: String) {

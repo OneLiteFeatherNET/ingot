@@ -16,6 +16,7 @@
 
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.plugin.api.EventListener
@@ -30,7 +31,10 @@ import com.reposilite.plugin.api.EventListener
  * which emit their own events and are handled as well, because they describe the content the client sent and not the
  * reconciled one.
  */
-internal class PreservedBuildsListener(private val mavenFacade: MavenFacade) : EventListener<DeployEvent> {
+internal class PreservedBuildsListener(
+    private val mavenFacade: MavenFacade,
+    private val artifactIndexSink: ArtifactIndexSink,
+) : EventListener<DeployEvent> {
 
     override fun onCall(event: DeployEvent) {
         val repository = event.repository
@@ -56,7 +60,11 @@ internal class PreservedBuildsListener(private val mavenFacade: MavenFacade) : E
                 files
                     .filter { it.locationAfterLast("/").toString().startsWith(metadata.artifactId!!) }
                     .filterNot { it.toString().contains(snapshotToPreserve) }
-                    .map { repository.storageProvider.removeFile(it) }
+                    .map { file ->
+                        repository.storageProvider.removeFile(file)
+                            // queued right after the removal, so the index hears of it even when the reconcile below fails
+                            .peek { artifactIndexSink.removed(repository.name, file.provenancePath()) }
+                    }
                     .count()
                     .also { mavenFacade.logger.info("DEPLOY | Preserved Builds Listener | $it deprecated file(s) have been removed") }
 

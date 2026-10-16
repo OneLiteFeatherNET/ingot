@@ -15,6 +15,7 @@
  */
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.api.DeleteEvent
@@ -59,6 +60,7 @@ internal class RepositoryService(
     private val resolutionProvider: ResolutionProvider,
     private val statisticsFacade: StatisticsFacade,
     private val extensions: Extensions,
+    private val artifactIndexSink: ArtifactIndexSink,
 ) : Journalist {
 
     private val ignoredExtensions = listOf(
@@ -94,6 +96,7 @@ internal class RepositoryService(
                                         .getFile(gav)
                                         .peek { logger.info("DEPLOY | Generating checksums for $gav") }
                                         .flatMap { repository.writeFileChecksums(gav, it) }
+                                        .peek { artifactIndexSink.indexChanged(repository.name, gav) }
                                 else -> {
                                     logger.debug("DEPLOY | Skipping checksums generation for $gav")
                                     ok()

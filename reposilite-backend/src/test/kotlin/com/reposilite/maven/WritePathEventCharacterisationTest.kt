@@ -31,6 +31,7 @@ import com.reposilite.maven.api.Versioning
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.maven.specification.MavenSpecification
+import com.reposilite.maven.specification.RecordingArtifactIndexSink.IndexCall
 import com.reposilite.storage.api.toLocation
 import com.reposilite.token.RoutePermission.WRITE
 import org.assertj.core.api.Assertions.assertThat
@@ -38,8 +39,8 @@ import org.junit.jupiter.api.Test
 import panda.std.ResultAssertions.assertOk
 
 /**
- * Characterises the write paths that bypass the deploy and delete events, and what they announce today.
- * The index work (search, task 10) turns these assertions into outbox entries; until then they pin the current state.
+ * Pins the write paths that bypass the deploy and delete events. The events are unchanged; what each path tells the
+ * artifact index (the sink, artifact search spec 3.5) is asserted next to them.
  */
 internal class WritePathEventCharacterisationTest : MavenSpecification() {
 
@@ -49,6 +50,7 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
     private val by = "dzikoysk@127.0.0.1"
 
     private val baseJar = "com/example/app/1.0.0/app-1.0.0.jar"
+    private val generatedPom = "com/example/app/1.0.0/app-1.0.0.pom"
     private val versionDirectory = "com/example/app/1.0.0"
 
     override fun repositories() = listOf(
@@ -110,6 +112,24 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
     }
 
     @Test
+    fun `should queue the base file once, after its checksum sidecars are written`() {
+        // given: a hosted repository and a sink that records whether the sha1 sidecar exists at the moment of the call
+        val repository = mavenFacade.getRepository(hosted)!!
+        val sha1 = baseJar.toLocation().resolveSibling("app-1.0.0.jar.sha1")
+        val sidecarExistsAtQueue = mutableListOf<Boolean>()
+        indexSink.onCall = { if (it.operation == "changed") sidecarExistsAtQueue += repository.storageProvider.exists(sha1) }
+
+        // when: a file is deployed with checksum generation requested
+        assertOk(mavenFacade.deployFile(DeployRequest(repository, baseJar.toLocation(), by, content("content"), generateChecksums = true)))
+
+        // then: the base file is queued exactly once, and only when its sidecar is already stored
+        assertThat(indexSink.callsOf("changed"))
+            .`as`("index calls after deploying with checksums")
+            .containsExactly(IndexCall("changed", hosted, baseJar))
+        assertThat(sidecarExistsAtQueue).`as`("sha1 sidecar present when the base file is queued").containsExactly(true)
+    }
+
+    @Test
     fun `should emit no deploy event when the generated pom is written`() {
         // given: a write token for the artifact directory and listeners for deploy and delete events
         val repository = mavenFacade.getRepository(hosted)!!
@@ -137,6 +157,30 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
     }
 
     @Test
+    fun `should queue the generated pom for the index`() {
+        // given: a write token for the artifact directory
+        val repository = mavenFacade.getRepository(hosted)!!
+        val token = createAccessToken("dzikoysk", "secret", hosted, "com/example/app", WRITE)
+
+        // when: the pom is generated for the version
+        assertOk(
+            mavenFacade.generatePom(
+                GeneratePomRequest(
+                    accessToken = token,
+                    repository = repository,
+                    gav = generatedPom.toLocation(),
+                    pomDetails = PomDetails(groupId = "com.example", artifactId = "app", version = "1.0.0"),
+                )
+            )
+        )
+
+        // then: the pom is queued for the index
+        assertThat(indexSink.callsOf("changed"))
+            .`as`("index calls after generating the pom")
+            .containsExactly(IndexCall("changed", hosted, generatedPom))
+    }
+
+    @Test
     fun `should emit no deploy event when a mirror copy is stored`() {
         // given: a deploy listener and a file that exists only on the remote host
         val deployed = recordDeployEvents()
@@ -149,6 +193,22 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
     }
 
     @Test
+    fun `should queue a stored mirror copy once its version directory is in the ledger`() {
+        // given: a file that exists only on the remote host, and a sink that records the ledger at the moment of the call
+        val ledgerAtQueue = mutableListOf<Set<String>>()
+        indexSink.onCall = { if (it.operation == "changed") ledgerAtQueue += mavenFacade.mirrorCacheEntries(mirror).keys }
+
+        // when: the file is requested through the mirror repository
+        assertOk(mavenFacade.findFile(FileSpec(mirror, "/$baseJar", REMOTE_CONTENT).toLookupRequest(UNAUTHORIZED)))
+
+        // then: the copy is queued, cached copies included, and the ledger already names its directory
+        assertThat(indexSink.callsOf("changed"))
+            .`as`("index calls after storing a mirror copy")
+            .containsExactly(IndexCall("changed", mirror, baseJar))
+        assertThat(ledgerAtQueue).`as`("ledger keys at the moment of the call").containsExactly(setOf(versionDirectory))
+    }
+
+    @Test
     fun `should record the version directory of a stored mirror copy in the ledger`() {
         // given: a file that exists only on the remote host
         // when: the file is requested through the mirror repository
@@ -158,6 +218,20 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
         assertThat(mavenFacade.mirrorCacheEntries(mirror).keys)
             .`as`("ledger keys after fetching a mirror copy")
             .containsExactly(versionDirectory)
+    }
+
+    @Test
+    fun `should reorigin the version directory of a deploy into a mirror copy`() {
+        // given: a cached mirror copy in the version directory
+        assertOk(mavenFacade.findFile(FileSpec(mirror, "/$baseJar", REMOTE_CONTENT).toLookupRequest(UNAUTHORIZED)))
+
+        // when: a file is deployed into the same directory
+        assertOk(mavenFacade.deployFile(DeployRequest(mavenFacade.getRepository(mirror)!!, "$versionDirectory/hosted.jar".toLocation(), by, content("hosted"), generateChecksums = false)))
+
+        // then: the directory is reoriginated, so its rows no longer carry the mirror origin
+        assertThat(indexSink.callsOf("reorigin"))
+            .`as`("reorigin calls after deploying into the copy directory")
+            .containsExactly(IndexCall("reorigin", mirror, versionDirectory))
     }
 
     @Test
@@ -176,6 +250,42 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
         assertThat(mavenFacade.mirrorCacheEntries(mirror)).`as`("ledger after deploying into the copy directory").isEmpty()
         assertThat(deployed.map { it.gav }).containsExactly(hostedFile.toLocation())
         assertThat(deleted).isEmpty()
+    }
+
+    @Test
+    fun `should queue each pruned build for removal from the index`() {
+        // given: a snapshot version with an old build that is no longer listed, and the pruning listener registered
+        val repository = mavenFacade.getRepository(snapshots)!!
+        val artifactId = "app"
+        val versionId = "com/example/$artifactId/1.0.0-SNAPSHOT".toLocation()
+        val prefix = "com/example/$artifactId/1.0.0-SNAPSHOT/$artifactId-1.0.0"
+        val oldJar = "$prefix-20220101.213700-1.jar"
+        addFileToRepository(FileSpec(snapshots, oldJar, "one"))
+        addFileToRepository(FileSpec(snapshots, "$prefix-20220101.213702-2.jar", "two"))
+        assertOk(
+            mavenFacade.saveMetadata(
+                SaveMetadataRequest(
+                    repository = repository,
+                    gav = versionId,
+                    metadata = Metadata(
+                        artifactId = artifactId,
+                        versioning = Versioning(
+                            snapshot = Snapshot(timestamp = "20220101.213702", buildNumber = 2),
+                            _snapshotVersions = listOf(SnapshotVersion(value = "1.0.0-20220101.213702-2", updated = "20220101213702")),
+                        ),
+                    ),
+                )
+            )
+        )
+        extensions.registerEvent(PreservedBuildsListener(mavenFacade, indexSink))
+
+        // when: the metadata of the snapshot is deployed
+        extensions.emitEvent(DeployEvent(repository, "$versionId/maven-metadata.xml".toLocation(), by))
+
+        // then: the old build is queued for removal, and only that build
+        assertThat(indexSink.callsOf("removed"))
+            .`as`("index removals caused by pruning")
+            .containsExactly(IndexCall("removed", snapshots, oldJar))
     }
 
     @Test
@@ -203,7 +313,7 @@ internal class WritePathEventCharacterisationTest : MavenSpecification() {
                 )
             )
         )
-        extensions.registerEvent(PreservedBuildsListener(mavenFacade))
+        extensions.registerEvent(PreservedBuildsListener(mavenFacade, indexSink))
         val deleted = recordDeleteEvents()
 
         // when: the metadata of the snapshot is deployed

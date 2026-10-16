@@ -16,6 +16,7 @@
 
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT
@@ -60,6 +61,7 @@ internal class MetadataService(
     private val repositorySecurityProvider: RepositorySecurityProvider,
     private val clock: Clock,
     private val journalist: Journalist,
+    private val artifactIndexSink: ArtifactIndexSink,
 ) : Journalist {
 
     private val xml by lazy {
@@ -114,6 +116,7 @@ internal class MetadataService(
                         </project>
                         """.trimIndent().trim().byteInputStream()
                     )
+                    .peek { artifactIndexSink.indexChanged(repository.name, gav) }
                     .map { findMetadata(repository, parentDirectory).orElseGet { Metadata() } }
                     .map {
                         it.copy(

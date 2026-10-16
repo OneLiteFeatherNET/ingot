@@ -32,6 +32,7 @@ import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.MirrorCredentials
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.maven.infrastructure.InMemoryMirrorCacheLedger
+import com.reposilite.maven.specification.RecordingArtifactIndexSink
 import com.reposilite.plugin.Extensions
 import com.reposilite.shared.http.AuthenticationMethod.BASIC
 import com.reposilite.shared.errorResponse
@@ -92,6 +93,9 @@ internal abstract class MavenSpecification {
     private lateinit var ioService: ExecutorService
 
     protected val remoteRequestsByUri = ConcurrentHashMap<String, AtomicInteger>()
+
+    /** The index sink the maven components write through; a fresh one per test. */
+    protected val indexSink = RecordingArtifactIndexSink()
 
     private val clock = Clock.systemDefaultZone()
     private val logger = InMemoryLogger()
@@ -167,6 +171,7 @@ internal abstract class MavenSpecification {
             )),
             frontendSettings = reference(FrontendSettings()),
             mirrorCacheLedger = InMemoryMirrorCacheLedger(),
+            artifactIndexSink = indexSink,
         ).mavenFacade()
     }
 

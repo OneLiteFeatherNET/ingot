@@ -16,6 +16,7 @@
 
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.StoragePolicy.PRIORITIZE_UPSTREAM_METADATA
@@ -49,6 +50,7 @@ internal class MirrorService(
     private val clock: Clock,
     private val ioService: ExecutorService,
     private val mirrorCache: MirrorCacheService,
+    private val artifactIndexSink: ArtifactIndexSink,
 ) : Journalist {
 
     private data class FetchKey(
@@ -175,6 +177,7 @@ internal class MirrorService(
                 if (!gav.getSimpleName().isMetadataOrChecksumFileName()) {
                     mirrorCache.recordStored(repository.name, directory.provenancePath(), holdsHostedArtifacts, sourceHost)
                 }
+                artifactIndexSink.indexChanged(repository.name, gav)
             }
     }
 
