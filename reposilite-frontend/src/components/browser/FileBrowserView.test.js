@@ -19,6 +19,7 @@ import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import FileBrowserView from './FileBrowserView.vue'
 import BrowserUpload from './FileUpload.vue'
 import { sessionState } from '../../store/session'
+import { DETAILS_COLLAPSED_KEY } from '../card/detailsCollapsed'
 
 // The session store is replaced per file; each test swaps in its own client below.
 vi.mock('../../store/session', async () => {
@@ -55,9 +56,23 @@ vi.mock('../../store/qualifier', () => ({
   })
 }))
 
-vi.mock('../card/SnippetsCard.vue', () => ({
-  default: { name: 'SnippetsCard', render: () => null }
-}))
+// The card stands in with one button that reports a fold or an unfold, as the real card does.
+vi.mock('../card/SnippetsCard.vue', async () => {
+  const { h } = await import('vue')
+  return {
+    default: {
+      name: 'SnippetsCard',
+      emits: ['update:collapsed'],
+      render() {
+        return h('button', {
+          type: 'button',
+          'data-testid': 'card-fold',
+          onClick: () => this.$emit('update:collapsed', true)
+        }, 'Fold card')
+      }
+    }
+  }
+})
 
 const networkError = () => ({ message: 'Network Error', request: {} })
 const httpError = (status, message = '') => ({ response: { status, data: { message } } })
@@ -368,5 +383,53 @@ describe('FileBrowserView group references', () => {
     await flushPromises()
 
     expect(wrapper.text(), 'a failed reference lookup leaves the listing as it was').toContain('Directory is empty')
+  })
+})
+
+describe('FileBrowserView details layout', () => {
+  // The side-by-side grid of the wide layout, as the view class names it.
+  const SIDE_BY_SIDE = 'lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
+
+  // The view starts with a comment, so its root is a fragment: the grid is found by its class.
+  const layoutGrid = (wrapper) => {
+    const grid = wrapper.find('.container.grid')
+    expect(grid.exists(), 'the details and listing share one grid').toBe(true)
+    return grid
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    sessionState.details.value = { routes: [] }
+    sessionState.client.value = clientWithDetails(() => Promise.resolve({ data: { files: [] } }))
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+    localStorage.clear()
+  })
+
+  it('keeps the listing beside the details card while the card is open', () => {
+    localStorage.setItem(DETAILS_COLLAPSED_KEY, 'false')
+
+    const wrapper = mountView()
+
+    expect(layoutGrid(wrapper).classes(), 'the wide layout has the details column').toContain(SIDE_BY_SIDE)
+  })
+
+  it('gives the listing the full width while the details card is folded', () => {
+    localStorage.setItem(DETAILS_COLLAPSED_KEY, 'true')
+
+    const wrapper = mountView()
+
+    expect(layoutGrid(wrapper).classes(), 'no side column is reserved for a folded card').not.toContain(SIDE_BY_SIDE)
+  })
+
+  it('changes the layout when the card is folded from the page', async () => {
+    localStorage.setItem(DETAILS_COLLAPSED_KEY, 'false')
+    const wrapper = mountView()
+
+    await wrapper.find('[data-testid="card-fold"]').trigger('click')
+
+    expect(layoutGrid(wrapper).classes(), 'the listing takes the width the card gave up').not.toContain(SIDE_BY_SIDE)
   })
 })

@@ -15,14 +15,16 @@
   -->
 
 <script setup>
-import { onBeforeUnmount, ref, watch, watchEffect } from 'vue'
+import { onBeforeUnmount, ref, useId, watch, watchEffect } from 'vue'
 import { useSession } from '../../store/session'
 import { copyToClipboard, selectText } from './copySnippet'
+import { readDetailsCollapsed, writeDetailsCollapsed } from './detailsCollapsed'
 import useRepository from '../../store/maven/repository'
 import useMetadata from '../../store/maven/metadata'
 import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import BrowserIcon from '../browser/BrowserIcon.vue'
+import DownIcon from '../icons/DownIcon.vue'
 import CardMenu from './CardMenu.vue'
 import RepositorySnippet from "./RepositorySnippet.vue"
 import ArtifactSnippet from "./ArtifactSnippet.vue"
@@ -33,6 +35,18 @@ const props = defineProps({
     required: true
   }
 })
+
+const emit = defineEmits(['update:collapsed'])
+
+// Folded away or open. Remembered per viewer, and the page reads the same choice to lay out the listing.
+const collapsed = ref(readDetailsCollapsed())
+const bodyId = useId()
+
+const toggleCollapsed = () => {
+  collapsed.value = !collapsed.value
+  writeDetailsCollapsed(collapsed.value)
+  emit('update:collapsed', collapsed.value)
+}
 
 const title = ref('')
 const configurations = [
@@ -150,113 +164,134 @@ const selectTab = (tab) =>
     <div class="px-2 pb-2">
       <div class="flex flex-row justify-between">
         <h1 class="flex w-full items-center md-title-large">
-          <span
-            v-if="loading"
-            class="h-5 w-36 rounded bg-surface-container-high skeleton-bars"
-          />
-          <template v-else>
-            {{ title }}
-          </template>
+          <button
+            type="button"
+            class="md-state-layer md-focus-ring inline-flex min-h-12 min-w-0 max-w-full items-center gap-1 rounded-corner-small px-2 text-left text-on-surface"
+            :aria-expanded="String(!collapsed)"
+            :aria-controls="bodyId"
+            @click="toggleCollapsed"
+          >
+            <span
+              v-if="loading"
+              class="h-5 w-36 rounded bg-surface-container-high skeleton-bars"
+            />
+            <template v-else>
+              {{ title }}
+            </template>
+            <!-- Points down while folded, up while open. The button's name and state are already announced. -->
+            <span
+              aria-hidden="true"
+              class="inline-flex shrink-0 transition-transform duration-(--md-sys-motion-duration-short3)"
+              :class="collapsed ? '' : 'rotate-180'"
+            >
+              <DownIcon />
+            </span>
+          </button>
         </h1>
       </div>
 
-      <CardMenu
-        :configurations="configurations"
-        @select-tab="selectTab"
-      />
+      <div
+        v-show="!collapsed"
+        :id="bodyId"
+      >
+        <CardMenu
+          :configurations="configurations"
+          @select-tab="selectTab"
+        />
 
-      <div class="mt-5">
-        <transition
-          :name="transitionName"
-          mode="out-in"
-        >
-          <div
-            :key="selectedTab"
+        <div class="mt-5">
+          <transition
+            :name="transitionName"
+            mode="out-in"
           >
-            <!--
-              The copy action has a row of its own above the code, so it never sits over a line of
-              the snippet, and the code block below scrolls sideways without moving it.
-            -->
             <div
-              class="rounded-corner-medium bg-surface-container-highest text-on-surface"
+              :key="selectedTab"
             >
+              <!--
+                The copy action has a row of its own above the code, so it never sits over a line of
+                the snippet, and the code block below scrolls sideways without moving it.
+              -->
               <div
-                v-if="!loading"
-                class="flex justify-end px-2 pt-1"
-              >
-                <MdIconButton
-                  aria-label="Copy snippet"
-                  @click="copy"
-                >
-                  <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
-                </MdIconButton>
-              </div>
-              <!-- Preformatted: lines keep their indentation and are never broken, so long ones scroll sideways. -->
-              <div
-                ref="codeBlock"
-                class="card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small min-h-29 px-4 pb-3 pt-1"
+                class="rounded-corner-medium bg-surface-container-highest text-on-surface"
               >
                 <div
-                  v-if="loading"
-                  class="skeleton-bars space-y-2.5 pt-1"
+                  v-if="!loading"
+                  class="flex justify-end px-2 pt-1"
+                >
+                  <MdIconButton
+                    aria-label="Copy snippet"
+                    @click="copy"
+                  >
+                    <BrowserIcon :name="copyState === 'copied' ? 'check' : 'copy'" />
+                  </MdIconButton>
+                </div>
+                <!-- Preformatted: lines keep their indentation and are never broken, so long ones scroll sideways. -->
+                <div
+                  ref="codeBlock"
+                  class="card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small min-h-29 px-4 pb-3 pt-1"
                 >
                   <div
-                    class="h-3 rounded bg-surface-container-high"
-                    style="width: 80%"
-                  />
-                  <div
-                    class="h-3 rounded bg-surface-container-high"
-                    style="width: 55%"
-                  />
-                  <div
-                    class="h-3 rounded bg-surface-container-high"
-                    style="width: 68%"
-                  />
-                  <div
-                    class="h-3 rounded bg-surface-container-high"
-                    style="width: 40%"
-                  />
-                </div>
-                <template v-else>
-                  <template
-                    v-for="entry in configurations"
-                    :key="entry.name"
+                    v-if="loading"
+                    class="skeleton-bars space-y-2.5 pt-1"
                   >
-                    <template v-if="entry.name === selectedTab">
-                      <RepositorySnippet
-                        v-if="data.type === 'repository'"
-                        ref="snippetRef"
-                        :configuration="entry"
-                        :data="data"
-                      />
-                      <ArtifactSnippet
-                        v-else-if="data.type === 'artifact'"
-                        ref="snippetRef"
-                        :configuration="entry"
-                        :data="data"
-                      />
+                    <div
+                      class="h-3 rounded bg-surface-container-high"
+                      style="width: 80%"
+                    />
+                    <div
+                      class="h-3 rounded bg-surface-container-high"
+                      style="width: 55%"
+                    />
+                    <div
+                      class="h-3 rounded bg-surface-container-high"
+                      style="width: 68%"
+                    />
+                    <div
+                      class="h-3 rounded bg-surface-container-high"
+                      style="width: 40%"
+                    />
+                  </div>
+                  <template v-else>
+                    <template
+                      v-for="entry in configurations"
+                      :key="entry.name"
+                    >
+                      <template v-if="entry.name === selectedTab">
+                        <RepositorySnippet
+                          v-if="data.type === 'repository'"
+                          ref="snippetRef"
+                          :configuration="entry"
+                          :data="data"
+                        />
+                        <ArtifactSnippet
+                          v-else-if="data.type === 'artifact'"
+                          ref="snippetRef"
+                          :configuration="entry"
+                          :data="data"
+                        />
+                      </template>
                     </template>
                   </template>
-                </template>
+                </div>
               </div>
+              <!-- Below the snippet, so a status line never sits over a line of it. -->
+              <p
+                v-if="copyState === 'copied'"
+                role="status"
+                class="mt-2 md-body-small text-success"
+              >
+                Copied
+              </p>
+              <p
+                v-if="copyState === 'selected'"
+                role="status"
+                class="mt-2 md-body-small text-on-surface-variant"
+              >
+                Copying is not available here. The snippet is selected: press Ctrl+C (Cmd+C on macOS) to copy it.
+              </p>
             </div>
-            <!-- Below the snippet, so a status line never sits over a line of it. -->
-            <p
-              v-if="copyState === 'copied'"
-              role="status"
-              class="mt-2 md-body-small text-success"
-            >
-              Copied
-            </p>
-            <p
-              v-if="copyState === 'selected'"
-              role="status"
-              class="mt-2 md-body-small text-on-surface-variant"
-            >
-              Copying is not available here. The snippet is selected: press Ctrl+C (Cmd+C on macOS) to copy it.
-            </p>
-          </div>
-        </transition>
+          </transition>
+        </div>
       </div>
     </div>
   </MdCard>
