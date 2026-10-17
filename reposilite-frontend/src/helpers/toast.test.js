@@ -94,4 +94,16 @@ describe('toast helpers', () => {
 
     expect(snackbar.entries.value.map(entry => entry.message)).toEqual(['First', 'Second'])
   })
+
+  it('shows the message of a java failure without the name of its exception class', () => {
+    const error = { response: { data: { message: 'java.lang.IllegalArgumentException: Invalid maven settings: repository \'onelitefeather\': type GROUP has an empty proxied reference' } } }
+
+    expect(toast.errorMessage(error)).toBe("Invalid maven settings: repository 'onelitefeather': type GROUP has an empty proxied reference")
+  })
+
+  it('shows a message without an exception name as it is', () => {
+    const error = { response: { data: { message: "repository 'all': type GROUP cannot proxy itself" } } }
+
+    expect(toast.errorMessage(error)).toBe("repository 'all': type GROUP cannot proxy itself")
+  })
 })

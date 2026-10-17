@@ -198,6 +198,26 @@ describe('EntryDetail switching the type', () => {
     expect(lastChange()).toEqual({ id: 'releases', visibility: 'PUBLIC', type: 'GROUP' })
   })
 
+  it('asks before a switch that only drops empty entries, and says how many will be removed', async () => {
+    mountEntry({ id: 'all', visibility: 'PUBLIC', proxied: [{ reference: 'releases' }, { reference: '' }] })
+    const before = changeCount()
+
+    await chooseType('GROUP')
+
+    expect(wrapper.get('[data-test="type-blank-entries"]').text()).toBe('1 empty entry will be removed.')
+    expect(button('Switch and remove')).toBeDefined()
+    expect(changeCount(), 'nothing is changed before the user confirms').toBe(before)
+  })
+
+  it('removes the empty entries from the form when the switch is confirmed, and keeps the others', async () => {
+    mountEntry({ id: 'all', visibility: 'PUBLIC', proxied: [{ reference: 'releases' }, { reference: '' }, { reference: 'snapshots' }] })
+    await chooseType('GROUP')
+
+    await button('Switch and remove').trigger('click')
+
+    expect(lastChange()).toEqual({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }, { reference: 'snapshots' }] })
+  })
+
   it('removes the type when the repository goes back to not set', async () => {
     mountEntry({ id: 'releases', visibility: 'PUBLIC', type: 'HOSTED' })
 

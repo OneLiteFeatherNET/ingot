@@ -149,6 +149,26 @@ internal class RepositoryTypesIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `should answer a rejected maven update with the rule as the message and no exception name`() {
+        // given: a manager and a hosted repository that proxies
+        val (name, secret) = useDefaultManagementToken()
+        val settings = MavenSettings(repositories = listOf(
+            RepositorySettings(id = "bad-hosted", type = RepositoryType.HOSTED, proxied = listOf(MirroredRepositorySettings(reference = TYPED_GROUP_MEMBER_EXTERNAL)))
+        ))
+
+        // when: the maven settings are updated
+        val response = Unirest.put("$base/api/settings/domain/maven")
+            .basicAuth(name, secret)
+            .body(settings)
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the update is refused with the rule itself, not with the text of a java exception
+        assertErrorResponse(BAD_REQUEST, response)
+        assertThat(response.body.message)
+            .isEqualTo("repository 'bad-hosted': type HOSTED takes no proxied repositories, but 1 are listed")
+    }
+
+    @Test
     fun `should reject a hosted repository that proxies and keep the stored settings`() {
         // given: a manager and a hosted repository that proxies
         val (name, secret) = useDefaultManagementToken()
@@ -168,6 +188,37 @@ internal class RepositoryTypesIntegrationTest : ReposiliteSpecification() {
         // then: the rejected repository was not written
         val ids = stored.at("/repositories").map { it.at("/id").asText() }
         assertThat(ids).doesNotContain("bad-hosted")
+    }
+
+    @Test
+    fun `should save a typed group with empty entries and store the list without them`() {
+        // given: a manager and a typed group that still lists an empty and a blank entry, as a leftover does
+        val (name, secret) = useDefaultManagementToken()
+        val settings = MavenSettings(repositories = listOf(
+            RepositorySettings(id = "releases"),
+            RepositorySettings(id = "blank-group", type = RepositoryType.GROUP, proxied = listOf(
+                MirroredRepositorySettings(reference = "releases"),
+                MirroredRepositorySettings(reference = ""),
+                MirroredRepositorySettings(reference = "   "),
+            )),
+        ))
+
+        // when: the maven settings are saved
+        val response = Unirest.put("$base/api/settings/domain/maven")
+            .basicAuth(name, secret)
+            .body(settings)
+            .asString()
+
+        // then: the save succeeds
+        assertThat(response.status).describedAs("status of the save, body: ${response.body}").isEqualTo(OK.code)
+
+        // when: the stored maven settings are requested
+        val stored = getJson("/api/settings/domain/maven", name to secret)
+
+        // then: the stored group lists only its real member
+        val members = stored.at("/repositories").single { it.at("/id").asText() == "blank-group" }.at("/proxied")
+            .map { it.at("/reference").asText() }
+        assertThat(members).containsExactly("releases")
     }
 
     @Test

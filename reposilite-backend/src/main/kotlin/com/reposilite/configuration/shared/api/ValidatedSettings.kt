@@ -32,4 +32,10 @@ interface ValidatedSettings : SharedSettings {
      */
     fun violations(): List<String>
 
+    /**
+     * The form the settings are stored in. It runs before [violations] when an update is applied, so a value that is
+     * only noise to the rules can be cleaned up instead of rejected. Settings that have nothing to clean keep [this].
+     */
+    fun normalized(): ValidatedSettings = this
+
 }
