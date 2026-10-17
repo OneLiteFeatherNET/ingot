@@ -50,16 +50,21 @@ internal class DefaultSharedSettingsReference<T : SharedSettings>(
         getter()
 
     override fun update(value: T): Result<T, out Exception> {
-        // Checked before the setter runs, so a rejected update leaves the current settings in place.
-        val violations = (value as? ValidatedSettings)?.violations().orEmpty()
+        // Normalized and checked before the setter runs, so a rejected update leaves the current settings in place.
+        val settings = normalize(value)
+        val violations = (settings as? ValidatedSettings)?.violations().orEmpty()
         if (violations.isNotEmpty()) {
             return IllegalArgumentException("Invalid $name settings: ${violations.joinToString("; ")}").asError()
         }
 
-        return supplyThrowing { setter(value) }
+        return supplyThrowing { setter(settings) }
             .mapErr { IllegalStateException("Cannot update settings reference $name", it) }
             .map { get() }
     }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun normalize(value: T): T =
+        (value as? ValidatedSettings)?.normalized() as? T ?: value
 
     private fun String.sanitizeURLParam(): String =
         lowercase().replace(' ', '_')

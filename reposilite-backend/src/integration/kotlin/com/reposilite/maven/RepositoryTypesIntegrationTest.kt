@@ -171,6 +171,37 @@ internal class RepositoryTypesIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `should save a typed group with empty entries and store the list without them`() {
+        // given: a manager and a typed group that still lists an empty and a blank entry, as a leftover does
+        val (name, secret) = useDefaultManagementToken()
+        val settings = MavenSettings(repositories = listOf(
+            RepositorySettings(id = "releases"),
+            RepositorySettings(id = "blank-group", type = RepositoryType.GROUP, proxied = listOf(
+                MirroredRepositorySettings(reference = "releases"),
+                MirroredRepositorySettings(reference = ""),
+                MirroredRepositorySettings(reference = "   "),
+            )),
+        ))
+
+        // when: the maven settings are saved
+        val response = Unirest.put("$base/api/settings/domain/maven")
+            .basicAuth(name, secret)
+            .body(settings)
+            .asString()
+
+        // then: the save succeeds
+        assertThat(response.status).describedAs("status of the save, body: ${response.body}").isEqualTo(OK.code)
+
+        // when: the stored maven settings are requested
+        val stored = getJson("/api/settings/domain/maven", name to secret)
+
+        // then: the stored group lists only its real member
+        val members = stored.at("/repositories").single { it.at("/id").asText() == "blank-group" }.at("/proxied")
+            .map { it.at("/reference").asText() }
+        assertThat(members).containsExactly("releases")
+    }
+
+    @Test
     fun `should list the type and the explicit flag of every repository`() {
         // when: the repositories are listed anonymously
         val entries = getJson("/api/maven/repositories").at("/repositories")
