@@ -23,7 +23,7 @@ test, and they land in the same commit as that code. The pull request is squash-
   with the provider list. Verify: the tests pass, and `IdentityStore.deletePrincipal` removes the link.
 - [ ] 2.4 `feat(identity)`: write failing integration tests against an in-process `HttpServer` IdP (login redirect, callback with a
   valid token, wrong nonce, `error=access_denied`, disabled provider hidden) in `src/integration`, then document the provider in
-  `reposilite-site/data/guides/authentication/external-login.md` with the redirect uri, the claims and the error codes. Verify: the
+  `docs/gitbook/reference/login-providers.md` with the redirect uri, the claims and the error codes. Verify: the
   targeted integration class passes with `--max-workers=2`.
 
 ## 3. GitHub sign-in

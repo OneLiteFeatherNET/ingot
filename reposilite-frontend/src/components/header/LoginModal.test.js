@@ -49,6 +49,12 @@ vi.mock('../../store/session', async (importOriginal) => {
 
 const LOCAL = { id: 'local', type: 'LOCAL', label: 'Password' }
 
+// The answer of POST /api/auth/setup: the backend names the cause in the body message.
+const answer = (status, message) =>
+  Object.assign(new Error(`Request failed with status code ${status}`), {
+    response: { status, data: { status, message }, headers: {} }
+  })
+
 const rejection = (status, headers = {}) =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: {}, headers }
@@ -712,7 +718,7 @@ describe('LoginModal', () => {
     })
 
     it('says so when the setup code is wrong', async () => {
-      actions.completeSetup.mockRejectedValue(rejection(401))
+      actions.completeSetup.mockRejectedValue(answer(403, 'Invalid setup code'))
       await openDialog()
       fillSetup()
 

@@ -136,15 +136,6 @@ jobs:
           severity: CRITICAL,HIGH,MEDIUM
           exit-code: "1"
 
-      - name: "Scan the documentation site dependencies"
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: reposilite-site/package-lock.json
-          scanners: vuln
-          severity: CRITICAL,HIGH,MEDIUM
-          exit-code: "1"
-
   # Both images were only ever built while cutting a release, so a broken Dockerfile would
   # surface at the worst possible moment, with a tag already pushed. Building them here
   # costs a few minutes and moves that discovery to the pull request that caused it.

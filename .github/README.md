@@ -138,7 +138,7 @@ every push to `main`. `INGOT_OPTS` passes startup parameters to the server;
 The dashboard also ships on its own as `ghcr.io/onelitefeathernet/ingot-dashboard`, for
 deployments that want it scaled separately or want a static file server rather than a JVM
 on the edge. `docker compose -f docker-compose.split.yml up -d` runs the pair;
-[split-containers.md](https://github.com/OneLiteFeatherNET/ingot/blob/main/reposilite-site/data/guides/installation/split-containers.md)
+[Run the dashboard in a separate container](https://github.com/OneLiteFeatherNET/ingot/blob/main/docs/gitbook/how-to/run-split-dashboard-container.md)
 explains when that trade is worth making.
 
 ### Publishing to it
@@ -157,13 +157,10 @@ Add the matching token as a `<server>` entry in your `settings.xml`, then run
 
 ## Documentation
 
-<!-- TODO(onelitefeather): a published documentation site. The `reposilite-site` module
-     builds one, but nothing deploys it yet. -->
-
-Configuration, deployment and authentication guides live as Markdown in the
-[`reposilite-site/data/guides`](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-site/data/guides)
-directory of this repository. Guides that describe a distribution channel Ingot does not
-have yet, such as the Arch package and the Helm chart, say so at the top.
+The documentation is a GitBook space in the
+[`docs/gitbook`](https://github.com/OneLiteFeatherNET/ingot/tree/main/docs/gitbook)
+directory of this repository. Its table of contents is `docs/gitbook/SUMMARY.md`. The pages
+are split into tutorials, how-to guides, reference and explanation.
 
 ## Contributing
 
