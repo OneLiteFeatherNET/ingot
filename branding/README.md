@@ -17,7 +17,6 @@ The SVG is the source. Every PNG in the tree is derived from it:
 
 ```bash
 rsvg-convert -w 91 -h 91 -f png -o reposilite-backend/src/main/resources/static/favicon.png branding/mark.svg
-rsvg-convert -w 91 -h 91 -f png -o reposilite-site/public/images/favicon.png branding/mark.svg
 rsvg-convert -w 91 -h 91 -f png -o reposilite-test/workspace/static/favicon.png branding/mark.svg
 ```
 

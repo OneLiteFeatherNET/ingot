@@ -76,7 +76,6 @@ Visit the README.md of each module to see details about how to run it and work w
 * [Backend](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-backend) - sources of the main application
   * [Plugins](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-plugins) - plugin system related subprojects
 * [Frontend](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-frontend) - sources of the default frontend in Vue
-* [Site](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-site) - sources of the documentation website
 
 ## Maintainers
 

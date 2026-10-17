@@ -98,7 +98,7 @@ jobs:
           # its build stage, so anything not named here can plausibly reach the image, and
           # guessing wrong in that direction ships a stale nightly rather than a redundant
           # one.
-          ignored='^(reposilite-site/|\.github/|\.claude/|LICENSE$|NOTICE$|codecov\.yml$|renovate\.json$|[^/]*\.md$)'
+          ignored='^(\.github/|\.claude/|LICENSE$|NOTICE$|codecov\.yml$|renovate\.json$|[^/]*\.md$)'
 
           changed="$(git diff --name-only "$BEFORE" "$AFTER")"
           if [ -z "$changed" ]; then

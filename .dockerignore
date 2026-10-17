@@ -36,7 +36,6 @@ docker-compose.split.yml
 .env
 
 # Not used in running application
-reposilite-site
 reposilite-test
 reposilite-plugins
 .github/

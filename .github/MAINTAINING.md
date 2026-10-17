@@ -66,7 +66,6 @@ by giving up the divergence.
 | Area | What we changed | On conflict |
 |------|-----------------|-------------|
 | `.github/` | Workflows, issue templates, readme, contributing | Keep ours. Upstream's CI targets their infrastructure. |
-| `reposilite-site/` | Rebranded guides and site chrome | Keep ours, but read upstream's version: a guide change is usually a real documentation fix wearing the wrong name. |
 | Branding strings in the backend | Banner, CLI name, page titles, settings defaults | Keep ours. Take any surrounding behaviour change. |
 | `build.gradle.kts`, `settings.gradle.kts` | Group id, artifact names, repositories, release tooling | Keep ours. Take dependency version bumps. |
 | `Dockerfile`, `entrypoint.sh`, `docker-compose.yml`, `.env` | Ingot artifact names, `INGOT_*` variables | Keep ours. Take runtime fixes. |

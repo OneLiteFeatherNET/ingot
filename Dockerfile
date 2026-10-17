@@ -8,7 +8,7 @@
 #
 # Serves the dashboard itself by default, which is the simpler deployment and needs nothing
 # else running. Set INGOT_LOCAL_DEFAULTFRONTEND=false and put the dashboard image in front
-# to split the two; see reposilite-site/data/guides/installation/split-containers.md.
+# to split the two; see docs/gitbook/how-to/run-split-dashboard-container.md.
 
 # Build stage. Pinned by digest as well as tag so a rebuild cannot silently land on a
 # different base. Renovate raises both together.

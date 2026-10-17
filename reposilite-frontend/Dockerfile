@@ -6,7 +6,7 @@
 # root filesystem.
 #
 # The server can still serve the dashboard itself, which stays the simpler deployment. See
-# reposilite-site/data/guides/installation/split-containers.md for when each is worth it.
+# docs/gitbook/how-to/run-split-dashboard-container.md for when each is worth it.
 #
 # Build from the repository root, not from this directory:
 #   docker build -f reposilite-frontend/Dockerfile -t ingot-dashboard .

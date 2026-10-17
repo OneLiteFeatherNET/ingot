@@ -192,5 +192,5 @@ No new library. `java.net.http` (JDK) for discovery, JWKS and token requests. JN
 ## 13. Operator changes
 
 None are required. The new keys are optional and default to disabled. The new table is created on start. The guide
-`reposilite-site/data/guides/authentication/external-login.md` documents every key, the redirect uri to register with the
+`docs/gitbook/reference/login-providers.md` documents every key, the redirect uri to register with the
 provider, the group ref convention and the admin group behaviour.

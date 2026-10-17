@@ -8,8 +8,8 @@
 #
 # The plain docker-compose.yml next to this file runs the server on its own, serving the
 # dashboard itself. That is the simpler deployment; see
-# reposilite-site/data/guides/installation/split-containers.md for when this one is worth
-# the extra moving part.
+# docs/gitbook/how-to/run-split-dashboard-container.md for when this one is worth the extra
+# moving part.
 services:
   dashboard:
     image: ghcr.io/onelitefeathernet/ingot-dashboard:1.1.1 # x-release-please-version

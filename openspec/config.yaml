@@ -30,7 +30,7 @@ rules:
     - "Group tasks by Conventional Commits type and scope, one type per commit. Archive commits use docs(openspec): archive <change-name>."
     - "Every test follows F.I.R.S.T. (fast, independent, repeatable, self-validating, timely): no sleeps, no system-time reads (inject java.time.Clock), no shared mutable static state, a temporary directory per test, bounded waits through latches. Write the failing test before the production code."
     - Every group that changes a configuration key, environment variable or deployment manifest also
-      updates the matching page under reposilite-site/data/guides/.
+      updates the matching page under docs/gitbook/.
     - The last task opens the pull request under the title named in the proposal.
 
 # Per-operation guidance (optional)
