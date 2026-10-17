@@ -15,32 +15,32 @@
  */
 
 /*
- * The members of a group repository: the repository ids it lists, in order. In the settings a
- * group keeps them as mirrored entries whose reference is the id, so the list is read from and
- * written to `proxied`. Nothing here touches Vue, so the picker and the wizard share the rules.
+ * The members of a group repository: the mirrored entries it lists, in order. In the settings a group keeps
+ * them as mirrored entries whose reference is the repository id. An entry carries more than the reference:
+ * its credential, store, allowed groups and timeouts, and any key this dashboard does not know. So the members
+ * are changed as the entries themselves: a member that stays is the same object, and nothing rebuilds it from
+ * its id. Nothing here touches Vue, so the picker and the editor share the rules.
  */
 
-/* The ids a group lists, in the order of its mirrored entries. */
-export const membersOf = (proxied) => (Array.isArray(proxied) ? proxied : [])
-  .map(item => String(item?.reference ?? ''))
-  .filter(id => id !== '')
+/* The repository id an entry names, or an empty string for an entry that names none. */
+export const referenceOf = (entry) => String(entry?.reference ?? '')
 
-/* The mirrored entries that a group with these members is saved with. */
-export const proxiedOfMembers = (ids) => ids.map(id => ({ reference: id }))
+/* The entries with one more repository at the end, as a bare reference. An empty id, or one already listed, changes nothing. */
+export const addMember = (entries, id) => (id && !entries.some(entry => referenceOf(entry) === id)
+  ? [...entries, { reference: id }]
+  : entries)
 
-/* The members with one more id at the end. An empty id, or one already listed, changes nothing. */
-export const addMember = (ids, id) => (id && !ids.includes(id) ? [...ids, id] : ids)
+/* The entries without the one at `index`. Another entry that names the same repository stays: only the place given is taken out. */
+export const removeMemberAt = (entries, index) => entries.filter((_, position) => position !== index)
 
-export const removeMember = (ids, id) => ids.filter(member => member !== id)
-
-/* The members with the one at `index` moved by `delta` places. A move past either end changes nothing. */
-export const moveMember = (ids, index, delta) => {
+/* The entries with the one at `index` moved by `delta` places. A move past either end changes nothing. */
+export const moveMember = (entries, index, delta) => {
   const target = index + delta
-  if (index < 0 || index >= ids.length || target < 0 || target >= ids.length) return ids
-  const next = [...ids]
+  if (index < 0 || index >= entries.length || target < 0 || target >= entries.length) return entries
+  const next = [...entries]
   ;[next[index], next[target]] = [next[target], next[index]]
   return next
 }
 
 /* The repositories that can still be added, in the order they are given. */
-export const choosableMembers = (candidates, ids) => candidates.filter(candidate => !ids.includes(candidate))
+export const choosableMembers = (candidates, entries) => candidates.filter(candidate => !entries.some(entry => referenceOf(entry) === candidate))

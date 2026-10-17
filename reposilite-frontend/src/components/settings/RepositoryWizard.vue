@@ -689,10 +689,10 @@ const onModalUpdate = (open) => {
           </p>
           <RepositoryMembersPicker
             id-prefix="wizard-members"
-            :model-value="draft.members"
+            :model-value="draft.members.map(id => ({ reference: id }))"
             :candidates="existingIds"
             :error="shownErrors.members ?? ''"
-            @update:model-value="draft.members = $event"
+            @update:model-value="draft.members = $event.map(item => item.reference)"
           />
         </div>
 

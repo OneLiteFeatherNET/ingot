@@ -324,3 +324,62 @@ describe('EntryDetail group members', () => {
     expect(lastChange().proxied).toEqual([{ reference: 'central' }, { reference: 'releases' }])
   })
 })
+
+describe('EntryDetail keeps the settings of the members of a group', () => {
+  // A mirrored entry of a group as the server stores it: every setting, the credential, and a key this dashboard does not know.
+  const loopback = (reference, extra = {}) => ({
+    reference,
+    store: false,
+    allowedGroups: ['net.onelitefeather'],
+    allowedExtensions: ['.jar', '.pom'],
+    connectTimeout: 5,
+    readTimeout: 30,
+    httpProxy: '',
+    authenticatedFetchingOnly: false,
+    authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror', password: '********' },
+    ...extra
+  })
+  const members = () => [
+    loopback('onelitefeather-releases', { futureSetting: 'kept' }),
+    loopback('onelitefeather-proxy'),
+    loopback('onelitefeather-snapshots')
+  ]
+  const others = ['onelitefeather-releases', 'onelitefeather-proxy', 'onelitefeather-snapshots', 'central']
+  const groupWith = (proxied) => ({ id: 'onelitefeather', visibility: 'PRIVATE', type: 'GROUP', proxied })
+
+  it('keeps every setting and credential of the members that stay, when a member is added', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('#entry-members-add').setValue('central')
+    await wrapper.get('#entry-members-add-button').trigger('click')
+    await flushPromises()
+
+    expect(lastChange().proxied).toEqual([...members(), { reference: 'central' }])
+  })
+
+  it('removes only the member that was taken out, and keeps the credentials of the others', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('button[aria-label="Remove onelitefeather-proxy from the group"]').trigger('click')
+
+    expect(lastChange().proxied).toEqual([members()[0], members()[2]])
+  })
+
+  it('keeps the credentials of every member when the members are reordered', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('button[aria-label="Move onelitefeather-snapshots up"]').trigger('click')
+
+    expect(lastChange().proxied).toEqual([members()[0], members()[2], members()[1]])
+  })
+
+  it('removes only one of two entries that name the same repository', async () => {
+    const first = loopback('onelitefeather-releases', { authorization: { method: 'LOOPBACK_LINK', login: 'first', password: 'a' } })
+    const second = loopback('onelitefeather-releases', { authorization: { method: 'LOOPBACK_LINK', login: 'second', password: 'b' } })
+    mountEntry(groupWith([first, second]), { otherIds: others })
+
+    await wrapper.findAll('button[aria-label="Remove onelitefeather-releases from the group"]')[1].trigger('click')
+
+    expect(lastChange().proxied).toEqual([first])
+  })
+})

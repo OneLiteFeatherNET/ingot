@@ -20,7 +20,7 @@ import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSelect from '../md/MdSelect.vue'
-import { addMember, choosableMembers, moveMember, removeMember } from './groupMembers'
+import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt } from './groupMembers'
 
 /*
  * The ordered list of repositories a group lists. A repository is added from a select of the ones
@@ -28,10 +28,12 @@ import { addMember, choosableMembers, moveMember, removeMember } from './groupMe
  * are the keyboard way to reorder; a pointer user may use them too, so no drag is needed.
  *
  * The list is the value: each change emits the whole new list, and the list it was given is never
- * changed. Used by the wizard and by the settings of a group.
+ * changed. A member is a mirrored entry, and the entries that stay are emitted as the same objects,
+ * so a credential or any other setting of an entry is never lost by a change of the list. Used by
+ * the wizard and by the settings of a group.
  *
  * Props:
- *   modelValue  the ids of the members, in order
+ *   modelValue  the mirrored entries of the members, in order; each names its repository in `reference`
  *   candidates  the ids of every repository that can be a member
  *   error       the problem to show under the picker, or an empty string
  *   idPrefix    the prefix of the ids of the select and the add button
@@ -73,7 +75,7 @@ const add = () => {
 }
 
 const move = (index, delta) => emit('update:modelValue', moveMember(props.modelValue, index, delta))
-const remove = (id) => emit('update:modelValue', removeMember(props.modelValue, id))
+const remove = (index) => emit('update:modelValue', removeMemberAt(props.modelValue, index))
 </script>
 
 <template>
@@ -84,8 +86,8 @@ const remove = (id) => emit('update:modelValue', removeMember(props.modelValue, 
       class="m-0 flex list-none flex-col gap-1 rounded-corner-medium bg-surface-container p-2"
     >
       <li
-        v-for="(id, index) in modelValue"
-        :key="id"
+        v-for="(item, index) in modelValue"
+        :key="index"
         data-test="member"
         class="flex items-center gap-2 rounded-corner-small px-2 py-1"
       >
@@ -96,10 +98,10 @@ const remove = (id) => emit('update:modelValue', removeMember(props.modelValue, 
         <span
           data-test="member-id"
           class="min-w-0 flex-1 truncate md-body-large text-on-surface"
-        >{{ id }}</span>
+        >{{ referenceOf(item) }}</span>
         <MdIconButton
-          :aria-label="`Move ${id} up`"
-          :title="`Move ${id} up`"
+          :aria-label="`Move ${referenceOf(item)} up`"
+          :title="`Move ${referenceOf(item)} up`"
           :disabled="index === 0"
           @click="move(index, -1)"
         >
@@ -112,8 +114,8 @@ const remove = (id) => emit('update:modelValue', removeMember(props.modelValue, 
           </svg>
         </MdIconButton>
         <MdIconButton
-          :aria-label="`Move ${id} down`"
-          :title="`Move ${id} down`"
+          :aria-label="`Move ${referenceOf(item)} down`"
+          :title="`Move ${referenceOf(item)} down`"
           :disabled="index === modelValue.length - 1"
           @click="move(index, 1)"
         >
@@ -126,9 +128,9 @@ const remove = (id) => emit('update:modelValue', removeMember(props.modelValue, 
           </svg>
         </MdIconButton>
         <MdIconButton
-          :aria-label="`Remove ${id} from the group`"
-          :title="`Remove ${id} from the group`"
-          @click="remove(id)"
+          :aria-label="`Remove ${referenceOf(item)} from the group`"
+          :title="`Remove ${referenceOf(item)} from the group`"
+          @click="remove(index)"
         >
           <svg
             viewBox="0 0 24 24"
