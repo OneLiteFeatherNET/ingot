@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.2.0](https://github.com/OneLiteFeatherNET/ingot/compare/v1.1.1...v1.2.0) (2026-10-17)
+
+
+### Features
+
+* add the material 3 dashboard and the identity model ([#21](https://github.com/OneLiteFeatherNET/ingot/issues/21)) ([3824878](https://github.com/OneLiteFeatherNET/ingot/commit/3824878820a0a0cc6d129db8527178b0c0bbb419))
+* **identity:** scope permission nodes to maven artifacts ([#32](https://github.com/OneLiteFeatherNET/ingot/issues/32)) ([1c2373c](https://github.com/OneLiteFeatherNET/ingot/commit/1c2373c0603e0aff2746f51e41e2fe811fd5aad7))
+* **maven:** add hosted, proxy and group repository types ([#38](https://github.com/OneLiteFeatherNET/ingot/issues/38)) ([19189c7](https://github.com/OneLiteFeatherNET/ingot/commit/19189c751db06d2eea4718315094f3852c9cdcbd))
+* **maven:** list the repositories a group references ([#27](https://github.com/OneLiteFeatherNET/ingot/issues/27)) ([cf5a690](https://github.com/OneLiteFeatherNET/ingot/commit/cf5a690cf38eb5e7243831bcee5458a0a56943f2))
+* **search:** search artifacts across repositories ([#35](https://github.com/OneLiteFeatherNET/ingot/issues/35)) ([402ae39](https://github.com/OneLiteFeatherNET/ingot/commit/402ae39466920e70eae54d4f492304cd769ce057))
+* **ui:** edit and check artifact permission nodes ([#33](https://github.com/OneLiteFeatherNET/ingot/issues/33)) ([5e37766](https://github.com/OneLiteFeatherNET/ingot/commit/5e37766f2fa78368350bb36f65fc5213fdc89287))
+* **ui:** manage hosted, proxy and group repositories ([#39](https://github.com/OneLiteFeatherNET/ingot/issues/39)) ([5f727c2](https://github.com/OneLiteFeatherNET/ingot/commit/5f727c26c85cc8f4b37b36e836163674ac954057))
+
+
+### Bug Fixes
+
+* **console:** connect the remote console with a session login ([#29](https://github.com/OneLiteFeatherNET/ingot/issues/29)) ([03f687c](https://github.com/OneLiteFeatherNET/ingot/commit/03f687c060d73ce77077e70876c8b154d09905cf))
+* **console:** stop failing log subscribers from escalating errors ([#34](https://github.com/OneLiteFeatherNET/ingot/issues/34)) ([62b8bdf](https://github.com/OneLiteFeatherNET/ingot/commit/62b8bdf45eebd371acb487f13679e1050cca6584))
+* **deps:** update nanoid and source-map-js in the site lockfile ([2b2eda0](https://github.com/OneLiteFeatherNET/ingot/commit/2b2eda03ba02a4b77ecdcf2ee90a9f0fb2f6b0b9))
+* **docker:** serve every dashboard route from the dashboard image ([#31](https://github.com/OneLiteFeatherNET/ingot/issues/31)) ([7ef3171](https://github.com/OneLiteFeatherNET/ingot/commit/7ef3171ae2e5b2c9811107d47d93c80670294088))
+* **frontend:** read api instants as epoch seconds ([#25](https://github.com/OneLiteFeatherNET/ingot/issues/25)) ([5e2eab4](https://github.com/OneLiteFeatherNET/ingot/commit/5e2eab4d9a3120f6eae1028527be00ae778b3b60))
+* **frontend:** stop padding dashboard assets with zero bytes ([#23](https://github.com/OneLiteFeatherNET/ingot/issues/23)) ([91a9079](https://github.com/OneLiteFeatherNET/ingot/commit/91a907903d0943558e9f0b7904fd812001cae934))
+* **frontend:** tidy the details card and breadcrumb on the browse page ([#28](https://github.com/OneLiteFeatherNET/ingot/issues/28)) ([fa0c8d1](https://github.com/OneLiteFeatherNET/ingot/commit/fa0c8d1a11c7f3241dfef5d1c64c571365329e56))
+* **identity:** enforce admin area permission nodes ([#41](https://github.com/OneLiteFeatherNET/ingot/issues/41)) ([fc8b45a](https://github.com/OneLiteFeatherNET/ingot/commit/fc8b45a15940b97a97b82169d8fd55fb09f44448))
+* keep the session when browsing a group repository ([#46](https://github.com/OneLiteFeatherNET/ingot/issues/46)) ([5cba28a](https://github.com/OneLiteFeatherNET/ingot/commit/5cba28a0562b84042d3167f1180a623630d49e3f))
+* **login:** accept legacy ldap credentials in the login dialog ([193ba59](https://github.com/OneLiteFeatherNET/ingot/commit/193ba59f5493d52703fd135d418471e4b9fa45c6))
+* **maven:** let a repository with an empty entry take a type ([#45](https://github.com/OneLiteFeatherNET/ingot/issues/45)) ([00ee5ab](https://github.com/OneLiteFeatherNET/ingot/commit/00ee5ab151b61639d2dff79dd766a6ae192c3b3b))
+* **settings:** accept weak etags from compressing proxies ([#44](https://github.com/OneLiteFeatherNET/ingot/issues/44)) ([44e1334](https://github.com/OneLiteFeatherNET/ingot/commit/44e1334490fb5188b2c600671a1e5d12c1683a5c))
+* **settings:** render the authentication settings form ([#24](https://github.com/OneLiteFeatherNET/ingot/issues/24)) ([06d6e1b](https://github.com/OneLiteFeatherNET/ingot/commit/06d6e1b0f814008afffeb61e79678f571cc3e486))
+* **storage:** count stored bytes of s3 repositories ([#26](https://github.com/OneLiteFeatherNET/ingot/issues/26)) ([4d8aedc](https://github.com/OneLiteFeatherNET/ingot/commit/4d8aedc11857e6622768cd9f6545c9dd7d48399a))
+* **storage:** keep unchanged repositories live across settings reloads ([#43](https://github.com/OneLiteFeatherNET/ingot/issues/43)) ([ca5763f](https://github.com/OneLiteFeatherNET/ingot/commit/ca5763f06b96c04d91248249ecf58e91ab9678fb))
+* **storage:** warn when a repository walk cannot read its root ([#30](https://github.com/OneLiteFeatherNET/ingot/issues/30)) ([2cf1d05](https://github.com/OneLiteFeatherNET/ingot/commit/2cf1d0532498985c26d24e77c1cea00d5bc5f9f4))
+* **ui:** keep long addresses inside the audit actor column ([#36](https://github.com/OneLiteFeatherNET/ingot/issues/36)) ([156efe0](https://github.com/OneLiteFeatherNET/ingot/commit/156efe052ead599a482dc6a4b989b1cefaeedfb5))
+* **ui:** show the right message when the first admin setup fails ([#40](https://github.com/OneLiteFeatherNET/ingot/issues/40)) ([4856ed7](https://github.com/OneLiteFeatherNET/ingot/commit/4856ed700f8d4ee2988e8be2d89d16edd2e82268))
+
 ## [1.1.1](https://github.com/OneLiteFeatherNET/ingot/compare/v1.1.0...v1.1.1) (2026-10-16)
 
 
