@@ -20,6 +20,14 @@
             "title": "Visibility",
             "description": "The visibility of this repository."
           },
+          "type": {
+            "anyOf": [
+              { "type": "null" },
+              { "type": "string", "enum": ["HOSTED", "PROXY", "GROUP"] }
+            ],
+            "title": "Type",
+            "description": "The declared type of this repository. Leave it empty to keep the behaviour of earlier versions, where a repository serves uploads and proxies whatever is listed under mirrored repositories.<br/>HOSTED - stores uploaded artifacts and proxies nothing.<br/>PROXY - proxies external URLs only and caches what it fetches; it takes no uploads.<br/>GROUP - proxies local repositories only and stores nothing; it takes no uploads."
+          },
           "description": {
             "type": "string",
             "default": "",

@@ -239,7 +239,7 @@ internal class RepositoryService(
     fun listRepositories(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): List<RepositorySummary> =
         repositoryProvider.getRepositories()
             .filter { securityProvider.canListRepository(accessToken, it) }
-            .map { RepositorySummary(id = it.name, visibility = it.visibility, description = it.description, tags = it.tags) }
+            .map { RepositorySummary(id = it.name, visibility = it.visibility, description = it.description, tags = it.tags, type = it.effectiveType.wireName, typeExplicit = it.typeExplicit) }
             .filter { query.matches(it) }
             .sortedBy { it.id }
 
@@ -254,12 +254,16 @@ internal class RepositoryService(
                 securityProvider.canBrowseResource(accessToken, repository, Location.empty())
                     .map {
                         RepositoryMembersResponse(
-                            members = repository.mirrorHosts
-                                .filter { it.client is RepositoryLoopbackClient }
-                                .mapNotNull { repositoryProvider.getRepository(it.host) }
-                                .filter { securityProvider.canListRepository(accessToken, it) }
-                                .map { it.name }
-                                .distinct()
+                            members = if (repository.effectiveType.hasMembers) {
+                                repository.mirrorHosts
+                                    .filter { it.client is RepositoryLoopbackClient }
+                                    .mapNotNull { repositoryProvider.getRepository(it.host) }
+                                    .filter { securityProvider.canListRepository(accessToken, it) }
+                                    .map { it.name }
+                                    .distinct()
+                            } else {
+                                emptyList()
+                            }
                         )
                     }
             }
@@ -276,6 +280,10 @@ internal class RepositoryService(
             .filter { securityProvider.canAccessRepository(accessToken, it) }
             .map { RepositoryDirectoryInfo(name = it.name, visibility = it.visibility) }
             .let { DirectoryInfo("/", it) }
+
+    /** Only a group, and a mixed repository, proxy local repositories, so only they have members. */
+    private val EffectiveRepositoryType.hasMembers: Boolean
+        get() = this == EffectiveRepositoryType.GROUP || this == EffectiveRepositoryType.MIXED
 
     override fun getLogger(): Logger =
         journalist.logger

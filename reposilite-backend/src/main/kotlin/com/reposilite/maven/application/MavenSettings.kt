@@ -22,10 +22,13 @@ import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.configuration.shared.api.SettingsKey
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.api.ValidatedSettings
+import com.reposilite.maven.EffectiveRepositoryType
+import com.reposilite.maven.RepositoryType
 import com.reposilite.maven.StoragePolicy
 import com.reposilite.maven.RepositoryVisibility
 import com.reposilite.maven.RepositoryVisibility.PRIVATE
 import com.reposilite.maven.RepositoryVisibility.PUBLIC
+import com.reposilite.maven.effectiveRepositoryType
 import com.reposilite.shared.http.AuthenticationMethod
 import com.reposilite.shared.http.RemoteCredentials
 import com.reposilite.storage.StorageProviderSettings
@@ -46,7 +49,62 @@ data class MavenSettings(
 ) : ValidatedSettings {
 
     override fun violations(): List<String> =
-        repositories.flatMap { it.violations() }
+        repositories.flatMap { it.violations() } + typeViolations()
+
+    /**
+     * The rules of declared repository types, checked where the ids of all repositories are known. A typed group is
+     * also checked for cycles, which can run through untyped repositories; a cycle made of untyped repositories alone
+     * keeps working as it always did and is not reported.
+     */
+    private fun typeViolations(): List<String> {
+        val localNames = repositories.map { it.id }.toSet()
+        val perRepository = repositories.flatMap { repository -> repository.typeViolations(localNames) }
+        return perRepository + cycleViolations(localNames)
+    }
+
+    /**
+     * One message per typed group that a loop of local references leads back to. The loop is named in the message, and
+     * the search follows every repository, typed or not, because a loop through either one is a loop. Self references
+     * are left to the rule of the group itself.
+     */
+    private fun cycleViolations(localNames: Set<String>): List<String> {
+        val edges: Map<String, List<String>> = repositories.associate { repository ->
+            repository.id to repository.proxied.map { it.referencedHost() }.filter { it in localNames && it != repository.id }
+        }
+        return repositories
+            .filter { it.type == RepositoryType.GROUP }
+            .mapNotNull { group ->
+                pathBackTo(group.id, edges)?.let { path ->
+                    "repository '${group.id}': type GROUP is part of a cycle of proxied repositories (${path.joinToString(" -> ")})"
+                }
+            }
+    }
+
+    /** The shortest loop from [start] back to [start] along [edges], starting and ending with [start], or null. */
+    private fun pathBackTo(start: String, edges: Map<String, List<String>>): List<String>? {
+        val parent = HashMap<String, String?>()
+        parent[start] = null
+        val queue = ArrayDeque(listOf(start))
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            for (next in edges[node].orEmpty()) {
+                if (next == start) {
+                    val chain = ArrayDeque<String>()
+                    var cursor: String? = node
+                    while (cursor != null) {
+                        chain.addFirst(cursor)
+                        cursor = parent[cursor]
+                    }
+                    return chain + start
+                }
+                if (next !in parent) {
+                    parent[next] = node
+                    queue.add(next)
+                }
+            }
+        }
+        return null
+    }
 
 }
 
@@ -58,6 +116,14 @@ data class RepositorySettings(
     val id: String = "",
     @get:Doc(title = "Visibility", description = "The visibility of this repository.")
     val visibility: RepositoryVisibility = PUBLIC,
+    @get:Doc(title = "Type", description = """
+        The declared type of this repository. Leave it empty to keep the behaviour of earlier versions, where a repository
+        serves uploads and proxies whatever is listed under mirrored repositories.<br/>
+        HOSTED - stores uploaded artifacts and proxies nothing.<br/>
+        PROXY - proxies external URLs only and caches what it fetches; it takes no uploads.<br/>
+        GROUP - proxies local repositories only and stores nothing; it takes no uploads.
+    """)
+    val type: RepositoryType? = null,
     @get:Doc(title = "Description", description = "Short plain-text description shown in the repository list.")
     val description: String = "",
     @get:Doc(title = "Tags", description = "Labels to group and find repositories, e.g. team or purpose.")
@@ -122,6 +188,53 @@ data class RepositorySettings(
         return violations
     }
 
+    /**
+     * The effective type of this repository, see [effectiveRepositoryType]. [localNames] are the ids of the
+     * repositories of this instance: a proxied reference to one of them is a loopback reference.
+     */
+    fun effectiveType(localNames: Collection<String>): EffectiveRepositoryType {
+        val hosts = proxied.map { it.referencedHost() }.filter { it.isNotEmpty() }
+        val loopback = hosts.count { it in localNames }
+        return effectiveRepositoryType(type, loopbackReferences = loopback, externalReferences = hosts.size - loopback)
+    }
+
+    /** The rules of the declared [type] that concern this repository alone. Empty when the repository is untyped. */
+    internal fun typeViolations(localNames: Set<String>): List<String> {
+        val declared = type ?: return emptyList()
+        val entries = proxied.map { it to it.referencedHost() }
+        return when (declared) {
+            RepositoryType.HOSTED ->
+                if (proxied.isEmpty()) emptyList()
+                else listOf("repository '$id': type HOSTED takes no proxied repositories, but ${proxied.size} are listed")
+
+            RepositoryType.PROXY -> buildList {
+                if (proxied.isEmpty()) {
+                    add("repository '$id': type PROXY needs at least one proxied external URL")
+                }
+                entries.filter { (_, host) -> host.isEmpty() }.forEach { _ ->
+                    add("repository '$id': type PROXY has an empty proxied reference")
+                }
+                entries.filter { (_, host) -> host.isNotEmpty() && host in localNames }.forEach { (_, host) ->
+                    add("repository '$id': type PROXY proxies external URLs only, but '$host' is a local repository (use type GROUP to proxy local repositories)")
+                }
+            }
+
+            RepositoryType.GROUP -> buildList {
+                if (proxied.isEmpty()) {
+                    add("repository '$id': type GROUP needs at least one proxied local repository")
+                }
+                entries.forEach { (mirror, host) ->
+                    when {
+                        host.isEmpty() -> add("repository '$id': type GROUP has an empty proxied reference")
+                        host == id -> add("repository '$id': type GROUP cannot proxy itself")
+                        host !in localNames -> add("repository '$id': type GROUP proxies local repositories only, but '$host' is not a repository of this instance")
+                        mirror.store -> add("repository '$id': type GROUP stores nothing, so proxied '$host' must not set store")
+                    }
+                }
+            }
+        }
+    }
+
     companion object {
         const val DESCRIPTION_MAX_LENGTH = 280
         const val TAGS_MAX_COUNT = 10
@@ -178,3 +291,13 @@ data class MirrorCredentials(
     @get:Doc(title = "Password", description = "Raw password or header value used by HTTP client to connect to the given repository")
     override val password: String = ""
 ) : SharedSettings, RemoteCredentials
+
+/**
+ * The host a proxied reference names: trimmed, without one trailing slash. A reference is a loopback reference when this
+ * host is the id of a repository of the instance, and the factory and the validation both decide it this way.
+ * Empty for a blank reference.
+ */
+internal fun MirroredRepositorySettings.referencedHost(): String {
+    val trimmed = reference.trim()
+    return if (trimmed.endsWith("/")) trimmed.dropLast(1) else trimmed
+}

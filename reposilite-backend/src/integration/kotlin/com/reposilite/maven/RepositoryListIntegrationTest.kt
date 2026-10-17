@@ -47,7 +47,7 @@ internal class RepositoryListIntegrationTest : ReposiliteSpecification() {
         entries.forEach { entry ->
             assertThat(entry.fieldNames().asSequence().toList())
                 .describedAs("fields of '${entry.at("/id").asText()}'")
-                .containsExactlyInAnyOrder("id", "visibility", "description", "tags")
+                .containsExactlyInAnyOrder("id", "visibility", "description", "tags", "type", "typeExplicit")
         }
 
         // and: the public repository carries its description and tags, the private and hidden ones are absent

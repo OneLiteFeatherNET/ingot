@@ -26,7 +26,11 @@ data class RepositorySummary(
     val id: String,
     val visibility: RepositoryVisibility,
     val description: String,
-    val tags: List<String>
+    val tags: List<String>,
+    /** The effective type in lowercase: hosted, proxy, group or mixed. */
+    val type: String,
+    /** True when the type is declared in the settings, false when it is derived from the proxied repositories. */
+    val typeExplicit: Boolean,
 )
 
 /**

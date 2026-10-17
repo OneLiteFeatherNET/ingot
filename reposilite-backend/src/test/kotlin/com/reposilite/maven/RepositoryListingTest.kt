@@ -88,8 +88,8 @@ internal class RepositoryListingTest : MavenSpecification() {
         val repositories = mavenFacade.listRepositories(manager, RepositoryListQuery()).repositories
 
         // then: each entry carries the documented fields
-        assertThat(repositories).contains(RepositorySummary("open", PUBLIC, "Open source libraries", listOf("team-a", "stable")))
-        assertThat(repositories).contains(RepositorySummary("bare", PUBLIC, "", emptyList()))
+        assertThat(repositories).contains(RepositorySummary("open", PUBLIC, "Open source libraries", listOf("team-a", "stable"), type = "hosted", typeExplicit = false))
+        assertThat(repositories).contains(RepositorySummary("bare", PUBLIC, "", emptyList(), type = "hosted", typeExplicit = false))
     }
 
     @Test

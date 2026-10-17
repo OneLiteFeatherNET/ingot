@@ -17,9 +17,11 @@
 package com.reposilite.maven
 
 import com.reposilite.journalist.Journalist
+import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.filesystem.FileSystemStorageProvider
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
+import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.storage.walkFiles
 import java.time.Clock
 import java.time.Instant
@@ -41,6 +43,23 @@ internal data class StorageTarget(
     val storageType: String = "fs",
     val group: Boolean = false,
 )
+
+/**
+ * The storage targets of the given repositories. A group stores nothing of its own, so it has no quota to meet; every other
+ * repository is measured with the quota it is configured with. The configured settings name the storage type.
+ */
+internal fun storageTargets(repositories: Collection<Repository>, configured: List<RepositorySettings>): List<StorageTarget> =
+    repositories.map { repository ->
+        val settings = configured.firstOrNull { it.id == repository.name }
+        val group = repository.effectiveType == EffectiveRepositoryType.GROUP
+        StorageTarget(
+            id = repository.name,
+            storage = repository.storageProvider,
+            quota = if (group) null else (settings?.storageProvider as? FileSystemStorageProviderSettings)?.quota,
+            storageType = settings?.storageProvider?.type ?: "fs",
+            group = group,
+        )
+    }
 
 /**
  * Usage of one repository. [quotaBytes] is null when the quota is unknown: no quota is configured, or the
