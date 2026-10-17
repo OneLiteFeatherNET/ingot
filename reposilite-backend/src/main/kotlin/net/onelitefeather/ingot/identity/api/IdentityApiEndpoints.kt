@@ -499,12 +499,20 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/check",
         tags = ["Identity"],
-        summary = "Decides one node for a principal, optionally narrowed by one of its tokens, with the candidates considered. Instance admins may check any principal, others only their own.",
+        summary = "Decides one node for a principal, optionally narrowed by one of its tokens, with the candidates considered. Or decides a repository path with the query parameters repository, path and action (or the action of a node). Instance admins may check any principal, others only their own.",
         methods = [HttpMethod.GET],
     )
     val permissionCheck = ReposiliteRoute<PermissionCheckDto>("/api/identity/check", GET) {
         authenticated {
-            response = identity.permissionCheck(identifier, queryParameter("principal"), queryParameter("node"), queryParameter("token"))
+            response = identity.permissionCheck(
+                identifier,
+                queryParameter("principal"),
+                queryParameter("node"),
+                queryParameter("token"),
+                repository = queryParameter("repository"),
+                path = queryParameter("path"),
+                action = queryParameter("action"),
+            )
         }
     }
 

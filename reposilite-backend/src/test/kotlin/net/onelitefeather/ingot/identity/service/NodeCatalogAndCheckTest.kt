@@ -25,7 +25,9 @@ import com.reposilite.token.application.AccessTokenComponents
 import net.onelitefeather.ingot.identity.api.CreatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.CreateTeamRequest
 import net.onelitefeather.ingot.identity.api.CreateTokenRequest
+import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.api.ReplaceGrantsRequest
 import net.onelitefeather.ingot.identity.model.NodePattern
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
@@ -305,6 +307,190 @@ internal class NodeCatalogAndCheckTest {
                 .describedAs("other principal").isEqualTo(403)
             assertThat(service.permissionCheck(aliceCaller, "alice", "ingot.repository.releases.read", token = null).isOk)
                 .describedAs("own principal").isTrue
+        }
+    }
+
+    // path checks: the check answers for a repository path the way a request for that path is decided
+
+    private val deployedFile = "net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
+
+    /** Alice is in deployers, which may deploy to releases, and the artifact group below is denied to her. */
+    private fun aliceInDeployersWithDeniedGroup(service: IdentityFacade) {
+        service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+        service.createTeam(CreateTeamRequest(name = "deployers"))
+        service.replaceTeamNodes(
+            "deployers",
+            listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.artifact.net.onelitefeather.deploy", false)),
+            ifMatch = null,
+        )
+        service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
+    }
+
+    @Test
+    fun `the path check decides a full file path by the artifact node that covers its directory`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            val check = service.permissionCheck(admin, "alice", null, null, repository = "releases", path = deployedFile, action = "deploy").orNull()!!
+
+            assertThat(check.allowed).describedAs("allowed").isFalse
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.artifact.net.onelitefeather.deploy")
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("ARTIFACT")
+            assertThat(check.node).describedAs("a path check names no node").isNull()
+            assertThat(check.repository).describedAs("repository echoed").isEqualTo("releases")
+            assertThat(check.path).describedAs("path echoed").isEqualTo(deployedFile)
+            assertThat(check.action).describedAs("action echoed").isEqualTo("deploy")
+        }
+    }
+
+    @Test
+    fun `the path check allows a path outside the denied group by the repository node`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            val check = service.permissionCheck(admin, "alice", null, null, repository = "releases", path = "org/other/lib/1.0/lib-1.0.jar", action = "deploy").orNull()!!
+
+            assertThat(check.allowed).describedAs("allowed").isTrue
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.repository.releases.deploy")
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("REPOSITORY")
+        }
+    }
+
+    @Test
+    fun `the path check counts a path-scoped grant that covers the path, which the node check does not`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.replaceGrants(
+                "deployers",
+                ReplaceGrantsRequest(listOf(GrantRequest(repository = "releases", pathPrefix = "net/onelitefeather", role = "DEPLOY"))).grants,
+                ifMatch = null,
+            )
+            service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
+
+            val path = service.permissionCheck(admin, "alice", null, null, repository = "releases", path = "net/onelitefeather/lib/1.0/lib-1.0.jar", action = "deploy").orNull()!!
+            val node = service.permissionCheck(admin, "alice", "ingot.repository.releases.deploy", token = null).orNull()!!
+
+            assertThat(path.allowed).describedAs("path check").isTrue
+            assertThat(path.decision.decidingKind).describedAs("deciding kind").isEqualTo("GRANT")
+            assertThat(node.allowed).describedAs("node check ignores path-scoped grants").isFalse
+        }
+    }
+
+    @Test
+    fun `the path check takes the action from the node when no action is given`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            val check = service.permissionCheck(admin, "alice", "ingot.repository.releases.deploy", null, repository = "releases", path = "org/other/lib/1.0/lib-1.0.jar").orNull()!!
+
+            assertThat(check.allowed).describedAs("allowed").isTrue
+            assertThat(check.action).describedAs("action taken from the node").isEqualTo("deploy")
+        }
+    }
+
+    @Test
+    fun `the path check applies the token narrowing to the path`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+            service.createToken("alice", CreateTokenRequest(name = "ci", nodes = listOf(NodeDto("ingot.artifact.org.other.deploy", true))))
+
+            val listed = service.permissionCheck(admin, "alice", null, "ci", repository = "releases", path = "org/other/lib/1.0/lib-1.0.jar", action = "deploy").orNull()!!
+            // The owner may deploy this path; only the token's node list is what refuses it.
+            val unlisted = service.permissionCheck(admin, "alice", null, "ci", repository = "releases", path = "org/third/lib/1.0/lib-1.0.jar", action = "deploy").orNull()!!
+
+            assertThat(listed.allowed).describedAs("the listed artifact").isTrue
+            assertThat(unlisted.allowed).describedAs("an unlisted artifact").isFalse
+            assertThat(unlisted.decision.source).describedAs("source").isEqualTo("TOKEN")
+        }
+    }
+
+    @Test
+    fun `the path check refuses a request without an action and without a node`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            assertThat(pathCheck(service, admin, path = deployedFile).error.status).describedAs("status").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `the path check refuses an action that is not read, deploy or delete`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            assertThat(pathCheck(service, admin, path = deployedFile, action = "manage").error.status).describedAs("status").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `the path check refuses an action that differs from the action of the node`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            assertThat(pathCheck(service, admin, node = "ingot.repository.releases.read", path = deployedFile, action = "deploy").error.status)
+                .describedAs("status").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `the path check refuses a wildcard repository`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            assertThat(pathCheck(service, admin, repository = "*", path = deployedFile, action = "deploy").error.status).describedAs("status").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `the path check refuses a request without a path`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            assertThat(pathCheck(service, admin, path = null, action = "deploy").error.status).describedAs("status").isEqualTo(400)
+        }
+    }
+
+    @Test
+    fun `the path check refuses a path that names no directory`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+            aliceInDeployersWithDeniedGroup(service)
+
+            assertThat(pathCheck(service, admin, path = " ", action = "deploy").error.status).describedAs("status").isEqualTo(400)
+        }
+    }
+
+    private fun pathCheck(
+        service: IdentityFacade,
+        admin: AccessTokenIdentifier,
+        repository: String? = "releases",
+        path: String?,
+        action: String? = null,
+        node: String? = null,
+    ) = service.permissionCheck(admin, "alice", node, null, repository = repository, path = path, action = action)
+
+    @Test
+    fun `the check names the instance admin shortcut as the deciding kind, as a real request is allowed by it`() {
+        withService { service, _ ->
+            val admin = bootstrapAdmin(service)
+
+            val check = service.permissionCheck(admin, "admin", "ingot.repository.releases.deploy", token = null).orNull()!!
+
+            assertThat(check.allowed).describedAs("allowed").isTrue
+            assertThat(check.decision.decidingKind).describedAs("deciding kind").isEqualTo("INSTANCE_ADMIN")
+            assertThat(check.decision.decidingNode).describedAs("deciding node").isEqualTo("ingot.admin.*")
+            assertThat(check.decision.explanation).describedAs("explanation").contains("instance administrator").contains("admin")
         }
     }
 

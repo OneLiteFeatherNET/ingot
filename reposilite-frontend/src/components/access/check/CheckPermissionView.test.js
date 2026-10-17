@@ -513,4 +513,171 @@ describe('CheckPermissionView', () => {
       expect(text('verdict-text')).toBe('Allowed')
     })
   })
+
+  describe('the deciding node', () => {
+    const DEPLOY = 'ingot.artifact.net.onelitefeather:mycelium-bom.deploy'
+    const DECIDING = {
+      allowed: false,
+      decision: {
+        source: 'USER',
+        subject: 'alice',
+        node: DEPLOY,
+        allowed: false,
+        depth: 0,
+        decidingNode: 'ingot.artifact.net.onelitefeather.deploy',
+        decidingKind: 'ARTIFACT',
+        explanation: "Denied by the artifact node 'ingot.artifact.net.onelitefeather.deploy' of alice (USER)"
+      },
+      trace: [
+        { source: 'USER', subject: 'alice', node: 'ingot.artifact.net.onelitefeather.deploy', allowed: false, matched: true, reason: 'Specific beats wildcard' }
+      ]
+    }
+
+    it('shows the deciding node and its kind in the summary', async () => {
+      identity.check.mockResolvedValue({ data: DECIDING })
+
+      await mountView(`/access/check?principal=alice&node=${DEPLOY}`)
+
+      expect([text('summary-deciding-node'), text('summary-deciding-kind')])
+        .toEqual(['ingot.artifact.net.onelitefeather.deploy', 'Artifact node'])
+    })
+
+    it('shows the explanation of the decision in one sentence', async () => {
+      identity.check.mockResolvedValue({ data: DECIDING })
+
+      await mountView(`/access/check?principal=alice&node=${DEPLOY}`)
+
+      expect(text('explanation')).toBe("Denied by the artifact node 'ingot.artifact.net.onelitefeather.deploy' of alice (USER)")
+    })
+
+    it('shows None for the deciding node when no node matched', async () => {
+      identity.check.mockResolvedValue({ data: DENIED })
+
+      await mountView(`/access/check?principal=alice&node=${NODE}`)
+
+      expect([text('summary-deciding-node'), text('summary-deciding-kind')]).toEqual(['None', 'None'])
+    })
+  })
+
+  describe('an artifact path', () => {
+    const DEPLOYED = 'net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom'
+
+    const switchToPath = async () => {
+      await wrapper.find('[data-test="mode-path"]').trigger('click')
+      await flushPromises()
+    }
+
+    const chooseAction = async (action) => {
+      await wrapper.find('[data-test="artifact-action"] select').setValue(action)
+      await flushPromises()
+    }
+
+    it('offers the node and the artifact path as two ways to ask', async () => {
+      await mountView()
+
+      expect(wrapper.find('[data-test="mode-node"]').attributes('aria-checked')).toBe('true')
+      expect(wrapper.find('[data-test="mode-path"]').exists()).toBe(true)
+    })
+
+    it('replaces the node field with the repository, the path and the action', async () => {
+      await mountView()
+
+      await switchToPath()
+
+      expect(wrapper.find('[data-test="node-field"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="artifact-repository"] input').exists()).toBe(true)
+      expect(wrapper.find('[data-test="artifact-path"] input').exists()).toBe(true)
+    })
+
+    it('sends the repository, the full path and the action as typed, without a node', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', DEPLOYED)
+      await chooseAction('deploy')
+      await submit()
+
+      expect(identity.check).toHaveBeenCalledWith({
+        principal: 'alice', repository: 'releases', path: DEPLOYED, action: 'deploy', token: undefined
+      })
+      expect(identity.check.mock.calls[0][0], 'the question names no node').not.toHaveProperty('node')
+    })
+
+    it('asks for the repository once the path is typed, and keeps Check off', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+
+      await type('artifact-path', DEPLOYED)
+
+      expect(wrapper.find('[data-test="artifact-repository"]').text()).toContain('Enter the repository the path is in')
+      expect(wrapper.find('[data-test="check"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('asks for a path when the repository is typed and the path is empty', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', '  ')
+
+      expect(wrapper.find('[data-test="artifact-path"]').text())
+        .toContain('Enter the path of the file or directory inside the repository')
+      expect(wrapper.find('[data-test="check"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('shows the server refusal of a path on the path field', async () => {
+      identity.check.mockRejectedValue(failure(400, "The query parameter 'path' is required for a path check", []))
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', DEPLOYED)
+
+      await submit()
+
+      expect(wrapper.find('[data-test="artifact-path"]').text())
+        .toContain("The query parameter 'path' is required for a path check")
+    })
+
+    it('shows the repository and the path of the question in the verdict', async () => {
+      identity.check.mockResolvedValue({ data: { ...ALLOWED, node: null, repository: 'releases', path: DEPLOYED, action: 'deploy' } })
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', DEPLOYED)
+      await chooseAction('deploy')
+      await submit()
+
+      expect(text('verdict-path')).toBe(`releases/${DEPLOYED}`)
+      expect(text('verdict-action')).toBe('deploy')
+    })
+
+    it('writes the path question into the address with replace', async () => {
+      await mountView()
+      await type('principal-field', 'alice')
+      await switchToPath()
+      await type('artifact-repository', 'releases')
+      await type('artifact-path', DEPLOYED)
+      await chooseAction('deploy')
+
+      await submit()
+
+      expect(router.currentRoute.value.query).toMatchObject({ principal: 'alice', repository: 'releases', path: DEPLOYED, action: 'deploy' })
+      expect(router.currentRoute.value.query).not.toHaveProperty('node')
+    })
+
+    it('runs the path check on load when the address holds a path question', async () => {
+      await mountView(`/access/check?principal=alice&repository=releases&path=${encodeURIComponent(DEPLOYED)}&action=deploy`)
+
+      expect(identity.check).toHaveBeenCalledTimes(1)
+      expect(identity.check).toHaveBeenCalledWith({
+        principal: 'alice', repository: 'releases', path: DEPLOYED, action: 'deploy', token: undefined
+      })
+    })
+  })
 })

@@ -23,7 +23,8 @@ import {
   inheritedSourceLabel,
   isOverridden,
   repositoryNames,
-  suggestNodes
+  suggestNodes,
+  suggestWithArtifacts
 } from './nodeList'
 
 const CATALOG = [
@@ -169,5 +170,87 @@ describe('isOverridden', () => {
 
   it('is false otherwise', () => {
     expect(isOverridden({ node: 'x' }, [{ node: 'y', allowed: false }])).toBe(false)
+  })
+})
+
+describe('suggestWithArtifacts', () => {
+  it('continues a repository name toward the artifact form', () => {
+    const items = suggestWithArtifacts(CATALOG, 'ingot.repository.releases.')
+
+    expect(items.map(item => item.node)).toContain('ingot.repository.releases.artifact.')
+    expect(items.find(item => item.node === 'ingot.repository.releases.artifact.').continuation).toBe(true)
+  })
+
+  it('offers the repository names of the catalog while the repository is typed', () => {
+    const items = suggestWithArtifacts(CATALOG, 'ingot.repository.sn')
+
+    expect(items.map(item => item.node)).toContain('ingot.repository.snapshots.artifact.')
+  })
+
+  it('offers the four actions after a groupId', () => {
+    const nodes = suggestWithArtifacts(CATALOG, 'ingot.artifact.net.onelitefeather').map(item => item.node)
+
+    expect(nodes).toEqual(expect.arrayContaining([
+      'ingot.artifact.net.onelitefeather.read',
+      'ingot.artifact.net.onelitefeather.deploy',
+      'ingot.artifact.net.onelitefeather.delete',
+      'ingot.artifact.net.onelitefeather.*'
+    ]))
+  })
+
+  it('offers the actions after a trailing dot', () => {
+    const nodes = suggestWithArtifacts(CATALOG, 'ingot.artifact.net.onelitefeather.').map(item => item.node)
+
+    expect(nodes).toContain('ingot.artifact.net.onelitefeather.read')
+  })
+
+  it('completes a partly typed action in place', () => {
+    const nodes = suggestWithArtifacts(CATALOG, 'ingot.artifact.net.onelitefeather.de').map(item => item.node)
+
+    expect(nodes).toEqual(expect.arrayContaining([
+      'ingot.artifact.net.onelitefeather.deploy',
+      'ingot.artifact.net.onelitefeather.delete'
+    ]))
+    expect(nodes).not.toContain('ingot.artifact.net.onelitefeather.de.read')
+  })
+
+  it('completes a qualified artifact node with its actions', () => {
+    const nodes = suggestWithArtifacts(CATALOG, 'ingot.repository.releases.artifact.net:mycelium').map(item => item.node)
+
+    expect(nodes).toContain('ingot.repository.releases.artifact.net:mycelium.read')
+  })
+
+  it('offers no artifact action for a text without a groupId', () => {
+    const nodes = suggestWithArtifacts(CATALOG, 'ingot.artifact.').map(item => item.node)
+
+    expect(nodes).not.toContain('ingot.artifact.read')
+    expect(nodes).not.toContain('ingot.artifact..read')
+  })
+
+  it('leaves out continuations that are already listed as nodes', () => {
+    const listed = [{ node: 'ingot.artifact.net.onelitefeather.read', allowed: true }]
+
+    const nodes = suggestWithArtifacts(CATALOG, 'ingot.artifact.net.onelitefeather', listed).map(item => item.node)
+
+    expect(nodes).not.toContain('ingot.artifact.net.onelitefeather.read')
+  })
+
+  it('offers only valid nodes as actions', () => {
+    const nodes = suggestWithArtifacts(CATALOG, 'ingot.artifact.net..onelitefeather').map(item => item.node)
+
+    expect(nodes.filter(node => node.startsWith('ingot.artifact.net..'))).toEqual([])
+  })
+})
+
+describe('groupSuggestions with artifacts', () => {
+  it('puts artifact suggestions under the heading Artifact, between Repository and Wildcard', () => {
+    const catalog = [
+      ...CATALOG,
+      { node: 'ingot.artifact.*.read', description: 'Read every artifact', kind: 'ARTIFACT' }
+    ]
+
+    const groups = groupSuggestions(suggestNodes(catalog, ''))
+
+    expect(groups.map(group => group.label)).toEqual(['Static', 'Repository', 'Artifact', 'Wildcard'])
   })
 })

@@ -346,9 +346,16 @@ const createClient = (defaultName, defaultSecret) => {
         },
       },
       // Asks whether a principal may use a node, optionally narrowed by one of its tokens. The answer
-      // is { allowed, decision, trace }: the decision and every step that led to it.
-      check({ principal, node, token }) {
-        const query = [`principal=${encodeURIComponent(principal)}`, `node=${encodeURIComponent(node)}`]
+      // is { allowed, decision, trace }: the decision and every step that led to it. With repository,
+      // path and action instead of a node, asks whether the principal may do the action on that path
+      // of the repository; the path is sent as it was typed, and the server reads its directories.
+      check({ principal, node, token, repository, path, action }) {
+        const query = [`principal=${encodeURIComponent(principal)}`]
+        if (repository !== undefined || path !== undefined) {
+          query.push(`repository=${encodeURIComponent(repository)}`, `path=${encodeURIComponent(path)}`, `action=${encodeURIComponent(action)}`)
+        } else {
+          query.push(`node=${encodeURIComponent(node)}`)
+        }
         if (token) query.push(`token=${encodeURIComponent(token)}`)
         return get(`/api/identity/check?${query.join("&")}`)
       },

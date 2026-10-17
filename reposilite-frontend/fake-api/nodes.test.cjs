@@ -39,6 +39,9 @@ describe("grammar", () => {
   for (const valid of [
     "*", "ingot.admin.settings", "ingot.admin.*", "ingot.repository.releases.deploy", "ingot.repository.*.read",
     "ingot.repository.my-repo_2.*", "ingot.repository.*.*", "ingot.repository.my.repo.read",
+    "ingot.artifact.net.onelitefeather.read", "ingot.artifact.net.onelitefeather:mycelium-bom.deploy",
+    "ingot.artifact.*.read", "ingot.artifact.net.onelitefeather.*", "ingot.artifact.net:*.delete",
+    "ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.read",
   ]) {
     it(`accepts ${valid}`, () => {
       assert.equal(nodes.problemOf(valid), null)
@@ -81,7 +84,7 @@ describe("grammar", () => {
   })
 
   it("rejects a node outside the known prefixes", () => {
-    assert.equal(nodes.problemOf("other.admin.settings"), "The node 'other.admin.settings' is unknown, nodes start with 'ingot.repository.' or 'ingot.admin.', or are '*'")
+    assert.equal(nodes.problemOf("other.admin.settings"), "The node 'other.admin.settings' is unknown, nodes start with 'ingot.repository.', 'ingot.artifact.' or 'ingot.admin.', or are '*'")
   })
 
   it("rejects a repository node without a repository and an action", () => {
@@ -116,7 +119,7 @@ describe("grammar", () => {
 describe("node lists", () => {
   it("lists every invalid node in one message, in list order", () => {
     const { message } = nodes.validateEntries([allow("ingot.re*"), allow("ingot.admin.users"), allow("-x")])
-    assert.equal(message, "Invalid permission nodes: The node 'ingot.re*' is unknown, nodes start with 'ingot.repository.' or 'ingot.admin.', or are '*'; The node '-x' starts with '-', negation is stored as allowed false and not in the name")
+    assert.equal(message, "Invalid permission nodes: The node 'ingot.re*' is unknown, nodes start with 'ingot.repository.', 'ingot.artifact.' or 'ingot.admin.', or are '*'; The node '-x' starts with '-', negation is stored as allowed false and not in the name")
   })
 
   it("lists a node that is listed twice, sorted and comma separated", () => {
@@ -268,7 +271,10 @@ describe("evaluation", () => {
 
   it("denies by default when no node matches", () => {
     const result = check(READ, { entries: [allow("ingot.admin.users")] })
-    assert.deepEqual(result.decision, { source: "DEFAULT", subject: null, node: READ, allowed: false, depth: 0 })
+    assert.deepEqual(result.decision, {
+      source: "DEFAULT", subject: null, node: READ, allowed: false, depth: 0,
+      decidingNode: null, decidingKind: null, explanation: `Denied: no node matches '${READ}', so the default denial applies.`,
+    })
   })
 
   it("explains the default with the contract phrase", () => {
@@ -301,7 +307,7 @@ describe("evaluation", () => {
 
   it("carries exactly the fields of the contract in a trace entry", () => {
     const result = check(READ, { entries: [allow(READ)] })
-    assert.deepEqual(Object.keys(result.trace[0]).sort(), ["allowed", "depth", "matched", "node", "reason", "source", "subject"])
+    assert.deepEqual(Object.keys(result.trace[0]).sort(), ["allowed", "depth", "kind", "matched", "node", "reason", "source", "subject"])
   })
 
   it("does not count a team reachable at distance zero as inherited", () => {
@@ -473,13 +479,15 @@ describe("effective nodes", () => {
 describe("catalog", () => {
   const catalog = nodes.buildCatalog(["releases", "private"])
 
-  it("lists the areas, the two wildcards, each sorted repository and the action wildcards in that order", () => {
+  it("lists the areas, the two wildcards, each sorted repository, the action wildcards and the artifact wildcards in that order", () => {
     const expected = [
       ...nodes.AREAS.map(area => `ingot.admin.${area}`),
       "ingot.admin.*",
       "*",
       ...["private", "releases"].flatMap(repository => [...nodes.ACTIONS.map(action => `ingot.repository.${repository}.${action}`), `ingot.repository.${repository}.*`]),
       ...nodes.ACTIONS.map(action => `ingot.repository.*.${action}`),
+      ...["read", "deploy", "delete"].map(action => `ingot.artifact.*.${action}`),
+      "ingot.artifact.*.*",
     ]
     assert.deepEqual(catalog.map(entry => entry.node), expected)
   })
@@ -522,12 +530,27 @@ describe("catalog", () => {
 })
 
 describe("templates", () => {
-  it("lists the five templates in order", () => {
-    assert.deepEqual(nodes.templates().map(template => template.id), ["read", "deploy", "maintain", "admin", "instance-admin"])
+  it("lists the eight templates in the order of the backend", () => {
+    assert.deepEqual(nodes.templates().map(template => template.id), [
+      "read", "deploy", "maintain", "admin", "instance-admin", "artifact-read", "artifact-deploy", "repository-artifact-deploy",
+    ])
   })
 
   it("labels the templates as the backend does", () => {
-    assert.deepEqual(nodes.templates().map(template => template.label), ["Read", "Deploy", "Maintain", "Admin", "Instance admin"])
+    assert.deepEqual(nodes.templates().map(template => template.label), [
+      "Read", "Deploy", "Maintain", "Admin", "Instance admin",
+      "Read an artifact", "Deploy an artifact", "Deploy an artifact in one repository",
+    ])
+  })
+
+  it("keeps the groupId and artifactId placeholders of the artifact templates", () => {
+    const byId = Object.fromEntries(nodes.templates().map(template => [template.id, template]))
+    assert.deepEqual(byId["artifact-read"].nodes, ["ingot.artifact.{groupId}:{artifactId}.read"])
+    assert.deepEqual(byId["artifact-deploy"].nodes, ["ingot.artifact.{groupId}:{artifactId}.read", "ingot.artifact.{groupId}:{artifactId}.deploy"])
+    assert.deepEqual(byId["repository-artifact-deploy"].nodes, [
+      "ingot.repository.{repository}.artifact.{groupId}:{artifactId}.read",
+      "ingot.repository.{repository}.artifact.{groupId}:{artifactId}.deploy",
+    ])
   })
 
   it("keeps the repository placeholder for the client", () => {
@@ -537,5 +560,242 @@ describe("templates", () => {
   it("hands out a copy that a caller cannot use to change the templates", () => {
     nodes.templates()[0].nodes.push("x")
     assert.equal(nodes.templates()[0].nodes.length, 1)
+  })
+})
+
+describe("artifact nodes", () => {
+  const ARTIFACT = "ingot.artifact.net.onelitefeather:mycelium-bom.read"
+
+  it("reads a qualified node into its repository, groupId, artifactId and action", () => {
+    assert.equal(nodes.problemOf("ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.deploy"), null)
+  })
+
+  it("names the artifact a request is about in its problem, and the form that is refused", () => {
+    assert.match(nodes.problemOf("ingot.artifact.net.onelitefeather.manage"), /The action 'manage' of .* is unknown for an artifact node/)
+    assert.match(nodes.problemOf("ingot.artifact.*:mycelium-bom.read"), /ambiguous/)
+    assert.match(nodes.problemOf("ingot.artifact.net.*.read"), /wildcard must be the whole groupId/)
+    assert.match(nodes.problemOf("ingot.artifact.net:a:b.read"), /only one ':'/)
+    assert.match(nodes.problemOf("ingot.artifact.net:.read"), /artifactId of .* is empty/)
+    assert.match(nodes.problemOf("ingot.repository.*.artifact.net.read"), /repository wildcard of .* is not allowed/)
+    assert.match(nodes.problemOf("ingot.repository.artifact.net.read"), /repository name before .artifact. is missing/)
+    assert.match(nodes.problemOf("ingot.artifact.net"), /needs a groupId and an action/)
+  })
+
+  it("matches an artifact request inside the group and not a sibling group", () => {
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather.read", ARTIFACT), true)
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather.read", "ingot.artifact.net.onelitefeatherX.read"), false)
+  })
+
+  it("matches a subgroup of the covered group", () => {
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather.read", "ingot.artifact.net.onelitefeather.tools:cli.read"), true)
+  })
+
+  it("covers one artifact only when it names an artifactId", () => {
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather:mycelium-bom.deploy", "ingot.artifact.net.onelitefeather:mycelium-api.deploy"), false)
+  })
+
+  it("does not cover a group-only request with an artifactId pattern", () => {
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather:mycelium-bom.read", "ingot.artifact.net.onelitefeather.read"), false)
+  })
+
+  it("covers every repository with the unqualified form and only its repository with the qualified form", () => {
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather.read", "ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.read"), true)
+    assert.equal(nodes.matches("ingot.repository.releases.artifact.net.onelitefeather.read", "ingot.artifact.net.onelitefeather:mycelium-bom.read"), false)
+    assert.equal(nodes.matches("ingot.repository.releases.artifact.net.onelitefeather.read", "ingot.repository.snapshots.artifact.net.onelitefeather:mycelium-bom.read"), false)
+  })
+
+  it("does not let an artifact node match a repository request, nor a repository node match an artifact request", () => {
+    assert.equal(nodes.matches("ingot.artifact.*.read", "ingot.repository.releases.read"), false)
+    assert.equal(nodes.matches("ingot.repository.releases.read", ARTIFACT), false)
+  })
+
+  it("matches the action or every action with the star", () => {
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather.*", "ingot.artifact.net.onelitefeather:mycelium-bom.delete"), true)
+    assert.equal(nodes.matches("ingot.artifact.net.onelitefeather.deploy", ARTIFACT), false)
+  })
+
+  it("ranks an artifactId above a group, a longer group above a shorter one and a qualified node above an unqualified one", () => {
+    const ranks = [
+      "ingot.artifact.net.onelitefeather.read",
+      "ingot.artifact.net.onelitefeather.*",
+      "ingot.artifact.net.onelitefeather:mycelium-bom.read",
+      "ingot.artifact.net.onelitefeather:mycelium-bom.*",
+      "ingot.repository.releases.artifact.net.onelitefeather.read",
+    ].map(nodes.specificity)
+    assert.deepEqual(ranks, [...ranks].sort((left, right) => left - right).map((_, index) => ranks[index]))
+    assert.equal(nodes.specificity("ingot.artifact.net.onelitefeather.read") > nodes.specificity("ingot.artifact.net.read"), true)
+    assert.equal(nodes.specificity("ingot.artifact.net.onelitefeather.read") > nodes.specificity("ingot.artifact.net.onelitefeather.*"), true)
+    assert.equal(nodes.specificity("ingot.artifact.net.onelitefeather:mycelium-bom.*") > nodes.specificity("ingot.artifact.net.onelitefeather.read"), true)
+    assert.equal(nodes.specificity("ingot.repository.releases.artifact.net.read") > nodes.specificity("ingot.artifact.net.onelitefeather.read"), true)
+  })
+
+  it("lets a deny of a more specific artifact node win over the group allowance", () => {
+    const result = nodes.evaluate({
+      node: "ingot.artifact.net.onelitefeather:internal.deploy",
+      user: { name: "alice", nodes: [{ node: "ingot.artifact.net.onelitefeather.deploy", allowed: true }, { node: "ingot.artifact.net.onelitefeather:internal.deploy", allowed: false }] },
+    })
+    assert.equal(result.allowed, false)
+    assert.equal(result.decision.node, "ingot.artifact.net.onelitefeather:internal.deploy")
+  })
+
+  it("allows an artifact the owner may deploy and denies a sibling", () => {
+    const user = { name: "alice", nodes: [{ node: "ingot.artifact.net.onelitefeather:mycelium-bom.deploy", allowed: true }] }
+    assert.equal(nodes.evaluate({ node: "ingot.artifact.net.onelitefeather:mycelium-bom.deploy", user }).allowed, true)
+    assert.equal(nodes.evaluate({ node: "ingot.artifact.net.onelitefeather:mycelium-api.deploy", user }).allowed, false)
+  })
+
+  it("lists the artifact nodes of the catalog as valid nodes", () => {
+    const catalogNodes = nodes.buildCatalog(["releases"]).filter(entry => entry.kind === "ARTIFACT").map(entry => entry.node)
+    assert.deepEqual(catalogNodes, ["ingot.artifact.*.read", "ingot.artifact.*.deploy", "ingot.artifact.*.delete", "ingot.artifact.*.*"])
+  })
+})
+
+describe("decision facts", () => {
+  const DEPLOY = "ingot.artifact.net.onelitefeather:internal.deploy"
+
+  it("names the deciding artifact node, its kind and the subject in one sentence", () => {
+    const result = nodes.evaluate({
+      node: DEPLOY,
+      user: { name: "alice", nodes: [allow("ingot.artifact.net.onelitefeather.deploy"), deny(DEPLOY)] },
+    })
+    assert.deepEqual(
+      [result.decision.decidingNode, result.decision.decidingKind, result.decision.explanation],
+      [DEPLOY, "ARTIFACT", `Denied by the artifact node '${DEPLOY}' of alice (USER)`],
+    )
+  })
+
+  it("explains an allow by the repository node of a team", () => {
+    const result = nodes.evaluate({ node: READ, user: user(), memberTeams: [team("developers", [allow(READ)])], teams: [] })
+    assert.equal(result.decision.explanation, `Allowed by the repository node '${READ}' of developers (TEAM)`)
+    assert.equal(result.decision.decidingKind, "REPOSITORY")
+  })
+
+  it("names no deciding node for the default denial", () => {
+    const result = check(DEPLOY, { entries: [] })
+    assert.deepEqual([result.decision.decidingNode, result.decision.decidingKind], [null, null])
+  })
+
+  it("names the token node that denies, with the token as subject", () => {
+    const token = { name: "ci", nodes: [deny(DEPLOY)] }
+    const result = check(DEPLOY, { entries: [allow(DEPLOY)], token })
+    assert.deepEqual(
+      [result.decision.source, result.decision.decidingNode, result.decision.decidingKind],
+      ["TOKEN", DEPLOY, "ARTIFACT"],
+    )
+    assert.equal(result.decision.explanation, `Denied by the artifact node '${DEPLOY}' of ci (TOKEN)`)
+  })
+
+  it("names no deciding node when a token lists no node for the request", () => {
+    const token = { name: "ci", nodes: [allow("ingot.artifact.net.other.read")] }
+    const result = check(DEPLOY, { entries: [allow(DEPLOY)], token })
+    assert.deepEqual([result.decision.decidingNode, result.decision.decidingKind], [null, null])
+    assert.equal(result.decision.explanation, `Denied: token 'ci' lists no node for '${DEPLOY}'.`)
+  })
+
+  it("gives each trace entry the kind of its node", () => {
+    const result = check(DEPLOY, { entries: [allow("ingot.artifact.net.onelitefeather.deploy"), deny(DEPLOY)] })
+    assert.deepEqual(result.trace.map(entry => entry.kind), ["ARTIFACT", "ARTIFACT"])
+  })
+})
+
+describe("path requests", () => {
+  const FILE = "net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
+  const path = (repository, pathInRepository, action = "deploy") => nodes.pathRequest({ repository, path: pathInRepository, action })
+
+  it("is decided by the artifact node whose group covers the directory of the path", () => {
+    const result = nodes.evaluate({ node: path("releases", FILE), user: user([allow("ingot.artifact.net.onelitefeather.deploy")]) })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "ARTIFACT"])
+  })
+
+  it("is denied outside the group of every artifact node", () => {
+    const result = nodes.evaluate({ node: path("releases", "org/other/lib/1.0/lib-1.0.jar"), user: user([allow("ingot.artifact.net.onelitefeather.deploy")]) })
+    assert.equal(result.allowed, false)
+  })
+
+  it("does not cover a sibling group whose name only starts with the same letters", () => {
+    const result = nodes.evaluate({ node: path("releases", "net/onelitefeatherX/lib/1.0/lib-1.0.jar"), user: user([allow("ingot.artifact.net.onelitefeather.deploy")]) })
+    assert.equal(result.allowed, false)
+  })
+
+  it("is decided by the denial of an artifact node inside an allowed repository", () => {
+    const result = nodes.evaluate({
+      node: path("releases", FILE),
+      user: user([allow("ingot.repository.releases.deploy"), deny("ingot.artifact.net.onelitefeather:mycelium-bom.deploy")]),
+    })
+    assert.deepEqual([result.allowed, result.decision.decidingNode], [false, "ingot.artifact.net.onelitefeather:mycelium-bom.deploy"])
+  })
+
+  it("allows a path by a repository node, which covers every path of the repository", () => {
+    const result = nodes.evaluate({ node: path("releases", FILE), user: user([allow("ingot.repository.releases.deploy")]) })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "REPOSITORY"])
+  })
+
+  it("is not covered by a qualified artifact node of another repository", () => {
+    const result = nodes.evaluate({
+      node: path("releases", FILE),
+      user: user([allow("ingot.repository.snapshots.artifact.net.onelitefeather.deploy")]),
+    })
+    assert.equal(result.allowed, false)
+  })
+
+  it("is covered by no artifact node when the path leaves the repository with a parent segment", () => {
+    const result = nodes.evaluate({ node: path("releases", "net/../org/lib.jar"), user: user([allow("ingot.artifact.net.deploy")]) })
+    assert.equal(result.allowed, false)
+  })
+
+  it("is narrowed by a token that lists artifacts, as a node is", () => {
+    const token = { name: "ci", nodes: [allow("ingot.artifact.org.other.deploy")] }
+    const listed = nodes.evaluate({ node: path("releases", "org/other/lib/1.0/lib-1.0.jar"), user: user([allow("ingot.repository.releases.deploy")]), token })
+    const unlisted = nodes.evaluate({ node: path("releases", FILE), user: user([allow("ingot.repository.releases.deploy")]), token })
+    assert.deepEqual([listed.allowed, unlisted.allowed, unlisted.decision.source], [true, false, "TOKEN"])
+  })
+
+  it("keeps node requests as they were, given as text", () => {
+    const result = nodes.evaluate({ node: "ingot.repository.releases.deploy", user: user([allow("ingot.repository.releases.deploy")]) })
+    assert.deepEqual([result.allowed, result.decision.node], [true, "ingot.repository.releases.deploy"])
+  })
+})
+
+describe("instance admin shortcut", () => {
+  const ADMIN = "ingot.admin.*"
+  const adminUser = (extra = []) => user([allow(ADMIN), ...extra])
+
+  it("allows an instance admin a repository node that no rule of its own covers", () => {
+    const result = nodes.evaluate({ node: READ, user: adminUser() })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "INSTANCE_ADMIN"])
+  })
+
+  it("names the admin rule as the deciding node, with the explanation of the shortcut", () => {
+    const result = nodes.evaluate({ node: READ, user: adminUser() })
+    assert.deepEqual(
+      [result.decision.decidingNode, result.decision.explanation],
+      [ADMIN, "Allowed by the instance administrator 'ingot.admin.*' of alice (USER)"],
+    )
+  })
+
+  it("is not restricted by a denial, as a real request is not", () => {
+    const result = nodes.evaluate({ node: READ, user: adminUser([deny(READ)]) })
+    assert.equal(result.allowed, true)
+  })
+
+  it("is narrowed by a token that does not list the request", () => {
+    const token = { name: "ci", nodes: [allow("ingot.repository.other.read")] }
+    const result = nodes.evaluate({ node: READ, user: adminUser(), token })
+    assert.equal(result.allowed, false)
+    assert.equal(result.decision.decidingKind, null)
+  })
+
+  it("is allowed a path request, which the shortcut covers as a node", () => {
+    const result = nodes.evaluate({ node: nodes.pathRequest({ repository: "private", path: "com/x.jar", action: "deploy" }), user: adminUser() })
+    assert.equal(result.decision.decidingKind, "INSTANCE_ADMIN")
+  })
+
+  it("does not make a subject without the admin node an instance admin", () => {
+    const result = nodes.evaluate({ node: READ, user: user([allow("ingot.repository.private.*")]) })
+    assert.deepEqual([result.allowed, result.decision.decidingKind], [true, "REPOSITORY"])
+  })
+
+  it("does not list denied repository nodes as effective nodes of an instance admin", () => {
+    assert.deepEqual(nodes.effectiveNodes({ user: adminUser([deny(READ)]), memberTeams: [], teams: [] }), [ADMIN])
   })
 })

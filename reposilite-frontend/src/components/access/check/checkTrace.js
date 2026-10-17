@@ -50,12 +50,30 @@ const traceSteps = (trace) =>
     reason: entry.reason ?? ''
   }))
 
-/** The facts of the decision for the summary: source, subject, node and depth, empty ones as null. */
+const KIND_LABELS = {
+  ARTIFACT: 'Artifact node',
+  REPOSITORY: 'Repository node',
+  ADMIN: 'Admin node',
+  EVERYTHING: 'Everything node',
+  GRANT: 'Role grant',
+  INSTANCE_ADMIN: 'Instance administrator'
+}
+
+/** The readable name of the kind of the deciding rule. No kind (no node matched) reads as None. */
+const kindLabel = (kind) => (kind ? (KIND_LABELS[kind] ?? String(kind)) : 'None')
+
+/**
+ * The facts of the decision for the summary: source, subject, node and depth, and the deciding node, its kind and the
+ * one-sentence explanation of the server. Empty ones are null.
+ */
 const decisionSummary = (decision) => ({
   sourceLabel: sourceLabel(decision?.source),
   subject: decision?.subject ?? null,
   node: decision?.node ?? null,
-  depth: decision?.depth ?? null
+  depth: decision?.depth ?? null,
+  decidingNode: decision?.decidingNode ?? null,
+  decidingKind: decision?.decidingKind ?? null,
+  explanation: decision?.explanation ?? null
 })
 
 /** The messages of a 400 answer: its problems, or its message when it lists none. */
@@ -66,4 +84,4 @@ const problemMessages = (error) => {
   return data?.message ? [data.message] : []
 }
 
-export { SOURCE_LABELS, decisionSummary, problemMessages, sourceLabel, traceSteps }
+export { SOURCE_LABELS, decisionSummary, kindLabel, problemMessages, sourceLabel, traceSteps }
