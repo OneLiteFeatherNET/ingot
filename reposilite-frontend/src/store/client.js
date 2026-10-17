@@ -91,33 +91,62 @@ const refreshSession = () => {
   return refreshing
 }
 
-// A 401 means the credentials were rejected. In cookie mode the session is refreshed once and
-// the request retried once; only when that fails does the unauthorized handler run. Every other
-// failure passes through untouched, and the error is always rethrown so that each caller still
-// sees its own failure.
+// The value of one request header, read from a plain object or from AxiosHeaders.
+const headerOf = (config, name) =>
+  typeof config?.headers?.get === 'function' ? config.headers.get(name) : config?.headers?.[name]
+
+// A 401 on a request does not by itself end the session: the server may be refusing that one request
+// (a group whose private members refuse the mirror, or a listing the user may not read). The session
+// is asked about with the same credentials, and only a 401 from that check ends it. A request without
+// credentials of its own has no session to check, so the unauthorized handler decides as it always did.
+const sessionRejected = (config) => {
+  const authorization = headerOf(config, 'Authorization')
+  if (!authorization) {
+    return Promise.resolve(true)
+  }
+  return axios
+    .get(createURL('/api/auth/me'), {
+      withCredentials: true,
+      headers: { Authorization: authorization },
+      _sessionCheck: true,
+    })
+    .then(
+      () => false,
+      (error) => error?.response?.status === 401
+    )
+}
+
+// A 401 means the credentials were rejected. In cookie mode the session is refreshed once and the
+// request retried once. A refresh that is refused ends the session. A retry that is refused after a
+// successful refresh says nothing about the session, because the refresh just proved it stands. In
+// token mode the session check decides. Every failure is rethrown so that each caller still sees its own.
 const handleResponseError = async (error) => {
   if (error?.response?.status !== 401) {
     return Promise.reject(error)
   }
   const config = error.config
-  if (isAuthEndpoint(config?.url)) {
+  if (isAuthEndpoint(config?.url) || config?._sessionCheck) {
+    return Promise.reject(error)
+  }
+  if (config?._sessionAlive) {
     return Promise.reject(error)
   }
   if (cookieMode && config && !config._retried) {
     config._retried = true
-    let refreshed = true
     try {
       await refreshSession()
     } catch {
-      refreshed = false
+      onUnauthorized(error)
+      return Promise.reject(error)
     }
-    if (refreshed) {
-      // A second 401 comes back through this handler with _retried set and ends the session.
-      return axios.request(config)
-    }
+    return axios.request({ ...config, _sessionAlive: true })
   }
-  onUnauthorized(error)
-  return Promise.reject(error)
+  return sessionRejected(config).then(rejected => {
+    if (rejected) {
+      onUnauthorized(error)
+    }
+    return Promise.reject(error)
+  })
 }
 
 axios.interceptors.request.use(handleRequest)

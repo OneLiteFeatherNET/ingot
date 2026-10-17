@@ -39,6 +39,7 @@ import com.reposilite.shared.errorResponse
 import com.reposilite.shared.http.FakeRemoteClientProvider
 import com.reposilite.shared.notFoundError
 import io.javalin.http.HttpStatus.BAD_GATEWAY
+import io.javalin.http.HttpStatus.UNAUTHORIZED as HTTP_UNAUTHORIZED
 import com.reposilite.statistics.DailyDateIntervalProvider
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.statistics.infrastructure.InMemoryStatisticsRepository
@@ -85,6 +86,8 @@ internal abstract class MavenSpecification {
         const val REMOTE_REPOSITORY_WITH_WHITELIST = "https://example.com/whitelist"
         // Always responds with a transient 5xx error — for tests that need a non-404 upstream failure.
         const val REMOTE_REPOSITORY_BROKEN = "https://broken.example/releases"
+        // Always refuses the configured credentials with a 401, as an upstream does when its mirror login has gone stale.
+        const val REMOTE_REPOSITORY_REFUSING = "https://refusing.example/releases"
         val REMOTE_AUTH = MirrorCredentials(BASIC, "panda", "secret")
         const val REMOTE_CONTENT = "content"
     }
@@ -135,6 +138,8 @@ internal abstract class MavenSpecification {
                 remoteRequestsByUri.computeIfAbsent(uri) { AtomicInteger() }.incrementAndGet()
                 if (uri.startsWith(REMOTE_REPOSITORY_BROKEN))
                     errorResponse(BAD_GATEWAY, "Simulated upstream failure")
+                else if (uri.startsWith(REMOTE_REPOSITORY_REFUSING))
+                    errorResponse(HTTP_UNAUTHORIZED, "Simulated refused credentials")
                 else if (uri.startsWith(REMOTE_REPOSITORY) && REMOTE_AUTH == credentials && !uri.isAllowed())
                     DocumentInfo(
                         name = uri.substringAfterLast('/'),
@@ -152,6 +157,8 @@ internal abstract class MavenSpecification {
                 remoteRequestsByUri.computeIfAbsent(uri) { AtomicInteger() }.incrementAndGet()
                 if (uri.startsWith(REMOTE_REPOSITORY_BROKEN))
                     errorResponse(BAD_GATEWAY, "Simulated upstream failure")
+                else if (uri.startsWith(REMOTE_REPOSITORY_REFUSING))
+                    errorResponse(HTTP_UNAUTHORIZED, "Simulated refused credentials")
                 else if (uri.startsWith(REMOTE_REPOSITORY) && REMOTE_AUTH == credentials && !uri.isAllowed())
                     REMOTE_CONTENT.byteInputStream().asSuccess()
                 else if (uri.startsWith(REMOTE_REPOSITORY_WITH_WHITELIST) && uri.isAllowed())

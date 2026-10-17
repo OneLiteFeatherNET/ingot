@@ -20,6 +20,7 @@ import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.auth.api.Credentials
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.notFound
 import com.reposilite.shared.http.AuthenticationMethod.LOOPBACK_LINK
 import com.reposilite.shared.http.RemoteClient
 import com.reposilite.shared.http.RemoteCredentials
@@ -28,6 +29,7 @@ import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.toLocation
 import com.reposilite.token.AccessTokenIdentifier
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import panda.std.Option
 import panda.std.Result
@@ -46,7 +48,7 @@ internal class RepositoryLoopbackClient(
                 repository = repositoryName,
                 gav = toGav(uri)
             )
-        )
+        ).mapErr { it.refusedAsMissing() }
 
     override fun get(uri: String, credentials: RemoteCredentials?, connectTimeoutInSeconds: Int, readTimeoutInSeconds: Int): Result<InputStream, ErrorResponse> =
         repositoryService.findFile(
@@ -55,7 +57,7 @@ internal class RepositoryLoopbackClient(
                 repository = repositoryName,
                 gav = toGav(uri)
             )
-        ).map { (_, content) -> content }
+        ).map { (_, content) -> content }.mapErr { it.refusedAsMissing() }
 
     private fun RemoteCredentials?.toAccessToken(): AccessTokenIdentifier? =
         Option.of(this)
@@ -66,6 +68,14 @@ internal class RepositoryLoopbackClient(
                 { it.identifier },
                 { null }
             )
+
+    /**
+     * A member that refuses the mirror identity of this reference does not hold the file for the group. The refusal is about
+     * the instance and not about the caller who browses the group, so it is answered as missing: a 401 or 403 here would
+     * reach the browser as a refused session, and the browser would end a session that is still valid.
+     */
+    private fun ErrorResponse.refusedAsMissing(): ErrorResponse =
+        if (status == UNAUTHORIZED.code || status == FORBIDDEN.code) notFound("Cannot find '$repositoryName' with the mirror identity") else this
 
     private fun toGav(uri: String): Location =
         uri.substring(repositoryName.length + 1).toLocation()
