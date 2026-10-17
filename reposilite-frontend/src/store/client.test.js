@@ -69,6 +69,54 @@ describe('client response interceptor', () => {
   })
 })
 
+describe('token mode session check on 401', () => {
+  let axios
+  let client
+  let handler
+
+  beforeEach(async () => {
+    vi.resetModules()
+    axios = (await import('axios')).default
+    axios.get.mockReset()
+    client = await import('./client')
+    handler = vi.fn()
+    client.setUnauthorizedHandler(handler)
+  })
+
+  // A listing request sent with the access token of a token sign in.
+  const tokenRequestError = () => Object.assign(responseError(401), {
+    config: { url: '/api/maven/details/private', method: 'get', headers: { Authorization: 'xBasic dG9rZW46c2VjcmV0' } }
+  })
+
+  it('keeps the token session when the session check still accepts it', async () => {
+    axios.get.mockResolvedValue({ data: {} })
+    const error = tokenRequestError()
+
+    await expect(client.handleResponseError(error)).rejects.toBe(error)
+
+    expect(axios.get.mock.calls[0][0], 'the session is asked about with the same credentials').toMatch(/\/api\/auth\/me$/)
+    expect(axios.get.mock.calls[0][1].headers.Authorization).toBe('xBasic dG9rZW46c2VjcmV0')
+    expect(handler, 'a 401 on a listing is not a rejected token').not.toHaveBeenCalled()
+  })
+
+  it('ends the token session when the session check is refused too', async () => {
+    axios.get.mockRejectedValue(responseError(401))
+    const error = tokenRequestError()
+
+    await expect(client.handleResponseError(error)).rejects.toBe(error)
+
+    expect(handler, 'the server rejected the token, so the session ends').toHaveBeenCalledWith(error)
+  })
+
+  it('keeps the token session when the session check cannot reach the server', async () => {
+    axios.get.mockRejectedValue(new Error('Network Error'))
+
+    await client.handleResponseError(tokenRequestError()).catch(() => {})
+
+    expect(handler, 'an unreachable server says nothing about the token').not.toHaveBeenCalled()
+  })
+})
+
 describe('client repositories call', () => {
   // The module and the axios mock are loaded together, so the client sees the mock the test inspects.
   let http

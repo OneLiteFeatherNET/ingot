@@ -333,16 +333,17 @@ describe('refresh and expiry in cookie mode', () => {
     expect(store.isLogged.value, 'a refreshed session stays signed in').toBe(true)
   })
 
-  it('signs out after a second 401 on the retried request', async () => {
+  it('keeps the session when a content request is refused after the refresh', async () => {
+    // The details card asks for /<group>/maven-metadata.xml; a group that mirrors private members answers 401 for it.
     const { axios, store, client, toast } = await signedIn()
     axios.request.mockResolvedValue({ data: 'ok' })
-    await client.handleResponseError(responseError(401, { url: '/api/x', method: 'get' }))
+    await client.handleResponseError(responseError(401, { url: '/onelitefeather/maven-metadata.xml', method: 'get' }))
     const retried = axios.request.mock.calls[0][0]
 
     await client.handleResponseError(responseError(401, retried)).catch(() => {})
 
-    expect(store.isLogged.value).toBe(false)
-    expect(toast.createWarningToast).toHaveBeenCalledWith('Session expired, please sign in again')
+    expect(store.isLogged.value, 'the session was refreshed, so the signed in user stays signed in').toBe(true)
+    expect(toast.createWarningToast, 'no expiry notice for a refused listing').not.toHaveBeenCalled()
   })
 
   it('signs out when the refresh itself fails', async () => {

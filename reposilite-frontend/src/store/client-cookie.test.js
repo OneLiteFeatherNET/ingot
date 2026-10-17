@@ -169,7 +169,17 @@ describe('cookie mode refresh on 401', () => {
     await client.handleResponseError(Object.assign(responseError(401), { config: retried })).catch(() => {})
 
     expect(axios.post, 'a second 401 on the same request must not loop').not.toHaveBeenCalled()
-    expect(handler, 'a second 401 ends the session').toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the session when the retried request is rejected, because the refresh just succeeded', async () => {
+    axios.post.mockResolvedValue({ data: {} })
+    axios.request.mockResolvedValue({})
+    await client.handleResponseError(rejected())
+    const retried = axios.request.mock.calls[0][0]
+
+    await client.handleResponseError(Object.assign(responseError(401), { config: retried })).catch(() => {})
+
+    expect(handler, 'a 401 on a listing or content request is the server refusing that request, not the session').not.toHaveBeenCalled()
   })
 
   it('runs the unauthorized handler and rejects when the refresh fails', async () => {
