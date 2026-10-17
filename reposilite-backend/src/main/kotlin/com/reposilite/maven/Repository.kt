@@ -40,11 +40,28 @@ class Repository internal constructor(
     val storagePolicy: StoragePolicy,
     val metadataMaxAgeInSeconds: Long,
     resolutionCacheMaxEntries: Int,
+    /** The declared type, null for an untyped repository, which keeps the behaviour it always had. */
+    val declaredType: RepositoryType? = null,
 ) {
 
     init {
         check(name.length < REPOSITORY_NAME_MAX_LENGTH) { "Repository name cannot exceed $REPOSITORY_NAME_MAX_LENGTH characters" }
     }
+
+    /** Whether the declared type is set. Untyped repositories report the type they are derived as. */
+    val typeExplicit: Boolean
+        get() = declaredType != null
+
+    /** The effective type, see [effectiveRepositoryType]: the declared type, or the one derived from the mirrored repositories. */
+    val effectiveType: EffectiveRepositoryType
+        get() {
+            val loopback = mirrorHosts.count { it.client is RepositoryLoopbackClient }
+            return effectiveRepositoryType(declaredType, loopbackReferences = loopback, externalReferences = mirrorHosts.size - loopback)
+        }
+
+    /** Whether deployments and deletions are accepted. A typed proxy or group takes no uploads; see [acceptsUploads]. */
+    val acceptsUploads: Boolean
+        get() = declaredType.acceptsUploads()
 
     internal val resolutionCache: ResolutionCache? =
         if (resolutionCacheMaxEntries > 0) ResolutionCache(resolutionCacheMaxEntries) else null

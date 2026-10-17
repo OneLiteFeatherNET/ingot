@@ -22,8 +22,8 @@ import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.LatestService
 import com.reposilite.maven.MavenFacade
-import com.reposilite.maven.StorageTarget
 import com.reposilite.maven.StorageUsageService
+import com.reposilite.maven.storageTargets
 import com.reposilite.maven.MetadataService
 import com.reposilite.maven.MirrorCacheLedger
 import com.reposilite.maven.MirrorCacheService
@@ -37,7 +37,6 @@ import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
-import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.token.AccessTokenFacade
 import panda.std.reactive.Reference
 import java.nio.file.Path
@@ -128,22 +127,7 @@ internal class MavenComponents(
         StorageUsageService(
             journalist = journalist,
             clock = clock,
-            targets = {
-                val configured = mavenSettings.get().repositories
-                val localNames = configured.map { it.id }.toSet()
-                repositoryProvider.getRepositories().map { repository ->
-                    val settings = configured.firstOrNull { it.id == repository.name }
-                    // A group proxies other local repositories, so it has no content of its own and no quota to meet.
-                    val group = settings?.proxied.orEmpty().any { it.reference.trim().removeSuffix("/") in localNames }
-                    StorageTarget(
-                        id = repository.name,
-                        storage = repository.storageProvider,
-                        quota = if (group) null else (settings?.storageProvider as? FileSystemStorageProviderSettings)?.quota,
-                        storageType = settings?.storageProvider?.type ?: "fs",
-                        group = group,
-                    )
-                }
-            },
+            targets = { storageTargets(repositoryProvider.getRepositories(), mavenSettings.get().repositories) },
             executor = ioService,
         )
 

@@ -20,6 +20,7 @@ import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
+import com.reposilite.maven.application.referencedHost
 import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.shared.http.createHttpProxy
 import com.reposilite.status.FailureFacade
@@ -49,6 +50,7 @@ internal class RepositoryFactory(
             tags = configuration.tags,
             redeployment = configuration.redeployment,
             preserveSnapshots = configuration.preserveSnapshots,
+            declaredType = configuration.type,
             mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) },
             storageProvider =
                 storageFacade
@@ -66,15 +68,10 @@ internal class RepositoryFactory(
         )
 
     private fun createMirroredHostConfiguration(configurationSource: MirroredRepositorySettings): MirrorHost? {
-        val name = configurationSource.reference.trim()
-
-        val host = when {
-            name.isEmpty() -> {
-                failureFacade.logger.warn("Empty reference value of mirrored repository found, skipping configuration entry.")
-                return null
-            }
-            name.endsWith("/") -> name.substring(0, name.length - 1)
-            else -> name
+        val host = configurationSource.referencedHost()
+        if (host.isEmpty()) {
+            failureFacade.logger.warn("Empty reference value of mirrored repository found, skipping configuration entry.")
+            return null
         }
 
         val remoteClient = when {

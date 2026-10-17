@@ -28,6 +28,7 @@ const identity = require("./identity.cjs")
 const { createSearch, sampleFiles } = require("./search.cjs")
 const { createIndexAdmin } = require("./search-index.cjs")
 const { localDateOnWire } = require("./wire.cjs")
+const { effectiveType, rejectionOf } = require("./repository-types.cjs")
 
 const {
   respond,
@@ -196,14 +197,16 @@ setInterval(() => {
 const listRepositories = (query, signedIn) => {
   const text = String(query.q ?? '').trim().toLowerCase()
   const requiredTags = [query.tag ?? []].flat().map(tag => String(tag).toLowerCase()).filter(tag => tag !== '')
+  const all = mavenSettingsEntity.repositories ?? []
   return {
-    repositories: (mavenSettingsEntity.repositories ?? [])
+    repositories: all
       .filter(repository => repository.visibility === 'PUBLIC' || signedIn)
       .map(repository => ({
         id: repository.id,
         visibility: repository.visibility,
         description: repository.description ?? '',
-        tags: repository.tags ?? []
+        tags: repository.tags ?? [],
+        ...effectiveType(repository, all)
       }))
       .filter(repository => text === ''
         || [repository.id, repository.description, ...repository.tags].some(value => value.toLowerCase().includes(text)))
@@ -494,7 +497,13 @@ application
   .post('/api/maven/search/index/rebuild', (req, res) => answerIndex(req, res, () => indexAdmin.startRebuild(req.body ?? {})))
   .post('/api/maven/search/index/verify', (req, res) => answerIndex(req, res, () => indexAdmin.startVerify()))
   .post('/api/maven/search/index/runs/:id/cancel', (req, res) => answerIndex(req, res, () => indexAdmin.cancel(req.params.id)))
-  .put('/api/settings/domain/maven', (req, res) => { mavenSettingsEntity = req.body; res.send("") })
+  // Like the backend, an update whose repository types break a rule is refused with 400 and the rules it breaks, and nothing is stored.
+  .put('/api/settings/domain/maven', (req, res) => {
+    const rejection = rejectionOf(req.body ?? {})
+    if (rejection) return res.status(400).send({ status: 400, message: rejection })
+    mavenSettingsEntity = req.body
+    res.send("")
+  })
   .get('/api/settings/schema/frontend', (req, res) => res.send(frontendSettingsSchema))
   .get('/api/settings/domain/frontend', (req, res) => res.send(frontendSettingsEntity))
   .put('/api/settings/domain/frontend', (req, res) => { frontendSettingsEntity = req.body; res.send("") })
