@@ -23,3 +23,4 @@
 
 * [Token migration](explanation/token-migration.md)
 * [How the search index stays current](explanation/how-the-search-index-stays-current.md)
+* [Backend architecture](explanation/backend-architecture.md)
