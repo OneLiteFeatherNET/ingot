@@ -179,6 +179,26 @@ describe('the editor of a repository type', () => {
       ])
     })
 
+    it('names the credentials of the mirrored repositories that a switch removes, on a line of their own', () => {
+      const withCredentials = proxy({
+        proxied: [
+          { reference: 'https://a.example/', authorization: { method: 'BASIC', login: 'alpha', password: 'alpha-secret' } },
+          { reference: 'https://b.example/' }
+        ]
+      })
+
+      expect(removalsFor(withCredentials, 'PROXY', 'GROUP')).toEqual([
+        { key: 'proxied', label: 'Mirrored repositories (2)' },
+        { key: 'credentials', label: 'Credentials of mirrored repositories (1)' },
+        { key: 'storagePolicy', label: 'Storage policy' },
+        { key: 'metadataMaxAge', label: 'Metadata max age' }
+      ])
+    })
+
+    it('names no credentials when the mirrored repositories carry none', () => {
+      expect(removalsFor(proxy(), 'PROXY', 'GROUP').map(removal => removal.key)).not.toContain('credentials')
+    })
+
     it('keeps the members of a group when the group stays a group', () => {
       expect(removalsFor(group(), 'GROUP', 'GROUP')).toEqual([])
     })

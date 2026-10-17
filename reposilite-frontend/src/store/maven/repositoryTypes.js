@@ -143,14 +143,24 @@ const dropsMirrors = (from, to) => (from === 'PROXY' || from === 'GROUP') && (to
 const notKept = (from, to) => TYPED_FIELDS.filter(field => !KEPT[to].includes(field)
   || (field === 'proxied' && dropsMirrors(from, to)))
 
-/* What switching the entry to `to` removes, with the label the user knows it by. Empty settings are not listed. */
+/* The mirrored entries that carry a credential. Their credentials go with them, so the switch names them on their own line. */
+const credentialCount = (proxied) => (Array.isArray(proxied) ? proxied.filter(item => item?.authorization != null).length : 0)
+
+/*
+ * What switching the entry to `to` removes, with the label the user knows it by. Empty settings are not listed.
+ * Removing the mirrored entries also removes their credentials, so those are listed too, and never silently.
+ */
 export const removalsFor = (entry, from, to) => {
   if (!isTyped(to)) return []
   return notKept(from, to)
     .filter(field => isSet(entry[field]))
-    .map(field => {
+    .flatMap(field => {
       const count = Array.isArray(entry[field]) && entry[field].length > 1 ? ` (${entry[field].length})` : ''
-      return { key: field, label: `${FIELD_LABELS[field]}${count}` }
+      const removal = { key: field, label: `${FIELD_LABELS[field]}${count}` }
+      const credentials = field === 'proxied' ? credentialCount(entry.proxied) : 0
+      return credentials > 0
+        ? [removal, { key: 'credentials', label: `Credentials of mirrored repositories (${credentials})` }]
+        : [removal]
     })
 }
 

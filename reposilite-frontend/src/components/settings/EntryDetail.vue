@@ -25,7 +25,6 @@ import DeleteEntryDialog from './DeleteEntryDialog.vue'
 import RepositoryAccessCard from './RepositoryAccessCard.vue'
 import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import { entryLayout, idText, validateNewId } from './collections'
-import { membersOf, proxiedOfMembers } from './groupMembers'
 import {
   SETTING_TYPE_OPTIONS,
   blankEntriesNotice,
@@ -195,10 +194,11 @@ const cancelType = () => {
 // The rules the type breaks, checked here so the problem is shown before the save. Only for the typed repositories.
 const violations = computed(() => (props.typed ? violationsOf(latest.value, { otherIds: props.otherIds }) : []))
 
-// A group's members are its mirrored entries read as repository ids, and are edited as a list.
-const members = computed(() => membersOf(latest.value.proxied))
-const onMembers = (ids) => {
-  const next = { ...latest.value, proxied: proxiedOfMembers(ids) }
+// A group's members are its mirrored entries, edited as a list. The picker hands back the entries that stay as they were,
+// so the settings and credentials of each member are kept; only the list itself changes.
+const members = computed(() => (Array.isArray(latest.value.proxied) ? latest.value.proxied : []))
+const onMembers = (entries) => {
+  const next = { ...latest.value, proxied: entries }
   latest.value = next
   emit('change', next)
 }
@@ -420,6 +420,7 @@ const formLayout = computed(() => {
           id-prefix="entry-members"
           :model-value="members"
           :candidates="otherIds"
+          credentials
           @update:model-value="onMembers"
         />
       </div>

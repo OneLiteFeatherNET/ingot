@@ -218,6 +218,23 @@ describe('EntryDetail switching the type', () => {
     expect(lastChange()).toEqual({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }, { reference: 'snapshots' }] })
   })
 
+  it('names the credentials that a switch from proxy to group removes, before it is confirmed', async () => {
+    mountEntry({
+      id: 'central',
+      visibility: 'PUBLIC',
+      type: 'PROXY',
+      proxied: [{ reference: 'https://a.example/', authorization: { method: 'BASIC', login: 'alpha', password: 'alpha-secret' } }]
+    })
+    const before = changeCount()
+
+    await chooseType('GROUP')
+
+    const notice = wrapper.get('[data-test="type-removals"]').text()
+    expect(notice).toContain('Mirrored repositories')
+    expect(notice).toContain('Credentials of mirrored repositories (1)')
+    expect(changeCount(), 'the credentials are kept until the removal is confirmed').toBe(before)
+  })
+
   it('removes the type when the repository goes back to not set', async () => {
     mountEntry({ id: 'releases', visibility: 'PUBLIC', type: 'HOSTED' })
 
@@ -322,5 +339,77 @@ describe('EntryDetail group members', () => {
     await wrapper.get('button[aria-label="Move central up"]').trigger('click')
 
     expect(lastChange().proxied).toEqual([{ reference: 'central' }, { reference: 'releases' }])
+  })
+})
+
+describe('EntryDetail keeps the settings of the members of a group', () => {
+  // A mirrored entry of a group as the server stores it: every setting, the credential, and a key this dashboard does not know.
+  const loopback = (reference, extra = {}) => ({
+    reference,
+    store: false,
+    allowedGroups: ['net.onelitefeather'],
+    allowedExtensions: ['.jar', '.pom'],
+    connectTimeout: 5,
+    readTimeout: 30,
+    httpProxy: '',
+    authenticatedFetchingOnly: false,
+    authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror', password: '********' },
+    ...extra
+  })
+  const members = () => [
+    loopback('onelitefeather-releases', { futureSetting: 'kept' }),
+    loopback('onelitefeather-proxy'),
+    loopback('onelitefeather-snapshots')
+  ]
+  const others = ['onelitefeather-releases', 'onelitefeather-proxy', 'onelitefeather-snapshots', 'central']
+  const groupWith = (proxied) => ({ id: 'onelitefeather', visibility: 'PRIVATE', type: 'GROUP', proxied })
+
+  it('keeps every setting and credential of the members that stay, when a member is added', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('#entry-members-add').setValue('central')
+    await wrapper.get('#entry-members-add-button').trigger('click')
+    await flushPromises()
+
+    expect(lastChange().proxied).toEqual([...members(), { reference: 'central' }])
+  })
+
+  it('removes only the member that was taken out, and keeps the credentials of the others', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('button[aria-label="Remove onelitefeather-proxy from the group"]').trigger('click')
+
+    expect(lastChange().proxied).toEqual([members()[0], members()[2]])
+  })
+
+  it('keeps the credentials of every member when the members are reordered', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('button[aria-label="Move onelitefeather-snapshots up"]').trigger('click')
+
+    expect(lastChange().proxied).toEqual([members()[0], members()[2], members()[1]])
+  })
+
+  it('removes only one of two entries that name the same repository', async () => {
+    const first = loopback('onelitefeather-releases', { authorization: { method: 'LOOPBACK_LINK', login: 'first', password: 'a' } })
+    const second = loopback('onelitefeather-releases', { authorization: { method: 'LOOPBACK_LINK', login: 'second', password: 'b' } })
+    mountEntry(groupWith([first, second]), { otherIds: others })
+
+    await wrapper.findAll('button[aria-label="Remove onelitefeather-releases from the group"]')[1].trigger('click')
+
+    expect(lastChange().proxied).toEqual([first])
+  })
+
+  it('edits the credential of a member, and saves the settings of that member and of the others unchanged', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('button[aria-label="Edit the credential of onelitefeather-proxy"]').trigger('click')
+    await wrapper.get('#entry-members-login-1').setValue('new-mirror')
+
+    expect(lastChange().proxied).toEqual([
+      members()[0],
+      { ...members()[1], authorization: { ...members()[1].authorization, login: 'new-mirror' } },
+      members()[2]
+    ])
   })
 })
