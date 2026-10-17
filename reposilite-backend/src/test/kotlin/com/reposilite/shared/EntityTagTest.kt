@@ -43,8 +43,19 @@ internal class EntityTagTest {
     }
 
     @Test
-    fun `should never match a weak entity tag`() {
-        assertThat(EntityTag.matches(ifMatch = "W/\"abc\"", current = "\"abc\"")).isFalse
+    fun `should accept a weak entity tag of the current state`() {
+        // a compressing proxy turns the strong tag into a weak one, the opaque tag is still the same state
+        assertThat(EntityTag.matches(ifMatch = "W/\"abc\"", current = "\"abc\"")).isTrue
+    }
+
+    @Test
+    fun `should reject a weak entity tag of another state with a mismatch`() {
+        assertThat(EntityTag.matches(ifMatch = "W/\"old\"", current = "\"abc\"")).isFalse
+    }
+
+    @Test
+    fun `should accept a list that holds a weak entity tag of the current state`() {
+        assertThat(EntityTag.matches(ifMatch = "\"old\", W/\"abc\"", current = "\"abc\"")).isTrue
     }
 
     @Test

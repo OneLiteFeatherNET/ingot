@@ -109,6 +109,40 @@ internal class IdentityAdminIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `a weak entity tag of the current state is accepted for a principal`() {
+        // given: a principal and its tag, weakened the way a compressing proxy weakens it
+        val created = createPrincipal("ci-bot")
+
+        // when: the change is sent with the weak form of the current tag
+        val response = patch(identity("/principals/ci-bot"))
+            .basicAuth(admin.first, admin.second)
+            .header("If-Match", "W/${created.etag}")
+            .body(mapOf("displayName" to "Weak"))
+            .asJacksonObject(JsonNode::class)
+
+        // then
+        assertThat(response.status).describedAs("status for a weak current tag").isEqualTo(OK.code)
+        assertThat(response.body.get("principal").get("displayName").asText()).isEqualTo("Weak")
+    }
+
+    @Test
+    fun `a weak entity tag of a stale state is refused with 412 for a principal`() {
+        // given: a principal read once, then changed by someone else
+        val first = createPrincipal("ci-bot")
+        patch(identity("/principals/ci-bot")).basicAuth(admin.first, admin.second).body(mapOf("displayName" to "Other")).asString()
+
+        // when: the change is sent with the weak form of the first tag
+        val stale = patch(identity("/principals/ci-bot"))
+            .basicAuth(admin.first, admin.second)
+            .header("If-Match", "W/${first.etag}")
+            .body(mapOf("disabled" to true))
+            .asJacksonObject(ErrorResponse::class)
+
+        // then
+        assertThat(stale.status).describedAs("status for a weak stale tag").isEqualTo(PRECONDITION_FAILED.code)
+    }
+
+    @Test
     fun `a stale entity tag is refused with 412 and the principal keeps the first change`() {
         // given: a principal read once, then changed by someone else
         val first = createPrincipal("ci-bot")
