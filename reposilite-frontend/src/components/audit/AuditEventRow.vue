@@ -33,7 +33,7 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
 
 <template>
   <li class="border-b border-outline-variant px-4 py-3 last:border-b-0">
-    <div class="grid gap-x-4 gap-y-1 min-[720px]:grid-cols-[11rem_minmax(7rem,12rem)_minmax(9rem,13rem)_minmax(0,1fr)_auto] min-[720px]:items-center">
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-x-4 gap-y-1 min-[720px]:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto] min-[720px]:items-center">
       <time
         :datetime="event.timestamp"
         class="md-body-small text-on-surface-variant"
@@ -43,21 +43,30 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
         <RouterLink
           v-if="actorLink"
           :to="actorLink"
-          class="md-state-layer md-focus-ring break-all rounded-corner-small text-primary no-underline hover:underline"
+          :title="actor"
+          class="md-state-layer md-focus-ring block min-w-0 truncate rounded-corner-small text-primary no-underline hover:underline"
         >
           {{ actor }}
         </RouterLink>
         <span
           v-else
-          class="break-all"
+          class="block min-w-0 truncate"
+          :title="actor"
         >{{ actor }}</span>
-        <span
+        <div
           v-if="event.actorAddress"
-          class="md-body-small text-on-surface-variant"
-        > from {{ event.actorAddress }}</span>
+          class="flex min-w-0 items-baseline gap-1 md-body-small text-on-surface-variant"
+        >
+          <span class="shrink-0">from</span>
+          <span
+            class="min-w-0 truncate font-mono"
+            :title="event.actorAddress"
+            data-test="actor-address"
+          >{{ event.actorAddress }}</span>
+        </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="min-w-0 break-words">
         <span class="md-label-large text-on-surface">{{ label }}</span>
       </div>
 
