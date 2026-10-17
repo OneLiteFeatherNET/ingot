@@ -228,7 +228,7 @@ const lastUsedText = (token) => {
               {{ token.description }}
             </span>
           </div>
-          <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 md-body-small text-on-surface-variant min-[480px]:grid-cols-[repeat(3,auto)] min-[480px]:justify-start">
+          <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 md-body-small text-on-surface-variant min-[480px]:grid-cols-[repeat(3,auto)] min-[480px]:justify-start">
             <div class="contents min-[480px]:flex min-[480px]:flex-col">
               <dt>Created</dt>
               <dd class="m-0 text-on-surface">
@@ -241,20 +241,25 @@ const lastUsedText = (token) => {
                 {{ token.expiresAt ? expiryDay(token) : 'Never' }}
               </dd>
             </div>
-            <div class="contents min-[480px]:flex min-[480px]:flex-col">
+            <div class="contents min-[480px]:flex min-[480px]:min-w-0 min-[480px]:flex-col">
               <dt>Last used</dt>
               <dd
-                class="m-0 text-on-surface"
+                class="m-0 min-w-0 text-on-surface"
                 data-test="last-used"
                 :title="lastUsedTitle(token)"
               >
                 {{ lastUsedText(token) }}
                 <span
                   v-if="token.lastUsedAt && token.lastUsedIp"
-                  class="text-on-surface-variant"
+                  class="flex min-w-0 items-baseline gap-1 text-on-surface-variant"
                   data-test="last-used-ip"
                 >
-                  from {{ token.lastUsedIp }}
+                  <span class="shrink-0">from</span>
+                  <span
+                    class="min-w-0 truncate font-mono"
+                    data-test="last-used-address"
+                    :title="token.lastUsedIp"
+                  >{{ token.lastUsedIp }}</span>
                 </span>
               </dd>
             </div>

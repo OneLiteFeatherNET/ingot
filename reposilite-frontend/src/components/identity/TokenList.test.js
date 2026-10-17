@@ -117,8 +117,18 @@ describe('TokenList', () => {
       api.list.mockResolvedValue({ data: [{ ...LAPTOP, lastUsedIp: '203.0.113.7' }, LAPTOP] })
       await mountList()
 
-      expect(rows(wrapper)[0].find('[data-test="last-used-ip"]').text()).toBe('from 203.0.113.7')
+      expect(rows(wrapper)[0].find('[data-test="last-used-address"]').text()).toBe('203.0.113.7')
       expect(rows(wrapper)[1].find('[data-test="last-used-ip"]').exists(), 'no address, no label').toBe(false)
+    })
+
+    it('cuts a long IPv6 address with an ellipsis and keeps the full one in a tooltip', async () => {
+      const address = '2001:9e8:482f:fd00:7dab:f6f:9476:345c'
+      api.list.mockResolvedValue({ data: [{ ...LAPTOP, lastUsedIp: address }] })
+      await mountList()
+
+      const element = rows(wrapper)[0].find('[data-test="last-used-address"]')
+      expect(element.attributes('title')).toBe(address)
+      expect(element.classes(), 'truncated, not wrapped into the next column').toEqual(expect.arrayContaining(['truncate', 'min-w-0', 'font-mono']))
     })
 
     it('says Never for a token that does not expire and Never used for one that was not used', async () => {
