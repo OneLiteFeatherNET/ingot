@@ -19,7 +19,6 @@ package com.reposilite.shared
 import com.reposilite.journalist.Logger
 import com.reposilite.shared.extensions.uri
 import com.reposilite.token.AccessTokenFacade
-import com.reposilite.token.AccessTokenPermission.MANAGER
 import net.onelitefeather.ingot.identity.model.Action
 import com.reposilite.token.api.AccessTokenDto
 import io.javalin.http.Context
@@ -81,11 +80,12 @@ class ContextDsl<R>(
     }
 
     /**
-     * Request was created with manager access token
+     * Request was created by a principal that may administer [area], through the node `ingot.admin.<area>`. Without an
+     * area the instance admin is required. Every admin endpoint names its area through [requireArea].
      */
     fun managerOnly(area: String? = null, block: AccessTokenDto.() -> Unit) {
         authenticated {
-            (if (area == null) isManager() else isAdminArea(area))
+            requireArea(area)
                 .peek { block(this) }
                 .onError { response = it.asError() }
         }
@@ -104,7 +104,7 @@ class ContextDsl<R>(
         ctx.bodyAsClass(T::class.java)
 
     private fun isAuthorized(to: String): Result<Unit, ErrorResponse> =
-        isManager()
+        requireArea(null)
             .flatMapErr { _ ->
                 authenticationResult.value
                     .filter(
@@ -114,22 +114,20 @@ class ContextDsl<R>(
                     .mapToUnit()
             }
 
-    /** Whether the token may administer [area], through the node ingot.admin.<area>. */
-    fun isAdminArea(area: String): Result<Unit, ErrorResponse> =
+    /**
+     * The one admin check of the HTTP API: the principal may administer [area], the node `ingot.admin.<area>`, or it is an
+     * instance admin when [area] is null. An instance admin is never restricted by an area denial, only by token narrowing.
+     */
+    fun requireArea(area: String?): Result<Unit, ErrorResponse> =
         authenticationResult.value
             .filter(
                 { accessTokenFacade.hasAdminArea(it.identifier, area) },
-                { FORBIDDEN.toErrorResponse("Only instance admins with the $area area can access this endpoint") }
+                { FORBIDDEN.toErrorResponse(if (area == null) "Only instance admins can access this endpoint" else "Only principals with the $area area can access this endpoint") }
             )
             .mapToUnit()
 
-    fun isManager(): Result<Unit, ErrorResponse> =
-        authenticationResult.value
-            .filter(
-                { accessTokenFacade.hasPermission(it.identifier, MANAGER) },
-                { FORBIDDEN.toErrorResponse("Only manager can access this endpoint") }
-            )
-            .mapToUnit()
+    /** Whether the principal is an instance admin, the node ingot.admin.*. Kept for the endpoints not yet on [requireArea]. */
+    fun isManager(): Result<Unit, ErrorResponse> = requireArea(null)
 
     fun getSessionIdentifier(): String =
         authenticationResult.value.fold({ "${it.name}@${ctx.ip()}" }, { ctx.ip() })
