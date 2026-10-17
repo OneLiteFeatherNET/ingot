@@ -19,6 +19,8 @@ import {
   LEGACY_HINT,
   SETTING_TYPE_OPTIONS,
   TYPE_FILTERS,
+  blankEntriesNotice,
+  blankEntriesRemovedBy,
   filterByType,
   hiddenFormFields,
   isRemoteUrl,
@@ -319,5 +321,64 @@ describe('the editor of a repository type', () => {
   it('reads an address as a remote, and nothing else', () => {
     expect(isRemoteUrl('https://repo.example.net/maven')).toBe(true)
     expect(isRemoteUrl('releases')).toBe(false)
+  })
+})
+
+describe('blank entries of a repository', () => {
+  const withBlanks = (type, proxied) => ({ id: 'all', visibility: 'PUBLIC', type, proxied })
+
+  it('removes the blank entries of a repository that gets a typed group, and keeps the order of the others', () => {
+    const entry = withBlanks(undefined, [{ reference: 'releases' }, { reference: '' }, { reference: '   ' }, { reference: 'snapshots' }])
+
+    expect(switchedEntry(entry, 'GROUP')).toEqual({
+      id: 'all',
+      visibility: 'PUBLIC',
+      type: 'GROUP',
+      proxied: [{ reference: 'releases' }, { reference: 'snapshots' }]
+    })
+  })
+
+  it('removes the blank entries of a repository that gets a typed proxy', () => {
+    const entry = withBlanks(undefined, [{ reference: 'https://repo.example.net/maven' }, { reference: '' }])
+
+    expect(switchedEntry(entry, 'PROXY').proxied).toEqual([{ reference: 'https://repo.example.net/maven' }])
+  })
+
+  it('treats a lone slash as blank, as the server does', () => {
+    const entry = withBlanks('GROUP', [{ reference: 'releases' }, { reference: '/' }])
+
+    expect(blankEntriesRemovedBy(entry, 'GROUP')).toBe(1)
+  })
+
+  it('keeps the blank entries of a repository that gets no type, so untyped data is not rewritten', () => {
+    const entry = withBlanks('GROUP', [{ reference: 'releases' }, { reference: '' }])
+
+    expect(switchedEntry(entry, '').proxied).toEqual([{ reference: 'releases' }, { reference: '' }])
+  })
+
+  it('counts the blank entries a typed target would drop, and none for an untyped target', () => {
+    const entry = withBlanks(undefined, [{ reference: '' }, { reference: 'releases' }, { reference: ' ' }])
+
+    expect(blankEntriesRemovedBy(entry, 'GROUP')).toBe(2)
+    expect(blankEntriesRemovedBy(entry, 'PROXY')).toBe(2)
+    expect(blankEntriesRemovedBy(entry, '')).toBe(0)
+  })
+
+  it('counts nothing for an entry without a mirrored list', () => {
+    expect(blankEntriesRemovedBy({ id: 'releases', type: 'HOSTED' }, 'GROUP')).toBe(0)
+  })
+
+  it('says how many empty entries a switch removes, in the singular and the plural', () => {
+    expect(blankEntriesNotice(0)).toBe('')
+    expect(blankEntriesNotice(1)).toBe('1 empty entry will be removed.')
+    expect(blankEntriesNotice(2)).toBe('2 empty entries will be removed.')
+  })
+
+  it('does not count a blank entry as a violation of a group, because the save drops it', () => {
+    expect(violationsOf(withBlanks('GROUP', [{ reference: 'releases' }, { reference: '' }]), { otherIds: ['releases'] })).toEqual([])
+  })
+
+  it('does not count a blank entry as a violation of a proxy', () => {
+    expect(violationsOf(withBlanks('PROXY', [{ reference: 'https://repo.example.net/maven' }, { reference: '' }]))).toEqual([])
   })
 })

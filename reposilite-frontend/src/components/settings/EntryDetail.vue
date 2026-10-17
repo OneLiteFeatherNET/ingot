@@ -28,6 +28,8 @@ import { entryLayout, idText, validateNewId } from './collections'
 import { membersOf, proxiedOfMembers } from './groupMembers'
 import {
   SETTING_TYPE_OPTIONS,
+  blankEntriesNotice,
+  blankEntriesRemovedBy,
   hiddenFormFields,
   removalsFor,
   switchedEntry,
@@ -157,7 +159,12 @@ const pendingRemovals = computed(() => (pendingType.value === null
 const pendingWarnings = computed(() => (pendingType.value === null
   ? []
   : warningsFor(latest.value, typeValue.value, pendingType.value)))
-const confirmLabel = computed(() => (pendingRemovals.value.length > 0 ? 'Switch and remove' : 'Switch'))
+// Empty mirrored entries are dropped by a typed repository, so the switch names them as removals too.
+const pendingBlanks = computed(() => (pendingType.value === null
+  ? 0
+  : blankEntriesRemovedBy(latest.value, pendingType.value)))
+const pendingRemoves = computed(() => pendingRemovals.value.length > 0 || pendingBlanks.value > 0)
+const confirmLabel = computed(() => (pendingRemoves.value ? 'Switch and remove' : 'Switch'))
 
 const applyType = (type) => {
   const next = switchedEntry(latest.value, type)
@@ -170,7 +177,9 @@ const applyType = (type) => {
 // A switch that removes or leaves behind a setting is asked about first, and names it. Nothing is deleted silently.
 const requestType = (type) => {
   if (type === typeValue.value) return
-  if (removalsFor(latest.value, typeValue.value, type).length === 0 && warningsFor(latest.value, typeValue.value, type).length === 0) {
+  if (removalsFor(latest.value, typeValue.value, type).length === 0
+    && warningsFor(latest.value, typeValue.value, type).length === 0
+    && blankEntriesRemovedBy(latest.value, type) === 0) {
     applyType(type)
     return
   }
@@ -328,7 +337,7 @@ const formLayout = computed(() => {
           id="entry-type-removals-title"
           class="md-title-small text-on-surface"
         >
-          Switching to {{ typeLabelOf(pendingType).toLowerCase() }}{{ pendingRemovals.length > 0 ? ' removes' : '' }}
+          Switching to {{ typeLabelOf(pendingType).toLowerCase() }}{{ pendingRemoves ? ' removes' : '' }}
         </h5>
         <ul
           v-if="pendingRemovals.length > 0"
@@ -341,6 +350,13 @@ const formLayout = computed(() => {
             {{ item.label }}
           </li>
         </ul>
+        <p
+          v-if="pendingBlanks > 0"
+          data-test="type-blank-entries"
+          class="md-body-medium text-on-surface"
+        >
+          {{ blankEntriesNotice(pendingBlanks) }}
+        </p>
         <p
           v-for="warning in pendingWarnings"
           :key="warning"

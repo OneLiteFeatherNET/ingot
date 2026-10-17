@@ -37,11 +37,20 @@ const show = (tone) => (message, options = {}) =>
  * was refused or the host was unreachable, the user was told nothing at all. That is the
  * most common failure there is, and it was the one case with no message.
  */
-const errorMessage = (error) =>
+const errorMessage = (error) => withoutExceptionName(
   error?.response?.data?.message ||
   (error?.response?.status ? `Request failed with status ${error.response.status}` : null) ||
   error?.message ||
   `${error}`
+)
+
+/*
+ * A Java failure reaches the dashboard as "java.lang.IllegalArgumentException: text", and the class name is no part of
+ * what the user needs to read. Only the qualified name at the start is removed, so the text itself is kept as written.
+ */
+const JAVA_EXCEPTION_NAME = /^(?:[a-z_$][\w$]*\.)+[A-Z][\w$]*:\s*/
+
+const withoutExceptionName = (text) => String(text).replace(JAVA_EXCEPTION_NAME, '')
 
 const createInfoToast = show('info')
 
