@@ -21,7 +21,6 @@ import com.reposilite.auth.api.Credentials
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.unauthorizedError
 import com.reposilite.token.AccessTokenFacade
-import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.api.AccessTokenDto
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import panda.std.Result
@@ -40,7 +39,7 @@ internal class ConsoleAuthenticator(
 
     fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
         authenticationFacade.authenticateByCredentials(credentials)
-            .flatMap { requireInstanceAdmin(it, credentials.ip) }
+            .flatMap { requireConsoleArea(it, credentials.ip) }
 
     /** A session token from a browser login. Fails like a wrong secret when the session is not valid or has no user. */
     fun authenticateSession(sessionJwt: String, ip: String): Result<AccessTokenDto, ErrorResponse> {
@@ -48,14 +47,19 @@ internal class ConsoleAuthenticator(
             ?: return unauthorizedError("Invalid or expired session")
         val identity = accessTokenFacade.getAccessTokenById(identifier)
             ?: return unauthorizedError("Invalid or expired session")
-        return requireInstanceAdmin(identity, ip)
+        return requireConsoleArea(identity, ip)
     }
 
-    private fun requireInstanceAdmin(identity: AccessTokenDto, ip: String): Result<AccessTokenDto, ErrorResponse> =
-        if (accessTokenFacade.hasPermission(identity.identifier, MANAGER)) {
+    /** The console is open to the principals that may administer the console area, the node `ingot.admin.console`. */
+    private fun requireConsoleArea(identity: AccessTokenDto, ip: String): Result<AccessTokenDto, ErrorResponse> =
+        if (accessTokenFacade.hasAdminArea(identity.identifier, CONSOLE_AREA)) {
             identity.asSuccess()
         } else {
-            unauthorizedError("Unauthorized CLI access request from $ip")
+            unauthorizedError("Unauthorized CLI access request from $ip (the principal has no console area)")
         }
+
+    private companion object {
+        private const val CONSOLE_AREA = "console"
+    }
 
 }

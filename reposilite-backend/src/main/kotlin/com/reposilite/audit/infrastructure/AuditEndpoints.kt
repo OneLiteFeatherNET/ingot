@@ -43,11 +43,11 @@ internal class AuditEndpoints(private val auditFacade: AuditFacade) : Reposilite
         responses = [
             OpenApiResponse("200", description = "A page of events and the cursor of the next page, or null on the last page"),
             OpenApiResponse("400", description = "A filter, limit or cursor is not valid"),
-            OpenApiResponse("401", description = "Token without manager permission has been used")
+            OpenApiResponse("403", description = "Token without the audit area (ingot.admin.audit) has been used")
         ]
     )
     val findAuditEvents = ReposiliteRoute<AuditPageDto>("/api/audit", GET) {
-        managerOnly {
+        managerOnly("audit") {
             response = AuditQueryParser.parse { ctx.queryParams(it) }
                 .mapErr { badRequest(it) }
                 .map { query -> auditFacade.find(query).let { page -> AuditPageDto(page.records.map { it.toDto() }, page.nextCursor) } }
@@ -62,11 +62,11 @@ internal class AuditEndpoints(private val auditFacade: AuditFacade) : Reposilite
         responses = [
             OpenApiResponse("200", description = "The matching events as text/csv"),
             OpenApiResponse("400", description = "A filter is not valid"),
-            OpenApiResponse("401", description = "Token without manager permission has been used")
+            OpenApiResponse("403", description = "Token without the audit area (ingot.admin.audit) has been used")
         ]
     )
     val exportAuditEvents = ReposiliteRoute<InputStream>("/api/audit/export", GET) {
-        managerOnly {
+        managerOnly("audit") {
             response = AuditQueryParser.parse { ctx.queryParams(it) }
                 .mapErr { badRequest(it) }
                 .map { query ->

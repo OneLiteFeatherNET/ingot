@@ -45,11 +45,11 @@ internal class MavenStorageEndpoints(private val mavenFacade: MavenFacade) : Rep
             "The quota is reported as configured, and quotaBytes is its size in bytes when that is known.",
         responses = [
             OpenApiResponse(status = "200", content = [OpenApiContent(from = StorageUsageResponse::class)]),
-            OpenApiResponse(status = "403", description = "Only manager can access this endpoint"),
+            OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
         ]
     )
     private val getStorageUsage = ReposiliteRoute<StorageUsageResponse>("/api/maven/storage", GET) {
-        managerOnly {
+        managerOnly("maintenance") {
             if (mavenFacade.storageUsage().computedAt == null) {
                 mavenFacade.refreshStorageUsage()
             }
@@ -66,11 +66,11 @@ internal class MavenStorageEndpoints(private val mavenFacade: MavenFacade) : Rep
             "A computation that is already running is not started twice.",
         responses = [
             OpenApiResponse(status = "202", content = [OpenApiContent(from = StorageUsageResponse::class)]),
-            OpenApiResponse(status = "403", description = "Only manager can access this endpoint"),
+            OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
         ]
     )
     private val refreshStorageUsage = ReposiliteRoute<StorageUsageResponse>("/api/maven/storage/refresh", POST) {
-        managerOnly {
+        managerOnly("maintenance") {
             mavenFacade.refreshStorageUsage()
             ctx.status(ACCEPTED)
             response = mavenFacade.storageUsage().toResponse().asSuccess()

@@ -19,7 +19,7 @@ import com.reposilite.console.ConsoleFacade
 import com.reposilite.console.MAX_COMMAND_LENGTH
 import com.reposilite.console.api.ExecutionResponse
 import com.reposilite.shared.ErrorResponse
-import com.reposilite.shared.unauthorizedError
+import panda.std.asError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import io.javalin.community.routing.Route
@@ -54,6 +54,11 @@ internal class ConsoleEndpoint(private val consoleFacade: ConsoleFacade) : Repos
                 status = "401",
                 description = "Error message related to the unauthorized access",
                 content = [OpenApiContent(from = ErrorResponse::class)]
+            ),
+            OpenApiResponse(
+                status = "403",
+                description = "Error message when the token has no console area (ingot.admin.console)",
+                content = [OpenApiContent(from = ErrorResponse::class)]
             )
         ]
     )
@@ -61,12 +66,12 @@ internal class ConsoleEndpoint(private val consoleFacade: ConsoleFacade) : Repos
         logger.info("REMOTE EXECUTION $uri from ${ctx.ip()}")
 
         authenticated {
-            isManager()
+            requireArea("console")
                 .peek {
                     logger.info("$name (${ctx.ip()}) requested command: ${ctx.body()}")
                     response = consoleFacade.executeCommand(ctx.body())
                 }
-                .onError { response = unauthorizedError("Authenticated user is not a manager") }
+                .onError { response = it.asError() }
         }
     }
 

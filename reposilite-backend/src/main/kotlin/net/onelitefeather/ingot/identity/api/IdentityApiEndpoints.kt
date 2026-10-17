@@ -46,7 +46,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals",
         tags = ["Identity"],
-        summary = "Lists the principals (users and machine accounts). Note: Requires Manager",
+        summary = "Lists the principals (users and machine accounts). Note: Requires the users area (ingot.admin.users)",
         methods = [HttpMethod.GET],
     )
     val listPrincipals = ReposiliteRoute<Collection<PrincipalSummaryDto>>("/api/identity/principals", GET) {
@@ -58,7 +58,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals",
         tags = ["Identity"],
-        summary = "Creates a principal. Note: Requires Manager",
+        summary = "Creates a principal. Note: Requires the users area (ingot.admin.users)",
         requestBody = OpenApiRequestBody(content = [OpenApiContent(CreatePrincipalRequest::class)], required = true),
         methods = [HttpMethod.POST],
     )
@@ -76,7 +76,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}",
         tags = ["Identity"],
-        summary = "Returns a principal with its teams and tokens (without secrets). Note: Requires Manager",
+        summary = "Returns a principal with its teams and tokens (without secrets). Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.GET],
     )
@@ -93,7 +93,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}",
         tags = ["Identity"],
-        summary = "Updates the display name or the disabled flag of a principal. Note: Requires Manager",
+        summary = "Updates the display name or the disabled flag of a principal. Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(UpdatePrincipalRequest::class)], required = true),
         methods = [HttpMethod.PATCH],
@@ -112,7 +112,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}",
         tags = ["Identity"],
-        summary = "Deletes a principal with its tokens, memberships and instance role. Note: Requires Manager",
+        summary = "Deletes a principal with its tokens, memberships and instance role. Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.DELETE],
     )
@@ -125,7 +125,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/tokens",
         tags = ["Identity"],
-        summary = "Lists the tokens of a principal. Note: Requires Manager",
+        summary = "Lists the tokens of a principal. Note: Requires the tokens area (ingot.admin.tokens)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.GET],
     )
@@ -138,7 +138,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/tokens",
         tags = ["Identity"],
-        summary = "Creates a token for a principal. The secret is returned once. Note: Requires Manager",
+        summary = "Creates a token for a principal. The secret is returned once. Note: Requires the tokens area (ingot.admin.tokens)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(CreateTokenRequest::class)], required = true),
         methods = [HttpMethod.POST],
@@ -153,7 +153,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/tokens/{tokenName}",
         tags = ["Identity"],
-        summary = "Deletes a token of a principal. Note: Requires Manager",
+        summary = "Deletes a token of a principal. Note: Requires the tokens area (ingot.admin.tokens)",
         pathParams = [
             OpenApiParam(name = "name", description = "Name of the principal", required = true),
             OpenApiParam(name = "tokenName", description = "Name of the token", required = true),
@@ -169,7 +169,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams",
         tags = ["Identity"],
-        summary = "Lists the teams with their member and grant counts. Note: Requires Manager",
+        summary = "Lists the teams with their member and grant counts. Note: Requires the teams area (ingot.admin.teams)",
         methods = [HttpMethod.GET],
     )
     val listTeams = ReposiliteRoute<Collection<TeamDto>>("/api/identity/teams", GET) {
@@ -181,7 +181,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams",
         tags = ["Identity"],
-        summary = "Creates a team. Note: Requires Manager",
+        summary = "Creates a team. Note: Requires the teams area (ingot.admin.teams)",
         requestBody = OpenApiRequestBody(content = [OpenApiContent(CreateTeamRequest::class)], required = true),
         methods = [HttpMethod.POST],
     )
@@ -199,7 +199,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}",
         tags = ["Identity"],
-        summary = "Returns a team with its members and grants. Note: Requires Manager",
+        summary = "Returns a team with its members and grants. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.GET],
     )
@@ -216,7 +216,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}",
         tags = ["Identity"],
-        summary = "Updates the description or the external reference of a team. Note: Requires Manager",
+        summary = "Updates the description or the external reference of a team. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(UpdateTeamRequest::class)], required = true),
         methods = [HttpMethod.PATCH],
@@ -235,7 +235,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}",
         tags = ["Identity"],
-        summary = "Deletes a team with its memberships and grants. Note: Requires Manager",
+        summary = "Deletes a team with its memberships and grants. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.DELETE],
     )
@@ -248,7 +248,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/members",
         tags = ["Identity"],
-        summary = "Replaces the manual members of a team. Synchronised members are kept. Note: Requires Manager",
+        summary = "Replaces the manual members of a team. Synchronised members are kept. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceMembersRequest::class)], required = true),
         methods = [HttpMethod.PUT],
@@ -267,7 +267,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/grants",
         tags = ["Identity"],
-        summary = "Replaces all grants of a team. Roles: READ, DEPLOY, MAINTAIN, ADMIN. Note: Requires Manager",
+        summary = "Replaces all grants of a team. Roles: READ, DEPLOY, MAINTAIN, ADMIN. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceGrantsRequest::class)], required = true),
         methods = [HttpMethod.PUT],
@@ -286,7 +286,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Grants the instance role to a principal. Granting it again changes nothing. Note: Requires Manager",
+        summary = "Grants the instance role to a principal. Granting it again changes nothing. Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.PUT],
     )
@@ -303,7 +303,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires Manager",
+        summary = "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.DELETE],
     )
@@ -320,7 +320,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Grants the instance role to a team: its members with a valid token become instance admins. Note: Requires Manager",
+        summary = "Grants the instance role to a team: its members with a valid token become instance admins. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.PUT],
     )
@@ -337,7 +337,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires Manager",
+        summary = "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.DELETE],
     )
@@ -354,12 +354,12 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/repositories/{repository}/access",
         tags = ["Identity"],
-        summary = "Explains who has which access on a repository, and why. Note: Requires Manager",
+        summary = "Explains who has which access on a repository, and why. Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "repository", description = "Name of the repository", required = true)],
         methods = [HttpMethod.GET],
     )
     val repositoryAccess = ReposiliteRoute<RepositoryAccessDto>("/api/identity/repositories/{repository}/access", GET) {
-        managerOnly {
+        managerOnly("users") {
             response = identity.repositoryAccess(requireParameter("repository"))
         }
     }
@@ -367,7 +367,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/nodes",
         tags = ["Identity"],
-        summary = "Returns the permission nodes of a principal, with its entity tag. Note: Requires Manager",
+        summary = "Returns the permission nodes of a principal, with its entity tag. Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.GET],
     )
@@ -384,7 +384,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/nodes",
         tags = ["Identity"],
-        summary = "Replaces the whole permission node list of a principal. Note: Requires Manager",
+        summary = "Replaces the whole permission node list of a principal. Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceNodesRequest::class)], required = true),
         methods = [HttpMethod.PUT],
@@ -403,7 +403,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/nodes",
         tags = ["Identity"],
-        summary = "Returns the permission nodes of a team, with its entity tag. Note: Requires Manager",
+        summary = "Returns the permission nodes of a team, with its entity tag. Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.GET],
     )
@@ -420,7 +420,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/nodes",
         tags = ["Identity"],
-        summary = "Replaces the whole permission node list of a team. Note: Requires Manager",
+        summary = "Replaces the whole permission node list of a team. Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceNodesRequest::class)], required = true),
         methods = [HttpMethod.PUT],
@@ -439,7 +439,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/parents",
         tags = ["Identity"],
-        summary = "Returns the parent teams of a team, with its entity tag. Note: Requires Manager",
+        summary = "Returns the parent teams of a team, with its entity tag. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.GET],
     )
@@ -456,7 +456,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/parents",
         tags = ["Identity"],
-        summary = "Replaces the parent teams of a team. A cycle or a depth above 8 levels is refused with 409. Note: Requires Manager",
+        summary = "Replaces the parent teams of a team. A cycle or a depth above 8 levels is refused with 409. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceParentsRequest::class)], required = true),
         methods = [HttpMethod.PUT],
@@ -475,7 +475,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/nodes/catalog",
         tags = ["Identity"],
-        summary = "Lists the permission nodes an operator can pick, optionally by prefix. Note: Requires Manager",
+        summary = "Lists the permission nodes an operator can pick, optionally by prefix. Note: Requires the instance admin (ingot.admin.*)",
         methods = [HttpMethod.GET],
     )
     val nodeCatalog = ReposiliteRoute<CatalogDto>("/api/identity/nodes/catalog", GET) {
@@ -487,7 +487,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/nodes/templates",
         tags = ["Identity"],
-        summary = "Lists the predefined node bundles of the user interface. Note: Requires Manager",
+        summary = "Lists the predefined node bundles of the user interface. Note: Requires the instance admin (ingot.admin.*)",
         methods = [HttpMethod.GET],
     )
     val nodeTemplates = ReposiliteRoute<TemplatesDto>("/api/identity/nodes/templates", GET) {

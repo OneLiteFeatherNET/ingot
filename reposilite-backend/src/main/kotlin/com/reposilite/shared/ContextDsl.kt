@@ -126,9 +126,6 @@ class ContextDsl<R>(
             )
             .mapToUnit()
 
-    /** Whether the principal is an instance admin, the node ingot.admin.*. Kept for the endpoints not yet on [requireArea]. */
-    fun isManager(): Result<Unit, ErrorResponse> = requireArea(null)
-
     fun getSessionIdentifier(): String =
         authenticationResult.value.fold({ "${it.name}@${ctx.ip()}" }, { ctx.ip() })
 

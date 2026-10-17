@@ -54,11 +54,11 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     @OpenApi(
         path = "/api/tokens",
         tags = ["Tokens"],
-        summary = "Returns all existing tokens and data such as their permissions. Note: Requires Manager",
+        summary = "Returns all existing tokens and data such as their permissions. Note: Requires the tokens area (ingot.admin.tokens)",
         methods = [HttpMethod.GET]
     )
     val findAllTokens = ReposiliteRoute<Collection<AccessTokenDetailsDto>>("/api/tokens", GET) {
-        managerOnly {
+        managerOnly("tokens") {
             response = ok(accessTokenFacade.getAccessTokensDetails())
         }
     }
@@ -73,7 +73,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     val findToken = ReposiliteRoute<AccessTokenDetailsDto>("/api/tokens/{name}", GET) {
         authenticated {
             response = accessTokenFacade.getAccessTokenSnapshot(requireParameter("name"))
-                ?.takeIf { isManager().isOk || name == it.value.name }
+                ?.takeIf { requireArea("tokens").isOk || name == it.value.name }
                 ?.let { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -96,7 +96,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
         methods = [HttpMethod.PUT]
     )
     val upsertToken = ReposiliteRoute<CreateAccessTokenResponse>("/api/tokens/{name}", PUT) {
-        managerOnly {
+        managerOnly("tokens") {
             response = supplyThrowing { ctx.bodyAsClass<CreateAccessTokenWithNoNameRequest>() }
                 .mapErr { badRequest("Failed to read body") }
                 .filter({ request -> request.permissions.all { AccessTokenPermission.findByAny(it) != null } }) { unknownPermissionError() }
@@ -129,7 +129,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     @OpenApi(
         path = "/api/tokens/{name}",
         tags = ["Tokens"],
-        summary = "Updates token metadata (description, permissions, routes, expiry) without regenerating the secret. Note: Requires Manager",
+        summary = "Updates token metadata (description, permissions, routes, expiry) without regenerating the secret. Note: Requires the tokens area (ingot.admin.tokens)",
         requestBody = OpenApiRequestBody(
             content = [OpenApiContent(UpdateAccessTokenWithNoNameRequest::class)],
             required = true,
@@ -139,7 +139,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
         methods = [HttpMethod.PATCH]
     )
     val patchToken = ReposiliteRoute<AccessTokenDetailsDto>("/api/tokens/{name}", PATCH) {
-        managerOnly {
+        managerOnly("tokens") {
             response = supplyThrowing { ctx.bodyAsClass<UpdateAccessTokenWithNoNameRequest>() to ctx.bodyAsClass<JsonNode>().has("expiresAt") }
                 .mapErr { badRequest("Failed to read body") }
                 .filter({ (request, _) -> request.permissions.orEmpty().all { AccessTokenPermission.findByAny(it) != null } }) {
@@ -172,12 +172,12 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     @OpenApi(
         path = "/api/tokens/{name}/secret",
         tags = ["Tokens"],
-        summary = "Regenerates and returns a new secret for the token, invalidating the previous one. Note: Requires Manager",
+        summary = "Regenerates and returns a new secret for the token, invalidating the previous one. Note: Requires the tokens area (ingot.admin.tokens)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the token whose secret is regenerated", required = true)],
         methods = [HttpMethod.POST]
     )
     val regenerateSecret = ReposiliteRoute<String>("/api/tokens/{name}/secret", POST) {
-        managerOnly {
+        managerOnly("tokens") {
             response = accessTokenFacade.getAccessToken(requireParameter("name"))
                 ?.let { accessTokenFacade.regenerateAccessToken(it, secret = null, actor = auditActor()) }
                 ?: notFoundError("Token not found")
@@ -187,12 +187,12 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     @OpenApi(
         path = "/api/tokens/{name}",
         tags = ["Tokens"],
-        summary = "Deletes the token specified via it's name. Note: Requires Manager",
+        summary = "Deletes the token specified via it's name. Note: Requires the tokens area (ingot.admin.tokens)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the token to be deleted", required = true)],
         methods = [HttpMethod.DELETE]
     )
     val deleteToken = ReposiliteRoute<Unit>("/api/tokens/{name}", DELETE) {
-        managerOnly {
+        managerOnly("tokens") {
             response = accessTokenFacade.getAccessToken(requireParameter("name"))
                 ?.let { accessTokenFacade.deleteToken(it.identifier, actor = auditActor()) }
                 ?: notFoundError("Token not found")

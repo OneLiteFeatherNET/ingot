@@ -48,7 +48,7 @@ internal class StatusEndpoints(
         ]
     )
     private val getInstanceStatus = ReposiliteRoute<InstanceStatusResponse>("/api/status/instance", GET) {
-        managerOnly {
+        managerOnly("dashboard") {
             response = statusFacade.fetchInstanceStatus().asSuccess()
         }
     }
@@ -61,7 +61,7 @@ internal class StatusEndpoints(
         ]
     )
     private val getStatusSnapshots = ReposiliteRoute<Array<StatusSnapshot>>("/api/status/snapshots", GET) {
-        managerOnly {
+        managerOnly("dashboard") {
             response = statusFacade.getLatestStatusSnapshots().asSuccess()
         }
     }
@@ -76,7 +76,7 @@ internal class StatusEndpoints(
         ]
     )
     private val listFailures = ReposiliteRoute<FailuresResponse>("/api/status/failures", GET) {
-        managerOnly {
+        managerOnly("dashboard") {
             response = FailuresResponse(
                 failures = failureFacade.getFailureRecords().map { record ->
                     FailureResponse(
@@ -103,7 +103,7 @@ internal class StatusEndpoints(
         ]
     )
     private val clearFailures = ReposiliteRoute<Unit>("/api/status/failures", DELETE) {
-        managerOnly {
+        managerOnly("dashboard") {
             failureFacade.clearFailures()
             response = Unit.asSuccess()
         }
