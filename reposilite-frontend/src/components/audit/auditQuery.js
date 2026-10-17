@@ -50,6 +50,7 @@ export const ACTION_LABELS = {
   TEAM_DELETED: 'Team deleted',
   TEAM_MEMBERSHIP_CHANGED: 'Team members changed',
   TEAM_GRANTS_CHANGED: 'Team grants changed',
+  NODES_CHANGED: 'Permission nodes changed',
   INSTANCE_ADMIN_GRANTED: 'Instance admin granted',
   INSTANCE_ADMIN_REVOKED: 'Instance admin revoked',
   LAST_ADMIN_REVOKED_BY_PROVIDER: 'Last admin revoked by provider',
@@ -63,6 +64,7 @@ export const ACTION_GROUPS = [
   { key: 'accounts', label: 'Accounts', actions: ['PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED'] },
   { key: 'teams', label: 'Teams', actions: ['TEAM_CREATED', 'TEAM_UPDATED', 'TEAM_DELETED', 'TEAM_MEMBERSHIP_CHANGED', 'TEAM_GRANTS_CHANGED'] },
   { key: 'instance-admin', label: 'Instance admin', actions: ['INSTANCE_ADMIN_GRANTED', 'INSTANCE_ADMIN_REVOKED'] },
+  { key: 'nodes', label: 'Permission nodes', actions: ['NODES_CHANGED'] },
   {
     key: 'sessions',
     label: 'Sessions and passwords',
