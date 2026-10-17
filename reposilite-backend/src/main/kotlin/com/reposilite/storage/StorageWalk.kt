@@ -40,17 +40,34 @@ data class StoredFile(
  *
  * Each directory is read once through [StorageProvider.getFileDetails], which works the same way for the
  * file system and for object storage. A directory that cannot be read is skipped, so one broken entry does
- * not fail the whole walk. The result is not sorted.
+ * not fail the whole walk, but it is never skipped silently: [onUnreadable] receives its path (empty for the
+ * root) and the reason, which is the error of the listing, the actual type when it is not a directory, or an
+ * invalid path. The result is not sorted.
  */
-fun StorageProvider.walkFiles(): List<StoredFile> {
+fun StorageProvider.walkFiles(onUnreadable: (path: String, reason: String) -> Unit = { _, _ -> }): List<StoredFile> {
     val files = mutableListOf<StoredFile>()
-    visitDirectory(path = "", files = files)
+    visitDirectory(path = "", files = files, onUnreadable = onUnreadable)
     return files
 }
 
-private fun StorageProvider.visitDirectory(path: String, files: MutableList<StoredFile>) {
-    val location = if (path.isEmpty()) Location.empty() else runCatching { Location.of(path) }.getOrNull() ?: return
-    val directory = getFileDetails(location).orNull() as? DirectoryInfo ?: return
+private fun StorageProvider.visitDirectory(
+    path: String,
+    files: MutableList<StoredFile>,
+    onUnreadable: (path: String, reason: String) -> Unit,
+) {
+    val location = if (path.isEmpty()) {
+        Location.empty()
+    } else {
+        runCatching { Location.of(path) }.getOrNull() ?: return onUnreadable(path, "invalid path")
+    }
+
+    val details = getFileDetails(location)
+    if (details.isErr) {
+        return onUnreadable(path, details.error.message)
+    }
+
+    val directory = details.get() as? DirectoryInfo
+        ?: return onUnreadable(path, "not a directory: ${details.get()::class.java.simpleName}")
 
     directory.files.forEach { entry ->
         val childPath = if (path.isEmpty()) entry.name else "$path/${entry.name}"
@@ -60,7 +77,7 @@ private fun StorageProvider.visitDirectory(path: String, files: MutableList<Stor
                 sizeBytes = entry.contentLength.coerceAtLeast(0),
                 lastModified = entry.lastModifiedTime,
             )
-            is AbstractDirectoryInfo -> visitDirectory(childPath, files)
+            is AbstractDirectoryInfo -> visitDirectory(childPath, files, onUnreadable)
         }
     }
 }

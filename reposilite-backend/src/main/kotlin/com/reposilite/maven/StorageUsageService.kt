@@ -118,7 +118,11 @@ internal class StorageUsageService(
     }
 
     private fun measure(target: StorageTarget): RepositoryStorageUsage {
-        val files = runCatching { target.storage.walkFiles() }
+        val files = runCatching {
+            target.storage.walkFiles { path, reason ->
+                journalist.logger.warn("STORAGE | Cannot read ${target.id} at '${path.ifEmpty { "/" }}': $reason")
+            }
+        }
             .onFailure { journalist.logger.warn("STORAGE | Cannot measure usage of ${target.id}: ${it.message}") }
             .getOrElse { emptyList() }
 
