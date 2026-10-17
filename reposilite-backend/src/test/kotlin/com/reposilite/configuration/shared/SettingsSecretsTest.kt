@@ -318,4 +318,81 @@ internal class SettingsSecretsTest {
         assertThat(redacted).doesNotContain("ldap-secret")
     }
 
+    @Test
+    fun `should keep the stored credential of a matched mirror that the body leaves out`() {
+        // given: a stored mirror with a credential, and an incoming entry for the same reference without it
+        val stored = maven(repository("releases", proxied = listOf(mirror("https://a.example.test/", "a-secret"))))
+        val incoming = maven(repository("releases", proxied = listOf(MirroredRepositorySettings(reference = "https://a.example.test/"))))
+        (incoming.entry(0).get("proxied").get(0) as ObjectNode).remove("authorization")
+
+        // when: the incoming document is restored
+        val restored = SettingsSecrets.restore(MavenSettings::class.java, incoming, stored).get()
+
+        // then: the credential is the stored one, and the other settings are the incoming ones
+        val mirror = restored.entry(0).get("proxied").get(0)
+        assertThat(mirror.get("authorization").get("password").textValue()).isEqualTo("a-secret")
+    }
+
+    @Test
+    fun `should remove the stored credential of a mirror when null is sent for it`() {
+        // given: a stored mirror with a credential, and an incoming entry that sends null for it
+        val stored = maven(repository("releases", proxied = listOf(mirror("https://a.example.test/", "a-secret"))))
+        val incoming = DEFAULT_OBJECT_MAPPER.valueToTree<ObjectNode>(
+            MavenSettings(repositories = listOf(repository("releases", proxied = listOf(mirror("https://a.example.test/", "x")))))
+        )
+        (incoming.entry(0).get("proxied").get(0) as ObjectNode).putNull("authorization")
+
+        // when: the incoming document is restored
+        val restored = SettingsSecrets.restore(MavenSettings::class.java, incoming, stored).get()
+
+        // then: the credential is removed, because the null was sent on purpose
+        assertThat(restored.entry(0).get("proxied").get(0).get("authorization").isNull).isTrue
+    }
+
+    @Test
+    fun `should not restore an absent list of mirrors, so a removed list stays removed`() {
+        // given: a stored repository with mirrors, and an incoming entry without a proxied list
+        val stored = maven(repository("releases", proxied = listOf(mirror("https://a.example.test/", "a-secret"))))
+        val incoming = maven(repository("releases"))
+        (incoming.entry(0) as ObjectNode).remove("proxied")
+
+        // when: the incoming document is restored
+        val restored = SettingsSecrets.restore(MavenSettings::class.java, incoming, stored).get()
+
+        // then: the list is not brought back from the stored entry
+        assertThat(restored.entry(0).has("proxied")).isFalse
+    }
+
+    @Test
+    fun `should refuse to keep a credential when several stored entries share the reference`() {
+        // given: two stored mirrors of the same reference, each with its own credential, and an incoming entry without credentials
+        val stored = maven(
+            repository(
+                "releases",
+                proxied = listOf(mirror("https://a.example.test/", "first-secret"), mirror("https://a.example.test/", "second-secret"))
+            )
+        )
+        val incoming = maven(repository("releases", proxied = listOf(MirroredRepositorySettings(reference = "https://a.example.test/"))))
+        (incoming.entry(0).get("proxied").get(0) as ObjectNode).remove("authorization")
+
+        // when: the incoming document is restored
+        val result = SettingsSecrets.restore(MavenSettings::class.java, incoming, stored)
+
+        // then: no credential is guessed for the entry
+        assertThat(result.isErr).describedAs("a credential must not be taken from one of two entries that share the reference").isTrue
+    }
+
+    @Test
+    fun `should keep a placeholder as the literal value when secrets are not hidden`() {
+        // given: a stored secret and an incoming document that carries the placeholder as a literal password
+        val stored = maven(repository("releases", proxied = listOf(mirror("https://a.example.test/", "a-secret"))))
+        val incoming = maven(repository("releases", proxied = listOf(mirror("https://a.example.test/", placeholder))))
+
+        // when: the incoming document is restored without the placeholder rule
+        val restored = SettingsSecrets.restore(MavenSettings::class.java, incoming, stored, placeholders = false).get()
+
+        // then: the literal value is written, as the document of an instance that shows secrets always has been
+        assertThat(restored.entry(0).get("proxied").get(0).get("authorization").get("password").textValue()).isEqualTo(placeholder)
+    }
+
 }
