@@ -42,6 +42,27 @@ internal class MirrorCacheServiceTest {
     }
 
     @Test
+    fun `should report a dropped record when a deployment forgets a cached directory`() {
+        // given: a cached copy of a version directory
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false)
+
+        // when: the directory is forgotten, as a deployment into it does
+        val dropped = cache.forgetVersion("central", "org/mirror/lib/2.0")
+
+        // then: the drop is reported, so the index reorigins the directory
+        assertThat(dropped).`as`("a record was dropped").isTrue()
+    }
+
+    @Test
+    fun `should report no dropped record when the directory was not cached`() {
+        // when: a directory without a record is forgotten
+        val dropped = cache.forgetVersion("central", "org/mirror/lib/2.0")
+
+        // then: nothing was dropped
+        assertThat(dropped).`as`("a record was dropped").isFalse()
+    }
+
+    @Test
     fun `should not record a directory that already holds hosted artifacts`() {
         // when: a mirror stores a file into a directory that holds deployed artifacts
         cache.recordStored("mixed", "com/example/app/1.0", holdsHostedArtifacts = true)
@@ -135,6 +156,37 @@ internal class MirrorCacheServiceTest {
 
         // then: the other repository has no records
         assertThat(cache.cachedVersions("releases")).isEmpty()
+    }
+
+    @Test
+    fun `should record the upstream host the copy was fetched from`() {
+        // when: a copy is stored from a mirror host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false, sourceHost = "mirror.example.org")
+
+        // then: the directory keeps that host
+        assertThat(ledger.sourceHost("central", "org/mirror/lib/2.0")).isEqualTo("mirror.example.org")
+    }
+
+    @Test
+    fun `should keep the upstream host of the first copy when a later copy comes from another host`() {
+        // given: a directory stored from the first host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false, sourceHost = "first.example.org")
+
+        // when: a later file of the same directory is fetched from a second host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false, sourceHost = "second.example.org")
+
+        // then: the directory keeps the first host
+        assertThat(ledger.sourceHost("central", "org/mirror/lib/2.0")).isEqualTo("first.example.org")
+    }
+
+    @Test
+    fun `should record a copy without a host when the upstream host is unknown`() {
+        // when: a copy is stored without a host
+        cache.recordStored("central", "org/mirror/lib/2.0", holdsHostedArtifacts = false)
+
+        // then: the copy is recorded and carries no host
+        assertThat(cache.cachedVersions("central")).containsOnlyKeys("org/mirror/lib/2.0")
+        assertThat(ledger.sourceHost("central", "org/mirror/lib/2.0")).`as`("source host").isNull()
     }
 
     @Test

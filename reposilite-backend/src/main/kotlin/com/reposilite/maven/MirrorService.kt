@@ -16,6 +16,7 @@
 
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.StoragePolicy.PRIORITIZE_UPSTREAM_METADATA
@@ -49,6 +50,7 @@ internal class MirrorService(
     private val clock: Clock,
     private val ioService: ExecutorService,
     private val mirrorCache: MirrorCacheService,
+    private val artifactIndexSink: ArtifactIndexSink,
 ) : Journalist {
 
     private data class FetchKey(
@@ -142,7 +144,7 @@ internal class MirrorService(
                 .get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
                 .flatMap { data ->
                     when {
-                        config.store -> storeFile(repository, gav, data)
+                        config.store -> storeFile(repository, gav, data, host)
                         else -> ok(data)
                     }
                 }
@@ -153,26 +155,29 @@ internal class MirrorService(
         searchInRemoteRepositories(repository, gav, accessToken, hosts) { (host, config, client) ->
             client
                 .get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
-                .flatMap { data -> putMirroredFile(repository, gav, data) }
+                .flatMap { data -> putMirroredFile(repository, gav, data, host) }
                 .mapErr { error -> error.updateMessage { "$host: $it" } }
         }
 
-    private fun storeFile(repository: Repository, gav: Location, data: InputStream): Result<InputStream, ErrorResponse> =
-        putMirroredFile(repository, gav, data)
+    private fun storeFile(repository: Repository, gav: Location, data: InputStream, host: String): Result<InputStream, ErrorResponse> =
+        putMirroredFile(repository, gav, data, host)
             .flatMap { repository.storageProvider.getFile(gav) }
 
     /**
-     * Stores a fetched copy and records that its version directory holds a mirror copy. A directory that already held
-     * deployed artifacts is not recorded, and metadata files never mark a directory.
+     * Stores a fetched copy and records that its version directory holds a mirror copy, together with the upstream
+     * [host] it came from. A directory that already held deployed artifacts is not recorded, and metadata files never
+     * mark a directory.
      */
-    private fun putMirroredFile(repository: Repository, gav: Location, data: InputStream): Result<Unit, ErrorResponse> {
+    private fun putMirroredFile(repository: Repository, gav: Location, data: InputStream, host: String): Result<Unit, ErrorResponse> {
         val directory = gav.getParent()
         val holdsHostedArtifacts = holdsArtifacts(repository, directory)
+        val sourceHost = upstreamSourceHost(host)
         return repository.storageProvider.putFile(gav, data)
             .peek {
                 if (!gav.getSimpleName().isMetadataOrChecksumFileName()) {
-                    mirrorCache.recordStored(repository.name, directory.provenancePath(), holdsHostedArtifacts)
+                    mirrorCache.recordStored(repository.name, directory.provenancePath(), holdsHostedArtifacts, sourceHost)
                 }
+                artifactIndexSink.indexChanged(repository.name, gav)
             }
     }
 

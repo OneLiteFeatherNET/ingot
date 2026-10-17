@@ -40,10 +40,19 @@ const props = defineProps({
   disabled: {
     type: Boolean,
     default: false
+  },
+  // How a filter chip tells assistive technology its state: as a checkbox (aria-checked), or as a
+  // toggle button (aria-pressed), which suits a chip that is one of several choices.
+  toggle: {
+    type: String,
+    default: 'checkbox',
+    validator: (value) => ['checkbox', 'button'].includes(value)
   }
 })
 
 const isFilter = computed(() => props.variant === 'filter')
+const isCheckbox = computed(() => isFilter.value && props.toggle === 'checkbox')
+const isPressable = computed(() => isFilter.value && props.toggle === 'button')
 const tag = computed(() => (props.href && !isFilter.value ? 'a' : 'button'))
 
 const STATE = {
@@ -67,8 +76,9 @@ const stateClass = computed(() => {
     :type="tag === 'button' ? 'button' : undefined"
     :disabled="tag === 'button' ? disabled : undefined"
     :aria-disabled="tag === 'a' && disabled ? 'true' : undefined"
-    :role="isFilter ? 'checkbox' : undefined"
-    :aria-checked="isFilter ? String(selected) : undefined"
+    :role="isCheckbox ? 'checkbox' : undefined"
+    :aria-checked="isCheckbox ? String(selected) : undefined"
+    :aria-pressed="isPressable ? String(selected) : undefined"
     :data-variant="variant"
     :class="[
       'md-state-layer md-focus-ring md-touch-target relative inline-flex h-8 items-center gap-2 rounded-corner-small px-4 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',

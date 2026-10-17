@@ -149,6 +149,11 @@ dependencies {
     }
     implementation("com.google.protobuf:protobuf-java:4.35.0")
 
+    // ComparableVersion orders versions the way Maven does (qualifiers, RC, SNAPSHOT, numeric segments). Apache-2.0.
+    // Its only runtime dependency is plexus-utils; a hand-written ordering gets these rules subtly wrong.
+    val mavenArtifact = "3.9.16"
+    implementation("org.apache.maven:maven-artifact:$mavenArtifact")
+
     val jackson = "2.21.7"
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jackson")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson")

@@ -237,7 +237,7 @@ internal class UpgradeScenario(
 }
 
 /** Settings Ingot may add to configuration.cdn on its own, because they did not exist before the upgrade. */
-private val SETTINGS_ADDED_BY_INGOT = setOf("hideSettingsSecrets")
+private val SETTINGS_ADDED_BY_INGOT = setOf("hideSettingsSecrets", "searchEnabled", "searchEngine")
 
 /**
  * Both products rewrite configuration.cdn on startup, so the header comments differ and that is expected. What must not

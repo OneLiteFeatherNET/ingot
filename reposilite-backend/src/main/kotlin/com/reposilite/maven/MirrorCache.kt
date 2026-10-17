@@ -20,6 +20,8 @@ package com.reposilite.maven
 import com.reposilite.maven.api.Checksum
 import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.storage.api.Location
+import java.net.URI
+import java.net.URISyntaxException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -30,6 +32,9 @@ internal const val MAX_PROVENANCE_PATH_LENGTH = 512
 
 /** The longest repository id the ledger keys. Longer ids are not recorded. */
 internal const val MAX_PROVENANCE_REPOSITORY_LENGTH = 128
+
+/** The longest upstream host name the ledger keeps. Longer names are cut to this length. */
+internal const val MAX_PROVENANCE_HOST_LENGTH = 255
 
 /** The last access of a cached copy is written at most once per this interval and path. */
 internal val MIRROR_CACHE_ACCESS_INTERVAL: Duration = Duration.ofHours(1)
@@ -42,10 +47,19 @@ internal val MIRROR_CACHE_ACCESS_INTERVAL: Duration = Duration.ofHours(1)
  */
 internal interface MirrorCacheLedger {
 
-    /** Adds a row for [path] with [now] as store time and last access, unless the row already exists. */
-    fun insertIfAbsent(repository: String, path: String, now: Instant)
+    /**
+     * Adds a row for [path] with [now] as store time and last access, unless the row already exists. [sourceHost] is
+     * the upstream host name the copy came from, or null when it is unknown. An existing row keeps its host.
+     */
+    fun insertIfAbsent(repository: String, path: String, now: Instant, sourceHost: String? = null)
 
     fun contains(repository: String, path: String): Boolean
+
+    /** The upstream host name that stored [path], or null when there is no row or the row has no host. */
+    fun sourceHost(repository: String, path: String): String?
+
+    /** The upstream host names of the version directories of [repository]. A directory without a host maps to null. */
+    fun sourceHosts(repository: String): Map<String, String?>
 
     /**
      * Moves the last access of an existing row forward to [now]. A [now] older than the stored access leaves the row
@@ -53,8 +67,8 @@ internal interface MirrorCacheLedger {
      */
     fun markAccessed(repository: String, path: String, now: Instant): Boolean
 
-    /** Removes the row of exactly [path]. */
-    fun deleteVersion(repository: String, path: String)
+    /** Removes the row of exactly [path]. Returns true when a row was removed. */
+    fun deleteVersion(repository: String, path: String): Boolean
 
     /** Removes the row of [path] and the rows of every path below it. */
     fun deleteSubtree(repository: String, path: String)
@@ -78,12 +92,13 @@ internal class MirrorCacheService(
 
     /**
      * Called after a mirror stored [versionPath]. A directory that already held deployed artifacts is not marked:
-     * a mirror copy written next to them must not make the deployed files look like copies.
+     * a mirror copy written next to them must not make the deployed files look like copies. [sourceHost] is only
+     * written when the directory gets its row; the first copy decides the host of the directory.
      */
-    fun recordStored(repository: String, versionPath: String, holdsHostedArtifacts: Boolean) {
+    fun recordStored(repository: String, versionPath: String, holdsHostedArtifacts: Boolean, sourceHost: String? = null) {
         if (!isRecordable(repository, versionPath)) return
         if (holdsHostedArtifacts && !ledger.contains(repository, versionPath)) return
-        ledger.insertIfAbsent(repository, versionPath, clock.instant())
+        ledger.insertIfAbsent(repository, versionPath, clock.instant(), sourceHost)
     }
 
     /** Called when a file of [versionPath] is served. Writes the last access unless one was written within the interval. */
@@ -100,10 +115,14 @@ internal class MirrorCacheService(
         }
     }
 
-    /** Called after a deployment into [versionPath]: the directory now holds hosted content and is no longer a copy. */
-    fun forgetVersion(repository: String, versionPath: String) {
-        ledger.deleteVersion(repository, versionPath)
+    /**
+     * Called after a deployment into [versionPath]: the directory now holds hosted content and is no longer a copy.
+     * Returns true when a copy record was dropped, which is the only case in which the index origin of the directory changes.
+     */
+    fun forgetVersion(repository: String, versionPath: String): Boolean {
+        val dropped = ledger.deleteVersion(repository, versionPath)
         lastWritten.remove(repository to versionPath)
+        return dropped
     }
 
     /** Called after [path] was deleted: the records of the path and of everything below it are dropped. */
@@ -121,6 +140,26 @@ internal class MirrorCacheService(
             versionPath.length <= MAX_PROVENANCE_PATH_LENGTH &&
             repository.length <= MAX_PROVENANCE_REPOSITORY_LENGTH
 
+}
+
+/**
+ * The upstream host name as the ledger keeps it: the host, plus the port when it is not the default of the scheme.
+ * Credentials, path and query never enter the ledger. Null when the URL is invalid or names no host.
+ */
+internal fun upstreamSourceHost(upstream: String): String? {
+    val uri = try {
+        URI(upstream)
+    } catch (_: URISyntaxException) {
+        return null
+    }
+    val host = uri.host ?: return null
+    val defaultPort = when (uri.scheme?.lowercase()) {
+        "http" -> 80
+        "https" -> 443
+        else -> -1
+    }
+    val named = if (uri.port == -1 || uri.port == defaultPort) host else "$host:${uri.port}"
+    return named.take(MAX_PROVENANCE_HOST_LENGTH)
 }
 
 /** The key of a location in the ledger: the path without a leading slash, as the storage walk reports it. */

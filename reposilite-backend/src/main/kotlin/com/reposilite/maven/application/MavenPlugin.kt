@@ -38,6 +38,7 @@ import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.shared.http.HttpRemoteClientProvider
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.search.application.SearchFacadeArtifactIndexSink
 import java.time.Clock
 import panda.std.reactive.computed
 
@@ -51,6 +52,7 @@ internal class MavenPlugin : ReposilitePlugin() {
     override fun initialize(): MavenFacade {
         val sharedConfigurationFacade = facade<SharedConfigurationFacade>()
         val mavenSettings = sharedConfigurationFacade.getDomainSettings<MavenSettings>()
+        val artifactIndexSink = SearchFacadeArtifactIndexSink(extensions())
 
         val mavenFacade =
             MavenComponents(
@@ -68,6 +70,7 @@ internal class MavenPlugin : ReposilitePlugin() {
                 mavenSettings = mavenSettings,
                 frontendSettings = sharedConfigurationFacade.getDomainSettings<FrontendSettings>(),
                 mirrorCacheLedger = SqlMirrorCacheLedger(reposilite().database),
+                artifactIndexSink = artifactIndexSink,
             ).mavenFacade()
 
         logger.info("")
@@ -87,7 +90,7 @@ internal class MavenPlugin : ReposilitePlugin() {
             event.registerRoutes(MavenStorageEndpoints(mavenFacade))
         }
 
-        event(PreservedBuildsListener(mavenFacade))
+        event(PreservedBuildsListener(mavenFacade, artifactIndexSink))
 
         event { event: CommandsSetupEvent ->
             event.registerCommand(CacheCommand(mavenFacade))

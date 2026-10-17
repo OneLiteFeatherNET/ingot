@@ -71,7 +71,7 @@ server {
     # The dashboard's own addresses: a reload of one of them gets the document, which then
     # reads the address itself. `expires -1` sets the cache headers without replacing the
     # security headers of the server block, which an add_header here would do.
-    location ~ ^/(browse|dashboard|tokens|console|settings|maintenance|audit|access|account)(/|$) {
+    location ~ ^/(browse|search|dashboard|tokens|console|settings|maintenance|audit|access|account)(/|$) {
         expires -1;
         try_files /index.html =404;
     }

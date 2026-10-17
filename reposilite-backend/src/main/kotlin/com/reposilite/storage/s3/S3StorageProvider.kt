@@ -23,6 +23,7 @@ import com.reposilite.shared.badRequestError
 import com.reposilite.shared.internalServerError
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
+import com.reposilite.storage.StorageEntrySource
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
@@ -65,7 +66,7 @@ class S3StorageProvider(
     private val s3: S3Client,
     private val bucket: String,
     private val keyPrefix: String = "",
-) : StorageProvider, Journalist {
+) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix), Journalist {
 
     init {
         if (!skipBucketCreation) {

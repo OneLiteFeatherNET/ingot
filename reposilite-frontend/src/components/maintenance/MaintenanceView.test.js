@@ -48,6 +48,9 @@ const fakeClient = () => ({
   maven: {
     storage: vi.fn(() => Promise.resolve({
       data: { computedAt: '2026-10-15T09:30:00Z', computing: false, totalBytes: 0, repositories: [] }
+    })),
+    searchIndex: vi.fn(() => Promise.resolve({
+      data: { state: 'READY', lagSeconds: 0, rows: 0, outbox: { pending: 0, deadLetters: 0, droppedEnqueues: 0 }, repositories: [], runs: [] }
     }))
   },
   settings: {
@@ -84,6 +87,14 @@ describe('MaintenanceView', () => {
 
     expect(wrapper.text()).toContain('Storage usage')
     expect(wrapper.text()).toContain('Cleanup policies')
+  })
+
+  it('shows the search index beside the storage usage and the cleanup policies', async () => {
+    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Search index')
+    expect(session.client.maven.searchIndex).toHaveBeenCalledTimes(1)
   })
 
   it('reloads the storage figures once a run has finished', async () => {

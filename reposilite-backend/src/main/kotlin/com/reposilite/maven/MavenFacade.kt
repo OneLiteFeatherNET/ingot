@@ -16,6 +16,7 @@
 
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.api.DeleteRequest
@@ -52,6 +53,7 @@ class MavenFacade internal constructor(
     private val latestService: LatestService,
     private val storageUsageService: StorageUsageService,
     private val mirrorCache: MirrorCacheService,
+    private val artifactIndexSink: ArtifactIndexSink,
 ) : Journalist, Facade {
 
     private val repositoryService = repositoryProvider.repositoryService
@@ -79,7 +81,13 @@ class MavenFacade internal constructor(
     fun deployFile(deployRequest: DeployRequest): Result<Unit, ErrorResponse> =
         repositoryService.deployFile(deployRequest)
             // a deployment makes the directory hold hosted content, so it is no longer a mirror copy
-            .peek { mirrorCache.forgetVersion(deployRequest.repository.name, deployRequest.gav.getParent().provenancePath()) }
+            .peek {
+                val directory = deployRequest.gav.getParent().provenancePath()
+                // only a dropped copy record changes the origin of indexed rows, so a plain deploy queues nothing (artifact search spec, 3.5)
+                if (mirrorCache.forgetVersion(deployRequest.repository.name, directory)) {
+                    artifactIndexSink.reorigin(deployRequest.repository.name, directory)
+                }
+            }
 
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
         repositoryService.deleteFile(deleteRequest)

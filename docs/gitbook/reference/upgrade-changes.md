@@ -36,6 +36,8 @@ The identity schema is created on the first start. The legacy token tables are k
 | Setting | Change |
 | --- | --- |
 | `configuration.cdn`, `hideSettingsSecrets` | Added with the value `false`. |
+| `configuration.cdn`, `searchEnabled` and `searchEngine` | Added with the values `true` and `database`. Older versions ignore them after a rollback. |
+| Settings domain `search` | Added with its default values. |
 | Settings domains `audit`, `cleanup`, `login` | Added with their default values. |
 | `authentication.ldap` | Keeps working for the dashboard login with no change while `login.ldap` is off, and `login.ldap` is the new place for it and takes precedence once enabled. |
 | Other settings | Values unchanged. Header comments may differ, because both products rewrite the file. |

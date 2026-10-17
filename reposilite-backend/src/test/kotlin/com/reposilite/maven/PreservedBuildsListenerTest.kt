@@ -42,7 +42,7 @@ internal class PreservedBuildsListenerTest : MavenSpecification() {
 
     @BeforeEach
     fun prepareListener() {
-        this.preservedBuildsListener = PreservedBuildsListener(mavenFacade)
+        this.preservedBuildsListener = PreservedBuildsListener(mavenFacade, indexSink)
     }
 
     @Test

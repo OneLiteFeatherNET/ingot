@@ -16,6 +16,7 @@
 
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.application.RepositorySettings
@@ -46,6 +47,7 @@ internal class RepositoryProvider(
     resolutionProvider: ResolutionProvider,
     repositorySecurityProvider: RepositorySecurityProvider,
     repositoriesSource: Reference<List<RepositorySettings>>,
+    artifactIndexSink: ArtifactIndexSink,
 ) {
 
     val repositoryService = RepositoryService(
@@ -55,7 +57,8 @@ internal class RepositoryProvider(
         mirrorService = mirrorService,
         resolutionProvider = resolutionProvider,
         statisticsFacade = statisticsFacade,
-        extensions = extensions
+        extensions = extensions,
+        artifactIndexSink = artifactIndexSink,
     )
 
     private var repositories: Map<String, Repository> = createRepositories(repositoriesSource.get())

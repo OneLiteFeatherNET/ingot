@@ -16,6 +16,7 @@
 
 package com.reposilite.maven.infrastructure
 
+import com.reposilite.maven.MAX_PROVENANCE_HOST_LENGTH
 import com.reposilite.maven.MAX_PROVENANCE_PATH_LENGTH
 import com.reposilite.maven.MAX_PROVENANCE_REPOSITORY_LENGTH
 import com.reposilite.maven.MirrorCacheLedger
@@ -34,13 +35,15 @@ import java.time.Instant
 
 /**
  * One row per cached version directory. The table is created with the instance database on first start, like the
- * other tables of the instance; an existing database gains it without any migration step.
+ * other tables of the instance. An existing database gains the [sourceHost] column on start: it is nullable, so rows
+ * written before it existed stay valid, and an older version that does not name it keeps inserting rows.
  */
 internal object MirrorCacheEntryTable : Table("mirror_cache_entry") {
     val repositoryId = varchar("repository", MAX_PROVENANCE_REPOSITORY_LENGTH)
     val entryPath = varchar("path", MAX_PROVENANCE_PATH_LENGTH)
     val cachedAt = long("cached_at")
     val lastAccessedAt = long("last_accessed_at")
+    val sourceHost = varchar("source_host", MAX_PROVENANCE_HOST_LENGTH).nullable()
 
     override val primaryKey = PrimaryKey(repositoryId, entryPath)
 }
@@ -52,27 +55,43 @@ internal class SqlMirrorCacheLedger(private val database: Database) : MirrorCach
 
     init {
         transaction(database) {
-            SchemaUtils.create(MirrorCacheEntryTable)
+            SchemaUtils.createMissingTablesAndColumns(MirrorCacheEntryTable)
         }
     }
 
     /**
      * A single INSERT ... IGNORE (or ON CONFLICT DO NOTHING), so the primary key decides the race between instances
-     * that share the database. A row that another instance inserted first is left untouched.
+     * that share the database. A row that another instance inserted first is left untouched, host included.
      */
-    override fun insertIfAbsent(repository: String, path: String, now: Instant) {
+    override fun insertIfAbsent(repository: String, path: String, now: Instant, sourceHost: String?) {
         transaction(database) {
             MirrorCacheEntryTable.insertIgnore {
                 it[repositoryId] = repository
                 it[entryPath] = path
                 it[cachedAt] = now.toEpochMilli()
                 it[lastAccessedAt] = now.toEpochMilli()
+                it[MirrorCacheEntryTable.sourceHost] = sourceHost
             }
         }
     }
 
     override fun contains(repository: String, path: String): Boolean =
         transaction(database) { entryExists(repository, path) }
+
+    override fun sourceHost(repository: String, path: String): String? =
+        transaction(database) {
+            MirrorCacheEntryTable.selectAll()
+                .where { (MirrorCacheEntryTable.repositoryId eq repository) and (MirrorCacheEntryTable.entryPath eq path) }
+                .firstOrNull()
+                ?.get(MirrorCacheEntryTable.sourceHost)
+        }
+
+    override fun sourceHosts(repository: String): Map<String, String?> =
+        transaction(database) {
+            MirrorCacheEntryTable.selectAll()
+                .where { MirrorCacheEntryTable.repositoryId eq repository }
+                .associate { row -> row[MirrorCacheEntryTable.entryPath] to row[MirrorCacheEntryTable.sourceHost] }
+        }
 
     /**
      * Conditional UPDATE: the row only moves forward. Two instances whose clocks or requests interleave cannot
@@ -89,11 +108,10 @@ internal class SqlMirrorCacheLedger(private val database: Database) : MirrorCach
             } > 0
         }
 
-    override fun deleteVersion(repository: String, path: String) {
+    override fun deleteVersion(repository: String, path: String): Boolean =
         transaction(database) {
             MirrorCacheEntryTable.deleteWhere { (repositoryId eq repository) and (entryPath eq path) }
-        }
-    }
+        } > 0
 
     override fun deleteSubtree(repository: String, path: String) {
         transaction(database) {

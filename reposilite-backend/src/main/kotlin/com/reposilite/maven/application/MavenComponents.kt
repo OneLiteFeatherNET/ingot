@@ -16,6 +16,7 @@
 
 package com.reposilite.maven.application
 
+import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.journalist.Journalist
@@ -58,6 +59,7 @@ internal class MavenComponents(
     private val mavenSettings: Reference<MavenSettings>,
     private val frontendSettings: Reference<FrontendSettings>,
     private val mirrorCacheLedger: MirrorCacheLedger,
+    private val artifactIndexSink: ArtifactIndexSink,
 ) : PluginComponents {
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
@@ -66,7 +68,7 @@ internal class MavenComponents(
         RepositorySecurityProvider(accessTokenFacade)
 
     private fun metadataService(): MetadataService =
-        MetadataService(securityProvider(), clock, journalist)
+        MetadataService(securityProvider(), clock, journalist, artifactIndexSink)
 
     private fun mirrorService(): MirrorService =
         MirrorService(
@@ -75,6 +77,7 @@ internal class MavenComponents(
             clock = clock,
             ioService = ioService,
             mirrorCache = mirrorCache,
+            artifactIndexSink = artifactIndexSink,
         )
 
     private fun resolutionProvider(): ResolutionProvider =
@@ -97,7 +100,8 @@ internal class MavenComponents(
             statisticsFacade = statisticsFacade,
             extensions = extensions,
             repositorySecurityProvider = securityProvider,
-            repositoriesSource = mavenSettings.computed { it.repositories }
+            repositoriesSource = mavenSettings.computed { it.repositories },
+            artifactIndexSink = artifactIndexSink,
         )
 
     private fun latestService(): LatestService =
@@ -117,6 +121,7 @@ internal class MavenComponents(
             latestService = latestService,
             storageUsageService = storageUsageService(repositoryProvider),
             mirrorCache = mirrorCache,
+            artifactIndexSink = artifactIndexSink,
         )
 
     private fun storageUsageService(repositoryProvider: RepositoryProvider): StorageUsageService =

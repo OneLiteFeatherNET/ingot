@@ -196,3 +196,104 @@ describe('client members call', () => {
     expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories\/public\/members$/)
   })
 })
+
+describe('client search calls', () => {
+  let http
+
+  beforeEach(async () => {
+    vi.resetModules()
+    http = (await import('axios')).default
+    http.get.mockReset()
+    http.get.mockResolvedValue({ data: {} })
+  })
+
+  it('requests the search without a query string when the query is empty', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient().maven.search('')
+
+    expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/search$/)
+  })
+
+  it('passes the query string of the page through to the search endpoint', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient().maven.search('q=commons&extension=jar&extension=pom')
+
+    expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/search\?q=commons&extension=jar&extension=pom$/)
+  })
+
+  it('asks for the files of a version with its coordinates, and repeats the repository filter', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient().maven.searchFiles({
+      groupId: 'org.apache', artifactId: 'lang', version: '1.0', origin: 'mirror', repository: ['a', 'b'], page: 1, size: 100
+    })
+
+    expect(http.get.mock.calls[0][0]).toMatch(
+      /\/api\/maven\/search\/files\?groupId=org\.apache&artifactId=lang&version=1\.0&origin=mirror&repository=a&repository=b&page=1&size=100$/
+    )
+  })
+
+  it('leaves out the origin of the files request while it is the default', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient().maven.searchFiles({ groupId: 'g', artifactId: 'a', version: '1' })
+
+    expect(http.get.mock.calls[0][0]).not.toContain('origin=')
+  })
+})
+
+describe('client search index calls', () => {
+  let http
+
+  beforeEach(async () => {
+    vi.resetModules()
+    http = (await import('axios')).default
+    http.get.mockReset()
+    http.post.mockReset()
+    http.get.mockResolvedValue({ data: {} })
+    http.post.mockResolvedValue({ status: 202, data: { runId: 7 } })
+  })
+
+  it('reads the index status from the admin status endpoint', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.searchIndex()
+
+    expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index$/)
+  })
+
+  it('starts a rebuild of every repository with an empty body', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.startIndexRebuild({})
+
+    expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/rebuild$/)
+    expect(http.post.mock.calls[0][1]).toEqual({})
+  })
+
+  it('starts a rebuild of one repository by name in the body', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.startIndexRebuild({ repositories: ['releases'] })
+
+    expect(http.post.mock.calls[0][1]).toEqual({ repositories: ['releases'] })
+  })
+
+  it('starts a verify run with a POST to the verify endpoint', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.startIndexVerify()
+
+    expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/verify$/)
+  })
+
+  it('cancels a run by its id', async () => {
+    const { createClient } = await import('./client')
+
+    await createClient('ci', 'secret').maven.cancelIndexRun(42)
+
+    expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/runs\/42\/cancel$/)
+  })
+})

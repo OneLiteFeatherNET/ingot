@@ -30,6 +30,7 @@ internal object DashboardPaths {
     val APP_ROUTES: List<String> = listOf(
         "/browse",
         "/browse/<path>",
+        "/search",
         "/dashboard",
         "/tokens",
         "/tokens/{name}",
