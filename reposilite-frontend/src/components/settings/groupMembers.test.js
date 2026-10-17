@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt } from './groupMembers'
+import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt, withCredentialField } from './groupMembers'
 
 const member = (reference, extra = {}) => ({ reference, ...extra })
 
@@ -93,5 +93,22 @@ describe('changing the members of a group', () => {
 
   it('offers the repositories that are not members yet, in their order', () => {
     expect(choosableMembers(['all', 'releases', 'snapshots'], [member('releases')])).toEqual(['all', 'snapshots'])
+  })
+})
+
+describe('the credential of a member', () => {
+  it('sets one field of the credential, and keeps the method and every other key of it', () => {
+    const entry = member('onelitefeather-releases', { authorization: { method: 'LOOPBACK_LINK', login: 'old', password: 'secret', extra: 'kept' } })
+
+    const next = withCredentialField(entry, 'login', 'reposilite-mirror')
+
+    expect(next).toEqual(member('onelitefeather-releases', { authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror', password: 'secret', extra: 'kept' } }))
+    expect(entry.authorization.login).toBe('old')
+  })
+
+  it('gives a member without a credential a loopback one, the only method a group member takes', () => {
+    expect(withCredentialField(member('releases', { store: true }), 'login', 'reposilite-mirror')).toEqual(
+      member('releases', { store: true, authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror' } })
+    )
   })
 })

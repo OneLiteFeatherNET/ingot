@@ -25,6 +25,22 @@
 /* The repository id an entry names, or an empty string for an entry that names none. */
 export const referenceOf = (entry) => String(entry?.reference ?? '')
 
+/* The only method a group member takes: a loopback link to a repository of this instance, with a login and a password. */
+export const LOOPBACK_METHOD = 'LOOPBACK_LINK'
+
+/*
+ * The entry with one field of its credential set to `value`. A member without a credential gets a loopback one. Every other
+ * key of the credential and of the entry is kept, and the entry it is given is not changed.
+ */
+export const withCredentialField = (entry, field, value) => ({
+  ...entry,
+  authorization: {
+    method: LOOPBACK_METHOD,
+    ...(entry.authorization ?? {}),
+    [field]: value
+  }
+})
+
 /* The entries with one more repository at the end, as a bare reference. An empty id, or one already listed, changes nothing. */
 export const addMember = (entries, id) => (id && !entries.some(entry => referenceOf(entry) === id)
   ? [...entries, { reference: id }]

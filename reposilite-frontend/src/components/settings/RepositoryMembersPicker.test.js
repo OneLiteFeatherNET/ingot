@@ -132,3 +132,69 @@ describe('RepositoryMembersPicker', () => {
     expect(alert.text()).toBe('Add at least one repository.')
   })
 })
+
+describe('RepositoryMembersPicker credentials of the members', () => {
+  const loopback = { method: 'LOOPBACK_LINK', login: 'reposilite-mirror', password: 'mirror-secret' }
+  const mountWithCredentials = (props = {}) => mountPicker({ credentials: true, ...props })
+  const editButton = (reference) => wrapper.get(`button[aria-label="Edit the credential of ${reference}"]`)
+
+  it('shows the login of a member credential, and never its password', () => {
+    mountWithCredentials({ modelValue: [entry('releases', { authorization: loopback })] })
+
+    expect(wrapper.get('[data-test="member-credential"]').text()).toContain('reposilite-mirror')
+    expect(wrapper.text()).not.toContain('mirror-secret')
+  })
+
+  it('says that a member has no credential when it has none', () => {
+    mountWithCredentials({ modelValue: [entry('releases')] })
+
+    expect(wrapper.get('[data-test="member-credential"]').text()).toBe('No credential')
+  })
+
+  it('shows no credential line and no edit control unless the picker is asked to edit credentials', () => {
+    mountPicker({ modelValue: [entry('releases', { authorization: loopback })] })
+
+    expect(wrapper.find('[data-test="member-credential"]').exists()).toBe(false)
+    expect(wrapper.findAll('button').some(item => item.attributes('aria-label') === 'Edit the credential of releases')).toBe(false)
+  })
+
+  it('opens the fields of a credential with a login and a password, and only one member at a time', async () => {
+    mountWithCredentials({ modelValue: [entry('releases', { authorization: loopback }), entry('all')] })
+
+    await editButton('releases').trigger('click')
+
+    expect(wrapper.get('#members-login-0').element.value).toBe('reposilite-mirror')
+    expect(wrapper.get('#members-password-0').attributes('type')).toBe('password')
+    expect(wrapper.find('#members-login-1').exists()).toBe(false)
+  })
+
+  it('writes a changed login into the credential, and keeps the method and every other key of it', async () => {
+    const releases = entry('releases', { store: true, authorization: { ...loopback, extra: 'kept' } })
+    mountWithCredentials({ modelValue: [releases, entry('all')] })
+    await editButton('releases').trigger('click')
+
+    await wrapper.get('#members-login-0').setValue('new-mirror')
+
+    const emitted = wrapper.emitted('update:modelValue').at(-1)[0]
+    expect(emitted[0]).toEqual(entry('releases', { store: true, authorization: { ...loopback, login: 'new-mirror', extra: 'kept' } }))
+    expect(emitted[1]).toEqual(entry('all'))
+  })
+
+  it('gives a member without a credential a loopback credential when a login is typed', async () => {
+    mountWithCredentials({ modelValue: [entry('releases')] })
+    await editButton('releases').trigger('click')
+
+    await wrapper.get('#members-login-0').setValue('reposilite-mirror')
+
+    expect(wrapper.emitted('update:modelValue').at(-1)[0]).toEqual([entry('releases', { authorization: { method: 'LOOPBACK_LINK', login: 'reposilite-mirror' } })])
+  })
+
+  it('writes a typed password into the credential without showing the stored one', async () => {
+    mountWithCredentials({ modelValue: [entry('releases', { authorization: { ...loopback, password: '********' } })] })
+    await editButton('releases').trigger('click')
+
+    await wrapper.get('#members-password-0').setValue('rotated-secret')
+
+    expect(wrapper.emitted('update:modelValue').at(-1)[0][0].authorization.password).toBe('rotated-secret')
+  })
+})

@@ -20,7 +20,8 @@ import { computed, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdSelect from '../md/MdSelect.vue'
-import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt } from './groupMembers'
+import MdTextField from '../md/MdTextField.vue'
+import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt, withCredentialField } from './groupMembers'
 
 /*
  * The ordered list of repositories a group lists. A repository is added from a select of the ones
@@ -33,10 +34,11 @@ import { addMember, choosableMembers, moveMember, referenceOf, removeMemberAt } 
  * the wizard and by the settings of a group.
  *
  * Props:
- *   modelValue  the mirrored entries of the members, in order; each names its repository in `reference`
- *   candidates  the ids of every repository that can be a member
- *   error       the problem to show under the picker, or an empty string
- *   idPrefix    the prefix of the ids of the select and the add button
+ *   modelValue   the mirrored entries of the members, in order; each names its repository in `reference`
+ *   candidates   the ids of every repository that can be a member
+ *   error        the problem to show under the picker, or an empty string
+ *   idPrefix     the prefix of the ids of the select, the add button and the credential fields
+ *   credentials  whether each member shows its credential, and lets it be edited (the loopback login and password)
  */
 const props = defineProps({
   modelValue: {
@@ -54,6 +56,10 @@ const props = defineProps({
   idPrefix: {
     type: String,
     default: 'members'
+  },
+  credentials: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -76,6 +82,21 @@ const add = () => {
 
 const move = (index, delta) => emit('update:modelValue', moveMember(props.modelValue, index, delta))
 const remove = (index) => emit('update:modelValue', removeMemberAt(props.modelValue, index))
+
+// The member whose credential is open for editing, or null. One at a time keeps the list short.
+const openCredential = ref(null)
+const toggleCredential = (index) => {
+  openCredential.value = openCredential.value === index ? null : index
+}
+const credentialOf = (entry) => entry.authorization ?? {}
+const credentialSummary = (entry) => (credentialOf(entry).login
+  ? `Credential as ${credentialOf(entry).login}`
+  : 'No credential')
+const setCredential = (index, field, value) => {
+  emit('update:modelValue', props.modelValue.map((entry, position) => (position === index
+    ? withCredentialField(entry, field, value)
+    : entry)))
+}
 </script>
 
 <template>
@@ -89,57 +110,103 @@ const remove = (index) => emit('update:modelValue', removeMemberAt(props.modelVa
         v-for="(item, index) in modelValue"
         :key="index"
         data-test="member"
-        class="flex items-center gap-2 rounded-corner-small px-2 py-1"
+        class="flex flex-col gap-2 rounded-corner-small px-2 py-1"
       >
-        <span
-          data-test="member-place"
-          class="flex size-7 shrink-0 items-center justify-center rounded-corner-full bg-secondary-container md-label-large text-on-secondary-container"
-        >{{ index + 1 }}</span>
-        <span
-          data-test="member-id"
-          class="min-w-0 flex-1 truncate md-body-large text-on-surface"
-        >{{ referenceOf(item) }}</span>
-        <MdIconButton
-          :aria-label="`Move ${referenceOf(item)} up`"
-          :title="`Move ${referenceOf(item)} up`"
-          :disabled="index === 0"
-          @click="move(index, -1)"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+        <div class="flex items-center gap-2">
+          <span
+            data-test="member-place"
+            class="flex size-7 shrink-0 items-center justify-center rounded-corner-full bg-secondary-container md-label-large text-on-secondary-container"
+          >{{ index + 1 }}</span>
+          <span
+            data-test="member-id"
+            class="min-w-0 flex-1 truncate md-body-large text-on-surface"
+          >{{ referenceOf(item) }}</span>
+          <MdIconButton
+            :aria-label="`Move ${referenceOf(item)} up`"
+            :title="`Move ${referenceOf(item)} up`"
+            :disabled="index === 0"
+            @click="move(index, -1)"
           >
-            <path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
-          </svg>
-        </MdIconButton>
-        <MdIconButton
-          :aria-label="`Move ${referenceOf(item)} down`"
-          :title="`Move ${referenceOf(item)} down`"
-          :disabled="index === modelValue.length - 1"
-          @click="move(index, 1)"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+            </svg>
+          </MdIconButton>
+          <MdIconButton
+            :aria-label="`Move ${referenceOf(item)} down`"
+            :title="`Move ${referenceOf(item)} down`"
+            :disabled="index === modelValue.length - 1"
+            @click="move(index, 1)"
           >
-            <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
-          </svg>
-        </MdIconButton>
-        <MdIconButton
-          :aria-label="`Remove ${referenceOf(item)} from the group`"
-          :title="`Remove ${referenceOf(item)} from the group`"
-          @click="remove(index)"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+            </svg>
+          </MdIconButton>
+          <MdIconButton
+            :aria-label="`Remove ${referenceOf(item)} from the group`"
+            :title="`Remove ${referenceOf(item)} from the group`"
+            @click="remove(index)"
           >
-            <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-          </svg>
-        </MdIconButton>
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+          </MdIconButton>
+        </div>
+
+        <div
+          v-if="credentials"
+          class="flex flex-col gap-3 pl-9"
+        >
+          <div class="flex items-center gap-2">
+            <span
+              data-test="member-credential"
+              class="min-w-0 flex-1 truncate md-body-medium text-on-surface-variant"
+            >{{ credentialSummary(item) }}</span>
+            <MdButton
+              variant="text"
+              type="button"
+              :aria-label="`Edit the credential of ${referenceOf(item)}`"
+              :aria-expanded="openCredential === index ? 'true' : 'false'"
+              @click="toggleCredential(index)"
+            >
+              {{ openCredential === index ? 'Done' : 'Edit credential' }}
+            </MdButton>
+          </div>
+          <div
+            v-if="openCredential === index"
+            data-test="member-credential-form"
+            class="grid gap-4 sm:grid-cols-2"
+          >
+            <MdTextField
+              :id="`${idPrefix}-login-${index}`"
+              :model-value="credentialOf(item).login ?? ''"
+              label="Login"
+              type="text"
+              autocomplete="off"
+              @update:model-value="setCredential(index, 'login', $event)"
+            />
+            <MdTextField
+              :id="`${idPrefix}-password-${index}`"
+              :model-value="credentialOf(item).password ?? ''"
+              label="Password"
+              type="password"
+              autocomplete="off"
+              supporting-text="A stored password shows as ********. Type a new value to replace it."
+              @update:model-value="setCredential(index, 'password', $event)"
+            />
+          </div>
+        </div>
       </li>
     </ol>
 

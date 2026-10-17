@@ -420,6 +420,7 @@ const formLayout = computed(() => {
           id-prefix="entry-members"
           :model-value="members"
           :candidates="otherIds"
+          credentials
           @update:model-value="onMembers"
         />
       </div>

@@ -399,4 +399,17 @@ describe('EntryDetail keeps the settings of the members of a group', () => {
 
     expect(lastChange().proxied).toEqual([first])
   })
+
+  it('edits the credential of a member, and saves the settings of that member and of the others unchanged', async () => {
+    mountEntry(groupWith(members()), { otherIds: others })
+
+    await wrapper.get('button[aria-label="Edit the credential of onelitefeather-proxy"]').trigger('click')
+    await wrapper.get('#entry-members-login-1').setValue('new-mirror')
+
+    expect(lastChange().proxied).toEqual([
+      members()[0],
+      { ...members()[1], authorization: { ...members()[1].authorization, login: 'new-mirror' } },
+      members()[2]
+    ])
+  })
 })
