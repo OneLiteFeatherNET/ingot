@@ -25,6 +25,8 @@ import Breadcrumb from './BreadcrumbNavigation.vue'
 import FileList from './FileList.vue'
 import BrowserUpload from './FileUpload.vue'
 import BrowserIcon from './BrowserIcon.vue'
+import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
+import { typeBadgeOf } from '../../store/maven/repositoryTypes'
 import MdIconButton from '../md/MdIconButton.vue'
 import { property } from '../../helpers/vue-extensions'
 import { errorMessage } from '../../helpers/toast'
@@ -36,7 +38,7 @@ const props = defineProps({
 
 const files = ref({})
 const loading = ref(true)
-const { details, client, hasPermissionTo, sessionReady } = useSession()
+const { details, client, hasPermissionTo, sessionReady, isManager } = useSession()
 const { applyAdjustments, countHiddenFiles } = useAdjustments()
 
 const processedFiles = computed(() => ({
@@ -47,10 +49,22 @@ const processedFiles = computed(() => ({
 // Hidden utility files are counted here, on the listing as the server sent it.
 const hiddenCount = computed(() => countHiddenFiles(files.value.list ?? []))
 
-// A directory that does not exist cannot receive an upload, so the upload area is left out.
+// The type of the repository this browser is in, when it is known and was set: 'proxy', 'group', or ''.
+const readOnlyType = computed(() => {
+  const badge = repositoryEntry.value ? typeBadgeOf(repositoryEntry.value) : null
+  return badge && !badge.legacy && (badge.key === 'proxy' || badge.key === 'group') ? badge.key : ''
+})
+
+const READ_ONLY_TEXT = {
+  proxy: 'This is a proxy repository. Its files are fetched from the remote repositories it is set up with. Upload to a hosted repository instead.',
+  group: 'This is a group repository. It lists the repositories above and has no files of its own. Upload to one of the repositories it lists instead.'
+}
+
+// A directory that does not exist cannot receive an upload, and a proxy or a group takes none, so the upload area is left out.
 const canUpload = computed(() => {
   return props.qualifier.path.length > 1
     && files.value.error !== 'not-found'
+    && readOnlyType.value === ''
     && hasPermissionTo(`/${props.qualifier.path}`, 'route:write')
 })
 
@@ -77,6 +91,32 @@ watch(
       })
       .catch(() => {
         if (!isStale()) members.value = []
+      })
+  },
+  { immediate: true }
+)
+
+// The repository this browser is in, from the repository list, for the badge of its type. Asked once per
+// repository, so browsing down its directories does not ask again. A failed request shows no badge.
+const repositoryEntry = ref(null)
+const repositoryId = computed(() => props.qualifier.path.split('/')[0])
+
+watch(
+  () => [repositoryId.value, details.value, sessionReady.value],
+  () => {
+    const id = repositoryId.value
+    if (!sessionReady.value || id === '') {
+      repositoryEntry.value = null
+      return
+    }
+
+    const isStale = () => id !== repositoryId.value
+    new Promise(resolve => resolve(client.value.maven.repositories()))
+      .then(response => {
+        if (!isStale()) repositoryEntry.value = (response.data.repositories ?? []).find(entry => String(entry.id) === id) ?? null
+      })
+      .catch(() => {
+        if (!isStale()) repositoryEntry.value = null
       })
   },
   { immediate: true }
@@ -179,7 +219,14 @@ const toggleCompactMode = () => {
     </div>
     <div class="min-w-0">
       <div class="flex items-center justify-between gap-2">
-        <Breadcrumb :path="qualifier.path" />
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <Breadcrumb :path="qualifier.path" />
+          <RepositoryTypeBadge
+            v-if="repositoryEntry"
+            data-test="browse-type"
+            :repository="repositoryEntry"
+          />
+        </div>
         <div class="flex shrink-0 items-center gap-1">
           <MdIconButton
             toggle
@@ -200,10 +247,33 @@ const toggleCompactMode = () => {
         :loading="loading"
         :hidden-count="hiddenCount"
         :members="members"
+        :can-edit-members="isManager === true"
         @retry="retry"
       />
+      <section
+        v-if="readOnlyType !== ''"
+        data-test="read-only-explanation"
+        aria-labelledby="browser-read-only-title"
+        class="mt-8 flex items-start gap-3 rounded-corner-large bg-surface-container-low p-4"
+      >
+        <BrowserIcon
+          name="lock"
+          class="mt-0.5 shrink-0 text-on-surface-variant"
+        />
+        <div class="flex min-w-0 flex-col gap-1">
+          <h2
+            id="browser-read-only-title"
+            class="md-title-small text-on-surface"
+          >
+            Nothing can be uploaded here
+          </h2>
+          <p class="md-body-medium text-on-surface-variant">
+            {{ READ_ONLY_TEXT[readOnlyType] }}
+          </p>
+        </div>
+      </section>
       <BrowserUpload
-        v-if="canUpload"
+        v-else-if="canUpload"
         :qualifier="qualifier"
       />
     </div>

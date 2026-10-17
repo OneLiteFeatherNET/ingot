@@ -23,10 +23,12 @@ import { errorMessage } from '../../helpers/toast'
 import { browseLocation } from '../../router/paths'
 import { tagsFromParam, tagsParam, textFromParam, textParam } from '../../router/url-state'
 import { filterRepositories, tagUsage } from '../../store/maven/repositories'
+import { TYPE_FILTERS, filterByType, typesFromParam } from '../../store/maven/repositoryTypes'
 import Card from '../card/SnippetsCard.vue'
 import FileBrowserView from '../browser/FileBrowserView.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import SearchBar from '../search/SearchBar.vue'
 
 /*
@@ -71,7 +73,9 @@ const normalise = (repository) => ({
   id: String(repository.id ?? ''),
   visibility: repository.visibility ?? '',
   description: repository.description ?? '',
-  tags: Array.isArray(repository.tags) ? repository.tags : []
+  tags: Array.isArray(repository.tags) ? repository.tags : [],
+  type: repository.type,
+  typeExplicit: repository.typeExplicit === true
 })
 
 // A repository is one row whatever the answer says: the first entry for an id is kept, so the
@@ -121,8 +125,12 @@ watch(() => [sessionReady.value, details.value], load, { immediate: true })
 
 const text = computed(() => textFromParam(route.query.q))
 const selectedTags = computed(() => tagsFromParam(route.query.tag))
-const filtersActive = computed(() => text.value.trim() !== '' || selectedTags.value.length > 0)
-const matches = computed(() => filterRepositories(repositories.value, { text: text.value, tags: selectedTags.value }))
+const selectedTypes = computed(() => typesFromParam(route.query.type))
+const filtersActive = computed(() => text.value.trim() !== '' || selectedTags.value.length > 0 || selectedTypes.value.length > 0)
+const matches = computed(() => filterByType(
+  filterRepositories(repositories.value, { text: text.value, tags: selectedTags.value }),
+  selectedTypes.value
+))
 
 const shownTags = computed(() => {
   const used = tagUsage(repositories.value).slice(0, SHOWN_TAGS).map(entry => entry.tag)
@@ -154,7 +162,14 @@ const toggleTag = (tag) => {
   return replaceQuery({ tag: tagsParam(tags) })
 }
 
-const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
+const toggleType = (type) => {
+  const types = selectedTypes.value.includes(type)
+    ? selectedTypes.value.filter(selected => selected !== type)
+    : [...selectedTypes.value, type]
+  return replaceQuery({ type: tagsParam(types) })
+}
+
+const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: undefined })
 </script>
 
 <template>
@@ -201,6 +216,22 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
             @click="toggleTag(tag)"
           >
             {{ tag }}
+          </MdChip>
+        </div>
+        <div
+          role="group"
+          aria-label="Filter by type"
+          class="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <MdChip
+            v-for="filter in TYPE_FILTERS"
+            :key="filter.key"
+            variant="filter"
+            data-test="filter-type"
+            :selected="selectedTypes.includes(filter.key)"
+            @click="toggleType(filter.key)"
+          >
+            {{ filter.label }}
           </MdChip>
         </div>
       </SearchBar>
@@ -292,6 +323,10 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined })
                 >{{ tag }}</span>
               </span>
             </span>
+            <RepositoryTypeBadge
+              :repository="repository"
+              class="self-center"
+            />
             <span
               v-if="badgeOf(repository)"
               data-test="visibility"

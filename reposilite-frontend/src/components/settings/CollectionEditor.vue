@@ -71,6 +71,16 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  // True for the repositories: the detail then shows the type of the repository and the fields it takes.
+  typed: {
+    type: Boolean,
+    default: false
+  },
+  // The message of a refused save, which the detail shows next to the type.
+  serverError: {
+    type: String,
+    default: ''
+  },
   // A guided flow that replaces the id dialog of "New entry", or null for the plain dialog. See guidedCreate.js.
   guidedCreate: {
     type: Function,
@@ -162,6 +172,8 @@ watch([addresses, () => props.keys], () => {
           :renderers="renderers"
           :validator="validator"
           :show-access="showAccess"
+          :typed="typed"
+          :server-error="serverError"
           @change="emit('change', { index: selectedIndex, entry: $event })"
           @delete="emit('delete', selectedIndex)"
           @back="emit('back')"

@@ -18,6 +18,10 @@
  * The rules of the "New repository" wizard, without any Vue. The wizard component draws the
  * steps and calls these functions; the tests call them directly.
  *
+ * The first step chooses the type. A hosted repository has storage, a proxy has remote
+ * repositories and cache settings, and a group has members. A proxy and a group take no uploads,
+ * so their access is read (or admin) only.
+ *
  * The create sequence is a list of actions with the same labels the review step shows, so the
  * user sees exactly what will run. Each action is retried on its own: a repository that was
  * saved is never saved twice, and a team or a machine account that was created is never created
@@ -29,12 +33,63 @@ import { validateNewId } from './collections'
 import { errorMessage } from '../../helpers/toast'
 import { validatePrincipalName } from '../access/accessPrincipals'
 import { ROLES, validateTeamName } from '../access/accessTeams'
+import { isRemoteUrl } from '../../store/maven/repositoryTypes'
 
-export const STEPS = [
-  { key: 'basics', label: 'Basics' },
-  { key: 'storage', label: 'Storage' },
-  { key: 'access', label: 'Access' },
-  { key: 'review', label: 'Review' }
+export { isRemoteUrl }
+
+/*
+ * The type of the repository. Hosted is the default, so a wizard that is not changed creates the
+ * repository it always did. The description says what can be done with each type.
+ */
+export const TYPE_CHOICES = [
+  {
+    value: 'HOSTED',
+    label: 'Hosted',
+    who: 'Files are uploaded to this repository and kept here.'
+  },
+  {
+    value: 'PROXY',
+    label: 'Proxy',
+    who: 'Files are fetched from remote repositories. Nothing can be uploaded.'
+  },
+  {
+    value: 'GROUP',
+    label: 'Group',
+    who: 'Lists other repositories of this instance, in order. It has no files of its own, and nothing can be uploaded.'
+  }
+]
+
+/*
+ * The steps a repository of this type goes through. The type comes first, the review last. A proxy
+ * has its remotes, then the storage its cache is kept in; a hosted repository has its storage; a
+ * group has its members and no storage of its own.
+ */
+export const stepsFor = (type) => {
+  const middle = type === 'PROXY'
+    ? [{ key: 'upstream', label: 'Remote repositories' }, { key: 'storage', label: 'Cache storage' }]
+    : type === 'GROUP'
+      ? [{ key: 'members', label: 'Members' }]
+      : [{ key: 'storage', label: 'Storage' }]
+  return [
+    { key: 'type', label: 'Type' },
+    { key: 'basics', label: 'Basics' },
+    ...middle,
+    { key: 'access', label: 'Access' },
+    { key: 'review', label: 'Review' }
+  ]
+}
+
+export const STEPS = stepsFor('HOSTED')
+
+/* The roles a repository of this type can be given. A proxy or a group takes no uploads, so only read and admin. */
+const REMOTE_ROLES = ['READ', 'ADMIN']
+export const rolesFor = (type = 'HOSTED') => ROLES.filter(role => type === 'HOSTED' || REMOTE_ROLES.includes(role.value))
+
+/* The password policy of a proxy: an empty choice leaves it to the server. */
+export const STORAGE_POLICIES = [
+  { value: '', label: 'Server default' },
+  { value: 'PRIORITIZE_UPSTREAM_METADATA', label: 'Prefer upstream metadata' },
+  { value: 'STRICT', label: 'Strict, cached first (offline)' }
 ]
 
 // Who can read is the server's rule (RepositorySecurityProvider): publishing always needs a token.
@@ -60,7 +115,10 @@ export const DEFAULT_QUOTA = '100%'
 const QUOTA_PATTERN = /^([1-9]\d*)([KkMmGg][Bb]|%)$/
 const S3_OPTIONAL_KEYS = ['region', 'endpoint', 'accessKey', 'secretKey']
 
+export const emptyRemote = () => ({ url: '', login: '', password: '' })
+
 export const emptyDraft = () => ({
+  type: 'HOSTED',
   basics: { id: '', visibility: 'PUBLIC', description: '', tags: '' },
   storage: {
     kind: 'fs',
@@ -71,6 +129,16 @@ export const emptyDraft = () => ({
     accessKey: '',
     secretKey: ''
   },
+  // The remote repositories of a proxy. `store` keeps what is fetched here, which is the cache.
+  upstream: {
+    remotes: [emptyRemote()],
+    store: true,
+    storagePolicy: '',
+    metadataMaxAge: '',
+    resolutionCacheMaxEntries: ''
+  },
+  // The ids of the repositories a group lists, in order.
+  members: [],
   // `newTeam` and `machineName` stay null until the user edits them, so they keep following the repository id.
   access: {
     mode: 'existing',
@@ -111,6 +179,24 @@ export const MACHINE_SCOPES = [
 export const scopesOf = (scope) => MACHINE_SCOPES.find(entry => entry.value === scope)?.scopes ?? ['READ']
 
 export const roleLabelOf = (role) => ROLES.find(entry => entry.value === role)?.label ?? role
+
+export const typeLabelOf = (type) => TYPE_CHOICES.find(choice => choice.value === type)?.label ?? ''
+
+/* What the chosen type means, in the words the choice shows. */
+export const describeType = (type) => TYPE_CHOICES.find(choice => choice.value === type)?.who ?? ''
+
+/*
+ * Choosing a type. A proxy or a group takes no uploads, so its role and its machine token are read
+ * only; a role it may not have is replaced by read. Going back to hosted changes nothing else.
+ */
+export const chooseType = (draft, type) => {
+  draft.type = type
+  if (type !== 'HOSTED') {
+    if (!REMOTE_ROLES.includes(draft.access.role)) draft.access.role = 'READ'
+    draft.access.scope = 'READ'
+  }
+  return draft
+}
 
 /* Which optional repository fields the schema defines. Other agents add them; the wizard shows them only when present. */
 export const optionalFieldsOf = (itemSchema) => {
@@ -164,6 +250,37 @@ export const validateStorage = (storage) => {
   return errors
 }
 
+/* Remote repositories: at least one address, each a remote with its own login and password, and the cache settings when given. */
+export const validateUpstream = (upstream) => {
+  const errors = {}
+  if (upstream.remotes.length === 0) errors.remote0 = 'Add at least one remote repository.'
+  upstream.remotes.forEach((remote, index) => {
+    const url = remote.url.trim()
+    const login = remote.login.trim()
+    if (url === '') {
+      errors[`remote${index}`] = 'Enter the address of a remote repository.'
+    } else if (!isRemoteUrl(url)) {
+      errors[`remote${index}`] = 'Use an http or https address, such as https://repo.example.net/maven.'
+    }
+    if (login !== '' && remote.password === '') errors[`password${index}`] = 'Enter a password for this login, or remove the login.'
+    if (login === '' && remote.password !== '') errors[`login${index}`] = 'Enter a login for this password, or remove the password.'
+  })
+  if (String(upstream.metadataMaxAge).trim() !== '' && !/^\d+$/.test(String(upstream.metadataMaxAge).trim())) {
+    errors.metadataMaxAge = 'Use a whole number of seconds, 0 or more.'
+  }
+  if (String(upstream.resolutionCacheMaxEntries).trim() !== '' && !/^\d+$/.test(String(upstream.resolutionCacheMaxEntries).trim())) {
+    errors.resolutionCacheMaxEntries = 'Use a whole number of entries, 0 or more.'
+  }
+  return errors
+}
+
+/* A group lists at least one repository, and each one must exist in this instance. */
+export const validateMembers = (members, existingIds = []) => {
+  if (members.length === 0) return { members: 'Add at least one repository the group lists.' }
+  const unknown = members.find(id => !existingIds.includes(id))
+  return unknown === undefined ? {} : { members: `${unknown} is not a repository of this instance.` }
+}
+
 export const validateAccess = (draft, { teams = [], principals = [] } = {}) => {
   const { access } = draft
   if (access.mode === 'none') return {}
@@ -176,7 +293,11 @@ export const validateAccess = (draft, { teams = [], principals = [] } = {}) => {
     if (problem) errors.newTeam = problem
     else if (teams.some(team => sameName(team.name, name))) errors.newTeam = `A team named '${name.trim()}' already exists`
   }
-  if (!ROLES.some(role => role.value === access.role)) errors.role = 'Choose a role.'
+  if (!rolesFor(draft.type).some(role => role.value === access.role)) {
+    errors.role = ROLES.some(role => role.value === access.role)
+      ? 'A proxy or a group takes no uploads. Choose Read or Admin.'
+      : 'Choose a role.'
+  }
   if (access.machine) {
     const name = machineNameOf(draft)
     const problem = validatePrincipalName(name)
@@ -187,14 +308,17 @@ export const validateAccess = (draft, { teams = [], principals = [] } = {}) => {
 }
 
 export const validateStep = (key, draft, { existingIds = [], teams = [], principals = [] } = {}) => {
+  if (key === 'type') return TYPE_CHOICES.some(choice => choice.value === draft.type) ? {} : { type: 'Choose a type.' }
   if (key === 'basics') return validateBasics(draft.basics, { existingIds })
   if (key === 'storage') return validateStorage(draft.storage)
+  if (key === 'upstream') return validateUpstream(draft.upstream)
+  if (key === 'members') return validateMembers(draft.members, existingIds)
   if (key === 'access') return validateAccess(draft, { teams, principals })
   return {}
 }
 
-/* The first of the three input steps with a problem, or null. The review step has no input of its own. */
-export const firstInvalidStep = (draft, context) => STEPS
+/* The first step with a problem, or null. The steps are the ones of the chosen type; the review has no input of its own. */
+export const firstInvalidStep = (draft, context) => stepsFor(draft.type)
   .slice(0, -1)
   .map(step => step.key)
   .find(key => Object.keys(validateStep(key, draft, context)).length > 0) ?? null
@@ -209,12 +333,39 @@ const storageProviderOf = (storage) => {
   return provider
 }
 
-/* The entry the settings store receives. Optional fields are written only when the schema defines them. */
+const remoteEntry = (remote, store) => {
+  const entry = { reference: remote.url.trim(), store }
+  if (remote.login.trim() !== '') {
+    entry.authorization = { method: 'BASIC', login: remote.login.trim(), password: remote.password }
+  }
+  return entry
+}
+
+/* A proxy's mirrored entries and cache settings. Blank cache settings are left out, so the server default applies. */
+const proxyFieldsOf = (upstream) => {
+  const fields = { proxied: upstream.remotes.map(remote => remoteEntry(remote, upstream.store)) }
+  if (upstream.storagePolicy) fields.storagePolicy = upstream.storagePolicy
+  if (String(upstream.metadataMaxAge).trim() !== '') fields.metadataMaxAge = Number(upstream.metadataMaxAge)
+  if (String(upstream.resolutionCacheMaxEntries).trim() !== '') fields.resolutionCacheMaxEntries = Number(upstream.resolutionCacheMaxEntries)
+  return fields
+}
+
+/*
+ * The entry the settings store receives. The type is always written. Storage belongs to a hosted
+ * repository; a proxy has its remotes and cache settings; a group has its members, as references.
+ * Optional fields are written only when the schema defines them.
+ */
 export const repositoryEntry = (draft, { optional }) => {
   const entry = {
     id: draft.basics.id,
     visibility: draft.basics.visibility,
-    storageProvider: storageProviderOf(draft.storage)
+    type: draft.type
+  }
+  if (draft.type === 'GROUP') {
+    entry.proxied = draft.members.map(id => ({ reference: id }))
+  } else {
+    entry.storageProvider = storageProviderOf(draft.storage)
+    if (draft.type === 'PROXY') Object.assign(entry, proxyFieldsOf(draft.upstream))
   }
   if (optional.description) entry.description = draft.basics.description.trim()
   if (optional.tags) entry.tags = parseTags(draft.basics.tags)
@@ -250,11 +401,20 @@ export const describeAccess = (draft) => {
 export const summaryRows = (draft, { optional }) => {
   const rows = [
     { label: 'Repository', value: draft.basics.id },
+    { label: 'Type', value: typeLabelOf(draft.type) },
     { label: 'Visibility', value: describeVisibility(draft.basics.visibility) }
   ]
   if (optional.description) rows.push({ label: 'Description', value: draft.basics.description.trim() || 'None' })
   if (optional.tags) rows.push({ label: 'Tags', value: parseTags(draft.basics.tags).join(', ') || 'None' })
-  rows.push({ label: 'Storage', value: describeStorage(draft.storage) })
+  if (draft.type === 'PROXY') {
+    rows.push({ label: 'Remote repositories', value: draft.upstream.remotes.map(remote => remote.url.trim()).join(', ') })
+    rows.push({ label: 'Cache', value: draft.upstream.store ? 'Fetched files are kept in the cache storage' : 'Fetched files are not kept' })
+    rows.push({ label: 'Cache storage', value: describeStorage(draft.storage) })
+  } else if (draft.type === 'GROUP') {
+    rows.push({ label: 'Members', value: draft.members.join(', ') })
+  } else {
+    rows.push({ label: 'Storage', value: describeStorage(draft.storage) })
+  }
   rows.push({ label: 'Access', value: describeAccess(draft) })
   return rows
 }

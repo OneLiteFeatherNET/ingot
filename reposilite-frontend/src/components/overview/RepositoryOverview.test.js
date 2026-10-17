@@ -92,7 +92,7 @@ const search = () => wrapper.find('input')
 const rows = () => wrapper.findAll('[data-test="repository-row"]')
 const rowIds = () => rows().map(row => row.find('[data-test="repository-id"]').text())
 const rowFor = (id) => rows().find(row => row.find('[data-test="repository-id"]').text() === id)
-const filterChips = () => wrapper.findAll('[data-variant="filter"]')
+const filterChips = () => wrapper.findAll('[data-test="filter-tag"]')
 const chipLabels = () => filterChips().map(chip => chip.text())
 const chipNamed = (tag) => filterChips().find(chip => chip.text() === tag)
 const clearButton = () => wrapper.findAll('button').find(button => button.text() === 'Clear filters')
@@ -401,5 +401,71 @@ describe('RepositoryOverview Material 3 structure', () => {
     await flushPromises()
 
     expect(wrapper.find('button[aria-label="Clear search"]').exists()).toBe(true)
+  })
+})
+
+describe('RepositoryOverview repository types', () => {
+  const typedList = [
+    { id: 'releases', visibility: 'PUBLIC', type: 'HOSTED', typeExplicit: true },
+    { id: 'central', visibility: 'PUBLIC', type: 'PROXY', typeExplicit: true },
+    { id: 'all', visibility: 'PUBLIC', type: 'GROUP', typeExplicit: true },
+    { id: 'legacy', visibility: 'PUBLIC', type: 'mixed', typeExplicit: false }
+  ]
+
+  it('shows the type of every repository in its row', async () => {
+    await mountAt('/', { answer: answerWith(typedList) })
+
+    expect(rowFor('releases').find('[data-test="type-badge"]').text()).toBe('Hosted')
+    expect(rowFor('central').find('[data-test="type-badge"]').text()).toBe('Proxy')
+    expect(rowFor('all').find('[data-test="type-badge"]').text()).toBe('Group')
+  })
+
+  it('marks an untyped repository as legacy, with the hint that says what it does', async () => {
+    await mountAt('/', { answer: answerWith(typedList) })
+
+    const badge = rowFor('legacy').find('[data-test="type-badge"]')
+    expect(badge.text()).toContain('Mixed')
+    expect(badge.attributes('title')).toBe('No type set, behaves as before. Set a type to enforce the rules.')
+  })
+
+  it('offers one filter chip per type, after the tag chips', async () => {
+    await mountAt('/', { answer: answerWith(typedList) })
+
+    const typeChips = wrapper.findAll('[data-test="filter-type"]').map(chip => chip.text())
+    expect(typeChips).toEqual(['Hosted', 'Proxy', 'Group', 'Mixed'])
+  })
+
+  it('shows only the repositories of the chosen type and writes the choice to the address', async () => {
+    await mountAt('/', { answer: answerWith(typedList) })
+
+    const proxyChip = wrapper.findAll('[data-test="filter-type"]').find(chip => chip.text() === 'Proxy')
+    await proxyChip.trigger('click')
+    await flushPromises()
+
+    expect(rowIds()).toEqual(['central'])
+    expect([addressQuery().type].flat()).toEqual(['proxy'])
+  })
+
+  it('reads the chosen types from the address, so a shared link shows the same list', async () => {
+    await mountAt('/?type=group&type=mixed', { answer: answerWith(typedList) })
+
+    expect(rowIds()).toEqual(['all', 'legacy'])
+    const selected = wrapper.findAll('[data-test="filter-type"]').filter(chip => chip.attributes('aria-pressed') === 'true' || chip.attributes('aria-checked') === 'true')
+    expect(selected.map(chip => chip.text())).toEqual(['Group', 'Mixed'])
+  })
+
+  it('counts the repositories of the type filter against the whole list', async () => {
+    await mountAt('/?type=hosted', { answer: answerWith(typedList) })
+
+    expect(wrapper.get('[role="status"]').text()).toBe('1 of 4 repositories')
+  })
+
+  it('clears the type filter together with the search and the tags', async () => {
+    await mountAt('/?type=hosted&q=nothing-matches', { answer: answerWith(typedList) })
+    await clearButton().trigger('click')
+    await flushPromises()
+
+    expect(addressQuery().type).toBeUndefined()
+    expect(rowIds()).toEqual(['all', 'central', 'legacy', 'releases'])
   })
 })

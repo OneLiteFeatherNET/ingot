@@ -35,31 +35,39 @@ import { idText } from './collections'
 import { ROLES, roleExplanation } from '../access/accessTeams'
 import { SCRIM_STYLE } from './dialog'
 import { createAccessPorts } from './repositoryAccessPorts'
+import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import {
   ACCESS_MODES,
   MACHINE_SCOPES,
-  STEPS,
+  STORAGE_POLICIES,
+  TYPE_CHOICES,
   VISIBILITY_OPTIONS,
   buildActions,
+  chooseType,
   createProgress,
   createdSoFar,
   emptyDraft,
+  emptyRemote,
   failureNote,
   firstInvalidStep,
   machineNameOf,
   newTeamNameOf,
   optionalFieldsOf,
   repositoryUrl,
+  rolesFor,
   runActions,
   snippetsFor,
+  stepsFor,
   summaryRows,
+  typeLabelOf,
   validateStep
 } from './repositoryWizard'
 
 /*
- * The guided way to a new Maven repository: four steps, then one review that performs the
- * changes. Only the decisions live in repositoryWizard.js; this file draws them and calls the
- * stores. Full screen below 600px, a dialog of at most 560px above it.
+ * The guided way to a new Maven repository: a type, the basics, the part that depends on the type
+ * (storage, remote repositories or members), access, then one review that performs the changes.
+ * Only the decisions live in repositoryWizard.js; this file draws them and calls the stores. Full
+ * screen below 600px, a dialog of at most 560px above it.
  *
  * Nothing is written before Create. The create sequence runs one action at a time, and a failed
  * action keeps the ones before it: a saved repository is never saved again, and a created team or
@@ -96,7 +104,7 @@ const STORAGE_OPTIONS = [
   }
 ]
 
-const ROLE_OPTIONS = ROLES.map(role => ({ value: role.value, label: role.label }))
+const ROLE_LABELS = ROLES.map(role => ({ value: role.value, label: role.label }))
 const SCOPE_OPTIONS = MACHINE_SCOPES.map(scope => ({ value: scope.value, label: scope.label }))
 
 const draft = reactive(emptyDraft())
@@ -111,7 +119,13 @@ const succeeded = ref(false)
 const copied = ref('')
 const heading = ref(null)
 
-const stepKey = computed(() => STEPS[stepIndex.value].key)
+// The steps follow the chosen type: a hosted repository has storage, a proxy remotes, a group members.
+const steps = computed(() => stepsFor(draft.type))
+const stepKey = computed(() => steps.value[stepIndex.value].key)
+// A proxy or a group takes no uploads, so its roles and token scopes are read or admin, and read only.
+const roleOptions = computed(() => ROLE_LABELS.filter(role => rolesFor(draft.type).some(entry => entry.value === role.value)))
+const scopeOptions = computed(() => (draft.type === 'HOSTED' ? SCOPE_OPTIONS : SCOPE_OPTIONS.filter(scope => scope.value === 'READ')))
+const addressOf = computed(() => repositoryUrl({ base: productionUrl, id: draft.basics.id }))
 const itemSchema = computed(() => configuration.schemas.value.maven?.properties?.repositories?.items)
 const optional = computed(() => optionalFieldsOf(itemSchema.value))
 const existingIds = computed(() => (configuration.configurations.value.maven?.repositories ?? []).map(idText))
@@ -123,6 +137,8 @@ const context = computed(() => ({ existingIds: existingIds.value, teams: teams.v
 const stepErrors = computed(() => validateStep(stepKey.value, draft, context.value))
 const shownErrors = computed(() => (attempted.value ? stepErrors.value : {}))
 const summary = computed(() => summaryRows(draft, { optional: optional.value }))
+const addRemote = () => draft.upstream.remotes.push(emptyRemote())
+const removeRemote = (index) => draft.upstream.remotes.splice(index, 1)
 const teamOptions = computed(() => [
   { value: '', label: 'Choose a team' },
   ...teams.value.map(team => ({ value: team.name, label: team.name }))
@@ -212,7 +228,7 @@ const create = async () => {
   if (!plan.value) {
     const invalid = firstInvalidStep(draft, context.value)
     if (invalid) {
-      stepIndex.value = STEPS.findIndex(step => step.key === invalid)
+      stepIndex.value = steps.value.findIndex(step => step.key === invalid)
       attempted.value = true
       focusHeading()
       return
@@ -315,10 +331,11 @@ const onModalUpdate = (open) => {
         </h2>
         <ol
           aria-label="Steps"
-          class="grid grid-cols-4 gap-2"
+          class="grid gap-2"
+          :style="{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }"
         >
           <li
-            v-for="(step, index) in STEPS"
+            v-for="(step, index) in steps"
             :key="step.key"
             class="flex min-w-0 flex-col items-center gap-1 text-center"
             :aria-current="index === stepIndex ? 'step' : undefined"
@@ -339,14 +356,43 @@ const onModalUpdate = (open) => {
           tabindex="-1"
           class="md-title-large text-on-surface focus:outline-none"
         >
-          {{ STEPS[stepIndex].label }}
+          {{ steps[stepIndex].label }}
         </h3>
       </header>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4 max-[599px]:px-4">
+        <!-- Type -->
+        <div
+          v-if="stepKey === 'type'"
+          class="flex flex-col gap-6"
+        >
+          <fieldset class="flex flex-col gap-2">
+            <legend class="pb-2 md-title-small text-on-surface">
+              What kind of repository this is
+            </legend>
+            <MdRadio
+              v-for="choice in TYPE_CHOICES"
+              :id="`wizard-type-${choice.value.toLowerCase()}`"
+              :key="choice.value"
+              name="repository-type"
+              :value="choice.value"
+              :model-value="draft.type"
+              card
+              class="rounded-corner-medium border p-3"
+              :class="draft.type === choice.value ? 'border-primary bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface'"
+              @update:model-value="chooseType(draft, $event)"
+            >
+              <span class="flex min-w-0 flex-col gap-0.5">
+                <span class="md-title-small">{{ choice.label }}</span>
+                <span class="md-body-medium">{{ choice.who }}</span>
+              </span>
+            </MdRadio>
+          </fieldset>
+        </div>
+
         <!-- Basics -->
         <div
-          v-if="stepKey === 'basics'"
+          v-else-if="stepKey === 'basics'"
           class="flex flex-col gap-6"
         >
           <MdTextField
@@ -411,7 +457,7 @@ const onModalUpdate = (open) => {
         >
           <fieldset class="flex flex-col gap-2">
             <legend class="pb-2 md-title-small text-on-surface">
-              Where the files are kept
+              {{ draft.type === 'PROXY' ? 'Where the cached files are kept' : 'Where the files are kept' }}
             </legend>
             <MdRadio
               v-for="option in STORAGE_OPTIONS"
@@ -489,6 +535,167 @@ const onModalUpdate = (open) => {
           </template>
         </div>
 
+        <!-- Remote repositories and cache, for a proxy -->
+        <div
+          v-else-if="stepKey === 'upstream'"
+          class="flex flex-col gap-6"
+        >
+          <section
+            aria-labelledby="wizard-remotes-title"
+            class="flex flex-col gap-3"
+          >
+            <h3
+              id="wizard-remotes-title"
+              class="md-title-small text-on-surface"
+            >
+              Remote repositories
+            </h3>
+            <p class="md-body-medium text-on-surface-variant">
+              The files are fetched from these addresses. Add a login only when a remote needs one.
+            </p>
+            <div
+              v-for="(remote, index) in draft.upstream.remotes"
+              :key="index"
+              class="flex flex-col gap-4 rounded-corner-medium bg-surface-container p-4"
+            >
+              <MdTextField
+                :id="`wizard-remote-url-${index}`"
+                :model-value="remote.url"
+                :label="`Address ${index + 1}`"
+                variant="outlined"
+                autocomplete="off"
+                inputmode="url"
+                supporting-text="An http or https address, such as https://repo.example.net/maven."
+                :error="Boolean(shownErrors[`remote${index}`])"
+                :error-text="shownErrors[`remote${index}`] ?? ''"
+                @update:model-value="remote.url = $event"
+              />
+              <MdTextField
+                :id="`wizard-remote-login-${index}`"
+                :model-value="remote.login"
+                :label="`Login ${index + 1}`"
+                variant="outlined"
+                autocomplete="off"
+                supporting-text="Optional. The remote's user name."
+                :error="Boolean(shownErrors[`login${index}`])"
+                :error-text="shownErrors[`login${index}`] ?? ''"
+                @update:model-value="remote.login = $event"
+              />
+              <MdTextField
+                :id="`wizard-remote-password-${index}`"
+                :model-value="remote.password"
+                :label="`Password ${index + 1}`"
+                type="password"
+                variant="outlined"
+                autocomplete="new-password"
+                supporting-text="Optional. Masked here and in the settings."
+                :error="Boolean(shownErrors[`password${index}`])"
+                :error-text="shownErrors[`password${index}`] ?? ''"
+                @update:model-value="remote.password = $event"
+              />
+              <div v-if="draft.upstream.remotes.length > 1">
+                <MdButton
+                  variant="text"
+                  type="button"
+                  :aria-label="`Remove address ${index + 1}`"
+                  @click="removeRemote(index)"
+                >
+                  Remove
+                </MdButton>
+              </div>
+            </div>
+            <p
+              v-if="shownErrors.remote0 && draft.upstream.remotes.length === 0"
+              role="alert"
+              class="md-body-small text-error"
+            >
+              {{ shownErrors.remote0 }}
+            </p>
+            <div>
+              <MdButton
+                data-test="add-remote"
+                variant="tonal"
+                type="button"
+                @click="addRemote"
+              >
+                Add remote repository
+              </MdButton>
+            </div>
+          </section>
+
+          <section
+            aria-labelledby="wizard-cache-title"
+            class="flex flex-col gap-4"
+          >
+            <h3
+              id="wizard-cache-title"
+              class="md-title-small text-on-surface"
+            >
+              Cache
+            </h3>
+            <div class="flex flex-col gap-2">
+              <MdCheckbox
+                id="wizard-cache-store"
+                v-model="draft.upstream.store"
+              >
+                Keep fetched files here
+              </MdCheckbox>
+              <p class="md-body-medium text-on-surface-variant">
+                Ingot keeps a copy of what it fetches, which reduces the response time.
+              </p>
+            </div>
+            <MdSelect
+              id="wizard-storage-policy"
+              :model-value="draft.upstream.storagePolicy"
+              label="Storage policy"
+              :options="STORAGE_POLICIES"
+              supporting-text="Prefer upstream checks the remote for the latest metadata. Strict uses the cache first, for offline use."
+              @update:model-value="draft.upstream.storagePolicy = $event"
+            />
+            <MdTextField
+              id="wizard-metadata-max-age"
+              :model-value="draft.upstream.metadataMaxAge"
+              label="Metadata max age, in seconds"
+              variant="outlined"
+              autocomplete="off"
+              inputmode="numeric"
+              supporting-text="Empty uses the server default."
+              :error="Boolean(shownErrors.metadataMaxAge)"
+              :error-text="shownErrors.metadataMaxAge ?? ''"
+              @update:model-value="draft.upstream.metadataMaxAge = $event"
+            />
+            <MdTextField
+              id="wizard-resolution-cache"
+              :model-value="draft.upstream.resolutionCacheMaxEntries"
+              label="Resolution cache entries"
+              variant="outlined"
+              autocomplete="off"
+              inputmode="numeric"
+              supporting-text="Empty uses the server default. 0 turns the cache off."
+              :error="Boolean(shownErrors.resolutionCacheMaxEntries)"
+              :error-text="shownErrors.resolutionCacheMaxEntries ?? ''"
+              @update:model-value="draft.upstream.resolutionCacheMaxEntries = $event"
+            />
+          </section>
+        </div>
+
+        <!-- Members, for a group -->
+        <div
+          v-else-if="stepKey === 'members'"
+          class="flex flex-col gap-4"
+        >
+          <p class="md-body-medium text-on-surface-variant">
+            The group lists these repositories, in this order. It has no files of its own, and nothing can be uploaded to it.
+          </p>
+          <RepositoryMembersPicker
+            id-prefix="wizard-members"
+            :model-value="draft.members"
+            :candidates="existingIds"
+            :error="shownErrors.members ?? ''"
+            @update:model-value="draft.members = $event"
+          />
+        </div>
+
         <!-- Access -->
         <div
           v-else-if="stepKey === 'access'"
@@ -560,7 +767,7 @@ const onModalUpdate = (open) => {
               id="wizard-role"
               :model-value="draft.access.role"
               label="Role"
-              :options="ROLE_OPTIONS"
+              :options="roleOptions"
               :supporting-text="roleExplanation(draft.access.role)"
               :error="Boolean(shownErrors.role)"
               :error-text="shownErrors.role ?? ''"
@@ -595,7 +802,7 @@ const onModalUpdate = (open) => {
                 id="wizard-machine-scope"
                 :model-value="draft.access.scope"
                 label="What the token may do"
-                :options="SCOPE_OPTIONS"
+                :options="scopeOptions"
                 supporting-text="The token can never do more than the role of the team allows."
                 @update:model-value="draft.access.scope = $event"
               />
@@ -763,6 +970,27 @@ const onModalUpdate = (open) => {
             </p>
 
             <section
+              v-if="draft.type !== 'HOSTED'"
+              aria-labelledby="wizard-address-title"
+              class="flex flex-col gap-2"
+            >
+              <h3
+                id="wizard-address-title"
+                class="md-title-small text-on-surface"
+              >
+                Address
+              </h3>
+              <p class="md-body-medium text-on-surface-variant">
+                A {{ typeLabelOf(draft.type).toLowerCase() }} repository takes no uploads, so there are no publishing snippets. Clients read from this address.
+              </p>
+              <code
+                data-test="address"
+                class="break-all rounded-corner-small bg-surface-container-lowest p-3 font-mono md-body-small text-on-surface"
+              >{{ addressOf }}</code>
+            </section>
+
+            <section
+              v-else
               aria-labelledby="wizard-snippets-title"
               class="flex flex-col gap-4"
             >
