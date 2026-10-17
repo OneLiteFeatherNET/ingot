@@ -137,6 +137,7 @@ A typed proxy is the clearest choice for a pure mirror. The typed rules and thei
 
 ## Related
 
+* [Create a group repository](create-a-group-repository.md) puts several local repositories behind one URL.
 * [Create hosted repositories](create-hosted-repositories.md) covers repositories that store your own uploads.
 * [Use S3 storage](use-s3-storage.md) for shared or large caches.
 * [Set cleanup policies](set-cleanup-policies.md) to remove old cache copies.
