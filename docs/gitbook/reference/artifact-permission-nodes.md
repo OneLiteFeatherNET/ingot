@@ -42,7 +42,7 @@ Rules for the coordinates:
 | `delete` | Deleting from the covered tree |
 | `*` | `read`, `deploy` and `delete` |
 
-There is no `manage` action for artifact nodes. Managing a repository is not scoped to a path, so use a repository node (`ingot.repository.<repository>.manage`) for it.
+There is no `manage` action for artifact nodes. Managing a repository is not scoped to a path, so use a repository node (`ingot.repository.<repository>.manage`) for it. That node is reserved: it can be stored and listed, but no request checks it yet, so granting it changes no access. Repository settings are one shared document, so there is no per-repository edit to gate with it.
 
 ## Repository names
 

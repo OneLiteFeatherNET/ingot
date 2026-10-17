@@ -586,6 +586,14 @@ class IdentityFacade(
 
     // catalog, templates and the permission check
 
+    /**
+     * The catalogue text of a repository action. `manage` is reserved: the node can be stored and listed, but no request
+     * checks it yet, so granting it changes no access. Repository settings are one shared document, so there is no
+     * per-repository settings edit to gate with it.
+     */
+    private fun repositoryActionText(action: String, scope: String): String =
+        if (action == "manage") "Reserved: manage on $scope, no request checks it yet" else "$action on $scope"
+
     /** The nodes an operator can pick, for autocomplete. Repository nodes are listed for the repositories that exist now. */
     fun nodeCatalog(prefix: String?): IdentityResult<CatalogDto> {
         val entries = mutableListOf<CatalogEntryDto>()
@@ -594,12 +602,12 @@ class IdentityFacade(
         entries += CatalogEntryDto("*", "Everything: every repository action and every administrative area", "WILDCARD")
         repositoryNames().sorted().forEach { repository ->
             NodePattern.REPOSITORY_ACTIONS.forEach { action ->
-                entries += CatalogEntryDto("ingot.repository.$repository.$action", "$action on repository $repository", "REPOSITORY")
+                entries += CatalogEntryDto("ingot.repository.$repository.$action", repositoryActionText(action, "repository $repository"), "REPOSITORY")
             }
             entries += CatalogEntryDto("ingot.repository.$repository.*", "Every action on repository $repository", "REPOSITORY")
         }
         NodePattern.REPOSITORY_ACTIONS.forEach { action ->
-            entries += CatalogEntryDto("ingot.repository.*.$action", "$action on every repository", "WILDCARD")
+            entries += CatalogEntryDto("ingot.repository.*.$action", repositoryActionText(action, "every repository"), "WILDCARD")
         }
         NodePattern.ARTIFACT_ACTIONS.forEach { action ->
             entries += CatalogEntryDto("ingot.artifact.*.$action", "$action on every artifact in every repository", "ARTIFACT")

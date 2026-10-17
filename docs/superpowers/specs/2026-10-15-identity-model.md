@@ -541,7 +541,7 @@ applied as an intersection: the owner's answer and the token's answer must both 
 everything. Instance admin means `ingot.admin.*` is allowed, token narrowing included.
 
 **Path requests.** A file request maps its action to a repository node: READ to `read`, WRITE to `deploy`, DELETE to `delete`,
-and manage operations to `manage`. Path-scoped grants and legacy route grants take part at their team's level, with their
+and manage operations to `manage`. The `manage` action is reserved: no endpoint performs a manage operation yet, so the node is stored and listed, but no request is checked against it and granting it changes no access. Path-scoped grants and legacy route grants take part at their team's level, with their
 existing matching rules. Legacy routes keep the exact old prefix matching, so migrated tokens keep their rights. An instance
 admin passes every path check that its token allows.
 
