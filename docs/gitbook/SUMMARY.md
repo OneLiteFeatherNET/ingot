@@ -14,6 +14,7 @@
 ## Reference
 
 * [Upgrade changes and supported paths](reference/upgrade-changes.md)
+* [Artifact permission nodes](reference/artifact-permission-nodes.md)
 
 ## Explanation
 

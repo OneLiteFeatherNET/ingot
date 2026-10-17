@@ -75,6 +75,8 @@ import net.onelitefeather.ingot.identity.api.PermissionCheckDto
 import net.onelitefeather.ingot.identity.api.TemplateDto
 import net.onelitefeather.ingot.identity.api.TemplatesDto
 import net.onelitefeather.ingot.identity.evaluation.AdminReachability
+import net.onelitefeather.ingot.identity.evaluation.Decision
+import net.onelitefeather.ingot.identity.evaluation.GRANT_KIND
 import net.onelitefeather.ingot.identity.evaluation.ScopeRules
 import net.onelitefeather.ingot.identity.evaluation.HierarchyProblem
 import net.onelitefeather.ingot.identity.evaluation.PermissionEvaluator
@@ -594,6 +596,10 @@ class IdentityFacade(
         NodePattern.REPOSITORY_ACTIONS.forEach { action ->
             entries += CatalogEntryDto("ingot.repository.*.$action", "$action on every repository", "WILDCARD")
         }
+        NodePattern.ARTIFACT_ACTIONS.forEach { action ->
+            entries += CatalogEntryDto("ingot.artifact.*.$action", "$action on every artifact in every repository", "ARTIFACT")
+        }
+        entries += CatalogEntryDto("ingot.artifact.*.*", "Every artifact action on every artifact in every repository", "ARTIFACT")
         val filtered = entries.filter { prefix.isNullOrEmpty() || it.node.startsWith(prefix) }
         return CatalogDto(filtered).asSuccess()
     }
@@ -604,6 +610,10 @@ class IdentityFacade(
         val deploy = "ingot.repository.{repository}.deploy"
         val delete = "ingot.repository.{repository}.delete"
         val manage = "ingot.repository.{repository}.manage"
+        val artifactRead = "ingot.artifact.{groupId}:{artifactId}.read"
+        val artifactDeploy = "ingot.artifact.{groupId}:{artifactId}.deploy"
+        val repositoryArtifactRead = "ingot.repository.{repository}.artifact.{groupId}:{artifactId}.read"
+        val repositoryArtifactDeploy = "ingot.repository.{repository}.artifact.{groupId}:{artifactId}.deploy"
         return TemplatesDto(
             listOf(
                 TemplateDto("read", "Read", listOf(read)),
@@ -611,6 +621,9 @@ class IdentityFacade(
                 TemplateDto("maintain", "Maintain", listOf(read, deploy, delete)),
                 TemplateDto("admin", "Admin", listOf(read, deploy, delete, manage)),
                 TemplateDto("instance-admin", "Instance admin", listOf("ingot.admin.*")),
+                TemplateDto("artifact-read", "Read an artifact", listOf(artifactRead)),
+                TemplateDto("artifact-deploy", "Deploy an artifact", listOf(artifactRead, artifactDeploy)),
+                TemplateDto("repository-artifact-deploy", "Deploy an artifact in one repository", listOf(repositoryArtifactRead, repositoryArtifactDeploy)),
             ),
         ).asSuccess()
     }
@@ -651,6 +664,9 @@ class IdentityFacade(
                 node = decision.node,
                 allowed = decision.allowed,
                 depth = decision.depth,
+                decidingNode = decision.decidingNode,
+                decidingKind = decision.decidingKind,
+                explanation = explain(decision),
             ),
             trace = decision.trace.map { candidate ->
                 CheckTraceDto(
@@ -661,9 +677,21 @@ class IdentityFacade(
                     matched = candidate.matched,
                     reason = candidate.reason,
                     depth = candidate.depth,
+                    kind = candidate.kind,
                 )
             },
         ).asSuccess()
+    }
+
+    /** The decision of a check in one sentence, naming the node or grant that decided. */
+    private fun explain(decision: Decision): String {
+        val verdict = if (decision.allowed) "Allowed" else "Denied"
+        val by = when {
+            decision.decidingKind == GRANT_KIND -> "by a role grant of ${decision.subject}"
+            decision.decidingNode != null -> "by the ${decision.decidingKind?.lowercase()} node '${decision.decidingNode}' of ${decision.subject} (${decision.source.name})"
+            else -> "because no node or grant matches"
+        }
+        return "$verdict $by"
     }
 
     // access explanation

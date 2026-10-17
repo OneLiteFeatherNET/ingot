@@ -86,6 +86,28 @@ internal class PermissionNodeIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `an artifact node with an ambiguous or reserved form is refused with the reason`() {
+        post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "deployers")).asString()
+
+        val refused = put(identity("/teams/deployers/nodes"))
+            .basicAuth(admin.first, admin.second)
+            .body(
+                mapOf(
+                    "nodes" to listOf(
+                        mapOf("node" to "ingot.artifact.*:mycelium.deploy", "allowed" to true),
+                        mapOf("node" to "ingot.repository.my.artifact.read", "allowed" to true),
+                    ),
+                ),
+            )
+            .asJacksonObject(JsonNode::class)
+
+        assertThat(refused.status).isEqualTo(BAD_REQUEST.code)
+        val reasons = refused.body.get("problems").associate { it.get("node").asText() to it.get("message").asText() }
+        assertThat(reasons["ingot.artifact.*:mycelium.deploy"]).describedAs("star group with an artifactId").contains("ambiguous")
+        assertThat(reasons["ingot.repository.my.artifact.read"]).describedAs("repository name rule").contains("may not contain a segment named 'artifact'")
+    }
+
+    @Test
     fun `a parent change that closes a cycle is refused with 409`() {
         post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "a")).asString()
         post(identity("/teams")).basicAuth(admin.first, admin.second).body(mapOf("name" to "b")).asString()
@@ -107,11 +129,14 @@ internal class PermissionNodeIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
-    fun `the templates are served with their five ids`() {
+    fun `the templates are served with their ids`() {
         val templates = get(identity("/nodes/templates")).basicAuth(admin.first, admin.second).asJacksonObject(JsonNode::class)
 
         assertThat(templates.body.get("templates").map { it.get("id").asText() })
-            .containsExactly("read", "deploy", "maintain", "admin", "instance-admin")
+            .containsExactly(
+                "read", "deploy", "maintain", "admin", "instance-admin",
+                "artifact-read", "artifact-deploy", "repository-artifact-deploy",
+            )
     }
 
     @Test

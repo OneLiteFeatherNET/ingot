@@ -20,14 +20,16 @@ import net.onelitefeather.ingot.identity.model.Action
 import net.onelitefeather.ingot.identity.model.DecisionSource
 import net.onelitefeather.ingot.identity.model.Grant
 import net.onelitefeather.ingot.identity.model.NodePattern
+import net.onelitefeather.ingot.identity.model.NodeSpecificity
 import net.onelitefeather.ingot.identity.model.SourcedRule
 
 /** What a request asks for: a full path as `/repository/path/in/repository`, and the action. */
 data class AccessRequest(val fullPath: String, val action: Action)
 
 /**
- * One rule or grant the decision looked at. [matched] says whether it covers the requested node; [specificity] is the
- * literal count that orders the matches of a level.
+ * One rule or grant the decision looked at. [matched] says whether it covers the requested node; the reason names the
+ * specificity that orders the matches of a level, or why a node did not match. [kind] is the kind of the node
+ * (`ARTIFACT`, `REPOSITORY`, `ADMIN`, `EVERYTHING`), or [GRANT_KIND] for a role grant, which is no node.
  */
 data class Candidate(
     val source: DecisionSource,
@@ -37,9 +39,17 @@ data class Candidate(
     val allowed: Boolean,
     val matched: Boolean,
     val reason: String,
+    val kind: String? = null,
 )
 
-/** The answer for one node, with every candidate of every level it consulted. */
+/** The kind a candidate carries when it is a role or legacy grant and not a node. */
+const val GRANT_KIND: String = "GRANT"
+
+/**
+ * The answer for one node, with every candidate of every level it consulted. [decidingNode] and [decidingKind] name the
+ * rule that decided: its node text and its kind. For a role grant the node is null and the kind is [GRANT_KIND]. When no
+ * rule matched (the default denial) both are null.
+ */
 data class Decision(
     val source: DecisionSource,
     val subject: String?,
@@ -47,6 +57,8 @@ data class Decision(
     val allowed: Boolean,
     val depth: Int,
     val trace: List<Candidate>,
+    val decidingNode: String? = null,
+    val decidingKind: String? = null,
 )
 
 /**
@@ -66,7 +78,7 @@ object PermissionEvaluator {
         if (request.action == Action.INSTANCE_ADMIN) return isInstanceAdmin(subject)
 
         val (repository, pathInRepository) = splitPath(request.fullPath)
-        val node = NodePattern.repository(repository, request.action.repositoryNodeAction())
+        val node = NodePattern.repositoryPath(repository, request.action.repositoryNodeAction(), pathInRepository)
         if (!tokenAllows(subject, node)) return false
         if (isInstanceAdmin(subject)) return true
 
@@ -104,11 +116,16 @@ object PermissionEvaluator {
 
     /**
      * Whether the subject may see the repository named by [fragment], a repository fragment such as `/releases`. The legacy
-     * part is the old `AccessTokenFacade.canSee`, unchanged. Nodes and path grants add visibility on top of it.
+     * part is the old `AccessTokenFacade.canSee`, unchanged. Nodes and path grants add visibility on top of it, and so does
+     * a readable artifact subtree: a subject that may read part of the repository sees the repository.
      */
     fun canSee(subject: AccessSubject, fragment: String): Boolean {
         if (subject.disabled) return false
         val repository = fragment.removePrefix("/")
+        return canSeeWholeRepository(subject, fragment, repository) || readableArtifactSubtrees(subject, repository).isNotEmpty()
+    }
+
+    private fun canSeeWholeRepository(subject: AccessSubject, fragment: String, repository: String): Boolean {
         if (!tokenAllows(subject, NodePattern.repository(repository, "read"))) return false
         if (isInstanceAdmin(subject)) return true
         if (subject.levels.any { level -> level.grants.any { grantReaches(it, fragment) } }) return true
@@ -117,6 +134,35 @@ object PermissionEvaluator {
             nodeGrantMatch(grant, NodePattern.repository(repository, "read"), includeLegacy = true)
         }.allowed
     }
+
+    /**
+     * Whether any artifact node of the owner or the token speaks about reading in [repository], allowing or denying. A
+     * cheap check on the rules alone: a listing of a repository without such a rule keeps the decisions it always had.
+     */
+    fun hasArtifactReadRule(subject: AccessSubject, repository: String): Boolean {
+        if (subject.disabled) return false
+        return artifactReadRules(subject, repository).any()
+    }
+
+    /**
+     * The roots of the subtrees of [repository] the subject may read through artifact nodes, as path segments below the
+     * repository root (empty for the whole repository). Each allowed artifact read node of the owner or the token names a
+     * root; it counts when the full decision (denials, precedence, token narrowing) allows reading it. The listing leads
+     * into these roots, so a root a denial removes never shows a directory on the way to it.
+     */
+    fun readableArtifactSubtrees(subject: AccessSubject, repository: String): List<List<String>> {
+        if (subject.disabled) return emptyList()
+        return artifactReadRules(subject, repository)
+            .filter { it.allowed }
+            .mapNotNull { it.pattern.coveredSegments }
+            .distinct()
+            .filter { segments -> allows(subject, AccessRequest("/$repository/${segments.joinToString("/")}", Action.READ)) }
+            .toList()
+    }
+
+    private fun artifactReadRules(subject: AccessSubject, repository: String): Sequence<SourcedRule> =
+        (subject.levels.asSequence().flatMap { it.rules } + subject.tokenRules.orEmpty())
+            .filter { it.pattern.isArtifactNodeFor(repository, "read") }
 
     /**
      * Whether a grant reaches the repository of [fragment] at all, whatever its actions. Used by [canSee] and by the access
@@ -178,10 +224,11 @@ object PermissionEvaluator {
                     node = rule.pattern.text,
                     allowed = rule.allowed,
                     matched = matched,
-                    reason = if (matched) "matches with specificity ${rule.pattern.specificity}" else "does not match ${node.text}",
+                    reason = rule.pattern.explain(node),
+                    kind = rule.pattern.kindName,
                 )
                 trace += candidate
-                if (matched) scored += Scored(candidate, rule.pattern.specificity)
+                if (matched) scored += Scored(candidate, rule.pattern.rank)
             }
             level.grants.forEach { grant ->
                 val match = grantMatch(grant)
@@ -194,9 +241,10 @@ object PermissionEvaluator {
                     allowed = true,
                     matched = match.matched,
                     reason = match.reason,
+                    kind = GRANT_KIND,
                 )
                 trace += candidate
-                if (match.matched) scored += Scored(candidate, node.specificity)
+                if (match.matched) scored += Scored(candidate, NodeSpecificity.ROLE_GRANT)
             }
             if (decided == null && scored.isNotEmpty()) {
                 decided = decideLevel(level.depth, scored, node)
@@ -215,11 +263,12 @@ object PermissionEvaluator {
                 node = rule.pattern.text,
                 allowed = rule.allowed,
                 matched = rule.pattern.matches(node),
-                reason = if (rule.pattern.matches(node)) "token node matches with specificity ${rule.pattern.specificity}" else "does not match ${node.text}",
+                reason = if (rule.pattern.matches(node)) "token node ${rule.pattern.explain(node)}" else rule.pattern.explain(node),
+                kind = rule.pattern.kindName,
             )
         }
         val scored = trace.zip(rules).filter { (candidate, _) -> candidate.matched }
-            .map { (candidate, rule) -> Scored(candidate, rule.pattern.specificity) }
+            .map { (candidate, rule) -> Scored(candidate, rule.pattern.rank) }
         val decision = if (scored.isEmpty()) {
             Decision(source, subject, node.text, allowed = false, depth = depth, trace = emptyList())
         } else {
@@ -241,6 +290,8 @@ object PermissionEvaluator {
             allowed = denial == null,
             depth = depth,
             trace = emptyList(),
+            decidingNode = winner.candidate.node.takeUnless { winner.candidate.kind == GRANT_KIND },
+            decidingKind = winner.candidate.kind,
         )
     }
 
@@ -250,7 +301,7 @@ object PermissionEvaluator {
         return decideRules(DecisionSource.TOKEN, subject.principalName.orEmpty(), 0, rules, node).allowed
     }
 
-    private class Scored(val candidate: Candidate, val specificity: Int)
+    private class Scored(val candidate: Candidate, val specificity: NodeSpecificity)
 
     /** Whether a grant covers the requested node, with the reason a client can read in the trace. */
     private data class GrantMatch(val matched: Boolean, val reason: String)
