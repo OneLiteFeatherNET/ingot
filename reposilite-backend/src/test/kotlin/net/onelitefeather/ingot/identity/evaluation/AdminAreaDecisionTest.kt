@@ -124,4 +124,52 @@ internal class AdminAreaDecisionTest {
         }
     }
 
+    @Test
+    fun `a qualified artifact node is decided as the request for its subtree`() {
+        val reader = subject(rules = listOf(allow("ingot.repository.releases.artifact.net.example.read")))
+        val node = NodePattern.of("ingot.repository.releases.artifact.net.example.read")
+
+        val byNode = PermissionEvaluator.decide(reader, node).allowed
+        val byRequest = PermissionEvaluator.allows(reader, AccessRequest("/releases/net/example", Action.READ))
+
+        assertThat(byNode).describedAs("node decision").isTrue
+        assertThat(byNode).describedAs("the request for the subtree").isEqualTo(byRequest)
+    }
+
+    @Test
+    fun `an instance admin is allowed a qualified artifact node with the shortcut named`() {
+        val admin = subject(rules = listOf(allow("ingot.admin.*"), deny("ingot.repository.releases.read")))
+        val node = NodePattern.of("ingot.repository.releases.artifact.net.example.read")
+
+        val decision = PermissionEvaluator.decide(admin, node)
+
+        assertThat(decision.allowed).describedAs("allowed").isTrue
+        assertThat(decision.decidingKind).describedAs("deciding kind").isEqualTo(INSTANCE_ADMIN_KIND)
+        assertThat(PermissionEvaluator.allows(admin, AccessRequest("/releases/net/example", Action.READ)))
+            .describedAs("the real request agrees").isTrue
+    }
+
+    @Test
+    fun `an instance admin is allowed an unqualified artifact node with the shortcut named`() {
+        val admin = subject(rules = listOf(allow("ingot.admin.*")))
+        val decision = PermissionEvaluator.decide(admin, NodePattern.of("ingot.artifact.net.example.read"))
+
+        assertThat(decision.allowed).describedAs("allowed").isTrue
+        assertThat(decision.decidingKind).describedAs("deciding kind").isEqualTo(INSTANCE_ADMIN_KIND)
+    }
+
+    @Test
+    fun `an artifact node check and the request for its subtree agree under a repository denial`() {
+        val reader = subject(
+            rules = listOf(
+                allow("ingot.repository.releases.artifact.net.example.read"),
+                deny("ingot.repository.releases.read"),
+            ),
+        )
+        val node = NodePattern.of("ingot.repository.releases.artifact.net.example.read")
+
+        assertThat(PermissionEvaluator.decide(reader, node).allowed)
+            .describedAs("node decision equals the real request")
+            .isEqualTo(PermissionEvaluator.allows(reader, AccessRequest("/releases/net/example", Action.READ)))
+    }
 }

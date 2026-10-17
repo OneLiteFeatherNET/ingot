@@ -101,19 +101,29 @@ object PermissionEvaluator {
         if (area == null) isInstanceAdmin(subject) else decide(subject, NodePattern.admin(area)).allowed
 
     /**
-     * Decides one concrete node, for the permission check of the identity API, as a real request decides it:
+     * Decides one concrete node, for the permission check of the identity API, exactly as a real request decides it:
      *
      * - a repository node is decided as the request for its repository root ([decideRequest]);
-     * - an admin area takes the instance admin shortcut ([decideWithShortcut]); other nodes are decided by their rules and
-     *   grants, as [decideNode].
+     * - a qualified artifact node is decided as the request for the subtree it covers ([decideRequest]);
+     * - an admin area, and an unqualified artifact node, take the instance admin shortcut ([decideWithShortcut]).
+     *
+     * An unqualified artifact node stands for every repository (see [NodePattern.matches]), so no single repository request
+     * decides it. Its rules decide as they always did, and the shortcut is the same one a request would take.
      */
     fun decide(subject: AccessSubject, node: NodePattern): Decision {
         val repository = node.repository
         val action = node.action
-        if (node.kindName == "REPOSITORY" && repository != null && action != null && repository != "*" && action != "*") {
-            return decideRequest(subject, AccessRequest("/$repository", requireNotNull(nodeAction(action))))
+        return when {
+            node.kindName == "REPOSITORY" && repository != null && action != null && repository != "*" && action != "*" ->
+                decideRequest(subject, AccessRequest("/$repository", requireNotNull(nodeAction(action))))
+            node.kindName == "ARTIFACT" && repository != null && action != null && action != "*" ->
+                decideRequest(
+                    subject,
+                    AccessRequest("/$repository/${node.coveredSegments.orEmpty().joinToString("/")}", requireNotNull(nodeAction(action))),
+                )
+            node.kindName == "ADMIN" || node.kindName == "ARTIFACT" -> decideWithShortcut(subject, node)
+            else -> decideNode(subject, node)
         }
-        return if (node.kindName == "ADMIN") decideWithShortcut(subject, node) else decideNode(subject, node)
     }
 
     /**

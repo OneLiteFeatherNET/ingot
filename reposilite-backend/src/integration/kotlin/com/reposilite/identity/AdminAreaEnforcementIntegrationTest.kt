@@ -157,6 +157,33 @@ internal class AdminAreaEnforcementIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `the check of a qualified artifact node agrees with the path check it stands for`() {
+        machine("reader-bot", nodes = listOf("ingot.repository.releases.artifact.net.example.read" to true))
+
+        val byNode = get(identity("/check?principal=reader-bot&node=ingot.repository.releases.artifact.net.example.read"))
+            .basicAuth(admin.first, admin.second)
+            .asJacksonObject(JsonNode::class)
+        val byPath = get(identity("/check?principal=reader-bot&repository=releases&path=net/example&action=read"))
+            .basicAuth(admin.first, admin.second)
+            .asJacksonObject(JsonNode::class)
+
+        assertThat(byNode.body.get("allowed").asBoolean()).describedAs("node check").isTrue
+        assertThat(byPath.body.get("allowed").asBoolean()).describedAs("path check of the subtree").isEqualTo(byNode.body.get("allowed").asBoolean())
+    }
+
+    @Test
+    fun `the check of an unqualified artifact node gives an instance admin the shortcut`() {
+        machine("boss-bot", nodes = listOf("ingot.admin.*" to true, "ingot.repository.releases.artifact.net.example.read" to false))
+
+        val check = get(identity("/check?principal=boss-bot&node=ingot.artifact.net.example.read"))
+            .basicAuth(admin.first, admin.second)
+            .asJacksonObject(JsonNode::class)
+
+        assertThat(check.body.get("allowed").asBoolean()).describedAs("allowed").isTrue
+        assertThat(check.body.get("decision").get("decidingKind").asText()).describedAs("deciding kind").isEqualTo("INSTANCE_ADMIN")
+    }
+
+    @Test
     fun `the console log stream names the area when a principal without it connects`() {
         // The console stream takes Basic credentials of a token, so the bearer secret of the principal is sent as its token.
         val bare = machine("bare-bot").removePrefix("Bearer ")
