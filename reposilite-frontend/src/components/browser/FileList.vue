@@ -36,12 +36,19 @@ const props = defineProps({
   loading: property(Boolean, true),
   hiddenCount: property(Number, false),
   // The repositories a group references, shown on the root of a repository only.
-  members: property(Array, false)
+  members: property(Array, false),
+  // A manager may edit the members of a group, in the settings of the repository.
+  canEditMembers: property(Boolean, false)
 })
 
 const router = useRouter()
 const references = computed(() => props.members ?? [])
 const hasReferences = computed(() => references.value.length > 0)
+const repositoryId = computed(() => props.qualifier.path.split('/')[0])
+const editMembers = () => router.push({
+  name: 'settings-entry',
+  params: { domain: 'maven', collection: 'repositories', entry: repositoryId.value }
+})
 // The not-found actions go to the directory above the one that is missing, and to the first
 // segment of the browsed path, which is the repository itself.
 const parentLocation = computed(() => browseLocation(parentPathOf(props.qualifier.path)))
@@ -237,6 +244,18 @@ const entryUrl = (file) =>
           </router-link>
         </li>
       </ul>
+      <div
+        v-if="canEditMembers"
+        class="mt-3"
+      >
+        <MdButton
+          variant="tonal"
+          type="button"
+          @click="editMembers"
+        >
+          Edit members
+        </MdButton>
+      </div>
     </section>
     <section
       v-if="!loading && files.error"

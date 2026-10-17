@@ -28,7 +28,8 @@ vi.mock('../../store/session', async () => {
     details: ref({ routes: [] }),
     client: ref(null),
     sessionReady: ref(true),
-    canWrite: ref(false)
+    canWrite: ref(false),
+    isManager: ref(false)
   }
   return {
     sessionState: state,
@@ -37,6 +38,7 @@ vi.mock('../../store/session', async () => {
       client: state.client,
       sessionReady: state.sessionReady,
       hasPermissionTo: () => state.canWrite.value,
+      isManager: state.isManager,
       token: ref({ name: '', secret: '' })
     })
   }
@@ -518,5 +520,119 @@ describe('FileBrowserView repository type in the header', () => {
     await flushPromises()
 
     expect(repositories).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('FileBrowserView uploads by repository type', () => {
+  const mounted = []
+  const emptyDetails = () => Promise.resolve({ data: { files: [] } })
+  const clientWithTypes = ({ repositories, members = [] }) => ({
+    maven: {
+      details: emptyDetails,
+      members: () => Promise.resolve({ data: { members } }),
+      repositories: () => Promise.resolve({ data: { repositories } }),
+      download: () => Promise.reject(new Error('not used')),
+      delete: () => Promise.reject(new Error('not used'))
+    }
+  })
+
+  const mountAt = (path) => {
+    const wrapper = mount(FileBrowserView, {
+      props: { qualifier: { path, watchable: 0 } },
+      global: { stubs: { 'router-link': RouterLinkStub } }
+    })
+    mounted.push(wrapper)
+    return wrapper
+  }
+
+  beforeEach(() => {
+    sessionState.details.value = { routes: [] }
+    sessionState.sessionReady.value = true
+    sessionState.canWrite.value = true
+    sessionState.isManager.value = false
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('offers no upload to a proxy, and says that it fetches from remote repositories', async () => {
+    sessionState.client.value = clientWithTypes({ repositories: [{ id: 'central', type: 'PROXY', typeExplicit: true }] })
+
+    const wrapper = mountAt('central/org/example')
+    await flushPromises()
+
+    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(false)
+    expect(wrapper.get('[data-test="read-only-explanation"]').text()).toContain('remote repositories')
+  })
+
+  it('offers no upload to a group, and says that it has no files of its own', async () => {
+    sessionState.client.value = clientWithTypes({ repositories: [{ id: 'all', type: 'GROUP', typeExplicit: true }] })
+
+    const wrapper = mountAt('all')
+    await flushPromises()
+
+    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(false)
+    expect(wrapper.get('[data-test="read-only-explanation"]').text()).toContain('no files of its own')
+  })
+
+  it('keeps the upload for a hosted repository the user may write to', async () => {
+    sessionState.client.value = clientWithTypes({ repositories: [{ id: 'releases', type: 'HOSTED', typeExplicit: true }] })
+
+    const wrapper = mountAt('releases/net/example')
+    await flushPromises()
+
+    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+    expect(wrapper.find('[data-test="read-only-explanation"]').exists()).toBe(false)
+  })
+
+  it('keeps the upload for a repository without a type, as before', async () => {
+    sessionState.client.value = clientWithTypes({ repositories: [{ id: 'old', type: 'mixed', typeExplicit: false }] })
+
+    const wrapper = mountAt('old/org')
+    await flushPromises()
+
+    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+  })
+
+  it('keeps the upload when the list of repositories cannot be read, since the type is then not known', async () => {
+    sessionState.client.value = {
+      ...clientWithTypes({ repositories: [] }),
+      maven: {
+        ...clientWithTypes({ repositories: [] }).maven,
+        repositories: () => Promise.reject(new Error('Network Error'))
+      }
+    }
+
+    const wrapper = mountAt('releases/net/example')
+    await flushPromises()
+
+    expect(wrapper.findComponent(BrowserUpload).exists()).toBe(true)
+  })
+
+  it('offers a manager the edit of a group members, from the Includes section', async () => {
+    sessionState.isManager.value = true
+    sessionState.client.value = clientWithTypes({
+      repositories: [{ id: 'all', type: 'GROUP', typeExplicit: true }],
+      members: ['releases']
+    })
+
+    const wrapper = mountAt('all')
+    await flushPromises()
+
+    expect(wrapper.findAll('button').find(button => button.text() === 'Edit members')).toBeDefined()
+  })
+
+  it('does not offer the edit of the members to a visitor who is not a manager', async () => {
+    sessionState.client.value = clientWithTypes({
+      repositories: [{ id: 'all', type: 'GROUP', typeExplicit: true }],
+      members: ['releases']
+    })
+
+    const wrapper = mountAt('all')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Includes')
+    expect(wrapper.findAll('button').find(button => button.text() === 'Edit members')).toBeUndefined()
   })
 })

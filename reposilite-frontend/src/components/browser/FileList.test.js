@@ -302,3 +302,34 @@ describe('FileList includes section', () => {
     expect(empty.text(), 'the text has no glyph outside printable ASCII').toMatch(/^[ -~]*$/)
   })
 })
+
+describe('FileList edit members of a group', () => {
+  beforeEach(() => {
+    routerPush.mockClear()
+  })
+
+  it('offers a manager to edit the members, and opens the repository settings at the repository', async () => {
+    const wrapper = mountList({ files: { list: [], error: false }, members: ['releases'], canEditMembers: true })
+
+    const edit = wrapper.findAll('button').find(button => button.text() === 'Edit members')
+    expect(edit, 'the group has an edit action for managers').toBeDefined()
+    await edit.trigger('click')
+
+    expect(routerPush).toHaveBeenCalledWith({
+      name: 'settings-entry',
+      params: { domain: 'maven', collection: 'repositories', entry: 'releases' }
+    })
+  })
+
+  it('does not offer the edit to a visitor who is not a manager', () => {
+    const wrapper = mountList({ files: { list: [], error: false }, members: ['releases'], canEditMembers: false })
+
+    expect(wrapper.findAll('button').find(button => button.text() === 'Edit members')).toBeUndefined()
+  })
+
+  it('does not offer the edit for a repository without members, which is not a group', () => {
+    const wrapper = mountList({ files: { list: [jar], error: false }, members: [], canEditMembers: true })
+
+    expect(wrapper.findAll('button').find(button => button.text() === 'Edit members')).toBeUndefined()
+  })
+})
