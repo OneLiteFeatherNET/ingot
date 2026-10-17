@@ -31,6 +31,10 @@ object EntityTag {
     /**
      * Evaluates an `If-Match` header against the current entity tag of a resource, `null` when the resource does not exist.
      * An absent or blank header imposes no precondition, which keeps clients that never send it working as before.
+     *
+     * A compressing proxy turns a strong tag into a weak one (`W/"..."`) and the client sends that form back. The tags
+     * are HMACs of the exact content, so the opaque part alone identifies the state, and a weak candidate matches the
+     * same way a strong one does. A candidate for another state still fails with 412.
      */
     fun matches(ifMatch: String?, current: String?): Boolean {
         if (ifMatch.isNullOrBlank()) {
@@ -43,10 +47,18 @@ object EntityTag {
                 when {
                     candidate == "*" -> current != null
                     current == null -> false
-                    else -> candidate == current
+                    else -> opaqueTag(candidate) == opaqueTag(current)
                 }
             }
     }
+
+    /**
+     * The tag without its weakness marker, so `W/"abc"` and `"abc"` name the same state.
+     */
+    private fun opaqueTag(tag: String): String =
+        tag.removePrefix(WEAK_PREFIX)
+
+    private const val WEAK_PREFIX = "W/"
 
 }
 

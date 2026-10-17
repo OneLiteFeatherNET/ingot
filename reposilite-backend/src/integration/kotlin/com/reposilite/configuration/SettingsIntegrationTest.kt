@@ -258,6 +258,47 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
     }
 
     @Test
+    fun `should accept a weak entity tag of the current state, as a compressing proxy sends it`() {
+        // given: the entity tag of the current state, weakened the way a compressing proxy weakens it
+        val (name, secret) = useDefaultManagementToken()
+        val current = currentEntityTag("web")
+
+        // when: the domain is written with the weak form of that tag
+        val response = Unirest.put("$base/api/settings/domain/web")
+            .basicAuth(name, secret)
+            .header("If-Match", "W/$current")
+            .body(WebSettings(forwardedIp = "weak-conditional"))
+            .asEmpty()
+
+        // then: the write is applied
+        assertSuccessResponse(OK, response)
+    }
+
+    @Test
+    fun `should reject a weak entity tag of a stale state with 412`() {
+        // given: an entity tag read before another admin saves the domain
+        val (name, secret) = useDefaultManagementToken()
+        val stale = currentEntityTag("web")
+        assertSuccessResponse(
+            OK,
+            Unirest.put("$base/api/settings/domain/web")
+                .basicAuth(name, secret)
+                .body(WebSettings(forwardedIp = "other-admin"))
+                .asEmpty()
+        )
+
+        // when: the stale tag arrives in its weak form
+        val response = Unirest.put("$base/api/settings/domain/web")
+            .basicAuth(name, secret)
+            .header("If-Match", "W/$stale")
+            .body(WebSettings(forwardedIp = "overwrite"))
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: it is rejected with 412
+        assertErrorResponse(PRECONDITION_FAILED, response)
+    }
+
+    @Test
     fun `should expose the entity tag header to cross-origin clients`() {
         // given: a cross-origin dashboard served from another origin
         val (name, secret) = useDefaultManagementToken()
