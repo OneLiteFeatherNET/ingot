@@ -264,6 +264,69 @@ internal class RepositoryTypeSettingsTest {
         assertThat(repository.effectiveType(localNames = setOf("releases", "all"))).isEqualTo(EffectiveRepositoryType.GROUP)
     }
 
+    // --- blank entries (normalization before the save) ----------------------------------------------------------
+
+    @Test
+    fun `should drop blank proxied references from a typed group and keep the order of the others`() {
+        val normalized = settings(
+            RepositorySettings(id = "releases", type = RepositoryType.HOSTED),
+            RepositorySettings(id = "snapshots", type = RepositoryType.HOSTED),
+            RepositorySettings(id = "all", type = RepositoryType.GROUP, proxied = listOf(local("releases"), local(""), local("   "), local("snapshots"))),
+        ).normalized()
+
+        assertThat(normalized.repositories.last().proxied).containsExactly(local("releases"), local("snapshots"))
+        assertThat(normalized.violations()).isEmpty()
+    }
+
+    @Test
+    fun `should drop blank proxied references from a typed proxy`() {
+        val normalized = settings(
+            RepositorySettings(id = "central", type = RepositoryType.PROXY, proxied = listOf(external(), external(""), external(" "))),
+        ).normalized()
+
+        assertThat(normalized.repositories.single().proxied).containsExactly(external())
+        assertThat(normalized.violations()).isEmpty()
+    }
+
+    @Test
+    fun `should treat a lone slash as blank because the server ignores it as an empty reference`() {
+        val normalized = settings(
+            RepositorySettings(id = "central", type = RepositoryType.PROXY, proxied = listOf(external(), external("/"))),
+        ).normalized()
+
+        assertThat(normalized.repositories.single().proxied).containsExactly(external())
+    }
+
+    @Test
+    fun `should still reject a typed proxy whose only references are blank`() {
+        val normalized = settings(
+            RepositorySettings(id = "central", type = RepositoryType.PROXY, proxied = listOf(external(""))),
+        ).normalized()
+
+        assertThat(normalized.violations()).singleElement().asString()
+            .contains("'central'")
+            .contains("PROXY")
+    }
+
+    @Test
+    fun `should keep the blank entries of an untyped repository untouched`() {
+        val settings = settings(
+            RepositorySettings(id = "releases"),
+            RepositorySettings(id = "onelitefeather", proxied = listOf(local("releases"), local(""))),
+        )
+
+        assertThat(settings.normalized()).isEqualTo(settings)
+    }
+
+    @Test
+    fun `should return a typed repository without blank entries as it is`() {
+        val settings = settings(
+            RepositorySettings(id = "central", type = RepositoryType.PROXY, proxied = listOf(external())),
+        )
+
+        assertThat(settings.normalized()).isEqualTo(settings)
+    }
+
     // --- JSON -----------------------------------------------------------------------------------------------------
 
     @Test

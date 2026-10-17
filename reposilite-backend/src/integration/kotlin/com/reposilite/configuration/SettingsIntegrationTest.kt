@@ -36,6 +36,7 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.statistics.api.ResolvedRequestsInterval.YEARLY
 import com.reposilite.statistics.application.StatisticsSettings
 import com.reposilite.web.application.WebSettings
+import io.javalin.http.HttpStatus.BAD_REQUEST
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
@@ -197,6 +198,25 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
             .asString()
             .headers
             .getFirst("ETag")
+    }
+
+    @Test
+    fun `should answer an invalid login domain with 400 and the rule as the message`() {
+        // given: a manager and a login domain with a public address that is not https
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: the domain is updated
+        val response = Unirest.put("$base/api/settings/domain/login")
+            .basicAuth(name, secret)
+            .body(LoginSettings(publicUrl = "http://repo.example.org"))
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the update is refused with the rule and without the name of an exception
+        assertErrorResponse(BAD_REQUEST, response)
+        assertThat(response.body.message)
+            .startsWith("publicUrl: ")
+            .doesNotContain("java.lang")
+            .doesNotContain("Invalid login settings")
     }
 
     @Test

@@ -75,6 +75,26 @@ export const SETTING_TYPE_OPTIONS = [
 export const isRemoteUrl = (text) => /^https?:\/\/[^\s/]+\S*$/i.test(String(text ?? '').trim())
 
 /*
+ * A mirrored entry that names nothing: blank, or only the slash the server strips from a reference. The server
+ * ignores such an entry for an untyped repository, and drops it from a typed one when it is saved.
+ */
+const isBlankReference = (reference) => {
+  const trimmed = String(reference ?? '').trim()
+  return (trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed) === ''
+}
+const isBlankEntry = (item) => isBlankReference(item?.reference)
+
+/* The number of blank entries that a switch to `to` removes. Only a typed repository drops them. */
+export const blankEntriesRemovedBy = (entry, to) => (Array.isArray(entry?.proxied) && isTyped(to)
+  ? entry.proxied.filter(isBlankEntry).length
+  : 0)
+
+/* The line of the switch confirmation about blank entries, or nothing when a switch removes none. */
+export const blankEntriesNotice = (count) => (count === 0
+  ? ''
+  : `${count} empty ${count === 1 ? 'entry' : 'entries'} will be removed.`)
+
+/*
  * The settings a type keeps when it is switched to. Storage is kept by every type: a hosted repository
  * stores its files there, a proxy stores its cache there, and a group keeps a storage it does not use
  * (see warningsFor), so no storage is ever deleted by a switch. A group keeps its mirrored entries as
@@ -149,7 +169,7 @@ export const unusedStorageNoteOf = (entry) => (entry.type === 'GROUP' && isSet(e
   ? 'The storage stays configured, but a group does not use it.'
   : '')
 
-/* The entry with the type changed: what the new type does not keep is taken out, and the type is written. None takes the type away. */
+/* The entry with the type changed: what the new type does not keep is taken out, blank entries too, and the type is written. None takes the type away, and keeps the entries as they are. */
 export const switchedEntry = (entry, to) => {
   const next = { ...entry }
   if (!isTyped(to)) {
@@ -157,6 +177,7 @@ export const switchedEntry = (entry, to) => {
     return next
   }
   for (const field of notKept(entry.type ?? '', to)) delete next[field]
+  if (Array.isArray(next.proxied)) next.proxied = next.proxied.filter(item => !isBlankEntry(item))
   next.type = to
   return next
 }
@@ -166,7 +187,9 @@ export const switchedEntry = (entry, to) => {
  * `otherIds` are the ids of the other repositories; a group may list only those.
  */
 export const violationsOf = (entry, { otherIds = [] } = {}) => {
-  const references = Array.isArray(entry.proxied) ? entry.proxied.map(item => String(item?.reference ?? '')) : []
+  const references = Array.isArray(entry.proxied)
+    ? entry.proxied.filter(item => !isBlankEntry(item)).map(item => String(item?.reference ?? ''))
+    : []
   if (entry.type === 'HOSTED') {
     return references.length > 0
       ? ['A hosted repository cannot mirror other repositories. Remove the mirrored repositories, or choose Proxy or Group.']

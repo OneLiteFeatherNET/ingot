@@ -51,6 +51,10 @@ data class MavenSettings(
     override fun violations(): List<String> =
         repositories.flatMap { it.violations() } + typeViolations()
 
+    /** Typed repositories drop their blank proxied references, see [RepositorySettings.normalized]. */
+    override fun normalized(): MavenSettings =
+        copy(repositories = repositories.map { it.normalized() })
+
     /**
      * The rules of declared repository types, checked where the ids of all repositories are known. A typed group is
      * also checked for cycles, which can run through untyped repositories; a cycle made of untyped repositories alone
@@ -197,6 +201,14 @@ data class RepositorySettings(
         val loopback = hosts.count { it in localNames }
         return effectiveRepositoryType(type, loopbackReferences = loopback, externalReferences = hosts.size - loopback)
     }
+
+    /**
+     * The settings as they are stored. A typed repository drops the blank entries of its proxied list, because a blank
+     * entry names no repository and the server already ignores it. An untyped repository is returned as it is, so its
+     * data is never rewritten.
+     */
+    fun normalized(): RepositorySettings =
+        if (type == null) this else copy(proxied = proxied.filter { it.referencedHost().isNotEmpty() })
 
     /** The rules of the declared [type] that concern this repository alone. Empty when the repository is untyped. */
     internal fun typeViolations(localNames: Set<String>): List<String> {
