@@ -180,7 +180,7 @@ Loopback references are how a repository serves other repositories of the instan
 
 ## Secrets
 
-The fields marked sensitive on this page are the S3 `endpoint`, `accessKey` and `secretKey`, and the proxied `httpProxy` and `authorization.password`. The settings API returns them as stored. With the local setting `hideSettingsSecrets` turned on, it returns a placeholder instead and keeps the stored value when the placeholder is sent back. The setting is off by default.
+The fields marked sensitive on this page are the S3 `endpoint`, `accessKey` and `secretKey`, and the proxied `httpProxy` and `authorization.password`. The settings API returns them as stored. With the local setting `hideSettingsSecrets` turned on, it returns a placeholder instead and keeps the stored value when the placeholder is sent back. The setting is off by default. A write that leaves a secret out of a mirrored repository keeps the stored one. To remove a mirror credential, send `null` for its `authorization`.
 
 ## Related
 

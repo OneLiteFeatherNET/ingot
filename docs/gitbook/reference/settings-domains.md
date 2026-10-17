@@ -31,7 +31,7 @@ All routes need the manager permission.
 | Optimistic concurrency | A `PUT` with an `If-Match` header that no longer matches the stored document is refused with `412`. Without `If-Match` the write is unconditional. |
 | Validation | A domain with rules (marked in the tables below) refuses an invalid document with `400` and keeps the current settings. |
 | Unknown domain | The reads answer `200` with an empty body. A `PUT` answers `400` with `Body is empty`. |
-| Secret fields | Marked as secret below. With the local key `hideSettingsSecrets` set to `true`, a read returns `********` for every non-empty secret, and a write that sends `********` keeps the stored value. A `********` that has no stored counterpart is refused with `400`. With the default `false`, the stored values are returned. |
+| Secret fields | Marked as secret below. With the local key `hideSettingsSecrets` set to `true`, a read returns `********` for every non-empty secret, and a write that sends `********` keeps the stored value. A `********` that has no stored counterpart is refused with `400`. With the default `false`, the stored values are returned. In both cases a write that leaves a secret out of an existing list entry, such as the credential of a mirrored repository, keeps the stored value; send `null` for that field to remove it. An entry is matched by its key, and a secret that would have to come from one of several entries with the same key is refused with `400`. |
 
 Domains:
 
