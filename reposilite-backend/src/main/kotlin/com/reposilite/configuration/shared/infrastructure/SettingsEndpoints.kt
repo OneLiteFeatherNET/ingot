@@ -45,7 +45,8 @@ import java.io.InputStream
 
 /**
  * @param hideSecrets when enabled, the settings API replaces every secret with a placeholder on read and keeps the stored
- * value when the placeholder is sent back, see [SettingsSecrets]
+ * value when the placeholder is sent back, see [SettingsSecrets]. Secrets that a write leaves out of an existing entry keep
+ * their stored value either way.
  */
 internal class SettingsEndpoints(
     private val sharedConfigurationFacade: SharedConfigurationFacade,
@@ -151,12 +152,7 @@ internal class SettingsEndpoints(
                     ?.let { settingsReference ->
                         // Without If-Match the write is unconditional, as it always was. The precondition and the write share one lock.
                         sharedConfigurationFacade.updateDomain<SharedSettings>(this, ctx.header(Header.IF_MATCH), auditActor()) { current ->
-                            if (hideSecrets.get()) {
-                                restoreSecrets(this, settingsReference, body, current)
-                            } else {
-                                val incoming: SharedSettings = ctx.bodyAsClass(settingsReference.type)
-                                incoming.asSuccess()
-                            }
+                            restoreStoredSecrets(this, settingsReference, body, current)
                         }
                     }
                     ?.map { snapshot ->
@@ -169,10 +165,11 @@ internal class SettingsEndpoints(
     }
 
     /**
-     * Restores the placeholders of the incoming document from the stored settings before the update. A placeholder without a stored
-     * counterpart is rejected instead of being written as a literal value.
+     * Restores the secrets of the incoming document from the stored settings before the update. While secrets are hidden, a
+     * placeholder takes the stored value, and a placeholder without a stored counterpart is rejected instead of being written as a
+     * literal value. Secrets that the body leaves out of an existing entry keep their stored value in both modes.
      */
-    private fun restoreSecrets(
+    private fun restoreStoredSecrets(
         name: String,
         reference: SharedSettingsReference<SharedSettings>,
         body: String,
@@ -184,7 +181,8 @@ internal class SettingsEndpoints(
         val restored = SettingsSecrets.restore(
             type = reference.type,
             incoming = incoming,
-            stored = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(stored)
+            stored = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(stored),
+            placeholders = hideSecrets.get()
         )
         if (restored.isErr) {
             return badRequest(restored.error).asError()

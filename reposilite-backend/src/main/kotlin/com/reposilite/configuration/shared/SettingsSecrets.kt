@@ -73,16 +73,25 @@ internal class ItemShape(
  * Hides and restores secrets of shared settings documents, as JSON trees.
  *
  * Masking replaces every non-empty [Sensitive] value with [HIDDEN_SECRET]. Restoring walks the incoming tree next to the stored one:
- * a placeholder takes the stored value at the same place, lists are matched by their [SettingsKey], and a placeholder without a stored
- * counterpart is rejected, so a secret is never handed to a different entry.
+ * a placeholder takes the stored value at the same place, and lists are matched by their [SettingsKey]. A placeholder without a
+ * stored counterpart is rejected, so a secret is never handed to a different entry.
+ *
+ * A matched list entry also keeps the secrets its body leaves out: a credential or a secret that is absent from the incoming entry
+ * keeps the stored value, so a client that rebuilds an entry from part of it cannot erase the secret. An explicit `null` is still a
+ * removal. When several stored entries share the key of the incoming one, no entry can be told apart from the others, so a secret
+ * that would have to come from one of them is rejected instead of guessed.
  */
 internal object SettingsSecrets {
 
     fun mask(type: Class<*>, settings: JsonNode): JsonNode =
         maskNode(settings.deepCopy(), shapeOf(type))
 
-    fun restore(type: Class<*>, incoming: JsonNode, stored: JsonNode): Result<JsonNode, String> =
-        restoreNode(incoming, stored, shapeOf(type), path = "")
+    /**
+     * Restores the secrets of [incoming] from [stored]. A placeholder is replaced only when [placeholders] is set, which is the case
+     * while secrets are hidden. Absent secrets of matched entries are kept either way.
+     */
+    fun restore(type: Class<*>, incoming: JsonNode, stored: JsonNode, placeholders: Boolean = true): Result<JsonNode, String> =
+        restoreNode(incoming, listOf(stored), shapeOf(type), path = "", placeholders = placeholders, inEntry = false)
 
     /**
      * Masks a shared configuration document for logging. Domains without a known type are withheld completely.
@@ -118,23 +127,49 @@ internal object SettingsSecrets {
         return node
     }
 
-    private fun restoreNode(incoming: JsonNode, stored: JsonNode?, shape: SecretShape, path: String): Result<JsonNode, String> {
+    /**
+     * Restores one node. [stored] holds the stored nodes it may take values from: one for a node at a known place, one per entry
+     * that shares the key for a list entry, and none for an entry that is new. [inEntry] is set below a matched list entry.
+     */
+    private fun restoreNode(
+        incoming: JsonNode,
+        stored: List<JsonNode?>,
+        shape: SecretShape,
+        path: String,
+        placeholders: Boolean,
+        inEntry: Boolean,
+    ): Result<JsonNode, String> {
         if (shape.sensitive) {
-            if (!incoming.isTextual || incoming.textValue() != HIDDEN_SECRET) {
+            if (!placeholders || !incoming.isTextual || incoming.textValue() != HIDDEN_SECRET) {
                 return incoming.asSuccess()
             }
 
-            return stored
-                ?.takeIf { it.isTextual }
-                ?.asSuccess()
+            val counterpart = stored.singleOrNull()?.takeIf { it.isTextual }
+            return counterpart?.asSuccess()
                 ?: "Cannot keep the hidden value of '$path': no stored value matches this entry. Send the actual value instead of $HIDDEN_SECRET.".asError()
         }
 
         if (incoming is ObjectNode && shape.fields.isNotEmpty()) {
             val restored = incoming.deepCopy()
             for ((name, child) in shape.fields) {
-                val value = incoming.get(name) ?: continue
-                val result = restoreNode(value, stored?.get(name), child, if (path.isEmpty()) name else "$path.$name")
+                val childPath = if (path.isEmpty()) name else "$path.$name"
+                val value = incoming.get(name)
+                if (value == null) {
+                    // A secret that the body leaves out of a matched entry keeps the stored one.
+                    // A list is not a secret, so an absent list is not restored.
+                    if (inEntry && child.items == null) {
+                        val kept = stored.mapNotNull { it?.get(name) }.filterNot { it.isNull }
+                        if (kept.isNotEmpty()) {
+                            if (stored.size != 1) {
+                                return "Cannot keep the stored value of '$childPath': several mirrored entries share its key. Send the value with the entry.".asError()
+                            }
+                            restored.set<JsonNode>(name, kept.single())
+                        }
+                    }
+                    continue
+                }
+
+                val result = restoreNode(value, stored.map { it?.get(name) }, child, childPath, placeholders, inEntry)
                 if (result.isErr) {
                     return result
                 }
@@ -145,12 +180,12 @@ internal object SettingsSecrets {
 
         val items = shape.items
         if (incoming is ArrayNode && items != null) {
-            val storedEntries = stored as? ArrayNode
+            val storedEntries = stored.filterIsInstance<ArrayNode>().flatten()
             val restored = JsonNodeFactory.instance.arrayNode()
             incoming.forEachIndexed { index, entry ->
                 val key = entry.get(items.key)?.asText()
-                val counterpart = key?.let { id -> storedEntries?.filter { it.get(items.key)?.asText() == id }?.singleOrNull() }
-                val result = restoreNode(entry, counterpart, items.element, "$path[${key ?: index}]")
+                val counterparts = storedEntries.filter { key != null && it.get(items.key)?.asText() == key }
+                val result = restoreNode(entry, counterparts, items.element, "$path[${key ?: index}]", placeholders, inEntry = true)
                 if (result.isErr) {
                     return result
                 }
