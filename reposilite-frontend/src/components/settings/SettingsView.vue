@@ -92,7 +92,8 @@ const {
   reviewConflict,
   reloadConflict,
   overwriteConflict,
-  dismissConflict
+  dismissConflict,
+  saveError
 } = store
 
 // The domain on screen is the one the store holds. The address sets it, and the tabs set it;
@@ -495,6 +496,8 @@ watch(
           :validator="store.configurationValidator"
           :guided-create="guidedCreateFor(list)"
           :show-access="isRepositoryList(list)"
+          :typed="isRepositoryList(list)"
+          :server-error="saveError ?? ''"
           @select="selectEntry(list, $event)"
           @back="backToList"
           @create="createEntry(list, $event)"

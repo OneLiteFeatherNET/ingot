@@ -19,10 +19,20 @@ import { computed, ref, watch } from 'vue'
 import { JsonForms } from '@jsonforms/vue'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
+import MdSelect from '../md/MdSelect.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DeleteEntryDialog from './DeleteEntryDialog.vue'
 import RepositoryAccessCard from './RepositoryAccessCard.vue'
+import RepositoryMembersPicker from './RepositoryMembersPicker.vue'
 import { entryLayout, idText, validateNewId } from './collections'
+import { membersOf, proxiedOfMembers } from './groupMembers'
+import {
+  SETTING_TYPE_OPTIONS,
+  hiddenFormFields,
+  removalsFor,
+  switchedEntry,
+  violationsOf
+} from '../../store/maven/repositoryTypes'
 
 /*
  * The detail pane of one entry. The id is edited in its own field, checked the way the new-entry
@@ -65,6 +75,16 @@ const props = defineProps({
   showAccess: {
     type: Boolean,
     default: false
+  },
+  // True for the repositories of the maven domain: the pane shows the type first, and the fields that type takes.
+  typed: {
+    type: Boolean,
+    default: false
+  },
+  // The message the server gave when the settings were refused, shown next to the type it may be about.
+  serverError: {
+    type: String,
+    default: ''
   },
   renderers: {
     type: Array,
@@ -110,6 +130,73 @@ const onChange = (event) => {
   latest.value = event.data
   emit('change', event.data)
 }
+
+/*
+ * The type of a repository. A repository without one behaves as before, and the choice that says so
+ * is the empty value. Switching asks first when the new type would take settings away, and names them.
+ */
+const TYPE_HELP = {
+  '': 'No type set. The repository behaves as before. Choose a type to enforce its rules.',
+  HOSTED: 'Files are uploaded here and kept on storage.',
+  PROXY: 'Files are fetched from remote repositories. Nothing can be uploaded.',
+  GROUP: 'Lists other repositories, in order. Nothing can be uploaded.'
+}
+const typeValue = computed(() => latest.value?.type ?? '')
+const typeHelp = computed(() => TYPE_HELP[typeValue.value] ?? '')
+const typeLabelOf = (type) => SETTING_TYPE_OPTIONS.find(option => option.value === type)?.label ?? ''
+const keepLabel = computed(() => (typeValue.value === '' ? 'Keep it as before' : `Keep ${typeLabelOf(typeValue.value)}`))
+const pendingType = ref(null)
+const typeNotice = ref('')
+const pendingRemovals = computed(() => (pendingType.value === null
+  ? []
+  : removalsFor(latest.value, typeValue.value, pendingType.value)))
+
+const applyType = (type) => {
+  const next = switchedEntry(latest.value, type)
+  latest.value = next
+  pendingType.value = null
+  typeNotice.value = `Type set to ${typeLabelOf(type).toLowerCase() || 'not set'}.`
+  emit('change', next)
+}
+
+const requestType = (type) => {
+  if (type === typeValue.value) return
+  if (removalsFor(latest.value, typeValue.value, type).length === 0) {
+    applyType(type)
+    return
+  }
+  pendingType.value = type
+  typeNotice.value = ''
+}
+
+const confirmType = () => applyType(pendingType.value)
+const cancelType = () => {
+  pendingType.value = null
+}
+
+// The rules the type breaks, checked here so the problem is shown before the save. Only for the typed repositories.
+const violations = computed(() => (props.typed ? violationsOf(latest.value, { otherIds: props.otherIds }) : []))
+
+// A group's members are its mirrored entries read as repository ids, and are edited as a list.
+const members = computed(() => membersOf(latest.value.proxied))
+const onMembers = (ids) => {
+  const next = { ...latest.value, proxied: proxiedOfMembers(ids) }
+  latest.value = next
+  emit('change', next)
+}
+
+// The fields the type does not take are left out of the form. The type itself is shown by the selector above it.
+const withoutFields = (node, hidden) => {
+  const elements = (node.elements ?? [])
+    .filter(element => !(element.type === 'Control' && hidden.has(element.scope.replace('#/properties/', ''))))
+    .map(element => (element.elements ? withoutFields(element, hidden) : element))
+    .filter(element => !(element.type === 'Group' && element.elements.length === 0))
+  return { ...node, elements }
+}
+const formLayout = computed(() => {
+  const hidden = new Set([...hiddenFormFields(typeValue.value), ...(props.typed ? ['type'] : [])])
+  return withoutFields(layout.value, hidden)
+})
 </script>
 
 <template>
@@ -173,16 +260,124 @@ const onChange = (event) => {
       @update:model-value="onIdInput"
     />
 
-    <JsonForms
-      :key="id"
-      :data="entry"
-      :schema="collection.itemSchema"
-      :uischema="layout"
-      :renderers="renderers"
-      :ajv="validator"
-      :config="formConfiguration"
-      @change="onChange"
-    />
+    <section
+      v-if="typed"
+      data-test="repository-type"
+      aria-labelledby="entry-type-title"
+      class="flex flex-col gap-4"
+    >
+      <h4
+        id="entry-type-title"
+        class="md-title-medium text-on-surface"
+      >
+        Type
+      </h4>
+      <MdSelect
+        id="entry-detail-type"
+        :model-value="typeValue"
+        label="Type"
+        :options="SETTING_TYPE_OPTIONS"
+        :supporting-text="typeHelp"
+        @update:model-value="requestType"
+      />
+      <p
+        v-if="typeNotice"
+        role="status"
+        class="md-body-medium text-on-surface-variant"
+      >
+        {{ typeNotice }}
+      </p>
+      <div
+        v-if="pendingType !== null"
+        data-test="type-removals"
+        role="group"
+        aria-labelledby="entry-type-removals-title"
+        class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-high p-4"
+      >
+        <h5
+          id="entry-type-removals-title"
+          class="md-title-small text-on-surface"
+        >
+          Switching to {{ typeLabelOf(pendingType).toLowerCase() }} removes
+        </h5>
+        <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface">
+          <li
+            v-for="item in pendingRemovals"
+            :key="item.key"
+          >
+            {{ item.label }}
+          </li>
+        </ul>
+        <p class="md-body-medium text-on-surface-variant">
+          They are removed from the repository when you save.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <MdButton
+            variant="filled"
+            type="button"
+            @click="confirmType"
+          >
+            Switch and remove
+          </MdButton>
+          <MdButton
+            variant="text"
+            type="button"
+            @click="cancelType"
+          >
+            {{ keepLabel }}
+          </MdButton>
+        </div>
+      </div>
+      <ul
+        v-if="violations.length > 0"
+        data-test="type-violations"
+        role="alert"
+        class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-error"
+      >
+        <li
+          v-for="message in violations"
+          :key="message"
+        >
+          {{ message }}
+        </li>
+      </ul>
+      <p
+        v-if="serverError"
+        data-test="server-violation"
+        role="alert"
+        class="md-body-medium text-error"
+      >
+        {{ serverError }}
+      </p>
+      <div
+        v-if="typeValue === 'GROUP'"
+        class="flex flex-col gap-3"
+      >
+        <h5 class="md-title-small text-on-surface">
+          Members
+        </h5>
+        <RepositoryMembersPicker
+          id-prefix="entry-members"
+          :model-value="members"
+          :candidates="otherIds"
+          @update:model-value="onMembers"
+        />
+      </div>
+    </section>
+
+    <div data-test="entry-form">
+      <!-- The form holds the latest value, so a change of the type is never answered with the value before it. -->
+      <JsonForms
+        :key="id"
+        :data="latest"
+        :schema="collection.itemSchema"
+        :uischema="formLayout"
+        :renderers="renderers"
+        :ajv="validator"
+        :config="formConfiguration"
+        @change="onChange"
+      />
+    </div>
 
     <RepositoryAccessCard
       v-if="showAccess && idText(entry)"

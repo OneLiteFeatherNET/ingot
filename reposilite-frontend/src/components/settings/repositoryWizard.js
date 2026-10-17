@@ -33,6 +33,9 @@ import { validateNewId } from './collections'
 import { errorMessage } from '../../helpers/toast'
 import { validatePrincipalName } from '../access/accessPrincipals'
 import { ROLES, validateTeamName } from '../access/accessTeams'
+import { isRemoteUrl } from '../../store/maven/repositoryTypes'
+
+export { isRemoteUrl }
 
 /*
  * The type of the repository. Hosted is the default, so a wizard that is not changed creates the
@@ -55,9 +58,6 @@ export const TYPE_CHOICES = [
     who: 'Lists other repositories of this instance, in order. It has no files of its own, and nothing can be uploaded.'
   }
 ]
-
-/* The address of a remote repository: http or https, with a host and an optional path. */
-export const isRemoteUrl = (text) => /^https?:\/\/[^\s/]+\S*$/i.test(String(text ?? '').trim())
 
 /* The steps a repository of this type goes through. The type comes first, the review last. */
 export const stepsFor = (type) => {

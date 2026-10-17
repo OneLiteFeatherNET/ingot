@@ -62,3 +62,109 @@ export const typesFromParam = (param) => {
 export const filterByType = (repositories, selected = []) => (selected.length === 0
   ? repositories
   : repositories.filter(repository => selected.includes(typeBadgeOf(repository).key)))
+
+/* The types a repository may be given in the settings, and the choice that gives none. */
+export const SETTING_TYPE_OPTIONS = [
+  { value: '', label: 'Not set, as before' },
+  { value: 'HOSTED', label: 'Hosted' },
+  { value: 'PROXY', label: 'Proxy' },
+  { value: 'GROUP', label: 'Group' }
+]
+
+/* An address of a remote repository: http or https, with a host and an optional path. */
+export const isRemoteUrl = (text) => /^https?:\/\/[^\s/]+\S*$/i.test(String(text ?? '').trim())
+
+/*
+ * The settings a type keeps. Storage, uploads and mirrored entries belong to one type each, and a
+ * group keeps its mirrored entries as its members (repository ids), not as remote addresses.
+ */
+const KEPT = {
+  HOSTED: ['storageProvider', 'redeployment', 'preserveSnapshots'],
+  PROXY: ['proxied', 'storagePolicy', 'metadataMaxAge', 'resolutionCacheMaxEntries'],
+  GROUP: ['proxied']
+}
+
+// The fields the form shows for a type. A group's members are edited as a list of repositories, so the form leaves them out.
+const SHOWN = { HOSTED: KEPT.HOSTED, PROXY: KEPT.PROXY, GROUP: [] }
+
+const TYPED_FIELDS = [...new Set(Object.values(KEPT).flat())]
+
+const FIELD_LABELS = {
+  storageProvider: 'Storage',
+  redeployment: 'Redeployment',
+  preserveSnapshots: 'Preserved snapshots',
+  proxied: 'Mirrored repositories',
+  storagePolicy: 'Storage policy',
+  metadataMaxAge: 'Metadata max age',
+  resolutionCacheMaxEntries: 'Resolution cache'
+}
+
+// A setting holds something when it is not left empty or switched off, so there is nothing to lose when it does not.
+const isSet = (value) => value !== undefined && value !== null && value !== '' && value !== false
+  && !(Array.isArray(value) && value.length === 0)
+
+const isTyped = (type) => Object.prototype.hasOwnProperty.call(KEPT, type)
+
+/* The typed settings the form of this type leaves out. Nothing is left out of an entry without a type. */
+export const hiddenFormFields = (type) => (isTyped(type)
+  ? TYPED_FIELDS.filter(field => !SHOWN[type].includes(field))
+  : [])
+
+// Switching between a proxy and a group changes what the mirrored entries mean, so they go too.
+const dropsMirrors = (from, to) => (from === 'PROXY' || from === 'GROUP') && (to === 'PROXY' || to === 'GROUP') && from !== to
+
+// The settings of the entry that the new type does not keep.
+const notKept = (from, to) => TYPED_FIELDS.filter(field => !KEPT[to].includes(field)
+  || (field === 'proxied' && dropsMirrors(from, to)))
+
+/* What switching the entry to `to` removes, with the label the user knows it by. Empty settings are not listed. */
+export const removalsFor = (entry, from, to) => {
+  if (!isTyped(to)) return []
+  return notKept(from, to)
+    .filter(field => isSet(entry[field]))
+    .map(field => {
+      const count = Array.isArray(entry[field]) && entry[field].length > 1 ? ` (${entry[field].length})` : ''
+      return { key: field, label: `${FIELD_LABELS[field]}${count}` }
+    })
+}
+
+/* The entry with the type changed: what the new type does not keep is taken out, and the type is written. None takes the type away. */
+export const switchedEntry = (entry, to) => {
+  const next = { ...entry }
+  if (!isTyped(to)) {
+    delete next.type
+    return next
+  }
+  for (const field of notKept(entry.type ?? '', to)) delete next[field]
+  next.type = to
+  return next
+}
+
+/*
+ * The rules the server enforces, checked before the settings are saved, so the problem is shown next to the type.
+ * `otherIds` are the ids of the other repositories; a group may list only those.
+ */
+export const violationsOf = (entry, { otherIds = [] } = {}) => {
+  const references = Array.isArray(entry.proxied) ? entry.proxied.map(item => String(item?.reference ?? '')) : []
+  if (entry.type === 'HOSTED') {
+    return references.length > 0
+      ? ['A hosted repository cannot mirror other repositories. Remove the mirrored repositories, or choose Proxy or Group.']
+      : []
+  }
+  if (entry.type === 'PROXY') {
+    if (references.length === 0) return ['A proxy needs at least one remote repository.']
+    return references
+      .filter(reference => !isRemoteUrl(reference))
+      .map(reference => `"${reference}" is not a remote address. A proxy fetches from http or https addresses.`)
+  }
+  if (entry.type === 'GROUP') {
+    if (references.length === 0) return ['A group needs at least one repository to list.']
+    return references.flatMap(reference => {
+      if (isRemoteUrl(reference)) return [`"${reference}" is an address. A group lists repository ids.`]
+      if (reference === entry.id) return ['A group cannot list itself.']
+      if (!otherIds.includes(reference)) return [`"${reference}" is not a repository of this instance.`]
+      return []
+    })
+  }
+  return []
+}

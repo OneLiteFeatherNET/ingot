@@ -274,11 +274,14 @@ describe('SettingsView collections', () => {
   })
 })
 
+// The repository form has the type select first; the visibility select is the one that offers PRIVATE.
+const visibilitySelect = () => wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())
+
 describe('SettingsView unsaved changes', () => {
   it('counts an edit in the action bar and drops it when the edit is discarded', async () => {
     const { store } = await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'releases' } })
 
-    await wrapper.get('select').setValue('PRIVATE')
+    await visibilitySelect().setValue('PRIVATE')
     await flushPromises()
 
     expect(wrapper.text()).toContain('1 unsaved change')
@@ -292,7 +295,7 @@ describe('SettingsView unsaved changes', () => {
 
   it('keeps the edit in the store when the view is closed, so the bar comes back with the draft', async () => {
     const { store } = await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'releases' } })
-    await wrapper.get('select').setValue('PRIVATE')
+    await visibilitySelect().setValue('PRIVATE')
     wrapper.unmount()
     wrapper = undefined
 
