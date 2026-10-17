@@ -4,23 +4,23 @@ description: Reference for the artifact search query parameters, response fields
 
 # Search filters and API
 
-Artifact search has a public query API, an administration API for managers, two configuration keys and one shared settings domain. Everything here is additive: no existing endpoint changes.
+Artifact search is available from Ingot 1.2.0. It has a public query API, an administration API for instance admins, two local configuration keys and one shared settings domain. Everything here is additive: no existing endpoint changes.
 
 ## Search
 
-`GET /api/maven/search` returns one page of artifacts, one row per group, artifact and version. Anonymous callers see the public repositories. Signed-in callers see every repository they may browse, and a hidden or private repository never appears to a caller who may not browse it.
+`GET /api/maven/search` returns one page of artifacts, one row per group, artifact and version. Anonymous callers see the public repositories. Signed-in callers see every repository they may browse. A hidden or private repository never appears to a caller who may not browse it.
 
 ### Query parameters
 
 | Parameter | Type | Meaning |
 |-----------|------|---------|
-| `q` | text, at most 200 characters | Free text. Split on whitespace, at most 5 words, and every word must match. A word matches when the group or artifact starts with it, or the version equals it. `group:artifact:version` is a coordinates query. |
+| `q` | text, at most 200 characters | Free text. Split on whitespace, at most 5 words, and every word must match. A word matches when the group or artifact starts with it, or the version equals it. A word of the form `group:artifact:version` is a coordinates word. Each part is optional. |
 | `groupId` | text | Prefix of the group. |
 | `artifactId` | text | Prefix of the artifact. |
 | `version` | text | Exact version, case insensitive. |
 | `versionPrefix` | text | Prefix of the version. Cannot be combined with `version`. |
 | `repository` | repeatable | Exact repository name. An unknown name matches nothing. |
-| `extension` | repeatable | Exact extension, lower case. |
+| `extension` | repeatable | Exact file extension. The value is compared in lower case. |
 | `classifier` | repeatable | Exact classifier, case sensitive. `-` selects files without a classifier. |
 | `sha1` | 40 hexadecimal characters | Exact checksum. Matches only files whose checksum is known. |
 | `snapshot` | `true`, `false`, `all` | Default `all`. |
@@ -52,7 +52,7 @@ Paging stops at `page * size + size <= 10000`. A request beyond that window answ
         { "name": "central-proxy", "origin": "MIRROR" }
       ],
       "fileCount": 8,
-      "lastModified": "2026-09-30T08:14:02Z",
+      "lastModified": 1790756042.0,
       "browseLink": "/browse/releases/org/apache/commons/commons-lang3/3.14.0"
     }
   ],
@@ -62,16 +62,28 @@ Paging stops at `page * size + size <= 10000`. A request beyond that window answ
   "totalCapped": false,
   "facets": {
     "repository": [ { "value": "releases", "count": 612 } ],
-    "origin": [ { "value": "HOSTED", "count": 700 }, { "value": "MIRROR", "count": 90 } ]
+    "extension": [ { "value": "jar", "count": 540 }, { "value": "pom", "count": 72 } ],
+    "classifier": [ { "value": "-", "count": 600 }, { "value": "sources", "count": 12 } ],
+    "origin": [ { "value": "HOSTED", "count": 700 }, { "value": "MIRROR", "count": 90 } ],
+    "snapshot": [ { "value": "false", "count": 790 } ]
   },
-  "indexStatus": { "state": "READY", "lagSeconds": 0, "lastFullRebuild": "2026-10-20T03:30:12Z" }
+  "indexStatus": {
+    "state": "READY",
+    "lagSeconds": 0,
+    "lastFullRebuild": 1792467012.0,
+    "deadLetters": 0,
+    "droppedEnqueues": 0
+  }
 }
 ```
 
-- `repositories` lists every repository that holds the artifact, with its origin. `MIRROR` marks a cached copy of a proxy repository.
-- `latestVersion` is the highest release in the repositories the caller may see, or the highest snapshot when only snapshots exist.
+- `repositories` lists every repository the caller may see that holds the version, with its origin. `MIRROR` marks a cached copy of a proxy repository. A repository that holds both a hosted file and a cached copy is listed as `HOSTED`.
+- `latestVersion` is the highest release among the versions the caller may see, or the highest snapshot when only snapshots exist. It ignores the filters. It is left out when the read cap is reached: more than 5,000 versions of one artifact, or a page that would read more than 100,000 index rows.
+- `fileCount` counts the files that match the filters.
 - `browseLink` opens the first repository in the list in the browser.
-- `facets` count files, not artifacts, and are limited to 20 buckets each. Send `facets=false` to skip them.
+- `facets` has five keys: `repository`, `extension`, `classifier`, `origin` and `snapshot`. Each is a list of `{ "value", "count" }` buckets, largest first, at most 20 per key. The counts are files, not artifacts. A file without a classifier is in the bucket `-`. Each facet leaves out its own filter, so it still lists the other values you could choose.
+
+Timestamps are written as decimal epoch seconds, such as `1790756042.123456789`. A field without a value is left out of the JSON rather than sent as `null`. This applies to `latestVersion`, `lastFullRebuild`, `sha1`, `sourceHost`, `classifier`, `activeRun` and `lastVerify`.
 
 The `indexStatus` field reports the state of the index with each answer:
 
@@ -82,13 +94,16 @@ The `indexStatus` field reports the state of the index with each answer:
 | `MISSING` | The index is empty and no rebuild is queued. |
 | `DEGRADED` | The index is usable, but it lags by more than 5 minutes, has dead letters or dropped changes, has drift above 5 percent, or its last rebuild failed. |
 
-`lagSeconds` is the age of the oldest change that has not been applied yet. `lastFullRebuild` is the time of the last completed rebuild.
+`lagSeconds` is the age of the oldest change that has not been applied yet. `lastFullRebuild` is the time of the last completed rebuild. `deadLetters` counts changes that failed too often, and `droppedEnqueues` counts changes that could not be queued since the last rebuild.
 
 ### Files of a version
 
 `GET /api/maven/search/files` lists the files of one version. The parameters `groupId`, `artifactId` and `version` are required and exact. The parameters `origin` and `repository` (repeatable) narrow the files as they narrow the search. `page` defaults to 0, and `size` defaults to 50 and is at most 200.
 
-Each file has `repository`, `path`, `name`, `classifier`, `extension`, `size`, `lastModified`, `origin`, `sourceHost`, `sha1` and `browseLink`. `sha1` is null when the checksum is not known. `sourceHost` is null for hosted files, for copies cached before 1.3.0, and for anonymous callers.
+Each file has `repository`, `path`, `name`, `classifier`, `extension`, `size`, `lastModified`, `origin`, `sourceHost`, `sha1` and `browseLink`.
+
+- `sha1` is left out when the checksum is not known.
+- `sourceHost` is set for a cached copy whose upstream host was recorded. Hosted files have none, and neither do cached copies made before the host was recorded. Anonymous callers receive it as well.
 
 ### Errors
 
@@ -100,12 +115,12 @@ Each file has `repository`, `path`, `name`, `classifier`, `extension`, `size`, `
 
 ## Index administration
 
-The endpoints below need an instance admin with the manager right, as the Maintenance endpoints do. The Maintenance page reads the same status.
+The endpoints below need an instance admin. Any other caller is refused with `403`. The Maintenance page reads the same status.
 
 | Method and path | Result |
 |-----------------|--------|
 | `GET /api/maven/search/index` | The status, described below. |
-| `POST /api/maven/search/index/rebuild` | Starts a rebuild. The body is `{}` for all repositories, or `{"repositories": ["name"]}`. Answers `202` with `{"runId": n}`. |
+| `POST /api/maven/search/index/rebuild` | Starts a rebuild. Without a body, or with `{}`, every repository is rebuilt. With `{"repositories": ["name"]}`, only the named ones. An empty list is refused. Answers `202` with `{"runId": n}`. |
 | `POST /api/maven/search/index/verify` | Starts a verify run. Answers `202` with `{"runId": n}`. |
 | `POST /api/maven/search/index/runs/{id}/cancel` | Cancels a live run. Answers `204`. |
 
@@ -117,21 +132,21 @@ The status answers with these fields:
 | `rows` | The number of indexed files. |
 | `outbox` | `pending`: changes waiting to be applied. `deadLetters`: changes that failed too often, which a rebuild or a verify repairs. `droppedEnqueues`: changes that could not be queued since the last rebuild. |
 | `repositories` | The configured repository names, in the order a rebuild walks them. |
-| `activeRun` | The live run, or `null`. |
+| `activeRun` | The live run. Left out when no run is live. |
 | `runs` | The last 20 runs, newest first. |
-| `lastVerify` | The report of the last completed verify run, or `null`. It holds `sampled`, `missing`, `changed`, `reorigined`, `removedRepositoryRows` and `drift`. |
-| `engine` | The search engine in use, for example `database`. |
+| `lastVerify` | The report of the last completed verify run. Left out when there is none. It holds `runId`, `at`, `sampled`, `missing`, `changed`, `reorigined`, `removedRepositoryRows` and `drift`. |
+| `engine` | The search engine in use. Currently always `database`. |
 
 A run has `id`, `kind` (`REBUILD` or `VERIFY`), `trigger` (`MANUAL`, `SCHEDULED`, `STARTUP` or `GAP`), `status` (`RUNNING`, `COMPLETED`, `FAILED` or `CANCELLED`), `startedAt`, `finishedAt`, `leaseOwner`, `leaseUntil`, `repositories` (the names of a partial rebuild, or `null` for all), `cursorRepository`, `cursorPath`, `counters` (`processed`, `upserted`, `deleted`, `unparsed`, `skippedTooLong`, `errors`) and `lastError`.
 
-Times in the status are epoch seconds with a fraction. Cancelling a run that has already ended answers `409`.
+At most one run is live at a time, whether it is a rebuild or a verify. Cancelling a run that has already ended answers `409`.
 
 | Status | When |
 |--------|------|
-| `400` | The body names a repository that is not configured. |
-| `403` | The caller is not a manager. |
-| `404` | Search is turned off on this instance. |
-| `409` | A rebuild or a verify run is already live. |
+| `400` | The body is not an object of the expected shape, an empty repository list was sent, or the body names a repository that is not configured. |
+| `403` | The caller is not an instance admin. |
+| `404` | Search is turned off on this instance, or, for cancel, the run does not exist. |
+| `409` | A rebuild or a verify run is already live, or, for cancel, the run has already finished. |
 
 ## Configuration keys
 
@@ -139,8 +154,8 @@ Both keys are local settings. They are read at start, and they are not changed a
 
 | Key | Environment variable | System property | Default | Meaning |
 |-----|----------------------|-----------------|---------|---------|
-| `searchEnabled` | `INGOT_LOCAL_SEARCHENABLED` | `ingot.local.searchEnabled` | `true` | `false` answers `404` on every search endpoint and stops the workers. The tables stay. |
-| `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `ingot.local.searchEngine` | `database` | The engine that holds the index. `database` ships with Ingot. Other engines are plugins. |
+| `searchEnabled` | `INGOT_LOCAL_SEARCHENABLED` | `ingot.local.searchEnabled` | `true` | `false` answers `404` on every search endpoint and stops the index workers. The tables stay. |
+| `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `ingot.local.searchEngine` | `database` | The engine that holds the index. Only `database` is recognised. Any other value leaves search off and logs a warning at start. |
 
 The names are spelled `INGOT_LOCAL_SEARCHENABLED` and `INGOT_LOCAL_SEARCHENGINE`, without an underscore inside the key. A spelling such as `INGOT_LOCAL_SEARCH_ENABLED` does not match and is logged as an unknown property. The older `REPOSILITE_LOCAL_` prefix is read as a fallback, and when both prefixes set the same key, the `INGOT_` one wins.
 
