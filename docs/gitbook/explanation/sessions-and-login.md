@@ -68,7 +68,7 @@ Ingot counts failed password logins. It keeps the counts in the database, so eve
 * After **5** failures, the key is locked. The default lock lasts **15 minutes**.
 * Each lock that follows another lock without a quiet period is twice as long as the one before, up to **24 hours**.
 * A login that is refused because of a lock gets the HTTP status `429` with a `Retry-After` header. The lock is not extended by further attempts while it lasts.
-* A successful login clears the failures of its user name and address.
+* A successful login clears the failures counted for its pair of user name and address. The failures counted for the address alone are kept, so a successful login cannot reset them.
 
 The number of failures and the first lock time can be changed in the `login` settings. The defaults and the other login settings are listed in [Login providers](../reference/login-providers.md).
 

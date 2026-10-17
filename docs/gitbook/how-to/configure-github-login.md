@@ -55,7 +55,7 @@ An issuer is needed only for an OpenID Connect bridge in front of GitHub. When y
 
 For each team of the user, Ingot adds two group names: the organisation login, and `<organisation>/<team-slug>`. A user who is a member of an organisation but of no team of it gets no organisation group.
 
-Ingot reads up to 50 pages of 100 teams. A user with more teams fails the login with `provider_unavailable`, because a partial list would remove memberships.
+Ingot reads up to 50 pages of 100 teams. A user with 5000 teams or more fails the login with `provider_unavailable`, because a partial list would remove memberships.
 
 ## Map groups to teams
 

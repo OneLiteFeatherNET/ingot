@@ -12,7 +12,7 @@ With TLS enabled, Ingot listens on two ports: the HTTP port `port`, and the HTTP
 
 * A certificate and its key as PEM files, or a JKS keystore that holds both.
 * The files readable by the user that runs Ingot.
-* A TLS port that user can bind. Ports below 1024 need a capability that a non-root user does not have. The compose file of the container image drops all capabilities and runs as `977`, so use a port such as `8443` there and publish it under the port you want.
+* A TLS port that user can bind. Ports below 1024 need a capability that a non-root user does not have. The entrypoint of the container image drops from root to `977` after the start, so use a port such as `8443` there and publish it under the port you want.
 
 ## Steps
 
@@ -71,7 +71,7 @@ The HTTP connector on `port` stays open when TLS is enabled.
 
 ## Troubleshooting
 
-* `Provided key extension is not supported`: `keyPath` ends in neither `.pem` nor `.jks`. A PEM pair needs `.pem` at the end of the first path. Check the file names in the value.
+* `Provided key extension is not supported`: `keyPath` ends in neither `.pem` nor `.jks`. A PEM pair needs `.pem` at the end of the whole value, so the key file, which comes last, must end in `.pem`. Check the file names in the value.
 * Ingot does not start on port 443: the user cannot bind it. Use a port above 1023 as in the steps above.
 * Session cookies are missing `Secure` behind a proxy: that is the proxy's concern. See [Run behind a reverse proxy](run-behind-reverse-proxy.md).
 

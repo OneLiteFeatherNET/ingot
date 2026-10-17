@@ -30,7 +30,7 @@ All routes need the manager permission.
 | --- | --- |
 | Optimistic concurrency | A `PUT` with an `If-Match` header that no longer matches the stored document is refused with `412`. Without `If-Match` the write is unconditional. |
 | Validation | A domain with rules (marked in the tables below) refuses an invalid document with `400` and keeps the current settings. |
-| Unknown domain | `404`. |
+| Unknown domain | The reads answer `200` with an empty body. A `PUT` answers `400` with `Body is empty`. |
 | Secret fields | Marked as secret below. With the local key `hideSettingsSecrets` set to `true`, a read returns `********` for every non-empty secret, and a write that sends `********` keeps the stored value. A `********` that has no stored counterpart is refused with `400`. With the default `false`, the stored values are returned. |
 
 Domains:

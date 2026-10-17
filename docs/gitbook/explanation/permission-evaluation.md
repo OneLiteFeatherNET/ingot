@@ -43,7 +43,7 @@ From the lowest rank to the highest:
 | Role grant, repository-wide or with a path prefix | 4 |
 | Artifact node | 5 and up |
 
-Admin nodes (`ingot.admin.*`, `ingot.admin.users` and similar) rank 2 or 3 and only take part in the instance administrator check.
+Admin nodes (`ingot.admin.*` and `ingot.admin.<area>`) rank 2 or 3. An `ingot.admin.<area>` node, such as `ingot.admin.users`, grants the endpoints of that area. Only `ingot.admin.*` takes part in the instance administrator check, so `ingot.admin.users` never makes a principal an instance admin.
 
 Among artifact nodes, the rank is compared field by field, in this order:
 

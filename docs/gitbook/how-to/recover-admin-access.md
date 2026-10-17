@@ -43,7 +43,7 @@ Use a long random secret without spaces. The container entrypoint splits its opt
 For a plain start:
 
 ```bash
-java -jar ingot.jar --token recovery:<long-random-secret>
+java -jar ingot-<version>.jar --token recovery:<long-random-secret>
 ```
 
 In a container, put the flag in the startup options. The entrypoint reads `INGOT_OPTS`, and it also reads `REPOSILITE_OPTS` when `INGOT_OPTS` is not set:

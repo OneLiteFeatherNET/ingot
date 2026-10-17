@@ -71,7 +71,7 @@ The data directory of an existing Reposilite instance can be used by Ingot. For 
 | `--database <value>` | | Database, overriding `database`, for example `sqlite reposilite.db` or `mariadb localhost:3306 db user password`. |
 | `--disable-interactive-console` | `--disable-it` | Turns off the console on standard input. Use it when no terminal is attached. |
 | `--no-color` | | Disables ANSI colours in console output. |
-| `--run-migrations <list>` | | Runs the listed opt-in data migrations, for example `001-004`. Used only for the upgrade paths. |
+| `--run-migrations <id>` | | Runs the named opt-in data migrations. Repeat the parameter for more than one, for example `--run-migrations 001 --run-migrations 004`. Used only for the upgrade paths. |
 
 Pass JVM options before `-jar`, for example the heap size:
 

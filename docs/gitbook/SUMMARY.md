@@ -42,7 +42,6 @@
 * [Publish and consume artifacts](how-to/publish-and-consume-artifacts.md)
 * [Create hosted repositories](how-to/create-hosted-repositories.md)
 * [Create a proxy repository](how-to/create-proxy-repositories.md)
-* [Create a group repository](how-to/create-a-group-repository.md)
 * [Search for artifacts](how-to/search-for-artifacts.md)
 * [Rebuild the search index](how-to/rebuild-search-index.md)
 * [Set cleanup policies](how-to/set-cleanup-policies.md)

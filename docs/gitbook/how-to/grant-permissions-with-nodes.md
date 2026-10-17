@@ -151,6 +151,12 @@ The answer has `"allowed": true`. Its `decision.source` is `INHERITED_TEAM`, and
 
 After the recipes, each check answers as the recipe says. The team pages show the nodes, and the parent teams.
 
+## Who may grant rights
+
+Only an instance admin, a principal or team that holds the `ingot.admin.*` node, may grant administrative rights. That covers the `ingot.admin.<area>` nodes, the instance admin role, and any node that would raise a principal above the rights of the one who grants it. Changing nodes is a manager action, so no one can hand out a right they do not hold.
+
+The `manage` action is reserved. It is the action of the ADMIN role, and the check endpoint reports it, but no request path checks it, so a `manage` node grants nothing on a request.
+
 ## Role grants
 
 The API also accepts path grants with a role, at `PUT /api/identity/teams/<name>/grants`. The dashboard does not edit them. It lists the grants that came before permission nodes, read only. Use nodes for the rights in this page.

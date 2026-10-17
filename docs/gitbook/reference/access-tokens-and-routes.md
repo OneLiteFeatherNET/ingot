@@ -119,7 +119,7 @@ Legacy tokens are the tokens of the legacy API and the legacy console commands. 
 
 ### Permissions and routes
 
-- The permission `m` makes the token a manager. For the identity model this is the instance admin status, with the node `ingot.admin.*` on the token's private team.
+- The permission `m` makes the token a manager. For the identity model this is the instance admin status, with the node `ingot.admin.*` on the principal of the token.
 - A route is a path prefix from the repository root, such as `/releases/net`, with one of these permissions:
   - `r` lets the token read below the path (`route:read`).
   - `w` lets the token write and delete below the path (`route:write`).
@@ -171,7 +171,7 @@ A token from `--token` is an instance admin on every start while the option is p
 At the first start of Ingot 1.2 or later, the rows of the legacy token table are copied once into machine principals. The legacy tables are only read.
 
 - Each legacy token becomes a machine principal with the same name, the same secret hash and the same expiry.
-- A legacy `m` permission becomes the node `ingot.admin.*` on the private team of the new principal.
+- A legacy `m` permission becomes the node `ingot.admin.*` on the new principal itself.
 - Each legacy route becomes a legacy grant on that private team, with the read or write rights of the route.
 - A ledger records each row that was copied, so a row is never copied twice. A row written later by an older version is copied at the next start.
 - When two legacy names differ only in case, the second principal is named `<name>-<tokenId>`. Its token keeps its exact name, so logins are unchanged.

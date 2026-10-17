@@ -101,7 +101,7 @@ curl -X DELETE "$INGOT_URL/api/identity/principals/alice/instance-admin" \
 
 The `PUT` on `members` and on `parents` replaces the whole list. An empty list removes every manual member or parent. A `PUT` on `members` never removes a member that a synchronisation added.
 
-Every read returns an `ETag` header. Send that value back as `If-Match` on the next `PATCH`, `PUT` or `DELETE` of the same resource. If the resource changed in between, the server answers `412 Precondition Failed`, and you read it again. Without `If-Match`, the write goes through.
+Reads of one principal, one team, or the nodes or parents of a principal or team return an `ETag` header. The list endpoints and the token list return none, so take the value from a read of the single resource. Send that value back as `If-Match` on the next `PATCH`, `PUT` or `DELETE` of the same resource. If the resource changed in between, the server answers `412 Precondition Failed`, and you read it again. Without `If-Match`, the write goes through.
 
 ## Result
 

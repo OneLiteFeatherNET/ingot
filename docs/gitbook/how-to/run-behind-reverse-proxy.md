@@ -12,7 +12,7 @@ To let Ingot serve HTTPS itself, read [Enable TLS](enable-tls.md) instead.
 
 * A running Ingot. The default port is `8080`, set by `port` in `configuration.cdn` or by `-p`.
 * A public host name for the instance, for example `repo.example.org`, that points at the proxy.
-* A token with the `ingot.admin.settings` permission. Step 3 changes a shared setting.
+* A token of an instance admin, which holds the `ingot.admin.*` node. Step 3 changes a shared setting, and that needs the instance admin status, so `ingot.admin.settings` alone is not enough.
 
 ## Steps
 

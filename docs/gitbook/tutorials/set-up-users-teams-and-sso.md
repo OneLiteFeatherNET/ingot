@@ -72,7 +72,7 @@ Users can sign in with an account from an identity provider, so they do not need
 Sign in as the administrator again, then follow these steps.
 
 1. Select **Access**, then select the **SSO** tab.
-2. Under **Public address**, enter the address that users open the dashboard at, for example `https://repo.example.org`. A plain `http://` address works only for `localhost`. Select **Save public address**.
+2. Under **Public address**, enter the address that users open the dashboard at, for example `https://repo.example.org`. A plain `http://` address works only for the loopback hosts `localhost`, `127.0.0.1` and `[::1]`. Select **Save public address**.
 3. Select **Add provider**, then select the kind **Generic OIDC**.
 4. Fill in the fields:
    * **Label on the sign in button**: `Example SSO`.

@@ -112,7 +112,7 @@ export INGOT_DEPLOY_USERNAME="tutorial-deploy"
 export INGOT_DEPLOY_SECRET="<the secret you copied>"
 ```
 
-Maven and Gradle send the token name as the user name and the secret as the password. The token name is the name of the machine account.
+Maven and Gradle send the token name as the user name and the secret as the password. The token name is independent of the machine account name. The wizard names the token after the account, which is why both names match here.
 
 ## 5. Publish a library
 

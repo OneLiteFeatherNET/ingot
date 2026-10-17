@@ -107,7 +107,7 @@ An upload that would exceed the quota is refused with `507`. A quota of 0 or les
 
 Without both keys, Ingot uses the default AWS credential chain. Two JVM system properties change the S3 client: `reposilite.s3.pathStyleAccessEnabled=true` turns on path style access, and `reposilite.s3.use-s3-v4-signer=true` selects the V4 signer.
 
-The S3 provider does not enforce a quota and reports no usage. Ingot does not check uploads against a size limit.
+The S3 provider enforces no quota, so `quota` and `quotaBytes` are null, but its usage is reported like that of any other provider. Ingot does not check uploads against a size limit.
 
 With `sharedBucket` off, the key prefix of a repository is its `prefix`. With it on, the key prefix is the `prefix` followed by the repository id. Repositories that use the same endpoint and bucket must not have equal key prefixes, and one key prefix must not start with another. Ingot does not load a repository that breaks this rule, and logs the failure. Give each repository its own `prefix`, or turn on `sharedBucket` for all of them.
 

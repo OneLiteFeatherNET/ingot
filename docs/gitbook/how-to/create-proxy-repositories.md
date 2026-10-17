@@ -87,10 +87,10 @@ When a request arrives, Ingot does the following for the proxy:
 
 1. It looks in the local storage of the repository first. A file that is already stored is served from there.
 2. If the file is not stored, it asks the remote hosts in the order of `proxied`. The first host that answers with the file wins.
-3. If every host answers `404`, the client gets `404`. If a host fails with another error, the client gets that error.
+3. If every host answers `404`, the client gets `404`. With the default local-first resolution, an upstream error from a host is replaced by the local result, so the client gets `404` as well. Only remote-first resolution passes an upstream error on.
 
 {% hint style="info" %}
-Maven metadata is the exception. With the default storage policy `PRIORITIZE_UPSTREAM_METADATA`, Ingot asks the remote first for `maven-metadata.xml` when the local copy is older than `metadataMaxAge` seconds. The default `metadataMaxAge` is `0`, so the remote is asked on every request for metadata. Use `STRICT` for a fully offline copy that never asks the remote for metadata.
+Maven metadata is the exception. With the default storage policy `PRIORITIZE_UPSTREAM_METADATA`, Ingot asks the remote first for `maven-metadata.xml` when the local copy is older than `metadataMaxAge` seconds. The default `metadataMaxAge` is `0`, so the remote is asked on every request for metadata. `STRICT` does not give a fully offline copy: a file that is missing locally is still requested from the mirror hosts, so do not rely on it to run without network access.
 {% endhint %}
 
 ## Keep a copy with store
@@ -137,7 +137,6 @@ A typed proxy is the clearest choice for a pure mirror. The typed rules and thei
 
 ## Related
 
-* [Create a group repository](create-a-group-repository.md) puts several local repositories behind one URL.
 * [Create hosted repositories](create-hosted-repositories.md) covers repositories that store your own uploads.
 * [Use S3 storage](use-s3-storage.md) for shared or large caches.
 * [Set cleanup policies](set-cleanup-policies.md) to remove old cache copies.

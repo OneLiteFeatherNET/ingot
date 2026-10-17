@@ -10,7 +10,7 @@ Ingot can let people sign in to the dashboard with an account from an OpenID Con
 
 * An instance administrator account that you can sign in with.
 * At least one local user exists. Ingot does not create the first administrator from SSO. Create it with the setup code first, see [Enable local login and claim the first admin](set-up-first-admin.md).
-* The public address of the dashboard, for example `https://repo.example.org`. Use `https://`. Plain `http://` is accepted only for `localhost`.
+* The public address of the dashboard, for example `https://repo.example.org`. Use `https://`. Plain `http://` is accepted only for the loopback hosts `localhost`, `127.0.0.1` and `[::1]`.
 * A confidential client registered at your provider, with a client id and a client secret. Ask the provider for the issuer URL. Ingot reads the rest from `<issuer>/.well-known/openid-configuration`.
 
 ## Set the public address
@@ -92,7 +92,7 @@ To make a group an instance admin group, list it under **Admin groups**. Ingot t
 A provider that removes its last admin group member can lock every admin out of the dashboard. Ingot still applies the change, logs a warning and writes an audit event `LAST_ADMIN_REVOKED_BY_PROVIDER`. Keep a local instance admin, or keep the admin group populated.
 {% endhint %}
 
-If a team with the same name already exists without an external reference, Ingot does not take it over. It logs `Admin group ... skipped` at startup. Rename or delete that team.
+If a team with the same name already exists without an external reference, Ingot does not take it over. It logs `Admin group ... skipped` on each login that synchronises the groups, not at startup. Rename or delete that team.
 
 ## Check the result
 

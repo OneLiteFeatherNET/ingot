@@ -129,5 +129,4 @@ The settings API replaces the whole `maven` domain on every `PUT`. Read it first
 
 * [Repository settings](../reference/repository-settings.md) lists every field of a repository.
 * [Repository types](../reference/repository-types.md) explains hosted, proxy and group repositories.
-* [Create a group repository](create-a-group-repository.md) serves several repositories under one address.
 * [Set cleanup policies](set-cleanup-policies.md) removes old versions from a repository.

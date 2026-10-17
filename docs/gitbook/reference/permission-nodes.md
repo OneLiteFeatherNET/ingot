@@ -159,7 +159,7 @@ Checks and messages, with the placeholders as they appear in the message:
 | Wildcard groupId with an artifactId | The groupId * with the artifactId '...' in '...' is ambiguous, name the groupId of the artifact |
 | Invalid character in a name | The groupId or artifactId '...' of '...' has an invalid character in '...', allowed are letters, digits, '_', '-' and '.' |
 | Node with `*` in a check | The node to check must be concrete, without wildcards |
-| Same node twice in one list | Nodes listed twice: ... |
+| Same node twice in one list | One problem per repeated node: `Node '...' is listed twice` |
 
 A node list with a repeated node is refused as a whole. The same node text must not appear twice, even with different `allowed` values.
 
