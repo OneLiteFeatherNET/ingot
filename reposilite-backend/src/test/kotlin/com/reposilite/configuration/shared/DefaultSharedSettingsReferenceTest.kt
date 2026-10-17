@@ -48,6 +48,24 @@ internal class DefaultSharedSettingsReferenceTest {
     }
 
     @Test
+    fun `should report a rejected update as its rules only, without an exception name or a prefix`() {
+        // given: a reference that records every value it is asked to store
+        val applied = mutableListOf<FrontendSettings>()
+
+        // when: an update with a colour that is not six digit hex arrives
+        val result = reference(applied).update(FrontendSettings(appearance = AppearanceSettings(seedColor = "red")))
+
+        // then: the failure carries the rules as a list, and its message is the first rule as written
+        val error = result.error
+        assertThat(error).isInstanceOf(SettingsViolationException::class.java)
+        assertThat((error as SettingsViolationException).violations).singleElement().asString().startsWith("appearance.seedColor")
+        assertThat(error.message).describedAs("message of the rejection")
+            .startsWith("appearance.seedColor")
+            .doesNotContain("java.lang")
+            .doesNotContain("Invalid")
+    }
+
+    @Test
     fun `should store an update with valid appearance settings`() {
         // given: a reference that records every value it is asked to store
         val applied = mutableListOf<FrontendSettings>()

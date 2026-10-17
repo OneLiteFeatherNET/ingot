@@ -223,7 +223,8 @@ class SharedConfigurationFacade(
                     return transformed.map { it.snapshot() }
                 }
 
-                val applied = reference.update(transformed.get()).mapErr { badRequest(it.toString()) }
+                // The message of the exception, never its toString: that would put the class name in front of the rule.
+                val applied = reference.update(transformed.get()).mapErr { badRequest(it.message ?: "Settings domain '$name' cannot be stored") }
                 if (applied.isErr) {
                     return applied.map { it.snapshot() }
                 }

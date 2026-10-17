@@ -26,6 +26,12 @@ import java.io.InputStream
 import java.util.function.Supplier
 import kotlin.reflect.full.findAnnotation
 
+/**
+ * An update that breaks the rules of its settings. The message is the rules themselves, one after another, so the API can
+ * show it as it is: no class name and no prefix.
+ */
+class SettingsViolationException(val violations: List<String>) : IllegalArgumentException(violations.joinToString("; "))
+
 interface SharedSettingsReference<S : SharedSettings> {
 
     val type: Class<out S>
@@ -54,7 +60,7 @@ internal class DefaultSharedSettingsReference<T : SharedSettings>(
         val settings = normalize(value)
         val violations = (settings as? ValidatedSettings)?.violations().orEmpty()
         if (violations.isNotEmpty()) {
-            return IllegalArgumentException("Invalid $name settings: ${violations.joinToString("; ")}").asError()
+            return SettingsViolationException(violations).asError()
         }
 
         return supplyThrowing { setter(settings) }

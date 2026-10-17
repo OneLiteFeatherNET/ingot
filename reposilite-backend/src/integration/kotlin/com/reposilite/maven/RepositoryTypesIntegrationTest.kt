@@ -149,6 +149,26 @@ internal class RepositoryTypesIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `should answer a rejected maven update with the rule as the message and no exception name`() {
+        // given: a manager and a hosted repository that proxies
+        val (name, secret) = useDefaultManagementToken()
+        val settings = MavenSettings(repositories = listOf(
+            RepositorySettings(id = "bad-hosted", type = RepositoryType.HOSTED, proxied = listOf(MirroredRepositorySettings(reference = TYPED_GROUP_MEMBER_EXTERNAL)))
+        ))
+
+        // when: the maven settings are updated
+        val response = Unirest.put("$base/api/settings/domain/maven")
+            .basicAuth(name, secret)
+            .body(settings)
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the update is refused with the rule itself, not with the text of a java exception
+        assertErrorResponse(BAD_REQUEST, response)
+        assertThat(response.body.message)
+            .isEqualTo("repository 'bad-hosted': type HOSTED takes no proxied repositories, but 1 are listed")
+    }
+
+    @Test
     fun `should reject a hosted repository that proxies and keep the stored settings`() {
         // given: a manager and a hosted repository that proxies
         val (name, secret) = useDefaultManagementToken()
