@@ -165,6 +165,7 @@ class NodePattern private constructor(
             "A repository name may not contain a segment named 'artifact', because the first '.artifact.' after " +
                 "'ingot.repository.' separates the repository from the artifact part"
 
+        /** The repository actions. `manage` is reserved: it is stored and listed, but no request is checked against it yet. */
         val REPOSITORY_ACTIONS: List<String> = listOf("read", "deploy", "delete", "manage")
 
         /** The actions of an artifact node: the repository actions that are scoped to a path, so not `manage`. */

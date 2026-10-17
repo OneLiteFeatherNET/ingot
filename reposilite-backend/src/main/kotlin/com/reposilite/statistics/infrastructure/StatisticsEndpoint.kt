@@ -59,11 +59,11 @@ internal class StatisticsEndpoint(private val statisticsFacade: StatisticsFacade
         methods = [HttpMethod.GET],
         responses = [
             OpenApiResponse("200", content = [ OpenApiContent(from = Long::class) ], description = "Number of all unique requests"),
-            OpenApiResponse("401", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When non-manager token is used")
+            OpenApiResponse("403", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When a token without the dashboard area (ingot.admin.dashboard) is used")
         ]
     )
     val findUniqueCount = ReposiliteRoute<Long>("/api/statistics/resolved/unique", GET) {
-        managerOnly {
+        managerOnly("dashboard") {
             response = statisticsFacade.countUniqueRecords().asSuccess()
         }
     }
@@ -74,11 +74,11 @@ internal class StatisticsEndpoint(private val statisticsFacade: StatisticsFacade
         methods = [HttpMethod.GET],
         responses = [
             OpenApiResponse("200", content = [ OpenApiContent(from = AllResolvedResponse::class) ], description = "Aggregated list of statistics per each repository"),
-            OpenApiResponse("401", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When non-manager token is used")
+            OpenApiResponse("403", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When a token without the dashboard area (ingot.admin.dashboard) is used")
         ]
     )
     val getAllStatistics = ReposiliteRoute<AllResolvedResponse>("/api/statistics/resolved/all", GET) {
-        managerOnly {
+        managerOnly("dashboard") {
             response = statisticsFacade.getAllResolvedStatistics()
         }
     }

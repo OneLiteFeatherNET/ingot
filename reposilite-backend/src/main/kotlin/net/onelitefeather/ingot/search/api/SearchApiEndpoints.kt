@@ -184,16 +184,16 @@ internal class SearchApiEndpoints(
         path = "/api/maven/search/index",
         methods = [HttpMethod.GET],
         summary = "Get the state of the search index",
-        description = "The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs and the last verify report. Manager only.",
+        description = "The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs and the last verify report. Requires the maintenance area.",
         responses = [
             OpenApiResponse(status = "200", content = [OpenApiContent(from = SearchIndexResponse::class)]),
-            OpenApiResponse(status = "403", description = "Only manager can access this endpoint"),
+            OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
         ]
     )
     private val indexStatus = ReposiliteRoute<SearchIndexResponse>("/api/maven/search/index", GET) {
         whenEnabled { engine, admin ->
-            managerOnly {
+            managerOnly("maintenance") {
                 response = guarded { Result.ok(indexResponse(engine, admin)) }
             }
         }
@@ -205,19 +205,19 @@ internal class SearchApiEndpoints(
         methods = [HttpMethod.POST],
         summary = "Start a rebuild of the index from storage",
         description = "Reads the stored files of the given repositories again and corrects the index. Without a body, or with an empty object, every repository is rebuilt. " +
-            "Manager only.",
+            "Requires the maintenance area.",
         requestBody = OpenApiRequestBody(content = [OpenApiContent(from = RebuildRequest::class)], required = false),
         responses = [
             OpenApiResponse(status = "202", content = [OpenApiContent(from = StartedRunResponse::class)]),
             OpenApiResponse(status = "400", description = "A repository is unknown or the body is not an object of that shape"),
-            OpenApiResponse(status = "403", description = "Only manager can access this endpoint"),
+            OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
             OpenApiResponse(status = "409", description = "A rebuild or verify run is already running"),
         ]
     )
     private val startRebuild = ReposiliteRoute<StartedRunResponse>("/api/maven/search/index/rebuild", POST) {
         whenEnabled { _, admin ->
-            managerOnly {
+            managerOnly("maintenance") {
                 response = guarded {
                     when (val started = admin.startRebuild(ctx.rebuildRepositories())) {
                         is RunStart.Started -> {
@@ -236,17 +236,17 @@ internal class SearchApiEndpoints(
         path = "/api/maven/search/index/verify",
         methods = [HttpMethod.POST],
         summary = "Start a verify run",
-        description = "Compares a sample of index rows with storage and repairs what differs. Manager only.",
+        description = "Compares a sample of index rows with storage and repairs what differs. Requires the maintenance area.",
         responses = [
             OpenApiResponse(status = "202", content = [OpenApiContent(from = StartedRunResponse::class)]),
-            OpenApiResponse(status = "403", description = "Only manager can access this endpoint"),
+            OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
             OpenApiResponse(status = "409", description = "A rebuild or verify run is already running"),
         ]
     )
     private val startVerify = ReposiliteRoute<StartedRunResponse>("/api/maven/search/index/verify", POST) {
         whenEnabled { _, admin ->
-            managerOnly {
+            managerOnly("maintenance") {
                 response = guarded {
                     when (val started = admin.startVerify()) {
                         is RunStart.Started -> {
@@ -265,18 +265,18 @@ internal class SearchApiEndpoints(
         path = "/api/maven/search/index/runs/{id}/cancel",
         methods = [HttpMethod.POST],
         summary = "Cancel a live index run",
-        description = "The instance that runs the job stops after the batch in flight. A run that has finished cannot be cancelled. Manager only.",
+        description = "The instance that runs the job stops after the batch in flight. A run that has finished cannot be cancelled. Requires the maintenance area.",
         pathParams = [OpenApiParam(name = "id", description = "Id of the run", required = true)],
         responses = [
             OpenApiResponse(status = "204", description = "The run was cancelled"),
-            OpenApiResponse(status = "403", description = "Only manager can access this endpoint"),
+            OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance, or the run does not exist"),
             OpenApiResponse(status = "409", description = "The run has already finished"),
         ]
     )
     private val cancelRun = ReposiliteRoute<Unit>("/api/maven/search/index/runs/{id}/cancel", POST) {
         whenEnabled { _, admin ->
-            managerOnly {
+            managerOnly("maintenance") {
                 response = guarded {
                     val runId = parameter("id")?.toLongOrNull()
                     when (runId?.let(admin::cancel) ?: CancelOutcome.NOT_FOUND) {

@@ -59,11 +59,11 @@ internal class SettingsEndpoints(
         summary = "List configurations",
         responses = [
             OpenApiResponse(status = "200", description = "Returns list of configuration names"),
-            OpenApiResponse(status = "401", description = "Returns 401 if token without moderation permission has been used to access this resource")
+            OpenApiResponse(status = "403", description = "Returns 403 if a token without the settings area (ingot.admin.settings) is used")
         ]
     )
     private val listConfigurations = ReposiliteRoute<Collection<String>>("/api/settings/domains", GET) {
-        managerOnly {
+        managerOnly("settings") {
             response = sharedConfigurationFacade.getDomainNames().asSuccess()
         }
     }
@@ -82,13 +82,13 @@ internal class SettingsEndpoints(
             ),
             OpenApiResponse(
                 status = "401",
-                description = "Returns 401 if token without moderation permission has been used to access this resource"
+                description = "Returns 403 if a token without the settings area (ingot.admin.settings) is used"
             ),
             OpenApiResponse(status = "404", description = "Returns 404 if non-existing configuration schema is requested")
         ]
     )
     private val getSchema = ReposiliteRoute<InputStream>("/api/settings/schema/{name}", GET) {
-        managerOnly {
+        managerOnly("settings") {
             response = sharedConfigurationFacade.getSettingsReference<SharedSettings>(requireParameter("name"))
                 ?.schema
                 ?.get()
@@ -104,12 +104,12 @@ internal class SettingsEndpoints(
         pathParams = [OpenApiParam(name = "name", description = "Name of configuration to fetch", required = true)],
         responses = [
             OpenApiResponse(status = "200", description = "Returns dto representing configuration"),
-            OpenApiResponse(status = "401", description = "Returns 401 if token without moderation permission has been used to access this resource"),
+            OpenApiResponse(status = "403", description = "Returns 403 if a token without the settings area (ingot.admin.settings) is used"),
             OpenApiResponse(status = "404", description = "Returns 404 if non-existing configuration is requested")
         ]
     )
     private val getConfiguration = ReposiliteRoute<Any>("/api/settings/domain/{name}", GET) {
-        managerOnly {
+        managerOnly("settings") {
             response = sharedConfigurationFacade.getDomainSnapshot<SharedSettings>(requireParameter("name"))
                 ?.let { snapshot ->
                     // The tag describes the stored settings, so it is still valid when secrets are hidden from the body
@@ -135,13 +135,13 @@ internal class SettingsEndpoints(
             OpenApiResponse(status = "200", description = "Returns 200 if configuration has been updated successfully"),
             OpenApiResponse(
                 status = "401",
-                description = "Returns 401 if token without moderation permission has been used to access this resource"
+                description = "Returns 403 if a token without the settings area (ingot.admin.settings) is used"
             ),
             OpenApiResponse(status = "404", description = "Returns 404 if non-existing configuration is requested")
         ]
     )
     private val updateConfiguration = ReposiliteRoute<Any>("/api/settings/domain/{name}", PUT) {
-        managerOnly {
+        managerOnly("settings") {
             with(requireParameter("name")) {
                 val body = ctx.body()
                 val reference = body.takeIf { it.isNotEmpty() }

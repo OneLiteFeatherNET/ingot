@@ -261,6 +261,17 @@ describe('session and password action labels', () => {
 describe('identity action groups', () => {
   const group = (key) => ACTION_GROUPS.find(candidate => candidate.key === key)
 
+  it('labels a permission node change in the log and offers it in the action picker', () => {
+    expect(actionLabel('NODES_CHANGED')).toBe('Permission nodes changed')
+    expect(ACTION_OPTIONS.find(option => option.value === 'NODES_CHANGED')?.label).toBe('Permission nodes changed')
+  })
+
+  it('groups the permission node change under its own chip, and keeps it when the address is read', () => {
+    expect(group('nodes').label).toBe('Permission nodes')
+    expect(group('nodes').actions).toEqual(['NODES_CHANGED'])
+    expect(readAuditFilters({ action: 'NODES_CHANGED' }).action).toBe('NODES_CHANGED')
+  })
+
   it('groups the account actions under the Accounts chip', () => {
     expect(group('accounts').label).toBe('Accounts')
     expect(group('accounts').actions).toEqual(['PRINCIPAL_CREATED', 'PRINCIPAL_UPDATED', 'PRINCIPAL_DISABLED', 'PRINCIPAL_DELETED'])

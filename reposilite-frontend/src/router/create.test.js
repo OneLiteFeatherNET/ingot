@@ -389,16 +389,16 @@ describe('routes gated by permission nodes', () => {
     expect(router.currentRoute.value.name).toBe('overview')
   })
 
-  it('ends the token redirect at overview for a user without ingot.admin.tokens', async () => {
-    const router = makeRouter(sessionWith('ingot.admin.users'))
+  it('ends the token redirect at overview for a user without the users area, which lists the machine accounts', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.tokens'))
 
     await router.push('/tokens')
 
     expect(router.currentRoute.value.name).toBe('overview')
   })
 
-  it('opens the machine accounts for a user with ingot.admin.tokens', async () => {
-    const router = makeRouter(sessionWith('ingot.admin.tokens'))
+  it('opens the machine accounts for a user with ingot.admin.users, the area of the principal list', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.users'))
 
     await router.push('/tokens')
 

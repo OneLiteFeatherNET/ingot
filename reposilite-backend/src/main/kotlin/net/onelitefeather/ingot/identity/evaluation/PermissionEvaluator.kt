@@ -93,17 +93,48 @@ object PermissionEvaluator {
     }
 
     /**
-     * Decides one concrete node, for the permission check of the identity API. A repository node is decided as the request
-     * for its repository root, so the check answers what a real request answers: [decideRequest]. Other nodes (admin areas,
-     * artifact nodes and wildcards) have no request of their own and are decided by their rules and grants, as [decideNode].
+     * Whether the subject may administer [area], the node `ingot.admin.<area>`. Null asks for the full admin node, which is
+     * the instance admin itself. This is the one check the endpoints use, and it is the decision of [decide] on the admin
+     * node, so the access check and the endpoints never disagree.
+     */
+    fun allowsAdminArea(subject: AccessSubject, area: String?): Boolean =
+        if (area == null) isInstanceAdmin(subject) else decide(subject, NodePattern.admin(area)).allowed
+
+    /**
+     * Decides one concrete node, for the permission check of the identity API, exactly as a real request decides it:
+     *
+     * - a repository node is decided as the request for its repository root ([decideRequest]);
+     * - a qualified artifact node is decided as the request for the subtree it covers ([decideRequest]);
+     * - an admin area, and an unqualified artifact node, take the instance admin shortcut ([decideWithShortcut]).
+     *
+     * An unqualified artifact node stands for every repository (see [NodePattern.matches]), so no single repository request
+     * decides it. Its rules decide as they always did, and the shortcut is the same one a request would take.
      */
     fun decide(subject: AccessSubject, node: NodePattern): Decision {
         val repository = node.repository
         val action = node.action
-        if (node.kindName == "REPOSITORY" && repository != null && action != null && repository != "*" && action != "*") {
-            return decideRequest(subject, AccessRequest("/$repository", requireNotNull(nodeAction(action))))
+        return when {
+            node.kindName == "REPOSITORY" && repository != null && action != null && repository != "*" && action != "*" ->
+                decideRequest(subject, AccessRequest("/$repository", requireNotNull(nodeAction(action))))
+            node.kindName == "ARTIFACT" && repository != null && action != null && action != "*" ->
+                decideRequest(
+                    subject,
+                    AccessRequest("/$repository/${node.coveredSegments.orEmpty().joinToString("/")}", requireNotNull(nodeAction(action))),
+                )
+            node.kindName == "ADMIN" || node.kindName == "ARTIFACT" -> decideWithShortcut(subject, node)
+            else -> decideNode(subject, node)
         }
-        return decideNode(subject, node)
+    }
+
+    /**
+     * The instance admin shortcut for a node that has no request of its own. An instance admin whose token allows the node
+     * is allowed, and no denial of the node restricts it. Otherwise the node decides as any node does, with the token
+     * narrowing it. For an admin area this is what [allowsAdminArea] answers.
+     */
+    private fun decideWithShortcut(subject: AccessSubject, node: NodePattern): Decision {
+        val decision = decideNode(subject, node)
+        if (!isInstanceAdmin(subject) || !tokenAllows(subject, node)) return decision
+        return instanceAdminDecision(subject, node).copy(trace = decision.trace)
     }
 
     /**

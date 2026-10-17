@@ -32,7 +32,8 @@ import { ACCESS_NODES, ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../store/nodeAcc
 // and `anyNode` lists alternatives of which one is enough.
 const adminRoute = (section, node) => ({ section, manager: true, node })
 const ACCESS_USERS = adminRoute('access', ADMIN_NODES.users)
-const ACCESS_MACHINES = adminRoute('access', ADMIN_NODES.tokens)
+// Machine accounts are principals, so listing them is a principal endpoint: the users area, as the server decides it.
+const ACCESS_MACHINES = adminRoute('access', ADMIN_NODES.users)
 const ACCESS_TEAMS = adminRoute('access', ADMIN_NODES.teams)
 const ACCESS_ANY = { section: 'access', manager: true, anyNode: ACCESS_NODES }
 const ACCESS_PROVIDERS = adminRoute('access', INSTANCE_ADMIN_NODE)
@@ -40,7 +41,7 @@ const ACCESS_PROVIDERS = adminRoute('access', INSTANCE_ADMIN_NODE)
 // The tabs of the access section in the order they are offered, with the node each one needs.
 const ACCESS_TABS = [
   { key: 'users', route: 'access-users', node: ADMIN_NODES.users },
-  { key: 'machines', route: 'access-machines', node: ADMIN_NODES.tokens },
+  { key: 'machines', route: 'access-machines', node: ADMIN_NODES.users },
   { key: 'teams', route: 'access-teams', node: ADMIN_NODES.teams },
 ]
 
