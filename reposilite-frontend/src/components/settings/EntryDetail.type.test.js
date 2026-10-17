@@ -129,11 +129,18 @@ describe('EntryDetail fields by type', () => {
     expect(form()).not.toContain('Storage policy')
   })
 
-  it('shows a proxy its remote repositories and cache settings, and not the storage', () => {
-    mountEntry({ id: 'central', visibility: 'PUBLIC', type: 'PROXY', proxied: [{ reference: 'https://a.example/' }] })
+  it('shows a proxy its remote repositories, its cache settings and its cache storage, and no upload settings', () => {
+    mountEntry({
+      id: 'central',
+      visibility: 'PUBLIC',
+      type: 'PROXY',
+      proxied: [{ reference: 'https://a.example/' }],
+      storageProvider: { type: 'fs', quota: '1GB' }
+    })
 
     expect(form()).toContain('Mirrored repositories')
     expect(form()).toContain('Storage policy')
+    expect(form(), 'the storage of a proxy is its cache storage').toContain('Cache storage')
     expect(form()).not.toContain('Storage provider')
     expect(form()).not.toContain('Redeployment')
   })
@@ -155,24 +162,24 @@ describe('EntryDetail switching the type', () => {
     await chooseType('PROXY')
 
     const notice = wrapper.get('[data-test="type-removals"]').text()
-    expect(notice).toContain('Storage')
     expect(notice).toContain('Redeployment')
+    expect(notice, 'the storage is kept as the cache storage of the proxy').not.toContain('Storage')
     expect(button('Switch and remove')).toBeDefined()
     expect(changeCount(), 'nothing is changed before the user confirms').toBe(before)
   })
 
-  it('applies the switch when the removal is confirmed, and writes the type with the rest', async () => {
-    mountEntry({ id: 'releases', visibility: 'PUBLIC', type: 'HOSTED', storageProvider: { quota: '10GB' } })
+  it('applies the switch when the removal is confirmed, and writes the type with the storage it keeps', async () => {
+    mountEntry({ id: 'releases', visibility: 'PUBLIC', type: 'HOSTED', storageProvider: { quota: '10GB' }, redeployment: true })
     await chooseType('PROXY')
 
     await button('Switch and remove').trigger('click')
 
-    expect(lastChange()).toEqual({ id: 'releases', visibility: 'PUBLIC', type: 'PROXY' })
+    expect(lastChange()).toEqual({ id: 'releases', visibility: 'PUBLIC', type: 'PROXY', storageProvider: { quota: '10GB' } })
     expect(wrapper.find('[data-test="type-removals"]').exists()).toBe(false)
   })
 
   it('keeps the type when the removal is cancelled', async () => {
-    mountEntry({ id: 'releases', visibility: 'PUBLIC', type: 'HOSTED', storageProvider: { quota: '10GB' } })
+    mountEntry({ id: 'releases', visibility: 'PUBLIC', type: 'HOSTED', storageProvider: { quota: '10GB' }, redeployment: true })
     await chooseType('PROXY')
     const before = changeCount()
 
@@ -197,6 +204,57 @@ describe('EntryDetail switching the type', () => {
     await chooseType('')
 
     expect(lastChange()).toEqual({ id: 'releases', visibility: 'PUBLIC' })
+  })
+})
+
+describe('EntryDetail cache storage of a proxy and storage of a group', () => {
+  it('warns that the cache storage stays configured but unused when a proxy becomes a group, and keeps it', async () => {
+    mountEntry({
+      id: 'central',
+      visibility: 'PUBLIC',
+      type: 'PROXY',
+      proxied: [{ reference: 'https://a.example/' }],
+      storageProvider: { type: 's3', bucketName: 'onelitefeather-proxy' }
+    })
+    const before = changeCount()
+
+    await chooseType('GROUP')
+
+    expect(wrapper.get('[data-test="type-warning"]').text()).toBe('The cache storage stays configured, but a group does not use it.')
+    expect(changeCount(), 'nothing is changed before the user confirms').toBe(before)
+
+    await button('Switch and remove').trigger('click')
+
+    expect(lastChange()).toEqual({
+      id: 'central',
+      visibility: 'PUBLIC',
+      type: 'GROUP',
+      storageProvider: { type: 's3', bucketName: 'onelitefeather-proxy' }
+    })
+  })
+
+  it('asks a switch that removes nothing but leaves storage unused, and offers Switch rather than Switch and remove', async () => {
+    mountEntry({ id: 'central', visibility: 'PUBLIC', type: 'PROXY', storageProvider: { type: 'fs', quota: '1GB' } })
+
+    await chooseType('GROUP')
+
+    expect(wrapper.find('[data-test="type-removals"]').text()).toContain('stays configured')
+    expect(button('Switch')).toBeDefined()
+    expect(button('Switch and remove')).toBeUndefined()
+  })
+
+  it('notes under a group that its storage stays configured and unused, and hides that storage from the form', () => {
+    mountEntry({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }], storageProvider: { type: 'fs' } })
+
+    expect(wrapper.get('[data-test="unused-storage"]').text()).toBe('The storage stays configured, but a group does not use it.')
+    expect(form()).not.toContain('Storage provider')
+    expect(form()).not.toContain('Cache storage')
+  })
+
+  it('notes nothing under a group without storage', () => {
+    mountEntry({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }] })
+
+    expect(wrapper.find('[data-test="unused-storage"]').exists()).toBe(false)
   })
 })
 

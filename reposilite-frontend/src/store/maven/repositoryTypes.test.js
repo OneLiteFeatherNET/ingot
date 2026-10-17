@@ -27,7 +27,9 @@ import {
   switchedEntry,
   typeBadgeOf,
   typesFromParam,
-  violationsOf
+  unusedStorageNoteOf,
+  violationsOf,
+  warningsFor
 } from './repositoryTypes'
 
 describe('type badge of a repository in the list', () => {
@@ -138,8 +140,8 @@ describe('the editor of a repository type', () => {
       expect(hiddenFormFields('HOSTED')).toEqual(['proxied', 'storagePolicy', 'metadataMaxAge', 'resolutionCacheMaxEntries'])
     })
 
-    it('hides the storage and the upload settings from a proxy, and keeps its remotes and cache settings', () => {
-      expect(hiddenFormFields('PROXY')).toEqual(['storageProvider', 'redeployment', 'preserveSnapshots'])
+    it('hides the upload settings from a proxy, and keeps its cache storage, remotes and cache settings', () => {
+      expect(hiddenFormFields('PROXY')).toEqual(['redeployment', 'preserveSnapshots'])
     })
 
     it('hides storage, the upload settings and the mirrored list from a group, whose members are edited as a list', () => {
@@ -153,9 +155,8 @@ describe('the editor of a repository type', () => {
   })
 
   describe('switching the type', () => {
-    it('says what a hosted repository loses when it becomes a proxy, by its label', () => {
+    it('says what a hosted repository loses when it becomes a proxy: its redeployment setting, and not its storage', () => {
       expect(removalsFor(hosted(), 'HOSTED', 'PROXY')).toEqual([
-        { key: 'storageProvider', label: 'Storage' },
         { key: 'redeployment', label: 'Redeployment' }
       ])
     })
@@ -185,26 +186,64 @@ describe('the editor of a repository type', () => {
     })
 
     it('does not list a setting that is empty, since there is nothing to lose', () => {
-      expect(removalsFor(hosted({ redeployment: false }), 'HOSTED', 'PROXY')).toEqual([
-        { key: 'storageProvider', label: 'Storage' }
-      ])
+      expect(removalsFor(hosted({ redeployment: false }), 'HOSTED', 'PROXY')).toEqual([])
     })
 
-    it('writes the entry the new type takes, without the settings that do not apply to it', () => {
-      expect(switchedEntry(hosted(), 'PROXY')).toEqual({ id: 'releases', visibility: 'PUBLIC', type: 'PROXY' })
+    it('never lists storage as removed, because a switch keeps it', () => {
+      expect(removalsFor(hosted(), 'HOSTED', 'GROUP').map(removal => removal.key)).not.toContain('storageProvider')
+      expect(removalsFor(proxy({ storageProvider: { type: 's3' } }), 'PROXY', 'GROUP').map(removal => removal.key)).not.toContain('storageProvider')
+    })
+
+    it('writes the entry the new type takes: the storage stays, and the settings that do not apply to a proxy go', () => {
+      expect(switchedEntry(hosted(), 'PROXY')).toEqual({
+        id: 'releases',
+        visibility: 'PUBLIC',
+        type: 'PROXY',
+        storageProvider: { type: 'fs', quota: '10GB' }
+      })
     })
 
     it('drops the mirrored entries of a proxy that becomes a group, because they are addresses', () => {
       expect(switchedEntry(proxy(), 'GROUP')).toEqual({ id: 'central', visibility: 'PUBLIC', type: 'GROUP' })
     })
 
-    it('keeps the members when a group becomes a group, and drops the storage a group does not have', () => {
+    it('keeps the members when a group becomes a group, and keeps its unused storage rather than deleting it', () => {
       expect(switchedEntry(group({ storageProvider: { type: 'fs' } }), 'GROUP')).toEqual({
         id: 'all',
         visibility: 'PUBLIC',
         type: 'GROUP',
+        storageProvider: { type: 'fs' },
         proxied: [{ reference: 'releases' }, { reference: 'central' }]
       })
+    })
+
+    it('keeps the cache storage of a proxy that becomes a group, so it is unused but not lost', () => {
+      const entry = switchedEntry(proxy({ storageProvider: { type: 's3', bucketName: 'onelitefeather-proxy' } }), 'GROUP')
+      expect(entry.storageProvider).toEqual({ type: 's3', bucketName: 'onelitefeather-proxy' })
+      expect(entry.proxied).toBeUndefined()
+    })
+
+    it('warns that the cache storage of a proxy stays configured but unused when it becomes a group', () => {
+      expect(warningsFor(proxy({ storageProvider: { type: 'fs' } }), 'PROXY', 'GROUP')).toEqual([
+        'The cache storage stays configured, but a group does not use it.'
+      ])
+    })
+
+    it('warns about the storage of a hosted repository that becomes a group, in its own words', () => {
+      expect(warningsFor(hosted(), 'HOSTED', 'GROUP')).toEqual([
+        'The storage stays configured, but a group does not use it.'
+      ])
+    })
+
+    it('warns about nothing when there is no storage, or when the type is not a group', () => {
+      expect(warningsFor(proxy(), 'PROXY', 'GROUP')).toEqual([])
+      expect(warningsFor(proxy({ storageProvider: { type: 'fs' } }), 'PROXY', 'HOSTED')).toEqual([])
+    })
+
+    it('notes under a group that still has storage that the storage is not used', () => {
+      expect(unusedStorageNoteOf(group({ storageProvider: { type: 'fs' } }))).toBe('The storage stays configured, but a group does not use it.')
+      expect(unusedStorageNoteOf(group())).toBe('')
+      expect(unusedStorageNoteOf(proxy({ storageProvider: { type: 'fs' } }))).toBe('')
     })
 
     it('removes the type when the repository goes back to none, and keeps the rest', () => {

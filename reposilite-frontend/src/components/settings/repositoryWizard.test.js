@@ -515,8 +515,9 @@ describe('steps by type', () => {
     expect(stepsFor('HOSTED').map(step => step.key)).toEqual(['type', 'basics', 'storage', 'access', 'review'])
   })
 
-  it('shows the remote repositories for a proxy, and no storage', () => {
-    expect(stepsFor('PROXY').map(step => step.key)).toEqual(['type', 'basics', 'upstream', 'access', 'review'])
+  it('shows the remote repositories and then the cache storage for a proxy', () => {
+    expect(stepsFor('PROXY').map(step => step.key)).toEqual(['type', 'basics', 'upstream', 'storage', 'access', 'review'])
+    expect(stepsFor('PROXY')[3].label).toBe('Cache storage')
   })
 
   it('shows the members for a group, and no storage', () => {
@@ -657,7 +658,7 @@ describe('access for a proxy or a group', () => {
 })
 
 describe('repository entry by type', () => {
-  it('builds a proxy with its remotes, their credentials and the cache settings, and no storage', () => {
+  it('builds a proxy with its remotes, their credentials, the cache settings and its cache storage', () => {
     const draft = draftFor('central')
     chooseType(draft, 'PROXY')
     draft.upstream = {
@@ -674,6 +675,7 @@ describe('repository entry by type', () => {
       id: 'central',
       visibility: 'PUBLIC',
       type: 'PROXY',
+      storageProvider: { type: 'fs', quota: '100%' },
       proxied: [
         { reference: 'https://repo.example.net/maven', store: true, authorization: { method: 'BASIC', login: 'ci', password: 's3cret' } },
         { reference: 'https://other.example.net/', store: true }
@@ -704,6 +706,7 @@ describe('review of a proxy or a group', () => {
     const rows = Object.fromEntries(summaryRows(draft, { optional: NO_OPTIONAL }).map(row => [row.label, row.value]))
     expect(rows.Type).toContain('Proxy')
     expect(rows['Remote repositories']).toBe('https://repo.example.net/maven')
+    expect(rows['Cache storage']).toBe('Filesystem, quota 100%')
     expect(rows.Storage).toBeUndefined()
   })
 

@@ -457,7 +457,7 @@ const onModalUpdate = (open) => {
         >
           <fieldset class="flex flex-col gap-2">
             <legend class="pb-2 md-title-small text-on-surface">
-              Where the files are kept
+              {{ draft.type === 'PROXY' ? 'Where the cached files are kept' : 'Where the files are kept' }}
             </legend>
             <MdRadio
               v-for="option in STORAGE_OPTIONS"

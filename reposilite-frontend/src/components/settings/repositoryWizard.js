@@ -59,17 +59,21 @@ export const TYPE_CHOICES = [
   }
 ]
 
-/* The steps a repository of this type goes through. The type comes first, the review last. */
+/*
+ * The steps a repository of this type goes through. The type comes first, the review last. A proxy
+ * has its remotes, then the storage its cache is kept in; a hosted repository has its storage; a
+ * group has its members and no storage of its own.
+ */
 export const stepsFor = (type) => {
   const middle = type === 'PROXY'
-    ? { key: 'upstream', label: 'Remote repositories' }
+    ? [{ key: 'upstream', label: 'Remote repositories' }, { key: 'storage', label: 'Cache storage' }]
     : type === 'GROUP'
-      ? { key: 'members', label: 'Members' }
-      : { key: 'storage', label: 'Storage' }
+      ? [{ key: 'members', label: 'Members' }]
+      : [{ key: 'storage', label: 'Storage' }]
   return [
     { key: 'type', label: 'Type' },
     { key: 'basics', label: 'Basics' },
-    middle,
+    ...middle,
     { key: 'access', label: 'Access' },
     { key: 'review', label: 'Review' }
   ]
@@ -357,9 +361,12 @@ export const repositoryEntry = (draft, { optional }) => {
     visibility: draft.basics.visibility,
     type: draft.type
   }
-  if (draft.type === 'PROXY') Object.assign(entry, proxyFieldsOf(draft.upstream))
-  else if (draft.type === 'GROUP') entry.proxied = draft.members.map(id => ({ reference: id }))
-  else entry.storageProvider = storageProviderOf(draft.storage)
+  if (draft.type === 'GROUP') {
+    entry.proxied = draft.members.map(id => ({ reference: id }))
+  } else {
+    entry.storageProvider = storageProviderOf(draft.storage)
+    if (draft.type === 'PROXY') Object.assign(entry, proxyFieldsOf(draft.upstream))
+  }
   if (optional.description) entry.description = draft.basics.description.trim()
   if (optional.tags) entry.tags = parseTags(draft.basics.tags)
   return entry
@@ -401,7 +408,8 @@ export const summaryRows = (draft, { optional }) => {
   if (optional.tags) rows.push({ label: 'Tags', value: parseTags(draft.basics.tags).join(', ') || 'None' })
   if (draft.type === 'PROXY') {
     rows.push({ label: 'Remote repositories', value: draft.upstream.remotes.map(remote => remote.url.trim()).join(', ') })
-    rows.push({ label: 'Cache', value: draft.upstream.store ? 'Fetched files are kept here' : 'Fetched files are not kept' })
+    rows.push({ label: 'Cache', value: draft.upstream.store ? 'Fetched files are kept in the cache storage' : 'Fetched files are not kept' })
+    rows.push({ label: 'Cache storage', value: describeStorage(draft.storage) })
   } else if (draft.type === 'GROUP') {
     rows.push({ label: 'Members', value: draft.members.join(', ') })
   } else {

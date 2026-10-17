@@ -75,17 +75,23 @@ export const SETTING_TYPE_OPTIONS = [
 export const isRemoteUrl = (text) => /^https?:\/\/[^\s/]+\S*$/i.test(String(text ?? '').trim())
 
 /*
- * The settings a type keeps. Storage, uploads and mirrored entries belong to one type each, and a
- * group keeps its mirrored entries as its members (repository ids), not as remote addresses.
+ * The settings a type keeps when it is switched to. Storage is kept by every type: a hosted repository
+ * stores its files there, a proxy stores its cache there, and a group keeps a storage it does not use
+ * (see warningsFor), so no storage is ever deleted by a switch. A group keeps its mirrored entries as
+ * its members (repository ids), not as remote addresses.
  */
 const KEPT = {
   HOSTED: ['storageProvider', 'redeployment', 'preserveSnapshots'],
-  PROXY: ['proxied', 'storagePolicy', 'metadataMaxAge', 'resolutionCacheMaxEntries'],
-  GROUP: ['proxied']
+  PROXY: ['storageProvider', 'proxied', 'storagePolicy', 'metadataMaxAge', 'resolutionCacheMaxEntries'],
+  GROUP: ['storageProvider', 'proxied']
 }
 
-// The fields the form shows for a type. A group's members are edited as a list of repositories, so the form leaves them out.
-const SHOWN = { HOSTED: KEPT.HOSTED, PROXY: KEPT.PROXY, GROUP: [] }
+// The fields the form shows for a type. A group's members are edited as a list of repositories, and a group's storage is unused, so the form leaves both out.
+const SHOWN = {
+  HOSTED: ['storageProvider', 'redeployment', 'preserveSnapshots'],
+  PROXY: ['storageProvider', 'proxied', 'storagePolicy', 'metadataMaxAge', 'resolutionCacheMaxEntries'],
+  GROUP: []
+}
 
 const TYPED_FIELDS = [...new Set(Object.values(KEPT).flat())]
 
@@ -113,7 +119,7 @@ export const hiddenFormFields = (type) => (isTyped(type)
 // Switching between a proxy and a group changes what the mirrored entries mean, so they go too.
 const dropsMirrors = (from, to) => (from === 'PROXY' || from === 'GROUP') && (to === 'PROXY' || to === 'GROUP') && from !== to
 
-// The settings of the entry that the new type does not keep.
+// The settings of the entry that the new type does not keep. Storage is never among them, see KEPT.
 const notKept = (from, to) => TYPED_FIELDS.filter(field => !KEPT[to].includes(field)
   || (field === 'proxied' && dropsMirrors(from, to)))
 
@@ -127,6 +133,21 @@ export const removalsFor = (entry, from, to) => {
       return { key: field, label: `${FIELD_LABELS[field]}${count}` }
     })
 }
+
+/*
+ * What switching the entry to `to` leaves behind without using it. A group does not use storage, so a
+ * storage that is set stays configured and is named here; nothing is deleted without a removal being listed.
+ */
+export const warningsFor = (entry, from, to) => {
+  if (to !== 'GROUP' || !isSet(entry.storageProvider)) return []
+  const name = from === 'PROXY' ? 'The cache storage' : 'The storage'
+  return [`${name} stays configured, but a group does not use it.`]
+}
+
+/* The note under the type of a group that still has storage: the same words as the warning, for the entry as it is. */
+export const unusedStorageNoteOf = (entry) => (entry.type === 'GROUP' && isSet(entry.storageProvider)
+  ? 'The storage stays configured, but a group does not use it.'
+  : '')
 
 /* The entry with the type changed: what the new type does not keep is taken out, and the type is written. None takes the type away. */
 export const switchedEntry = (entry, to) => {

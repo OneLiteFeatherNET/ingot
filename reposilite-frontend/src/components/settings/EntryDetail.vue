@@ -31,7 +31,9 @@ import {
   hiddenFormFields,
   removalsFor,
   switchedEntry,
-  violationsOf
+  unusedStorageNoteOf,
+  violationsOf,
+  warningsFor
 } from '../../store/maven/repositoryTypes'
 
 /*
@@ -138,18 +140,24 @@ const onChange = (event) => {
 const TYPE_HELP = {
   '': 'No type set. The repository behaves as before. Choose a type to enforce its rules.',
   HOSTED: 'Files are uploaded here and kept on storage.',
-  PROXY: 'Files are fetched from remote repositories. Nothing can be uploaded.',
+  PROXY: 'Files are fetched from remote repositories and cached in the cache storage. Nothing can be uploaded.',
   GROUP: 'Lists other repositories, in order. Nothing can be uploaded.'
 }
 const typeValue = computed(() => latest.value?.type ?? '')
 const typeHelp = computed(() => TYPE_HELP[typeValue.value] ?? '')
 const typeLabelOf = (type) => SETTING_TYPE_OPTIONS.find(option => option.value === type)?.label ?? ''
 const keepLabel = computed(() => (typeValue.value === '' ? 'Keep it as before' : `Keep ${typeLabelOf(typeValue.value)}`))
+// Shown under the type of a group that still has storage, which a group does not use.
+const unusedStorageNote = computed(() => unusedStorageNoteOf(latest.value))
 const pendingType = ref(null)
 const typeNotice = ref('')
 const pendingRemovals = computed(() => (pendingType.value === null
   ? []
   : removalsFor(latest.value, typeValue.value, pendingType.value)))
+const pendingWarnings = computed(() => (pendingType.value === null
+  ? []
+  : warningsFor(latest.value, typeValue.value, pendingType.value)))
+const confirmLabel = computed(() => (pendingRemovals.value.length > 0 ? 'Switch and remove' : 'Switch'))
 
 const applyType = (type) => {
   const next = switchedEntry(latest.value, type)
@@ -159,9 +167,10 @@ const applyType = (type) => {
   emit('change', next)
 }
 
+// A switch that removes or leaves behind a setting is asked about first, and names it. Nothing is deleted silently.
 const requestType = (type) => {
   if (type === typeValue.value) return
-  if (removalsFor(latest.value, typeValue.value, type).length === 0) {
+  if (removalsFor(latest.value, typeValue.value, type).length === 0 && warningsFor(latest.value, typeValue.value, type).length === 0) {
     applyType(type)
     return
   }
@@ -193,9 +202,22 @@ const withoutFields = (node, hidden) => {
     .filter(element => !(element.type === 'Group' && element.elements.length === 0))
   return { ...node, elements }
 }
+
+// A proxy's storage is the storage its cache is kept in, so the form names it that way.
+const labelled = (node, type) => ({
+  ...node,
+  elements: (node.elements ?? []).map(element => {
+    if (element.elements) return labelled(element, type)
+    if (type === 'PROXY' && element.type === 'Control' && element.scope === '#/properties/storageProvider') {
+      return { ...element, label: 'Cache storage' }
+    }
+    return element
+  })
+})
+
 const formLayout = computed(() => {
   const hidden = new Set([...hiddenFormFields(typeValue.value), ...(props.typed ? ['type'] : [])])
-  return withoutFields(layout.value, hidden)
+  return labelled(withoutFields(layout.value, hidden), typeValue.value)
 })
 </script>
 
@@ -281,6 +303,14 @@ const formLayout = computed(() => {
         @update:model-value="requestType"
       />
       <p
+        v-if="unusedStorageNote"
+        data-test="unused-storage"
+        role="status"
+        class="md-body-medium text-warning"
+      >
+        {{ unusedStorageNote }}
+      </p>
+      <p
         v-if="typeNotice"
         role="status"
         class="md-body-medium text-on-surface-variant"
@@ -298,9 +328,12 @@ const formLayout = computed(() => {
           id="entry-type-removals-title"
           class="md-title-small text-on-surface"
         >
-          Switching to {{ typeLabelOf(pendingType).toLowerCase() }} removes
+          Switching to {{ typeLabelOf(pendingType).toLowerCase() }}{{ pendingRemovals.length > 0 ? ' removes' : '' }}
         </h5>
-        <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface">
+        <ul
+          v-if="pendingRemovals.length > 0"
+          class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface"
+        >
           <li
             v-for="item in pendingRemovals"
             :key="item.key"
@@ -308,7 +341,18 @@ const formLayout = computed(() => {
             {{ item.label }}
           </li>
         </ul>
-        <p class="md-body-medium text-on-surface-variant">
+        <p
+          v-for="warning in pendingWarnings"
+          :key="warning"
+          data-test="type-warning"
+          class="md-body-medium text-warning"
+        >
+          {{ warning }}
+        </p>
+        <p
+          v-if="pendingRemovals.length > 0"
+          class="md-body-medium text-on-surface-variant"
+        >
           They are removed from the repository when you save.
         </p>
         <div class="flex flex-wrap gap-2">
@@ -317,7 +361,7 @@ const formLayout = computed(() => {
             type="button"
             @click="confirmType"
           >
-            Switch and remove
+            {{ confirmLabel }}
           </MdButton>
           <MdButton
             variant="text"

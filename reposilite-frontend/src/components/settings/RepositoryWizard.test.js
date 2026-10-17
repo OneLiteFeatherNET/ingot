@@ -711,7 +711,7 @@ describe('type step', () => {
     expect($('#wizard-remote-url-0')).toBeNull()
   })
 
-  it('asks for the remote addresses and the cache for a proxy, and no storage', async () => {
+  it('asks for the remote addresses and the cache for a proxy, and then the cache storage', async () => {
     await mountWizard({ onType: true })
     await choose('#wizard-type-proxy')
     await next()
@@ -723,7 +723,13 @@ describe('type step', () => {
     expect($('#wizard-remote-login-0')).not.toBeNull()
     expect($('#wizard-remote-password-0')).not.toBeNull()
     expect($('#wizard-storage-policy')).not.toBeNull()
-    expect($('#wizard-quota'), 'a proxy has no storage').toBeNull()
+    expect($('#wizard-quota'), 'the storage comes on its own step').toBeNull()
+
+    await setText('#wizard-remote-url-0', 'https://repo.example.net/maven')
+    await next()
+
+    expect(heading()).toBe('Cache storage')
+    expect($('#wizard-quota'), 'a proxy keeps its cache in storage').not.toBeNull()
     expect($('#wizard-bucket')).toBeNull()
   })
 
@@ -748,19 +754,21 @@ describe('type step', () => {
     await next()
     await setText('#wizard-remote-url-0', 'https://repo.example.net/maven')
     await next()
+    await next()
     await pick('#wizard-team', 'developers')
 
     const roles = [...$('#wizard-role').options].map(option => option.value)
     expect(roles).toEqual(['READ', 'ADMIN'])
   })
 
-  it('creates a proxy with its remote address and no storage', async () => {
+  it('creates a proxy with its remote address and its cache storage', async () => {
     await mountWizard({ onType: true })
     await choose('#wizard-type-proxy')
     await next()
     await setText('#wizard-repository-id', 'central')
     await next()
     await setText('#wizard-remote-url-0', 'https://repo.example.net/maven')
+    await next()
     await next()
     await pick('#wizard-team', 'developers')
     await next()
@@ -772,6 +780,7 @@ describe('type step', () => {
       id: 'central',
       visibility: 'PUBLIC',
       type: 'PROXY',
+      storageProvider: { type: 'fs', quota: '100%' },
       proxied: [{ reference: 'https://repo.example.net/maven', store: true }]
     })
   })
