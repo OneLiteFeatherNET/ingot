@@ -33,6 +33,9 @@ import panda.std.Blank
 import panda.std.Result
 import panda.std.Result.error
 import panda.std.Result.ok
+import io.javalin.http.HttpStatus.BAD_GATEWAY
+import io.javalin.http.HttpStatus.FORBIDDEN
+import io.javalin.http.HttpStatus.UNAUTHORIZED
 import java.io.InputStream
 import java.time.Clock
 import java.time.Instant
@@ -220,7 +223,7 @@ internal class MirrorService(
             }
             if (result.error.status != 404) {
                 allMissing = false
-                lastUpstreamError = result.error
+                lastUpstreamError = result.error.asRemoteFailure(host.host)
             }
         }
         return when {
@@ -228,6 +231,13 @@ internal class MirrorService(
             else -> MirrorResolution.Failed(lastUpstreamError ?: notFound("Cannot find '$gav' in remote repositories"))
         }
     }
+
+    /**
+     * A remote host that refuses the configured credentials is a failure of this instance, not of the caller. Relaying its
+     * 401 or 403 would reach the browser as a refused session, so it is answered as a bad gateway.
+     */
+    private fun ErrorResponse.asRemoteFailure(host: String): ErrorResponse =
+        if (status == UNAUTHORIZED.code || status == FORBIDDEN.code) ErrorResponse(BAD_GATEWAY, "$host refused the configured credentials") else this
 
     private enum class DisallowedReason {
         EXTENSION,
