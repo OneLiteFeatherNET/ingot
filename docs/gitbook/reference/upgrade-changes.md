@@ -60,10 +60,8 @@ Tokens created in Ingot have the form `ingot_<tokenId>_<random>`. The secret is 
 
 ### Environment variables
 
-| Variable | Behaviour |
-| --- | --- |
-| `INGOT_OPTS` | Startup arguments. `REPOSILITE_OPTS` is still read as a fallback. |
-| `INGOT_LOCAL_*` | Local configuration. `REPOSILITE_LOCAL_*` is still read. If both are set, `INGOT_LOCAL_*` takes precedence. |
-| `ingot.local.*` system properties | Local configuration. `reposilite.local.*` is still read. |
-| `INGOT_FORCE_CHOWN` | Ownership fix at start. `REPOSILITE_FORCE_CHOWN` is still read. |
-| `JAVA_OPTS`, `PUID`, `PGID` | Unchanged. |
+The `INGOT_` names are read first. Where a `REPOSILITE_` name exists, it is read as a fallback. When both are set, the `INGOT_` name wins. The full list of variables is in [Environment variables](environment-variables.md).
+
+* `INGOT_OPTS`, `INGOT_FORCE_CHOWN` and `INGOT_LOCAL_<KEY>` fall back to `REPOSILITE_OPTS`, `REPOSILITE_FORCE_CHOWN` and `REPOSILITE_LOCAL_<KEY>`.
+* The `ingot.local.*` system properties fall back to `reposilite.local.*`.
+* `JAVA_OPTS`, `PUID` and `PGID` have no prefix and are unchanged.

@@ -127,7 +127,7 @@ The storage policy applies to metadata files, which are files whose name contain
 | Value | Metadata file request |
 | --- | --- |
 | `PRIORITIZE_UPSTREAM_METADATA` | Asks the proxied entries first. With `metadataMaxAge` of 0 or less this happens on every request. With a larger value it happens only when the stored copy is older than `metadataMaxAge` seconds. The stored copy answers when no proxied entry has the file. |
-| `STRICT` | Reads the stored copy first and asks the proxied entries only when it is missing. This allows full offline operation for files that are already stored. |
+| `STRICT` | Reads the stored copy first and asks the proxied entries only when it is missing. A stored file is served without any upstream request. A missing file still goes to the proxied entries, so `STRICT` is not an offline mode. |
 
 ## Resolution cache
 

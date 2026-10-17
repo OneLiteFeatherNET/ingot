@@ -181,7 +181,7 @@ curl -X DELETE "$INGOT_URL/api/identity/principals/ci-deploy/tokens/github-relea
   -H "Authorization: Bearer $INGOT_TOKEN"
 ```
 
-Rotation in place exists only for the tokens a signed-in user owns, in **My account**. It gives the token a new secret, and the old secret stops working at once.
+Rotation in place exists only for the tokens a signed-in user owns, in **My account**. It gives the token a new secret, and the old secret stops working at once on the instance that handles the request. With several replicas, another replica can accept the old secret for up to one minute. See [Access tokens and routes](../reference/access-tokens-and-routes.md#when-a-change-takes-effect).
 
 ## Result
 

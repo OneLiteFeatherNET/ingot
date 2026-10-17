@@ -223,7 +223,7 @@ Fields of a repository:
 | `redeployment` | Boolean | `false` | Accepts redeployment of the same artifact version. |
 | `preserveSnapshots` | Boolean | `false` | Keeps old snapshot build files. By default Ingot deletes them. |
 | `storageProvider` | Object | file system | Storage of the repository. See [Storage providers](storage-providers.md). |
-| `storagePolicy` | `PRIORITIZE_UPSTREAM_METADATA` or `STRICT` | `PRIORITIZE_UPSTREAM_METADATA` | How requests are handled when mirrors are configured. `STRICT` prefers the cached version over upstream metadata. |
+| `storagePolicy` | `PRIORITIZE_UPSTREAM_METADATA` or `STRICT` | `PRIORITIZE_UPSTREAM_METADATA` | How requests are handled when mirrors are configured. `STRICT` reads the stored copy first and asks the upstream only when it is missing. It is not an offline mode. |
 | `metadataMaxAge` | Long | `0` | Seconds that fetched metadata files stay valid with `PRIORITIZE_UPSTREAM_METADATA`. `0` fetches every time. |
 | `resolutionCacheMaxEntries` | Int | `0` | Size of the cache for routing decisions of metadata reads. `0` turns it off. At least 0. |
 | `proxied` | List of mirror | empty | Mirrors associated with the repository. |

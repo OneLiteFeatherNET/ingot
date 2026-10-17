@@ -58,6 +58,10 @@ Each user creates its own tokens, and an instance admin can create a token for a
 
 There is no endpoint that changes the name, the scopes or the nodes of an identity token after it is created. To change the narrowing, delete the token and create a new one.
 
+### When a change takes effect
+
+Ingot keeps a successful authentication in a cache for up to one minute. On the replica that changes a token, the cached entries of that token are dropped at once. Another replica of the same cluster does not get that signal, so it can keep accepting the old secret for up to one minute after the rotation or deletion. An expired token is refused at once on every replica, because each request checks the expiry.
+
 ### Machine accounts
 
 A machine account is a principal of kind `MACHINE`, for a CI job or a bot. It is created with `POST /api/identity/principals` and a body with `"kind": "MACHINE"`. It owns a private team named `machine:<name>` from the start. Its tokens work like the tokens of a user.

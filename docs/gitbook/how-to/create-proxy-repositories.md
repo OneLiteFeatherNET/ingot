@@ -106,7 +106,7 @@ With `store` set to `false`, the file is streamed to the client and not kept. Wh
 The copy and the request share one fetch when every host of the repository has `store` set to `true`. Two clients that ask for the same missing file at the same time then cause one remote request.
 
 {% hint style="warning" %}
-With several replicas, a cache on local disk is per pod. Each pod fetches and keeps its own copy. Use S3 storage for the repository when the replicas should share the cache. See [Run on Kubernetes](run-on-kubernetes.md).
+With several replicas, a cache on local disk is per pod. Each pod fetches and keeps its own copy. Use [S3 storage](use-s3-storage.md) for the repository when the replicas should share the cache. See [Run on Kubernetes](run-on-kubernetes.md).
 {% endhint %}
 
 ## Typed and untyped repositories
