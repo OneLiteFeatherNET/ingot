@@ -218,6 +218,23 @@ describe('EntryDetail switching the type', () => {
     expect(lastChange()).toEqual({ id: 'all', visibility: 'PUBLIC', type: 'GROUP', proxied: [{ reference: 'releases' }, { reference: 'snapshots' }] })
   })
 
+  it('names the credentials that a switch from proxy to group removes, before it is confirmed', async () => {
+    mountEntry({
+      id: 'central',
+      visibility: 'PUBLIC',
+      type: 'PROXY',
+      proxied: [{ reference: 'https://a.example/', authorization: { method: 'BASIC', login: 'alpha', password: 'alpha-secret' } }]
+    })
+    const before = changeCount()
+
+    await chooseType('GROUP')
+
+    const notice = wrapper.get('[data-test="type-removals"]').text()
+    expect(notice).toContain('Mirrored repositories')
+    expect(notice).toContain('Credentials of mirrored repositories (1)')
+    expect(changeCount(), 'the credentials are kept until the removal is confirmed').toBe(before)
+  })
+
   it('removes the type when the repository goes back to not set', async () => {
     mountEntry({ id: 'releases', visibility: 'PUBLIC', type: 'HOSTED' })
 
