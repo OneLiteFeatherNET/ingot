@@ -146,7 +146,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val createToken = ReposiliteRoute<CreatedTokenDto>("/api/identity/principals/{name}/tokens", POST) {
         managerOnly("tokens") {
             response = readBody<CreateTokenRequest>()
-                .flatMap { request -> identity.createToken(requireParameter("name"), request, actor = auditActor()) }
+                .flatMap { request -> identity.createToken(requireParameter("name"), request, caller = identifier, actor = auditActor()) }
         }
     }
 
@@ -256,7 +256,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val replaceMembers = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/members", PUT) {
         managerOnly("teams") {
             response = readBody<ReplaceMembersRequest>()
-                .flatMap { request -> identity.replaceMembers(requireParameter("name"), request.members, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .flatMap { request -> identity.replaceMembers(requireParameter("name"), request.members, ctx.header(Header.IF_MATCH), caller = identifier, actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -275,7 +275,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val replaceGrants = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/grants", PUT) {
         managerOnly("teams") {
             response = readBody<ReplaceGrantsRequest>()
-                .flatMap { request -> identity.replaceGrants(requireParameter("name"), request.grants, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .flatMap { request -> identity.replaceGrants(requireParameter("name"), request.grants, ctx.header(Header.IF_MATCH), caller = identifier, actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -286,12 +286,12 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Grants the instance role to a principal. Granting it again changes nothing. Note: Requires the users area (ingot.admin.users)",
+        summary = "Grants the instance role to a principal. Granting it again changes nothing. Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.PUT],
     )
     val grantPrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", PUT) {
-        managerOnly("users") {
+        managerOnly() {
             response = identity.grantPrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
@@ -303,12 +303,12 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires the users area (ingot.admin.users)",
+        summary = "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.DELETE],
     )
     val revokePrincipalInstanceAdmin = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}/instance-admin", DELETE) {
-        managerOnly("users") {
+        managerOnly() {
             response = identity.revokePrincipalInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
@@ -320,12 +320,12 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Grants the instance role to a team: its members with a valid token become instance admins. Note: Requires the teams area (ingot.admin.teams)",
+        summary = "Grants the instance role to a team: its members with a valid token become instance admins. Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.PUT],
     )
     val grantTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", PUT) {
-        managerOnly("teams") {
+        managerOnly() {
             response = identity.grantTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
@@ -337,12 +337,12 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/instance-admin",
         tags = ["Identity"],
-        summary = "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires the teams area (ingot.admin.teams)",
+        summary = "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.DELETE],
     )
     val revokeTeamInstanceAdmin = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}/instance-admin", DELETE) {
-        managerOnly("teams") {
+        managerOnly() {
             response = identity.revokeTeamInstanceAdmin(requireParameter("name"), ctx.header(Header.IF_MATCH), actor = auditActor())
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
@@ -367,12 +367,12 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/nodes",
         tags = ["Identity"],
-        summary = "Returns the permission nodes of a principal, with its entity tag. Note: Requires the instance admin (ingot.admin.*)",
+        summary = "Returns the permission nodes of a principal, with its entity tag. Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         methods = [HttpMethod.GET],
     )
     val getPrincipalNodes = ReposiliteRoute<NodeListDto>("/api/identity/principals/{name}/nodes", GET) {
-        managerOnly {
+        managerOnly("users") {
             response = identity.principalNodes(requireParameter("name"))
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
@@ -384,15 +384,15 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/principals/{name}/nodes",
         tags = ["Identity"],
-        summary = "Replaces the whole permission node list of a principal. Note: Requires the instance admin (ingot.admin.*)",
+        summary = "Replaces the whole permission node list of a principal. A caller may only give rights it holds. Note: Requires the users area (ingot.admin.users)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the principal", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceNodesRequest::class)], required = true),
         methods = [HttpMethod.PUT],
     )
     val replacePrincipalNodes = ReposiliteRoute<NodeListDto>("/api/identity/principals/{name}/nodes", PUT) {
-        managerOnly {
+        managerOnly("users") {
             response = readBody<ReplaceNodesRequest>()
-                .flatMap { request -> identity.replacePrincipalNodes(requireParameter("name"), request.nodes, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .flatMap { request -> identity.replacePrincipalNodes(requireParameter("name"), request.nodes, ctx.header(Header.IF_MATCH), caller = identifier, actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     NodeListDto(snapshot.value)
@@ -403,12 +403,12 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/nodes",
         tags = ["Identity"],
-        summary = "Returns the permission nodes of a team, with its entity tag. Note: Requires the instance admin (ingot.admin.*)",
+        summary = "Returns the permission nodes of a team, with its entity tag. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         methods = [HttpMethod.GET],
     )
     val getTeamNodes = ReposiliteRoute<NodeListDto>("/api/identity/teams/{name}/nodes", GET) {
-        managerOnly {
+        managerOnly("teams") {
             response = identity.teamNodes(requireParameter("name"))
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
@@ -420,15 +420,15 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     @OpenApi(
         path = "/api/identity/teams/{name}/nodes",
         tags = ["Identity"],
-        summary = "Replaces the whole permission node list of a team. Note: Requires the instance admin (ingot.admin.*)",
+        summary = "Replaces the whole permission node list of a team. A caller may only give rights it holds. Note: Requires the teams area (ingot.admin.teams)",
         pathParams = [OpenApiParam(name = "name", description = "Name of the team", required = true)],
         requestBody = OpenApiRequestBody(content = [OpenApiContent(ReplaceNodesRequest::class)], required = true),
         methods = [HttpMethod.PUT],
     )
     val replaceTeamNodes = ReposiliteRoute<NodeListDto>("/api/identity/teams/{name}/nodes", PUT) {
-        managerOnly {
+        managerOnly("teams") {
             response = readBody<ReplaceNodesRequest>()
-                .flatMap { request -> identity.replaceTeamNodes(requireParameter("name"), request.nodes, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .flatMap { request -> identity.replaceTeamNodes(requireParameter("name"), request.nodes, ctx.header(Header.IF_MATCH), caller = identifier, actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     NodeListDto(snapshot.value)
@@ -464,7 +464,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val replaceTeamParents = ReposiliteRoute<ParentListDto>("/api/identity/teams/{name}/parents", PUT) {
         managerOnly("teams") {
             response = readBody<ReplaceParentsRequest>()
-                .flatMap { request -> identity.replaceTeamParents(requireParameter("name"), request.parents, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .flatMap { request -> identity.replaceTeamParents(requireParameter("name"), request.parents, ctx.header(Header.IF_MATCH), caller = identifier, actor = auditActor()) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     ParentListDto(snapshot.value)

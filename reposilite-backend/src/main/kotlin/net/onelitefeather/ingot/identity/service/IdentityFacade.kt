@@ -213,8 +213,16 @@ class IdentityFacade(
 
     // tokens
 
-    fun createToken(principalName: String, request: CreateTokenRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<CreatedTokenDto> {
+    fun createToken(
+        principalName: String,
+        request: CreateTokenRequest,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
+    ): IdentityResult<CreatedTokenDto> {
         val principal = principalNamed(principalName) ?: return notFoundError("Principal not found")
+        if (caller != null && accessTokens.subjectOf(caller).principalName != principal.name) {
+            notHeld<CreatedTokenDto>(caller, rightsOfPrincipal(principal), "the rights of principal '${principal.name}'")?.let { return it }
+        }
         val name = validateName(request.name, MAX_NAME_LENGTH)
             ?: return badRequestError(nameProblem(request.name, MAX_NAME_LENGTH, "Token name"))
         if (store.findToken(name) != null) return errorResponse(CONFLICT, "Token '$name' already exists")
@@ -348,6 +356,7 @@ class IdentityFacade(
         members: List<String>?,
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
@@ -361,6 +370,9 @@ class IdentityFacade(
             .filter { it.source == TeamMemberSource.MANUAL && it.principalId !in principalIds }
             .map { team.id to it.principalId }
             .toSet()
+        if (manualMemberNames(team) != principals.map { it.name }.toSet()) {
+            notHeld<IdentitySnapshot<TeamDetailDto>>(caller, rightsOfTeam(team), "the rights of team '$name'")?.let { return it }
+        }
         adminGuard<IdentitySnapshot<TeamDetailDto>>(AdminChange(membershipsLost = dropped))?.let { return it }
 
         val manualBefore = manualMemberNames(team)
@@ -455,6 +467,7 @@ class IdentityFacade(
         grants: List<GrantRequest>?,
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
@@ -469,6 +482,11 @@ class IdentityFacade(
                 ?: return badRequestError("A grant names a path. Repository-wide access is granted with permission nodes, see /api/identity/teams/{name}/nodes")
             if (role == Role.ADMIN) return badRequestError("ADMIN applies to a whole repository, grant it with permission nodes")
             Triple(repository, pathPrefix, role)
+        }
+        val oldGrants = store.listGrants(team.id).map { Triple(it.repository, it.pathPrefix, it.role) }
+        val changedGrants = (oldGrants.toSet() - parsed.toSet()) + (parsed.toSet() - oldGrants.toSet())
+        if (changedGrants.isNotEmpty()) {
+            notHeld<IdentitySnapshot<TeamDetailDto>>(caller, Rights(emptyList(), changedGrants.toList()), "the grants of team '$name'")?.let { return it }
         }
         val before = store.listGrants(team.id).map { describeGrant(it.repository, it.pathPrefix, it.role.name) }.toSet()
         val after = parsed.map { (repository, pathPrefix, role) -> describeGrant(repository, pathPrefix, role.name) }.toSet()
@@ -498,12 +516,19 @@ class IdentityFacade(
         nodes: List<NodeDto>?,
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
         val principal = principalNamed(name) ?: return notFoundError("Principal not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(principal).etag)) return preconditionFailed("Principal '$name'")
         return parseNodes(nodes).flatMap { rules ->
-            replaceNodeRules(principal.kind.name, principal.id, rules, principal.name, actor, subjectKey = "principal", kind = principal.kind.name)
-            principalNodes(name)
+            notHeld<IdentitySnapshot<List<NodeDto>>>(
+                caller,
+                Rights(changedNodes(store.listNodes(principal.kind.name, principal.id), rules), emptyList()),
+                "the nodes of principal '$name'",
+            ) ?: run {
+                replaceNodeRules(principal.kind.name, principal.id, rules, principal.name, actor, subjectKey = "principal", kind = principal.kind.name)
+                principalNodes(name)
+            }
         }
     }
 
@@ -518,12 +543,19 @@ class IdentityFacade(
         nodes: List<NodeDto>?,
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<List<NodeDto>>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
         return parseNodes(nodes).flatMap { rules ->
-            replaceNodeRules(NODE_SUBJECT_TEAM, team.id, rules, team.name, actor, subjectKey = "team", kind = null)
-            teamNodes(name)
+            notHeld<IdentitySnapshot<List<NodeDto>>>(
+                caller,
+                Rights(changedNodes(store.listNodes(NODE_SUBJECT_TEAM, team.id), rules), emptyList()),
+                "the nodes of team '$name'",
+            ) ?: run {
+                replaceNodeRules(NODE_SUBJECT_TEAM, team.id, rules, team.name, actor, subjectKey = "team", kind = null)
+                teamNodes(name)
+            }
         }
     }
 
@@ -541,6 +573,7 @@ class IdentityFacade(
         parents: List<String>?,
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<List<String>>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
@@ -572,6 +605,17 @@ class IdentityFacade(
             )
         }
 
+        val currentParents = store.listParents(team.id)
+        val newParentIds = parentTeams.map { it.id }.toSet()
+        val changedParents = (currentParents - newParentIds) + (newParentIds - currentParents)
+        if (changedParents.isNotEmpty()) {
+            val parentRights = changedParents.mapNotNull { store.findTeamById(it) }.map { rightsOfTeam(it) }
+            notHeld<IdentitySnapshot<List<String>>>(
+                caller,
+                Rights(parentRights.flatMap { it.nodes }, parentRights.flatMap { it.grants }),
+                "the rights of the parents of team '$name'",
+            )?.let { return it }
+        }
         val before = parentNamesOf(team)
         store.replaceParents(team.id, parentTeams.map { it.id }.toSet())
         invalidateAllTokens()
@@ -583,6 +627,93 @@ class IdentityFacade(
         }
         return teamParents(name)
     }
+
+    // rights: a caller may hand on only what it holds itself
+
+    /** The rights of a subject as the evaluator reads them: its allowed nodes and the grants of its roles. */
+    private data class Rights(val nodes: List<String>, val grants: List<Triple<String?, String?, Role>>)
+
+    /** The rights of a team: its allowed nodes and grants, with those of every parent it inherits from. */
+    private fun rightsOfTeam(team: TeamRecord): Rights {
+        val chain = teamChain(team.id)
+        return Rights(
+            nodes = chain.flatMap { store.listNodes(NODE_SUBJECT_TEAM, it) }.filter { it.allowed }.map { it.node },
+            grants = chain.flatMap { store.listGrants(it) }.map { Triple(it.repository, it.pathPrefix, it.role) },
+        )
+    }
+
+    /** The rights of a principal: its allowed nodes, and the nodes and grants that its teams give it. */
+    private fun rightsOfPrincipal(principal: PrincipalRecord): Rights {
+        val subject = store.loadAccess(principal, tokenNodes = null)
+        return Rights(
+            nodes = subject.levels.flatMap { level -> level.rules.filter { it.allowed }.map { it.pattern.text } },
+            grants = subject.levels.flatMap { level -> level.grants.map { Triple(it.repository, it.pathPrefix, it.role) } },
+        )
+    }
+
+    /** The team and the parents it reaches, up to the depth limit. */
+    private fun teamChain(teamId: Int): Set<Int> {
+        val reached = linkedSetOf(teamId)
+        var frontier = listOf(teamId)
+        repeat(TeamHierarchy.MAX_DEPTH) {
+            frontier = frontier.flatMap { store.listParents(it) }.filter { it !in reached }
+            reached += frontier
+        }
+        return reached
+    }
+
+    /**
+     * Whether the caller holds every right of [rights]. An instance admin holds all of them, after token narrowing. Any other
+     * caller holds a node the evaluator allows it, and a grant when it may do the grant's actions on the repository or path.
+     * Wildcards are held by an instance admin only.
+     */
+    private fun callerHolds(caller: AccessTokenIdentifier, rights: Rights): Boolean {
+        val subject = accessTokens.subjectOf(caller)
+        if (PermissionEvaluator.isInstanceAdmin(subject)) return true
+        return rights.nodes.all { holdsNode(subject, it) } &&
+            rights.grants.all { (repository, pathPrefix, role) -> holdsGrant(subject, repository, pathPrefix, role) }
+    }
+
+    private fun holdsNode(subject: AccessSubject, node: String): Boolean {
+        if (NodePattern.problemOf(node) != null) return false
+        val parsed = NodePattern.of(node)
+        if (parsed.kindName == "EVERYTHING" || parsed.repository == NodePattern.WILDCARD || parsed.action == NodePattern.WILDCARD) return false
+        return PermissionEvaluator.decide(subject, parsed).allowed
+    }
+
+    private fun holdsGrant(subject: AccessSubject, repository: String?, pathPrefix: String?, role: Role): Boolean {
+        if (repository == null) return false
+        val prefix = pathPrefix?.trim('/').orEmpty()
+        return role.actions.all { action ->
+            val nodeAction = when (action) {
+                Action.READ -> "read"
+                Action.WRITE -> "deploy"
+                Action.DELETE -> "delete"
+                Action.MANAGE_REPOSITORY -> "manage"
+                Action.INSTANCE_ADMIN -> return false
+            }
+            when {
+                prefix.isEmpty() -> PermissionEvaluator.decide(subject, NodePattern.repository(repository, nodeAction)).allowed
+                nodeAction == "manage" -> false
+                else -> PermissionEvaluator.decidePath(subject, repository, prefix, nodeAction).allowed
+            }
+        }
+    }
+
+    /** The node texts whose rule differs between two lists, by text and allowance. */
+    private fun changedNodes(before: List<NodeRule>, after: List<NodeRule>): List<String> {
+        val old = before.map { it.node to it.allowed }.toSet()
+        val new = after.map { it.node to it.allowed }.toSet()
+        return ((old - new) + (new - old)).map { it.first }.distinct()
+    }
+
+    /** The refusal of a change of rights the caller does not hold, null when the caller holds them all or no caller acts. */
+    private fun <T> notHeld(caller: AccessTokenIdentifier?, rights: Rights, what: String): IdentityResult<T>? =
+        if (caller == null || callerHolds(caller, rights)) {
+            null
+        } else {
+            errorResponse(FORBIDDEN, "The caller does not hold $what, so it cannot change them. A principal may only give rights it holds itself.")
+        }
 
     // catalog, templates and the permission check
 
