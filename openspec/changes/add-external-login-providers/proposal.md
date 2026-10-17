@@ -40,7 +40,7 @@ Every provider is disabled by default, so an existing installation keeps its beh
   never echo a password or a secret.
 - The legacy LDAP Basic authentication (`com.reposilite.auth.LdapAuthenticator`, settings `authentication.ldap`) is not
   changed. The new LDAP login provider has its own settings and does not read them. The relation is documented in the guide.
-- Documentation: `reposilite-site/data/guides/authentication/external-login.md`, and a link from `authentication/ldap.md`.
+- Documentation: `docs/gitbook/reference/login-providers.md`, and a link from `docs/gitbook/how-to/configure-ldap-login.md`.
 - No new library. Discovery and token exchange use `java.net.http`, LDAP uses JNDI, and ID token signatures use the
   `nimbus-jose-jwt` version already on the classpath.
 
