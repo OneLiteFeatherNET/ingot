@@ -13,7 +13,7 @@ An artifact node gives an action on part of a repository tree instead of on a wh
 | `ingot.artifact.<groupId>[:<artifactId>].<action>` | Every repository |
 | `ingot.repository.<repository>.artifact.<groupId>[:<artifactId>].<action>` | The named repository only |
 
-The `:<artifactId>` part is optional. Both forms are stored like any other node: a node text and an `allowed` flag.
+The `:<artifactId>` part is optional. Both forms are stored like any other node: a node text and an `allowed` flag. The general grammar of all nodes, including the repository and admin nodes, is described in [Permission nodes](permission-nodes.md).
 
 ## Coordinates
 
@@ -50,17 +50,27 @@ In the qualified form the first segment named `artifact` after `ingot.repository
 
 ## Negation
 
-A node is denied by saving it with `allowed` set to `false`. A denial removes the covered tree from what less specific nodes allow. A more specific allowance beats a wider denial.
+A node is denied by saving it with `allowed` set to `false`. Inside one precedence level, a denial removes the covered tree from the less specific allowances of that level, and a more specific allowance beats a wider denial. A denial wins a tie between two nodes of the same specificity.
 
-* A denial wins a tie between two nodes of the same specificity.
-* A denial of a more specific node removes a part of a wider allowance. Allowing `ingot.artifact.net.onelitefeather.deploy` and denying `ingot.artifact.net.onelitefeather:internal.deploy` allows every artifact of the group except `internal`.
+The precedence levels are decided in order: the principal's own rules first, then the rules of its teams by distance. The first level with a matching node decides, so a denial on a team does not override the principal's own allowance, even when the team's denial is more specific.
+
+* Allowing `ingot.artifact.net.onelitefeather.deploy` on a principal and denying `ingot.artifact.net.onelitefeather:internal.deploy` on it allows every artifact of the group except `internal`.
+* Allowing `ingot.artifact.net.onelitefeather.deploy` on a principal and denying `ingot.artifact.net.onelitefeather:internal.deploy` on one of its teams still allows `internal`, because the principal's own level decides first.
 * A path that no node covers is denied.
+
+## Instance admins
+
+An instance admin is a principal whose rules allow `ingot.admin.*` (or `*`). On request paths (reads, uploads and deletes of files), an instance admin is allowed whatever the repository and artifact nodes deny. Only a token that narrows the admin limits it. A denial of `ingot.admin.*` itself removes the instance admin status.
+
+{% hint style="warning" %}
+The check endpoint decides an artifact node without a path, and an admin area node, from the rules alone. For those two kinds it can show a denial that a request path would not enforce for an instance admin. For what a request does, use the path check described below.
+{% endhint %}
 
 ## Specificity
 
-When several nodes of the same source match a request, the most specific one decides, and a denial wins a tie. The key is compared field by field, in this order:
+Within the first precedence level that has a matching node, the most specific match decides, and a denial wins a tie. The key is compared field by field, in this order:
 
-1. Tier. `*` is 0. The repository and admin nodes keep their literal count (2 to 4). An artifact node is tier 5, so an artifact node always decides over a repository node at the same position.
+1. Tier. `*` is 0. The repository and admin nodes keep their literal count (2 to 4). A team role grant counts 4. An artifact node is tier 5, so an artifact node always decides over a repository node at the same level.
 
 Within the artifact tier:
 
@@ -86,7 +96,7 @@ Artifact read nodes change what a subject sees when it browses a repository.
 * Inside a readable subtree an entry is shown unless a node denies it. A denial such as `ingot.artifact.net.onelitefeather:internal.read` with `allowed` set to `false` hides `net/onelitefeather/internal/` from the listing.
 * Opening a directory that is not shown answers like any other directory the subject may not read: 403 Forbidden for a signed in subject, 401 Unauthorized for an anonymous request.
 * The same filter applies to the HTML directory index and to the details API.
-* HIDDEN and PRIVATE repositories keep their rules. A HIDDEN repository stays out of the repository list for everyone except instance admins and subjects with a repository wide read right. A PRIVATE repository is listed for every subject that can see it. In the root directory of the details API, a HIDDEN repository is shown to a subject that can see it, as it is for legacy routes.
+* HIDDEN and PRIVATE repositories keep their rules. A HIDDEN repository is listed in the repository list only for instance admins and for subjects that hold a read node on the repository, or a team grant with role READ or higher on it, with or without a path prefix. An artifact read node with a groupId covers only a subtree, so it does not list a HIDDEN repository. The node `ingot.artifact.*.read`, whose groupId is `*`, covers the whole repository and does list it. A PRIVATE repository is listed for every subject that can see it, which includes a subject that may read a subtree through artifact nodes.
 * Repository wide rights and legacy route grants are unchanged. A subject that holds no artifact read node for a repository sees that repository exactly as before.
 
 ## Examples
@@ -138,14 +148,16 @@ The subject deploys every artifact of the domain except `net/onelitefeather/inte
 `GET /api/identity/check?principal=<name>&node=<node>` decides one concrete node for a principal. Add `&token=<token name>` to apply the narrowing of one token. An instance admin may check any principal; anyone else may check only itself. The node must be concrete, without `*`.
 
 * An unqualified artifact node, such as `ingot.artifact.net.onelitefeather:mycelium-bom.deploy`, asks whether the artifact is allowed in every repository. Use the qualified form to ask about one repository.
-* A repository node such as `ingot.repository.releases.deploy` asks about the whole repository. Artifact nodes cover part of a repository and do not answer it.
+* A repository node such as `ingot.repository.releases.deploy` asks about the whole repository. Only an artifact node with the groupId `*` covers the whole repository and answers it. Other artifact nodes cover part of a repository and do not answer it.
+
+To ask about one path inside a repository, use the path form: `GET /api/identity/check?principal=<name>&repository=<repository>&path=<path inside the repository>&action=<read, deploy or delete>`. The action can come from a `node` parameter instead, such as `ingot.repository.releases.deploy`. The path form decides the path as a request for it would, so it includes the instance admin shortcut. Its answer has `node` set to null, and names `repository`, `path` and `action`.
 
 The answer has `principal`, `node`, `allowed`, a `decision` and a `trace`.
 
 | Field | Content |
 | --- | --- |
 | `decision.decidingNode` | The text of the node that decided. Null when no node matched and the default denial applied, and null for a role grant, which has no node. |
-| `decision.decidingKind` | The kind of the deciding rule: `ARTIFACT`, `REPOSITORY`, `ADMIN`, `EVERYTHING`, or `GRANT` for a role grant. Null when no node matched. |
+| `decision.decidingKind` | The kind of the deciding rule: `ARTIFACT`, `REPOSITORY`, `ADMIN`, `EVERYTHING`, `GRANT` for a role grant, or `INSTANCE_ADMIN` when the instance admin shortcut allowed the request. Null when no node matched. |
 | `decision.explanation` | The decision in one sentence, such as `Denied by the artifact node 'ingot.artifact.net.onelitefeather.deploy' of alice (USER)`. |
 | `decision.source`, `decision.subject`, `decision.depth` | Where the deciding rule came from: the level (user, team, inherited team, token), the owner of the rule, and its distance. |
-| `trace[]` | Every rule or grant that was considered, with `node`, `kind`, `allowed`, `matched` and a `reason` that names the specificity or why the node did not match. |
+| `trace[]` | Every rule or grant that was considered, with `source`, `subject`, `depth`, `node`, `kind`, `allowed`, `matched` and a `reason` that names the specificity or why the node did not match. |
