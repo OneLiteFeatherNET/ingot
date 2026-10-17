@@ -25,6 +25,7 @@ import Breadcrumb from './BreadcrumbNavigation.vue'
 import FileList from './FileList.vue'
 import BrowserUpload from './FileUpload.vue'
 import BrowserIcon from './BrowserIcon.vue'
+import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import { property } from '../../helpers/vue-extensions'
 import { errorMessage } from '../../helpers/toast'
@@ -77,6 +78,32 @@ watch(
       })
       .catch(() => {
         if (!isStale()) members.value = []
+      })
+  },
+  { immediate: true }
+)
+
+// The repository this browser is in, from the repository list, for the badge of its type. Asked once per
+// repository, so browsing down its directories does not ask again. A failed request shows no badge.
+const repositoryEntry = ref(null)
+const repositoryId = computed(() => props.qualifier.path.split('/')[0])
+
+watch(
+  () => [repositoryId.value, details.value, sessionReady.value],
+  () => {
+    const id = repositoryId.value
+    if (!sessionReady.value || id === '') {
+      repositoryEntry.value = null
+      return
+    }
+
+    const isStale = () => id !== repositoryId.value
+    new Promise(resolve => resolve(client.value.maven.repositories()))
+      .then(response => {
+        if (!isStale()) repositoryEntry.value = (response.data.repositories ?? []).find(entry => String(entry.id) === id) ?? null
+      })
+      .catch(() => {
+        if (!isStale()) repositoryEntry.value = null
       })
   },
   { immediate: true }
@@ -179,7 +206,14 @@ const toggleCompactMode = () => {
     </div>
     <div class="min-w-0">
       <div class="flex items-center justify-between gap-2">
-        <Breadcrumb :path="qualifier.path" />
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <Breadcrumb :path="qualifier.path" />
+          <RepositoryTypeBadge
+            v-if="repositoryEntry"
+            data-test="browse-type"
+            :repository="repositoryEntry"
+          />
+        </div>
         <div class="flex shrink-0 items-center gap-1">
           <MdIconButton
             toggle

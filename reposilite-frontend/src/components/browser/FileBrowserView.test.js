@@ -433,3 +433,90 @@ describe('FileBrowserView details layout', () => {
     expect(layoutGrid(wrapper).classes(), 'the listing takes the width the card gave up').not.toContain(SIDE_BY_SIDE)
   })
 })
+
+describe('FileBrowserView repository type in the header', () => {
+  const mounted = []
+  const emptyDetails = () => Promise.resolve({ data: { files: [] } })
+  const clientWithList = (repositories) => ({
+    maven: {
+      details: emptyDetails,
+      members: () => Promise.resolve({ data: { members: [] } }),
+      repositories: repositories ?? (() => Promise.resolve({ data: { repositories: [] } })),
+      download: () => Promise.reject(new Error('not used')),
+      delete: () => Promise.reject(new Error('not used'))
+    }
+  })
+
+  const mountAt = (path) => {
+    const wrapper = mount(FileBrowserView, {
+      props: { qualifier: { path, watchable: 0 } },
+      global: { stubs: { 'router-link': RouterLinkStub } }
+    })
+    mounted.push(wrapper)
+    return wrapper
+  }
+
+  beforeEach(() => {
+    sessionState.details.value = { routes: [] }
+    sessionState.sessionReady.value = true
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(wrapper => wrapper.unmount())
+  })
+
+  it('shows the type of the repository next to the breadcrumb', async () => {
+    sessionState.client.value = clientWithList(() => Promise.resolve({
+      data: { repositories: [{ id: 'central', type: 'PROXY', typeExplicit: true }] }
+    }))
+
+    const wrapper = mountAt('central/org/example')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="browse-type"]').text()).toBe('Proxy')
+  })
+
+  it('marks a repository without a type of its own as legacy in the header too', async () => {
+    sessionState.client.value = clientWithList(() => Promise.resolve({
+      data: { repositories: [{ id: 'old', type: 'mixed', typeExplicit: false }] }
+    }))
+
+    const wrapper = mountAt('old')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="browse-type"]').attributes('title')).toBe('No type set, behaves as before. Set a type to enforce the rules.')
+  })
+
+  it('shows no type when the repository is not in the list', async () => {
+    sessionState.client.value = clientWithList(() => Promise.resolve({
+      data: { repositories: [{ id: 'other', type: 'HOSTED', typeExplicit: true }] }
+    }))
+
+    const wrapper = mountAt('releases')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="browse-type"]').exists()).toBe(false)
+  })
+
+  it('shows no badge when the repository list cannot be read, and the page still renders', async () => {
+    sessionState.client.value = clientWithList(() => Promise.reject(new Error('Network Error')))
+
+    const wrapper = mountAt('releases')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="browse-type"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Compact list"]').exists()).toBe(true)
+  })
+
+  it('asks for the list once for the repository, not again for each directory below it', async () => {
+    const repositories = vi.fn(() => Promise.resolve({ data: { repositories: [] } }))
+    sessionState.client.value = clientWithList(repositories)
+
+    const wrapper = mountAt('releases')
+    await flushPromises()
+    await wrapper.setProps({ qualifier: { path: 'releases/net', watchable: 0 } })
+    await flushPromises()
+
+    expect(repositories).toHaveBeenCalledTimes(1)
+  })
+})
