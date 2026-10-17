@@ -182,12 +182,19 @@ const passwordFailureMessage = (error) => {
   return [401, 403].includes(status) ? 'Username or password is incorrect' : errorMessage(error)
 }
 
+// The wording for a rejected first-admin setup. The backend uses 403 for a wrong setup code and for an
+// instance that is already set up, and 409 for a lost race with another instance and for a taken user
+// name. The status alone cannot tell those apart, so the body message decides. A 400 carries the rule
+// the server names, and a 429 carries Retry-After.
 const setupFailureMessage = (error) => {
-  switch (error?.response?.status) {
-    case 401: return 'Setup code is incorrect'
-    case 409: return 'Ingot is already set up'
-    default: return errorMessage(error)
-  }
+  const status = error?.response?.status
+  const message = String(error?.response?.data?.message ?? '')
+  if (status === 429) return rateLimitMessage(retryAfterSeconds(error))
+  if (status === 403 && /setup code/i.test(message)) return 'Setup code is incorrect'
+  if (status === 403 && /not required/i.test(message)) return 'Ingot is already set up'
+  if (status === 409 && /another instance/i.test(message)) return 'Ingot is already set up. Sign in instead.'
+  if (status === 409 && /user name is already taken/i.test(message)) return 'That user name is already taken'
+  return errorMessage(error)
 }
 
 const finishSignOut = () => {
