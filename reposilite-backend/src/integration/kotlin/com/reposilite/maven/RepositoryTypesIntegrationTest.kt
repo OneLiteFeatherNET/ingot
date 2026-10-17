@@ -28,6 +28,7 @@ import com.reposilite.maven.specification.MavenIntegrationSpecification
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.storage.api.toLocation
 import io.javalin.http.HttpStatus.BAD_REQUEST
+import io.javalin.http.HttpStatus.METHOD_NOT_ALLOWED
 import io.javalin.http.HttpStatus.OK
 import kong.unirest.core.Unirest
 import kotlinx.coroutines.runBlocking
@@ -62,6 +63,52 @@ internal class RepositoryTypesIntegrationTest : ReposiliteSpecification() {
                 )
             )
         }
+    }
+
+    @Test
+    fun `should answer 405 with the rule to an upload into a typed proxy`() {
+        // given: a manager and a typed proxy
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: a file is uploaded to the proxy
+        val response = Unirest.put("$base/typed-proxy/com/example/app/1.0/app-1.0.jar")
+            .basicAuth(name, secret)
+            .body("content")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the upload is refused and the message names the repository and its type
+        assertErrorResponse(METHOD_NOT_ALLOWED, response)
+        assertThat(response.body.message).isEqualTo("Repository 'typed-proxy' is a proxy and does not accept uploads")
+    }
+
+    @Test
+    fun `should answer 405 with the rule to an upload into a typed group`() {
+        // given: a manager and a typed group
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: a file is uploaded to the group
+        val response = Unirest.post("$base/typed-group/com/example/app/1.0/app-1.0.jar")
+            .basicAuth(name, secret)
+            .body("content")
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the upload is refused and the message names the repository and its type
+        assertErrorResponse(METHOD_NOT_ALLOWED, response)
+        assertThat(response.body.message).isEqualTo("Repository 'typed-group' is a group and does not accept uploads")
+    }
+
+    @Test
+    fun `should answer 405 to a deletion in a typed proxy`() {
+        // given: a manager and a typed proxy
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: a file is deleted from the proxy
+        val response = Unirest.delete("$base/typed-proxy/com/example/app/1.0/app-1.0.jar")
+            .basicAuth(name, secret)
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the deletion is refused, as the proxy takes no uploads
+        assertErrorResponse(METHOD_NOT_ALLOWED, response)
     }
 
     @Test

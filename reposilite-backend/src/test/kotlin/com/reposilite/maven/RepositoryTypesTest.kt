@@ -18,6 +18,8 @@ package com.reposilite.maven
 
 import com.reposilite.maven.RepositoryVisibility.PUBLIC
 import com.reposilite.maven.api.DeployRequest
+import com.reposilite.maven.api.GeneratePomRequest
+import com.reposilite.maven.api.PomDetails
 import com.reposilite.maven.api.RepositoryListQuery
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
@@ -51,6 +53,68 @@ internal class RepositoryTypesTest : MavenSpecification() {
             MirroredRepositorySettings(reference = REMOTE_REPOSITORY, store = true, authorization = REMOTE_AUTH),
         )),
     )
+
+    @Nested
+    inner class Uploads {
+
+        @Test
+        fun `should refuse a deployment to a typed proxy with a message naming the repository and the rule`() {
+            // when: a file is deployed to the proxy
+            val result = mavenFacade.deployFile(deployRequest("typed-proxy"))
+
+            // then: the request is refused with 405 and the message names the repository and its type
+            assertThat(result.isErr).describedAs("deployment to a proxy is refused").isTrue
+            assertThat(result.error.status).isEqualTo(405)
+            assertThat(result.error.message).isEqualTo("Repository 'typed-proxy' is a proxy and does not accept uploads")
+        }
+
+        @Test
+        fun `should refuse a deployment to a typed group with a message naming the repository and the rule`() {
+            // when: a file is deployed to the group
+            val result = mavenFacade.deployFile(deployRequest("typed-group"))
+
+            // then: the request is refused with 405 and the message names the repository and its type
+            assertThat(result.isErr).describedAs("deployment to a group is refused").isTrue
+            assertThat(result.error.status).isEqualTo(405)
+            assertThat(result.error.message).isEqualTo("Repository 'typed-group' is a group and does not accept uploads")
+        }
+
+        @Test
+        fun `should refuse pom generation in a typed group`() {
+            // when: a stub pom is generated in the group
+            val result = mavenFacade.generatePom(
+                GeneratePomRequest(
+                    accessToken = createManagerAccessToken("manager", "secret"),
+                    repository = repo("typed-group"),
+                    gav = "com/example/app/1.0".toLocation(),
+                    pomDetails = PomDetails("com.example", "app", "1.0"),
+                )
+            )
+
+            // then: the group takes no uploads, so nothing is written
+            assertThat(result.isErr).describedAs("pom generation in a group is refused").isTrue
+            assertThat(result.error.status).isEqualTo(405)
+        }
+
+        @Test
+        fun `should accept a deployment to a hosted repository`() {
+            assertOk(mavenFacade.deployFile(deployRequest("hosted")))
+        }
+
+        @Test
+        fun `should accept a deployment to an untyped group with an empty entry`() {
+            assertOk(mavenFacade.deployFile(deployRequest("legacy-group")))
+        }
+
+        private fun deployRequest(repository: String) = DeployRequest(
+            repository = repo(repository),
+            gav = "com/example/app/1.0/app-1.0.jar".toLocation(),
+            by = "tester",
+            content = "content".byteInputStream(),
+            generateChecksums = false,
+        )
+
+    }
 
     @Nested
     inner class Mirrors {

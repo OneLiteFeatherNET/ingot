@@ -135,6 +135,7 @@ internal class MavenEndpoints(
         responses = [
             OpenApiResponse(status = "200", description = "Input stream of requested file", content = [OpenApiContent(type = FORM_DATA_MULTIPART)]),
             OpenApiResponse(status = "401", description = "Returns 401 for invalid credentials"),
+            OpenApiResponse(status = "405", description = "Returns 405 if the repository is a proxy or a group, which take no uploads"),
             OpenApiResponse(status = "507", description = "Returns 507 if Ingot does not have enough disk space to store the uploaded file")
         ]
     )
@@ -142,8 +143,11 @@ internal class MavenEndpoints(
         authorized {
             requireGav { gav ->
                 requireRepository { repository ->
-                    response = DeployRequest(repository, gav, getSessionIdentifier(), ctx.bodyInputStream(), ctx.header(X_GENERATE_CHECKSUMS) == "true")
-                        .let { request -> mavenFacade.deployFile(request) }
+                    response = mavenFacade.checkAcceptsUploads(repository)
+                        .flatMap {
+                            DeployRequest(repository, gav, getSessionIdentifier(), ctx.bodyInputStream(), ctx.header(X_GENERATE_CHECKSUMS) == "true")
+                                .let { request -> mavenFacade.deployFile(request) }
+                        }
                         .onError { error -> logger.debug("Cannot deploy artifact due to: ${error.message}") }
                 }
             }
@@ -155,17 +159,22 @@ internal class MavenEndpoints(
         tags = ["Maven"],
         path = "/{repository}/{gav}",
         summary = "Delete the given file from repository",
+        description = "Returns 405 if the repository is a proxy or a group, which take no uploads and no deletions.",
         methods = [HttpMethod.DELETE],
         pathParams = [
             OpenApiParam(name = "repository", description = "Destination repository", required = true),
             OpenApiParam(name = "gav", description = "Artifact path qualifier", required = true)
+        ],
+        responses = [
+            OpenApiResponse(status = "405", description = "Returns 405 if the repository is a proxy or a group, which take no deletions")
         ]
     )
     private val deleteFile = ReposiliteRoute<Unit>("/{repository}/<gav>", DELETE) {
         authorized {
             requireGav { gav ->
                 requireRepository { repository ->
-                    response = mavenFacade.deleteFile(DeleteRequest(this.identifier, repository, gav, getSessionIdentifier()))
+                    response = mavenFacade.checkAcceptsUploads(repository)
+                        .flatMap { mavenFacade.deleteFile(DeleteRequest(this.identifier, repository, gav, getSessionIdentifier())) }
                 }
             }
         }

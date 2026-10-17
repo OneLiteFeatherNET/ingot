@@ -36,10 +36,12 @@ import com.reposilite.maven.api.VersionLookupRequest
 import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.errorResponse
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
+import io.javalin.http.HttpStatus.METHOD_NOT_ALLOWED
 import panda.std.Result
 import java.io.InputStream
 import java.time.Instant
@@ -78,8 +80,21 @@ class MavenFacade internal constructor(
         repositoryService.findInputStream(lookupRequest)
             .peek { touchMirrorCopy(lookupRequest) }
 
+    /**
+     * Answers 405 when the repository is a typed proxy or group, which take no uploads. Hosted and untyped repositories pass.
+     * Mirror copies never go through here, so a proxy keeps caching. Maintenance such as a cleanup run is not an upload either,
+     * and is not checked by the HTTP routes that delete.
+     */
+    fun checkAcceptsUploads(repository: Repository): Result<Unit, ErrorResponse> =
+        if (repository.acceptsUploads) {
+            Result.ok(Unit)
+        } else {
+            errorResponse(METHOD_NOT_ALLOWED, "Repository '${repository.name}' is a ${repository.effectiveType.wireName} and does not accept uploads")
+        }
+
     fun deployFile(deployRequest: DeployRequest): Result<Unit, ErrorResponse> =
-        repositoryService.deployFile(deployRequest)
+        checkAcceptsUploads(deployRequest.repository)
+            .flatMap { repositoryService.deployFile(deployRequest) }
             // a deployment makes the directory hold hosted content, so it is no longer a mirror copy
             .peek {
                 val directory = deployRequest.gav.getParent().provenancePath()
@@ -123,7 +138,8 @@ class MavenFacade internal constructor(
         metadataService.saveMetadata(saveMetadataRequest)
 
     fun generatePom(generatePomRequest: GeneratePomRequest): Result<Unit, ErrorResponse> =
-        metadataService.generatePom(generatePomRequest)
+        checkAcceptsUploads(generatePomRequest.repository)
+            .flatMap { metadataService.generatePom(generatePomRequest) }
 
     fun findMetadata(repository: Repository, gav: Location): Result<Metadata, ErrorResponse> =
         metadataService.findMetadata(repository, gav)
