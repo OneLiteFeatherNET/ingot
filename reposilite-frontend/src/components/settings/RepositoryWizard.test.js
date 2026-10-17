@@ -50,7 +50,22 @@ const MAVEN_SCHEMA = {
         properties: {
           id: { type: 'string', title: 'Id' },
           visibility: { type: 'string', enum: ['PUBLIC', 'HIDDEN', 'PRIVATE'], title: 'Visibility' },
-          storageProvider: { type: 'object' }
+          type: { type: 'string', enum: ['HOSTED', 'PROXY', 'GROUP'], title: 'Type' },
+          storageProvider: { type: 'object' },
+          storagePolicy: { type: 'string', enum: ['PRIORITIZE_UPSTREAM_METADATA', 'STRICT'] },
+          metadataMaxAge: { type: 'integer' },
+          resolutionCacheMaxEntries: { type: 'integer' },
+          proxied: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                reference: { type: 'string' },
+                store: { type: 'boolean' },
+                authorization: { type: 'object' }
+              }
+            }
+          }
         },
         additionalProperties: false
       }
@@ -133,7 +148,8 @@ const fakeClient = () => {
     identity: fakeIdentity(),
     settings: {
       domains: vi.fn(async () => ({ data: ['maven', 'frontend'] })),
-      schema: vi.fn(async (domain) => ({ data: SCHEMAS[domain] })),
+      // A copy per answer, so a test that changes the schema it was given does not change the next test's.
+      schema: vi.fn(async (domain) => ({ data: clone(SCHEMAS[domain]) })),
       fetch: vi.fn(async (domain) => ({ data: clone(state[domain]) })),
       update: vi.fn(async (domain, content) => { state[domain] = clone(content) })
     },
@@ -198,7 +214,8 @@ const reachReview = async ({ id = 'team', machine = false } = {}) => {
   await next()
 }
 
-const mountWizard = async ({ open = true } = {}) => {
+// Opens the wizard on the basics step, which is the second step, after the type. `onType` keeps it on the type step.
+const mountWizard = async ({ open = true, onType = false } = {}) => {
   await configuration.fetchConfiguration()
   wrapper = mount(RepositoryWizard, {
     props: { modelValue: open },
@@ -209,6 +226,7 @@ const mountWizard = async ({ open = true } = {}) => {
     }
   })
   await flushPromises()
+  if (open && !onType) await next()
 }
 
 beforeEach(async () => {
@@ -231,7 +249,16 @@ afterEach(() => {
 })
 
 describe('RepositoryWizard steps', () => {
-  it('opens on the basics step, with an id field and no error before any attempt', async () => {
+  it('opens on the type step, with hosted chosen, and asks the basics next', async () => {
+    await mountWizard({ onType: true })
+
+    expect(heading()).toBe('Type')
+    expect($('#wizard-type-hosted').checked).toBe(true)
+    await next()
+    expect(heading()).toBe('Basics')
+  })
+
+  it('opens the basics step with an id field and no error before any attempt', async () => {
     await mountWizard()
 
     expect(heading()).toBe('Basics')
@@ -419,6 +446,8 @@ describe('RepositoryWizard create sequence', () => {
     await pick('#wizard-team', 'developers')
     await pick('#wizard-role', 'MAINTAIN')
     await next()
+    console.log('DBG', heading(), document.body.innerHTML.slice(0,300))
+    console.log('DBG2', heading(), document.querySelector('#wizard-create') !== null)
 
     await click('#wizard-create')
 
@@ -660,5 +689,116 @@ describe('RepositoryWizard snippets', () => {
     expect(gradle).toContain('uri("https://repo.example.net/team")')
     expect(gradle).toContain('System.getenv("INGOT_DEPLOY_SECRET")')
     expect($('[data-snippet="environment"]').textContent).toContain('export INGOT_DEPLOY_USERNAME="team-deploy"')
+  })
+})
+
+describe('type step', () => {
+  it('offers hosted, proxy and group as three choices of one group', async () => {
+    await mountWizard({ onType: true })
+
+    const radios = ['hosted', 'proxy', 'group'].map(type => $(`#wizard-type-${type}`))
+    expect(radios.map(radio => radio.name)).toEqual(['repository-type', 'repository-type', 'repository-type'])
+    expect(radios.map(radio => radio.value)).toEqual(['HOSTED', 'PROXY', 'GROUP'])
+  })
+
+  it('shows storage for a hosted repository, and no remote or member fields', async () => {
+    await mountWizard()
+    await setText('#wizard-repository-id', 'team')
+    await next()
+
+    expect(heading()).toBe('Storage')
+    expect($('#wizard-quota')).not.toBeNull()
+    expect($('#wizard-remote-url-0')).toBeNull()
+  })
+
+  it('asks for the remote addresses and the cache for a proxy, and no storage', async () => {
+    await mountWizard({ onType: true })
+    await choose('#wizard-type-proxy')
+    await next()
+    await setText('#wizard-repository-id', 'central')
+    await next()
+
+    expect(heading()).toBe('Remote repositories')
+    expect($('#wizard-remote-url-0')).not.toBeNull()
+    expect($('#wizard-remote-login-0')).not.toBeNull()
+    expect($('#wizard-remote-password-0')).not.toBeNull()
+    expect($('#wizard-storage-policy')).not.toBeNull()
+    expect($('#wizard-quota'), 'a proxy has no storage').toBeNull()
+    expect($('#wizard-bucket')).toBeNull()
+  })
+
+  it('asks for the members from the existing repositories for a group, and no storage', async () => {
+    await mountWizard({ onType: true })
+    await choose('#wizard-type-group')
+    await next()
+    await setText('#wizard-repository-id', 'all')
+    await next()
+
+    expect(heading()).toBe('Members')
+    const options = [...$('#wizard-members-add').options].map(option => option.value)
+    expect(options).toEqual(['', 'releases'])
+    expect($('#wizard-quota'), 'a group has no storage').toBeNull()
+  })
+
+  it('shows the access roles of a proxy without the deploy and maintain roles', async () => {
+    await mountWizard({ onType: true })
+    await choose('#wizard-type-proxy')
+    await next()
+    await setText('#wizard-repository-id', 'central')
+    await next()
+    await setText('#wizard-remote-url-0', 'https://repo.example.net/maven')
+    await next()
+    await pick('#wizard-team', 'developers')
+
+    const roles = [...$('#wizard-role').options].map(option => option.value)
+    expect(roles).toEqual(['READ', 'ADMIN'])
+  })
+
+  it('creates a proxy with its remote address and no storage', async () => {
+    await mountWizard({ onType: true })
+    await choose('#wizard-type-proxy')
+    await next()
+    await setText('#wizard-repository-id', 'central')
+    await next()
+    await setText('#wizard-remote-url-0', 'https://repo.example.net/maven')
+    await next()
+    await pick('#wizard-team', 'developers')
+    await next()
+
+    await click('#wizard-create')
+
+    const created = client.state.maven.repositories.find(repo => repo.id === 'central')
+    expect(created).toEqual({
+      id: 'central',
+      visibility: 'PUBLIC',
+      type: 'PROXY',
+      proxied: [{ reference: 'https://repo.example.net/maven', store: true }]
+    })
+  })
+
+  it('creates a group that lists its members in the order they were added', async () => {
+    client.state.maven.repositories.push({ id: 'snapshots', visibility: 'PUBLIC' })
+    await mountWizard({ onType: true })
+    await choose('#wizard-type-group')
+    await next()
+    await setText('#wizard-repository-id', 'all')
+    await next()
+    await pick('#wizard-members-add', 'snapshots')
+    await click('#wizard-members-add-button')
+    await pick('#wizard-members-add', 'releases')
+    await click('#wizard-members-add-button')
+    await next()
+    await pick('#wizard-team', 'developers')
+    await next()
+
+    await click('#wizard-create')
+
+    const created = client.state.maven.repositories.find(repo => repo.id === 'all')
+    expect(created).toEqual({
+      id: 'all',
+      visibility: 'PUBLIC',
+      type: 'GROUP',
+      proxied: [{ reference: 'snapshots' }, { reference: 'releases' }]
+    })
   })
 })

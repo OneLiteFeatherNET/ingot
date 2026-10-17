@@ -17,8 +17,16 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   STEPS,
+  TYPE_CHOICES,
   VISIBILITY_OPTIONS,
+  chooseType,
+  describeType,
   emptyDraft,
+  isRemoteUrl,
+  stepsFor,
+  validateMembers,
+  validateStep,
+  validateUpstream,
   optionalFieldsOf,
   teamNameOf,
   machineNameOf,
@@ -202,8 +210,8 @@ describe('access step', () => {
 describe('step order', () => {
   const context = { existingIds: [], teams: [{ name: 'developers' }], principals: [] }
 
-  it('lists the steps in the order the wizard shows them', () => {
-    expect(STEPS.map(step => step.key)).toEqual(['basics', 'storage', 'access', 'review'])
+  it('lists the steps in the order the wizard shows them, for a hosted repository', () => {
+    expect(STEPS.map(step => step.key)).toEqual(['type', 'basics', 'storage', 'access', 'review'])
   })
 
   it('reports the first step that has a problem, so the user is sent back to it', () => {
@@ -214,6 +222,13 @@ describe('step order', () => {
 
     draft.basics.id = 'team'
     expect(firstInvalidStep(draft, context)).toBe('storage')
+  })
+
+  it('finds the problem of the step that the chosen type shows', () => {
+    const draft = draftFor('team')
+    draft.access.team = 'developers'
+    draft.type = 'GROUP'
+    expect(firstInvalidStep(draft, context)).toBe('members')
   })
 
   it('reports no problem for a complete draft', () => {
@@ -228,6 +243,7 @@ describe('repository entry', () => {
     expect(repositoryEntry(draftFor('team'), { optional: NO_OPTIONAL })).toEqual({
       id: 'team',
       visibility: 'PUBLIC',
+      type: 'HOSTED',
       storageProvider: { type: 'fs', quota: '100%' }
     })
   })
@@ -466,5 +482,237 @@ describe('create sequence', () => {
 
   it('tells the user that the repository is kept when only the grant failed', () => {
     expect(failureNote('grant')).toContain('is saved')
+  })
+})
+
+describe('type step', () => {
+  it('offers hosted, proxy and group, with hosted first', () => {
+    expect(TYPE_CHOICES.map(choice => choice.value)).toEqual(['HOSTED', 'PROXY', 'GROUP'])
+  })
+
+  it('starts on hosted, so a wizard that is not changed creates the repository it always did', () => {
+    expect(emptyDraft().type).toBe('HOSTED')
+  })
+
+  it('explains each type in the words of what can be done with it', () => {
+    const who = Object.fromEntries(TYPE_CHOICES.map(choice => [choice.value, choice.who]))
+    expect(who.HOSTED).toContain('uploaded')
+    expect(who.PROXY).toContain('remote')
+    expect(who.GROUP).toContain('in order')
+  })
+
+  it('refuses a type that is not one of the three', () => {
+    expect(validateStep('type', { ...draftFor('team'), type: 'MIRROR' })).toEqual({ type: 'Choose a type.' })
+  })
+
+  it('describes the chosen type in the review', () => {
+    expect(describeType('PROXY')).toBe('Files are fetched from remote repositories. Nothing can be uploaded.')
+  })
+})
+
+describe('steps by type', () => {
+  it('shows storage for a hosted repository', () => {
+    expect(stepsFor('HOSTED').map(step => step.key)).toEqual(['type', 'basics', 'storage', 'access', 'review'])
+  })
+
+  it('shows the remote repositories for a proxy, and no storage', () => {
+    expect(stepsFor('PROXY').map(step => step.key)).toEqual(['type', 'basics', 'upstream', 'access', 'review'])
+  })
+
+  it('shows the members for a group, and no storage', () => {
+    expect(stepsFor('GROUP').map(step => step.key)).toEqual(['type', 'basics', 'members', 'access', 'review'])
+  })
+})
+
+describe('choosing a type', () => {
+  it('gives a proxy or a group the read role and the read scope, since it takes no uploads', () => {
+    const draft = draftFor('team')
+    chooseType(draft, 'PROXY')
+    expect(draft.type).toBe('PROXY')
+    expect(draft.access).toMatchObject({ role: 'READ', scope: 'READ' })
+  })
+
+  it('keeps the admin role for a proxy, which may still change its settings', () => {
+    const draft = draftFor('team')
+    draft.access.role = 'ADMIN'
+    chooseType(draft, 'GROUP')
+    expect(draft.access.role).toBe('ADMIN')
+  })
+
+  it('leaves the role alone for a hosted repository', () => {
+    const draft = draftFor('team')
+    draft.access.role = 'MAINTAIN'
+    chooseType(draft, 'HOSTED')
+    expect(draft.type).toBe('HOSTED')
+    expect(draft.access.role).toBe('MAINTAIN')
+  })
+})
+
+describe('upstream step', () => {
+  const upstreamDraft = (remotes, rest = {}) => {
+    const draft = draftFor('central')
+    draft.type = 'PROXY'
+    draft.upstream = { ...draft.upstream, remotes, ...rest }
+    return draft
+  }
+
+  it('needs at least one remote repository', () => {
+    expect(validateUpstream(upstreamDraft([{ url: '', login: '', password: '' }]).upstream)).toEqual({
+      remote0: 'Enter the address of a remote repository.'
+    })
+  })
+
+  it('accepts http and https addresses only', () => {
+    expect(isRemoteUrl('https://repo.example.net/maven')).toBe(true)
+    expect(isRemoteUrl('http://127.0.0.1:8081/releases')).toBe(true)
+    expect(isRemoteUrl('ftp://repo.example.net/')).toBe(false)
+    expect(isRemoteUrl('repo.example.net')).toBe(false)
+  })
+
+  it('names the remote that is not an address, by its place in the list', () => {
+    const errors = validateUpstream(upstreamDraft([
+      { url: 'https://repo.example.net/', login: '', password: '' },
+      { url: 'repo.example.net', login: '', password: '' }
+    ]).upstream)
+    expect(errors).toEqual({ remote1: 'Use an http or https address, such as https://repo.example.net/maven.' })
+  })
+
+  it('requires a login and a password together, or neither', () => {
+    const errors = validateUpstream(upstreamDraft([{ url: 'https://repo.example.net/', login: 'ci', password: '' }]).upstream)
+    expect(errors).toEqual({ password0: 'Enter a password for this login, or remove the login.' })
+  })
+
+  it('accepts a remote without credentials', () => {
+    expect(validateUpstream(upstreamDraft([{ url: 'https://repo.example.net/', login: '', password: '' }]).upstream)).toEqual({})
+  })
+
+  it('leaves the cache settings to the server default when they are empty', () => {
+    expect(validateUpstream(upstreamDraft([{ url: 'https://repo.example.net/', login: '', password: '' }], {
+      metadataMaxAge: '',
+      resolutionCacheMaxEntries: ''
+    }).upstream)).toEqual({})
+  })
+
+  it('refuses a negative or non-numeric cache setting', () => {
+    const errors = validateUpstream(upstreamDraft([{ url: 'https://repo.example.net/', login: '', password: '' }], {
+      metadataMaxAge: '-5',
+      resolutionCacheMaxEntries: 'many'
+    }).upstream)
+    expect(errors).toEqual({
+      metadataMaxAge: 'Use a whole number of seconds, 0 or more.',
+      resolutionCacheMaxEntries: 'Use a whole number of entries, 0 or more.'
+    })
+  })
+
+  it('checks the upstream step with the rules of the upstream', () => {
+    const draft = upstreamDraft([{ url: '', login: '', password: '' }])
+    expect(validateStep('upstream', draft, {})).toEqual({ remote0: 'Enter the address of a remote repository.' })
+  })
+})
+
+describe('members step', () => {
+  const context = { existingIds: ['releases', 'snapshots'] }
+  const groupDraft = (members) => {
+    const draft = draftFor('all')
+    draft.type = 'GROUP'
+    draft.members = members
+    return draft
+  }
+
+  it('needs at least one repository to list', () => {
+    expect(validateMembers([], context.existingIds)).toEqual({ members: 'Add at least one repository the group lists.' })
+  })
+
+  it('accepts the repositories that exist', () => {
+    expect(validateMembers(['snapshots', 'releases'], context.existingIds)).toEqual({})
+  })
+
+  it('refuses a member that is not a repository of this instance', () => {
+    expect(validateMembers(['releases', 'ghost'], context.existingIds)).toEqual({
+      members: 'ghost is not a repository of this instance.'
+    })
+  })
+
+  it('checks the members step through the draft', () => {
+    expect(validateStep('members', groupDraft(['releases']), context)).toEqual({})
+  })
+})
+
+describe('access for a proxy or a group', () => {
+  it('refuses the deploy role, because nothing can be uploaded to it', () => {
+    const draft = draftFor('central')
+    draft.type = 'PROXY'
+    draft.access.team = 'developers'
+    expect(validateAccess(draft, { teams: [{ name: 'developers' }] })).toEqual({
+      role: 'A proxy or a group takes no uploads. Choose Read or Admin.'
+    })
+  })
+
+  it('accepts the read role', () => {
+    const draft = draftFor('central')
+    draft.type = 'GROUP'
+    draft.access = { ...draft.access, team: 'developers', role: 'READ' }
+    expect(validateAccess(draft, { teams: [{ name: 'developers' }] })).toEqual({})
+  })
+})
+
+describe('repository entry by type', () => {
+  it('builds a proxy with its remotes, their credentials and the cache settings, and no storage', () => {
+    const draft = draftFor('central')
+    chooseType(draft, 'PROXY')
+    draft.upstream = {
+      remotes: [
+        { url: 'https://repo.example.net/maven', login: 'ci', password: 's3cret' },
+        { url: 'https://other.example.net/', login: '', password: '' }
+      ],
+      store: true,
+      storagePolicy: 'STRICT',
+      metadataMaxAge: '300',
+      resolutionCacheMaxEntries: ''
+    }
+    expect(repositoryEntry(draft, { optional: NO_OPTIONAL })).toEqual({
+      id: 'central',
+      visibility: 'PUBLIC',
+      type: 'PROXY',
+      proxied: [
+        { reference: 'https://repo.example.net/maven', store: true, authorization: { method: 'BASIC', login: 'ci', password: 's3cret' } },
+        { reference: 'https://other.example.net/', store: true }
+      ],
+      storagePolicy: 'STRICT',
+      metadataMaxAge: 300
+    })
+  })
+
+  it('builds a group from its members in order, and no storage', () => {
+    const draft = draftFor('all')
+    chooseType(draft, 'GROUP')
+    draft.members = ['snapshots', 'releases']
+    expect(repositoryEntry(draft, { optional: NO_OPTIONAL })).toEqual({
+      id: 'all',
+      visibility: 'PUBLIC',
+      type: 'GROUP',
+      proxied: [{ reference: 'snapshots' }, { reference: 'releases' }]
+    })
+  })
+})
+
+describe('review of a proxy or a group', () => {
+  it('lists the remote repositories of a proxy', () => {
+    const draft = draftFor('central')
+    chooseType(draft, 'PROXY')
+    draft.upstream.remotes = [{ url: 'https://repo.example.net/maven', login: '', password: '' }]
+    const rows = Object.fromEntries(summaryRows(draft, { optional: NO_OPTIONAL }).map(row => [row.label, row.value]))
+    expect(rows.Type).toContain('Proxy')
+    expect(rows['Remote repositories']).toBe('https://repo.example.net/maven')
+    expect(rows.Storage).toBeUndefined()
+  })
+
+  it('lists the members of a group in order', () => {
+    const draft = draftFor('all')
+    chooseType(draft, 'GROUP')
+    draft.members = ['snapshots', 'releases']
+    const rows = Object.fromEntries(summaryRows(draft, { optional: NO_OPTIONAL }).map(row => [row.label, row.value]))
+    expect(rows.Members).toBe('snapshots, releases')
+    expect(rows.Storage).toBeUndefined()
   })
 })
