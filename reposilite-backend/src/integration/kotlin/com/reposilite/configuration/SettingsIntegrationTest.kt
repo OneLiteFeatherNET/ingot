@@ -18,6 +18,7 @@
 
 package com.reposilite.configuration
 
+import net.onelitefeather.ingot.search.application.SearchSettings
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
@@ -61,7 +62,8 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
             "maven" to MavenSettings::class,
             "cleanup" to CleanupSettings::class,
             "audit" to AuditSettings::class,
-            "login" to LoginSettings::class
+            "login" to LoginSettings::class,
+            "search" to SearchSettings::class
         )
     }
 
