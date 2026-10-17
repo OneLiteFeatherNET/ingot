@@ -62,8 +62,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import panda.std.Quad
 import panda.std.asSuccess
+import panda.std.reactive.MutableReference
 import panda.std.reactive.Reference
 import panda.std.reactive.reference
+import panda.std.reactive.toMutableReference
 import panda.std.reactive.toReference
 import java.io.File
 import java.time.Clock
@@ -90,6 +92,8 @@ internal abstract class MavenSpecification {
     @TempDir
     lateinit var workingDirectory: File
     protected lateinit var mavenFacade: MavenFacade
+    /** The settings the maven components read their repositories from; a test reloads them with update. */
+    protected lateinit var mavenSettings: MutableReference<MavenSettings>
     private lateinit var ioService: ExecutorService
 
     protected val remoteRequestsByUri = ConcurrentHashMap<String, AtomicInteger>()
@@ -98,7 +102,7 @@ internal abstract class MavenSpecification {
     protected val indexSink = RecordingArtifactIndexSink()
 
     private val clock = Clock.systemDefaultZone()
-    private val logger = InMemoryLogger()
+    protected val logger = InMemoryLogger()
     protected val extensions = Extensions(logger)
 
     private val failureFacade = FailureComponents(
@@ -118,6 +122,9 @@ internal abstract class MavenSpecification {
     ).authenticationFacade()
 
     abstract fun repositories(): List<RepositorySettings>
+
+    /** The storage facade the components create repositories with; a test may replace it to control storage. */
+    protected open fun storageFacade(): StorageFacade = StorageFacade()
 
     @BeforeEach
     fun initializeFacade() {
@@ -154,6 +161,8 @@ internal abstract class MavenSpecification {
             }
         )
 
+        this.mavenSettings = MavenSettings(repositories = repositories()).toMutableReference()
+
         this.mavenFacade = MavenComponents(
             clock = clock,
             workingDirectory = workingDirectory.toPath(),
@@ -161,14 +170,12 @@ internal abstract class MavenSpecification {
             extensions = extensions,
             remoteClientProvider = remoteClientProvider,
             failureFacade = failureFacade,
-            storageFacade = StorageFacade(),
+            storageFacade = storageFacade(),
             authenticationFacade = authenticationFacade,
             accessTokenFacade = accessTokenFacade,
             statisticsFacade = StatisticsFacade(logger, Reference.reference(false), DailyDateIntervalProvider.toReference(), InMemoryStatisticsRepository()),
             ioService = ioService,
-            mavenSettings = reference(MavenSettings(
-                repositories = repositories()
-            )),
+            mavenSettings = mavenSettings,
             frontendSettings = reference(FrontendSettings()),
             mirrorCacheLedger = InMemoryMirrorCacheLedger(),
             artifactIndexSink = indexSink,
