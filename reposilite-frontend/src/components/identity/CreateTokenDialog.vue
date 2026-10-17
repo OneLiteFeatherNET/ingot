@@ -18,6 +18,7 @@
 import { computed, ref } from 'vue'
 import { errorMessage } from '../../helpers/toast'
 import MdButton from '../md/MdButton.vue'
+import MdCheckbox from '../md/MdCheckbox.vue'
 import MdRadio from '../md/MdRadio.vue'
 import MdTextField from '../md/MdTextField.vue'
 import SegmentedControl from '../tokens/SegmentedControl.vue'
@@ -25,9 +26,11 @@ import SegmentedOption from '../tokens/SegmentedOption.vue'
 import DialogShell from './DialogShell.vue'
 import {
   ACCESS_OPTIONS,
+  ARTIFACT_ACTIONS,
   DEFAULT_ACCESS,
   DEFAULT_EXPIRY,
   EXPIRY_PRESETS,
+  artifactNodeTexts,
   buildCreateBody,
   customDateLimits,
   expiresAtFor,
@@ -53,7 +56,9 @@ import {
  * The expiry preset becomes a date at the moment of sending, counted from the injected clock.
  * Create stays disabled until the name is valid and, for a custom date, the date is too.
  * Access maps to scopes: "Same as my teams" sends no narrowing (scopes null), "Read only"
- * sends READ. A failure stays inside the dialog.
+ * sends READ. The advanced section limits the token to artifacts: each chosen action becomes an
+ * artifact node (`nodes`), and the nodes replace the access choice, which is then off. A failure
+ * stays inside the dialog and shows the problems the server names for a refused node.
  */
 const props = defineProps({
   modelValue: {
@@ -83,6 +88,18 @@ const submitted = ref(false)
 const busy = ref(false)
 const failure = ref(null)
 
+const limitOn = ref(false)
+const repository = ref('')
+const groupId = ref('')
+const artifactId = ref('')
+const actions = ref([])
+
+const artifact = computed(() => (limitOn.value
+  ? artifactNodeTexts({ repository: repository.value, groupId: groupId.value, artifactId: artifactId.value, actions: actions.value })
+  : { nodes: [], problems: [] }))
+// The problems of the artifact fields show after a send, as the name does.
+const artifactIssues = computed(() => (submitted.value ? artifact.value.problems : []))
+
 const isNever = computed(() => preset.value === 'never')
 const isCustom = computed(() => preset.value === 'custom')
 const limits = computed(() => customDateLimits())
@@ -111,7 +128,23 @@ const reset = () => {
   submitted.value = false
   busy.value = false
   failure.value = null
+  limitOn.value = false
+  repository.value = ''
+  groupId.value = ''
+  artifactId.value = ''
+  actions.value = []
 }
+
+const toggleAction = (word, checked) => {
+  const others = actions.value.filter(action => action !== word)
+  actions.value = checked ? [...others, word] : others
+}
+
+// The messages a refused request names for its nodes, or an empty string when it names none.
+const problemText = (error) => (error?.response?.data?.problems ?? [])
+  .map(problem => problem.message)
+  .filter(Boolean)
+  .join(' ')
 
 const close = () => {
   emit('update:modelValue', false)
@@ -120,7 +153,7 @@ const close = () => {
 const submit = async () => {
   submitted.value = true
   failure.value = null
-  if (!canSubmit.value) {
+  if (!canSubmit.value || artifact.value.problems.length > 0) {
     return
   }
   busy.value = true
@@ -130,12 +163,13 @@ const submit = async () => {
       description: description.value,
       preset: preset.value,
       customDate: customDate.value,
-      scopes: scopesFor(access.value)
+      scopes: limitOn.value ? [] : scopesFor(access.value),
+      nodes: artifact.value.nodes
     }))
     emit('created', response.data)
     close()
   } catch (error) {
-    failure.value = errorMessage(error)
+    failure.value = problemText(error) || errorMessage(error)
   } finally {
     busy.value = false
   }
@@ -239,6 +273,7 @@ const submit = async () => {
             v-model="access"
             name="create-token-access"
             :value="option.key"
+            :disabled="limitOn"
             :aria-describedby="`create-token-access-${option.key}-help`"
           >
             {{ option.label }}
@@ -250,6 +285,88 @@ const submit = async () => {
             {{ option.help }}
           </p>
         </div>
+      </fieldset>
+
+      <fieldset
+        class="flex flex-col gap-4 border-0 p-0"
+        data-test="artifact-limit"
+      >
+        <legend class="md-title-small mb-2 text-on-surface-variant">
+          Advanced: limit to artifacts
+        </legend>
+        <MdCheckbox
+          id="create-token-limit"
+          v-model="limitOn"
+        >
+          Limit this token to the artifacts below
+        </MdCheckbox>
+        <p class="md-body-small text-on-surface-variant">
+          Without artifacts, the token has the rights of its owner. With them, it may use only the listed artifacts, and
+          only where its owner may too.
+        </p>
+        <template v-if="limitOn">
+          <p
+            class="md-body-medium text-on-surface"
+            data-test="artifact-limit-note"
+          >
+            The artifacts below decide what this token may do, so the access choice above does not apply.
+          </p>
+          <MdTextField
+            id="create-token-artifact-repository"
+            v-model="repository"
+            label="Repository (optional)"
+            variant="outlined"
+            autocomplete="off"
+            spellcheck="false"
+            supporting-text="Leave empty for every repository"
+          />
+          <MdTextField
+            id="create-token-artifact-group"
+            v-model="groupId"
+            label="groupId"
+            variant="outlined"
+            autocomplete="off"
+            spellcheck="false"
+            required
+            supporting-text="For example net.onelitefeather. Subgroups are included"
+          />
+          <MdTextField
+            id="create-token-artifact-id"
+            v-model="artifactId"
+            label="artifactId (optional)"
+            variant="outlined"
+            autocomplete="off"
+            spellcheck="false"
+            supporting-text="Leave empty for every artifact of the groupId"
+          />
+          <fieldset class="flex flex-col gap-2 border-0 p-0">
+            <legend class="md-title-small mb-2 text-on-surface-variant">
+              Actions
+            </legend>
+            <MdCheckbox
+              v-for="word in ARTIFACT_ACTIONS"
+              :id="`create-token-action-${word}`"
+              :key="word"
+              :model-value="actions.includes(word)"
+              @update:model-value="toggleAction(word, $event)"
+            >
+              {{ word.charAt(0).toUpperCase() + word.slice(1) }}
+            </MdCheckbox>
+          </fieldset>
+          <ul
+            v-if="artifactIssues.length > 0"
+            role="alert"
+            class="m-0 flex list-none flex-col gap-1 p-0 md-body-medium text-error"
+            data-test="artifact-issues"
+          >
+            <li
+              v-for="issue in artifactIssues"
+              :key="issue"
+            >
+              {{ issue }}
+            </li>
+          </ul>
+        </template>
       </fieldset>
 
       <p

@@ -267,10 +267,17 @@ data class CheckTraceDto(
     val kind: String? = null,
 )
 
+/**
+ * The answer of a check. A node check has [node]; a path check has null there and names its [repository], [path] and
+ * [action] instead, as the question was asked.
+ */
 data class PermissionCheckDto(
     val principal: String,
-    val node: String,
+    val node: String?,
     val allowed: Boolean,
     val decision: CheckDecisionDto,
     val trace: List<CheckTraceDto>,
+    val repository: String? = null,
+    val path: String? = null,
+    val action: String? = null,
 )

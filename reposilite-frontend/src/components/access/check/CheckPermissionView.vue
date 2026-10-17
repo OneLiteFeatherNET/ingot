@@ -22,20 +22,27 @@ import { textFromParam, textParam } from '../../../router/url-state'
 import { useSession } from '../../../store/session'
 import MdButton from '../../md/MdButton.vue'
 import MdSelect from '../../md/MdSelect.vue'
+import MdTextField from '../../md/MdTextField.vue'
+import SegmentedControl from '../../tokens/SegmentedControl.vue'
+import SegmentedOption from '../../tokens/SegmentedOption.vue'
 import { detailOf, filterPrincipals } from '../accessPrincipals'
-import { parseNode } from '../nodes/nodeGrammar'
+import { ARTIFACT_ACTIONS, parseNode } from '../nodes/nodeGrammar'
 import { suggestNodes } from '../nodes/nodeList'
 import { permissionNodesApi } from '../nodes/permissionNodesApi'
 import ComboboxField from './ComboboxField.vue'
-import { decisionSummary, problemMessages, traceSteps } from './checkTrace'
+import { pathQueryOf } from './artifactPath'
+import { decisionSummary, kindLabel, problemMessages, traceSteps } from './checkTrace'
 
 /*
  * The permission check: pick a principal and a node (and optionally one of the principal's tokens),
  * and see whether the node is allowed, which rule decided, and the steps that led there.
  *
- * The address holds the question (`principal`, `node`, `token`), so a check can be linked. A
- * route that arrives with a principal and a node runs the check at once. Submitting writes the
- * question into the address with router.replace, so a repeated check adds no history entry.
+ * The question can also be a repository path: the repository, the path inside it as typed, and the action
+ * (read, deploy or delete). The server decides the path, so the view derives no coordinates. The address
+ * holds the question (`principal`, `node` or `repository`, `path` and `action`, and `token`), so a check can
+ * be linked. A route that arrives with a principal and a node, or a principal, repository and path, runs the
+ * check at once. Submitting writes the question into the address with router.replace, so a repeated check
+ * adds no history entry.
  */
 const route = useRoute()
 const router = useRouter()
@@ -47,6 +54,13 @@ const SUGGESTIONS = 12
 const principal = ref('')
 const node = ref('')
 const token = ref('')
+
+// 'node' asks the typed node; 'path' asks the node an artifact directory names.
+const mode = ref('node')
+const repositoryText = ref('')
+const pathText = ref('')
+const actionText = ref('read')
+const ACTION_OPTIONS = ARTIFACT_ACTIONS.map(action => ({ value: action, label: action.charAt(0).toUpperCase() + action.slice(1) }))
 
 const principals = ref([])
 const catalog = ref([])
@@ -65,26 +79,39 @@ let latest = 0
 let tokensRequest = 0
 let tokensFor = ''
 
-const keyOf = (principalName, nodeText, tokenName) => JSON.stringify([principalName, nodeText, tokenName])
-const queryKey = computed(() => keyOf(
-  textFromParam(route.query.principal),
-  textFromParam(route.query.node),
-  textFromParam(route.query.token)
-))
+// The question as the address holds it. A part the address leaves out is an empty text.
+const QUESTION_PARTS = ['principal', 'node', 'token', 'repository', 'path', 'action']
+const keyOf = (question) => JSON.stringify(QUESTION_PARTS.map(part => question[part] ?? ''))
+const questionFromRoute = () => Object.fromEntries(QUESTION_PARTS.map(part => [part, textFromParam(route.query[part])]))
+const queryKey = computed(() => keyOf(questionFromRoute()))
 let handledKey = queryKey.value
 
 const trimmedPrincipal = computed(() => principal.value.trim())
 const trimmedNode = computed(() => node.value.trim())
 
+const pathCheck = computed(() => pathQueryOf({ repository: repositoryText.value, path: pathText.value, action: actionText.value }))
+// Once anything is typed in the path fields, the problem of a field shows on that field.
+const pathTyped = computed(() => repositoryText.value.trim() !== '' || pathText.value.trim() !== '')
+const repositoryError = computed(() => (mode.value === 'path' && pathTyped.value && pathCheck.value.field === 'repository' ? pathCheck.value.problem : ''))
+// The server's refusal of the question shows on the path field, which is where the path question is typed.
+const pathError = computed(() => {
+  if (mode.value !== 'path') return ''
+  if (pathTyped.value && pathCheck.value.field === 'path') return pathCheck.value.problem
+  return nodeServerError.value
+})
+
 const nodeGrammarError = computed(() => {
-  if (trimmedNode.value === '') return ''
+  if (mode.value === 'path' || trimmedNode.value === '') return ''
   const parsed = parseNode(trimmedNode.value)
   return parsed.valid ? '' : parsed.problems[0].message
 })
 const nodeError = computed(() => nodeGrammarError.value || nodeServerError.value)
 
-const canCheck = computed(() =>
-  status.value !== 'loading' && trimmedPrincipal.value !== '' && trimmedNode.value !== '' && nodeGrammarError.value === '')
+// The question that is ready to be asked: a node, or a repository path.
+const questionReady = computed(() => (mode.value === 'path'
+  ? pathCheck.value.query !== null
+  : trimmedNode.value !== '' && nodeGrammarError.value === ''))
+const canCheck = computed(() => status.value !== 'loading' && trimmedPrincipal.value !== '' && questionReady.value)
 
 const principalOptions = computed(() =>
   filterPrincipals(principals.value, principal.value)
@@ -106,6 +133,7 @@ const tokenOptions = computed(() => {
 
 const steps = computed(() => traceSteps(result.value?.trace))
 const summary = computed(() => decisionSummary(result.value?.decision))
+const summaryKind = computed(() => kindLabel(summary.value.decidingKind))
 const allowed = computed(() => result.value?.allowed === true)
 
 const loadPrincipals = async () => {
@@ -188,7 +216,9 @@ const fail = (error) => {
 
 const run = async () => {
   const request = ++latest
-  const target = { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value || undefined }
+  const target = mode.value === 'path'
+    ? { principal: trimmedPrincipal.value, ...pathCheck.value.query, token: token.value || undefined }
+    : { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value || undefined }
   clearErrors()
   result.value = null
   status.value = 'loading'
@@ -205,25 +235,43 @@ const run = async () => {
   }
 }
 
+const chooseMode = (next) => {
+  mode.value = next
+  clearErrors()
+}
+
 const submit = async () => {
   if (!canCheck.value) return
-  handledKey = keyOf(trimmedPrincipal.value, trimmedNode.value, token.value)
+  const question = mode.value === 'path'
+    ? { principal: trimmedPrincipal.value, repository: pathCheck.value.query.repository, path: pathCheck.value.query.path, action: pathCheck.value.query.action, token: token.value }
+    : { principal: trimmedPrincipal.value, node: trimmedNode.value, token: token.value }
+  handledKey = keyOf(question)
   router.replace({
     name: 'access-check',
-    query: { principal: textParam(trimmedPrincipal.value), node: textParam(trimmedNode.value), token: textParam(token.value) }
+    query: Object.fromEntries(Object.entries(question).map(([part, value]) => [part, textParam(value)]))
   })
   await run()
 }
 
-// Takes the question from the address. With a principal and a node it is asked at once.
+// Takes the question from the address. A principal with a node, or with a repository and a path, is asked at once.
 const applyQuery = () => {
-  handledKey = queryKey.value
-  principal.value = textFromParam(route.query.principal)
-  node.value = textFromParam(route.query.node)
-  token.value = textFromParam(route.query.token)
+  const question = questionFromRoute()
+  handledKey = keyOf(question)
+  principal.value = question.principal
+  token.value = question.token
+  if (question.repository !== '' || question.path !== '') {
+    mode.value = 'path'
+    repositoryText.value = question.repository
+    pathText.value = question.path
+    actionText.value = question.action || 'read'
+    node.value = ''
+  } else {
+    mode.value = 'node'
+    node.value = question.node
+  }
   followTokens(trimmedPrincipal.value, true)
   clearErrors()
-  if (trimmedPrincipal.value !== '' && trimmedNode.value !== '') {
+  if (trimmedPrincipal.value !== '' && questionReady.value) {
     return run()
   }
   latest++
@@ -276,7 +324,28 @@ onMounted(() => {
         data-test="principal-field"
         @update:model-value="onPrincipal"
       />
+      <div
+        class="min-[840px]:col-span-2"
+      >
+        <SegmentedControl label="Check by">
+          <SegmentedOption
+            :on="mode === 'node'"
+            data-test="mode-node"
+            @click="chooseMode('node')"
+          >
+            Node
+          </SegmentedOption>
+          <SegmentedOption
+            :on="mode === 'path'"
+            data-test="mode-path"
+            @click="chooseMode('path')"
+          >
+            Artifact path
+          </SegmentedOption>
+        </SegmentedControl>
+      </div>
       <ComboboxField
+        v-if="mode === 'node'"
         :model-value="node"
         label="Node"
         mono
@@ -288,6 +357,40 @@ onMounted(() => {
         data-test="node-field"
         @update:model-value="onNode"
       />
+      <template v-else>
+        <div data-test="artifact-repository">
+          <MdTextField
+            v-model="repositoryText"
+            label="Repository"
+            variant="outlined"
+            autocomplete="off"
+            spellcheck="false"
+            :error="repositoryError !== ''"
+            :error-text="repositoryError"
+            supporting-text="The repository the path is in"
+          />
+        </div>
+        <div data-test="artifact-path">
+          <MdTextField
+            v-model="pathText"
+            label="Path"
+            variant="outlined"
+            autocomplete="off"
+            spellcheck="false"
+            :error="pathError !== ''"
+            :error-text="pathError"
+            supporting-text="The full path of a file or directory, for example net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom"
+          />
+        </div>
+        <div data-test="artifact-action">
+          <MdSelect
+            v-model="actionText"
+            label="Action"
+            :options="ACTION_OPTIONS"
+            supporting-text="Read, deploy or delete"
+          />
+        </div>
+      </template>
       <div data-test="token-field">
         <MdSelect
           :model-value="token"
@@ -361,9 +464,17 @@ onMounted(() => {
           </p>
           <p class="md-body-large break-words">
             <code
+              v-if="checked.node"
               class="font-mono"
               data-test="verdict-node"
             >{{ checked.node }}</code>
+            <template v-else>
+              <code
+                class="break-all font-mono"
+                data-test="verdict-path"
+              >{{ checked.repository }}/{{ checked.path }}</code>
+              (<span data-test="verdict-action">{{ checked.action }}</span>)
+            </template>
             for
             <strong data-test="verdict-principal">{{ checked.principal }}</strong>
             <template v-if="checked.token">
@@ -414,7 +525,32 @@ onMounted(() => {
         >
           {{ summary.depth ?? 'None' }}
         </dd>
+        <dt class="text-on-surface-variant">
+          Deciding node
+        </dt>
+        <dd
+          class="m-0 break-all font-mono text-on-surface"
+          data-test="summary-deciding-node"
+        >
+          {{ summary.decidingNode ?? 'None' }}
+        </dd>
+        <dt class="text-on-surface-variant">
+          Kind
+        </dt>
+        <dd
+          class="m-0 text-on-surface"
+          data-test="summary-deciding-kind"
+        >
+          {{ summaryKind }}
+        </dd>
       </dl>
+      <p
+        v-if="summary.explanation"
+        class="m-0 md-body-large text-on-surface"
+        data-test="explanation"
+      >
+        {{ summary.explanation }}
+      </p>
 
       <div class="flex flex-col gap-3">
         <h4 class="md-title-medium text-on-surface">

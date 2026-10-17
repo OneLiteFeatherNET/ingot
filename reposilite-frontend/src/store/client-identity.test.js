@@ -348,6 +348,26 @@ describe('client identity namespace', () => {
     })
   })
 
+  describe('check by path', () => {
+    it('sends the repository, the raw path and the action instead of a node', () => {
+      identity.check({ principal: 'ci-bot', repository: 'releases', path: 'net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom', action: 'deploy' })
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/check\?principal=ci-bot&repository=releases&path=net%2Fonelitefeather%2Fmycelium-bom%2F1\.8\.9%2Fmycelium-bom-1\.8\.9\.pom&action=deploy$/),
+        expect.anything()
+      )
+    })
+
+    it('adds the token after the path when one is given', () => {
+      identity.check({ principal: 'ci-bot', repository: 'releases', path: 'net/lib', action: 'read', token: 'docs' })
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/identity\/check\?principal=ci-bot&repository=releases&path=net%2Flib&action=read&token=docs$/),
+        expect.anything()
+      )
+    })
+  })
+
   describe('repositoryAccess', () => {
     it('reads who has access to a repository by its encoded name', () => {
       identity.repositoryAccess('my repo')

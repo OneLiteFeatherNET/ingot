@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { applyTemplate, fillTemplate, needsRepository } from './nodeTemplates'
+import { applyTemplate, fillTemplate, needsArtifact, needsRepository } from './nodeTemplates'
 
 const deploy = () => ({
   id: 'deploy',
@@ -71,5 +71,48 @@ describe('applyTemplate', () => {
     applyTemplate(deploy(), 'releases', existing)
 
     expect(existing).toEqual([{ node: 'ingot.admin.users', allowed: true }])
+  })
+})
+
+describe('artifact placeholders', () => {
+  const artifactRead = () => ({ id: 'artifact-read', label: 'Read an artifact', nodes: ['ingot.artifact.{groupId}:{artifactId}.read'] })
+  const repositoryArtifact = () => ({
+    id: 'repository-artifact-deploy',
+    label: 'Deploy an artifact in one repository',
+    nodes: ['ingot.repository.{repository}.artifact.{groupId}:{artifactId}.read', 'ingot.repository.{repository}.artifact.{groupId}:{artifactId}.deploy']
+  })
+
+  it('fills the groupId and the artifactId', () => {
+    expect(fillTemplate(artifactRead(), '', { groupId: 'net.onelitefeather', artifactId: 'mycelium-bom' })).toEqual([
+      'ingot.artifact.net.onelitefeather:mycelium-bom.read'
+    ])
+  })
+
+  it('leaves out the artifactId and its colon when it is empty', () => {
+    expect(fillTemplate(artifactRead(), '', { groupId: 'net.onelitefeather', artifactId: '' })).toEqual([
+      'ingot.artifact.net.onelitefeather.read'
+    ])
+  })
+
+  it('fills the repository and the coordinates of the qualified artifact template', () => {
+    expect(fillTemplate(repositoryArtifact(), 'releases', { groupId: 'net', artifactId: '' })).toEqual([
+      'ingot.repository.releases.artifact.net.read',
+      'ingot.repository.releases.artifact.net.deploy'
+    ])
+  })
+
+  it('needs an artifact for a template with a groupId, and not for the others', () => {
+    expect(needsArtifact(artifactRead())).toBe(true)
+    expect(needsArtifact(deploy())).toBe(false)
+    expect(needsArtifact({ nodes: ['ingot.admin.*'] })).toBe(false)
+  })
+
+  it('adds the filled artifact nodes as Allow and skips the ones listed', () => {
+    const existing = [{ node: 'ingot.artifact.net.onelitefeather.read', allowed: false }]
+
+    const result = applyTemplate(artifactRead(), '', existing, { groupId: 'net.onelitefeather', artifactId: '' })
+
+    expect(result.added).toEqual([])
+    expect(result.skipped).toEqual(['ingot.artifact.net.onelitefeather.read'])
   })
 })

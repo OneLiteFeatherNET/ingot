@@ -15,6 +15,7 @@
  */
 
 import { now } from '../../helpers/clock'
+import { artifactIdProblem, groupIdProblem } from '../access/nodes/artifactNodes'
 
 /*
  * The rules of a token form that the self service page and the admin pages share: the expiry
@@ -50,6 +51,10 @@ const DEFAULT_ACCESS = 'all'
 const MAX_NAME_LENGTH = 255
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+// The actions an artifact limit can grant, in the order the nodes are written.
+const ARTIFACT_ACTIONS = ['read', 'deploy', 'delete']
+const REPOSITORY_NAME = /^[A-Za-z0-9_-]+$/
 
 /** The expiry date for a preset as an ISO string, or null for a token that never expires. */
 const expiryFor = (key, at = now()) => {
@@ -94,6 +99,28 @@ const validateTokenName = (name) => {
   return ''
 }
 
+/**
+ * The node texts of an artifact limit: one node per action, qualified by the repository when one is given. Returns
+ * { nodes, problems } with the messages of the fields; nodes is empty while there is a problem, and the problems are
+ * the ones the fields show.
+ */
+const artifactNodeTexts = ({ repository = '', groupId = '', artifactId = '', actions = [] }) => {
+  const repo = String(repository ?? '').trim()
+  const group = String(groupId ?? '').trim()
+  const artifact = String(artifactId ?? '').trim()
+  const chosen = ARTIFACT_ACTIONS.filter(action => actions.includes(action))
+  const problems = []
+  if (repo !== '' && !REPOSITORY_NAME.test(repo)) problems.push("Use letters, digits, '_' and '-' in a repository name")
+  for (const problem of [groupIdProblem(group), artifactIdProblem(artifact, group)]) {
+    if (problem !== '') problems.push(problem)
+  }
+  if (chosen.length === 0) problems.push('Choose at least one action')
+  if (problems.length > 0) return { nodes: [], problems }
+  const coordinates = artifact === '' ? group : `${group}:${artifact}`
+  const prefix = repo === '' ? 'ingot.artifact.' : `ingot.repository.${repo}.artifact.`
+  return { nodes: chosen.map(action => `${prefix}${coordinates}.${action}`), problems: [] }
+}
+
 /** The scopes an access choice sends. An empty list means no narrowing. */
 const scopesFor = (key) => [...(ACCESS_OPTIONS.find(option => option.key === key)?.scopes ?? [])]
 
@@ -106,9 +133,10 @@ const expiresAtFor = ({ preset, customDate = '', at = now() }) => {
 /**
  * The body of a create request. A token that never expires carries expiresAt null, and no
  * access narrowing (no scopes chosen) is sent as scopes null. A custom preset without a valid
- * date is refused, so a missing date never turns into a token without expiry.
+ * date is refused, so a missing date never turns into a token without expiry. Artifact nodes
+ * (`nodes`) are sent as Allow entries; without them the body has no nodes field.
  */
-const buildCreateBody = ({ name, description = '', preset, customDate = '', scopes = [], at = now() }) => {
+const buildCreateBody = ({ name, description = '', preset, customDate = '', scopes = [], nodes = [], at = now() }) => {
   if (preset === 'custom' && validateCustomDate(customDate, at) !== '') {
     throw new Error('A custom expiry needs a valid date')
   }
@@ -117,6 +145,7 @@ const buildCreateBody = ({ name, description = '', preset, customDate = '', scop
   if (text !== '') body.description = text
   body.expiresAt = expiresAtFor({ preset, customDate, at })
   body.scopes = scopes.length > 0 ? [...scopes] : null
+  if (nodes.length > 0) body.nodes = nodes.map(node => ({ node, allowed: true }))
   return body
 }
 
@@ -161,7 +190,9 @@ const formatRelative = (date, at = now()) => {
 
 export {
   ACCESS_OPTIONS,
+  ARTIFACT_ACTIONS,
   CUSTOM_MAX_YEARS,
+  artifactNodeTexts,
   DEFAULT_ACCESS,
   DEFAULT_EXPIRY,
   EXPIRY_PRESETS,

@@ -45,6 +45,9 @@ data class Candidate(
 /** The kind a candidate carries when it is a role or legacy grant and not a node. */
 const val GRANT_KIND: String = "GRANT"
 
+/** The deciding kind of the instance administrator shortcut: an instance admin is allowed what its token allows. */
+const val INSTANCE_ADMIN_KIND: String = "INSTANCE_ADMIN"
+
 /**
  * The answer for one node, with every candidate of every level it consulted. [decidingNode] and [decidingKind] name the
  * rule that decided: its node text and its kind. For a role grant the node is null and the kind is [GRANT_KIND]. When no
@@ -76,13 +79,7 @@ object PermissionEvaluator {
     fun allows(subject: AccessSubject, request: AccessRequest): Boolean {
         if (subject.disabled) return false
         if (request.action == Action.INSTANCE_ADMIN) return isInstanceAdmin(subject)
-
-        val (repository, pathInRepository) = splitPath(request.fullPath)
-        val node = NodePattern.repositoryPath(repository, request.action.repositoryNodeAction(), pathInRepository)
-        if (!tokenAllows(subject, node)) return false
-        if (isInstanceAdmin(subject)) return true
-
-        return ownerDecision(subject, node) { grant -> pathGrantMatch(grant, request, repository, pathInRepository) }.allowed
+        return decideRequest(subject, request).allowed
     }
 
     /**
@@ -96,10 +93,69 @@ object PermissionEvaluator {
     }
 
     /**
-     * Decides one concrete node, for the permission check of the identity API. Grants count only where they cover the whole
-     * repository: a path-scoped grant has no answer for a node, and the trace says so.
+     * Decides one concrete node, for the permission check of the identity API. A repository node is decided as the request
+     * for its repository root, so the check answers what a real request answers: [decideRequest]. Other nodes (admin areas,
+     * artifact nodes and wildcards) have no request of their own and are decided by their rules and grants, as [decideNode].
      */
     fun decide(subject: AccessSubject, node: NodePattern): Decision {
+        val repository = node.repository
+        val action = node.action
+        if (node.kindName == "REPOSITORY" && repository != null && action != null && repository != "*" && action != "*") {
+            return decideRequest(subject, AccessRequest("/$repository", requireNotNull(nodeAction(action))))
+        }
+        return decideNode(subject, node)
+    }
+
+    /**
+     * Decides one repository path for the permission check, with [action] the repository node action (read, deploy or
+     * delete). It is decided as a real request for that path is: [decideRequest].
+     */
+    fun decidePath(subject: AccessSubject, repository: String, pathInRepository: String, action: String): Decision {
+        val requestAction = requireNotNull(nodeAction(action)) { "The action '$action' is not a repository action" }
+        return decideRequest(subject, AccessRequest("/$repository/$pathInRepository", requestAction))
+    }
+
+    /**
+     * Decides a repository request exactly as [allows] does, and names the rule that decided. The token narrows first: a
+     * token that denies the request denies it. Then an instance admin is allowed, the shortcut of [isInstanceAdmin]. Otherwise
+     * the owner decides, by its rules and its grants that cover the path.
+     */
+    private fun decideRequest(subject: AccessSubject, request: AccessRequest): Decision {
+        val (repository, pathInRepository) = splitPath(request.fullPath)
+        val node = NodePattern.repositoryPath(repository, request.action.repositoryNodeAction(), pathInRepository)
+        if (subject.disabled) return Decision(DecisionSource.DEFAULT, null, node.text, allowed = false, depth = 0, trace = emptyList())
+        val owner = ownerDecision(subject, node) { grant -> pathGrantMatch(grant, request, repository, pathInRepository) }
+        val token = subject.tokenRules?.let { rules -> decideRules(DecisionSource.TOKEN, subject.principalName.orEmpty(), 0, rules, node) }
+        val trace = owner.trace + (token?.trace ?: emptyList())
+        val tokenDenies = token != null && !token.allowed
+        if (!tokenDenies && isInstanceAdmin(subject)) return instanceAdminDecision(subject, node).copy(trace = trace)
+        return when {
+            !owner.allowed -> owner.copy(trace = trace)
+            tokenDenies -> token!!.copy(trace = trace)
+            else -> owner.copy(trace = trace)
+        }
+    }
+
+    /** The instance administrator shortcut: allowed, named by the admin rule of the subject and the kind [INSTANCE_ADMIN_KIND]. */
+    private fun instanceAdminDecision(subject: AccessSubject, node: NodePattern): Decision {
+        val admin = ownerDecision(subject, NodePattern.INSTANCE_ADMIN) { GrantMatch(false, "no grant covers instance admin") }
+        return Decision(
+            source = admin.source,
+            subject = admin.subject,
+            node = node.text,
+            allowed = true,
+            depth = admin.depth,
+            trace = emptyList(),
+            decidingNode = admin.decidingNode,
+            decidingKind = INSTANCE_ADMIN_KIND,
+        )
+    }
+
+    /**
+     * The node decision without the request shortcuts: the owner's rules and the grants that cover the whole repository, then
+     * the token. Used for the effective nodes and for the nodes that have no request (admin areas, artifact nodes).
+     */
+    private fun decideNode(subject: AccessSubject, node: NodePattern): Decision {
         if (subject.disabled) {
             return Decision(DecisionSource.DEFAULT, null, node.text, allowed = false, depth = 0, trace = emptyList())
         }
@@ -203,7 +259,7 @@ object PermissionEvaluator {
         return subject.levels.flatMap { level -> level.rules.map { it.pattern.text } }
             .plus(subject.tokenRules.orEmpty().map { it.pattern.text })
             .distinct()
-            .filter { text -> decide(subject, NodePattern.of(text)).allowed }
+            .filter { text -> decideNode(subject, NodePattern.of(text)).allowed }
             .sorted()
     }
 

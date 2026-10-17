@@ -92,3 +92,63 @@ describe('isRepositorySegment', () => {
     expect(isRepositorySegment('')).toBe(false)
   })
 })
+
+describe('parseNode for artifact nodes', () => {
+  it.each([
+    'ingot.artifact.net.onelitefeather.read',
+    'ingot.artifact.net.onelitefeather:mycelium-bom.deploy',
+    'ingot.artifact.net.onelitefeather:mycelium.bom.delete',
+    'ingot.artifact.*.read',
+    'ingot.artifact.net.onelitefeather.*',
+    'ingot.artifact.net:*.read',
+    'ingot.repository.releases.artifact.net.onelitefeather.read',
+    'ingot.repository.releases.artifact.net.onelitefeather:mycelium-bom.*'
+  ])('accepts %s as an artifact node', (text) => {
+    const result = parseNode(text)
+
+    expect(result.valid, `${text} is valid`).toBe(true)
+    expect(result.kind, `${text} is an artifact node`).toBe('ARTIFACT')
+    expect(result.problems).toEqual([])
+  })
+
+  it.each([
+    ['ingot.artifact.net.onelitefeather.write', "Unknown action 'write'"],
+    ['ingot.artifact.net.onelitefeather.manage', "Unknown action 'manage'"],
+    ['ingot.artifact.net.onelitefeather:a:b.read', "only one ':'"],
+    ['ingot.artifact.*:mycelium-bom.read', "ambiguous"],
+    ['ingot.artifact.net.*.read', "a wildcard must be the whole groupId"],
+    ['ingot.artifact.net.onelitefeather:.read', 'The artifactId of'],
+    ['ingot.artifact.net..onelitefeather.read', 'has an empty segment'],
+    ['ingot.artifact.net/onelitefeather.read', "invalid character in 'net/onelitefeather'"],
+    ['ingot.artifact.read', 'needs a groupId and an action'],
+    ['ingot.artifact.net', 'needs a groupId and an action'],
+    ['ingot.repository.*.artifact.net.read', 'The wildcard repository is not allowed for an artifact node'],
+    ['ingot.repository.artifact.net.read', 'The repository name before .artifact. is missing'],
+    ['ingot.repository.releases.artifact.net:mycelium-bom', 'needs a groupId and an action']
+  ])('rejects %s (%s)', (text, message) => {
+    const result = parseNode(text)
+
+    expect(result.valid, `${text} is invalid`).toBe(false)
+    expect(result.kind).toBeNull()
+    expect(result.problems[0].node, 'the problem names the node').toBe(text)
+    expect(result.problems[0].message).toContain(message)
+  })
+
+  it('tells the unqualified shape for an artifact node without an action', () => {
+    expect(parseNode('ingot.artifact.net').problems[0].message)
+      .toBe('The artifact node \'ingot.artifact.net\' needs a groupId and an action. Use ingot.artifact.<groupId>[:<artifactId>].<read|deploy|delete|*>')
+  })
+
+  it('tells the qualified shape for a qualified node without an action', () => {
+    expect(parseNode('ingot.repository.releases.artifact.net').problems[0].message)
+      .toContain('Use ingot.repository.<repository>.artifact.<groupId>[:<artifactId>].<read|deploy|delete|*>')
+  })
+
+  it('rejects a space inside an artifact node', () => {
+    expect(parseNode('ingot.artifact.net. onelitefeather.read').valid).toBe(false)
+  })
+
+  it('still rejects a repository node with five segments as before', () => {
+    expect(parseNode('ingot.repository.releases.read.more').valid).toBe(false)
+  })
+})

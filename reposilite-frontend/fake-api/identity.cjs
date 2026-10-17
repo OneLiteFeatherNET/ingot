@@ -1151,29 +1151,91 @@ identity.get("/nodes/catalog", (req, res) =>
 
 identity.get("/nodes/templates", (req, res) => reply(res, { templates: nodeLogic.templates() }))
 
-identity.get("/check", (req, res) => {
-  const text = (value) => typeof value === "string" ? value : ""
-  const principalName = text(req.query.principal)
-  const node = text(req.query.node)
-  const tokenName = typeof req.query.token === "string" ? req.query.token : undefined
-  if (principalName.trim() === "") return fail(res, 400, "The query parameter 'principal' is required")
-  if (node.trim() === "") return fail(res, 400, "The query parameter 'node' is required")
-  if (node.includes("*")) return fail(res, 400, `The node to check must be concrete, without wildcards: '${node}'`)
-  const problem = nodeLogic.problemOf(node)
-  if (problem) return fail(res, 400, `Invalid permission node: ${problem}`)
+// The subject a check decides for: the principal and, when named, its token. Answers 403 or 404 and returns null when the
+// check may not run. Shared by the node and the path check, as the backend checks the caller and the principal first.
+const checkSubjectOf = (req, res, principalName, tokenName) => {
   if (!req.actor.admin && req.actor.principal?.name !== principalName) {
-    return fail(res, 403, "Only instance admins can check the nodes of other principals")
+    fail(res, 403, "Only instance admins can check the nodes of other principals")
+    return null
   }
   const principal = findPrincipal(principalName)
-  if (!principal) return fail(res, 404, "Principal not found")
+  if (!principal) {
+    fail(res, 404, "Principal not found")
+    return null
+  }
   let token = null
   if (tokenName !== undefined) {
     token = publicTokenFields(principal, tokenName)
-    if (!token) return fail(res, 404, "Token not found")
+    if (!token) {
+      fail(res, 404, "Token not found")
+      return null
+    }
   }
+  return { principal, token }
+}
+
+// A check of a repository path, as IdentityFacade.pathPermissionCheck validates it: the repository, the path and an action
+// (read, deploy or delete) given by the action parameter or taken from a node given with the path.
+const pathCheck = (req, res, principalName, tokenName, repository, path, action, node) => {
+  if (repository === undefined || repository.trim() === "") return fail(res, 400, "The query parameter 'repository' is required for a path check")
+  if (repository.includes("*")) return fail(res, 400, `The repository of a path check must be a name, without wildcards: '${repository}'`)
+  const repositoryProblem = nodeLogic.problemOf(`ingot.repository.${repository}.read`)
+  if (repositoryProblem) return fail(res, 400, `Invalid repository: ${repositoryProblem}`)
+  if (path === undefined || path.trim() === "") {
+    return fail(res, 400, "The query parameter 'path' is required for a path check, naming a path inside the repository")
+  }
+  if (node !== undefined) {
+    if (node.includes("*")) return fail(res, 400, `The node to check must be concrete, without wildcards: '${node}'`)
+    const problem = nodeLogic.problemOf(node)
+    if (problem) return fail(res, 400, `Invalid permission node: ${problem}`)
+  }
+  const nodeAction = node !== undefined ? nodeLogic.parseNode(node).action ?? null : null
+  if (action !== undefined && nodeAction !== null && action !== nodeAction) {
+    return fail(res, 400, `The action of the node '${node}' is ${nodeAction}, which differs from the action '${action}'`)
+  }
+  const chosen = action ?? nodeAction
+  if (chosen === null) {
+    return fail(res, 400, "The query parameter 'action' is required for a path check, or give a node whose action it takes")
+  }
+  if (!["read", "deploy", "delete"].includes(chosen)) {
+    return fail(res, 400, `The action '${chosen}' of a path check is read, deploy or delete`)
+  }
+  const subject = checkSubjectOf(req, res, principalName, tokenName)
+  if (!subject) return
+  const { principal, token } = subject
+  const request = nodeLogic.pathRequest({ repository, path, action: chosen })
   // A disabled principal is denied everything and has no candidates to show.
   const evaluation = principal.disabled
-    ? { allowed: false, decision: { source: nodeLogic.SOURCE.DEFAULT, subject: null, node, allowed: false, depth: 0 }, trace: [] }
+    ? { allowed: false, decision: nodeLogic.defaultDecision(request.text), trace: [] }
+    : nodeLogic.evaluate({ ...contextOf(principal, token), node: request })
+  reply(res, {
+    principal: principal.name, node: null, allowed: evaluation.allowed, decision: evaluation.decision, trace: evaluation.trace,
+    repository, path, action: chosen,
+  })
+}
+
+identity.get("/check", (req, res) => {
+  const text = (value) => typeof value === "string" ? value : ""
+  const principalName = text(req.query.principal)
+  const node = typeof req.query.node === "string" ? req.query.node : undefined
+  const tokenName = typeof req.query.token === "string" ? req.query.token : undefined
+  if (principalName.trim() === "") return fail(res, 400, "The query parameter 'principal' is required")
+  if (req.query.repository !== undefined || req.query.path !== undefined) {
+    const repository = typeof req.query.repository === "string" ? req.query.repository : undefined
+    const path = typeof req.query.path === "string" ? req.query.path : undefined
+    const action = typeof req.query.action === "string" ? req.query.action : undefined
+    return pathCheck(req, res, principalName, tokenName, repository, path, action, node)
+  }
+  if (node === undefined || node.trim() === "") return fail(res, 400, "The query parameter 'node' is required")
+  if (node.includes("*")) return fail(res, 400, `The node to check must be concrete, without wildcards: '${node}'`)
+  const problem = nodeLogic.problemOf(node)
+  if (problem) return fail(res, 400, `Invalid permission node: ${problem}`)
+  const subject = checkSubjectOf(req, res, principalName, tokenName)
+  if (!subject) return
+  const { principal, token } = subject
+  // A disabled principal is denied everything and has no candidates to show.
+  const evaluation = principal.disabled
+    ? { allowed: false, decision: nodeLogic.defaultDecision(node), trace: [] }
     : nodeLogic.evaluate({ ...contextOf(principal, token), node })
   reply(res, { principal: principal.name, node, allowed: evaluation.allowed, decision: evaluation.decision, trace: evaluation.trace })
 })
