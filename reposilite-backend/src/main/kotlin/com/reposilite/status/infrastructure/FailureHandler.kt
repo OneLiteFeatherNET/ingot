@@ -21,8 +21,19 @@ import io.javalin.http.ExceptionHandler
 
 internal class FailureHandler(private val failureFacade: FailureFacade) : ExceptionHandler<Exception> {
 
+    /**
+     * Runs for every unhandled request exception. It must never throw: when it does, Javalin reports the handler failure
+     * and then the original exception as uncaught, which hides what actually went wrong.
+     */
     override fun handle(exception: Exception, context: Context) {
-        failureFacade.throwException(context.req().requestURI, exception)
+        try {
+            failureFacade.throwException(source(context), exception)
+        } catch (failure: Exception) {
+            System.err.println("Failure handler could not record ${exception.javaClass.name}: $failure")
+        }
     }
+
+    private fun source(context: Context): String =
+        runCatching { context.req().requestURI }.getOrNull() ?: "unknown request"
 
 }

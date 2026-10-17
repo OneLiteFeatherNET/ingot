@@ -52,14 +52,12 @@ class FailureFacade(
         throwException(identifier, Channel.ERROR, throwable)
 
     private fun throwException(identifier: String, channel: Channel, throwable: Throwable) {
-        logger.log(channel, identifier)
-        logger.exception(channel, throwable)
-
         val rendered = arrayOf("failure $identifier", exceptionToString(throwable))
             .joinToString(separator = System.lineSeparator())
             .trim()
         val now = clock.instant()
 
+        // Recorded first: the journal's subscribers run on this thread and may fail, which must not lose the failure.
         synchronized(lock) {
             val existing = failures[rendered]
             failures[rendered] = existing?.copy(timestamp = now, count = existing.count + 1)
@@ -72,6 +70,18 @@ class FailureFacade(
                     stacktrace = exceptionToString(throwable),
                     count = 1
                 )
+        }
+
+        publish(identifier, channel, throwable)
+    }
+
+    private fun publish(identifier: String, channel: Channel, throwable: Throwable) {
+        try {
+            logger.log(channel, identifier)
+            logger.exception(channel, throwable)
+        } catch (failure: Exception) {
+            // A failing subscriber must not fail the request that reported the failure, so it is only noted here.
+            System.err.println("Failure of $identifier was recorded, but the journal failed to publish it: $failure")
         }
     }
 

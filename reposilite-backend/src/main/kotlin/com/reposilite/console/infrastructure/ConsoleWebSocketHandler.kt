@@ -30,6 +30,7 @@ import io.javalin.websocket.WsMessageContext
 import panda.std.Result
 import panda.std.reactive.Reference
 import java.nio.channels.ClosedChannelException
+import java.util.Collections
 import java.util.WeakHashMap
 import java.util.function.Consumer
 
@@ -50,7 +51,10 @@ internal class ConsoleWebSocketHandler(
     private val forwardedIp: Reference<String>
 ) : Consumer<WsConfig> {
 
-    private val users: WeakHashMap<WsContext, WsSession> = WeakHashMap()
+    /**
+     * Written by the message and close callbacks of every connection, each on its own Jetty thread, so it is synchronized.
+     */
+    private val users: MutableMap<WsContext, WsSession> = Collections.synchronizedMap(WeakHashMap())
 
     @OpenApi(
         path = "/api/console/sock",
@@ -65,11 +69,16 @@ internal class ConsoleWebSocketHandler(
                         .peek { identifier ->
                             journalist.logger.info("CLI | $identifier accessed remote console")
 
+                            // Subscribers run on the thread that logs, which is often an unrelated request or job. A failure
+                            // here must never reach that thread, so the connection is closed instead, and its close callback
+                            // releases the subscription.
                             val subscriberId = journalist.subscribe {
                                 try {
                                     ctx.send(it.value)
                                 } catch (ignored: ClosedChannelException) {
                                     journalist.logger.debug("CLI | $identifier tried to write to closed channel")
+                                } catch (failure: Exception) {
+                                    runCatching { ctx.session.disconnect() }
                                 }
                             }
 
@@ -122,6 +131,8 @@ internal class ConsoleWebSocketHandler(
     }
 
     private fun WsContext.getHost(): String =
-        header(forwardedIp.get()) ?: session.remoteSocketAddress.toString()
+        forwardedIp.get()?.let { header(it) }
+            ?: session.remoteSocketAddress?.toString()
+            ?: "unknown host"
 
 }

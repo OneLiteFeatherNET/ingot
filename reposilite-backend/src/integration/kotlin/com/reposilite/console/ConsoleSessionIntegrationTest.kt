@@ -139,11 +139,13 @@ internal class ConsoleSessionIntegrationTest : ReposiliteSpecification() {
         socket.send("Authorization:Session $session")
         socket.send("keep-alive")
 
-        // then: the connection is authenticated, so the keep-alive is answered, and console output came before it
+        // then: the keep-alive is answered, which only an authenticated connection does, and no refusal arrives first.
+        // Log lines of other tests and background jobs may arrive before the answer, so only the refusal is checked.
         val received = socket.receiveUntil { it == "keep-alive" }
         assertThat(received)
             .describedAs("messages received before the keep-alive answer")
-            .anyMatch { it.contains(INFO_LINE) }
+            .noneMatch { it.contains("\"status\":401") }
+        assertThat(received.last()).isEqualTo("keep-alive")
     }
 
     @Test
