@@ -16,9 +16,12 @@
 
 package com.reposilite.status
 
+import com.reposilite.journalist.Channel
+import com.reposilite.journalist.Logger
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.status.specification.FailureSpecification
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatCode
 import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Instant
@@ -143,6 +146,28 @@ internal class FailureFacadeTest : FailureSpecification() {
         assertThat(facade.hasFailures()).isFalse
         assertThat(facade.getFailureRecords()).isEmpty()
     }
+
+    @Test
+    fun `should keep the failure recorded when publishing it fails`() {
+        // given: a journal whose subscribers throw while a message is published
+        val facade = FailureFacade(FailingJournal(), MutableClock(Instant.EPOCH))
+
+        // when: a failure is reported
+        // then: the caller is not interrupted, and the failure is still recorded for the console
+        assertThatCode { facade.throwException("/api/console/sock", RuntimeException("boom")) }.doesNotThrowAnyException()
+        assertThat(facade.getFailureRecords().single().source).isEqualTo("/api/console/sock")
+    }
+
+}
+
+/** A journal whose subscribers fail on every message, as a socket that is already closed does. */
+private class FailingJournal : InMemoryLogger() {
+
+    override fun log(channel: Channel, message: Any?, vararg args: Any?): Logger =
+        throw NullPointerException("subscriber failed")
+
+    override fun exception(channel: Channel, throwable: Throwable): Logger =
+        throw NullPointerException("subscriber failed")
 
 }
 
