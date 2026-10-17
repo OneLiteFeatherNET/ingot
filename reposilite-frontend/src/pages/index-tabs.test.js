@@ -132,10 +132,10 @@ describe('section table', () => {
       audit: 'ingot.admin.audit',
       settings: 'ingot.admin.settings',
       'access-users': 'ingot.admin.users',
-      'access-machines': 'ingot.admin.tokens',
+      'access-machines': 'ingot.admin.users',
       'access-teams': 'ingot.admin.teams',
-      tokens: 'ingot.admin.tokens',
-      token: 'ingot.admin.tokens'
+      tokens: 'ingot.admin.users',
+      token: 'ingot.admin.users'
     })
   })
 
