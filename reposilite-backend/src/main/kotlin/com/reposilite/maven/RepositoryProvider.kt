@@ -20,6 +20,7 @@ import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.application.RepositorySettings
+import com.reposilite.maven.application.referencedHost
 import com.reposilite.plugin.Extensions
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.http.RemoteClientProvider
@@ -61,16 +62,27 @@ internal class RepositoryProvider(
         artifactIndexSink = artifactIndexSink,
     )
 
-    private var repositories: Map<String, Repository> = createRepositories(repositoriesSource.get())
+    /** The repositories in configuration order, keyed by name. Read by requests and usage walks, so it is only ever swapped. */
+    @Volatile
+    private var repositories: Map<String, Repository> = emptyMap()
+
+    /** The repositories the current configuration built, with the settings each one was built from. */
+    private var built: List<BuiltRepository> = emptyList()
 
     init {
-        repositoriesSource.subscribe {
-            repositories.forEach { (_, repository) -> repository.shutdown() }
-            this.repositories = createRepositories(it)
-        }
+        apply(repositoriesSource.get())
+        repositoriesSource.subscribe { apply(it) }
     }
 
-    private fun createRepositories(repositoriesConfiguration: List<RepositorySettings>): Map<String, Repository> {
+    /**
+     * Brings the repositories in line with [configuration]. A repository whose settings did not change keeps its live instance:
+     * its storage serves requests and usage walks, and closing it would fail every read still in flight. Only the repositories
+     * that were replaced or removed are shut down, once the new set is in place.
+     */
+    @Synchronized
+    private fun apply(configuration: List<RepositorySettings>) {
+        val previous = built
+        val names = configuration.map { it.id }.toSet()
         val factory = RepositoryFactory(
             journalist = journalist,
             workingDirectory = workingDirectory,
@@ -79,33 +91,53 @@ internal class RepositoryProvider(
             failureFacade = failureFacade,
             storageFacade = storageFacade,
             repositoryService = repositoryService,
-            repositoriesNames = repositoriesConfiguration.map { it.id },
+            repositoriesNames = names,
         )
 
         val sharedBucketConflicts = findS3SharedBucketConflicts(
-            repositoriesConfiguration.mapNotNull { configuration ->
-                (configuration.storageProvider as? S3StorageProviderSettings)?.let { configuration.id to it }
+            configuration.mapNotNull { settings ->
+                (settings.storageProvider as? S3StorageProviderSettings)?.let { settings.id to it }
             }
         )
 
-        return repositoriesConfiguration.asSequence()
-            .mapNotNull { configuration ->
-                when (configuration.id) {
-                    in sharedBucketConflicts -> {
-                        failureFacade.throwException(
-                            identifier = "Cannot load repository '${configuration.id}'",
-                            throwable = IllegalStateException("Its S3 key namespace overlaps another repository sharing the same bucket. Give each repository a distinct 'prefix', or enable 'sharedBucket' on every repository sharing the bucket.")
-                        )
-                        null
-                    }
-                    else ->
-                        runCatching { factory.createRepository(configuration.id, configuration) }
-                            .onFailure { failureFacade.throwException("Cannot load ${configuration.id} repository", it) }
-                            .getOrNull()
+        val next = configuration.mapNotNull { settings ->
+            when (settings.id) {
+                in sharedBucketConflicts -> {
+                    failureFacade.throwException(
+                        identifier = "Cannot load repository '${settings.id}'",
+                        throwable = IllegalStateException("Its S3 key namespace overlaps another repository sharing the same bucket. Give each repository a distinct 'prefix', or enable 'sharedBucket' on every repository sharing the bucket.")
+                    )
+                    null
                 }
+                else -> reuse(previous, settings, names) ?: build(factory, settings, names)
             }
-            .associateBy { it.name }
+        }
+
+        built = next
+        repositories = next.associate { it.repository.name to it.repository }
+        previous
+            .filter { old -> next.none { it.repository === old.repository } }
+            .forEach { it.repository.shutdown() }
     }
+
+    /** The live repository built from the same settings, when its links to other repositories still resolve the same way. */
+    private fun reuse(previous: List<BuiltRepository>, settings: RepositorySettings, names: Set<String>): BuiltRepository? {
+        val old = previous.firstOrNull { it.settings.id == settings.id } ?: return null
+        if (old.settings != settings || linksIn(settings, old.names) != linksIn(settings, names)) {
+            return null
+        }
+        return BuiltRepository(settings, old.repository, names)
+    }
+
+    private fun build(factory: RepositoryFactory, settings: RepositorySettings, names: Set<String>): BuiltRepository? =
+        runCatching { factory.createRepository(settings.id, settings) }
+            .onFailure { failureFacade.throwException("Cannot load ${settings.id} repository", it) }
+            .getOrNull()
+            ?.let { BuiltRepository(settings, it, names) }
+
+    /** For each mirrored entry, whether it names one of the local repositories, which decides how the mirror is reached. */
+    private fun linksIn(settings: RepositorySettings, names: Set<String>): List<Boolean> =
+        settings.proxied.map { it.referencedHost() in names }
 
 
     fun findRepository(name: String): Result<Repository, ErrorResponse> =
@@ -120,3 +152,10 @@ internal class RepositoryProvider(
         repositories.values
 
 }
+
+/** A repository together with the settings it was built from and the names of the local repositories it was built against. */
+private class BuiltRepository(
+    val settings: RepositorySettings,
+    val repository: Repository,
+    val names: Set<String>,
+)
