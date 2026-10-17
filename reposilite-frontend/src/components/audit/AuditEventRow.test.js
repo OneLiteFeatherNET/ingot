@@ -65,7 +65,35 @@ describe('AuditEventRow actor', () => {
   it('names the address the actor came from', async () => {
     const row = await mountRow({ event: event() })
 
-    expect(row.text()).toContain('from 203.0.113.10')
+    expect(row.find('[data-test="actor-address"]').text()).toBe('203.0.113.10')
+  })
+
+  it('puts the address on its own line, truncated, with the full address in a tooltip', async () => {
+    const address = '2001:9e8:482f:fd00:7dab:f6f:9476:345c'
+    const row = await mountRow({ event: event({ actorAddress: address }) })
+
+    const addressElement = row.find('[data-test="actor-address"]')
+    expect(addressElement.attributes('title'), 'full address on hover').toBe(address)
+    expect(addressElement.classes(), 'long addresses are cut with an ellipsis').toContain('truncate')
+    expect(addressElement.classes(), 'the address is monospaced').toContain('font-mono')
+    expect(addressElement.element.parentElement.classList.contains('flex'), 'the address line is its own block').toBe(true)
+  })
+
+  it('keeps the actor name on one line and inside its column', async () => {
+    const row = await mountRow({ event: event() })
+
+    const name = row.findAll('a').find(anchor => anchor.text() === 'ci-deployer')
+    expect(name.classes()).toContain('truncate')
+    expect(name.classes(), 'the name does not overflow into the action column').toContain('min-w-0')
+  })
+
+  it('lays the row out as a grid whose columns cannot grow past their track', async () => {
+    const row = await mountRow({ event: event() })
+
+    const grid = row.find('div.grid')
+    expect(grid.classes()).toContain('grid')
+    expect(grid.classes(), 'stacked on a phone').toContain('grid-cols-[minmax(0,1fr)]')
+    expect(grid.classes(), 'desktop tracks may shrink to zero').toContain('min-[720px]:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto]')
   })
 })
 
