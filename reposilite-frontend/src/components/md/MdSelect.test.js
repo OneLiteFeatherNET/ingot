@@ -414,6 +414,57 @@ describe('MdSelect', () => {
     })
   })
 
+  describe('focus', () => {
+    const focusVariants = (element) => [...element.classList].filter((name) => name.startsWith('focus:'))
+    const peerFocusVariants = (element) => [...element.classList].filter((name) => name.startsWith('peer-focus:'))
+
+    it('outlines the focused field in primary, inside its edge', () => {
+      const wrapper = mountSelect()
+
+      expect(focusVariants(combobox(wrapper).element)).toEqual([
+        'focus:border-primary',
+        'focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]'
+      ])
+    })
+
+    it('colours the floating label in the same primary role as the outline', () => {
+      const wrapper = mountSelect()
+
+      expect(combobox(wrapper).classes()).toContain('peer')
+      expect(peerFocusVariants(wrapper.get('label').element)).toEqual(['peer-focus:text-primary'])
+    })
+
+    it('colours the trailing icon in primary while the field is focused', () => {
+      const wrapper = mountSelect()
+
+      expect(peerFocusVariants(wrapper.get('svg').element.parentElement)).toEqual(['peer-focus:text-primary'])
+    })
+
+    it('keeps the field 1px wide in every state, so focus never grows the border', () => {
+      const wrapper = mountSelect()
+
+      expect(combobox(wrapper).classes()).toContain('border')
+      expect(combobox(wrapper).classes().some((name) => /^(focus:)?border-[2-9]/.test(name))).toBe(false)
+    })
+
+    it('keeps an invalid field in the error role, focused or not', () => {
+      const wrapper = mountSelect({ error: true, errorText: 'Pick a visibility.' })
+
+      expect(combobox(wrapper).classes()).toContain('border-error')
+      expect(focusVariants(combobox(wrapper).element), 'the primary outline does not apply to an invalid field').toEqual([])
+      expect(wrapper.get('label').classes()).toContain('text-error')
+      expect(peerFocusVariants(wrapper.get('label').element)).toEqual([])
+      expect(peerFocusVariants(wrapper.get('svg').element.parentElement)).toEqual([])
+    })
+
+    it('draws no focus colour on a disabled field', () => {
+      const wrapper = mountSelect({ disabled: true })
+
+      expect(focusVariants(combobox(wrapper).element)).toEqual([])
+      expect(peerFocusVariants(wrapper.get('label').element)).toEqual([])
+    })
+  })
+
   describe('placement', () => {
     it('opens below the field when there is room for the options', async () => {
       vi.stubGlobal('innerHeight', 700)

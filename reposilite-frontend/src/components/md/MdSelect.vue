@@ -118,9 +118,12 @@ const selectedIndex = computed(() => props.options.findIndex((option) => option.
 const selectedLabel = computed(() => (selectedIndex.value >= 0 ? props.options[selectedIndex.value].label : ''))
 const activeDescendant = computed(() => (isOpen.value && active.value >= 0 ? optionId(active.value) : undefined))
 
-// Every class name is spelled out in full so that Tailwind finds it in this file. The default
-// field has a 1px outline and a 1px inset shadow in primary when focused. The error field is
-// drawn in the error role, focused or not, and the disabled field in on-surface at 12% and 38%.
+// Every class name is spelled out in full so that Tailwind finds it in this file. The focus colour is
+// primary for the outline, the label and the trailing icon alike. The outline is a 1px border plus a
+// 1px inset shadow, so focus never changes the box. A wider border or an outer ring would move or
+// recolour the field: @tailwindcss/forms draws a blue outer ring on a focused <select>, which is
+// why the field is no longer a <select>. The error field is drawn in the error role, focused or not,
+// and the disabled field in on-surface at 12% and 38%.
 const FIELD_CLASS = {
   default: 'border-outline text-on-surface focus:border-primary focus:shadow-[inset_0_0_0_1px_var(--md-sys-color-primary)]',
   error: 'border-error text-on-surface shadow-[inset_0_0_0_1px_var(--md-sys-color-error)]',
@@ -137,7 +140,12 @@ const labelClass = computed(() => {
   return props.error ? 'text-error' : 'text-on-surface-variant peer-focus:text-primary'
 })
 
-const iconClass = computed(() => (props.disabled ? 'text-on-surface/38' : 'text-on-surface-variant'))
+// The trailing icon follows the focus colour, as in MD3. It sits after the field, so the peer
+// variant reaches it. An invalid field keeps the icon in the neutral role.
+const iconClass = computed(() => {
+  if (props.disabled) return 'text-on-surface/38'
+  return props.error ? 'text-on-surface-variant' : 'text-on-surface-variant peer-focus:text-primary'
+})
 
 const helperClass = computed(() => {
   if (props.disabled) return 'text-on-surface/38'
