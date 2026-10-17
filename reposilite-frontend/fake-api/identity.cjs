@@ -726,14 +726,19 @@ router.post("/api/auth/logout", (req, res) => {
 router.get("/api/auth/setup", (req, res) => res.send({ setupRequired }))
 
 router.post("/api/auth/setup", (req, res) => {
-  if (!setupRequired) return fail(res, 409, "Setup is already done")
+  // Answers as the backend does (AuthLoginEndpoints.kt): 403 for a wrong code or a finished setup,
+  // 409 for a taken user name, 400 with the rule for invalid input.
+  if (!setupRequired) return fail(res, 403, "Setup is not required, a user already exists")
   const { setupCode, username, password, displayName } = bodyOf(req)
-  if (setupCode !== SETUP_CODE) return fail(res, 401, "Invalid setup code")
-  const { name, problem } = validName(username, MAX_NAME_LENGTH)
-  if (problem) return fail(res, 400, problem.replace("Name", "Username"))
-  if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
-    return fail(res, 400, `The password needs at least ${MIN_PASSWORD_LENGTH} characters`)
+  if (typeof setupCode !== "string" || setupCode.trim().toUpperCase() !== SETUP_CODE.toUpperCase()) {
+    return fail(res, 403, "Invalid setup code")
   }
+  const { name, problem } = validName(username, MAX_NAME_LENGTH)
+  if (problem) return fail(res, 400, problem)
+  if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+    return fail(res, 400, `Password must have at least ${MIN_PASSWORD_LENGTH} characters`)
+  }
+  if (findPrincipal(name)) return fail(res, 409, "This user name is already taken")
   const admin = addPrincipal({
     kind: "USER", name, displayName: typeof displayName === "string" && displayName.trim() ? displayName.trim() : name,
     password, instanceRole: true,
