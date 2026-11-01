@@ -22,7 +22,7 @@ import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.shared.ErrorResponse
-import com.reposilite.shared.extensions.resultAttachment
+import com.reposilite.shared.extensions.attachmentHeaders
 import com.reposilite.shared.extensions.uri
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
@@ -35,6 +35,7 @@ import io.javalin.community.routing.Route.HEAD
 import io.javalin.community.routing.Route.POST
 import io.javalin.community.routing.Route.PUT
 import io.javalin.http.Context
+import io.javalin.http.HandlerType.HEAD as HEAD_METHOD
 import io.javalin.openapi.ContentType.FORM_DATA_MULTIPART
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
@@ -82,15 +83,20 @@ internal class MavenEndpoints(
         return allDetails.flatMap { details ->
             when (details) {
                 is DocumentInfo ->
-                    mavenFacade.findData(request).map { data ->
-                        ctx.resultAttachment(
+                    when (ctx.method()) {
+                        HEAD_METHOD -> Unit.asSuccess()
+                        else -> mavenFacade.findData(request).map { data ->
+                            ctx.result(data)
+                            Unit
+                        }
+                    }.map {
+                        ctx.attachmentHeaders(
                             name = details.name,
                             contentType = details.contentType,
                             contentLength = details.contentLength,
                             lastTimeModified = details.lastModifiedTime,
                             compressionStrategy = compressionStrategy,
                             cache = mavenFacade.acceptsCachingOf(request),
-                            data = data,
                         )
                     }
                 is DirectoryInfo -> {

@@ -17,7 +17,10 @@
 package com.reposilite.maven.specification
 
 import com.reposilite.ReposiliteSpecification
+import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.maven.application.MavenSettings
 import io.javalin.Javalin
+import io.javalin.config.JavalinConfig
 import kotlinx.coroutines.Job
 
 internal abstract class MavenIntegrationSpecification : ReposiliteSpecification() {
@@ -40,6 +43,38 @@ internal abstract class MavenIntegrationSpecification : ReposiliteSpecification(
         serverStartedJob.join()
         block(gav, content)
         application.stop()
+    }
+
+    /**
+     * Starts an upstream on a free port and points the storing and the plain proxy at it. Only those two repositories
+     * change, so a group that lists them by id keeps its loopback references, which [useUpstreamPort] would rewrite.
+     */
+    protected fun startProxiedHost(configure: (JavalinConfig) -> Unit): Javalin {
+        val application = Javalin.create { config -> configure(config) }.start(0)
+
+        try {
+            val reference = upstreamReference(application.port())
+            useFacade<SharedConfigurationFacade>()
+                .getDomainSettings<MavenSettings>()
+                .update { settings ->
+                    settings.copy(
+                        repositories = settings.repositories.map { repository ->
+                            if (repository.id == "proxied" || repository.id == "proxied-stored") {
+                                repository.copy(
+                                    proxied = repository.proxied.map { mirror -> mirror.copy(reference = reference) }
+                                )
+                            } else {
+                                repository
+                            }
+                        }
+                    )
+                }
+        } catch (exception: Exception) {
+            application.stop()
+            throw exception
+        }
+
+        return application
     }
 
 }
