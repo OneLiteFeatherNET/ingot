@@ -37,6 +37,16 @@ import kotlin.io.path.writeText
 
 private const val INDEX_FILE = "index.html"
 
+internal const val DEFAULT_JAVADOC_MAX_ENTRY_BYTES = 10L * 1024 * 1024
+
+/**
+ * Per-entry size cap of a javadoc jar. Ingot reads -Dingot.javadocs.max-entry-bytes first and falls
+ * back to the legacy -Dreposilite.javadocs.max-entry-bytes when the Ingot property is not set.
+ */
+internal fun javadocMaxEntryBytes(property: (String) -> String?): Long =
+    (property("ingot.javadocs.max-entry-bytes") ?: property("reposilite.javadocs.max-entry-bytes"))
+        ?.toLong() ?: DEFAULT_JAVADOC_MAX_ENTRY_BYTES
+
 internal class JavadocContainer(
     val javadocContainerPath: Path,
     val javadocContainerIndex: Path,
@@ -48,7 +58,7 @@ internal class JavadocContainerService(
     private val mavenFacade: MavenFacade,
     private val javadocFolder: Path,
     private val suffixes: Reference<List<String>>,
-    private val maxEntryBytes: Long = System.getProperty("reposilite.javadocs.max-entry-bytes", "10485760").toLong(),
+    private val maxEntryBytes: Long = javadocMaxEntryBytes { System.getProperty(it) },
     private val maxTotalBytes: Long = 50L * 1024 * 1024,
     private val maxEntries: Int = 50_000,
 ) {
