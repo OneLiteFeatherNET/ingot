@@ -132,9 +132,12 @@ internal abstract class MavenSpecification {
     /** The storage facade the components create repositories with; a test may replace it to control storage. */
     protected open fun storageFacade(): StorageFacade = StorageFacade()
 
+    /** The executor the components run their IO tasks on. A test may replace it to control how many tasks run at once. */
+    protected open fun createIoService(): ExecutorService = Executors.newCachedThreadPool()
+
     @BeforeEach
     fun initializeFacade() {
-        this.ioService = Executors.newCachedThreadPool()
+        this.ioService = createIoService()
 
         val remoteClientProvider = FakeRemoteClientProvider(
             headHandler = { uri, credentials, _, _ ->
