@@ -26,6 +26,7 @@ Changes made in Ingot after the upgrade are not visible to the old version. Recr
    * Tokens you revoked in Ingot are active again on the old version. Revoke them again there.
    * Tokens you rotated in Ingot keep the secret they had before the rotation on the old version. The new secret does not work there. Rotate the token again on the old version and update the clients.
    * Rights you changed in Ingot are back to their earlier values. Change them again there.
+   * Permission nodes you set in Ingot are not visible on the old version, which has no nodes. A token you limited with nodes in Ingot gets back the rights it had before the upgrade. Set the rights you need again there.
 
 5. Check that the tokens and artifacts you had before the upgrade work.
 
