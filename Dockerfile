@@ -39,6 +39,17 @@ EOF
 # Run stage
 FROM eclipse-temurin:21-jre-noble@sha256:000fd431958bc81a24abe1e8e5f0f0fd3ae365a594bd50aadb20696805f9408c AS run
 
+# The pinned base still ships apt and libapt-pkg 2.8.3 (CVE-2026-109518, fixed in 2.8.4) and
+# libbrotli1 1.1.0 (CVE-2026-111497, fixed in 1.1.0-2ubuntu0.1). Upgrade just those packages.
+# Remove this once the base digest carries the fixed versions.
+RUN <<EOF
+    set -eu
+    apt-get update
+    apt-get install -y --only-upgrade apt libapt-pkg6.0t64 libbrotli1
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+EOF
+
 # Setup runtime environment.
 #
 # /app/data, /var/log/reposilite and the reposilite service user keep their names. They are
