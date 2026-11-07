@@ -23,6 +23,7 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
+import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
 import panda.std.Result
 
 internal class ResolutionProvider(
@@ -88,7 +89,12 @@ internal class ResolutionProvider(
                 local.isOk -> ResolveAttempt(local, remote = null)
                 else -> {
                     val remote = tryRemote(hosts)
-                    ResolveAttempt(remote.toResult(notFoundMessage).flatMapErr { local }, remote)
+                    val result = when {
+                        // A failing or throttled upstream is not a miss: answer with its error instead of the local not found
+                        remote is MirrorResolution.Failed && (remote.error.status == TOO_MANY_REQUESTS.code || remote.error.status >= 500) -> Result.error(remote.error)
+                        else -> remote.toResult(notFoundMessage).flatMapErr { local }
+                    }
+                    ResolveAttempt(result, remote)
                 }
             }
         }
