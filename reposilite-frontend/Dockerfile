@@ -56,12 +56,16 @@ RUN set -eu; \
 # starting as root and dropping privileges the way the stock nginx image does.
 FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:378d0c32f6562f7fd9629170797f57d2b953aa09be983b3daaf4809bb039ca00 AS run
 
-# The pinned base still ships libexpat 2.8.5 (CVE-2026-77214, fixed in 2.9.0). Upgrade just
-# that package, as root for the duration of this step only, then drop back to the unprivileged
-# user the base image runs as. Remove this once the base image carries the fixed version.
+# The pinned base still ships libexpat 2.8.5 (CVE-2026-77214, fixed in 2.9.0), brotli-libs 1.2.0
+# (CVE-2026-111497, fixed in 1.2.1), curl and libcurl 8.22.0 (CVE-2026-92392, fixed in 8.23.0),
+# libx11 1.8.13 (CVE-2026-88806, fixed in 1.8.14), musl and musl-utils 1.2.6-r2
+# (CVE-2026-107891, fixed in 1.2.6-r3) and zlib 1.3.2-r0 (CVE-2026-85091, fixed in 1.3.2-r1).
+# Upgrade just those packages, as root for the duration of this step only, then drop back to
+# the unprivileged user the base image runs as. Remove this once the base image carries the
+# fixed versions.
 USER root
-RUN apk upgrade --no-cache libexpat \
-    && apk info -v libexpat
+RUN apk upgrade --no-cache libexpat brotli-libs curl libcurl libx11 musl musl-utils zlib \
+    && apk info -v libexpat brotli-libs curl libcurl libx11 musl musl-utils zlib
 USER 101
 
 # Where to reach the server, and how to resolve it. 127.0.0.11 is Docker's embedded DNS; on
