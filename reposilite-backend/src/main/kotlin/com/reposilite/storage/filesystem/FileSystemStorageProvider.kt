@@ -200,10 +200,16 @@ abstract class FileSystemStorageProvider protected constructor(
                     .map { LockedFilterInputStream(it, lock) }
             }
 
+    /**
+     * Reads under the same lock as [getFile]: a write moves its copy into place under the write lock, and the details
+     * must not describe a partially copied file that the streamed body would then not match.
+     */
     override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> =
-        location.resolveWithRootDirectory()
-            .exists()
-            .flatMap { toFileDetails(it) }
+        acquireFileAccessLock(location, LockMode.READ).use {
+            location.resolveWithRootDirectory()
+                .exists()
+                .flatMap { toFileDetails(it) }
+        }
 
     private fun toFileDetails(file: Path): Result<out FileDetails, ErrorResponse> =
         Result.`when`(file.exists(), file, notFound("File not found"))
