@@ -141,7 +141,7 @@ dependencies {
     // Drivers
     implementation("com.zaxxer:HikariCP:7.0.2")
     implementation("org.xerial:sqlite-jdbc:3.49.1.0") // note: 3.50.3.0 is broken
-    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.9")
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.11")
     implementation("org.postgresql:postgresql:42.7.13")
     implementation("com.h2database:h2:2.3.232")
     implementation("com.mysql:mysql-connector-j:9.7.0") {
@@ -169,7 +169,7 @@ dependencies {
         exclude(group = "com.google.guava", module = "guava")
     }
     api("commons-codec:commons-codec:1.22.0")
-    api("com.google.guava:guava:33.6.0-android")
+    api("com.google.guava:guava:33.7.2-android")
     testImplementation("com.google.http-client:google-http-client-jackson2:$httpClient")
 
     val jansi = "2.4.3"
