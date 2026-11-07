@@ -42,8 +42,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.RejectedExecutionException
 
 internal const val NO_EXTENSION_MARKER = "<none>"
 
@@ -51,7 +49,6 @@ internal class MirrorService(
     private val journalist: Journalist,
     private val failureFacade: FailureFacade,
     private val clock: Clock,
-    private val ioService: ExecutorService,
     private val mirrorCache: MirrorCacheService,
     private val artifactIndexSink: ArtifactIndexSink,
 ) : Journalist {
@@ -110,27 +107,42 @@ internal class MirrorService(
             authenticated = accessToken != null,
         )
 
-        val future = inFlightFetches.computeIfAbsent(key) {
-            try {
-                CompletableFuture.supplyAsync({
-                    try {
-                        fetchAndStoreFromRemoteHosts(repository, gav, accessToken, hosts)
-                    } catch (throwable: Throwable) {
-                        failureFacade.throwException("Mirror fetch ${repository.name}/$gav", throwable)
-                        MirrorResolution.Failed(internalServer("Mirror fetch failed: ${throwable.message}"))
-                    }
-                }, ioService)
-            } catch (rejected: RejectedExecutionException) {
-                // ioService refused the task (typically: shutdown is in progress). Surface as a normal
-                // ErrorResponse rather than letting the runtime exception escape into Javalin.
-                CompletableFuture.completedFuture(MirrorResolution.Failed(internalServer("Mirror fetch rejected: ${rejected.message}")))
-            }
-        }
+        return singleFlight(key, repository, gav) {
+            fetchAndStoreFromRemoteHosts(repository, gav, accessToken, hosts)
+        }.openLocal(repository, gav)
+    }
 
-        return future
-            .whenComplete { _, _ -> inFlightFetches.remove(key, future) }
-            .join()
-            .openLocal(repository, gav)
+    /**
+     * Runs [fetch] once for [key] at a time. The first caller is the leader: it fetches on its own thread and completes
+     * the shared future. Callers that arrive meanwhile wait for that future. The fetch never waits on a queued task, so
+     * a fetch that itself needs another fetch (a group whose member is a proxy) cannot block the pool it runs on.
+     */
+    private fun singleFlight(
+        key: FetchKey,
+        repository: Repository,
+        gav: Location,
+        fetch: () -> MirrorResolution<Unit>,
+    ): MirrorResolution<Unit> {
+        val leader = CompletableFuture<MirrorResolution<Unit>>()
+        inFlightFetches.putIfAbsent(key, leader)?.let { return it.join() }
+
+        try {
+            leader.complete(
+                try {
+                    fetch()
+                } catch (throwable: Throwable) {
+                    failureFacade.throwException("Mirror fetch ${repository.name}/$gav", throwable)
+                    MirrorResolution.Failed(internalServer("Mirror fetch failed: ${throwable.message}"))
+                }
+            )
+        } catch (throwable: Throwable) {
+            // Followers must not hang on a leader that failed outside the fetch itself.
+            leader.completeExceptionally(throwable)
+            throw throwable
+        } finally {
+            inFlightFetches.remove(key, leader)
+        }
+        return leader.join()
     }
 
     private fun MirrorResolution<Unit>.openLocal(repository: Repository, gav: Location): MirrorResolution<InputStream> =

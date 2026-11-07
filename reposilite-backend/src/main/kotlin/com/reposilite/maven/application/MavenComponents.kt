@@ -74,7 +74,6 @@ internal class MavenComponents(
             journalist = journalist,
             failureFacade = failureFacade,
             clock = clock,
-            ioService = ioService,
             mirrorCache = mirrorCache,
             artifactIndexSink = artifactIndexSink,
         )
