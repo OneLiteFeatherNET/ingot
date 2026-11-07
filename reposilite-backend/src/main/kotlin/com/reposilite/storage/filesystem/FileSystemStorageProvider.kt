@@ -40,6 +40,7 @@ import com.reposilite.storage.type
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
 import io.javalin.http.HttpStatus.INSUFFICIENT_STORAGE
+import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.mapToUnit
@@ -47,6 +48,9 @@ import java.io.Closeable
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.UncheckedIOException
+import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
@@ -93,6 +97,14 @@ abstract class FileSystemStorageProvider protected constructor(
 
     internal fun lockedLocationsSize(): Int =
         lockedLocations.size
+
+    /**
+     * Bytes of all files below the root, null until the first measurement. Measured once by walking the tree, then
+     * kept up to date by [commitFile] and [removeFile], so a quota check does not walk the tree on every upload.
+     * Changes made to the disk outside of this provider are only seen after a restart.
+     */
+    private val usageLock = Any()
+    private var storedBytes: Long? = null
 
     private fun acquireFileAccessLock(location: Location, lockMode: LockMode): Closeable {
         val accessor = lockedLocations.compute(location) { _, existing ->
@@ -148,13 +160,27 @@ abstract class FileSystemStorageProvider protected constructor(
                             .flatMap { canHold(temporaryFile.fileSize()).mapErr { INSUFFICIENT_STORAGE.toErrorResponse("Not enough storage space available: ${it.message}") } }
                             .peek {
                                 acquireFileAccessLock(location, LockMode.WRITE).use {
-                                    temporaryFile.moveTo(file, overwrite = true)
+                                    commitFile(temporaryFile, file)
                                 }
                             }
                             .mapToUnit()
                     }
                 }
         }
+
+    /**
+     * Moves the written file into place and adjusts the usage by the difference to the file it replaces. The move runs
+     * outside [usageLock] (the temporary file may live on another filesystem, so the move is a copy); writes to the same
+     * location are already serialised by the caller's WRITE lock, which keeps the measured replaced size valid.
+     */
+    private fun commitFile(temporaryFile: Path, file: Path) {
+        val replaced = sizeOf(file)
+        val written = temporaryFile.fileSize()
+        temporaryFile.moveTo(file, overwrite = true)
+        synchronized(usageLock) {
+            storedBytes = storedBytes?.let { it - replaced + written }
+        }
+    }
 
     private inline fun <T> useTempFile(block: (Path) -> T): T {
         val temporaryFile = createTempFile("reposilite-", "-fs-put")
@@ -250,10 +276,18 @@ abstract class FileSystemStorageProvider protected constructor(
             .resolveWithRootDirectory()
             .filter({ !it.normalize().equals(rootDirectory.normalize()) }, { badRequest("Cannot remove repository root") })
             .map { rootPath ->
-                when {
-                    rootPath.isDirectory() -> rootPath.deleteRecursively()
-                    // Removing what is already gone is not an error: upstream answers a repeated DELETE with success, and so must Ingot.
-                    else -> rootPath.deleteIfExists().let { }
+                val removed = sizeOf(rootPath)
+                try {
+                    when {
+                        rootPath.isDirectory() -> rootPath.deleteRecursively()
+                        // Removing what is already gone is not an error: upstream answers a repeated DELETE with success, and so must Ingot.
+                        else -> rootPath.deleteIfExists().let { }
+                    }
+                    synchronized(usageLock) { storedBytes = storedBytes?.let { it - removed } }
+                } catch (exception: Exception) {
+                    // A partial removal leaves an unknown amount behind, so the next usage() measures the tree again.
+                    synchronized(usageLock) { storedBytes = null }
+                    throw exception
                 }
             }
 
@@ -289,7 +323,33 @@ abstract class FileSystemStorageProvider protected constructor(
             .fold({ true }, { false })
 
     override fun usage(): Result<Long, ErrorResponse> =
-        getFileSize(Location.empty())
+        synchronized(usageLock) {
+            val known = storedBytes
+            if (known != null) {
+                known.asSuccess()
+            } else {
+                measureStoredBytes().peek { storedBytes = it }
+            }
+        }
+
+    private fun measureStoredBytes(): Result<Long, ErrorResponse> =
+        try {
+            sizeOf(rootDirectory.toRealPath()).asSuccess()
+        } catch (exception: IOException) {
+            INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage: ${exception.message}")
+        } catch (exception: UncheckedIOException) {
+            INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage: ${exception.message}")
+        }
+
+    /** Bytes of the regular files at or below the given path. Symbolic links are neither followed nor counted. */
+    private fun sizeOf(path: Path): Long =
+        when {
+            Files.isDirectory(path, NOFOLLOW_LINKS) -> Files.walk(path).use { entries ->
+                entries.filter { Files.isRegularFile(it, NOFOLLOW_LINKS) }.mapToLong { Files.size(it) }.sum()
+            }
+            Files.isRegularFile(path, NOFOLLOW_LINKS) -> Files.size(path)
+            else -> 0
+        }
 
     private fun Result<Path, ErrorResponse>.exists(): Result<Path, ErrorResponse> =
         filter({ it.exists() }) { notFound("File not found") }
