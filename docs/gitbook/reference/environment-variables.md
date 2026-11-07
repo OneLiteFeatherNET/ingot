@@ -118,6 +118,7 @@ The S3 client also reads the standard `AWS_REGION` environment variable when a r
 | --- | --- | --- |
 | `ingot.status.remote-version-check` | `true` | `false` turns off the hourly check for a newer Ingot version. The older name `reposilite.status.remote-version-check` is read when the `ingot.` property is not set. |
 | `ingot.status.remote-version-url` | `https://api.github.com/repos/OneLiteFeatherNET/ingot/releases/latest` | Address that the version check asks for the latest release. There is no `reposilite.` fallback. |
+| `ingot.javadocs.max-entry-bytes` | `10485760` (10 MiB) | Largest size in bytes of one file inside a javadoc jar that Ingot unpacks for the javadoc viewer. Files above it are rejected. The default was 2 MiB before. The older name `reposilite.javadocs.max-entry-bytes` is read when the `ingot.` property is not set. |
 | `reposilite.maven.maxAge` | `3600` | Seconds used in `Cache-Control: public, max-age=<value>` of file responses that are cacheable. |
 | `reposilite.redirect.default-repository` | empty | Name of a repository. When set, the `redirect` plugin serves the top-level directories of that repository from the root path too. Empty turns the plugin off. |
 | `reposilite.ldap.disable-user-password-authentication` | `false` | `true` makes the LDAP Basic authenticator skip the check of the user password against the directory. See the warning below. |
