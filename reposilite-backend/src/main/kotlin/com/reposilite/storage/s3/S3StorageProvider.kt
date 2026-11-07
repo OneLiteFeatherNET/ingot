@@ -34,6 +34,8 @@ import com.reposilite.storage.api.UNKNOWN_LENGTH
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
+import io.javalin.http.HttpStatus.FORBIDDEN
+import io.javalin.http.HttpStatus.NOT_FOUND
 import panda.std.Result
 import panda.std.Result.ok
 import panda.std.asSuccess
@@ -52,9 +54,9 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
+import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.S3Object
 import java.io.File
-import java.io.IOException
 import java.io.InputStream
 import java.nio.file.attribute.FileTime
 import java.time.Instant
@@ -118,9 +120,8 @@ class S3StorageProvider(
                 builder.contentLength(temporary.length())
                 s3.putObject(builder.build(), RequestBody.fromFile(temporary))
                 ok(Unit)
-            } catch (ioException: IOException) {
-                failureFacade.throwException("S3 Storage Provider failed with IO Exception", ioException)
-                internalServerError("Failed to write $location")
+            } catch (exception: Exception) {
+                failed("write $location", exception)
             } finally {
                 temporary.delete()
             }
@@ -136,8 +137,11 @@ class S3StorageProvider(
             // response.read(bytes)
         } catch (_: NoSuchKeyException) {
             notFoundError("File not found: $location")
-        } catch (_: IOException) {
-            notFoundError("File not found: $location")
+        } catch (exception: S3Exception) {
+            // A bare 404 carries no NoSuchKey body, so it is only recognised by its status code
+            s3Error("read $location", location, exception)
+        } catch (exception: Exception) {
+            failed("read $location", exception)
         }
 
     override fun getFileDetails(location: Location): Result<FileDetails, ErrorResponse> =
@@ -147,7 +151,13 @@ class S3StorageProvider(
             location.toString().isEmpty() -> listDirectoryDetails(location)
             else -> head(location)
                 .map { toDocumentInfo(location, it) }
-                .flatMapErr { listDirectoryDetails(location) }
+                .flatMapErr { headError ->
+                    // Only a missing key may be a directory; a failed HEAD must not turn into an empty listing
+                    when (headError.status) {
+                        NOT_FOUND.code -> listDirectoryDetails(location)
+                        else -> Result.error(headError)
+                    }
+                }
         }
 
     private fun listDirectoryDetails(location: Location): Result<FileDetails, ErrorResponse> =
@@ -267,8 +277,10 @@ class S3StorageProvider(
                 entries.isEmpty() -> notFoundError("Directory not found or is empty")
                 else -> entries.asSuccess()
             }
+        } catch (exception: S3Exception) {
+            s3Error("list $location", location, exception)
         } catch (exception: Exception) {
-            internalServerError(exception.localizedMessage)
+            failed("list $location", exception)
         }
 
     override fun getLastModifiedTime(location: Location): Result<FileTime, ErrorResponse> =
@@ -287,9 +299,35 @@ class S3StorageProvider(
             s3.headObject(request.build()).asSuccess()
         } catch (ignored: NoSuchKeyException) {
             notFoundError(ignored.message ?: "File not found")
+        } catch (exception: S3Exception) {
+            // HEAD has no error body, so a missing key arrives as a bare 404 rather than NoSuchKey
+            s3Error("HEAD ${location.toBucketKey()}", location, exception)
         } catch (exception: Exception) {
-            internalServerError(exception.message ?: "Generic exception")
+            failed("HEAD ${location.toBucketKey()}", exception)
         }
+
+    /**
+     * Answers a failed S3 read. A missing key is a 404, and so is a 403: S3 answers a missing key with 403 when the
+     * credentials lack ListBucket, and a deployment with such a policy must keep getting 404 for misses. Any other
+     * S3 failure is a server error, so that a transient problem is never reported as a missing file.
+     */
+    private fun <T> s3Error(operation: String, location: Location, exception: S3Exception): Result<T, ErrorResponse> =
+        when (exception.statusCode()) {
+            NOT_FOUND.code -> notFoundError("File not found: $location")
+            FORBIDDEN.code -> {
+                logger.debug("S3 denied $operation, answering as not found (the credentials may lack ListBucket)")
+                notFoundError("File not found: $location")
+            }
+            else -> failed(operation, exception)
+        }
+
+    /**
+     * Logs an unexpected S3 failure (server error, network, credentials) and answers it as a server error.
+     */
+    private fun <T> failed(operation: String, exception: Exception): Result<T, ErrorResponse> {
+        failureFacade.throwException("S3 Storage Provider failed to $operation", exception)
+        return internalServerError("Failed to $operation")
+    }
 
     override fun exists(location: Location): Boolean =
         head(location)
