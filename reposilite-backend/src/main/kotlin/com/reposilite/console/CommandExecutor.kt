@@ -26,6 +26,7 @@ import com.reposilite.status.FailureFacade
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.MissingParameterException
+import picocli.CommandLine.PicocliException
 import picocli.CommandLine.UnmatchedArgumentException
 import java.io.InputStream
 import java.util.function.Consumer
@@ -69,9 +70,7 @@ internal class CommandExecutor(
                 reposiliteCommand.sensitiveInput -> processedCommand.redacted()
                 else -> processedCommand
             }
-        } catch (_: UnmatchedArgumentException) {
-            processedCommand.redacted()
-        } catch (_: MissingParameterException) {
+        } catch (_: PicocliException) {
             processedCommand.redacted()
         }
 
@@ -108,6 +107,9 @@ internal class CommandExecutor(
             response.add("")
             response.add(missingParameterException.commandLine.usageMessage)
             ExecutionResponse(FAILED, response)
+        } catch (_: PicocliException) {
+            // Other parse errors, e.g. a repeated option, name the offending option or argument, which may be a secret
+            ExecutionResponse(FAILED, listOf("Invalid arguments for ${processedCommand.substringBefore(' ')}"))
         }
     }
 
