@@ -91,10 +91,19 @@ class ClusterPlugin(
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
+        val outbox = ClusterOutbox(OUTBOX_CAPACITY)
+        outbox.drainTo(
+            sink = { transport.publish(it) },
+            onError = { logger.warn("Cluster | a message could not be sent: ${it.message}") },
+        )
+
         event { event: TokenStateChangedEvent ->
-            publish(transport, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
+            publish(outbox, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
         }
-        event { _: ReposiliteDisposeEvent -> transport.close() }
+        event { _: ReposiliteDisposeEvent ->
+            outbox.close()
+            transport.close()
+        }
         return null
     }
 
@@ -103,7 +112,7 @@ class ClusterPlugin(
     }
 
     private fun publish(
-        transport: ClusterTransport,
+        outbox: ClusterOutbox,
         cluster: String,
         origin: String,
         type: ClusterEventType,
@@ -112,12 +121,15 @@ class ClusterPlugin(
         val payload = payloads.createObjectNode()
         fields.forEach { (name, value) -> payload.put(name, value) }
         val envelope = ClusterEnvelope(type = type, cluster = cluster, origin = origin, at = Instant.now(clock), payload = payload)
-        transport.publish(ClusterEnvelopeCodec.encode(envelope))
+        outbox.offer(ClusterEnvelopeCodec.encode(envelope))
         counters.countPublished()
     }
 
     private companion object {
         const val CLUSTER_IDENTIFIER_NAME = "cluster-identifier"
+
+        // Messages waiting for the transport. A full queue drops its oldest message, so memory stays bounded during an outage.
+        const val OUTBOX_CAPACITY = 1024
     }
 
 }
