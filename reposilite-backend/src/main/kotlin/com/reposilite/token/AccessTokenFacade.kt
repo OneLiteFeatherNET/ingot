@@ -26,6 +26,7 @@ import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
+import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.shared.EntityTag
 import com.reposilite.shared.EntityTagSigner
 import com.reposilite.shared.ErrorResponse
@@ -112,7 +113,10 @@ class AccessTokenFacade internal constructor(
     }
 
     private fun tokenChanged(vararg names: String) {
-        names.forEach { name -> changeListeners.forEach { it(name) } }
+        names.forEach { name ->
+            changeListeners.forEach { it(name) }
+            extensions.emitEvent(TokenStateChangedEvent(name))
+        }
     }
 
     /**

@@ -27,6 +27,7 @@ import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
+import com.reposilite.plugin.api.SharedConfigurationChangedEvent
 import com.reposilite.shared.EntityTag
 import com.reposilite.shared.EntityTagSigner
 import com.reposilite.shared.ErrorResponse
@@ -171,6 +172,7 @@ class SharedConfigurationFacade(
 
                 if (storeRendered(revision)) {
                     recordSettingsChange(name, before, body, actor)
+                    extensions.emitEvent(SharedConfigurationChangedEvent(name))
                     return result
                 }
             }
@@ -231,6 +233,7 @@ class SharedConfigurationFacade(
 
                 if (storeRendered(revision)) {
                     recordSettingsChange(name, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(current), applied.get(), actor)
+                    extensions.emitEvent(SharedConfigurationChangedEvent(name))
                     return applied.map { it.snapshot() }
                 }
             }

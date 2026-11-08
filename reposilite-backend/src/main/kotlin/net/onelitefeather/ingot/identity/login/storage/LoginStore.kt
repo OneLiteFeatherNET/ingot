@@ -238,6 +238,15 @@ class LoginStore(
         }
     }
 
+    /** The families of a principal that still hold an unrevoked token, the ones [revokeAllOfPrincipal] is about to revoke. */
+    fun activeFamilyIdsOfPrincipal(principalId: Int): Set<String> =
+        transaction(database) {
+            RefreshTokenTable.selectAll()
+                .where { (RefreshTokenTable.principalId eq principalId) and RefreshTokenTable.revokedAt.isNull() }
+                .map { it[RefreshTokenTable.familyId] }
+                .toSet()
+        }
+
     /** Revokes every token of every family of a principal, for example after its password changed. */
     fun revokeAllOfPrincipal(principalId: Int, at: Instant) {
         transaction(database) {
