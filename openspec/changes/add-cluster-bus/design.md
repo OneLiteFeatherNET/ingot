@@ -215,6 +215,7 @@ Bus settings are instance settings, so they belong to the local configuration ra
 |---|---|
 | Bus URL | `ingot.cluster.url`, then `INGOT_CLUSTER_URL`, then `REPOSILITE_CLUSTER_URL` |
 | Password, when the URL has none | `INGOT_CLUSTER_PASSWORD`, then `REPOSILITE_CLUSTER_PASSWORD`, so that the URL can live in a ConfigMap and the password in a Secret |
+| NATS credentials file, NATS schemes only | `ingot.cluster.credentials`, then `INGOT_CLUSTER_CREDENTIALS`: path to a `.creds` file (user JWT plus NKEY seed) for brokers in operator (decentralised JWT) mode, which accept no user and password. Mounted from a Secret. Ignored with a warning for Redis and Valkey |
 | Instance identifier | `INGOT_CLUSTER_INSTANCE_ID`, default the host name, which is the pod name under Kubernetes |
 | Console fan-out | `INGOT_CLUSTER_CONSOLE`, default on when a bus is configured |
 | Failure aggregation | `INGOT_CLUSTER_FAILURES`, default off |

@@ -252,6 +252,23 @@ SHALL reconnect with growing, bounded delays. Requests SHALL NOT wait for the bu
 - **WHEN** the bus connection drops while requests are being served
 - **THEN** no request is delayed by the outage, and the instance reconnects in the background
 
+### Requirement: NATS credentials file
+
+When `INGOT_CLUSTER_CREDENTIALS` or `ingot.cluster.credentials` names a file and the bus URL uses a NATS scheme, the instance SHALL
+authenticate to the broker with the user JWT and NKEY seed from that file. The file contents SHALL NOT appear in logs, status
+output or the administrator console. An unreadable file SHALL be reported once and SHALL leave the bus disconnected, without
+stopping the instance.
+
+#### Scenario: Operator mode broker accepts the credentials file
+
+- **WHEN** the bus URL is `nats://nats.example:4222` and `INGOT_CLUSTER_CREDENTIALS` points at a valid `.creds` file
+- **THEN** the instance connects with the JWT and seed from the file and publishes and receives events
+
+#### Scenario: Unreadable credentials file
+
+- **WHEN** `INGOT_CLUSTER_CREDENTIALS` points at a file that does not exist
+- **THEN** the instance logs one error naming the path, keeps the bus disconnected and keeps serving requests
+
 ### Requirement: Credentials stay out of logs and status
 
 The bus URL credentials SHALL NOT appear in logs, status output or the administrator console. When credentials are sent over an
