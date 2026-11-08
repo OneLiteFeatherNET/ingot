@@ -96,6 +96,7 @@ const namedRouter = () => createRouter({
   routes: [
     { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
     { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
+    { name: 'access', path: '/access', component: { render: () => null } },
     { name: 'access-sso', path: '/access/sso', component: { render: () => null } },
     { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } },
     { name: 'home', path: '/', component: { render: () => null } }
@@ -156,7 +157,7 @@ describe('SettingsView page', () => {
     store.domains.value = ['maven']
     await mountSettings({ store })
 
-    expect(wrapper.find('[aria-label="Configuration domains"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Settings sections"]').exists()).toBe(false)
     expect(wrapper.get('h2').text()).toBe('Maven')
   })
 
@@ -164,9 +165,9 @@ describe('SettingsView page', () => {
     const store = await loadedStore()
     store.domains.value = ['login', 'maven', 'ingot']
     store.schemas.value.login = { title: 'Login' }
-    await mountSettings({ store })
+    await mountSettings({ store, props: { domain: 'maven' } })
 
-    expect(wrapper.findAll('[aria-label="Configuration domains"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
   })
 
   it('shows the login domain as a card with links to its pages under Access when it is opened', async () => {
@@ -174,7 +175,7 @@ describe('SettingsView page', () => {
     store.domains.value = ['login', 'maven', 'ingot']
     store.schemas.value.login = { title: 'Login' }
     store.selectedDomain.value = 'login'
-    await mountSettings({ store })
+    await mountSettings({ store, props: { domain: 'login' } })
 
     expect(wrapper.find('[data-test="access-domain"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Login is managed under Access')
@@ -183,13 +184,13 @@ describe('SettingsView page', () => {
   })
 
   it('shows one secondary tab per domain when there is more than one', async () => {
-    await mountSettings()
+    await mountSettings({ props: { domain: 'maven' } })
 
-    expect(wrapper.findAll('[aria-label="Configuration domains"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
   })
 
   it('puts the factory reset in a danger zone at the end of the page', async () => {
-    await mountSettings()
+    await mountSettings({ props: { domain: 'maven' } })
 
     const zone = wrapper.get('section[aria-labelledby="settings-danger-title"]')
     expect(zone.text()).toContain('Danger zone')
@@ -199,7 +200,7 @@ describe('SettingsView page', () => {
   })
 
   it('hides the action bar while nothing is unsaved', async () => {
-    await mountSettings()
+    await mountSettings({ props: { domain: 'maven' } })
 
     expect(wrapper.text()).not.toContain('unsaved change')
   })
@@ -207,7 +208,7 @@ describe('SettingsView page', () => {
 
 describe('SettingsView collections', () => {
   it('lists the entries of a collection under the collection title', async () => {
-    await mountSettings()
+    await mountSettings({ props: { domain: 'maven' } })
 
     expect(wrapper.get('[aria-labelledby="repositories-title"] h2').text()).toBe('Repositories')
     expect(itemIds()).toEqual(['releases', 'snapshots'])
@@ -377,8 +378,21 @@ describe('SettingsView driven by the router', () => {
     expect(wrapper.get('[data-test="entry-title"]').text()).toBe('releases')
   })
 
-  it('writes the domain into an address that names none, without adding a history entry', async () => {
+  it('keeps an address that names no domain and shows the hub when there are several domains', async () => {
     const { router } = await mountAt(['/', '/settings'])
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings')
+    expect(wrapper.find('[data-test="settings-hub"]').exists()).toBe(true)
+  })
+
+  it('writes the one domain into an address that names none, without adding a history entry', async () => {
+    const router = namedRouter()
+    await router.push('/')
+    await router.push('/settings')
+    const store = await loadedStore()
+    store.domains.value = ['maven']
+    wrapper = mount(RouteHost, { global: { plugins: [router], provide: { [configurationStoreKey]: store } } })
+    await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
     router.back()
@@ -388,7 +402,7 @@ describe('SettingsView driven by the router', () => {
 
   it('writes a domain picked in the tabs into the address without adding a history entry', async () => {
     const { router } = await mountAt(['/', '/settings/maven'])
-    await wrapper.findAll('[aria-label="Configuration domains"] a').find(tab => tab.text() === 'Ingot').trigger('click')
+    await wrapper.findAll('[aria-label="Settings sections"] a').find(tab => tab.text() === 'Ingot').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
