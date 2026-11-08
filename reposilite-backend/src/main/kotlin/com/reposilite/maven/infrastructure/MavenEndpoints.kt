@@ -35,6 +35,7 @@ import io.javalin.community.routing.Route.HEAD
 import io.javalin.community.routing.Route.POST
 import io.javalin.community.routing.Route.PUT
 import io.javalin.http.Context
+import io.javalin.http.Header
 import io.javalin.http.HandlerType.HEAD as HEAD_METHOD
 import io.javalin.openapi.ContentType.FORM_DATA_MULTIPART
 import io.javalin.openapi.HttpMethod
@@ -46,6 +47,9 @@ import panda.std.Result
 import panda.std.asSuccess
 
 const val X_GENERATE_CHECKSUMS = "X-Generate-Checksums"
+
+/** The methods a proxy or a group still answers. Both take no uploads, so only the reads remain. */
+private const val READ_METHODS = "GET, HEAD"
 
 internal class MavenEndpoints(
     mavenFacade: MavenFacade,
@@ -150,6 +154,7 @@ internal class MavenEndpoints(
             requireGav { gav ->
                 requireRepository { repository ->
                     response = mavenFacade.checkAcceptsUploads(repository)
+                        .onError { ctx.header(Header.ALLOW, READ_METHODS) }
                         .flatMap {
                             DeployRequest(repository, gav, getSessionIdentifier(), ctx.bodyInputStream(), ctx.header(X_GENERATE_CHECKSUMS) == "true")
                                 .let { request -> mavenFacade.deployFile(request) }
