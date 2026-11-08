@@ -68,7 +68,6 @@ import panda.std.letIf
 import java.nio.file.Path
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Stored state of a token together with the entity tag that identifies exactly that state.
@@ -101,22 +100,17 @@ class AccessTokenFacade internal constructor(
      */
     private val mutationLock = Any()
 
-    private val changeListeners = CopyOnWriteArrayList<(String) -> Unit>()
-
     /**
      * Registers a callback that receives the name of every token whose stored state changed on this instance, and the old
-     * name of a renamed token. The callback runs after the change has been written. Other instances of a cluster are not
-     * notified.
+     * name of a renamed token. The callback runs after the change has been written, as a [TokenStateChangedEvent] listener.
+     * Other instances of a cluster are not notified by this callback.
      */
     fun onTokenChanged(listener: (tokenName: String) -> Unit) {
-        changeListeners.add(listener)
+        extensions.registerEvent { event: TokenStateChangedEvent -> listener(event.tokenName) }
     }
 
     private fun tokenChanged(vararg names: String) {
-        names.forEach { name ->
-            changeListeners.forEach { it(name) }
-            extensions.emitEvent(TokenStateChangedEvent(name))
-        }
+        names.forEach { name -> extensions.emitEvent(TokenStateChangedEvent(name)) }
     }
 
     /**
