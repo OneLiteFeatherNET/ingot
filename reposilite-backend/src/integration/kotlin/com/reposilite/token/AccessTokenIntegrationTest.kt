@@ -32,6 +32,7 @@ import com.reposilite.token.api.SecretType
 import com.reposilite.token.specification.AccessTokenIntegrationSpecification
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
+import io.javalin.http.HttpStatus.CONTENT_TOO_LARGE
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import kong.unirest.core.Unirest.delete
 import kong.unirest.core.Unirest.get
@@ -136,6 +137,24 @@ internal abstract class AccessTokenIntegrationTest : AccessTokenIntegrationSpeci
         // then: it is rejected with 412 and the error names the token
         assertErrorResponse(PRECONDITION_FAILED, response)
         assertThat(response.body.message).contains("reposilite")
+    }
+
+    @Test
+    fun `should answer an oversized token put with 413 before the body is parsed`() {
+        // given: a manager and a token body above the small JSON limit
+        val (name, secret) = useDefaultManagementToken()
+        val oversized = """{"secret":"${"a".repeat(70_000)}"}"""
+
+        // when: the token is put with that body
+        val response = put("$base/api/tokens/oversized")
+            .basicAuth(name, secret)
+            .body(oversized)
+            .asJacksonObject(ErrorResponse::class)
+
+        // then: the request is refused as too large, and no token was created
+        assertErrorResponse(CONTENT_TOO_LARGE, response)
+        val listed = get("$base/api/tokens").basicAuth(name, secret).asString().body
+        assertThat(listed).describedAs("the refused token must not exist").doesNotContain("\"oversized\"")
     }
 
     @Test

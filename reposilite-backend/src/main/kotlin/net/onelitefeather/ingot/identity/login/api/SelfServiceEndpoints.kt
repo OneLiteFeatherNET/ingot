@@ -26,6 +26,7 @@ import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import io.javalin.community.routing.Route
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
@@ -108,7 +109,7 @@ internal class SelfServiceEndpoints(
         description = "Creates a token for the signed-in user. The secret is returned once, in this response",
         tags = ["Identity"],
     )
-    private val createToken = ReposiliteRoute<CreatedTokenDto>("/api/identity/me/tokens", Route.POST) {
+    private val createToken = ReposiliteRoute<CreatedTokenDto>("/api/identity/me/tokens", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         authenticated {
             val caller = callerOf(identifier)
             val request = runCatching { body<SelfTokenRequest>() }.getOrNull() ?: SelfTokenRequest()

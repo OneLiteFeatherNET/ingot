@@ -32,6 +32,7 @@ import com.reposilite.token.api.UpdateAccessTokenRequest
 import com.reposilite.token.api.UpdateAccessTokenWithNoNameRequest
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import io.javalin.community.routing.Route.DELETE
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.PATCH
@@ -39,7 +40,6 @@ import io.javalin.community.routing.Route.POST
 import io.javalin.community.routing.Route.PUT
 import io.javalin.http.Header
 import io.javalin.http.HttpStatus.FORBIDDEN
-import io.javalin.http.bodyAsClass
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
@@ -95,9 +95,9 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
         pathParams = [OpenApiParam(name = "name", description = "Name of the token to be created or updated", required = true)],
         methods = [HttpMethod.PUT]
     )
-    val upsertToken = ReposiliteRoute<CreateAccessTokenResponse>("/api/tokens/{name}", PUT) {
+    val upsertToken = ReposiliteRoute<CreateAccessTokenResponse>("/api/tokens/{name}", PUT, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("tokens") {
-            response = supplyThrowing { ctx.bodyAsClass<CreateAccessTokenWithNoNameRequest>() }
+            response = supplyThrowing { body<CreateAccessTokenWithNoNameRequest>() }
                 .mapErr { badRequest("Failed to read body") }
                 .filter({ request -> request.permissions.all { AccessTokenPermission.findByAny(it) != null } }) { unknownPermissionError() }
                 .filter({ request -> request.routes.all { route -> route.permissions.all { RoutePermission.findRoutePermissionByShortcut(it).isOk }}}) {
@@ -138,9 +138,9 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
         pathParams = [OpenApiParam(name = "name", description = "Name of the token to be updated", required = true)],
         methods = [HttpMethod.PATCH]
     )
-    val patchToken = ReposiliteRoute<AccessTokenDetailsDto>("/api/tokens/{name}", PATCH) {
+    val patchToken = ReposiliteRoute<AccessTokenDetailsDto>("/api/tokens/{name}", PATCH, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("tokens") {
-            response = supplyThrowing { ctx.bodyAsClass<UpdateAccessTokenWithNoNameRequest>() to ctx.bodyAsClass<JsonNode>().has("expiresAt") }
+            response = supplyThrowing { body<UpdateAccessTokenWithNoNameRequest>() to body<JsonNode>().has("expiresAt") }
                 .mapErr { badRequest("Failed to read body") }
                 .filter({ (request, _) -> request.permissions.orEmpty().all { AccessTokenPermission.findByAny(it) != null } }) {
                     unknownPermissionError()
