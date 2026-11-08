@@ -41,7 +41,7 @@ internal class DatabaseTransportFactory(
     private val log: (String) -> Unit = {},
 ) : ClusterTransportFactory {
 
-    override fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport {
+    override fun open(url: ClusterBusUrl, settings: ClusterSettings, clusterIdentifier: String): ClusterTransport {
         if (url.host.isNotEmpty() || url.username != null || url.password != null) {
             throw ClusterTransportRefusedException(
                 "The database cluster bus takes no host and no credentials, set INGOT_CLUSTER_URL to database: alone, the bus stays off"

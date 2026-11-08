@@ -165,6 +165,7 @@ internal class DatabaseClusterTransportIntegrationTest {
         private val transport: ClusterTransport = factory.open(
             ClusterBusUrl.parse("database:"),
             ClusterSettings.read(ClusterSources(property = { null }, variable = mapOf("INGOT_CLUSTER_INSTANCE_ID" to origin)::get, hostName = { origin })),
+            CLUSTER,
         )
         val received = CopyOnWriteArrayList<String>()
 

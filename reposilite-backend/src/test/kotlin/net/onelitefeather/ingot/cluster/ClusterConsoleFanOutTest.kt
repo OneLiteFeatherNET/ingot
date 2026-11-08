@@ -241,7 +241,7 @@ internal class ClusterConsoleFanOutTest {
     fun `a logging call does not block while the bus is slow`() {
         // given: a transport whose publish waits for a release the test controls, bounded by five seconds
         val slowFactory = object : ClusterTransportFactory {
-            override fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport =
+            override fun open(url: ClusterBusUrl, settings: ClusterSettings, clusterIdentifier: String): ClusterTransport =
                 object : ClusterTransport {
                     override fun publish(message: String) {
                         releaseBus.await(5, TimeUnit.SECONDS)

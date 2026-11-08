@@ -31,7 +31,7 @@ internal class ClusterPluginInertTest {
     private class CountingFactory : ClusterTransportFactory {
         var opened = 0
 
-        override fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport {
+        override fun open(url: ClusterBusUrl, settings: ClusterSettings, clusterIdentifier: String): ClusterTransport {
             opened++
             return object : ClusterTransport {
                 override fun publish(message: String) {}

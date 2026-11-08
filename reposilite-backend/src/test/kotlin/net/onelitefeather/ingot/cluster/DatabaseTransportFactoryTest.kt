@@ -36,7 +36,7 @@ internal class DatabaseTransportFactoryTest {
 
     @Test
     fun `a database url with a host is refused without echoing the host`() {
-        assertThatThrownBy { factory.open(ClusterBusUrl.parse("database://broker.example:5432"), settings) }
+        assertThatThrownBy { factory.open(ClusterBusUrl.parse("database://broker.example:5432"), settings, "cluster-a") }
             .isInstanceOf(ClusterTransportRefusedException::class.java)
             .hasMessageContaining("database:")
             .hasMessageNotContaining("broker.example")
@@ -44,7 +44,7 @@ internal class DatabaseTransportFactoryTest {
 
     @Test
     fun `a database url with credentials is refused without echoing the credentials or the host`() {
-        assertThatThrownBy { factory.open(ClusterBusUrl.parse("database://ops:s3cret@broker.example"), settings) }
+        assertThatThrownBy { factory.open(ClusterBusUrl.parse("database://ops:s3cret@broker.example"), settings, "cluster-a") }
             .isInstanceOf(ClusterTransportRefusedException::class.java)
             .hasMessageNotContaining("s3cret")
             .hasMessageNotContaining("broker.example")

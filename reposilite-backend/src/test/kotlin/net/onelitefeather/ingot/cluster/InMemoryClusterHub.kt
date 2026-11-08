@@ -34,7 +34,7 @@ internal class InMemoryClusterHub : AutoCloseable {
 
     fun factory(): ClusterTransportFactory =
         object : ClusterTransportFactory {
-            override fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport =
+            override fun open(url: ClusterBusUrl, settings: ClusterSettings, clusterIdentifier: String): ClusterTransport =
                 InMemoryClusterTransport(this@InMemoryClusterHub, settings.instanceId)
         }
 

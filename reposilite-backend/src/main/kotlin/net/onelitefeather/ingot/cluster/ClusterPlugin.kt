@@ -112,7 +112,7 @@ class ClusterPlugin(
 
         logger.info("Cluster | connecting to ${url.redacted()}")
         val transport = try {
-            factory.open(url, settings)
+            factory.open(url, settings, identifier)
         } catch (refused: ClusterTransportRefusedException) {
             logger.error("Cluster | ${refused.message}")
             attachStatus(ClusterStatusView(settings.instanceId, url, counters, RemoteInstanceStore(clock)) { ConnectionState.DISABLED })
@@ -237,7 +237,7 @@ class ClusterPlugin(
                 clock = clock,
                 log = { logger.warn(it) },
             ),
-        )
+        ) + JedisClusterTransports
 
     private fun dispatch(envelope: ClusterEnvelope) {
         handlers[envelope.type]?.forEach { it(envelope) }

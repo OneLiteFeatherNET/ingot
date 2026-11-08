@@ -80,7 +80,7 @@ internal class ClusterStatusSectionTest {
 
     /** A transport that is reconnecting, as a transport is during an outage. */
     private class ReconnectingFactory : ClusterTransportFactory {
-        override fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport =
+        override fun open(url: ClusterBusUrl, settings: ClusterSettings, clusterIdentifier: String): ClusterTransport =
             object : ClusterTransport {
                 override fun publish(message: String) {}
 

@@ -19,8 +19,9 @@ package net.onelitefeather.ingot.cluster
 /**
  * Opens the connection to one bus. The plugin looks the factory up by the scheme of the configured URL, so a transport
  * class is only touched when its scheme is configured. The transport is closed when the instance is disposed.
+ * [clusterIdentifier] names the cluster in the broker, so that transports derive their channel or subject from it.
  */
 interface ClusterTransportFactory {
 
-    fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport
+    fun open(url: ClusterBusUrl, settings: ClusterSettings, clusterIdentifier: String): ClusterTransport
 }
