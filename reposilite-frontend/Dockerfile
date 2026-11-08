@@ -1,24 +1,24 @@
-# The Ingot dashboard, served on its own.
+# Serves the Ingot dashboard on its own, in front of a server that has its dashboard switched off.
 #
 # Splitting it off the server buys three things: the dashboard scales and restarts
-# independently of the artifact store, a static file server is a far smaller thing to attack
-# than a JVM, and this image needs no writable state at all, so it can run with a read only
-# root filesystem.
+# independently of the artifact store, a Node server that answers only the dashboard and the
+# proxy is a far smaller thing to attack than a JVM, and this image writes nothing at run time,
+# so it can run with a read only root filesystem.
 #
 # The server can still serve the dashboard itself, which stays the simpler deployment. See
 # docs/gitbook/how-to/run-split-dashboard-container.md for when each is worth it.
 #
 # Build from the repository root, not from this directory:
 #   docker build -f reposilite-frontend/Dockerfile -t ingot-dashboard .
-# The image needs the shared branding assets, which live outside this module.
+# The image needs the shared branding favicon, which lives outside this module.
 
 # Pinned by digest as well as tag, so a rebuild cannot silently land on a different base.
 # Renovate raises both together.
 #
 # --platform=$BUILDPLATFORM keeps this stage on the architecture doing the building. What it
-# produces is HTML, CSS and JavaScript, which is the same on every target, so emulating the
-# npm install and the bundler for a second architecture would buy an identical result at
-# several times the cost. Only the nginx stage below is built per target.
+# produces is JavaScript, which is the same on every target, so emulating the npm install and
+# the bundler for a second architecture would buy an identical result at several times the cost.
+# Only the run stage below is built per target architecture.
 FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 
 WORKDIR /build
@@ -31,62 +31,36 @@ RUN npm ci --ignore-scripts --no-audit --no-fund
 
 COPY reposilite-frontend/ ./
 
-# Where this dashboard will be mounted. It has to be known now rather than at startup: the
-# asset URLs live in script tags in index.html and must resolve before any of our code runs.
-ARG INGOT_BASE_PATH="/"
-ENV INGOT_BASE_PATH=${INGOT_BASE_PATH}
-RUN npm run build
+# The branding favicon is picked up from here by the dashboard build (see vite.config.js).
+COPY reposilite-backend/src/main/resources/static/favicon.png ./dashboard-branding/favicon.png
 
-# The remaining placeholders sit in the document head, which is rendered before the app can
-# fetch anything, so an untouched build would show a raw token in the browser tab until Vue
-# takes over. They are replaced with neutral text; the real values arrive with the settings
-# and the app applies them. The base element is the exception: it has to be the mount point
-# the build was made for, or the favicon of a deep link resolves below it.
-RUN set -eu; \
-    index=build/frontend/reposilite-frontend/index.html; \
-    sed -i \
-        -e 's/{{REPOSILITE.TITLE}}/Ingot Repository/g' \
-        -e 's|{{REPOSILITE.DESCRIPTION}}|Maven repository powered by Ingot|g' \
-        -e 's|{{REPOSILITE.FAVICON}}|favicon.png|g' \
-        -e "s|{{REPOSILITE.BASE_PATH}}|${INGOT_BASE_PATH}|g" \
-        "$index"; \
-    ! grep -q '{{REPOSILITE\.' "$index"
+# The dashboard build and the Nitro build of its server. The base path is not built in: the
+# server writes it into the document when it starts, from INGOT_BASE_PATH.
+RUN npm run build:dashboard
 
-# nginx-unprivileged already runs as a non-root user and listens above 1024, rather than
-# starting as root and dropping privileges the way the stock nginx image does.
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:378d0c32f6562f7fd9629170797f57d2b953aa09be983b3daaf4809bb039ca00 AS run
+# The distroless Node runtime has no shell and no package manager, and runs as the non-root user 65532.
+# The Node major matches the build stage. Pinned by tag and digest; Renovate raises both together.
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:b8cec4b2f2126ff7bd034ec9ac207ffb3272667dfdc48376e3b035d3270549ba AS run
 
-# The pinned base still ships libexpat 2.8.5 (CVE-2026-77214, fixed in 2.9.0), brotli-libs 1.2.0
-# (CVE-2026-111497, fixed in 1.2.1), curl and libcurl 8.22.0 (CVE-2026-92392, fixed in 8.23.0),
-# libx11 1.8.13 (CVE-2026-88806, fixed in 1.8.14), musl and musl-utils 1.2.6-r2
-# (CVE-2026-107891, fixed in 1.2.6-r3) and zlib 1.3.2-r0 (CVE-2026-85091, fixed in 1.3.2-r1).
-# Upgrade just those packages, as root for the duration of this step only, then drop back to
-# the unprivileged user the base image runs as. Remove this once the base image carries the
-# fixed versions.
-USER root
-RUN apk upgrade --no-cache libexpat brotli-libs curl libcurl libx11 musl musl-utils zlib \
-    && apk info -v libexpat brotli-libs curl libcurl libx11 musl musl-utils zlib
-USER 101
+WORKDIR /app
 
-# Where to reach the server, and how to resolve it. 127.0.0.11 is Docker's embedded DNS; on
-# Kubernetes this wants the cluster resolver instead.
+# The output is self-contained: the server, its bundled dependencies and the dashboard assets.
+COPY --from=build /build/.output /app/.output
+
+# Where the server is reached, and the largest request body the proxy takes. Read when the process starts.
+# INGOT_RESOLVER is no longer needed and is ignored when it is set.
 ENV INGOT_BACKEND="http://ingot-backend:8080" \
-    INGOT_RESOLVER="127.0.0.11" \
-    INGOT_MAX_UPLOAD_SIZE="1024m"
+    INGOT_MAX_UPLOAD_SIZE="1024m" \
+    PORT="8080"
 
-# Rendered by the base image's own entrypoint, which substitutes the INGOT_ variables above
-# and leaves nginx's own $uri and $host alone.
-COPY reposilite-frontend/docker/default.conf.template /etc/nginx/templates/default.conf.template
-
-COPY --from=build /build/build/frontend/reposilite-frontend/ /usr/share/nginx/html/
-# Branding lives outside this module. An operator can still mount their own over this.
-COPY reposilite-backend/src/main/resources/static/favicon.png /usr/share/nginx/html/favicon.png
-
-# Inherited from the base image, repeated so it survives a base image change.
-USER 101
+# The numeric user is what the runtime checks for; the image has no user database to resolve a name in.
+USER 65532
 
 EXPOSE 8080
 
-# Static content, so being able to answer at all is the whole health question.
+# The health endpoint answers from this process alone, so there is no shell here and nothing to
+# call but the Node binary itself.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://127.0.0.1:8080/ || exit 1
+    CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:8080/healthz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+
+CMD ["/app/.output/server/index.mjs"]

@@ -84,15 +84,16 @@ The Compose files in the repository read `PORT`, `MEMORY`, `JAVA_COMPOSE_OPTS` a
 
 ## Dashboard image variables
 
-The separate dashboard image (`ghcr.io/onelitefeathernet/ingot-dashboard`) renders its web server configuration from these variables when it starts.
+The separate dashboard image (`ghcr.io/onelitefeathernet/ingot-dashboard`) reads these variables when its container starts.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `INGOT_BACKEND` | `http://ingot-backend:8080` | Address of the Ingot server. The dashboard container proxies everything that is not its own content to it. |
-| `INGOT_RESOLVER` | `127.0.0.11` | DNS resolver used to look up the server address for each request. |
+| `INGOT_BACKEND` | `http://ingot-backend:8080` | Address of the Ingot server, an absolute `http` or `https` URL. The dashboard container proxies everything that is not its own content to it. |
+| `INGOT_BASE_PATH` | `/` | Path the dashboard is served under, such as `/ingot/`. Read at run time. |
 | `INGOT_MAX_UPLOAD_SIZE` | `1024m` | Largest request body that the dashboard container accepts. |
+| `INGOT_RESOLVER` | not set | Not used any more. A value that is set is accepted and ignored. |
 
-The image has a build argument `INGOT_BASE_PATH` (default `/`) that sets the base path of the bundled dashboard when the image is built. It is not read at run time.
+The image has no build argument for the base path, so one image serves any base path.
 
 ## Names that do not follow the rule
 

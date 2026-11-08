@@ -37,6 +37,25 @@ const mountPoint = () => ({
   },
 })
 
+/*
+ * The dashboard image build (INGOT_DASHBOARD_BUILD=1). Its assets are relative, so the document's base
+ * element anchors them wherever the image is mounted, and its server fills that element in at start. The
+ * placeholders that carry no runtime value are written here, so nothing but the base element is left.
+ */
+const dashboardBuild = process.env.INGOT_DASHBOARD_BUILD === "1"
+
+const dashboardText = () => ({
+  name: 'ingot-dashboard-text',
+  apply: 'build',
+  transformIndexHtml: {
+    order: 'pre',
+    handler: (html) => html
+      .replaceAll('{{REPOSILITE.TITLE}}', 'Ingot Repository')
+      .replaceAll('{{REPOSILITE.DESCRIPTION}}', 'Maven repository powered by Ingot')
+      .replaceAll('{{REPOSILITE.FAVICON}}', 'favicon.png'),
+  },
+})
+
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
@@ -48,15 +67,19 @@ export default defineConfig({
     tailwindcss(),
     visualizer(),
     mountPoint(),
+    ...(dashboardBuild ? [dashboardText()] : []),
   ],
   // Served by the server itself, the placeholder is substituted on the way out and the
   // asset URLs come out right. Served by anything else nothing substitutes it, and since
   // the URLs sit in script tags they have to resolve before any of our code runs, so a
-  // detached build has to bake the real prefix in. INGOT_BASE_PATH is how the dashboard
-  // image does that.
-  base:
-    process.env.INGOT_BASE_PATH ||
-    (process.env.NODE_ENV === "production" ? "{{REPOSILITE.VITE_BASE_PATH}}" : "/"),
+  // detached build has to bake the real prefix in. The dashboard image instead builds relative
+  // URLs and takes its prefix from the base element at start, so one image serves any prefix.
+  base: dashboardBuild
+    ? "./"
+    : process.env.INGOT_BASE_PATH ||
+      (process.env.NODE_ENV === "production" ? "{{REPOSILITE.VITE_BASE_PATH}}" : "/"),
+  // The branding of the dashboard image (its favicon) is copied from outside this module by the image build.
+  publicDir: dashboardBuild ? "dashboard-branding" : "public",
   // The development API is the fake backend on 8887 unless INGOT_FAKE_API_PORT moves it, so that
   // a second copy can run beside the first. Only the dev branch of the dashboard reads this.
   define: {
@@ -65,7 +88,7 @@ export default defineConfig({
   build: {
     minify: true,
     emptyOutDir: true,
-    outDir: "build/frontend/reposilite-frontend",
+    outDir: dashboardBuild ? "build/dashboard" : "build/frontend/reposilite-frontend",
     chunkSizeWarningLimit: 768,
   },
   css: {
