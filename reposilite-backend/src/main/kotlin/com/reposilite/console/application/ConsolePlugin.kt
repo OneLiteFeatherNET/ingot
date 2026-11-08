@@ -40,6 +40,7 @@ import com.reposilite.web.api.HttpServerInitializationEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import com.reposilite.web.application.WebSettings
 import net.onelitefeather.ingot.identity.login.LoginFacade
+import net.onelitefeather.ingot.web.TrustedProxies
 
 @Plugin(name = "console", dependencies = [ "shared-configuration", "failure", "access-token", "authentication", "login" ])
 internal class ConsolePlugin : ReposilitePlugin() {
@@ -93,7 +94,8 @@ internal class ConsolePlugin : ReposilitePlugin() {
                     journalist = reposilite().journalist,
                     consoleAuthenticator = consoleAuthenticator,
                     consoleFacade = consoleFacade,
-                    forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp }
+                    forwardedIp = sharedConfigurationFacade.getDomainSettings<WebSettings>().computed { it.forwardedIp },
+                    trustedProxies = TrustedProxies.fromEnvironment()
                 )
             )
             event.config.routes.sse(
