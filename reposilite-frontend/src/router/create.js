@@ -15,7 +15,8 @@
  */
 
 import { createRouter } from 'vue-router'
-import { ROUTES, ACCESS_TABS } from './routes'
+import { ROUTES } from './routes'
+import { firstAccessRoute } from '../navigation/registry'
 import { createManagerGuard, createPasswordChangeGuard } from './guard'
 import { pageTitle } from './title'
 
@@ -47,8 +48,7 @@ const createAppRouter = ({
     routes: ROUTES.map(route => {
       if (route.name === 'access') {
         // /access opens the first tab the user may use, not a tab they would be refused.
-        const first = () => (ACCESS_TABS.find(tab => can(tab.node)) ?? ACCESS_TABS[0]).route
-        return { ...route, redirect: () => ({ name: first() }) }
+        return { ...route, redirect: () => ({ name: firstAccessRoute(can) }) }
       }
       return route.redirect ? route : { ...route, component }
     })
