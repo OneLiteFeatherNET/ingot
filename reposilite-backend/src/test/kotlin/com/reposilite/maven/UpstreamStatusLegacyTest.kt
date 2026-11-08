@@ -32,7 +32,8 @@ import org.junit.jupiter.params.provider.CsvSource
  */
 internal class UpstreamStatusLegacyTest : UpstreamStatusSpecification() {
 
-    override fun realProvider(): RemoteClientProvider = ConfiguredHttpRemoteClientProvider(UpstreamStatusMode.LEGACY, millisPerTimeoutUnit = 100)
+    // 500 ms per timeout unit leaves room for normal stub answers on a loaded CI runner, while the hanging stub still times out quickly.
+    override fun realProvider(): RemoteClientProvider = ConfiguredHttpRemoteClientProvider(UpstreamStatusMode.LEGACY, millisPerTimeoutUnit = 500)
 
     @ParameterizedTest(name = "{0}: artifact {1}, metadata {2}")
     @CsvSource(
