@@ -95,7 +95,7 @@ The cluster plugin reads these settings at start. Without `INGOT_CLUSTER_URL` or
 | `INGOT_CLUSTER_URL` | `REPOSILITE_CLUSTER_URL`, and the system property `ingot.cluster.url` wins over both | unset, bus off | Bus URL with one of the schemes `nats`, `tls`, `redis`, `rediss`, `valkey`, `valkeys`, `database`. Any other scheme stops the start. `database:` uses the instance database and is refused on SQLite and H2, which keeps the instance running without the bus. |
 | `INGOT_CLUSTER_PASSWORD` | `REPOSILITE_CLUSTER_PASSWORD` | unset | Password for the bus when the URL carries none. A password in the URL wins. |
 | `INGOT_CLUSTER_CREDENTIALS` | system property `ingot.cluster.credentials`, which wins | unset | Path to a NATS `.creds` file for brokers in operator mode. Used with `nats` and `tls` only. |
-| `INGOT_CLUSTER_INSTANCE_ID` | none | host name | Identifier of this replica in the bus and in the status output. |
+| `INGOT_CLUSTER_INSTANCE_ID` | system property `ingot.cluster.instance`, which wins | host name | Identifier of this replica in the bus and in the status output. |
 | `INGOT_CLUSTER_CONSOLE` | none | `true` when a bus is configured, `false` on the `database` transport | `false` turns off the forwarding of live console log lines between replicas. `true` turns it on, which the `database` transport needs explicitly. |
 | `INGOT_CLUSTER_POLL_INTERVAL_MS` | none | `1000` | Poll interval of the `database` transport in milliseconds. Values below 200 are raised to 200 with one warning. Other transports ignore it. |
 | `INGOT_CLUSTER_FAILURES` | none | `false` | `true` aggregates recorded failures across replicas. |
