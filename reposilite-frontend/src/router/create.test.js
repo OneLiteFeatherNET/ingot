@@ -478,12 +478,15 @@ describe('the /access address forwards or shows the index', () => {
   })
 
   it('replaces /access with the one page a visitor may open', async () => {
-    const router = makeRouter(sessionWith('ingot.admin.tokens'))
+    const history = createMemoryHistory()
+    const router = makeRouter({ ...sessionWith('ingot.admin.tokens'), history })
+    await router.push('/search')
+    const replace = vi.spyOn(history, 'replace')
 
     await router.push('/access')
 
     expect(router.currentRoute.value.name, 'the tokens node alone permits only the check page').toBe('access-check')
-    expect(router.options.history.state.replaced, 'the forward leaves no history step behind').toBe(true)
+    expect(replace, 'the forward leaves no history step behind').toHaveBeenCalledWith('/access/check', expect.anything())
   })
 
   it('forwards /access to the first permitted page on a wide screen', async () => {
