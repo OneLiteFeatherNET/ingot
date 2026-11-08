@@ -56,6 +56,19 @@ Ingot never writes the credentials to its log or to the status output. It shows 
 
 When credentials are sent over an unencrypted scheme (`nats`, `redis` or `valkey`), the log contains a warning that names the scheme. Use `tls`, `rediss` or `valkeys` to encrypt the connection.
 
+## Valkey and Redis
+
+Valkey is the first choice for the Redis family. It is released under the BSD-3-Clause licence. Redis 8 is distributed under RSALv2, SSPLv1 or AGPLv3, so check the terms of the server you run before you deploy it. Ingot uses only the plain publish and subscribe commands, so the same configuration works with either server. The Ingot transport is built on Jedis, which is released under the MIT licence.
+
+Use `valkey` or `valkeys` for Valkey, and `redis` or `rediss` for Redis. Both names of a server reach the same transport, so `valkey://` and `redis://` to one host behave alike. The TLS variants `valkeys` and `rediss` encrypt the connection.
+
+```
+INGOT_CLUSTER_URL=valkeys://valkey.example:6379
+INGOT_CLUSTER_PASSWORD=<from a Secret>
+```
+
+Each replica opens one connection that subscribes to the channel of its cluster, and publishes over a second connection. The channel name contains the cluster identifier of the database, so several Ingot installations can share one server without mixing their events. When the server is down, a replica keeps serving requests, logs the change of connection state once, and reconnects with a growing delay of up to one minute. An event published during the outage is lost, and the database fallbacks described at the top of this page apply.
+
 ## NATS credentials file
 
 Brokers in operator mode accept no user name and password. They expect a `.creds` file that holds a user JWT and an NKEY seed. Point Ingot at that file with the system property `ingot.cluster.credentials` or the variable `INGOT_CLUSTER_CREDENTIALS`. The system property wins when both are set.
