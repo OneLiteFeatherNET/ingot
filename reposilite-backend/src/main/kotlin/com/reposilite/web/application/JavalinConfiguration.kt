@@ -104,7 +104,8 @@ internal object JavalinConfiguration {
             failureFacade = extensionManager.facade(),
             accessTokenFacade = extensionManager.facade(),
             authenticationFacade = extensionManager.facade(),
-            loginFacade = extensionManager.facade()
+            loginFacade = extensionManager.facade(),
+            basePath = extensionManager.facade<LocalConfiguration>().basePath,
         )
 
         val dslRoutes = extensionManager.emitEvent(RoutingSetupEvent(reposilite))
