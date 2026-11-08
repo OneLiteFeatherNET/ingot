@@ -7,6 +7,7 @@ import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.filesystem.FileSystemEntrySource
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
@@ -29,6 +30,8 @@ private val MODIFIED_AT: Instant = Instant.parse("2026-10-15T12:00:00.123Z")
 
 internal class WalkingEntrySourceTest {
 
+    private val failureFacade = FailureFacade(InMemoryLogger())
+
     @TempDir
     lateinit var root: Path
 
@@ -41,7 +44,7 @@ internal class WalkingEntrySourceTest {
         file("a.txt")
 
         // when: the tree is listed through the walking fallback
-        val paths = listAll(WalkingEntrySource(plainStorage())).map { it.path.toString() }
+        val paths = listAll(WalkingEntrySource(plainStorage(), failureFacade)).map { it.path.toString() }
 
         // then: the order matches the file system source, so the two sources can be swapped
         assertThat(paths).describedAs("paths in listing order")
@@ -55,7 +58,7 @@ internal class WalkingEntrySourceTest {
         file("a/y/k.pom")
         file("a/x.jar")
         file("a.txt")
-        val source = WalkingEntrySource(plainStorage())
+        val source = WalkingEntrySource(plainStorage(), failureFacade)
 
         // when: the first page of two entries is requested
         val first = assertOk(source.listEntries(Location.empty(), after = null, limit = 2))
@@ -79,7 +82,7 @@ internal class WalkingEntrySourceTest {
         Files.setLastModifiedTime(file, FileTime.from(MODIFIED_AT))
 
         // when: the tree is listed through the walking fallback
-        val entry = assertOk(WalkingEntrySource(plainStorage()).listEntries(Location.empty(), after = null, limit = 10))
+        val entry = assertOk(WalkingEntrySource(plainStorage(), failureFacade).listEntries(Location.empty(), after = null, limit = 10))
             .entries.single()
 
         // then: the entry carries the size and the modification time
@@ -91,7 +94,7 @@ internal class WalkingEntrySourceTest {
     @Test
     fun `should report the epoch as the modification time when the provider reports none`() {
         // given: a provider whose directory listing carries a file without a modification time
-        val source = WalkingEntrySource(storageWithoutModificationTimes())
+        val source = WalkingEntrySource(storageWithoutModificationTimes(), failureFacade)
 
         // when: the tree is listed
         val entry = assertOk(source.listEntries(Location.empty(), after = null, limit = 10)).entries.single()
@@ -106,7 +109,7 @@ internal class WalkingEntrySourceTest {
         val storage: StorageProvider = FileSystemStorageProviderFactory.of(InMemoryLogger(), root, "100%")
 
         // when: the source for the provider is chosen
-        val source = storage.entrySource()
+        val source = storage.entrySource(failureFacade)
 
         // then: the provider is used as its own source
         assertThat(source).describedAs("source of a file system provider").isSameAs(storage)
@@ -118,7 +121,7 @@ internal class WalkingEntrySourceTest {
         val storage = plainStorage()
 
         // when: the source for the provider is chosen
-        val source = storage.entrySource()
+        val source = storage.entrySource(failureFacade)
 
         // then: the walking fallback is used
         assertThat(source).describedAs("source of a provider without a native listing").isInstanceOf(WalkingEntrySource::class.java)
@@ -133,7 +136,7 @@ internal class WalkingEntrySourceTest {
         }
 
         // when: the entries are listed
-        val error = assertError(WalkingEntrySource(storage).listEntries(Location.empty(), after = null, limit = 10))
+        val error = assertError(WalkingEntrySource(storage, failureFacade).listEntries(Location.empty(), after = null, limit = 10))
 
         // then: the status is still a server error
         assertThat(error.status).describedAs("status of a failed listing").isEqualTo(500)

@@ -19,6 +19,7 @@ package com.reposilite.storage.filesystem
 
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.internalServerError
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageEntry
 import com.reposilite.storage.StorageEntryPage
 import com.reposilite.storage.StorageEntrySource
@@ -47,7 +48,10 @@ import panda.std.asSuccess
  *
  * @param rootDirectory root directory of the storage space
  */
-class FileSystemEntrySource(private val rootDirectory: Path) : StorageEntrySource {
+class FileSystemEntrySource(
+    private val rootDirectory: Path,
+    private val failureFacade: FailureFacade,
+) : StorageEntrySource {
 
     override fun listEntries(prefix: Location, after: String?, limit: Int): Result<StorageEntryPage, ErrorResponse> {
         require(limit > 0) { "limit must be positive, was $limit" }
@@ -56,7 +60,8 @@ class FileSystemEntrySource(private val rootDirectory: Path) : StorageEntrySourc
             val entries = entriesAfter(prefix = prefix.toString().toSegments(), cursor = after?.toSegments())
             paginate(entries, limit).asSuccess()
         } catch (exception: IOException) {
-            internalServerError(exception.message ?: exception::class.toString())
+            failureFacade.throwException("Cannot list the entries of $rootDirectory", exception)
+            internalServerError("Storage failure")
         }
     }
 
