@@ -19,8 +19,8 @@
  * read from `meta.section`, and `meta.manager` marks the routes that need the manager
  * permission. Route names are the contract the links and the other views build on.
  *
- * The section segments (search, account, dashboard, analytics, access, tokens, console, maintenance, audit, settings) are top level names that a
- * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
+ * The section segments (search, account, dashboard, analytics, access, tokens, console, maintenance, audit, settings, browse, api, assets)
+ * are top level names that a repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.
  */
@@ -39,10 +39,11 @@ const ACCESS_ANY = { section: 'access', manager: true, anyNode: ACCESS_NODES }
 const ACCESS_PROVIDERS = adminRoute('access', INSTANCE_ADMIN_NODE)
 
 // The tabs of the access section in the order they are offered, with the node each one needs.
+// The tab bar and the /access redirect both read this list, so they cannot disagree with the route guard.
 const ACCESS_TABS = [
-  { key: 'users', route: 'access-users', node: ADMIN_NODES.users },
-  { key: 'machines', route: 'access-machines', node: ADMIN_NODES.users },
-  { key: 'teams', route: 'access-teams', node: ADMIN_NODES.teams },
+  { key: 'users', label: 'Users', route: 'access-users', node: ADMIN_NODES.users },
+  { key: 'machines', label: 'Machine accounts', route: 'access-machines', node: ADMIN_NODES.users },
+  { key: 'teams', label: 'Teams', route: 'access-teams', node: ADMIN_NODES.teams },
 ]
 
 const ROUTES = [

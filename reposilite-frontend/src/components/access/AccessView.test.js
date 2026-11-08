@@ -154,12 +154,20 @@ describe('AccessView', () => {
     expect(tabs().map(tab => tab.text()), 'a tab is hidden, not greyed out').toEqual(['Teams', 'Check'])
   })
 
-  it('offers the Machine accounts tab to a user with ingot.admin.tokens', async () => {
-    holder.session.can = (node) => node === 'ingot.admin.tokens'
+  it('offers the Machine accounts tab to a user with ingot.admin.users', async () => {
+    holder.session.can = (node) => node === 'ingot.admin.users'
 
     await mountView({ tab: 'machines' }, '/access/machines')
 
-    expect(tabs().map(tab => tab.text())).toEqual(['Machine accounts', 'Check'])
+    expect(tabs().map(tab => tab.text()), 'machine accounts are listed through the users area').toEqual(['Users', 'Machine accounts', 'Check'])
+  })
+
+  it('hides the Machine accounts tab from a user with only ingot.admin.tokens', async () => {
+    holder.session.can = (node) => node === 'ingot.admin.tokens'
+
+    await mountView({ tab: 'users' })
+
+    expect(tabs().map(tab => tab.text()), 'the list endpoint needs ingot.admin.users, so the tab stays hidden').toEqual(['Check'])
   })
 
   it('moves to the check route from the Check tab', async () => {
