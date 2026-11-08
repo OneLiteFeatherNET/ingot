@@ -1,5 +1,5 @@
 ---
-description: Run the Ingot dashboard in its own nginx container in front of the Ingot server, with its routes, environment variables, build for a sub-path and hardening.
+description: Run the Ingot dashboard in its own container in front of the Ingot server, with its routes, environment variables, sub-path and hardening.
 ---
 
 # Run the dashboard in a separate container
@@ -40,25 +40,27 @@ The dashboard container serves these paths itself:
 
 | Path | Answered by |
 |------|-------------|
-| `/`, `/index.html`, `/assets/*`, `/favicon.png` | The dashboard container, from static files. |
-| `/browse`, `/search`, `/dashboard`, `/tokens`, `/console`, `/settings`, `/maintenance`, `/audit`, `/access`, `/account`, and everything below them | The dashboard document, so that a reload of a dashboard address works. |
+| `/`, `/index.html`, `/assets/*`, `/favicon.png` | The dashboard container, from its bundled files. |
+| `/browse`, `/search`, `/dashboard`, `/analytics`, `/tokens`, `/console`, `/settings`, `/maintenance`, `/audit`, `/access`, `/account`, and everything below them | The dashboard document, so that a reload of a dashboard address works. |
+| `/healthz` | The dashboard container, on its own. It answers while the server is down. |
 | Everything else, such as `/api/*`, repository paths, javadocs and badges | The server, through `INGOT_BACKEND`. |
 
-The browser sees one origin, so no request needs CORS.
+The browser sees one origin, so no request needs CORS. The list of dashboard words is the same list the server uses to reserve repository ids.
 
 {% hint style="warning" %}
-Repository paths below the dashboard words are answered with the dashboard document, not with artifacts. A repository whose id is one of these words, such as `search`, cannot be downloaded from `/search/...` through this container. Choose repository ids that are not in the table. The server logs a warning for reserved ids. This nginx behaviour was read from the template and not tested in this batch.
+Repository paths below the dashboard words are answered with the dashboard document, not with artifacts. A repository whose id is one of these words, such as `search`, cannot be downloaded from `/search/...` through this container. Choose repository ids that are not in the table. The server logs a warning for reserved ids.
 {% endhint %}
 
 ## Environment variables
 
-The dashboard image sets defaults for these variables. Override them only when your network needs it.
+The dashboard image sets defaults for these variables. They are read when the container starts, so a change needs a restart and no new image. Override them only when your network needs it.
 
 | Variable | Default in the image | Compose example | What it does |
 |----------|----------------------|-----------------|--------------|
-| `INGOT_BACKEND` | `http://ingot-backend:8080` | `http://server:8080` | Address of the server. Resolved per request, so the dashboard starts whether or not the server is up. |
-| `INGOT_RESOLVER` | `127.0.0.11` | `127.0.0.11` | DNS server for `INGOT_BACKEND`. `127.0.0.11` is the Docker resolver. On Kubernetes, use the cluster DNS. |
-| `INGOT_MAX_UPLOAD_SIZE` | `1024m` | `1024m` | Largest request body the proxy accepts. An artifact above this size fails at the proxy, before the server sees it. |
+| `INGOT_BACKEND` | `http://ingot-backend:8080` | `http://server:8080` | Address of the server, an absolute `http` or `https` URL. The container refuses to start without one, and names the variable in its log. Resolved per request, so the dashboard starts whether or not the server is up. |
+| `INGOT_BASE_PATH` | `/` | `/ingot/` | The path the dashboard is served under. See [Serve under a sub-path](#serve-under-a-sub-path). Must start with `/`. |
+| `INGOT_MAX_UPLOAD_SIZE` | `1024m` | `1024m` | Largest request body the proxy accepts, as bytes or with a `k`, `m` or `g` suffix. An artifact above this size fails at the proxy with `413`, before the server sees it. |
+| `INGOT_RESOLVER` | not set | not set | No longer used. The dashboard container resolves the server with the resolver of its network. A value that is still set is accepted and logged as ignored, so an existing compose file starts unchanged. |
 
 The server container needs one change:
 
@@ -70,9 +72,30 @@ The server publishes no port in the compose file. Only the dashboard reaches the
 
 ## Hardening
 
-The compose file runs the dashboard with `read_only: true`, drops all Linux capabilities and sets `no-new-privileges`. nginx still needs a few writable paths, which the file mounts as `tmpfs` owned by the image user (`101`). Keep those mounts. Without them nginx starts with no server block, and the container looks healthy while it serves nothing.
+The dashboard image runs as user `65532`, the non-root user of its distroless base. It has no shell and no package manager, and it writes nothing at run time, so the compose file runs it with `read_only: true`, drops all Linux capabilities and sets `no-new-privileges`. It mounts no `tmpfs`.
+
+{% hint style="info" %}
+The previous dashboard image ran as user `101`, and its compose file mounted `tmpfs` owned by `101`. An existing compose file that still has those mounts keeps starting: the mounts are simply unused. You can remove them.
+{% endhint %}
 
 The server runs as user `977` with the same capability drop. The data volume is created empty by the compose file, so it is owned by `977` from the start.
+
+Because the image has no shell, `docker exec <container> sh` does not work on it. Use `docker logs` for the dashboard container.
+
+## Serve under a sub-path
+
+The dashboard can be served under a path, such as `/ingot/`, without building a second image. Set `INGOT_BASE_PATH` on the dashboard container:
+
+```yaml
+  dashboard:
+    environment:
+      - INGOT_BACKEND=http://server:8080
+      - INGOT_BASE_PATH=/ingot/
+```
+
+The dashboard then answers below `/ingot/`, and it removes that prefix before it proxies a request, so the server sees `/api/...` as it does at the root. The server itself is still served at `/`, so the reverse proxy in front of the stack should pass the `/ingot/` prefix on unchanged. Do not strip it there. See [Serve under a path](run-behind-reverse-proxy.md#serve-under-a-path) for the proxy side.
+
+The `/healthz` endpoint stays at the root, whatever the base path is, so health checks need no change.
 
 ## Build the dashboard from source
 
@@ -82,35 +105,16 @@ Build from the repository root, not from `reposilite-frontend/`:
 docker build -f reposilite-frontend/Dockerfile -t ingot-dashboard .
 ```
 
-Use the local tag `ingot-dashboard` in the compose file in place of the published image.
-
-## Build a dashboard for a sub-path
-
-The published dashboard image serves the dashboard at `/`. The base path is built into the dashboard, because the asset URLs in the page must resolve before any script runs. To serve it under `/ingot/`, build the image with that prefix:
-
-```bash
-docker build -f reposilite-frontend/Dockerfile \
-  --build-arg INGOT_BASE_PATH=/ingot/ \
-  -t my-ingot-dashboard .
-```
-
-The server then needs the same prefix in `basePath`, and the proxy in front of the stack has to remove the prefix. See [Serve under a path](run-behind-reverse-proxy.md#serve-under-a-path).
-
-{% hint style="warning" %}
-Not tested in this batch: the combination of the split setup, a sub-path and a proxy that removes the prefix. A subdomain for the dashboard avoids all three.
-{% endhint %}
+Use the local tag `ingot-dashboard` in the compose file in place of the published image. To build for both published architectures, use `docker buildx build --platform linux/amd64,linux/arm64`.
 
 ## Behind a proxy that terminates TLS
 
-Put the proxy in front of the dashboard container, as in [Run behind a reverse proxy](run-behind-reverse-proxy.md).
-
-{% hint style="warning" %}
-Known gap: the dashboard template sets `X-Forwarded-Proto` to nginx's own scheme inside the container. Behind a proxy that terminates TLS, that scheme is `http`, so the server does not mark session cookies `Secure`. Until the template passes the incoming header through, check the cookie flags in the browser after a sign-in.
-{% endhint %}
+Put the proxy in front of the dashboard container, as in [Run behind a reverse proxy](run-behind-reverse-proxy.md). The dashboard passes the `X-Forwarded-Proto` header of that proxy on to the server, so the server sees the scheme the browser used and marks session cookies `Secure` where it should. A proxy that sets the header must do so on every request.
 
 ## Verify
 
 * `curl -I http://localhost:<PORT>/browse/` returns `200 OK` with the dashboard document.
+* `curl -f http://localhost:<PORT>/healthz` returns `200 OK` with the body `ok`.
 * `curl -f http://localhost:<PORT>/api/status/health` returns `200 OK`.
 * `docker compose -f docker-compose.split.yml ps` shows both services as running.
 
