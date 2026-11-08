@@ -26,6 +26,7 @@ import com.reposilite.plugin.PluginLoader
 import com.reposilite.shared.extensions.newFixedThreadPool
 import com.reposilite.shared.extensions.newSingleThreadScheduledExecutor
 import com.reposilite.web.HttpServer
+import net.onelitefeather.ingot.deploy.DeployTargetResolver
 import kotlin.io.path.absolutePathString
 
 object ReposiliteFactory {
@@ -36,6 +37,17 @@ object ReposiliteFactory {
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
         parameters.applyLoadedConfiguration(localConfiguration)
+
+        // Resolved before anything binds a port, so an unknown target stops the start here.
+        val deployTargetResolution = DeployTargetResolver.resolve(
+            commandLine = parameters.target,
+            properties = System.getProperty(DeployTargetResolver.PROPERTY)
+                ?.let { mapOf(DeployTargetResolver.PROPERTY to it) }
+                ?: emptyMap(),
+            environment = System.getenv(),
+            legacyDefaultFrontend = localConfiguration.defaultFrontend.get(),
+        )
+        parameters.deployTarget = deployTargetResolution.target
 
         val journalist = ReposiliteJournalist(
             visibleJournalist = rootJournalist,
@@ -56,6 +68,7 @@ object ReposiliteFactory {
         journalist.logger.info("Configuration: ${parameters.localConfigurationPath.absolutePathString()}")
         journalist.logger.info("Pool limits: ${localConfiguration.webThreadPool.get()} WEB threads / ${localConfiguration.ioThreadPool.get()} IO threads / ${localConfiguration.databaseThreadPool.get()} DB connections")
         if (parameters.testEnv) journalist.logger.info("Test environment: Enabled")
+        deployTargetResolution.warnings.forEach { journalist.logger.warn(it) }
 
         val reposilite = Reposilite(
             journalist = journalist,
