@@ -27,7 +27,8 @@ internal class HttpRemoteClientErrorTest {
     @Test
     fun `head should not expose the exception class or message when the remote request fails`() {
         // given: a remote client and a URI whose port cannot have a listener, so the connection is refused locally
-        val client = HttpRemoteClient(FailureFacade(InMemoryLogger()), proxy = null)
+        val failureFacade = FailureFacade(InMemoryLogger())
+        val client = HttpRemoteClient(failureFacade, proxy = null)
 
         // when: the remote file is requested
         val error = assertError(client.head("http://127.0.0.1:0/app.jar", credentials = null, connectTimeoutInSeconds = 1, readTimeoutInSeconds = 1))
@@ -39,6 +40,19 @@ internal class HttpRemoteClientErrorTest {
         assertThat(error.message)
             .describedAs("message of a failed remote request")
             .doesNotContain("ConnectException", "java.net", "Connection refused")
+    }
+
+    @Test
+    fun `head should not record an unreachable mirror as a failure`() {
+        // given: a remote client and a URI whose port cannot have a listener
+        val failureFacade = FailureFacade(InMemoryLogger())
+        val client = HttpRemoteClient(failureFacade, proxy = null)
+
+        // when: the remote file is requested
+        assertError(client.head("http://127.0.0.1:0/app.jar", credentials = null, connectTimeoutInSeconds = 1, readTimeoutInSeconds = 1))
+
+        // then: the dashboard failure list stays empty, as an unreachable mirror is routine
+        assertThat(failureFacade.hasFailures()).describedAs("failures recorded for an unreachable mirror").isFalse()
     }
 
 }
