@@ -157,7 +157,7 @@ The legacy login does not create a human principal. The directory user gets an a
 
 ## Login error codes
 
-A failed OIDC or GitHub login redirects to the dashboard with `?loginError=<code>`. A refused `POST /api/auth/login` answers with status `403` and the code as its message. The other answers are: a wrong password `401`, a disabled user `403` with "This user is disabled", too many failed attempts `429`, and an unreachable provider `503`.
+A failed OIDC or GitHub login redirects to the dashboard with `?loginError=<code>`. A refused `POST /api/auth/login` answers with status `403` and the code as its message. The other answers are: a wrong password `401`, a disabled user `403` with "This user is disabled", too many failed attempts `429`, and an unreachable provider `503`. A login body above 64 KiB answers `413` in the same error shape as the other answers, before the body is read. The same 64 KiB limit applies to setup, refresh, logout, token and principal and team requests on the JSON API.
 
 | Code | Meaning |
 | --- | --- |

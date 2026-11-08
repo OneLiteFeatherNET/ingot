@@ -100,8 +100,18 @@ class ContextDsl<R>(
     fun queryParameter(name: String): String? =
         ctx.queryParam(name)
 
+    /**
+     * The bytes of the body, when the route read them within its body limit. Javalin reads the body itself otherwise.
+     */
+    internal var boundedBody: ByteArray? = null
+
     inline fun <reified T : Any> body() =
-        ctx.bodyAsClass(T::class.java)
+        parseBody(T::class.java)
+
+    fun <T : Any> parseBody(type: Class<T>): T {
+        val bytes = boundedBody ?: return ctx.bodyAsClass(type)
+        return ctx.jsonMapper().fromJsonString(String(bytes, Charsets.UTF_8), type)
+    }
 
     private fun isAuthorized(to: String): Result<Unit, ErrorResponse> =
         requireArea(null)
