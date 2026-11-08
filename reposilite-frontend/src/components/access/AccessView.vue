@@ -18,7 +18,8 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../../store/session'
-import { ACCESS_NODES, ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
+import { ACCESS_TABS } from '../../router/routes'
+import { ACCESS_NODES, INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
 import SettingsTabs from '../settings/SettingsTabs.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
@@ -54,10 +55,9 @@ const { can } = useSession()
 // A tab whose node the user lacks is left out, not greyed out. The check is open to anyone who
 // may use one of the three lists. The provider pages save the instance settings and test the
 // provider connection, which the server answers only to the full instance admin.
+// The three lists come from ACCESS_TABS, the same node the route guard checks for each of them.
 const ALL_TABS = [
-  { key: 'users', label: 'Users', nodes: [ADMIN_NODES.users] },
-  { key: 'machines', label: 'Machine accounts', nodes: [ADMIN_NODES.tokens] },
-  { key: 'teams', label: 'Teams', nodes: [ADMIN_NODES.teams] },
+  ...ACCESS_TABS.map(tab => ({ key: tab.key, label: tab.label, nodes: [tab.node] })),
   { key: 'sso', label: 'SSO', nodes: [INSTANCE_ADMIN_NODE] },
   { key: 'ldap', label: 'LDAP', nodes: [INSTANCE_ADMIN_NODE] },
   { key: 'security', label: 'Security', nodes: [INSTANCE_ADMIN_NODE] },
