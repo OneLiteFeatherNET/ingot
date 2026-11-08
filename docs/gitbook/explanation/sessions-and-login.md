@@ -72,7 +72,7 @@ Ingot counts failed password logins. It keeps the counts in the database, so eve
 
 The number of failures and the first lock time can be changed in the `login` settings. The defaults and the other login settings are listed in [Login providers](../reference/login-providers.md).
 
-These lockouts apply to password logins. Basic and token authentication have their own brute force protection, which is separate. It is **off by default**. When it is enabled, it blocks an address after 10 failed attempts by default, for 300 seconds. Turn it on in the authentication settings if your instance accepts Basic or token authentication from networks you do not control.
+These lockouts apply to password logins. Basic and token authentication have their own brute force protection, which is separate. It is **off by default**. When it is enabled, it blocks an address after 10 failed attempts by default, for 300 seconds. Turn it on under **Access**, then **Security**, if your instance accepts Basic or token authentication from networks you do not control.
 
 ## The setup code and the first administrator
 

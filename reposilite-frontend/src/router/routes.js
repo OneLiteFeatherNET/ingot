@@ -83,6 +83,8 @@ const ROUTES = [
   { name: 'console', path: '/console', meta: adminRoute('console', ADMIN_NODES.console) },
   { name: 'maintenance', path: '/maintenance', meta: adminRoute('maintenance', ADMIN_NODES.maintenance) },
   { name: 'audit', path: '/audit', meta: adminRoute('audit', ADMIN_NODES.audit) },
+  // The authentication settings are edited under Access, so a link to their old settings tab ends there.
+  { name: 'settings-authentication', path: '/settings/authentication', redirect: { name: 'access-ldap' }, meta: ACCESS_PROVIDERS },
   { name: 'settings', path: '/settings/:domain?', meta: adminRoute('settings', ADMIN_NODES.settings) },
   {
     name: 'settings-entry',

@@ -20,8 +20,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
-// The schema the backend serves for the authentication domain, copied from its generated output.
-import authenticationSchema from './fixtures/authentication.schema.json'
 
 vi.mock('../../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../../helpers/toast', () => ({
@@ -30,30 +28,17 @@ vi.mock('../../helpers/toast', () => ({
   errorMessage: (error) => error?.message ?? `${error}`
 }))
 
-// The staging shape: LDAP switched off, the placeholder host, and the password hidden by the server.
+// The authentication domain is edited under Access, so the settings tabs must leave it out.
 const SERVER = {
-  authentication: {
-    bruteForceProtection: { enabled: false, maxAttempts: 10, banDurationSeconds: 300 },
-    ldap: {
-      enabled: false,
-      ssl: false,
-      hostname: 'ldap.domain.com',
-      port: 389,
-      baseDn: 'dc=company,dc=com',
-      searchUserDn: 'cn=reposilite,ou=admins,dc=domain,dc=com',
-      searchUserPassword: '********',
-      typeAttribute: 'person',
-      userAttribute: 'cn',
-      userFilter: '(&(objectClass=person)(ou=Maven Users))',
-      userType: 'PERSISTENT'
-    }
-  },
-  maven: { repositories: [] }
+  authentication: { bruteForceProtection: { enabled: false, maxAttempts: 10, banDurationSeconds: 300 } },
+  maven: { repositories: [] },
+  ingot: {}
 }
 
 const SCHEMAS = {
-  authentication: authenticationSchema,
-  maven: { type: 'object', title: 'Maven', properties: { repositories: { title: 'Repositories', type: 'array', items: { type: 'object', properties: { id: { type: 'string', title: 'Id' } } } } } }
+  authentication: { type: 'object', title: 'Authentication', properties: { bruteForceProtection: { type: 'object', title: 'Brute force protection' } } },
+  maven: { type: 'object', title: 'Maven', properties: { repositories: { title: 'Repositories', type: 'array', items: { type: 'object', properties: { id: { type: 'string', title: 'Id' } } } } } },
+  ingot: { type: 'object', title: 'Ingot', properties: {} }
 }
 
 const fakeClient = () => ({
@@ -70,9 +55,7 @@ const namedRouter = () => createRouter({
   routes: [
     { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
     { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
-    { name: 'access-sso', path: '/access/sso', component: { render: () => null } },
-    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } },
-    { name: 'access-security', path: '/access/security', component: { render: () => null } }
+    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } }
   ]
 })
 
@@ -83,7 +66,7 @@ afterEach(() => {
   wrapper = undefined
 })
 
-const mountOn = async (domain) => {
+const mountSettings = async (domain = 'maven') => {
   const store = createConfigurationStore(ref(fakeClient()))
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   store.selectedDomain.value = domain
@@ -99,37 +82,15 @@ const mountOn = async (domain) => {
   return wrapper
 }
 
-describe('authentication settings tab', () => {
-  it('offers the authentication domain as a tab', async () => {
-    await mountOn('authentication')
+describe('settings tabs without authentication', () => {
+  it('does not offer an Authentication tab, because the domain is edited under Access', async () => {
+    await mountSettings('maven')
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toContain('Authentication')
+    expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
   })
 
-  it('renders the access card in place of the generic form', async () => {
-    await mountOn('authentication')
-    const card = wrapper.get('[data-test="access-domain"]')
-
-    expect(card.text(), 'the card names the domain as managed under Access').toContain('Authentication is managed under Access')
-    expect(wrapper.findAll('[data-test="access-domain"] input'), 'no form field is drawn here').toHaveLength(0)
-  })
-
-  it('links the card to the LDAP and Security pages under Access', async () => {
-    await mountOn('authentication')
-
-    const hrefs = wrapper.findAll('[data-test="access-domain"] a').map(link => link.attributes('href'))
-    expect(hrefs).toEqual(['/access/ldap', '/access/security'])
-  })
-
-  it('does not show the staging hostname, which is edited under Access now', async () => {
-    await mountOn('authentication')
-
-    const hostname = wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com')
-    expect(hostname, 'no input holds the LDAP hostname').toBeUndefined()
-  })
-
-  it('still renders the danger zone below the form', async () => {
-    await mountOn('authentication')
+  it('still renders the danger zone below the page', async () => {
+    await mountSettings('maven')
 
     expect(wrapper.find('#settings-danger-title').text()).toBe('Danger zone')
   })
