@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { sectionLabel } from '../pages/index-tabs'
+import { pageLabel } from '../navigation/registry'
 import { qualifierOf } from './paths'
 
 /*
@@ -31,7 +31,7 @@ const pageTitle = (route, siteTitle) => {
   }
   const section = route.meta?.section
   if (section && section !== 'overview') {
-    return `${sectionLabel(section)} · ${siteTitle}`
+    return `${pageLabel(section)} · ${siteTitle}`
   }
   return siteTitle
 }

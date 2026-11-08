@@ -46,7 +46,7 @@ import { NO_ACCESS_MESSAGE } from '../router/guard'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { SECTIONS, MORE_KEY, visibleSections, sectionLabel, isOverflow } from './index-tabs'
+import { MORE_KEY, pageByKey, pageLabel, isOverflow, visiblePages, accessTabOf } from '../navigation/registry'
 import { qualifierOf, browseLocation } from '../router/paths'
 import { textFromParam, textParam, optionalParam } from '../router/url-state'
 
@@ -132,7 +132,7 @@ const browsedPath = computed(() => qualifierOf(route.params))
 
 // One section on its own needs no navigation: the bar and the rail are left out, and the
 // page keeps its full width.
-const menuSections = computed(() => visibleSections(can))
+const menuSections = computed(() => visiblePages(can))
 const hasNavigation = computed(() => menuSections.value.length > 1)
 
 // The snackbar lives outside this page, so it learns the bar height from the document root.
@@ -150,7 +150,7 @@ onBeforeUnmount(() => {
 const locationOf = (key) =>
   key === 'overview'
     ? browseLocation(browsedPath.value)
-    : { name: SECTIONS.find(entry => entry.key === key).route }
+    : { name: pageByKey(key).route }
 
 // The bar and the rail share these destinations. Each one is a real link, so it can be
 // opened in a new tab and the browser's history works.
@@ -216,20 +216,8 @@ const replaceQuery = (key, value) => {
 }
 
 // Access: the tab on screen (users, machines, teams, sso, ldap, security or check) and the name of the principal or team that
-// is open. The view moves between them through the router itself.
-const ACCESS_TABS = {
-  'access-users': 'users',
-  'access-user': 'users',
-  'access-machines': 'machines',
-  'access-machine': 'machines',
-  'access-check': 'check',
-  'access-teams': 'teams',
-  'access-team': 'teams',
-  'access-sso': 'sso',
-  'access-ldap': 'ldap',
-  'access-security': 'security'
-}
-const accessTab = computed(() => ACCESS_TABS[route.name] ?? 'users')
+// is open. The view moves between them through the router itself. The registry maps each route to its tab.
+const accessTab = computed(() => accessTabOf(route.name) ?? 'users')
 const accessName = computed(() => (section.value === 'access' ? route.params.name : undefined))
 
 // Console: the level switches and the text filter, as the views read and write them.
@@ -242,7 +230,7 @@ const setConsoleSearch = (text) => replaceQuery('q', textParam(text))
 const setDomain = (domain) =>
   router.replace({ name: 'settings', params: { domain }, query: route.query })
 
-const activeLabel = computed(() => sectionLabel(section.value))
+const activeLabel = computed(() => pageLabel(section.value))
 </script>
 
 <template>

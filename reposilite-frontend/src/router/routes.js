@@ -25,74 +25,55 @@
  * reached under /browse/<name> from inside the dashboard.
  */
 
-import { ACCESS_NODES, ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../store/nodeAccess'
-
-// `manager` stays on every admin route: it is what a session without a node list is judged by, and
-// what tells a visitor who is not signed in to sign in. `node` is the permission node the route needs,
-// and `anyNode` lists alternatives of which one is enough.
-const adminRoute = (section, node) => ({ section, manager: true, node })
-const ACCESS_USERS = adminRoute('access', ADMIN_NODES.users)
-// Machine accounts are principals, so listing them is a principal endpoint: the users area, as the server decides it.
-const ACCESS_MACHINES = adminRoute('access', ADMIN_NODES.users)
-const ACCESS_TEAMS = adminRoute('access', ADMIN_NODES.teams)
-const ACCESS_ANY = { section: 'access', manager: true, anyNode: ACCESS_NODES }
-const ACCESS_PROVIDERS = adminRoute('access', INSTANCE_ADMIN_NODE)
-
-// The tabs of the access section in the order they are offered, with the node each one needs.
-// The tab bar and the /access redirect both read this list, so they cannot disagree with the route guard.
-const ACCESS_TABS = [
-  { key: 'users', label: 'Users', route: 'access-users', node: ADMIN_NODES.users },
-  { key: 'machines', label: 'Machine accounts', route: 'access-machines', node: ADMIN_NODES.users },
-  { key: 'teams', label: 'Teams', route: 'access-teams', node: ADMIN_NODES.teams },
-]
+import { routeMeta } from '../navigation/registry'
 
 const ROUTES = [
-  { name: 'overview', path: '/', meta: { section: 'overview' } },
-  { name: 'browse', path: '/browse/:qualifier(.*)*', meta: { section: 'overview' } },
+  { name: 'overview', path: '/', meta: routeMeta('overview') },
+  { name: 'browse', path: '/browse/:qualifier(.*)*', meta: routeMeta('overview') },
   // The artifact search, open to everyone. The query is in the address; see components/search/searchQuery.js.
-  { name: 'search', path: '/search', meta: { section: 'search' } },
+  { name: 'search', path: '/search', meta: routeMeta('search') },
   // Open to every signed in principal. `signedIn` shows the sign in prompt to a visitor.
-  { name: 'account', path: '/account', meta: { section: 'account', signedIn: true } },
-  { name: 'dashboard', path: '/dashboard', meta: adminRoute('dashboard', ADMIN_NODES.dashboard) },
+  { name: 'account', path: '/account', meta: routeMeta('account') },
+  { name: 'dashboard', path: '/dashboard', meta: routeMeta('dashboard') },
   // Usage over time. The same permission as the dashboard, so both tabs are offered to the same people.
-  { name: 'analytics', path: '/analytics', meta: adminRoute('analytics', ADMIN_NODES.dashboard) },
+  { name: 'analytics', path: '/analytics', meta: routeMeta('analytics') },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
   // the team in `:name`. `/access` has no page of its own and opens the user list.
-  { name: 'access', path: '/access', redirect: { name: 'access-users' }, meta: ACCESS_ANY },
-  { name: 'access-users', path: '/access/users', meta: ACCESS_USERS },
-  { name: 'access-user', path: '/access/users/:name', meta: ACCESS_USERS },
-  { name: 'access-machines', path: '/access/machines', meta: ACCESS_MACHINES },
-  { name: 'access-machine', path: '/access/machines/:name', meta: ACCESS_MACHINES },
+  { name: 'access', path: '/access', redirect: { name: 'access-users' }, meta: routeMeta('access') },
+  { name: 'access-users', path: '/access/users', meta: routeMeta('access', 'users') },
+  { name: 'access-user', path: '/access/users/:name', meta: routeMeta('access', 'users') },
+  { name: 'access-machines', path: '/access/machines', meta: routeMeta('access', 'machines') },
+  { name: 'access-machine', path: '/access/machines/:name', meta: routeMeta('access', 'machines') },
   // The permission check: `principal`, `node` and `token` come from the query, so a check can be linked.
-  { name: 'access-check', path: '/access/check', meta: ACCESS_ANY },
-  { name: 'access-teams', path: '/access/teams', meta: ACCESS_TEAMS },
-  { name: 'access-team', path: '/access/teams/:name', meta: ACCESS_TEAMS },
+  { name: 'access-check', path: '/access/check', meta: routeMeta('access', 'check') },
+  { name: 'access-teams', path: '/access/teams', meta: routeMeta('access', 'teams') },
+  { name: 'access-team', path: '/access/teams/:name', meta: routeMeta('access', 'teams') },
   // The sign in providers of the instance. Each is a page of its own, so a deep link opens its tab.
-  { name: 'access-sso', path: '/access/sso', meta: ACCESS_PROVIDERS },
-  { name: 'access-ldap', path: '/access/ldap', meta: ACCESS_PROVIDERS },
-  { name: 'access-security', path: '/access/security', meta: ACCESS_PROVIDERS },
+  { name: 'access-sso', path: '/access/sso', meta: routeMeta('access', 'sso') },
+  { name: 'access-ldap', path: '/access/ldap', meta: routeMeta('access', 'ldap') },
+  { name: 'access-security', path: '/access/security', meta: routeMeta('access', 'security') },
   // The token pages of the old dashboard. A token is a machine account now, so these links keep
   // working and end at the machine accounts. `new` was the create form and has no machine of its own.
-  { name: 'tokens', path: '/tokens', redirect: { name: 'access-machines' }, meta: ACCESS_MACHINES },
-  { name: 'token-new', path: '/tokens/new', redirect: { name: 'access-machines' }, meta: ACCESS_MACHINES },
+  { name: 'tokens', path: '/tokens', redirect: { name: 'access-machines' }, meta: routeMeta('access', 'machines') },
+  { name: 'token-new', path: '/tokens/new', redirect: { name: 'access-machines' }, meta: routeMeta('access', 'machines') },
   {
     name: 'token',
     path: '/tokens/:name',
     redirect: (to) => ({ name: 'access-machine', params: { name: to.params.name } }),
-    meta: ACCESS_MACHINES
+    meta: routeMeta('access', 'machines')
   },
-  { name: 'console', path: '/console', meta: adminRoute('console', ADMIN_NODES.console) },
-  { name: 'maintenance', path: '/maintenance', meta: adminRoute('maintenance', ADMIN_NODES.maintenance) },
-  { name: 'audit', path: '/audit', meta: adminRoute('audit', ADMIN_NODES.audit) },
+  { name: 'console', path: '/console', meta: routeMeta('console') },
+  { name: 'maintenance', path: '/maintenance', meta: routeMeta('maintenance') },
+  { name: 'audit', path: '/audit', meta: routeMeta('audit') },
   // The authentication settings are edited under Access, so a link to their old settings tab ends there.
-  { name: 'settings-authentication', path: '/settings/authentication', redirect: { name: 'access-ldap' }, meta: ACCESS_PROVIDERS },
-  { name: 'settings', path: '/settings/:domain?', meta: adminRoute('settings', ADMIN_NODES.settings) },
+  { name: 'settings-authentication', path: '/settings/authentication', redirect: { name: 'access-ldap' }, meta: routeMeta('access', 'ldap') },
+  { name: 'settings', path: '/settings/:domain?', meta: routeMeta('settings') },
   {
     name: 'settings-entry',
     path: '/settings/:domain/:collection/:entry',
-    meta: adminRoute('settings', ADMIN_NODES.settings)
+    meta: routeMeta('settings')
   },
   { name: 'not-found', path: '/:pathMatch(.*)*', meta: { section: null } },
 ]
 
-export { ROUTES, ACCESS_TABS }
+export { ROUTES }
