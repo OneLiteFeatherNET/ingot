@@ -85,7 +85,7 @@ class NatsClusterTransport internal constructor(
     private var listener: ((String) -> Unit)? = null
 
     /** The connection state as last reported by the client: connected, reconnecting or disabled. */
-    fun connectionState(): ConnectionState = lock.withLock { state }
+    override fun connectionState(): ConnectionState = lock.withLock { state }
 
     internal fun start() {
         // Built here rather than on the connect thread, so that an unreadable credentials file fails the open.

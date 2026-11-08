@@ -56,7 +56,7 @@ class JedisClusterTransport(
     private var state = ConnectionState.RECONNECTING
 
     /** The state of the subscription: connected, reconnecting while the broker is unreachable, or disabled after close. */
-    fun connectionState(): ConnectionState = state
+    override fun connectionState(): ConnectionState = state
 
     override fun publish(message: String) {
         if (closed.get()) return

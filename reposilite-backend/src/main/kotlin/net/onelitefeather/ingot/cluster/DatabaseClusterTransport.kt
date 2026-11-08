@@ -63,7 +63,7 @@ internal class DatabaseClusterTransport(
     private var state = ConnectionState.RECONNECTING
 
     /** Connected after a poll or insert succeeded, reconnecting after one failed, disabled once closed. Starts reconnecting until the first success. */
-    fun connectionState(): ConnectionState = state
+    override fun connectionState(): ConnectionState = state
 
     private fun setState(next: ConnectionState) {
         state = next
