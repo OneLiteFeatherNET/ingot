@@ -23,7 +23,7 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.js"],
+    include: ["src/**/*.test.js", "server/**/*.test.js"],
     // @material/material-color-utilities 0.4 imports some of its own modules without a file
     // extension. Node's loader cannot resolve those, so the package goes through Vite, which can.
     server: {
