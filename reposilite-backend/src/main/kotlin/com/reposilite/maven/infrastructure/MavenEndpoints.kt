@@ -22,6 +22,7 @@ import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.extensions.error
 import com.reposilite.shared.extensions.attachmentHeaders
 import com.reposilite.shared.extensions.uri
 import com.reposilite.storage.api.DirectoryInfo
@@ -114,6 +115,11 @@ internal class MavenEndpoints(
             }
         }
         .onError {
+            if (ctx.path().startsWith("/api/")) {
+                // No repository is called "api": this is a request for an API route that does not exist
+                ctx.error(it)
+                return@onError
+            }
             ctx.status(it.status).html(
                 frontendFacade.createNotFoundPage(
                     originUri = ctx.uri(),

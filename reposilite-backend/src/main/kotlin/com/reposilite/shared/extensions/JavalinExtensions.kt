@@ -24,6 +24,7 @@ import io.javalin.http.ContentType
 import io.javalin.http.Context
 import io.javalin.http.HandlerType.HEAD
 import io.javalin.http.HandlerType.OPTIONS
+import io.javalin.http.Header
 import io.javalin.http.Header.CACHE_CONTROL
 import io.javalin.http.Header.CONTENT_SECURITY_POLICY
 import io.javalin.http.Header.LAST_MODIFIED
@@ -170,14 +171,45 @@ fun Context.lastModified(time: Instant): Context =
 fun Context.uri(): String =
     path()
 
+const val PROBLEM_JSON = "application/problem+json"
+
 fun Context.error(error: ErrorResponse): Context =
     error(error.status, error)
+
+/**
+ * True when the client names `application/problem+json` and ranks it at least as high as `application/json`.
+ * Wildcards and a missing header keep the answer as `application/json`, as it has always been.
+ */
+internal fun prefersProblemJson(accept: String?): Boolean {
+    if (accept.isNullOrBlank()) {
+        return false
+    }
+    val quality = accept.split(',')
+        .map { it.split(';').map(String::trim) }
+        .associate { parts ->
+            val q = parts.drop(1).firstOrNull { it.startsWith("q=", ignoreCase = true) }
+                ?.substring(2)?.toDoubleOrNull() ?: 1.0
+            parts[0].lowercase() to q
+        }
+    val problem = quality[PROBLEM_JSON] ?: return false
+    return problem > 0.0 && problem >= (quality["application/json"] ?: 0.0)
+}
 
 fun Context.error(status: HttpStatus, error: Any): Context =
     error(status.code, error)
 
 fun Context.error(status: Int, error: Any): Context =
-    status(status).json(error)
+    when (error) {
+        is ErrorResponse -> {
+            error.instance = error.instance ?: path()
+            status(status).json(error)
+            if (prefersProblemJson(header(Header.ACCEPT))) {
+                contentType(PROBLEM_JSON)
+            }
+            this
+        }
+        else -> status(status).json(error)
+    }
 
 fun OutputStream.isProbablyOpen(): Boolean =
     when (this) {

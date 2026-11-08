@@ -25,7 +25,9 @@ import com.reposilite.web.api.HttpServerInitializationEvent
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.HttpServerStoppedEvent
 import com.reposilite.web.application.JavalinConfiguration
+import com.reposilite.web.infrastructure.HttpResponseExceptionHandler
 import io.javalin.Javalin
+import io.javalin.http.HttpResponseException
 import io.javalin.util.ConcurrencyUtil
 import org.eclipse.jetty.io.EofException
 
@@ -49,6 +51,8 @@ class HttpServer {
             config.jetty.port = reposilite.parameters.port
 
             JavalinConfiguration.configure(reposilite, webThreadPool, config)
+
+            config.routes.exception(HttpResponseException::class.java, HttpResponseExceptionHandler())
 
             config.routes.exception(EofException::class.java) { _, _ ->
                 reposilite.logger.warn("Client closed connection")
