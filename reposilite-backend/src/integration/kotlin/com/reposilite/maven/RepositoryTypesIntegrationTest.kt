@@ -98,6 +98,38 @@ internal class RepositoryTypesIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `should list the read methods in allow on a 405 for an upload into a typed proxy`() {
+        // given: a manager and a typed proxy
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: a file is uploaded to the proxy
+        val response = Unirest.put("$base/typed-proxy/com/example/app/1.0/app-1.0.jar")
+            .basicAuth(name, secret)
+            .body("content")
+            .asEmpty()
+
+        // then: the proxy answers 405 and names the methods it does support, which are reads only
+        assertThat(response.status).isEqualTo(METHOD_NOT_ALLOWED.code)
+        assertThat(response.headers.getFirst("Allow")).isEqualTo("GET, HEAD")
+    }
+
+    @Test
+    fun `should list the read methods in allow on a 405 for an upload into a typed group`() {
+        // given: a manager and a typed group
+        val (name, secret) = useDefaultManagementToken()
+
+        // when: a file is uploaded to the group
+        val response = Unirest.post("$base/typed-group/com/example/app/1.0/app-1.0.jar")
+            .basicAuth(name, secret)
+            .body("content")
+            .asEmpty()
+
+        // then: the group answers 405 and names the methods it does support, which are reads only
+        assertThat(response.status).isEqualTo(METHOD_NOT_ALLOWED.code)
+        assertThat(response.headers.getFirst("Allow")).isEqualTo("GET, HEAD")
+    }
+
+    @Test
     fun `should answer 405 to a deletion in a typed proxy`() {
         // given: a manager and a typed proxy
         val (name, secret) = useDefaultManagementToken()
