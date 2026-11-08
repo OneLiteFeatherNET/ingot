@@ -3,6 +3,7 @@ package com.reposilite.storage.s3
 import com.reposilite.storage.api.Location
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import panda.std.ResultAssertions.assertError
 import panda.std.ResultAssertions.assertOk
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
@@ -139,6 +140,28 @@ internal class S3EntrySourceTest {
         // then: StartAfter is the full key and only the later key of the repository is returned
         assertThat(s3.requests.single().startAfter()).describedAs("StartAfter").isEqualTo("repos/alpha/a.jar")
         assertThat(page.entries.map { it.path.toString() }).containsExactly("b.jar")
+    }
+
+    @Test
+    fun `should answer a server error without the failure message when the listing fails`() {
+        // given: a bucket whose listing fails with a message that names an internal detail
+        val failingBucket = object : S3Client by s3 {
+            override fun listObjectsV2(request: ListObjectsV2Request): ListObjectsV2Response =
+                throw IllegalStateException("internal-detail-42")
+        }
+
+        // when: the bucket is listed
+        val error = assertError(
+            S3EntrySource(s3 = failingBucket, bucket = BUCKET).listEntries(Location.empty(), after = null, limit = 100)
+        )
+
+        // then: the status is still a server error
+        assertThat(error.status).describedAs("status of a failed listing").isEqualTo(500)
+
+        // and: neither the failure message nor the class name reach the response
+        assertThat(error.message)
+            .describedAs("message of a failed listing")
+            .doesNotContain("internal-detail-42", "IllegalStateException")
     }
 
     private fun source(keyPrefix: String = ""): S3EntrySource =
