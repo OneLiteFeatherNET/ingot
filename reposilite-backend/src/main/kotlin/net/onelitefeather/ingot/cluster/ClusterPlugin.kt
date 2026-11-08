@@ -28,6 +28,7 @@ import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.status.FailureFacade
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -52,6 +53,7 @@ import java.util.concurrent.CopyOnWriteArrayList
         "cleanup",
         "audit",
         "local-configuration",
+        "failure",
     ],
 )
 class ClusterPlugin(
@@ -97,6 +99,11 @@ class ClusterPlugin(
         onReceived(ClusterEventType.STORAGE_USAGE) { envelope ->
             StorageUsageMessage.fromPayload(envelope.payload)?.let { applyStorageUsage(it) }
         }
+        val remoteFailures = if (settings.failures) {
+            RemoteFailures().also { remote -> onReceived(ClusterEventType.FAILURE_RECORDED) { remote.accept(it) } }
+        } else {
+            null
+        }
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
         val outbox = ClusterOutbox(OUTBOX_CAPACITY)
@@ -111,6 +118,7 @@ class ClusterPlugin(
         event { event: StorageUsageRefreshedEvent ->
             publishPayload(outbox, identifier, settings.instanceId, ClusterEventType.STORAGE_USAGE, StorageUsageMessage.toPayload(event))
         }
+        remoteFailures?.let { aggregateFailures(outbox, identifier, settings.instanceId, it) }
         event { _: ReposiliteDisposeEvent ->
             outbox.close()
             transport.close()
@@ -120,6 +128,19 @@ class ClusterPlugin(
 
     private fun dispatch(envelope: ClusterEnvelope) {
         handlers[envelope.type]?.forEach { it(envelope) }
+    }
+
+    /** Publishes each failure this instance records, and merges the ones the other instances published into the failure list. */
+    private fun aggregateFailures(outbox: ClusterOutbox, cluster: String, origin: String, remote: RemoteFailures) {
+        val failures = facade<FailureFacade>()
+        failures.mergeRemote { remote.snapshot() }
+        failures.onRecorded { record ->
+            val payload = payloads.createObjectNode()
+                .put("source", record.source)
+                .put("type", record.type)
+            record.message?.let { payload.put("message", it) }
+            publishPayload(outbox, cluster, origin, ClusterEventType.FAILURE_RECORDED, payload)
+        }
     }
 
     /** Hands a received snapshot to the maven plugin, which keeps it in place of its own figures. */

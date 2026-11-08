@@ -28,7 +28,7 @@ enum class ClusterEventType(val wireName: String, val payloadFields: Set<String>
     CONFIG_CHANGED("config.changed", setOf("domain")),
     STORAGE_USAGE("storage.usage", setOf("computedAt", "repositories")),
     CONSOLE_LINE("console.line", setOf("channel", "message", "timestamp")),
-    FAILURE_RECORDED("failure.recorded", setOf("status", "message"));
+    FAILURE_RECORDED("failure.recorded", setOf("source", "type", "message"));
 
     companion object {
 
