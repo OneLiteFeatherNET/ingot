@@ -17,14 +17,17 @@
 package net.onelitefeather.ingot.cluster
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
+import com.reposilite.plugin.api.SessionFamilyRevokedEvent
 import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import net.onelitefeather.ingot.identity.login.LoginFacade
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -49,6 +52,7 @@ import java.util.concurrent.CopyOnWriteArrayList
         "cleanup",
         "audit",
         "local-configuration",
+        "login",
     ],
 )
 class ClusterPlugin(
@@ -88,6 +92,7 @@ class ClusterPlugin(
 
         logger.info("Cluster | connecting to ${url.redacted()}")
         val transport = factory.open(url, settings)
+        registerInvalidations()
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
@@ -100,12 +105,44 @@ class ClusterPlugin(
         event { event: TokenStateChangedEvent ->
             publish(outbox, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
         }
+        event { event: SessionFamilyRevokedEvent ->
+            publish(outbox, identifier, settings.instanceId, ClusterEventType.SESSION_REVOKED, mapOf("family" to event.familyId))
+        }
         event { _: ReposiliteDisposeEvent ->
             outbox.close()
             transport.close()
         }
         return null
     }
+
+    /**
+     * What a received token change and session revocation do on this instance. The handlers call the internal invalidation
+     * functions of the facades, never the facade methods that emit the event, so an applied event is not announced again.
+     * A facade that is not registered in this build leaves its part unapplied; the database still decides.
+     */
+    private fun registerInvalidations() {
+        onReceived(ClusterEventType.TOKEN_CHANGED) { envelope ->
+            val name = envelope.payload.path("name").asText()
+            val authentication = facadeOrNull<AuthenticationFacade>()
+            if (name.isNotEmpty() && authentication != null) {
+                authentication.forgetCachedCredentials(name)
+            } else {
+                logger.debug("Cluster | token change of '$name' not applied, no authentication facade")
+            }
+        }
+        onReceived(ClusterEventType.SESSION_REVOKED) { envelope ->
+            val family = envelope.payload.path("family").asText()
+            val login = facadeOrNull<LoginFacade>()
+            if (family.isNotEmpty() && login != null) {
+                login.denySessionFamily(family)
+            } else {
+                logger.debug("Cluster | session revocation not applied, no login facade")
+            }
+        }
+    }
+
+    private inline fun <reified F : Facade> facadeOrNull(): F? =
+        extensions().getFacades().filterIsInstance<F>().firstOrNull()
 
     private fun dispatch(envelope: ClusterEnvelope) {
         handlers[envelope.type]?.forEach { it(envelope) }
