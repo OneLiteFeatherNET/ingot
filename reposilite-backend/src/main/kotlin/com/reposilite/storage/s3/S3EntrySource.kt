@@ -19,6 +19,7 @@ package com.reposilite.storage.s3
 
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.internalServerError
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageEntry
 import com.reposilite.storage.StorageEntryPage
 import com.reposilite.storage.StorageEntrySource
@@ -42,6 +43,7 @@ class S3EntrySource(
     private val s3: S3Client,
     private val bucket: String,
     private val keyPrefix: String = "",
+    private val failureFacade: FailureFacade,
 ) : StorageEntrySource {
 
     override fun listEntries(prefix: Location, after: String?, limit: Int): Result<StorageEntryPage, ErrorResponse> {
@@ -81,7 +83,8 @@ class S3EntrySource(
 
             StorageEntryPage(entries = entries, next = next).asSuccess()
         } catch (exception: Exception) {
-            internalServerError(exception.message ?: exception::class.toString())
+            failureFacade.throwException("Cannot list the entries of the bucket $bucket", exception)
+            internalServerError("Storage failure")
         }
     }
 

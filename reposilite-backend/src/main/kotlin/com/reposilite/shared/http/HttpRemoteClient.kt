@@ -21,7 +21,6 @@ import com.google.api.client.http.HttpMethods
 import com.google.api.client.http.HttpRequest
 import com.google.api.client.http.HttpResponse
 import com.google.api.client.http.javanet.NetHttpTransport
-import com.reposilite.journalist.Channel
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.shared.ErrorResponse
@@ -30,6 +29,7 @@ import com.reposilite.shared.http.AuthenticationMethod.BASIC
 import com.reposilite.shared.http.AuthenticationMethod.CUSTOM_HEADER
 import com.reposilite.shared.http.AuthenticationMethod.LOOPBACK_LINK
 import com.reposilite.shared.toErrorResult
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.UNKNOWN_LENGTH
@@ -46,18 +46,18 @@ import java.time.format.DateTimeParseException
 
 interface RemoteClientProvider {
 
-    fun createClient(journalist: Journalist, proxy: Proxy?): RemoteClient
+    fun createClient(failureFacade: FailureFacade, proxy: Proxy?): RemoteClient
 
 }
 
 object HttpRemoteClientProvider : RemoteClientProvider {
 
-    override fun createClient(journalist: Journalist, proxy: Proxy?): RemoteClient =
-        HttpRemoteClient(journalist, proxy)
+    override fun createClient(failureFacade: FailureFacade, proxy: Proxy?): RemoteClient =
+        HttpRemoteClient(failureFacade, proxy)
 
 }
 
-class HttpRemoteClient(private val journalist: Journalist, proxy: Proxy?) : RemoteClient, Journalist {
+class HttpRemoteClient(private val failureFacade: FailureFacade, proxy: Proxy?) : RemoteClient, Journalist {
 
     private val requestFactory = NetHttpTransport.Builder()
         .setProxy(proxy)
@@ -149,11 +149,11 @@ class HttpRemoteClient(private val journalist: Journalist, proxy: Proxy?) : Remo
 
     private fun <V> createExceptionResponse(uri: String, exception: Exception): Result<V, ErrorResponse> {
         logger.debug("HttpRemoteClient | Cannot get $uri")
-        logger.exception(Channel.DEBUG, exception)
-        return badRequestError("An error of type ${exception.javaClass} happened: ${exception.message}")
+        failureFacade.throwException("HttpRemoteClient | Cannot get $uri", exception)
+        return badRequestError("Upstream request failed")
     }
 
     override fun getLogger(): Logger =
-        journalist.logger
+        failureFacade.logger
 
 }

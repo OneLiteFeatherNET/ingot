@@ -35,16 +35,23 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
          * @param rootDirectory root directory of storage space
          * @param quota quota to use as % or in bytes
          */
-        fun of(journalist: Journalist, rootDirectory: Path, quota: String): FileSystemStorageProvider =
+        fun of(
+            journalist: Journalist,
+            rootDirectory: Path,
+            quota: String,
+            failureFacade: FailureFacade = FailureFacade(journalist),
+        ): FileSystemStorageProvider =
             if (quota.endsWith("%")) {
                 of(
                     journalist = journalist,
+                    failureFacade = failureFacade,
                     rootDirectory = rootDirectory,
                     maxPercentage = quota.substring(0, quota.length - 1).toInt() / 100.0,
                 )
             } else {
                 of(
                     journalist = journalist,
+                    failureFacade = failureFacade,
                     rootDirectory = rootDirectory,
                     maxSize = displaySizeToBytesCount(quota),
                 )
@@ -54,9 +61,15 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
          * @param rootDirectory root directory of storage space
          * @param maxSize the largest amount of storage available for use, in bytes
          */
-        fun of(journalist: Journalist, rootDirectory: Path, maxSize: Long): FileSystemStorageProvider =
+        fun of(
+            journalist: Journalist,
+            rootDirectory: Path,
+            maxSize: Long,
+            failureFacade: FailureFacade = FailureFacade(journalist),
+        ): FileSystemStorageProvider =
             FixedQuota(
                 journalist = journalist,
+                failureFacade = failureFacade,
                 rootDirectory = rootDirectory,
                 maxSize = maxSize,
             )
@@ -65,9 +78,15 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
          * @param rootDirectory root directory of storage space
          * @param maxPercentage the maximum percentage of the disk available for use
          */
-        fun of(journalist: Journalist, rootDirectory: Path, maxPercentage: Double): FileSystemStorageProvider =
+        fun of(
+            journalist: Journalist,
+            rootDirectory: Path,
+            maxPercentage: Double,
+            failureFacade: FailureFacade = FailureFacade(journalist),
+        ): FileSystemStorageProvider =
             PercentageQuota(
                 journalist = journalist,
+                failureFacade = failureFacade,
                 rootDirectory = rootDirectory,
                 maxPercentage = maxPercentage,
             )
@@ -108,6 +127,7 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
 
         return of(
             journalist = journalist,
+            failureFacade = failureFacade,
             rootDirectory = repositoryDirectory,
             quota = settings.quota,
         )

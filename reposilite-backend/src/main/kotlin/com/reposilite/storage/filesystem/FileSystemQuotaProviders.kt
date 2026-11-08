@@ -19,6 +19,7 @@ package com.reposilite.storage.filesystem
 import com.reposilite.journalist.Journalist
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.toErrorResponse
+import com.reposilite.status.FailureFacade
 import io.javalin.http.HttpStatus.INSUFFICIENT_STORAGE
 import panda.std.Result
 import java.nio.file.Path
@@ -32,9 +33,11 @@ internal class FixedQuota(
     journalist: Journalist,
     rootDirectory: Path,
     private val maxSize: Long,
+    failureFacade: FailureFacade,
 ) : FileSystemStorageProvider(
     journalist = journalist,
     rootDirectory = rootDirectory,
+    failureFacade = failureFacade,
 ) {
 
     init {
@@ -58,9 +61,11 @@ internal class PercentageQuota(
     journalist: Journalist,
     rootDirectory: Path,
     private val maxPercentage: Double,
+    failureFacade: FailureFacade,
 ) : FileSystemStorageProvider(
     journalist = journalist,
     rootDirectory = rootDirectory,
+    failureFacade = failureFacade,
 ) {
 
     init {

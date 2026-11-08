@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.search.application
 
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.MirrorCacheLedger
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageEntrySource
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
@@ -80,10 +81,13 @@ internal class LedgerOriginLookup(private val ledger: MirrorCacheLedger) : Origi
 }
 
 /** The flat storage listings of the configured Maven repositories, one entry source per repository (artifact search spec, 3.6). */
-internal class MavenRepositoryEntries(private val maven: MavenFacade) : RepositoryEntries {
+internal class MavenRepositoryEntries(
+    private val maven: MavenFacade,
+    private val failureFacade: FailureFacade,
+) : RepositoryEntries {
 
     override fun names(): List<String> = maven.getRepositories().map { it.name }
 
-    override fun source(repository: String): StorageEntrySource? = maven.getRepository(repository)?.storageProvider?.entrySource()
+    override fun source(repository: String): StorageEntrySource? = maven.getRepository(repository)?.storageProvider?.entrySource(failureFacade)
 
 }
