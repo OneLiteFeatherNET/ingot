@@ -24,6 +24,7 @@ import SettingsView from './SettingsView.vue'
 // The schemas the backend serves for every settings domain, copied from its generated output (see the fixtures folder).
 import audit from './fixtures/audit.schema.json'
 import authentication from './fixtures/authentication.schema.json'
+import { isAccessDomain } from './accessDomains'
 import cleanup from './fixtures/cleanup.schema.json'
 import frontend from './fixtures/frontend.schema.json'
 import javadoc from './fixtures/javadoc.schema.json'
@@ -89,7 +90,8 @@ const mountDomain = async (domain) => {
   return wrapper
 }
 
-describe.each(Object.keys(SCHEMAS))('the %s domain form', (domain) => {
+// A domain that is edited under Access shows its card instead of the form; its tab is covered by SettingsView.authentication.test.js.
+describe.each(Object.keys(SCHEMAS).filter(domain => !isAccessDomain(domain)))('the %s domain form', (domain) => {
   it('renders every field, group and list title of its schema', async () => {
     await mountDomain(domain)
     const panel = wrapper.get('[role="tabpanel"]').text()

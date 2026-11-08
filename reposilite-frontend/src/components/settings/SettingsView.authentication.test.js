@@ -71,7 +71,8 @@ const namedRouter = () => createRouter({
     { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
     { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
     { name: 'access-sso', path: '/access/sso', component: { render: () => null } },
-    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } }
+    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } },
+    { name: 'access-security', path: '/access/security', component: { render: () => null } }
   ]
 })
 
@@ -105,21 +106,26 @@ describe('authentication settings tab', () => {
     expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toContain('Authentication')
   })
 
-  it('renders the legacy LDAP section with its fields', async () => {
+  it('renders the access card in place of the generic form', async () => {
     await mountOn('authentication')
-    const text = wrapper.get('[role="tabpanel"]').text()
+    const card = wrapper.get('[data-test="access-domain"]')
 
-    expect(text, 'the LDAP section heading').toContain('LDAP')
-    for (const label of ['Enabled', 'SSL', 'Hostname', 'Port', 'Base DN', 'Search-User DN', 'Search-User Password', 'Type Attribute', 'User Attribute', 'User Filter', 'User Type']) {
-      expect(text, `the LDAP field "${label}"`).toContain(label)
-    }
+    expect(card.text(), 'the card names the domain as managed under Access').toContain('Authentication is managed under Access')
+    expect(wrapper.findAll('[data-test="access-domain"] input'), 'no form field is drawn here').toHaveLength(0)
   })
 
-  it('shows the staging hostname in the LDAP hostname field', async () => {
+  it('links the card to the LDAP and Security pages under Access', async () => {
+    await mountOn('authentication')
+
+    const hrefs = wrapper.findAll('[data-test="access-domain"] a').map(link => link.attributes('href'))
+    expect(hrefs).toEqual(['/access/ldap', '/access/security'])
+  })
+
+  it('does not show the staging hostname, which is edited under Access now', async () => {
     await mountOn('authentication')
 
     const hostname = wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com')
-    expect(hostname, 'an input holding the LDAP hostname').toBeDefined()
+    expect(hostname, 'no input holds the LDAP hostname').toBeUndefined()
   })
 
   it('still renders the danger zone below the form', async () => {

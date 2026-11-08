@@ -19,10 +19,13 @@ import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import LdapPanel from './LdapPanel.vue'
 import { SECRET_PLACEHOLDER } from './loginSettings'
+import { authenticationClient, authenticationStore } from './authenticationTestKit'
+import { configurationStoreKey } from '../../store/configuration'
 
 const holder = vi.hoisted(() => ({ session: null }))
 
-vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
+// The configuration store reads the session when it is imported, before the test sets the holder.
+vi.mock('../../store/session', () => ({ useSession: () => holder.session ?? { client: { value: null } } }))
 
 vi.mock('../../helpers/toast', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -67,9 +70,14 @@ describe('LdapPanel', () => {
   let wrapper
   let settings
   let auth
+  let authUpdate
 
   const mountPanel = async () => {
-    wrapper = mount(LdapPanel, { attachTo: document.body })
+    const store = authenticationStore(authenticationClient({ update: authUpdate }))
+    wrapper = mount(LdapPanel, {
+      attachTo: document.body,
+      global: { provide: { [configurationStoreKey]: store } }
+    })
     await flushPromises()
   }
 
@@ -83,6 +91,7 @@ describe('LdapPanel', () => {
       fetch: vi.fn().mockResolvedValue(answer({ oidcProviders: OIDC, ldap: LDAP })),
       update: vi.fn().mockResolvedValue({})
     }
+    authUpdate = vi.fn(async () => ({ data: {} }))
     auth = {
       testLdapProvider: vi.fn().mockResolvedValue({ data: { ok: true, userDn: 'uid=ldapuser,ou=people,dc=example,dc=org', groups: ['ingot-admins', 'staff'] } })
     }
@@ -210,11 +219,11 @@ describe('LdapPanel', () => {
       expect(field('ldap-user-base').value).toBe('ou=staff,dc=example,dc=org')
     })
 
-    it('says that the directory for Maven basic authentication is separate', async () => {
+    it('says that the Maven and Gradle directory is set below and does not change the dashboard sign in', async () => {
       await mountPanel()
 
-      expect(wrapper.text()).toContain('basic authentication')
-      expect(wrapper.text()).toContain('separate')
+      expect(wrapper.text()).toContain('Maven and Gradle clients')
+      expect(wrapper.text()).toContain('does not change this one')
     })
 
     it('explains the external reference of a team that is synced from this directory', async () => {
@@ -227,6 +236,40 @@ describe('LdapPanel', () => {
       await mountPanel()
 
       expect(wrapper.text()).toContain('ingot-admins')
+    })
+  })
+
+  describe('the Maven and Gradle clients section', () => {
+    it('renders the dashboard sign in first and the Maven and Gradle clients below it', async () => {
+      await mountPanel()
+
+      const headings = wrapper.findAll('h3').map(heading => heading.text())
+      expect(headings, 'both sections have a heading').toEqual(expect.arrayContaining(['Dashboard sign in', 'Maven and Gradle clients']))
+      expect(headings.indexOf('Dashboard sign in'), 'the dashboard sign in comes first').toBeLessThan(headings.indexOf('Maven and Gradle clients'))
+    })
+
+    it('renders the LDAP fields of the authentication domain', async () => {
+      await mountPanel()
+
+      const section = wrapper.get('[data-test="ldap-clients"]').text()
+      for (const label of ['Hostname', 'Port', 'Base DN', 'Search-User DN', 'User Filter', 'User Type']) {
+        expect(section, `the LDAP field "${label}"`).toContain(label)
+      }
+      expect(wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com'), 'the stored hostname').toBeDefined()
+    })
+
+    it('saves the Maven and Gradle LDAP through the authentication domain, and leaves the dashboard directory alone', async () => {
+      await mountPanel()
+      const hostname = wrapper.findAll('input').find(input => input.element.value === 'ldap.domain.com')
+      await hostname.setValue('ldap2.domain.com')
+
+      wrapper.findAll('button').find(button => button.text() === 'Save Maven and Gradle LDAP').trigger('click')
+      await flushPromises()
+
+      expect(authUpdate).toHaveBeenCalledTimes(1)
+      expect(authUpdate.mock.calls[0][0]).toBe('authentication')
+      expect(authUpdate.mock.calls[0][1].ldap.hostname).toBe('ldap2.domain.com')
+      expect(settings.update, 'the dashboard settings are not written').not.toHaveBeenCalled()
     })
   })
 

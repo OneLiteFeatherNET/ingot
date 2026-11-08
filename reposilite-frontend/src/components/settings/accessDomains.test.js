@@ -28,8 +28,17 @@ describe('accessDomains', () => {
     expect(isAccessDomain('constructor')).toBe(false)
   })
 
+  it('names the authentication domain as managed under Access, with the LDAP and Security pages', () => {
+    expect(isAccessDomain('authentication')).toBe(true)
+    expect(ACCESS_DOMAINS.authentication.links.map(link => link.name)).toEqual(['access-ldap', 'access-security'])
+  })
+
   it('takes the managed domains out of the tabs and keeps the order of the others', () => {
     expect(settingsTabDomains(['maven', 'login', 'ingot'])).toEqual(['maven', 'ingot'])
     expect(settingsTabDomains(['login'])).toEqual([])
+  })
+
+  it('keeps the tab of the authentication domain, because its card is what the tab shows', () => {
+    expect(settingsTabDomains(['maven', 'authentication', 'login'])).toEqual(['maven', 'authentication'])
   })
 })

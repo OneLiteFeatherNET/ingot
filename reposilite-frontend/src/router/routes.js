@@ -67,6 +67,7 @@ const ROUTES = [
   // The sign in providers of the instance. Each is a page of its own, so a deep link opens its tab.
   { name: 'access-sso', path: '/access/sso', meta: ACCESS_PROVIDERS },
   { name: 'access-ldap', path: '/access/ldap', meta: ACCESS_PROVIDERS },
+  { name: 'access-security', path: '/access/security', meta: ACCESS_PROVIDERS },
   // The token pages of the old dashboard. A token is a machine account now, so these links keep
   // working and end at the machine accounts. `new` was the create form and has no machine of its own.
   { name: 'tokens', path: '/tokens', redirect: { name: 'access-machines' }, meta: ACCESS_MACHINES },

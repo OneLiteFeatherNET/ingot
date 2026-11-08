@@ -190,10 +190,12 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * and read back, so the snapshot holds what the server now has. One failing domain does not undo the others.
    * A domain the server refused with 412 changed elsewhere: it stays dirty and opens the conflict dialog.
    * Any other failure stays dirty too and is named in saveError.
+   * `onlyDomains` limits the write to the named domains, so a page that edits one domain does not write the drafts of others.
    */
-  const saveConfiguration = async () => {
-    if (saving.value || invalidDomains.value.length > 0) return false
-    const pending = dirtyDomains.value
+  const saveConfiguration = async (onlyDomains) => {
+    const scope = onlyDomains ?? domains.value
+    if (saving.value || invalidDomains.value.some(domain => scope.includes(domain))) return false
+    const pending = dirtyDomains.value.filter(domain => scope.includes(domain))
     if (pending.length === 0) return true
 
     saving.value = true
