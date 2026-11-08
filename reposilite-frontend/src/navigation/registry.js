@@ -41,6 +41,8 @@
  * - visibleChildren(key, can)    the children of a page the visitor may open
  * - groupedChildren(key, can)  the visible children in headed groups, as SideNavLayout takes them
  * - sideNavOf(key)              { label, sectionLabel, indexTo } of a page for SideNavLayout
+ * - settingsGroupOf(domain)    the category of a Settings domain: Repository, Instance, Data, or Plugins for any other
+ * - groupedSettingsDomains(domains)  a domain list in category groups [{ heading, domains }], empty groups left out
  * - firstAccessRoute(can)        the route /access opens: the first permitted landing page, or users
  * - accessTabOf(routeName)       the Access tab key of a route, including its detail routes
  * - pageByKey(key), pageLabel(key), isOverflow(key)
@@ -126,6 +128,27 @@ const sideNavOf = (key) => {
   return { label: `${page.label} sections`, sectionLabel: page.label, indexTo: { name: page.route } }
 }
 
+// The Settings domains are filled from the server schema at run time, so Settings has no static children.
+// A fixed mapping places the domains the server is known to list in a category; any other domain, such
+// as one a plugin adds, falls into Plugins and so never fails to show.
+const SETTINGS_GROUPS = [
+  { heading: 'Repository', domains: ['maven', 'javadoc', 'cleanup'] },
+  { heading: 'Instance', domains: ['web', 'frontend'] },
+  { heading: 'Data', domains: ['statistics', 'audit', 'search'] },
+  { heading: 'Plugins', domains: [] }
+]
+
+const SETTINGS_FALLBACK_GROUP = 'Plugins'
+
+const settingsGroupOf = (domain) =>
+  SETTINGS_GROUPS.find(group => group.domains.includes(domain))?.heading ?? SETTINGS_FALLBACK_GROUP
+
+// A domain list in groups: [{ heading, domains }], in the order of SETTINGS_GROUPS, the domains in the order
+// they were given. A group without a domain is left out.
+const groupedSettingsDomains = (domains) => SETTINGS_GROUPS
+  .map(group => ({ heading: group.heading, domains: domains.filter(domain => settingsGroupOf(domain) === group.heading) }))
+  .filter(group => group.domains.length > 0)
+
 const firstAccessRoute = (can) => {
   const landing = visibleChildren('access', can).find(child => child.landing)
     ?? childrenOf('access').find(child => child.landing)
@@ -172,6 +195,8 @@ export {
   visibleChildren,
   groupedChildren,
   sideNavOf,
+  settingsGroupOf,
+  groupedSettingsDomains,
   firstAccessRoute,
   accessTabOf,
   pageLabel,
