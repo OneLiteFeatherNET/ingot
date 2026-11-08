@@ -17,7 +17,9 @@
 package net.onelitefeather.ingot.cluster
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.reposilite.ReposiliteJournalist
 import com.reposilite.configuration.ConfigurationFacade
+import com.reposilite.journalist.Channel
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
@@ -25,6 +27,7 @@ import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.reposilite
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -57,6 +60,8 @@ class ClusterPlugin(
     /** Replaces the lookup of the cluster identifier in the configuration table, for tests. */
     private val clusterIdentifier: (() -> String)? = null,
     private val clock: Clock = Clock.systemUTC(),
+    /** The journalist whose lines are forwarded. Without it the instance's own journalist of the running server is used. */
+    private val consoleJournalist: ReposiliteJournalist? = null,
 ) : ReposilitePlugin() {
 
     internal val counters = ClusterCounters()
@@ -88,6 +93,12 @@ class ClusterPlugin(
 
         logger.info("Cluster | connecting to ${url.redacted()}")
         val transport = factory.open(url, settings)
+        // Console lines are shown and forwarded only while the switch is on, so the switch turns both directions off.
+        val journalist = if (settings.console) consoleJournalist ?: reposilite().journalist else null
+        if (journalist != null) {
+            onReceived(ClusterEventType.CONSOLE_LINE) { deliverRemote(journalist, it) }
+        }
+
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
@@ -100,8 +111,10 @@ class ClusterPlugin(
         event { event: TokenStateChangedEvent ->
             publish(outbox, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
         }
+        val stopConsole = journalist?.let { forwardConsole(it, transport, identifier, settings.instanceId) }
         event { _: ReposiliteDisposeEvent ->
             outbox.close()
+            stopConsole?.invoke()
             transport.close()
         }
         return null
@@ -109,6 +122,39 @@ class ClusterPlugin(
 
     private fun dispatch(envelope: ClusterEnvelope) {
         handlers[envelope.type]?.forEach { it(envelope) }
+    }
+
+    /**
+     * Publishes the lines this instance logs at its visibility threshold. The lines wait in a queue of their own, so a burst of
+     * log lines can only drop log lines and never a token or configuration event. Returns the function that stops forwarding.
+     */
+    private fun forwardConsole(journalist: ReposiliteJournalist, transport: ClusterTransport, cluster: String, origin: String): () -> Unit {
+        val outbox = ClusterOutbox(CONSOLE_OUTBOX_CAPACITY)
+        // Failures are not logged here: a log line would be forwarded as a new line, and the failure would repeat.
+        outbox.drainTo(onError = {}, sink = { transport.publish(it) })
+        val subscriberId = journalist.subscribeLocalLines { line ->
+            publish(
+                outbox,
+                cluster,
+                origin,
+                ClusterEventType.CONSOLE_LINE,
+                mapOf(
+                    "channel" to line.key.name,
+                    "message" to line.value,
+                    "timestamp" to Instant.now(clock).toString(),
+                ),
+            )
+        }
+        return {
+            journalist.unsubscribeLocalLines(subscriberId)
+            outbox.close()
+        }
+    }
+
+    /** Shows a line another instance logged, labelled with that instance. */
+    private fun deliverRemote(journalist: ReposiliteJournalist, envelope: ClusterEnvelope) {
+        val channel = Channel.of(envelope.payload.path("channel").asText()).orElse(Channel.INFO)
+        journalist.deliverRemote(channel, envelope.origin, envelope.payload.path("message").asText())
     }
 
     private fun publish(
@@ -130,6 +176,9 @@ class ClusterPlugin(
 
         // Messages waiting for the transport. A full queue drops its oldest message, so memory stays bounded during an outage.
         const val OUTBOX_CAPACITY = 1024
+
+        // Log lines waiting for the transport, kept apart from the events above so that a log burst cannot evict them.
+        const val CONSOLE_OUTBOX_CAPACITY = 512
     }
 
 }

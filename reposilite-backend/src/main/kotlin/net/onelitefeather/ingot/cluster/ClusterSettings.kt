@@ -66,6 +66,14 @@ data class ClusterSettings(
 
         private val REDIS_FAMILY = setOf("redis", "rediss", "valkey", "valkeys")
         private val NATS_FAMILY = setOf("nats", "tls")
+        private const val DATABASE_SCHEME = "database"
+
+        /**
+         * The default of `INGOT_CLUSTER_CONSOLE` for a bus scheme. Console lines are on by default, except on the database
+         * transport, where every log line would become a row of `cluster_event`.
+         */
+        internal fun consoleFanOutDefault(scheme: String?): Boolean =
+            scheme != DATABASE_SCHEME
 
         /**
          * @throws ClusterConfigurationException when a value is malformed, which stops the startup
@@ -106,7 +114,11 @@ data class ClusterSettings(
                 url = resolvedUrl,
                 credentialsFile = credentialsFile,
                 instanceId = firstDefined({ sources.variable("INGOT_CLUSTER_INSTANCE_ID") }) ?: sources.hostName(),
-                console = booleanOf("INGOT_CLUSTER_CONSOLE", sources.variable("INGOT_CLUSTER_CONSOLE"), default = true),
+                console = booleanOf(
+                    "INGOT_CLUSTER_CONSOLE",
+                    sources.variable("INGOT_CLUSTER_CONSOLE"),
+                    default = consoleFanOutDefault(resolvedUrl?.scheme),
+                ),
                 failures = booleanOf("INGOT_CLUSTER_FAILURES", sources.variable("INGOT_CLUSTER_FAILURES"), default = false),
                 warnings = warnings,
             )
