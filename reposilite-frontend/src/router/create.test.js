@@ -182,6 +182,21 @@ describe('access and the old token routes', () => {
     expect(router.currentRoute.value.fullPath, 'the authentication settings are edited under Access now').toBe('/access/ldap')
   })
 
+  it('redirects /settings/login to the single sign on page under Access', async () => {
+    const router = makeRouter()
+
+    await router.push('/settings/login')
+
+    expect(router.currentRoute.value.fullPath, 'the sign in settings are edited under Access now').toBe('/access/sso')
+  })
+
+  it('lists the /settings/login redirect before the generic settings route', () => {
+    const names = ROUTES.map(route => route.name)
+
+    expect(names, 'the login redirect is a route of its own').toContain('settings-login')
+    expect(names.indexOf('settings-login'), 'a generic /settings/:domain match would otherwise win').toBeLessThan(names.indexOf('settings'))
+  })
+
   it('redirects /tokens to the machine accounts', async () => {
     const router = makeRouter()
 
