@@ -1,0 +1,3 @@
+# Chart tests and CI values are not part of the package.
+tests/
+ci/
