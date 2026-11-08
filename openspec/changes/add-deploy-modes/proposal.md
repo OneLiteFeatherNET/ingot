@@ -22,8 +22,8 @@ is a values diff rather than a new deployment written by hand.
   `ingot.target` and the environment variable `INGOT_TARGET`. The existing `defaultFrontend` setting keeps working and
   means the same as `server` when it is `false`. When both are given, the target wins and a mismatch is logged once.
   An unknown value stops the server at start with the list of valid values.
-- **Dashboard route list as one source.** The dashboard's top-level segments move into one JSON file that the Vue router
-  imports. A frontend test fails when a page is added without its segment, and the backend test that compares the
+- **Dashboard route list as one source.** The dashboard's top-level segments, including `analytics` from PR #69 which lands on main first, move into one JSON
+  file that the Vue router imports. A frontend test fails when a page is added without its segment, and the backend test that compares the
   reserved segments reads the same file. The nginx template and its regex test are removed.
 - **Dashboard image on Nitro.** The dashboard image serves the built single page application from a Nitro server (node
   preset) and proxies every non-dashboard path to the server, as the nginx configuration does today. It has a health
@@ -78,12 +78,12 @@ is a values diff rather than a new deployment written by hand.
   plugin changes. The new `INGOT_TARGET` is optional and its absence means today's behaviour. An unmodified upstream
   compose file still starts with only the image line swapped, a data directory from Reposilite is adopted without a
   migration step, and `PUID`, `PGID` and `REPOSILITE_OPTS` keep their effect. The server Dockerfile does not change.
-- **Operators running the split deployment (`ingot-dashboard`):** **BREAKING for this deployment only.** The dashboard
-  image now runs as UID 65532 instead of 101, so the `tmpfs` mounts that the compose file mounts for nginx must change
-  owner, and `INGOT_RESOLVER` is ignored because Node resolves names through the container's own resolver. The sub-path
-  base is set at start with `INGOT_BASE_PATH` rather than as a build argument. The compose file in the repository and
-  `docs/gitbook/how-to/run-split-dashboard-container.md` are updated in the same change, and the upgrade notes name the
-  steps. The all-in-one image is not affected, and the drop-in contract does not cover the dashboard image.
+- **Operators running the split deployment (`ingot-dashboard`):** not breaking. The dashboard image keeps no writable
+  state and needs no tmpfs, so a compose file that still mounts a tmpfs owned by 101 keeps working, and the mount is simply
+  unused. `INGOT_RESOLVER` is accepted and ignored, because Node resolves names through the container's own resolver. The
+  sub-path base is set at start with `INGOT_BASE_PATH` rather than as a build argument. The compose file in the repository
+  drops its now useless tmpfs lines, and `docs/gitbook/how-to/run-split-dashboard-container.md` is updated in the same change.
+  The all-in-one image is not affected, and the drop-in contract does not cover the dashboard image.
 - **Staging and other Helm users of the upstream chart:** no action until they choose to move. The move is described in
   the migration how-to and is a values diff. Rolling back means installing the upstream chart again with the same values.
 - **Code:** `reposilite-backend` (the deploy target and the route test, in the existing `com.reposilite` packages),
@@ -94,9 +94,7 @@ is a values diff rather than a new deployment written by hand.
 
   `feat(deploy): add deploy modes, a nitro dashboard image and a helm chart`
 
-- **Breaking marker:** the title above carries no `!`, as decided. The split deployment change is breaking for its
-  operators, so the commit that changes the dashboard image carries a `BREAKING CHANGE:` footer. See `design.md`, open
-  question 2.
+- **Breaking marker:** none. The title above carries no `!` and no commit carries a `BREAKING CHANGE:` footer.
 
 ## Verification
 

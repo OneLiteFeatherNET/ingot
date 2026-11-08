@@ -67,8 +67,9 @@ An empty value counts as not set. The resolver is a pure function of the three s
 in any source stops the server at start with a message that lists `all` and `server`. It does not fall back, because a
 silent fallback from `server` to `all` would publish the dashboard on an address that was meant to be API only.
 
-The precedence between the three sources is the usual one for Java tools (flag, then property, then environment). It is
-proposed here and listed in the open questions.
+The precedence is decided: the command line option `--target` first, then `-Dingot.target`, then `INGOT_TARGET`, then the
+legacy alias (`defaultFrontend`, read from `REPOSILITE_LOCAL_DEFAULTFRONTEND` or `INGOT_LOCAL_DEFAULTFRONTEND`, from the
+configuration file, or from their system properties).
 
 Alternatives considered:
 
@@ -77,7 +78,7 @@ Alternatives considered:
 - Separate jars or separate server bundles per target. Rejected: the jar, its plugins and its database migrations are the
   same, and a second artifact doubles what a release has to publish and test.
 - A key in `configuration.cdn`. Rejected for this change: the three sources cover the image, the compose file and the Helm
-  chart, and a file key would be a second place to keep in step. Open question 5.
+  chart, and a file key would be a second place to keep in step. Open question 1.
 - Loki and Mimir style `-target` with the values `all`, `server` and `worker`. Accepted for the naming. `worker` is not
   built here, which is the non-goal above.
 
@@ -98,8 +99,9 @@ The Helm chart cannot read files outside its directory, so `charts/ingot/files/d
 A CI step runs `cmp` against the source and fails on drift. This is the one duplicate, and it is checked rather than
 generated.
 
-The name `analytics` was named in the request as a route nginx missed. No `analytics` route exists in `routes.js`,
-`DashboardPaths.kt` or the nginx template at the time of writing, so this change does not add one. Open question 4.
+The `analytics` page lands on main with PR #69, before this change is implemented. The segment list therefore must
+include `analytics`, and the frontend test of this section fails if the page is added without its segment. The branch is
+rebased on main after PR #69 merges, before task 3.2 is implemented.
 
 Alternatives considered:
 
@@ -186,8 +188,9 @@ to one of them is a visible change in the test.
 
 ### D7. Hardened dashboard image
 
-The run stage is `gcr.io/distroless/nodejs24-debian13:nonroot` (the tag is to be confirmed when the change is made, open
-question 8), pinned by tag and digest, with Renovate raising both together as for the other images. The image sets
+The run stage is a distroless Node runtime, pinned by tag and digest, with Renovate raising both together as for the other
+images. The starting point is `gcr.io/distroless/nodejs24-debian13:nonroot`. Its tag and digest are resolved during
+implementation (task 4.4), and the Node major must match the build stage. The image sets
 `USER 65532`, which is the UID of the distroless non-root account. It has no `RUN` instruction in the run stage, no shell
 and no package manager. It exposes port 8080, and the build is for `linux/amd64` and `linux/arm64`. The build stage keeps
 `--platform=$BUILDPLATFORM`, as the other Dockerfiles do, because the output is JavaScript.
@@ -254,7 +257,8 @@ Both forms are tested with `helm template` in the chart tests (task 5.1).
 
 ### D12. Migration from the upstream chart
 
-The migration is a values diff and reuses the same volume. Three details decide whether it is one:
+The migration is a values diff and reuses the same volume. Decided: the migrated values set `nameOverride` and
+`fullnameOverride` to `reposilite`, and the equivalence test of task 5.3 covers it. Three details decide whether it is one:
 
 - **Names.** The upstream helpers name the resources after the release, but only when the release name contains the chart
   name. A release called `reposilite` installed from `reposilite` is named `reposilite`. The Ingot chart is named `ingot`, so
@@ -285,8 +289,9 @@ check that it is complete for the keys staging uses.
   router does not read it, the fallback is an explicit `base` passed to the router from an injected value.
 - **Helm name equivalence.** A missed override breaks the upgrade on an immutable selector. The equivalence test (task 5.3)
   is the guard, and the migration how-to says to run `helm diff upgrade` first.
-- **The dashboard image UID changes.** Compose files that mount tmpfs owned by 101 stop working until they are updated. The
-  change updates `docker-compose.split.yml` and the how-to, and the upgrade notes name the change (BREAKING in the proposal).
+- **The dashboard image UID changes without breaking split deployments.** The image keeps no writable state, so a compose
+  file that mounts a tmpfs owned by 101 keeps starting, and the mount is unused. The change still drops those lines from
+  `docker-compose.split.yml` and the how-to, and states that `INGOT_RESOLVER` is ignored.
 - **Nightly filter.** A chart-only change must not rebuild the images. The deny list gains `charts/`, and a new path that
   reaches the image is still counted as relevant by default.
 - **Distroless digests and Renovate.** The digest is resolved when the change is made and is then kept by Renovate. A new
@@ -297,33 +302,25 @@ check that it is complete for the keys staging uses.
 1. Land the proposal (this change, `docs(openspec)`).
 2. Land the server target (D1) first. It is additive and changes nothing for a deployment that sets no target.
 3. Land the route source (D2) and the Nitro dashboard image (D3 to D7) together, because the image and its test change in one
-   step. The compose file and the split how-to change in the same commit series.
+   step. Both start from main after PR #69 (`analytics`) has merged. The compose file and the split how-to change in the same commit series.
 4. Land the chart (D8 to D12) and the release wiring. The first chart version is the next application release.
 5. Staging moves last: the values diff from the migration how-to on a staging branch, `helm diff upgrade`, then the
    HelmRelease changes its chart from `reposilite` to the OCI chart. Only then is the upstream repository reference removed.
 
 ## Open questions
 
-1. **Precedence of the three target sources.** The design proposes flag, then `-Dingot.target`, then `INGOT_TARGET`. Is
-   that the order the maintainer wants, or should the environment variable win as the most specific source for containers?
-2. **Breaking marker.** The proposal marks the split deployment change as BREAKING, which the repository's rules say takes a
-   `!` after the scope. The decided pull request title has no `!`. Either the title takes `!`, or the `BREAKING CHANGE:`
-   footer is the only marker and the title stays as decided. This needs a decision before the code pull request.
-3. **Chart name default.** The chart is named `ingot`, so migrated values need `nameOverride` and `fullnameOverride` set to
-   `reposilite`. Should the chart default to the release name instead, which would make the migration values smaller but
-   differ from every other Helm chart in use?
-4. **`analytics`.** The request names `/analytics` as a route nginx missed. It does not exist in the code at this commit, so
-   nothing is added. Is it a page planned for a later change, or a name from before a rename?
-5. **Target in the configuration file.** The proposal leaves `target` out of `configuration.cdn`, so no `INGOT_LOCAL_TARGET`
+Decided during review and no longer open: the precedence of the target sources (D1), the chart name overrides (D12),
+the `analytics` segment (D2), the distroless tag and digest (resolved in task 4.4), and the breaking marker (none, see
+the proposal).
+
+1. **Target in the configuration file.** The proposal leaves `target` out of `configuration.cdn`, so no `INGOT_LOCAL_TARGET`
    exists. Should a file key be added later?
-6. **WebSocket proxy.** Is the hand-written upgrade handler (see Risks) accepted? The alternative, the browser opening the
+2. **WebSocket proxy.** Is the hand-written upgrade handler (see Risks) accepted? The alternative, the browser opening the
    console socket on the server's own address, would expose the server to the browser in the split deployment, which is the
    case the single origin is meant to avoid. That alternative is not covered by this design.
-7. **HTTPRoute or Ingress by default.** The chart defaults to Ingress, as the upstream chart does. Should the default be the
+3. **HTTPRoute or Ingress by default.** The chart defaults to Ingress, as the upstream chart does. Should the default be the
    Gateway API when the cluster has it?
-8. **Distroless tag.** The tag `nodejs24-debian13:nonroot` is the intended one. Its availability and the matching digest are
-   confirmed when the change is made, and the Node major must match the build stage.
-9. **Chart visibility.** The OCI package on `ghcr.io` must be made public once, by hand, after the first push. Is that a
+4. **Chart visibility.** The OCI package on `ghcr.io` must be made public once, by hand, after the first push. Is that a
    step the maintainer accepts in the release notes?
-10. **Chart tests.** The design uses `helm template` assertions in a small script under `charts/ingot/tests/`, to avoid an
-    extra Helm plugin in CI. The maintainer may prefer the `helm-unittest` plugin.
+5. **Chart tests.** The design uses `helm template` assertions in a small script under `charts/ingot/tests/`, to avoid an
+   extra Helm plugin in CI. The maintainer may prefer the `helm-unittest` plugin.

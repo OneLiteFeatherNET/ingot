@@ -39,7 +39,8 @@ a temporary directory per test, and assertions with messages. Container tests ru
   (excluding the root and the catch-all) equal the segments in `src/router/dashboard-segments.json`, with the list read as a
   file. In `reposilite-backend`, a `DashboardPathsTest` that reads the same JSON file (path relative to the Gradle project) and
   asserts the segments of `DashboardPaths.APP_ROUTES` equal it. Verify: both fail, because the JSON file does not exist yet.
-- [ ] 3.2 `feat(deploy)`: add `reposilite-frontend/src/router/dashboard-segments.json`, have `routes.js` import it, and leave
+- [ ] 3.2 `feat(deploy)`: rebase on main after PR #69 (`analytics`) has merged, then add `reposilite-frontend/src/router/dashboard-segments.json`
+  with `analytics` in it, have `routes.js` import it, and leave
   `DashboardPaths.kt` unchanged except where its test reads the list. Verify: 3.1 passes, and the existing router tests
   (`create.test.js`, `routes` consumers) pass without edits.
 
@@ -65,10 +66,11 @@ a temporary directory per test, and assertions with messages. Container tests ru
   above `INGOT_MAX_UPLOAD_SIZE` gets `413`; the process runs as UID `65532`; the security headers equal the fixture of 4.1.
   The suite replaces the nginx checks of the current container tests. Verify: the suite fails on the image built before 4.4.
 - [ ] 4.4 `feat(deploy)`: rewrite `reposilite-frontend/Dockerfile` as a build stage on `--platform=$BUILDPLATFORM` and a run
-  stage on the distroless Node runtime, pinned by tag and digest, with `USER 65532`, no `RUN` in the run stage, a `HEALTHCHECK`
+  stage on the distroless Node runtime, pinned by tag and digest (resolve both during this task, starting from
+  `gcr.io/distroless/nodejs24-debian13:nonroot`, and match the Node major of the build stage), with `USER 65532`, no `RUN` in the run stage, a `HEALTHCHECK`
   in exec form calling `/healthz`, port `8080`, and no sub-path build argument. Delete `reposilite-frontend/docker/default.conf.template`
   and `DashboardImageRoutesTest.kt`. Update `docker-compose.split.yml`: `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, the
-  `tmpfs` mounts owned by `65532`, and the `INGOT_RESOLVER` line removed. Verify: 4.3 passes against an image built for
+  `tmpfs` lines removed (the image keeps no writable state), and the `INGOT_RESOLVER` line removed. Verify: 4.3 passes against an image built for
   `linux/amd64` locally with buildx, the `linux/arm64` build completes, and `docker compose -f docker-compose.split.yml config`
   validates.
 - [ ] 4.5 `ci(deploy)`: in `.github/workflows/ci.yml`, scan the dashboard image with the same Trivy step as the server image, and
@@ -76,8 +78,8 @@ a temporary directory per test, and assertions with messages. Container tests ru
   Verify: a local run of the deny-list `grep` on a push that changes only `charts/ingot/Chart.yaml` prints `image=false`, and a
   push that changes `reposilite-frontend/src/` prints `image=true`.
 - [ ] 4.6 `docs(deploy)`: rewrite `docs/gitbook/how-to/run-split-dashboard-container.md` for the distroless image: UID `65532`,
-  the `tmpfs` owner, `INGOT_BACKEND`, `INGOT_BASE_PATH` at start, `INGOT_MAX_UPLOAD_SIZE`, `INGOT_RESOLVER` ignored, `/healthz`, and
-  a breaking-change note for existing split deployments. Update the sub-path section of the page. Verify: every variable and path
+  `INGOT_BACKEND`, `INGOT_BASE_PATH` at start, `INGOT_MAX_UPLOAD_SIZE`, `INGOT_RESOLVER` ignored, `/healthz`, and a note
+  that an existing compose file with a `tmpfs` owned by `101` keeps starting. Update the sub-path section of the page. Verify: every variable and path
   in the page is exercised by 4.3 or 2.1, and the page's `curl` commands run against the container of 4.3.
 
 ## 5. Helm chart
@@ -121,6 +123,6 @@ a temporary directory per test, and assertions with messages. Container tests ru
 - [ ] 6.1 Open the code pull request with the title `feat(deploy): add deploy modes, a nitro dashboard image and a helm chart`.
   Read `.github/pull_request_template.md` and fill its sections. The description tells the story of the operator (the staging
   release, the dashboard that could not be hardened, the split that was hand-written) without class names, and names the
-  breaking change for the split deployment, the migration how-to and the throughput numbers measured for the Nitro proxy against
+  migration how-to and the throughput numbers measured for the Nitro proxy against
   the previous nginx image on the same host. It carries no session link and no attribution line. Verify: `gh pr view --json title`
   shows the exact title, the commit-style hook accepts the title and every commit, and the PR body has no em or en dash.

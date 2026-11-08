@@ -13,6 +13,11 @@ The dashboard's top-level route segments SHALL be defined once, in `reposilite-f
 The Vue router, the dashboard server, the backend reserved segment check and the Helm chart SHALL read that definition, and
 a test SHALL fail when any of them differs from it.
 
+#### Scenario: The analytics segment is in the list
+
+- **WHEN** the segment list is read after PR #69 has merged
+- **THEN** it contains `analytics`, and the router and the backend both answer `/analytics` with the dashboard document
+
 #### Scenario: A page without its segment fails the frontend suite
 
 - **WHEN** a route is added to the router with a top-level segment that is not in the segment list
@@ -103,12 +108,18 @@ read-only root filesystem, SHALL contain no shell and no package manager, SHALL 
 - **WHEN** a command that needs a shell is run inside the container
 - **THEN** the command fails because no shell exists in the image
 
-### Requirement: Migration notice for the split deployment
+### Requirement: Compatibility of the split deployment
 
-The dashboard image change SHALL be documented as breaking for the split deployment. The split container how-to and the
-compose file SHALL name the UID change, the `tmpfs` owner change and the ignored `INGOT_RESOLVER`.
+The dashboard image SHALL keep no writable state, so that an existing compose file that mounts a `tmpfs` owned by UID `101`
+still starts, with the mount unused. The split container how-to SHALL describe the new UID, the ignored `INGOT_RESOLVER` and
+the runtime `INGOT_BASE_PATH`, and the compose file in the repository SHALL NOT mount `tmpfs` for the dashboard.
 
-#### Scenario: A compose file with tmpfs owned by 101 is updated
+#### Scenario: A compose file with a tmpfs owned by 101 still starts
 
-- **WHEN** an operator follows the upgrade notes for the split deployment
-- **THEN** the `tmpfs` mounts are owned by `65532` and the dashboard container starts
+- **WHEN** an existing split compose file still mounts a `tmpfs` owned by `101` on the dashboard container
+- **THEN** the dashboard container starts and serves the dashboard, and the mount is not written to
+
+#### Scenario: The repository compose file has no dashboard tmpfs
+
+- **WHEN** the repository compose file for the split deployment is read
+- **THEN** the dashboard service mounts no `tmpfs`
