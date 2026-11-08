@@ -19,6 +19,7 @@ package com.reposilite.storage
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
+import com.reposilite.shared.stream.RangedInputStream
 import java.io.InputStream
 import java.nio.file.attribute.FileTime
 import panda.std.Result
@@ -28,6 +29,13 @@ interface StorageProvider {
     fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse>
 
     fun getFile(location: Location): Result<InputStream, ErrorResponse>
+
+    /**
+     * [length] bytes of a file from [offset]. The default opens the stream and skips, which seeks for a local file;
+     * a remote storage overrides it with a ranged read so that the skipped bytes are never transferred.
+     */
+    fun getFile(location: Location, offset: Long, length: Long): Result<InputStream, ErrorResponse> =
+        getFile(location).map { RangedInputStream(it, offset, length) }
 
     fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse>
 
