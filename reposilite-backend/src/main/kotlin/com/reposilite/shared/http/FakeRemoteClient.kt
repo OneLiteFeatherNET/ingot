@@ -16,8 +16,8 @@
 
 package com.reposilite.shared.http
 
-import com.reposilite.journalist.Journalist
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.api.FileDetails
 import panda.std.Result
 import java.io.InputStream
@@ -28,7 +28,7 @@ private typealias GetHandler = (String, RemoteCredentials?, Int, Int) -> Result<
 
 class FakeRemoteClientProvider(private val headHandler: HeadHandler, private val getHandler: GetHandler) : RemoteClientProvider {
 
-    override fun createClient(journalist: Journalist, proxy: Proxy?): RemoteClient =
+    override fun createClient(failureFacade: FailureFacade, proxy: Proxy?): RemoteClient =
         FakeRemoteClient(headHandler, getHandler)
 
 }

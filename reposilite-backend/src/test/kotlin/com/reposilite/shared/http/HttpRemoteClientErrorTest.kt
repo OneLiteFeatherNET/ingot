@@ -17,6 +17,7 @@
 package com.reposilite.shared.http
 
 import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.status.FailureFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import panda.std.ResultAssertions.assertError
@@ -26,7 +27,7 @@ internal class HttpRemoteClientErrorTest {
     @Test
     fun `head should not expose the exception class or message when the remote request fails`() {
         // given: a remote client and a URI whose port cannot have a listener, so the connection is refused locally
-        val client = HttpRemoteClient(InMemoryLogger(), proxy = null)
+        val client = HttpRemoteClient(FailureFacade(InMemoryLogger()), proxy = null)
 
         // when: the remote file is requested
         val error = assertError(client.head("http://127.0.0.1:0/app.jar", credentials = null, connectTimeoutInSeconds = 1, readTimeoutInSeconds = 1))
