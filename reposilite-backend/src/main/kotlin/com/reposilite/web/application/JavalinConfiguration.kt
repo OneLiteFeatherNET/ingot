@@ -42,6 +42,8 @@ import io.javalin.openapi.plugin.OpenApiPlugin
 import io.javalin.plugin.bundled.SslRedirectPlugin
 import kotlin.time.Duration.Companion.minutes
 import net.onelitefeather.ingot.web.TrustedProxies
+import net.onelitefeather.ingot.web.SecurityHeaders
+import net.onelitefeather.ingot.web.SecurityHeadersSettings
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.ServerConnector
 import org.eclipse.jetty.util.thread.ThreadPool
@@ -75,6 +77,7 @@ internal object JavalinConfiguration {
         configureJsonSerialization(config)
         configureSSL(reposilite, localConfiguration, config)
         configureCors(config)
+        configureSecurityHeaders(config)
         configureOpenApi(config, frontendSettings.get())
         configureDebug(reposilite, localConfiguration, config)
         configureRoutingPlugin(config, reposilite)
@@ -178,6 +181,11 @@ internal object JavalinConfiguration {
                 it.exposeHeader(Header.ETAG)
             }
         }
+    }
+
+    private fun configureSecurityHeaders(config: JavalinConfig) {
+        val securityHeaders = SecurityHeaders(SecurityHeadersSettings.resolve())
+        config.routes.after { ctx -> securityHeaders.apply(ctx) }
     }
 
     private fun configureOpenApi(config: JavalinConfig, frontendSettings: FrontendSettings) {

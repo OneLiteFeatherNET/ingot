@@ -42,6 +42,7 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
+import net.onelitefeather.ingot.web.SecurityHeaders
 import panda.std.Result
 import panda.std.asSuccess
 
@@ -100,6 +101,7 @@ internal class MavenEndpoints(
                         )
                     }
                 is DirectoryInfo -> {
+                    SecurityHeaders.markRepositoryContent(ctx)
                     ctx.html(
                         createDirectoryIndexPage(
                             basePath = frontendFacade.resolveBasePath(ctx.header(frontendFacade.forwardedPrefixHeader.get())),

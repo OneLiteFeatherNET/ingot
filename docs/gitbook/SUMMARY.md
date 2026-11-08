@@ -108,6 +108,7 @@
 * [Identity model](explanation/identity-model.md)
 * [How permissions are evaluated](explanation/permission-evaluation.md)
 * [Sessions, login and CSRF](explanation/sessions-and-login.md)
+* [Security headers](explanation/security-headers.md)
 * [Token migration](explanation/token-migration.md)
 
 ### Search

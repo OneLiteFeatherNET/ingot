@@ -40,6 +40,7 @@ import io.javalin.community.routing.Route.HEAD
 import io.javalin.http.ContentType
 import io.javalin.http.Context
 import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
+import net.onelitefeather.ingot.web.SecurityHeaders
 import panda.std.Result
 import panda.std.asError
 import panda.std.asSuccess
@@ -154,10 +155,15 @@ internal class ResourcesFrontendHandler(
         }
     }
 
-    private fun respondWithBundledResource(ctx: Context, uri: String): Result<InputStream, ErrorResponse> =
-        respondWithResource(ctx, uri) {
+    private fun respondWithBundledResource(ctx: Context, uri: String): Result<InputStream, ErrorResponse> {
+        if (uri == "index.html") {
+            SecurityHeaders.markDashboard(ctx)
+        }
+
+        return respondWithResource(ctx, uri) {
             FrontendFacade::class.java.getResourceAsStream("/$resourcesDirectory/$uri") ?: "".toByteArray().inputStream()
         }
+    }
 
     override val routes = routes(defaultHandler, indexHandler, assetsHandler, *appRoutes.toTypedArray())
 
