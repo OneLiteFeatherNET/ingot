@@ -158,10 +158,14 @@ cache has no polling fallback. No change is needed here.
 
 ### 8. Resolution entries get a maximum age in cluster mode
 
-A new maven setting, `resolutionCacheMaxAgeSeconds`, bounds the lifetime of every resolution entry. It lives in `MavenSettings`
+A new maven setting, `resolutionCacheClusterMaxAgeSeconds`, bounds the lifetime of every resolution entry. It lives in `MavenSettings`
 beside `resolutionCacheMaxEntries`, in the shared configuration domain `maven`. Its stored default is `0`, which means "use the
 cluster default": 300 seconds when a bus is configured, and no maximum age without one, so today's lifetime is unchanged. A
 positive value overrides the default in either mode.
+
+The name carries `Cluster` on purpose. Upstream Reposilite adds a per-repository `resolutionCacheMissTtl` (GH-2772) that bounds
+only cached misses. The two settings are independent: when both apply, an entry expires at the earlier of the two bounds. Porting
+GH-2772 stays a separate upstream pick and does not change this setting.
 
 ### 9. Revocation keeps the session bound as its fallback
 
