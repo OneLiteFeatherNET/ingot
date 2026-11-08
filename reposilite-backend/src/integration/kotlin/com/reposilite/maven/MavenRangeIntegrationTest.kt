@@ -45,9 +45,9 @@ internal abstract class MavenRangeIntegrationTest : MavenIntegrationSpecificatio
     private val content = (0 until 1000).joinToString("") { ('a' + it % 26).toString() }
     private val path = "com/reposilite/ranged/ranged.jar"
 
-    private fun url(repository: String = "releases", file: String = path) = "$base/$repository/$file"
+    private fun url(repository: String = "immutable", file: String = path) = "$base/$repository/$file"
 
-    private fun deploy(repository: String = "releases", file: String = path) {
+    private fun deploy(repository: String = "immutable", file: String = path) {
         val gav = file.substringBeforeLast('/')
         val name = file.substringAfterLast('/')
         useDocument(repository, gav, name, content, store = true)
@@ -234,22 +234,48 @@ internal abstract class MavenRangeIntegrationTest : MavenIntegrationSpecificatio
         deploy(file = metadata)
 
         val response = get(url(file = metadata)).asBytes()
-        val partial = get(url(file = metadata)).header("Range", "bytes=0-9").asBytes()
+        val notModified = get(url(file = metadata)).header("If-None-Match", response.headers.getFirst(ETAG)).asBytes()
 
         assertThat(response.status).isEqualTo(200)
         assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
-        assertThat(partial.status).isEqualTo(206)
-        assertThat(partial.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
+        assertThat(notModified.status).isEqualTo(304)
+        assertThat(notModified.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
     }
 
     @Test
-    fun `should ignore a range on head requests`() {
+    fun `should answer a head request with a range like the matching get without a body`() {
         deploy()
 
         val response = head(url()).header("Range", "bytes=0-9").asEmpty()
 
-        assertThat(response.status).isEqualTo(200)
-        assertThat(response.headers.getFirst(CONTENT_LENGTH)).isEqualTo(content.length.toString())
+        assertThat(response.status).isEqualTo(206)
+        assertThat(response.headers.getFirst(CONTENT_LENGTH)).isEqualTo("10")
+        assertThat(response.headers.getFirst("Content-Range")).isEqualTo("bytes 0-9/1000")
+    }
+
+    @Test
+    fun `should derive the entity tag from the stored checksum`() {
+        deploy()
+        useDocument("immutable", "com/reposilite/ranged", "ranged.jar.sha256", "abc123", store = true)
+
+        val etag = get(url()).asBytes().headers.getFirst(ETAG)
+
+        assertThat(etag).isEqualTo("\"abc123\"")
+    }
+
+    @Test
+    fun `should change the entity tag when the stored checksum changes`() {
+        deploy("immutable", "com/reposilite/ranged/other.jar")
+        useDocument("immutable", "com/reposilite/ranged", "other.jar.sha1", "aaa111", store = true)
+        val before = get(url(file = "com/reposilite/ranged/other.jar")).asBytes().headers.getFirst(ETAG)
+        val second = "com/reposilite/ranged2/other.jar"
+        deploy("immutable", second)
+        useDocument("immutable", "com/reposilite/ranged2", "other.jar.sha1", "bbb222", store = true)
+
+        val after = get(url(file = second)).asBytes().headers.getFirst(ETAG)
+
+        assertThat(before).isEqualTo("\"aaa111\"")
+        assertThat(after).isEqualTo("\"bbb222\"").isNotEqualTo(before)
     }
 
 }
