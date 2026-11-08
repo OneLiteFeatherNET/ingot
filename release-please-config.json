@@ -36,6 +36,16 @@
           "type": "json",
           "path": "reposilite-frontend/package-lock.json",
           "jsonpath": "$.packages['']['version']"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/ingot/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "charts/ingot/Chart.yaml",
+          "jsonpath": "$.appVersion"
         }
       ]
     }

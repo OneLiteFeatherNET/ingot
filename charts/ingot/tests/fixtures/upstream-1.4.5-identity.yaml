@@ -1,0 +1,19 @@
+# Identity fields that the upstream reposilite chart 1.4.5 (appVersion 3.6.6) renders from staging-values.yaml,
+# with nameOverride and fullnameOverride unset. The release is the HelmRelease `reposilite`, which Flux installs
+# as the release `reposilite` in the namespace reposilite-staging.
+#
+# Captured once with:
+#   helm template reposilite reposilite-1.4.5.tgz --namespace reposilite-staging \
+#     -f staging-values.yaml --set persistence.enabled=true
+#
+# persistence.enabled is set for the capture only: staging turns the claim off, but the claim name is part of the
+# migration, so it is captured as the upstream chart names it when the claim exists.
+release: reposilite
+namespace: reposilite-staging
+selectorLabels:
+  app.kubernetes.io/instance: reposilite
+  app.kubernetes.io/name: reposilite
+deploymentName: reposilite
+serviceName: reposilite
+persistentVolumeClaimName: reposilite
+containerPort: 8080

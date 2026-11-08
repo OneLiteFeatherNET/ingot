@@ -1,0 +1,11 @@
+# Installed by chart-testing in the chart job. The images are the ones that job builds and loads into kind.
+mode: split
+image:
+  name: ingot
+  tag: ci
+dashboard:
+  image:
+    name: ingot-dashboard
+    tag: ci
+ingress:
+  enabled: true

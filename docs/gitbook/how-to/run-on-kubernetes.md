@@ -1,10 +1,10 @@
 ---
-description: Run Ingot on Kubernetes with the upstream Reposilite Helm chart and the Ingot image, with a database Secret, S3 storage, health checks, persistence, autoscaling and ingress, and the limits of running more than one replica.
+description: Run Ingot on Kubernetes with the Ingot Helm chart, with a database Secret, S3 storage, health checks, persistence, autoscaling and ingress, and the limits of running more than one replica.
 ---
 
 # Run on Kubernetes
 
-This page installs Ingot with the upstream Reposilite Helm chart and the Ingot image. Ingot does not ship its own chart yet. The chart sets the Deployment, Service, probes, persistence, autoscaling and ingress. You set the image to Ingot and pass the Ingot settings through environment variables.
+This page installs Ingot with the Ingot Helm chart, which is published as an OCI chart with each release. The chart sets the Deployment, Service, probes, persistence, autoscaling and ingress. You pass the Ingot settings through environment variables. Its values keep the keys of the upstream Reposilite chart, so [migrating an existing release](migrate-from-upstream-chart.md) is a values diff. To run the dashboard as its own workload, see [Run the dashboard split from the server with Helm](run-split-with-helm.md).
 
 {% hint style="warning" %}
 Several replicas are not fully supported yet. Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
@@ -13,22 +13,20 @@ Several replicas are not fully supported yet. Read [Running more than one replic
 ## Before you begin
 
 * A Kubernetes cluster and `kubectl` with access to a namespace for Ingot.
-* Helm 3.
+* Helm 3.8 or later, which installs charts from an OCI registry.
 * A database for anything beyond one replica. MariaDB or PostgreSQL. The default SQLite file works for one replica only.
 * An S3 bucket for repositories, if you run more than one replica. Filesystem storage needs a volume that several pods can mount.
 * An ingress controller, if you want a host name. Autoscaling needs the Kubernetes metrics server.
 
-The steps below were checked against chart `reposilite` version `1.4.2`. The chart's `appVersion` is the upstream Reposilite version. Ingot does not use it, because the image tag is set explicitly in the values.
+The chart version and its `appVersion` are the Ingot release, so the chart and the image of a release always match. The image tag in the values below pins a digest as well.
 
-## Add the chart repository
+## Read the chart values
 
 ```bash
-helm repo add reposilite https://helm.reposilite.com/
-helm repo update
-helm show values reposilite/reposilite --version 1.4.2 > ingot-chart-values.yaml
+helm show values oci://ghcr.io/onelitefeathernet/charts/ingot --version 1.1.1 > ingot-chart-values.yaml
 ```
 
-The file lists every value of the chart with its default. Use it as a reference. Your own values file only needs the keys that change.
+Replace `1.1.1` with the release you deploy. The file lists every value of the chart with its default. Use it as a reference. Your own values file only needs the keys that change.
 
 ## Create the database Secret
 
@@ -98,21 +96,21 @@ The chart defaults are upstream Reposilite defaults: `-Xmx64M` and a memory limi
 ## Install the release
 
 ```bash
-helm upgrade --install ingot reposilite/reposilite \
-  --version 1.4.2 \
+helm upgrade --install ingot oci://ghcr.io/onelitefeathernet/charts/ingot \
+  --version 1.1.1 \
   --namespace ingot \
   -f ingot-values.yaml
 ```
 
-The Service is named `ingot-reposilite`, because the release name `ingot` does not contain the chart name.
+The release is named `ingot` and the chart is named `ingot`, so the Deployment and the Service are both named `ingot`.
 
 ## Check the rollout and the health
 
 Wait for the Deployment, then ask the instance for its health through a port forward:
 
 ```bash
-kubectl -n ingot rollout status deployment/ingot-reposilite
-kubectl -n ingot port-forward svc/ingot-reposilite 8080:8080
+kubectl -n ingot rollout status deployment/ingot
+kubectl -n ingot port-forward svc/ingot 8080:8080
 ```
 
 In a second shell:
@@ -125,7 +123,7 @@ The answer is `{"status":"UP"}` with status `200`. A failing instance answers `5
 
 ## Health checks
 
-The chart runs a readiness probe and a liveness probe. Both send `GET /` to port `8080`. The chart fixes the path, so you cannot point the probes at `/api/status/health`.
+The chart runs a readiness probe and a liveness probe. Both send `GET /` to port `8080` by default. Set `probes.path` to point them at another path.
 
 {% hint style="warning" %}
 The probes check whether `/` answers. Ingot has no separate readiness endpoint. If you turn off the dashboard with `INGOT_LOCAL_DEFAULTFRONTEND=false`, check that `/` still answers with a success status before you rely on the probes. This behaviour was not verified for this page.
