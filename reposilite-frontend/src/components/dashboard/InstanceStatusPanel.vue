@@ -20,6 +20,7 @@ import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
 import MdCard from '../md/MdCard.vue'
+import { healthLabel, summariseCluster, uptimeOf } from './clusterStatus'
 import FailuresSheet from './FailuresSheet.vue'
 import InstanceHealthRow from './InstanceHealthRow.vue'
 import StatTile from './StatTile.vue'
@@ -29,6 +30,7 @@ import StatTile from './StatTile.vue'
 // hours at a time; a fifth of the requests is a fifth of the load for the same reading.
 const POLL_INTERVAL_MS = 5000
 
+const emit = defineEmits(['cluster'])
 const { client } = useSession()
 const instanceStatus = ref(null)
 const failed = ref(false)
@@ -39,6 +41,9 @@ const requestStatus = () =>
     .then(response => {
       instanceStatus.value = response.data
       failed.value = false
+      // The trends below draw one series per instance from the same answer, so they get the
+      // cluster from here. Without a bus it is null and they keep the local history.
+      emit('cluster', response.data.cluster ?? null)
     })
     .catch(error => {
       console.error(error)
@@ -118,11 +123,50 @@ const versionState = computed(() => {
     : { status: 'warning', label: `${latestVersion} available` }
 })
 
-const failures = computed(() => {
-  const count = instanceStatus.value.failuresCount
-  return count === 0
-    ? { status: 'good', label: 'None recorded' }
-    : { status: 'critical', label: count === 1 ? '1 failure recorded' : `${count} failures recorded` }
+const failureState = (count) => count === 0
+  ? { status: 'good', label: 'None recorded' }
+  : { status: 'critical', label: count === 1 ? '1 failure recorded' : `${count} failures recorded` }
+
+const failures = computed(() => failureState(instanceStatus.value.failuresCount))
+
+// The cluster view exists only when the status carries instances. An empty list has nothing to
+// summarise, so it shows nothing, and the tiles above still describe this instance.
+const clusterView = computed(() => {
+  const instances = instanceStatus.value?.cluster?.instances
+  if (!instances?.length) return null
+
+  const now = Date.now()
+  const summary = summariseCluster(instances, now)
+  const failuresState = failureState(summary.failuresCount)
+
+  return {
+    memory: {
+      value: `${summary.usedMemory.toFixed(1)} MB`,
+      detail: `of ${summary.maxMemory} MB available`,
+      ratio: ratio(summary.usedMemory, summary.maxMemory)
+    },
+    threads: {
+      value: `${summary.usedThreads}`,
+      detail: `of ${summary.maxThreads} in the pool`,
+      ratio: ratio(summary.usedThreads, summary.maxThreads)
+    },
+    failures: { value: `${summary.failuresCount}`, ...failuresState },
+    uptime: prettyUptime(summary.uptime),
+    version: summary.version.mixed
+      ? { value: 'mixed', detail: `Versions: ${summary.version.versions.join(', ')}` }
+      : { value: summary.version.label, detail: 'Same on every instance' },
+    health: { value: healthLabel(summary.health), detail: 'Worst instance' },
+    rows: instances.map(instance => ({
+      id: instance.id,
+      version: instance.version,
+      uptime: prettyUptime(uptimeOf(instance, now)),
+      memory: `${Number(instance.usedMemory).toFixed(1)} of ${instance.maxMemory} MB`,
+      threads: `${instance.usedThreads} of ${instance.maxThreads} threads`,
+      failures: failureState(instance.failuresCount).label,
+      health: healthLabel(instance.health),
+      stale: instance.stale
+    }))
+  }
 })
 
 // The tile opens the list only when there is something in it. An empty tile has no action, so it
@@ -221,6 +265,82 @@ const openFailures = () => {
         link="https://github.com/OneLiteFeatherNET/ingot/releases"
       />
     </div>
+
+    <section
+      v-if="clusterView"
+      class="flex flex-col gap-3"
+      aria-labelledby="cluster-heading"
+    >
+      <h3
+        id="cluster-heading"
+        class="md-title-medium text-on-surface"
+      >
+        Cluster
+      </h3>
+      <div
+        data-testid="cluster-summary"
+        class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+      >
+        <StatTile
+          label="Cluster memory"
+          :value="clusterView.memory.value"
+          :detail="clusterView.memory.detail"
+          :ratio="clusterView.memory.ratio"
+        />
+        <StatTile
+          label="Cluster threads"
+          :value="clusterView.threads.value"
+          :detail="clusterView.threads.detail"
+          :ratio="clusterView.threads.ratio"
+        />
+        <StatTile
+          label="Cluster failures"
+          :value="clusterView.failures.value"
+          :status="clusterView.failures.status"
+          :status-label="clusterView.failures.label"
+        />
+        <StatTile
+          label="Shortest uptime"
+          :value="clusterView.uptime"
+          detail="Since the most recent restart"
+        />
+        <StatTile
+          label="Cluster version"
+          :value="clusterView.version.value"
+          :detail="clusterView.version.detail"
+        />
+        <StatTile
+          label="Cluster health"
+          :value="clusterView.health.value"
+          :detail="clusterView.health.detail"
+        />
+      </div>
+      <ul
+        data-testid="cluster-instances"
+        aria-label="Instances in the cluster"
+        class="flex flex-col gap-2"
+      >
+        <li
+          v-for="row in clusterView.rows"
+          :key="row.id"
+          data-testid="cluster-instance"
+          class="flex flex-col gap-1 rounded-corner-medium border border-outline-variant p-3"
+        >
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="md-title-small text-on-surface">{{ row.id }}</span>
+            <span
+              v-if="row.stale"
+              class="rounded-corner-full bg-surface-container-high px-2 py-0.5 md-label-small text-on-surface"
+            >
+              Stale
+            </span>
+          </div>
+          <p class="md-body-small text-on-surface-variant">
+            Version {{ row.version }}. Up {{ row.uptime }}. {{ row.memory }}, {{ row.threads }}. {{ row.failures }}. {{ row.health }}.
+          </p>
+        </li>
+      </ul>
+    </section>
 
     <InstanceHealthRow />
     <FailuresSheet
