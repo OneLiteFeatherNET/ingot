@@ -43,6 +43,8 @@ internal class ClusterPropagationTest {
         val variables = mapOf(
             "INGOT_CLUSTER_URL" to "nats://hub.example:4222",
             "INGOT_CLUSTER_INSTANCE_ID" to instanceId,
+            // token propagation only: console fan-out needs the journalist of a running instance
+            "INGOT_CLUSTER_CONSOLE" to "false",
         )
         val extensions = Extensions(InMemoryLogger())
         val plugin = ClusterPlugin(
