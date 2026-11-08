@@ -15,9 +15,13 @@
   -->
 
 <script setup>
+import { ref } from 'vue'
 import InstanceStatusPanel from './InstanceStatusPanel.vue'
 import ResourceTrends from './ResourceTrends.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
+
+// The status panel reports the cluster it finds in its answer; the trends below draw from it.
+const cluster = ref(null)
 </script>
 
 <!--
@@ -39,7 +43,7 @@ import GettingStartedCard from './GettingStartedCard.vue'
       >
         Instance status
       </h2>
-      <InstanceStatusPanel />
+      <InstanceStatusPanel @cluster="cluster = $event" />
     </section>
 
     <section
@@ -52,7 +56,7 @@ import GettingStartedCard from './GettingStartedCard.vue'
       >
         Resources
       </h2>
-      <ResourceTrends />
+      <ResourceTrends :cluster="cluster" />
     </section>
   </div>
 </template>
