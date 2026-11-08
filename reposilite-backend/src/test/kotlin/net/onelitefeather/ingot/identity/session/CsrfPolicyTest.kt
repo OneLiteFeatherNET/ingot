@@ -118,6 +118,27 @@ internal class CsrfPolicyTest {
     }
 
     @Test
+    fun `exempts login below the configured base path`() {
+        assertThat(CsrfPolicy.violation(request(path = "/reposilite/api/auth/login", csrfCookie = null, csrfHeader = null), basePath = "/reposilite"))
+            .describedAs("an instance served under its configured base path exempts its login at that path")
+            .isFalse()
+    }
+
+    @Test
+    fun `keeps exempting login at the root when a base path is configured`() {
+        assertThat(CsrfPolicy.violation(request(path = "/api/auth/login", csrfCookie = null, csrfHeader = null), basePath = "/reposilite"))
+            .describedAs("a reverse proxy may strip the base path before the request reaches Ingot")
+            .isFalse()
+    }
+
+    @Test
+    fun `does not exempt login below a base path that is not configured`() {
+        assertThat(CsrfPolicy.violation(request(path = "/reposilite/api/auth/login", csrfHeader = null), basePath = "/"))
+            .describedAs("only the configured base path names the login route, another prefix is a repository path")
+            .isTrue()
+    }
+
+    @Test
     fun `does not exempt a repository path that merely ends with the login path`() {
         assertThat(CsrfPolicy.violation(request(method = "POST", path = "/releases/api/auth/login", csrfHeader = null)))
             .describedAs("a deployment of a file named like the login path is still a cookie request that needs the token")
