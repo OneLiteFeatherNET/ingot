@@ -118,9 +118,23 @@ internal class CsrfPolicyTest {
     }
 
     @Test
-    fun `recognizes the exempt paths below a base path`() {
-        assertThat(CsrfPolicy.violation(request(path = "/reposilite/api/auth/login", csrfCookie = null, csrfHeader = null)))
-            .describedAs("an instance served under a base path must exempt its login too")
+    fun `does not exempt a repository path that merely ends with the login path`() {
+        assertThat(CsrfPolicy.violation(request(method = "POST", path = "/releases/api/auth/login", csrfHeader = null)))
+            .describedAs("a deployment of a file named like the login path is still a cookie request that needs the token")
+            .isTrue()
+    }
+
+    @Test
+    fun `does not exempt setup below a prefix`() {
+        assertThat(CsrfPolicy.violation(request(path = "/releases/api/auth/setup", csrfHeader = null)))
+            .describedAs("only the exact route is exempt, so a path below another prefix is not the setup endpoint")
+            .isTrue()
+    }
+
+    @Test
+    fun `exempts login with a trailing slash`() {
+        assertThat(CsrfPolicy.violation(request(path = "/api/auth/login/", csrfCookie = null, csrfHeader = null)))
+            .describedAs("the same endpoint answers with or without the trailing slash")
             .isFalse()
     }
 
