@@ -188,6 +188,25 @@ internal class ClusterSettingsTest {
     }
 
     @Test
+    fun `console fan-out defaults to on for the broker schemes`() {
+        listOf("nats", "tls", "redis", "rediss", "valkey", "valkeys").forEach { scheme ->
+            assertThat(ClusterSettings.consoleFanOutDefault(scheme))
+                .describedAs("console fan-out default for $scheme")
+                .isTrue()
+        }
+    }
+
+    @Test
+    fun `console fan-out defaults to off on the database transport`() {
+        assertThat(ClusterSettings.consoleFanOutDefault("database")).isFalse()
+    }
+
+    @Test
+    fun `console fan-out defaults to on without a bus scheme`() {
+        assertThat(ClusterSettings.consoleFanOutDefault(null)).isTrue()
+    }
+
+    @Test
     fun `an invalid boolean names the variable it came from`() {
         assertThatThrownBy {
             ClusterSettings.read(sources(variables = mapOf("INGOT_CLUSTER_FAILURES" to "maybe")))

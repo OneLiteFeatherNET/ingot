@@ -66,7 +66,10 @@ class ReposiliteJournalist(
     val cachedLogger = CachedLogger(Channel.ALL, cachedLogSize)
 
     private val publisherLogger = PublisherLogger(Channel.ALL)
-    private val visibleLogger: Logger
+
+    /** Only lines logged by this instance at its visibility threshold, so that lines received from the cluster bus are never forwarded again. */
+    private val localLinePublisher = PublisherLogger(Channel.ALL)
+    internal val visibleLogger: Logger
     private val mainLogger: Logger
     private val tinyLog: TinyLogLogger
     var visibleThreshold: Channel = defaultVisibilityThreshold
@@ -79,7 +82,7 @@ class ReposiliteJournalist(
         }
 
         // Journalist's logger usually logs to console, the publisher logger forwards messages to subscribers
-        this.visibleLogger = AggregatedLogger(visibleJournalist.logger, publisherLogger)
+        this.visibleLogger = AggregatedLogger(visibleJournalist.logger, publisherLogger, localLinePublisher)
         setVisibleThreshold(defaultVisibilityThreshold)
 
         // Redirects logs to TinyLog and local cache for later retrieval
@@ -98,6 +101,21 @@ class ReposiliteJournalist(
 
     fun unsubscribe(subscriberId: Int): Boolean =
         publisherLogger.unsubscribe(subscriberId)
+
+    /** Subscribes to the lines this instance logs itself, at its visibility threshold. Used by the cluster console fan-out. */
+    fun subscribeLocalLines(subscriber: Subscriber<MutableEntry<Channel, String>>): Int =
+        localLinePublisher.subscribe(subscriber)
+
+    fun unsubscribeLocalLines(subscriberId: Int): Boolean =
+        localLinePublisher.unsubscribe(subscriberId)
+
+    /**
+     * Shows a line that another instance of the cluster logged. The line reaches the console subscribers with its origin in
+     * front, but it is neither written to the local log nor forwarded to the local line subscribers, so it is never published again.
+     */
+    fun deliverRemote(channel: Channel, origin: String, message: String) {
+        publisherLogger.log(channel, "[$origin] $message")
+    }
 
     fun setVisibleThreshold(channel: Channel) {
         visibleThreshold = channel

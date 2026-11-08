@@ -18,8 +18,10 @@ package net.onelitefeather.ingot.cluster
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.reposilite.ReposiliteJournalist
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.configuration.ConfigurationFacade
+import com.reposilite.journalist.Channel
 import com.reposilite.maven.MavenFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -30,6 +32,7 @@ import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.reposilite
 import com.reposilite.status.FailureFacade
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import java.time.Clock
@@ -70,6 +73,8 @@ class ClusterPlugin(
     private val storageUsage: ((StorageUsageRefreshedEvent) -> Unit)? = null,
     /** Applies the cache events through the running facades when null. */
     private val cacheHooks: ClusterCacheHooks? = null,
+    /** The journalist whose lines are forwarded. Without it the instance's own journalist of the running server is used. */
+    private val consoleJournalist: ReposiliteJournalist? = null,
 ) : ReposilitePlugin() {
 
     internal val counters = ClusterCounters()
@@ -102,6 +107,12 @@ class ClusterPlugin(
         logger.info("Cluster | connecting to ${url.redacted()}")
         val transport = factory.open(url, settings)
         registerInvalidations()
+        // Console lines are shown and forwarded only while the switch is on, so the switch turns both directions off.
+        val journalist = if (settings.console) consoleJournalist ?: reposilite().journalist else null
+        if (journalist != null) {
+            onReceived(ClusterEventType.CONSOLE_LINE) { deliverRemote(journalist, it) }
+        }
+
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         onReceived(ClusterEventType.STORAGE_USAGE) { envelope ->
             StorageUsageMessage.fromPayload(envelope.payload)?.let { applyStorageUsage(it) }
@@ -132,8 +143,10 @@ class ClusterPlugin(
             publishPayload(outbox, identifier, settings.instanceId, ClusterEventType.STORAGE_USAGE, StorageUsageMessage.toPayload(event))
         }
         remoteFailures?.let { aggregateFailures(outbox, identifier, settings.instanceId, it) }
+        val stopConsole = journalist?.let { forwardConsole(it, transport, identifier, settings.instanceId) }
         event { _: ReposiliteDisposeEvent ->
             outbox.close()
+            stopConsole?.invoke()
             transport.close()
         }
         return null
@@ -195,6 +208,39 @@ class ClusterPlugin(
         }
     }
 
+    /**
+     * Publishes the lines this instance logs at its visibility threshold. The lines wait in a queue of their own, so a burst of
+     * log lines can only drop log lines and never a token or configuration event. Returns the function that stops forwarding.
+     */
+    private fun forwardConsole(journalist: ReposiliteJournalist, transport: ClusterTransport, cluster: String, origin: String): () -> Unit {
+        val outbox = ClusterOutbox(CONSOLE_OUTBOX_CAPACITY)
+        // Failures are not logged here: a log line would be forwarded as a new line, and the failure would repeat.
+        outbox.drainTo(onError = {}, sink = { transport.publish(it) })
+        val subscriberId = journalist.subscribeLocalLines { line ->
+            publish(
+                outbox,
+                cluster,
+                origin,
+                ClusterEventType.CONSOLE_LINE,
+                mapOf(
+                    "channel" to line.key.name,
+                    "message" to line.value,
+                    "timestamp" to Instant.now(clock).toString(),
+                ),
+            )
+        }
+        return {
+            journalist.unsubscribeLocalLines(subscriberId)
+            outbox.close()
+        }
+    }
+
+    /** Shows a line another instance logged, labelled with that instance. */
+    private fun deliverRemote(journalist: ReposiliteJournalist, envelope: ClusterEnvelope) {
+        val channel = Channel.of(envelope.payload.path("channel").asText()).orElse(Channel.INFO)
+        journalist.deliverRemote(channel, envelope.origin, envelope.payload.path("message").asText())
+    }
+
     private fun publish(
         outbox: ClusterOutbox,
         cluster: String,
@@ -224,6 +270,9 @@ class ClusterPlugin(
 
         // Messages waiting for the transport. A full queue drops its oldest message, so memory stays bounded during an outage.
         const val OUTBOX_CAPACITY = 1024
+
+        // Log lines waiting for the transport, kept apart from the events above so that a log burst cannot evict them.
+        const val CONSOLE_OUTBOX_CAPACITY = 512
     }
 
 }
