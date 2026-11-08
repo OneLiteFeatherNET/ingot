@@ -36,10 +36,23 @@ The accepted schemes are:
 | `rediss` | Redis over TLS | yes |
 | `valkey` | Valkey | no |
 | `valkeys` | Valkey over TLS | yes |
+| `database` | The instance database, with no broker | the database connection |
 
 Valkey is named first among the Redis family. Redis and Valkey are used only to publish and to receive events. They never hold locks, counters or sessions, and no server module is needed.
 
-Any other scheme stops the start with a configuration error. The error names the accepted schemes and does not print the URL, because the URL may carry a password.
+Any other scheme stops the start with a configuration error. The error names the accepted schemes and does not print the URL, because the URL may carry a password. The `database` scheme is the exception: it does not stop the start, see the next section.
+
+## Database transport
+
+The `database:` scheme needs no broker. Each replica publishes its events as rows of a table, `cluster_event`, in its own database, and reads the rows of the other replicas. It uses the connection pool that the instance already has. Use it when the replicas run on MariaDB, MySQL or PostgreSQL and you do not want to operate a message broker.
+
+Set the URL to `database:` with nothing after the colon. `database://` is accepted as well. A host or credentials in the URL are refused, and the error does not print the URL.
+
+The transport is refused on SQLite and H2. A file database cannot be shared between instances. The instance logs one error that names the databases the transport needs, keeps the bus off and keeps serving requests.
+
+An event reaches the other replicas within one poll interval after it is stored. The interval is set with `INGOT_CLUSTER_POLL_INTERVAL_MS`, which defaults to 1000 and is raised to 200 when it is set lower. Every replica reads the table once per interval, so a short interval adds database load. A replica that starts does not apply the rows stored before it started. Rows older than five minutes are removed by one replica per five-minute window. An event larger than 16 KiB is not stored, and the log names its type.
+
+Console forwarding is off on this transport by default, because every log line would become a row. Set `INGOT_CLUSTER_CONSOLE=true` to turn it on.
 
 Example for a Kubernetes deployment, where the URL can live in a ConfigMap and the password in a Secret:
 
@@ -70,7 +83,8 @@ Each replica announces itself with an identifier. It defaults to the host name, 
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `INGOT_CLUSTER_CONSOLE` | `true` when a bus is configured | Switches the forwarding of live console log lines between replicas. Set `false` to keep the console of each replica to itself while the rest of the bus keeps working. |
+| `INGOT_CLUSTER_CONSOLE` | `true` when a bus is configured, `false` on the database transport | Switches the forwarding of live console log lines between replicas. Set `false` to keep the console of each replica to itself while the rest of the bus keeps working. |
+| `INGOT_CLUSTER_POLL_INTERVAL_MS` | `1000` | Poll interval of the database transport in milliseconds. Values below 200 are raised to 200. Other transports ignore it. |
 | `INGOT_CLUSTER_FAILURES` | `false` | Switches the aggregation of recorded failures across replicas. Off, each replica lists only the failures it recorded. |
 
 Accepted values are `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`, in any case. Any other value stops the start and names the variable.
