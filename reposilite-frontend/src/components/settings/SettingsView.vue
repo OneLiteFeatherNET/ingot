@@ -21,10 +21,15 @@ import { JsonForms } from '@jsonforms/vue'
 import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
+import { useSession } from '../../store/session'
+import { ADMIN_NODES } from '../../store/nodeAccess'
+import { groupedSettingsDomains, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import SideNavLayout from '../layout/SideNavLayout.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
+import SettingsHub from './SettingsHub.vue'
+import { hubGroups } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
@@ -110,13 +115,19 @@ const activeDomain = computed(() => {
 // Below 600px the side navigation is not drawn beside the domain; see SideNavLayout.
 const narrow = useMediaQuery('(max-width: 599px)')
 
-// The domains of the side navigation. With one domain there is nothing to switch between, so no navigation is drawn.
+// The domains of the side navigation, in the category groups of the registry. With one domain there is
+// nothing to switch between, so no navigation is drawn.
+const sideNav = sideNavOf('settings')
 const domainGroups = computed(() => (tabDomains.value.length > 1
-  ? [{
-    heading: 'Configuration',
-    links: tabDomains.value.map(domain => ({ key: domain, label: store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
-  }]
+  ? groupedSettingsDomains(tabDomains.value).map(group => ({
+    heading: group.heading,
+    links: group.domains.map(domain => ({ key: domain, label: store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
+  }))
   : []))
+
+// With no domain in the address and several to choose from, the page is the hub. With one domain the
+// address is replaced with it, as the watcher below reports.
+const hubShown = computed(() => !props.domain && tabDomains.value.length > 1)
 
 const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
 const activeCollections = computed(() => (activeDomain.value && !isAccessDomain(activeDomain.value)
@@ -157,7 +168,7 @@ watch(
 // address names none or one the server does not have, or once the list has arrived. The page answers
 // with a replace, after which the two agree and nothing is reported again, so there is no loop.
 watch([activeDomain, () => props.domain], ([domain, requested]) => {
-  if (domain && domain !== requested) emit('update:domain', domain)
+  if (domain && domain !== requested && !hubShown.value) emit('update:domain', domain)
 }, { immediate: true })
 
 const selectEntry = (collection, id) => {
@@ -296,6 +307,22 @@ const sheetChanges = computed(() => (reviewingConflict.value ? conflictChanges.v
 const openConflictReview = async () => {
   if (await reviewConflict()) conflictReviewOpen.value = true
 }
+
+/*
+ * The hub shows the saved value of each domain and marks the ones whose draft differs. Editing is gated by one
+ * node, so a visitor either may edit every domain or none. A session without a node check, as the tests
+ * provide, is taken to edit.
+ */
+const session = useSession()
+const mayEdit = () => (typeof session.can === 'function' ? session.can(ADMIN_NODES.settings) : true)
+const hubCards = computed(() => hubGroups({
+  domains: domains.value,
+  schemas: store.schemas.value,
+  saved: savedSettings.value,
+  unsaved: [...new Set(changes.value.map(change => change.domain))],
+  titleOf: store.titleOf,
+  editable: mayEdit
+}))
 
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
 watch(() => changes.value.length, (count) => {
@@ -453,13 +480,17 @@ watch(
       @dismiss="importErrors = []"
     />
 
-    <template v-if="activeDomain">
+    <SettingsHub
+      v-if="hubShown"
+      :groups="hubCards"
+    />
+    <template v-else-if="activeDomain">
       <SideNavLayout
-        label="Configuration domains"
-        section-label="Settings"
+        :label="sideNav.label"
+        :section-label="sideNav.sectionLabel"
         :groups="domainGroups"
         :current="activeDomain"
-        :index-to="{ name: 'settings' }"
+        :index-to="sideNav.indexTo"
         :narrow="narrow"
         replace
       >
