@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { createManagerGuard, createPasswordChangeGuard, managerAccess, NO_ACCESS_MESSAGE } from './guard'
+import { createManagerGuard, createPasswordChangeGuard, managerAccess } from './guard'
 import { ADMIN_NODES, ACCESS_NODES } from '../store/nodeAccess'
 
 // The guard is handed a session it can read and a notice it can raise. Each test builds its
@@ -47,7 +47,7 @@ describe('managerAccess', () => {
     expect(managerAccess({ isManager: true, isLogged: true })).toBe('granted')
   })
 
-  it('sends a signed in user without the manager permission back to overview', () => {
+  it('marks a signed in user without the manager permission as denied, for the page to explain', () => {
     expect(managerAccess({ isManager: false, isLogged: true })).toBe('denied')
   })
 
@@ -78,11 +78,11 @@ describe('createManagerGuard', () => {
     expect(notify, 'the prompt is shown by the page, not announced here').not.toHaveBeenCalled()
   })
 
-  it('sends a signed in user who is not a manager to overview and tells them why', async () => {
+  it('lets a signed in user who is not a manager stay, for the page to say that there is no access', async () => {
     const { guard, notify } = fixture({ isLogged: true })
 
-    expect(await guard(managerRoute)).toEqual({ name: 'overview', replace: true })
-    expect(notify).toHaveBeenCalledTimes(1)
+    expect(await guard(managerRoute)).toBe(true)
+    expect(notify, 'the page explains the denial, no toast does').not.toHaveBeenCalled()
   })
 
   it('waits for the session to be known before it decides', async () => {
@@ -103,19 +103,10 @@ describe('createManagerGuard', () => {
 })
 
 describe('createManagerGuard with permission nodes', () => {
-  it('sends a user without the node of the route to overview', async () => {
+  it('lets a user without the node of the route stay at the address', async () => {
     const { guard } = fixture({ isLogged: true, nodes: [ADMIN_NODES.audit] })
 
-    expect(await guard(maintenanceRoute)).toEqual({ name: 'overview', replace: true })
-  })
-
-  it('tells the user that they have no access to that page', async () => {
-    const { guard, notify } = fixture({ isLogged: true, nodes: [] })
-
-    await guard(maintenanceRoute)
-
-    expect(notify).toHaveBeenCalledWith(NO_ACCESS_MESSAGE)
-    expect(NO_ACCESS_MESSAGE).toBe('You do not have access to that page')
+    expect(await guard(maintenanceRoute)).toBe(true)
   })
 
   it('lets a user with the node of the route in', async () => {
@@ -137,10 +128,10 @@ describe('createManagerGuard with permission nodes', () => {
     expect(await guard(accessRoute)).toBe(true)
   })
 
-  it('sends a user with no access node away from the access section', async () => {
+  it('lets a user with no access node stay at the access address', async () => {
     const { guard } = fixture({ isLogged: true, nodes: [ADMIN_NODES.audit] })
 
-    expect(await guard(accessRoute)).toEqual({ name: 'overview', replace: true })
+    expect(await guard(accessRoute)).toBe(true)
   })
 
   it('keeps an anonymous visitor on the requested URL', async () => {
@@ -156,22 +147,10 @@ describe('createManagerGuard with permission nodes', () => {
     expect(await guard(maintenanceRoute)).toBe(true)
   })
 
-  it('sends a legacy session without the manager permission to overview', async () => {
+  it('lets a legacy session without the manager permission stay at the address', async () => {
     const { guard } = fixture({ isLogged: true })
 
-    expect(await guard(maintenanceRoute)).toEqual({ name: 'overview', replace: true })
-  })
-
-  it('shows the notice once when it is wired to the shared info toast', async () => {
-    vi.resetModules()
-    const toast = await import('../helpers/toast')
-    const { snackbar } = await import('../store/snackbar')
-    const { guard } = fixture({ isLogged: true, nodes: [], notify: toast.createInfoToastOnce })
-
-    await guard(maintenanceRoute)
-    await guard(maintenanceRoute)
-
-    expect(snackbar.entries.value.map(entry => entry.message)).toEqual([NO_ACCESS_MESSAGE])
+    expect(await guard(maintenanceRoute)).toBe(true)
   })
 })
 

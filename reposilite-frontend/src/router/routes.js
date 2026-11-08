@@ -38,8 +38,8 @@ const ROUTES = [
   // Usage over time. The same permission as the dashboard, so both tabs are offered to the same people.
   { name: 'analytics', path: '/analytics', meta: routeMeta('analytics') },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
-  // the team in `:name`. `/access` has no page of its own and opens the user list.
-  { name: 'access', path: '/access', redirect: { name: 'access-users' }, meta: routeMeta('access') },
+  // the team in `:name`. `/access` is forwarded by the router (create.js) or shows the index of the pages.
+  { name: 'access', path: '/access', meta: routeMeta('access') },
   { name: 'access-users', path: '/access/users', meta: routeMeta('access', 'users') },
   { name: 'access-user', path: '/access/users/:name', meta: routeMeta('access', 'users') },
   { name: 'access-machines', path: '/access/machines', meta: routeMeta('access', 'machines') },
@@ -67,6 +67,8 @@ const ROUTES = [
   { name: 'audit', path: '/audit', meta: routeMeta('audit') },
   // The authentication settings are edited under Access, so a link to their old settings tab ends there.
   { name: 'settings-authentication', path: '/settings/authentication', redirect: { name: 'access-ldap' }, meta: routeMeta('access', 'ldap') },
+  // The sign in settings are edited under Access too. Placed before the generic settings route, which would take `login` as a domain.
+  { name: 'settings-login', path: '/settings/login', redirect: { name: 'access-sso' }, meta: routeMeta('access', 'sso') },
   { name: 'settings', path: '/settings/:domain?', meta: routeMeta('settings') },
   {
     name: 'settings-entry',

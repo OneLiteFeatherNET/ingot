@@ -58,7 +58,7 @@ describe('AccessView', () => {
     await flushPromises()
   }
 
-  const tabs = () => wrapper.findAll('[role="tab"]')
+  const tabs = () => wrapper.findAll('[aria-label="Access sections"] a')
 
   beforeEach(() => {
     principals = {
@@ -93,7 +93,7 @@ describe('AccessView', () => {
   it('opens the security page from the Security tab and shows its panel', async () => {
     await mountView({ tab: 'security' }, '/access/security')
 
-    expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text())).toEqual(['Security'])
+    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['Security'])
     expect(wrapper.find('[data-test="security"]').exists()).toBe(true)
   })
 
@@ -117,7 +117,7 @@ describe('AccessView', () => {
   it('opens the single sign on page from the SSO tab and shows its panel', async () => {
     await mountView({ tab: 'sso' }, '/access/sso')
 
-    expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text())).toEqual(['SSO'])
+    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['SSO'])
     expect(wrapper.find('[data-test="sso"]').exists()).toBe(true)
     expect(principals.list, 'the single sign on page lists no principals').not.toHaveBeenCalled()
   })
@@ -125,7 +125,7 @@ describe('AccessView', () => {
   it('opens the LDAP page from the LDAP tab and shows its form', async () => {
     await mountView({ tab: 'ldap' }, '/access/ldap')
 
-    expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text())).toEqual(['LDAP'])
+    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['LDAP'])
     expect(wrapper.find('[data-test="ldap"]').exists()).toBe(true)
   })
 
@@ -220,7 +220,7 @@ describe('AccessView', () => {
   it('marks the tab of the address as selected', async () => {
     await mountView({ tab: 'machines' }, '/access/machines')
 
-    expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text()))
+    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text()))
       .toEqual(['Machine accounts'])
   })
 

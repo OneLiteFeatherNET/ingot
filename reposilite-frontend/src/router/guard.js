@@ -24,44 +24,28 @@
  * - an anonymous visitor stays on the URL they asked for. The page shows a prompt in place of
  *   the section, and asks for the sign in dialog itself once it is on screen, because the
  *   dialog lives in the page header and a request made before the page exists is lost;
- * - a signed in user without the permission is sent to overview with a notice, because
- *   signing in again would not change anything.
+ * - a signed in user without the permission passes too. Signing in again would not change anything, so the
+ *   page shows a no access state at the same address, with a link to Repositories.
  *
- * Nothing is decided before the session is known, or a manager would be bounced to overview
- * while the page is still loading.
+ * Nothing is decided before the session is known, or a manager would be shown the
+ * no access state while the page is still loading.
  */
-
-import { routeAllowed } from '../store/nodeAccess'
 
 const managerAccess = ({ isManager, isLogged }) => {
   if (isManager) return 'granted'
   return isLogged ? 'denied' : 'sign-in'
 }
 
-const NO_ACCESS_MESSAGE = 'You do not have access to that page'
-
-const createManagerGuard = ({
-  whenSessionKnown,
-  isManager,
-  isLogged,
-  can = () => isManager(),
-  notify
-}) => async (to) => {
+const createManagerGuard = ({ whenSessionKnown }) => async (to) => {
   if (!to.meta?.manager) {
     return true
   }
 
   await whenSessionKnown()
 
-  const allowed = routeAllowed(to.meta, can, isManager())
-  switch (managerAccess({ isManager: allowed, isLogged: isLogged() })) {
-    case 'granted':
-    case 'sign-in':
-      return true
-    default:
-      notify(NO_ACCESS_MESSAGE)
-      return { name: 'overview', replace: true }
-  }
+  // Every outcome stays at the address: the page asks an anonymous visitor to sign in and tells a signed in
+  // visitor without the permission that there is no access.
+  return true
 }
 
 /*
@@ -77,4 +61,4 @@ const createPasswordChangeGuard = ({ mustChangePassword }) => (to) => {
   return { name: 'account', replace: true }
 }
 
-export { NO_ACCESS_MESSAGE, managerAccess, createManagerGuard, createPasswordChangeGuard }
+export { managerAccess, createManagerGuard, createPasswordChangeGuard }

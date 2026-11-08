@@ -86,7 +86,7 @@ describe('settings tabs without authentication', () => {
   it('does not offer an Authentication tab, because the domain is edited under Access', async () => {
     await mountSettings('maven')
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
   })
 
   it('still renders the danger zone below the page', async () => {

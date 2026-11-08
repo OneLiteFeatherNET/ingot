@@ -149,7 +149,7 @@ describe('analytics route', () => {
     expect(analytics?.meta).toEqual({ ...dashboard.meta, section: 'analytics' })
   })
 
-  it('sends a signed in user without the manager permission to overview', async () => {
+  it('keeps a signed in user without the manager permission on the analytics address', async () => {
     const notify = vi.fn()
     const router = makeRouter({
       isManager: () => false,
@@ -160,8 +160,8 @@ describe('analytics route', () => {
 
     await router.push('/analytics')
 
-    expect(router.currentRoute.value.name).toBe('overview')
-    expect(notify).toHaveBeenCalledTimes(1)
+    expect(router.currentRoute.value.name, 'the page shows the no access state in place').toBe('analytics')
+    expect(notify, 'no toast announces the denial any more').not.toHaveBeenCalled()
   })
 })
 
@@ -180,6 +180,21 @@ describe('access and the old token routes', () => {
     await router.push('/settings/authentication')
 
     expect(router.currentRoute.value.fullPath, 'the authentication settings are edited under Access now').toBe('/access/ldap')
+  })
+
+  it('redirects /settings/login to the single sign on page under Access', async () => {
+    const router = makeRouter()
+
+    await router.push('/settings/login')
+
+    expect(router.currentRoute.value.fullPath, 'the sign in settings are edited under Access now').toBe('/access/sso')
+  })
+
+  it('lists the /settings/login redirect before the generic settings route', () => {
+    const names = ROUTES.map(route => route.name)
+
+    expect(names, 'the login redirect is a route of its own').toContain('settings-login')
+    expect(names.indexOf('settings-login'), 'a generic /settings/:domain match would otherwise win').toBeLessThan(names.indexOf('settings'))
   })
 
   it('redirects /tokens to the machine accounts', async () => {
@@ -221,14 +236,35 @@ describe('access and the old token routes', () => {
 
     await router.push('/tokens')
 
-    expect(router.currentRoute.value.name, 'a signed in user without the permission is sent away').toBe('overview')
-    expect(notify).toHaveBeenCalledTimes(1)
+    expect(router.currentRoute.value.name, 'the redirect ends at the machine accounts, where the no access state shows').toBe('access-machines')
+    expect(notify).not.toHaveBeenCalled()
   })
 })
 
 describe('manager routes', () => {
   beforeEach(() => {
     document.title = ''
+  })
+
+  it('keeps a signed in visitor without the console node at /console, with the in memory history and an injected session', async () => {
+    const router = makeRouter({
+      isManager: () => false,
+      isLogged: () => true,
+      can: () => false,
+      whenSessionKnown: () => Promise.resolve()
+    })
+
+    await router.push('/console')
+
+    expect(router.currentRoute.value.fullPath).toBe('/console')
+  })
+
+  it('names the audit page Audit log in the document title', async () => {
+    const router = makeRouter({ isManager: () => true, isLogged: () => true, whenSessionKnown: () => Promise.resolve() })
+
+    await router.push('/audit')
+
+    expect(document.title).toBe('Audit log · Ingot Repository')
   })
 
   it('keeps an anonymous visitor on the requested URL', async () => {
@@ -254,7 +290,7 @@ describe('manager routes', () => {
     expect(notify).not.toHaveBeenCalled()
   })
 
-  it('moves a signed in user without the manager permission to overview and tells them', async () => {
+  it('keeps a signed in user without the manager permission on the dashboard address', async () => {
     const notify = vi.fn()
     const router = makeRouter({
       isManager: () => false,
@@ -265,8 +301,8 @@ describe('manager routes', () => {
 
     await router.push('/dashboard')
 
-    expect(router.currentRoute.value.name).toBe('overview')
-    expect(notify).toHaveBeenCalledTimes(1)
+    expect(router.currentRoute.value.name).toBe('dashboard')
+    expect(notify).not.toHaveBeenCalled()
   })
 
   it('does not decide anything before the session is known', async () => {
@@ -392,12 +428,12 @@ describe('routes gated by permission nodes', () => {
     whenSessionKnown: () => Promise.resolve()
   })
 
-  it('sends a user without ingot.admin.maintenance away from the maintenance page', async () => {
+  it('keeps a user without ingot.admin.maintenance on the maintenance address', async () => {
     const router = makeRouter(sessionWith('ingot.admin.audit'))
 
     await router.push('/maintenance')
 
-    expect(router.currentRoute.value.name).toBe('overview')
+    expect(router.currentRoute.value.name).toBe('maintenance')
   })
 
   it('opens the maintenance page for a user with ingot.admin.maintenance', async () => {
@@ -416,20 +452,20 @@ describe('routes gated by permission nodes', () => {
     expect(router.currentRoute.value.name).toBe('access-teams')
   })
 
-  it('sends a user without the users node away from the user list', async () => {
+  it('keeps a user without the users node on the user list address', async () => {
     const router = makeRouter(sessionWith('ingot.admin.teams'))
 
     await router.push('/access/users')
 
-    expect(router.currentRoute.value.name).toBe('overview')
+    expect(router.currentRoute.value.name).toBe('access-users')
   })
 
-  it('ends the token redirect at overview for a user without the users area, which lists the machine accounts', async () => {
+  it('ends the token redirect at the machine accounts for a user without the users area, which shows the no access state', async () => {
     const router = makeRouter(sessionWith('ingot.admin.tokens'))
 
     await router.push('/tokens')
 
-    expect(router.currentRoute.value.name).toBe('overview')
+    expect(router.currentRoute.value.name).toBe('access-machines')
   })
 
   it('opens the machine accounts for a user with ingot.admin.users, the area of the principal list', async () => {
@@ -450,5 +486,52 @@ describe('routes gated by permission nodes', () => {
     await router.push('/audit')
 
     expect(router.currentRoute.value.name).toBe('audit')
+  })
+})
+
+describe('the /access address forwards or shows the index', () => {
+  // The width is injected, as the session is: the router reads no window.
+  const sessionWith = (...nodes) => ({
+    isManager: () => true,
+    isLogged: () => true,
+    can: (node) => nodes.includes(node),
+    whenSessionKnown: () => Promise.resolve()
+  })
+
+  it('replaces /access with the one page a visitor may open', async () => {
+    const history = createMemoryHistory()
+    const router = makeRouter({ ...sessionWith('ingot.admin.tokens'), history })
+    await router.push('/search')
+    const replace = vi.spyOn(history, 'replace')
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name, 'the tokens node alone permits only the check page').toBe('access-check')
+    expect(replace, 'the forward leaves no history step behind').toHaveBeenCalledWith('/access/check', expect.anything())
+  })
+
+  it('forwards /access to the first permitted page on a wide screen', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.teams'), narrow: () => false })
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name).toBe('access-teams')
+  })
+
+  it('stays at /access on a narrow screen when several pages are permitted, so the index shows', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.teams'), narrow: () => true })
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name).toBe('access')
+    expect(router.currentRoute.value.fullPath).toBe('/access')
+  })
+
+  it('forwards /access to the one permitted page on a narrow screen too', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.tokens'), narrow: () => true })
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name, 'the forward depends on permissions, not on the width').toBe('access-check')
   })
 })

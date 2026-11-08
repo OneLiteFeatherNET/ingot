@@ -513,7 +513,7 @@ const renderers = markRaw([
  *
  * mergeStyles appends to the defaults instead of replacing them, so each element keeps its
  * original class name as well. The few rules that cannot live here still select on those
- * names. The tab rows of the array and one-of renderers are SettingsTabs, which styles itself.
+ * names.
  */
 const configurationStyles = mergeStyles(defaultStyles, {
   control: {

@@ -127,9 +127,9 @@ const chooseLink = async (wrapper, label) => {
 
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
-const SECTION_LABELS = ['Overview', 'Search', 'Dashboard', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']
+const SECTION_LABELS = ['Repositories', 'Search', 'Dashboard', 'Analytics', 'Audit log', 'Access', 'Settings', 'Console', 'Maintenance']
 // The bottom bar keeps the daily sections and puts the rarer admin pages under More.
-const BAR_LABELS = ['Overview', 'Search', 'Dashboard', 'Access']
+const BAR_LABELS = ['Repositories', 'Search', 'Dashboard', 'Access']
 
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
@@ -255,13 +255,14 @@ describe('IndexPage manager routes', () => {
     expect(router.currentRoute.value.fullPath).toBe('/access/machines/ci-bot')
   })
 
-  it('sends a visitor whose sign in does not grant the permission to overview', async () => {
-    const { router } = await mountAt('/access/users', { manager: false, logged: false })
+  it('keeps a visitor whose sign in does not grant the permission at the address, with the no access state', async () => {
+    const { wrapper, router } = await mountAt('/access/users', { manager: false, logged: false })
 
     session.isLogged.value = true
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath, 'a token without the permission cannot open the section').toBe('/')
+    expect(router.currentRoute.value.fullPath, 'no redirect to overview any more').toBe('/access/users')
+    expect(wrapper.text()).toContain('You do not have access to this page')
   })
 
   it('shows the section once the visitor has become a manager', async () => {
@@ -271,6 +272,53 @@ describe('IndexPage manager routes', () => {
     await flushPromises()
 
     expect(shownSection(wrapper)).toBe('access')
+  })
+})
+
+describe('IndexPage no access state', () => {
+  beforeEach(() => {
+    session.isManager = null
+    login.openLogin.mockClear()
+  })
+
+  it('keeps a signed in visitor without the console node at /console and says that there is no access', async () => {
+    const { wrapper, router } = await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    expect(router.currentRoute.value.fullPath).toBe('/console')
+    expect(wrapper.text()).toContain('You do not have access to this page')
+    expect(shownSection(wrapper), 'the console must not render').toBeNull()
+  })
+
+  it('names the page that is denied', async () => {
+    const { wrapper } = await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    expect(wrapper.find('[data-test="no-access"] h2').text()).toBe('Console')
+  })
+
+  it('offers a link to Repositories and does not navigate to overview by itself', async () => {
+    const { wrapper, router } = await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
+    const push = vi.spyOn(router, 'push')
+    const replace = vi.spyOn(router, 'replace')
+
+    const link = wrapper.find('[data-test="no-access"]').findAll('a').find(anchor => anchor.text() === 'Repositories')
+
+    expect(link.attributes('href')).toBe('/')
+    expect(push).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('shows the sign in prompt, and not the no access message, to an anonymous visitor', async () => {
+    const { wrapper } = await mountAt('/console', { manager: false, logged: false })
+
+    expect(wrapper.text()).toContain('Sign in to open Console')
+    expect(wrapper.text()).not.toContain('You do not have access to this page')
+  })
+
+  it('shows no toast for the denial', async () => {
+    const { snackbar } = await import('../store/snackbar')
+    await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    expect(snackbar.entries.value.map(entry => entry.message)).toEqual([])
   })
 })
 
@@ -351,13 +399,13 @@ describe('IndexPage navigation', () => {
   it('shows Maintenance to a user with ingot.admin.maintenance', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.maintenance'] })
 
-    expect(railLabels(wrapper)).toEqual(['Overview', 'Search', 'Maintenance'])
+    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search', 'Maintenance'])
   })
 
   it('hides Access from a user with no access node', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.console', 'ingot.admin.audit'] })
 
-    expect(railLabels(wrapper)).toEqual(['Overview', 'Search', 'Console', 'Audit'])
+    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search', 'Audit log', 'Console'])
   })
 
   it('shows every section to a user with ingot.admin.*', async () => {
@@ -366,20 +414,50 @@ describe('IndexPage navigation', () => {
     expect(railLabels(wrapper)).toEqual(SECTION_LABELS)
   })
 
-  it('leaves out the sections a user cannot use from the bottom bar and from More', async () => {
+  it('puts exactly four permitted sections in the bottom bar, with no More item', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.console', 'ingot.admin.audit'] })
 
     const [bar] = navigations(wrapper)
-    await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
 
-    expect(bar.findAll('a').map(link => link.text())).toEqual(['Overview', 'Search'])
-    expect(wrapper.find('nav[aria-label="More sections"]').findAll('a').map(link => link.text())).toEqual(['Console', 'Audit'])
+    expect(bar.findAll('a').map(link => link.text())).toEqual(['Repositories', 'Search', 'Audit log', 'Console'])
+    expect(bar.findAll('button'), 'nothing is left over').toHaveLength(0)
+  })
+
+  it('shows a visitor with the audit node alone Repositories, Search and Audit log in the bar, without More', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    const [bar] = navigations(wrapper)
+
+    expect(bar.findAll('a').map(link => link.text())).toEqual(['Repositories', 'Search', 'Audit log'])
+    expect(bar.findAll('button')).toHaveLength(0)
+  })
+
+  it('groups the rail into Work, Monitor, Administration and Troubleshoot with the group name as label', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
+
+    const groups = navigations(wrapper)[1].findAll('[role="group"]')
+
+    expect(groups.map(group => group.attributes('aria-label'))).toEqual(['Work', 'Monitor', 'Administration', 'Troubleshoot'])
+    expect(groups.map(group => group.findAll('a').map(link => link.text()))).toEqual([
+      ['Repositories', 'Search'],
+      ['Dashboard', 'Analytics', 'Audit log'],
+      ['Access', 'Settings'],
+      ['Console', 'Maintenance']
+    ])
+  })
+
+  it('leaves an empty group out of the rail', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    const groups = navigations(wrapper)[1].findAll('[role="group"]')
+
+    expect(groups.map(group => group.attributes('aria-label'))).toEqual(['Work', 'Monitor'])
   })
 
   it('shows the public sections only to a user with repository nodes but no admin node', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.repository.releases.read'] })
 
-    expect(railLabels(wrapper)).toEqual(['Overview', 'Search'])
+    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search'])
   })
 
   it('shows the legacy manager every section when the session has no node list', async () => {
@@ -388,10 +466,10 @@ describe('IndexPage navigation', () => {
     expect(railLabels(wrapper)).toEqual(SECTION_LABELS)
   })
 
-  it('moves a user without the node of the page to overview', async () => {
+  it('keeps a user without the node of the page at the page address', async () => {
     const { router } = await mountAt('/maintenance', { logged: true, nodes: ['ingot.admin.audit'] })
 
-    expect(router.currentRoute.value.name).toBe('overview')
+    expect(router.currentRoute.value.name).toBe('maintenance')
   })
 
   it('keeps the daily sections in the bar and puts the rarer ones under More', async () => {
@@ -411,27 +489,29 @@ describe('IndexPage navigation', () => {
     await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
 
     const panel = wrapper.find('nav[aria-label="More sections"]')
-    expect(panel.findAll('a').map(link => link.text())).toEqual(['Analytics', 'Console', 'Maintenance', 'Audit', 'Settings'])
+    expect(panel.findAll('a').map(link => link.text())).toEqual(['Analytics', 'Audit log', 'Settings', 'Console', 'Maintenance'])
+    expect(panel.findAll('[role="group"]').map(group => group.attributes('aria-label')), 'the leftovers sit under group headings')
+      .toEqual(['Monitor', 'Administration', 'Troubleshoot'])
 
-    await panel.findAll('a').find(link => link.text() === 'Audit').trigger('click')
+    await panel.findAll('a').find(link => link.text() === 'Audit log').trigger('click')
 
     expect(wrapper.find('nav[aria-label="More sections"]').exists()).toBe(false)
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('audit')
   })
 
-  it('offers a visitor Overview and Search, the two sections that need no sign in', async () => {
+  it('offers a visitor Repositories and Search, the two sections that need no sign in', async () => {
     const { wrapper } = await mountAt('/', { manager: false })
 
-    expect(railLabels(wrapper)).toEqual(['Overview', 'Search'])
+    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search'])
   })
 
-  it('offers an anonymous visitor only Overview and Search in the bottom bar, without a More item', async () => {
+  it('offers an anonymous visitor only Repositories and Search in the bottom bar, without a More item', async () => {
     const { wrapper } = await mountAt('/', { manager: false })
 
     const [bar] = navigations(wrapper)
 
-    expect(bar.findAll('a').map(link => link.text()), 'the bar links').toEqual(['Overview', 'Search'])
+    expect(bar.findAll('a').map(link => link.text()), 'the bar links').toEqual(['Repositories', 'Search'])
     expect(bar.findAll('button'), 'nothing is left over for More').toHaveLength(0)
   })
 
@@ -440,7 +520,7 @@ describe('IndexPage navigation', () => {
 
     const shown = navigations(wrapper).flatMap(nav => nav.findAll('a').map(link => link.text()))
 
-    for (const label of ['Dashboard', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']) {
+    for (const label of ['Dashboard', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit log', 'Settings']) {
       expect(shown, `${label} needs a sign in`).not.toContain(label)
     }
   })
@@ -478,7 +558,7 @@ describe('IndexPage navigation', () => {
   it('keeps the browsed repository path on the overview link', async () => {
     const { wrapper } = await mountAt('/browse/org/repo', { manager: true })
 
-    const overview = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Overview')
+    const overview = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Repositories')
     const access = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Access')
 
     expect(overview.attributes('href'), 'returning to overview keeps the place in the browser').toBe('/browse/org/repo')
@@ -628,7 +708,7 @@ describe('IndexPage bottom bar height', () => {
     wrapper.unmount()
   })
 
-  it('publishes the bar height to a visitor, who has the Overview and Search sections', async () => {
+  it('publishes the bar height to a visitor, who has the Repositories and Search sections', async () => {
     const { wrapper } = await mountAt('/', { manager: false })
 
     expect(rootBarHeight(), 'a bar with two destinations still takes its height').toBe('80px')

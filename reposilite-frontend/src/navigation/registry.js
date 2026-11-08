@@ -30,8 +30,8 @@
  * - area        work, monitor, administration, troubleshoot, or none for a page outside the rail
  * - permission  { node } or { anyNode } for a manager page, { manager: false } for an open page,
  *               { signedIn: true } for a page that needs a signed in visitor only
- * - overflow    true when the bottom bar keeps the page under More (the rule the bar reads today)
- * - barOrder    the place of the page in the bottom bar rule; a page without one is never in the bar
+ * - barOrder    the place of the page in the bottom bar rule (the first four permitted pages in this order
+ *               are in the bar, the rest sit under More); a page without one is never in the bar
  * - children    for Access: the side pages, each with key, route, label, group, permission and
  *               optional `detail` (the route of one principal or team of that page) and `landing`
  *               (true when the /access address may open it). Settings gets its children later.
@@ -39,9 +39,16 @@
  * Functions:
  * - visiblePages(can)            the rail pages a visitor may open, in rail order (no account page)
  * - visibleChildren(key, can)    the children of a page the visitor may open
+ * - groupedChildren(key, can)  the visible children in headed groups, as SideNavLayout takes them
+ * - sideNavOf(key)              { label, sectionLabel, indexTo } of a page for SideNavLayout
+ * - settingsGroupOf(domain)    the category of a Settings domain: Repository, Instance, Data, or Plugins for any other
+ * - groupedSettingsDomains(domains)  a domain list in category groups [{ heading, domains }], empty groups left out
  * - firstAccessRoute(can)        the route /access opens: the first permitted landing page, or users
  * - accessTabOf(routeName)       the Access tab key of a route, including its detail routes
- * - pageByKey(key), pageLabel(key), isOverflow(key)
+ * - railGroups(can)            the rail pages in their groups: [{ area, heading, pages }], empty groups left out
+ * - barLayout(can)             { bar, more }: the first four permitted pages in bar order, and the others under
+ *                               their group headings as [{ area, heading, pages }]
+ * - pageByKey(key), pageLabel(key)
  * - routeMeta(key, childKey?)    the `meta` of a route: section, manager, node or anyNode, signedIn
  * - unlistedRoutes(names)        the route names that no entry, child, detail or exempt name covers;
  *                                a route added to the route table without one of these fails the suite
@@ -54,11 +61,21 @@ import { ADMIN_NODES, ACCESS_NODES, INSTANCE_ADMIN_NODE, requiredNodes } from '.
 
 const MORE_KEY = 'more'
 
+// The groups of the rail, in order, and the number of pages the bottom bar keeps before More.
+const AREAS = [
+  { area: 'work', heading: 'Work' },
+  { area: 'monitor', heading: 'Monitor' },
+  { area: 'administration', heading: 'Administration' },
+  { area: 'troubleshoot', heading: 'Troubleshoot' },
+]
+const BAR_SIZE = 4
+
 const PAGES = [
-  { key: 'overview', route: 'overview', label: 'Overview', area: 'work', permission: { manager: false }, barOrder: 1, overflow: false },
-  { key: 'search', route: 'search', label: 'Search', area: 'work', permission: { manager: false }, barOrder: 2, overflow: false },
-  { key: 'dashboard', route: 'dashboard', label: 'Dashboard', area: 'monitor', permission: { node: ADMIN_NODES.dashboard }, barOrder: 3, overflow: false },
-  { key: 'analytics', route: 'analytics', label: 'Analytics', area: 'monitor', permission: { node: ADMIN_NODES.dashboard }, barOrder: 6, overflow: true },
+  { key: 'overview', route: 'overview', label: 'Repositories', area: 'work', permission: { manager: false }, barOrder: 1 },
+  { key: 'search', route: 'search', label: 'Search', area: 'work', permission: { manager: false }, barOrder: 2 },
+  { key: 'dashboard', route: 'dashboard', label: 'Dashboard', area: 'monitor', permission: { node: ADMIN_NODES.dashboard }, barOrder: 3 },
+  { key: 'analytics', route: 'analytics', label: 'Analytics', area: 'monitor', permission: { node: ADMIN_NODES.dashboard }, barOrder: 6 },
+  { key: 'audit', route: 'audit', label: 'Audit log', area: 'monitor', permission: { node: ADMIN_NODES.audit }, barOrder: 7 },
   {
     key: 'access',
     route: 'access',
@@ -66,7 +83,6 @@ const PAGES = [
     area: 'administration',
     permission: { anyNode: ACCESS_NODES },
     barOrder: 4,
-    overflow: false,
     children: [
       { key: 'users', route: 'access-users', detail: 'access-user', label: 'Users', group: 'People', permission: { node: ADMIN_NODES.users }, landing: true },
       { key: 'machines', route: 'access-machines', detail: 'access-machine', label: 'Machine accounts', group: 'People', permission: { node: ADMIN_NODES.users }, landing: true },
@@ -77,17 +93,16 @@ const PAGES = [
       { key: 'check', route: 'access-check', label: 'Check', group: 'Tools', permission: { anyNode: ACCESS_NODES } },
     ],
   },
-  { key: 'console', route: 'console', label: 'Console', area: 'troubleshoot', permission: { node: ADMIN_NODES.console }, barOrder: 8, overflow: true },
-  { key: 'maintenance', route: 'maintenance', label: 'Maintenance', area: 'troubleshoot', permission: { node: ADMIN_NODES.maintenance }, barOrder: 9, overflow: true },
-  { key: 'audit', route: 'audit', label: 'Audit', area: 'monitor', permission: { node: ADMIN_NODES.audit }, barOrder: 7, overflow: true },
-  { key: 'settings', route: 'settings', label: 'Settings', area: 'administration', permission: { node: ADMIN_NODES.settings }, barOrder: 5, overflow: true },
+  { key: 'settings', route: 'settings', label: 'Settings', area: 'administration', permission: { node: ADMIN_NODES.settings }, barOrder: 5 },
+  { key: 'console', route: 'console', label: 'Console', area: 'troubleshoot', permission: { node: ADMIN_NODES.console }, barOrder: 8 },
+  { key: 'maintenance', route: 'maintenance', label: 'Maintenance', area: 'troubleshoot', permission: { node: ADMIN_NODES.maintenance }, barOrder: 9 },
   { key: 'account', route: 'account', label: 'My account', area: 'none', permission: { signedIn: true } },
 ]
 
 // Routes that have no page of their own: the browser of a repository path (the overview page), the
 // legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
 // the not found page. The detail routes of Access are not listed here: each one is the `detail` of its child.
-const EXEMPT_ROUTES = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-entry', 'not-found']
+const EXEMPT_ROUTES = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'not-found']
 
 const pageByKey = (key) => PAGES.find(page => page.key === key)
 
@@ -102,6 +117,49 @@ const visiblePages = (can) =>
 
 const visibleChildren = (key, can) => childrenOf(key).filter(child => allowedBy(child.permission, can))
 
+// Children in their groups, in the order the groups first appear: [{ heading, links: [{ key, label, to }] }].
+// A group without a visible child is left out. `to` is the router location of the child.
+const groupedChildren = (key, can) => {
+  const groups = []
+  visibleChildren(key, can).forEach(child => {
+    let group = groups.find(entry => entry.heading === child.group)
+    if (!group) {
+      group = { heading: child.group, links: [] }
+      groups.push(group)
+    }
+    group.links.push({ key: child.key, label: child.label, to: { name: child.route } })
+  })
+  return groups
+}
+
+// What SideNavLayout needs of a page except the groups: the accessible name of the navigation, the first
+// crumb and the location of the index. All three come from the entry of the page.
+const sideNavOf = (key) => {
+  const page = pageByKey(key)
+  return { label: `${page.label} sections`, sectionLabel: page.label, indexTo: { name: page.route } }
+}
+
+// The Settings domains are filled from the server schema at run time, so Settings has no static children.
+// A fixed mapping places the domains the server is known to list in a category; any other domain, such
+// as one a plugin adds, falls into Plugins and so never fails to show.
+const SETTINGS_GROUPS = [
+  { heading: 'Repository', domains: ['maven', 'javadoc', 'cleanup'] },
+  { heading: 'Instance', domains: ['web', 'frontend'] },
+  { heading: 'Data', domains: ['statistics', 'audit', 'search'] },
+  { heading: 'Plugins', domains: [] }
+]
+
+const SETTINGS_FALLBACK_GROUP = 'Plugins'
+
+const settingsGroupOf = (domain) =>
+  SETTINGS_GROUPS.find(group => group.domains.includes(domain))?.heading ?? SETTINGS_FALLBACK_GROUP
+
+// A domain list in groups: [{ heading, domains }], in the order of SETTINGS_GROUPS, the domains in the order
+// they were given. A group without a domain is left out.
+const groupedSettingsDomains = (domains) => SETTINGS_GROUPS
+  .map(group => ({ heading: group.heading, domains: domains.filter(domain => settingsGroupOf(domain) === group.heading) }))
+  .filter(group => group.domains.length > 0)
+
 const firstAccessRoute = (can) => {
   const landing = visibleChildren('access', can).find(child => child.landing)
     ?? childrenOf('access').find(child => child.landing)
@@ -111,9 +169,21 @@ const firstAccessRoute = (can) => {
 const accessTabOf = (routeName) =>
   childrenOf('access').find(child => child.route === routeName || child.detail === routeName)?.key
 
+const groupPages = (pages) => AREAS
+  .map(({ area, heading }) => ({ area, heading, pages: pages.filter(page => page.area === area) }))
+  .filter(group => group.pages.length > 0)
+
+const railGroups = (can) => groupPages(visiblePages(can))
+
+const barLayout = (can) => {
+  const ordered = visiblePages(can)
+    .filter(page => page.barOrder !== undefined)
+    .sort((a, b) => a.barOrder - b.barOrder)
+  return { bar: ordered.slice(0, BAR_SIZE), more: groupPages(ordered.slice(BAR_SIZE)) }
+}
+
 const pageLabel = (key) => pageByKey(key)?.label ?? key
 
-const isOverflow = (key) => pageByKey(key)?.overflow === true
 
 // The meta of a route. `manager` stays on every route that names a node or an alternative, because
 // it is what a session without a node list is judged by, and what tells a visitor to sign in.
@@ -146,10 +216,15 @@ export {
   pageByKey,
   visiblePages,
   visibleChildren,
+  groupedChildren,
+  sideNavOf,
+  settingsGroupOf,
+  groupedSettingsDomains,
   firstAccessRoute,
   accessTabOf,
   pageLabel,
-  isOverflow,
+  railGroups,
+  barLayout,
   routeMeta,
   unlistedRoutes,
 }
