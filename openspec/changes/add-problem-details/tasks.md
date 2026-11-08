@@ -8,7 +8,8 @@ A1 and A3 touch different files; A2 touches `HttpRemoteClient` and `MirrorServic
 Every test follows F.I.R.S.T.: no sleeps, no system-time reads (inject `java.time.Clock`), no shared mutable static state, no fixed
 ports, a `@TempDir` per filesystem test, a fresh server per test, and assertions with messages. Each test is written before the code it
 covers and is seen to fail. Heavy runs use `heavy` with `--max-workers=2`; integration tests use `:reposilite-backend:integration --tests`.
-No task changes a configuration key, an environment variable or a deployment manifest.
+The only new setting is `INGOT_PROXY_UPSTREAM_STATUS` (group 3), and it defaults to the current behaviour. No task changes a
+deployment manifest.
 
 ## 1. Proposal
 
@@ -36,16 +37,25 @@ No task changes a configuration key, an environment variable or a deployment man
 
 ## 3. A2 upstream status codes (`test(api)` then `feat(api)`)
 
-- [ ] 3.1 `test(api)`: write failing tests for `HttpRemoteClient` against a local in-process HTTP server on an OS-chosen port, one behaviour
-  per test: read timeout gives 504, refused connection gives 502, upstream 500 gives 502, upstream 404 and 410 give 404, an HTML content type
-  gives 502, a malformed URI gives 400, and no message contains a class name. Timeouts are small and bounded by latches, not sleeps.
-  Verify: the tests fail on the current 400 and 406.
-- [ ] 3.2 `test(api)`: write failing `MirrorService` and group tests with a fake client: an upstream 404 from every host resolves to
-  `NotFound` and the client sees 404; a 404 from the first group member and a hit from the second serves the hit; a 502 from the first member
-  and a hit from the second serves the hit; a stored local copy is served while the upstream is down; with no local copy a 502 or 504 is the
-  answer. Verify: the tests fail where the current code yields 406.
-- [ ] 3.3 `feat(api)`: map the failures as in D5 in `HttpRemoteClient` with generic messages, keep the detail in the debug log, and keep
-  `MirrorService.asRemoteFailure`. Verify: 3.1 and 3.2 pass. If the group code stops at the first non-404 (D7), record it in the pull request.
+- [ ] 3.1 `test(api)`: write failing tests for reading the setting: default is `legacy`; property beats environment beats the
+  `reposilite` spellings; case is ignored; an unknown value fails the startup naming `INGOT_PROXY_UPSTREAM_STATUS`. The reader takes the
+  property and environment maps as arguments, so no test touches the real environment. Verify: the tests fail on the missing reader.
+- [ ] 3.2 `test(api)`: write `legacy` tests that pin today's behaviour, against a local in-process HTTP server on an OS-chosen port and a
+  fake client for resolution: the table of design D5 (timeout and refused connection give `400` mirror first and `404` local first;
+  upstream `404`, `500` and an HTML answer give `406` mirror first and `404` local first), a malformed URI gives `400`, a local copy is
+  served while the upstream is down, and an upstream `404` records no `MissingMetadata` entry. A separate failing test asserts that no
+  message contains a class name. Timeouts are small and bounded by latches, not sleeps. Verify: the pinning tests pass on the current
+  code, and only the class name test fails.
+- [ ] 3.3 `test(api)`: write failing `strict` tests, one behaviour per test: read timeout gives `504`, refused connection gives `502`,
+  upstream `500` gives `502`, upstream `404` and `410` give `404`, an HTML answer gives `502`, a malformed URI gives `400`; a `404`
+  from every host resolves to `NotFound` and the client sees `404`; a `404` from the first group member and a hit from the second serves
+  the hit; a `502` from the first member and a hit from the second serves the hit; with no local copy a `502` or `504` is the answer.
+  Verify: the tests fail on the current `400` and `406`.
+- [ ] 3.4 `feat(api)`: add the setting reader and pass the mode into `HttpRemoteClient` and `MirrorService`; replace the exception text
+  with generic messages in both modes; apply the `strict` mapping of D5 only in `strict`; leave `MirrorService.asRemoteFailure` and the
+  resolution code unchanged. Verify: 3.1 to 3.3 pass, and the `legacy` tests of 3.2 still pass. If the group code stops at the first
+  non-404 in `strict` (D7), record it in the pull request.
+
 
 ## 4. A3 ranges and conditional downloads (`test(api)` then `feat(api)`)
 
@@ -70,9 +80,12 @@ No task changes a configuration key, an environment variable or a deployment man
 - [ ] 5.1 `docs(api)`: update `docs/gitbook/reference/plugin-api.md` for the new `ErrorResponse` members and the Accept negotiation.
   Add `docs/gitbook/reference/api-errors.md` (shape, `Accept: application/problem+json`, the gateway codes, examples) and link it in
   `docs/gitbook/SUMMARY.md`. Verify: every field named on the page exists in `ErrorResponse`.
-- [ ] 5.2 `docs(api)`: document `Accept-Ranges`, `Range`, `ETag` and the conditional headers for artifacts in `docs/gitbook/reference/http-api.md`,
-  and the proxy status codes (502, 504, 404 passthrough) in `docs/gitbook/reference/repository-types.md`. Verify: the status codes on the pages
-  match the scenarios in `specs/`.
+- [ ] 5.2 `docs(api)`: document `Accept-Ranges`, `Range`, `ETag` and the conditional headers for artifacts in `docs/gitbook/reference/http-api.md`.
+  Verify: the status codes on the page match the scenarios in `specs/artifact-conditional-ranges`.
+- [ ] 5.3 `docs(api)`: document `INGOT_PROXY_UPSTREAM_STATUS` in `docs/gitbook/reference/environment-variables.md` (section "Other system
+  properties": property `ingot.proxy.upstreamStatus`, the environment variable, the `reposilite.` and `REPOSILITE_` fallbacks, default
+  `legacy`, order of precedence), and describe both modes with the table of design D5 and the Gradle reason in
+  `docs/gitbook/how-to/create-proxy-repositories.md`. Verify: the statuses on both pages match the scenarios in `specs/upstream-status-codes`.
 
 ## 6. Pull request
 

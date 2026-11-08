@@ -19,7 +19,8 @@ The decisions D1 to D10 are the ones this change takes. The open questions at th
 ## Goals
 
 - One error shape under `/api`, in RFC 9457 form for clients that ask for it, and the legacy form for everyone else.
-- Honest status codes when a proxy's upstream fails, without breaking artifact resolution fall-through.
+- Honest status codes when a proxy's upstream fails, available as an opt-in so that artifact resolution fall-through is never
+  broken for an existing client.
 - Resumable and cacheable artifact downloads on both storage back ends.
 - No change an existing Reposilite client, plugin or deployment has to react to.
 
@@ -75,51 +76,85 @@ A `HEAD` request still gets no body, as `Context.response` already guarantees.
 Both are read from the `Context` inside the writer, so no route changes. The path is `ctx.path()`, which excludes the
 forwarded prefix; a reverse proxy prefix is not added, matching what routes already see.
 
-### D5. Upstream status codes (A2)
+### D5. Upstream status codes (A2) and the setting that guards them
 
-In `HttpRemoteClient.execute`:
+Gradle moves to the next repository only on a `404`; a `502` or `504` from a repository fails the build. Maven behaves the same
+way for its own repository list. A different status for the same failure is therefore not harmless, so the new mapping is
+opt-in.
 
-| Situation | Today | After |
+**The setting.** `INGOT_PROXY_UPSTREAM_STATUS`, values `legacy` (default) and `strict`, compared without regard to case; any
+other value is refused at startup with a clear message naming the setting. It is read once at startup, in this order: the
+system property `ingot.proxy.upstreamStatus`, then the environment variable `INGOT_PROXY_UPSTREAM_STATUS`, then the legacy
+fallbacks `reposilite.proxy.upstreamStatus` and `REPOSILITE_PROXY_UPSTREAM_STATUS`. This is the order the code uses for the
+other `ingot.*` properties (`ingot.status.remote-version-check`, `ingot.javadocs.max-entry-bytes`: property first, then the
+`reposilite.` spelling) and for the prometheus plugin (property, then environment). The setting is not part of
+`LocalConfiguration`, so it has no `INGOT_LOCAL_` form and no entry in `configuration.cdn`. It is passed into
+`HttpRemoteClient` and `MirrorService` as a constructor argument so tests set it without touching the environment.
+
+**Exact statuses a client gets today (`legacy`), traced through `HttpRemoteClient`, `MirrorService` and `ResolutionProvider`.**
+The real client yields `400` for a thrown exception (timeout, refused connection, DNS, TLS) and for a malformed URI, and `406`
+for any upstream non-2xx (404, 429 and 5xx included) and for an HTML content type. `MirrorService` turns that into
+`MirrorResolution.Failed` (`asRemoteFailure` rewrites only `401` and `403`, which the real client never produces because it
+maps them to `406` first). `ResolutionProvider` then decides by lookup order:
+
+| Case, no local copy | Local first (default) | Mirror first, or a pinned remote host |
 | --- | --- | --- |
-| `SocketTimeoutException` (connect or read) | `400`, class name and message | `504`, "Upstream did not answer in time" |
-| Other `IOException` (connect refused, DNS, TLS) | `400`, class name and message | `502`, "Upstream is not reachable" |
+| Timeout, refused connection, DNS, TLS | `404` (the local miss) | `400` |
+| Malformed upstream URI | `404` | `400` |
+| Upstream `404`, `410`, `429`, `5xx`, other non-2xx | `404` | `406` |
+| Upstream 2xx with an HTML content type | `404` | `406` |
+| Every host missing and test double returns `404` | `404` | `404` |
+| An unexpected exception in the single-flight fetch | `500` ("Mirror fetch failed: ...") | `500` |
+
+With a local copy the client gets the copy in all rows (local first returns it before any remote call). In `legacy` all of these
+stay exactly as listed. The `500` row keeps its status; its message is the business of `harden-http-security`.
+
+**`strict` mapping**, in `HttpRemoteClient.execute`:
+
+| Situation | `legacy` | `strict` |
+| --- | --- | --- |
+| `SocketTimeoutException` (connect or read) | `400` | `504`, "Upstream did not answer in time" |
+| Other `IOException` (refused, DNS, TLS) | `400` | `502`, "Upstream is not reachable" |
 | Upstream `404` or `410` | `406` | `404`, "Not found upstream" |
-| Upstream other non-2xx (`3xx`, `4xx`, `5xx`) | `406` | `502`, "Upstream answered <code>" |
-| Upstream 2xx with an HTML content type | `406` | `502`, "Upstream answered an unexpected content type" (see Q2) |
-| Malformed upstream URI | `400` | `400`, unchanged (the configuration is wrong, not the upstream) |
+| Upstream other non-2xx | `406` | `502`, "Upstream answered <code>" |
+| Upstream 2xx with an HTML content type | `406` | `502`, "Upstream answered an unexpected content type" |
+| Malformed upstream URI | `400` | `400` |
 
-Messages are generic: no exception class, no exception message, no URL with credentials. The exception detail goes to the log
-and to the existing failure facade, as before at debug level. `MirrorService.asRemoteFailure` still turns an upstream `401` or
-`403` into `502`, which stays.
+**Messages in both modes.** The text never contains an exception class, an exception message or a credential, because that
+changes no status code. The `legacy` `400` carries "Upstream request failed"; the detail goes to the debug log and the existing
+failure facade, as before. The `406` texts ("Unsuccessful request (<code>)", "Illegal file type (<type>)") name no class and
+stay. `MirrorService.asRemoteFailure` stays in both modes.
 
-### D6. Upstream 404 must stay a miss
+### D6. Upstream 404 stays a miss, and `legacy` does not change MirrorService
 
-Maven and Gradle treat `404` from a repository as "try the next one". They treat `5xx` as a failure of that repository. The
-code relies on that in two places: `MirrorService.searchInRemoteRepositories` counts only status `404` as a miss (so that a
-host list that is entirely missing becomes `MirrorResolution.NotFound`, which the resolution cache records as a stable miss),
-and `ResolutionProvider.tryLocalFirst` falls back to the local `404` for any status below `500`.
+The code treats only status `404` as a miss in `MirrorService.searchInRemoteRepositories`, which lets a host list that is
+entirely missing become `MirrorResolution.NotFound`, which `ResolutionProvider.recordTo` records as `MissingMetadata` in the
+resolution cache. The real `HttpRemoteClient` never answers `404` (it answers `406`), so against a real upstream that path is
+never taken; only the test double produces it.
 
-Reading the code shows a gap: the real `HttpRemoteClient` answers an upstream 404 as `406`, never as `404`, so against a real
-upstream `allMissing` is false and the miss is never recorded as `NotFound`; only the test double produces `404`. D5 maps
-upstream `404` and `410` to `404`, which makes the code do what it says. A2 must therefore assert, at the `MirrorService`
-level and for a group repository, that a real-shaped upstream 404 resolves to `NotFound` and the client sees `404`. Whether
-this newly records negative resolution entries for real upstreams is an observable effect; it is the documented behaviour of
-`ResolutionCache` for misses, and Q1 asks the maintainer to confirm.
+- **`legacy`:** `HttpRemoteClient` and `MirrorService` behave exactly as today, including this gap. No upstream miss is newly
+  recorded, so the resolution cache sees the same entries as before. A test pins this: a real-shaped upstream `404` yields
+  `Failed(406)` and records no `MissingMetadata`.
+- **`strict`:** the upstream `404` and `410` answer `404`, so `allMissing` becomes true and `NotFound` is recorded as a
+  `MissingMetadata` entry for metadata files. This is a side effect of the mapping and is stated here on purpose. It is bounded
+  by what the cache already bounds: the cache exists only when `resolutionCacheMaxEntries` is above `0` (default `0`, so off),
+  holds at most that many entries, and the entry is valid only for the exact prefix. There is no time to live on the resolution
+  cache today and this change does not add one; see Q1.
 
-### D7. 502 and 504 reach the client when there is no local copy
+### D7. 502 and 504 reach the client only in `strict`
 
-`tryLocalFirst` answers an upstream error with its own status when it is `429` or at least `500`. Today a connect failure is
-`400`, so the client sees the local `404`. After D5 it is `502` or `504`, so a client asking a proxy for an artifact that is
-not stored locally sees `502` or `504` while the upstream is down, instead of `404`. That is the point of the change (the
-failure is no longer disguised as a missing file), and it matches what that code already does for an upstream that answers
-`500`. Mitigations that need no change: a local copy still wins (the local-first branch returns it before any remote call),
-and resolution caching of misses is only written for `NotFound`, never for `Failed`. Gradle will mark that repository as
-failing for the build, which is the correct client signal.
+`tryLocalFirst` answers an upstream error with its own status when it is `429` or at least `500`. In `legacy` the upstream
+failures are `400` and `406`, so a local first lookup shows the local `404`, as in D5. In `strict` the same failures are `502`
+or `504`, so a client asking a proxy for an artifact that is not stored locally sees `502` or `504` while the upstream is down.
+That is the point of `strict`, and it matches what that code already does for an upstream that answers `500` in the test
+double. Gradle then marks that repository as failing, which is why `strict` is a choice of the operator and not a default.
+A local copy still wins in both modes.
 
-Group repositories: a group asks its members in order. A member that answers `502` or `504` is a failure of that member; the
-existing group logic is kept, and a test fixes the order of precedence: `200` from a later member beats an earlier member's
-`502`, and `404` from every member stays `404`. If the current group code turns out to stop at the first non-404, A2 records it
-in the pull request instead of changing group semantics.
+Group repositories: a group asks its members in order. The group code is not changed. A test per mode fixes the order of
+precedence: in `legacy` a failing member does not stop a later member that has the artifact and an all-failing group answers
+`404`; in `strict` a `200` from a later member beats an earlier member's `502`, and `404` from every member stays `404`. If the
+current group code turns out to stop at the first non-404 in `strict`, A2 records it in the pull request instead of changing
+group semantics.
 
 ### D8. ETag source (A3)
 
@@ -165,8 +200,10 @@ negotiation tests drive Javalin through the existing in-process test server with
 
 ## Risks and trade-offs
 
-- **R1, 502 instead of 404 for an unreachable upstream** (D7). Deliberate and documented; local copies still win.
-- **R2, real upstream 404 starts to be a recorded miss** (D6). It fixes a latent mismatch; confirm with Q1.
+- **R1, 502 instead of 404 for an unreachable upstream** (D7). Only with `strict`, chosen by the operator; local copies still win.
+- **R2, real upstream 404 starts to be a recorded miss** (D6). Only with `strict`, and only when the resolution cache is enabled; confirm with Q1.
+- **R6, a setting is read in two places.** `HttpRemoteClient` and `MirrorService` both depend on it. It is parsed once into an enum
+  and passed in, so the two cannot disagree.
 - **R3, ETag lookup cost** (D8). One extra read, skipped for metadata; if it shows up in profiles the tag can fall back to size
   and time with no API change.
 - **R4, plugin binary compatibility** (D2). Pinned by a reflection test and by compiling the prometheus plugin.
@@ -175,9 +212,9 @@ negotiation tests drive Javalin through the existing in-process test server with
 
 ## Open questions
 
-- **Q1.** Is recording a real upstream 404 as a stable negative resolution (D6) acceptable, or should the mapping stay local to the
-  HTTP layer and leave `MirrorService` counting `406` as a failure? Default: map to `404` as D5 says.
-- **Q2.** Should a 2xx with an HTML content type stay `406` (an upstream login page is not an artifact) or become `502`? Default
-  in D5: `502`, since `406` blames the client.
+- **Q1.** In `strict`, recording a real upstream miss as `MissingMetadata` has no time to live, because the resolution cache has
+  none. Is the size bound (`resolutionCacheMaxEntries`, off by default) enough, or should `strict` skip recording the miss
+  until a time to live exists? Default: record it, as D6 says.
+- **Q2.** Settled by the maintainer: an upstream HTML 2xx stays `406` in `legacy` and is `502` in `strict`.
 - **Q3.** Is the size plus time fallback tag acceptable as "strong"? Default: yes, with the checksum preferred; it changes whenever
   size or time changes, which is what the filesystem and S3 can tell us.

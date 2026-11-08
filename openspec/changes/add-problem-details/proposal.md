@@ -34,6 +34,8 @@ Facts checked against origin/main while writing this proposal (`d3de29c8`):
   <message>", and a non-2xx upstream (404 included) or an HTML content type with `406`. `maven/MirrorService.kt` already
   answers an upstream 401 or 403 with `502` ("refused the configured credentials"), and treats only status `404` as a miss
   in `searchInRemoteRepositories`. A real upstream 404 therefore reaches it as `406`, not `404`; see design D6.
+- `maven/Repository.kt` creates a `ResolutionCache` only when the maven setting `resolutionCacheMaxEntries` is above `0` (the
+  default is `0`), and that cache has a size cap but no time to live.
 - `maven/ResolutionProvider.kt` (`tryLocalFirst`) already answers an upstream error with its own status when that status is
   `429` or at least `500`, and falls back to the local result for anything below `500`.
 - `shared/extensions/JavalinExtensions.kt` (`attachmentHeaders`) sets `Content-Length`, `Last-Modified`, `Cache-Control` and
@@ -50,9 +52,12 @@ Facts checked against origin/main while writing this proposal (`d3de29c8`):
   carries that content type; otherwise it stays `application/json` as today. Javalin `HttpResponseException`s, unmatched
   `/api/*` paths, an over-large request body (413) and the unhandled-failure 500 all answer through the same writer, so every
   error under `/api` has one shape. The dashboard's HTML 404 page is unchanged outside `/api`.
-- **A2, upstream failures (`feat(api)`).** A proxy fetch that times out answers `504`, one that cannot connect or gets an
-  upstream non-2xx other than `404` and `410` answers `502`, with a generic message and no Java class name. An upstream `404`
-  or `410` is a miss and answers `404`, so Maven and Gradle fall through to the next repository as before.
+- **A2, upstream failures (`feat(api)`).** A new setting `INGOT_PROXY_UPSTREAM_STATUS` (system property
+  `-Dingot.proxy.upstreamStatus`, values `legacy` and `strict`, default `legacy`) decides how a failing proxy upstream is
+  reported. In `legacy` every status a client gets today stays exactly as it is, because Gradle moves to the next repository
+  only on a `404` and a `502` or `504` fails the build. In `strict` a fetch that times out answers `504`, one that cannot
+  connect or gets an upstream non-2xx other than `404` and `410` answers `502`, and an upstream `404` or `410` answers `404`.
+  In both modes the message is generic and carries no Java class name, because that changes no status code.
 - **A3, ranges and conditional downloads (`feat(api)`).** Artifact `GET` and `HEAD` answer `ETag` and `Accept-Ranges: bytes`.
   A single `Range` answers `206` with `Content-Range`, an unsatisfiable one `416` with `Content-Range: bytes */<size>`, and a
   multi-range request is served in full with `200`. `If-Range` is honoured. `If-None-Match` and `If-Modified-Since` answer
@@ -78,7 +83,7 @@ pull request is `docs(openspec): propose add-problem-details` and contains only 
   removal of internal messages, body limits). That change owns the 413 limit itself; this change only makes a 413 answer in the
   common error shape once it exists. It also owns replacing raw exception messages in error bodies; this change must not
   reintroduce them, and A2 writes generic upstream messages from the start.
-- Any change to the status code of an existing error other than the upstream failures of A2.
+- Any change to the status code of an existing error other than the upstream failures of A2 in `strict` mode.
 - Multi-range responses (`multipart/byteranges`).
 
 ## Capabilities
@@ -91,22 +96,27 @@ pull request is `docs(openspec): propose add-problem-details` and contains only 
 
 ## Impact
 
-- **Operators:** nothing to change. There is no configuration key, environment variable, volume, container path, port or
-  manifest change. This change is not BREAKING. No `BREAKING CHANGE:` footer and no `!` are used.
+- **Operators:** nothing to change. One new optional setting exists, `INGOT_PROXY_UPSTREAM_STATUS` (default `legacy`), and an
+  operator who leaves it unset sees no change in any status code. There is no change to a volume, container path, port or
+  manifest. This change is not BREAKING, because the default keeps today's behaviour. No `BREAKING CHANGE:` footer and no `!`
+  are used.
 - **Existing clients:** an error answer keeps `status`, `message` and `problems` with the same values and `Content-Type:
   application/json` unless the client sends `Accept: application/problem+json`. The new members are extra JSON fields, which
   the dashboard, the prometheus plugin and scripts that read `status` and `message` ignore. `Range`, `If-None-Match`,
   `If-Modified-Since` and `If-Range` change the answer only for requests that send them. The headers `ETag` and
   `Accept-Ranges` are added to artifact answers.
-- **Behaviour that does change:** an unmatched `/api/*` path answers a JSON 404 instead of the HTML page; an unhandled failure
-  answers a 500 with a body; a proxy whose upstream is unreachable answers `502` or `504` instead of `400` or `406` when no local
-  copy exists (design D7 explains how the resolution layer reacts to this).
+- **Behaviour that does change by default:** an unmatched `/api/*` path answers a JSON 404 instead of the HTML page; an
+  unhandled failure answers a 500 with a body; the text of an upstream failure no longer names a Java class.
+- **Behaviour that changes only with `INGOT_PROXY_UPSTREAM_STATUS=strict`:** a proxy whose upstream is unreachable or failing
+  answers `502` or `504` when no local copy exists, an upstream `404` or `410` is answered as `404`, and an upstream HTML answer
+  is `502` (design D5 to D7).
 - **Plugins:** `ErrorResponse` stays binary compatible: the constructors and properties that exist today are kept, and new
   members have defaults. The prometheus plugin must still compile unchanged.
 - **Code:** `shared/ErrorResponse.kt`, `shared/extensions/JavalinExtensions.kt`, `web/HttpServer.kt`,
   `web/infrastructure/ReposiliteRouting.kt`, `frontend/infrastructure/NotFoundHandler.kt`, `shared/http/HttpRemoteClient.kt`,
   `maven/MirrorService.kt`, `maven/infrastructure/MavenEndpoints.kt`, `storage/` providers (ranged read), and their tests.
-  Docs: `docs/gitbook/reference/plugin-api.md`, a new `docs/gitbook/reference/api-errors.md`, `http-api.md`.
+  Docs: `docs/gitbook/reference/plugin-api.md`, a new `docs/gitbook/reference/api-errors.md`, `http-api.md`,
+  `environment-variables.md` and `docs/gitbook/how-to/create-proxy-repositories.md`.
 
 ## Verification
 
