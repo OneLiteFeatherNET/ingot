@@ -62,10 +62,13 @@ object HttpRemoteClientProvider : RemoteClientProvider {
 }
 
 /** Creates clients that report upstream failures the way [upstreamStatus] says. */
-class ConfiguredHttpRemoteClientProvider(private val upstreamStatus: UpstreamStatusMode) : RemoteClientProvider {
+class ConfiguredHttpRemoteClientProvider(
+    private val upstreamStatus: UpstreamStatusMode,
+    private val millisPerTimeoutUnit: Int = 1000,
+) : RemoteClientProvider {
 
     override fun createClient(journalist: Journalist, proxy: Proxy?): RemoteClient =
-        HttpRemoteClient(journalist, proxy, upstreamStatus)
+        HttpRemoteClient(journalist, proxy, upstreamStatus, millisPerTimeoutUnit)
 
 }
 
@@ -73,6 +76,8 @@ class HttpRemoteClient(
     private val journalist: Journalist,
     proxy: Proxy?,
     private val upstreamStatus: UpstreamStatusMode = UpstreamStatusMode.LEGACY,
+    /** Milliseconds one configured timeout second stands for; only tests lower it so that a timeout fires quickly. */
+    private val millisPerTimeoutUnit: Int = 1000,
 ) : RemoteClient, Journalist {
 
     private val requestFactory = NetHttpTransport.Builder()
@@ -132,8 +137,8 @@ class HttpRemoteClient(
         }
         val request = requestFactory.buildRequest(method, url, null)
         request.throwExceptionOnExecuteError = false
-        request.connectTimeout = connectTimeout * 1000
-        request.readTimeout = readTimeout * 1000
+        request.connectTimeout = connectTimeout * millisPerTimeoutUnit
+        request.readTimeout = readTimeout * millisPerTimeoutUnit
         request.authenticateWith(credentials)
         return request.asSuccess()
     }

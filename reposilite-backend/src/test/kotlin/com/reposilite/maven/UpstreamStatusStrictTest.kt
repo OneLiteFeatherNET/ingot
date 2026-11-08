@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.CsvSource
  */
 internal class UpstreamStatusStrictTest : UpstreamStatusSpecification() {
 
-    override fun realProvider(): RemoteClientProvider = ConfiguredHttpRemoteClientProvider(UpstreamStatusMode.STRICT)
+    override fun realProvider(): RemoteClientProvider = ConfiguredHttpRemoteClientProvider(UpstreamStatusMode.STRICT, millisPerTimeoutUnit = 100)
 
     @ParameterizedTest(name = "{0}: {1}")
     @CsvSource(

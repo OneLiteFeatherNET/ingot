@@ -18,7 +18,8 @@ package com.reposilite.maven
 
 import com.reposilite.maven.specification.UpstreamStatusSpecification
 import com.reposilite.maven.specification.UpstreamStub.Flaky
-import com.reposilite.shared.http.HttpRemoteClientProvider
+import com.reposilite.shared.http.ConfiguredHttpRemoteClientProvider
+import com.reposilite.shared.http.UpstreamStatusMode
 import com.reposilite.shared.http.RemoteClientProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -31,7 +32,7 @@ import org.junit.jupiter.params.provider.CsvSource
  */
 internal class UpstreamStatusLegacyTest : UpstreamStatusSpecification() {
 
-    override fun realProvider(): RemoteClientProvider = HttpRemoteClientProvider
+    override fun realProvider(): RemoteClientProvider = ConfiguredHttpRemoteClientProvider(UpstreamStatusMode.LEGACY, millisPerTimeoutUnit = 100)
 
     @ParameterizedTest(name = "{0}: artifact {1}, metadata {2}")
     @CsvSource(

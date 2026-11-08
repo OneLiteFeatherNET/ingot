@@ -36,7 +36,7 @@ import java.net.Proxy
 
 /**
  * Proxy repositories that fetch from a real [UpstreamStub] through the real HTTP client, so the statuses a client gets are
- * the production ones and not those of a fake. Every repository is public and has the timeouts shortened to one second.
+ * the production ones and not those of a fake. Every repository is public and has its timeouts shortened to 100 ms.
  */
 internal abstract class UpstreamStatusSpecification : MavenSpecification() {
 
