@@ -38,18 +38,22 @@ private const val HSTS_PROPERTY = "ingot.hsts.maxAge"
  */
 internal abstract class SecurityHeadersSpecification : ReposiliteSpecification() {
 
-    /** System properties a test sets before the server starts, and that [restoreProperties] removes again. */
-    private val properties = mutableListOf<String>()
+    /** The values that system properties had before a test set them, `null` for a property that was not set. */
+    private val previousValues = linkedMapOf<String, String?>()
 
     protected fun useProperty(name: String, value: String) {
-        properties += name
+        if (name !in previousValues) {
+            previousValues[name] = System.getProperty(name)
+        }
         System.setProperty(name, value)
     }
 
     @AfterEach
     fun restoreProperties() {
-        properties.forEach { System.clearProperty(it) }
-        properties.clear()
+        previousValues.forEach { (name, previous) ->
+            if (previous == null) System.clearProperty(name) else System.setProperty(name, previous)
+        }
+        previousValues.clear()
     }
 
     protected fun HttpResponse<*>.header(name: String): String? =
