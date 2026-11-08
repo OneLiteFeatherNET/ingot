@@ -22,7 +22,11 @@ import {
   firstAccessRoute,
   accessTabOf,
   pageLabel,
-  routeMeta
+  routeMeta,
+  groupedChildren,
+  sideNavOf,
+  settingsGroupOf,
+  groupedSettingsDomains
 } from './registry'
 import { ROUTES } from '../router/routes'
 import { ACCESS_NODES, canUse } from '../store/nodeAccess'
@@ -236,5 +240,74 @@ describe('routeMeta', () => {
 
   it('gives the account page the signed in flag', () => {
     expect(routeMeta('account')).toEqual({ section: 'account', signedIn: true })
+  })
+})
+
+describe('groupedChildren', () => {
+  it('groups the Access pages of a full administrator under their headings, in order', () => {
+    const groups = groupedChildren('access', canWith(['ingot.admin.*']))
+
+    expect(groups.map(group => [group.heading, group.links.map(link => link.label)])).toEqual([
+      ['People', ['Users', 'Machine accounts', 'Teams']],
+      ['Sign in', ['SSO', 'LDAP', 'Security']],
+      ['Tools', ['Check']]
+    ])
+  })
+
+  it('gives each link its key and the router location of its route', () => {
+    const [people] = groupedChildren('access', canWith(['ingot.admin.*']))
+
+    expect(people.links[2]).toEqual({ key: 'teams', label: 'Teams', to: { name: 'access-teams' } })
+  })
+
+  it('leaves out a group without a page the visitor may open', () => {
+    const groups = groupedChildren('access', canWith(['ingot.admin.teams']))
+
+    expect(groups.map(group => group.heading), 'a teams-only visitor has no sign in pages').toEqual(['People', 'Tools'])
+  })
+
+  it('returns no group for a visitor without a permission', () => {
+    expect(groupedChildren('access', canWith([]))).toEqual([])
+  })
+})
+
+describe('sideNavOf', () => {
+  it('names the navigation, the first crumb and the index location from the entry', () => {
+    expect(sideNavOf('access')).toEqual({ label: 'Access sections', sectionLabel: 'Access', indexTo: { name: 'access' } })
+    expect(sideNavOf('settings')).toEqual({ label: 'Settings sections', sectionLabel: 'Settings', indexTo: { name: 'settings' } })
+  })
+})
+
+describe('settings domain groups', () => {
+  it.each([
+    ['maven', 'Repository'],
+    ['javadoc', 'Repository'],
+    ['cleanup', 'Repository'],
+    ['web', 'Instance'],
+    ['frontend', 'Instance'],
+    ['statistics', 'Data'],
+    ['audit', 'Data'],
+    ['search', 'Data']
+  ])('places the domain %s in %s', (domain, heading) => {
+    expect(settingsGroupOf(domain)).toBe(heading)
+  })
+
+  it('places a domain the mapping does not name in Plugins', () => {
+    expect(settingsGroupOf('my-plugin')).toBe('Plugins')
+  })
+
+  it('groups a domain list in the order Repository, Instance, Data, Plugins and keeps the server order inside', () => {
+    const groups = groupedSettingsDomains(['search', 'extra', 'cleanup', 'maven', 'web'])
+
+    expect(groups).toEqual([
+      { heading: 'Repository', domains: ['cleanup', 'maven'] },
+      { heading: 'Instance', domains: ['web'] },
+      { heading: 'Data', domains: ['search'] },
+      { heading: 'Plugins', domains: ['extra'] }
+    ])
+  })
+
+  it('leaves out a group that holds no domain', () => {
+    expect(groupedSettingsDomains(['maven']).map(group => group.heading)).toEqual(['Repository'])
   })
 })
