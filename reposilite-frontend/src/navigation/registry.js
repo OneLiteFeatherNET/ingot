@@ -43,6 +43,8 @@
  * - accessTabOf(routeName)       the Access tab key of a route, including its detail routes
  * - pageByKey(key), pageLabel(key), isOverflow(key)
  * - routeMeta(key, childKey?)    the `meta` of a route: section, manager, node or anyNode, signedIn
+ * - unlistedRoutes(names)        the route names that no entry, child, detail or exempt name covers;
+ *                                a route added to the route table without one of these fails the suite
  *
  * `can(node)` answers for a permission node, as the session does. MORE_KEY is the bottom bar
  * item that opens the overflow pages; no page has that key.
@@ -81,6 +83,11 @@ const PAGES = [
   { key: 'settings', route: 'settings', label: 'Settings', area: 'administration', permission: { node: ADMIN_NODES.settings }, barOrder: 5, overflow: true },
   { key: 'account', route: 'account', label: 'My account', area: 'none', permission: { signedIn: true } },
 ]
+
+// Routes that have no page of their own: the browser of a repository path (the overview page), the
+// legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
+// the not found page. The detail routes of Access are not listed here: each one is the `detail` of its child.
+const EXEMPT_ROUTES = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-entry', 'not-found']
 
 const pageByKey = (key) => PAGES.find(page => page.key === key)
 
@@ -124,6 +131,15 @@ const routeMeta = (key, childKey) => {
   return metaOf(page.key, permission)
 }
 
+const unlistedRoutes = (names) => {
+  const covered = new Set([
+    ...PAGES.map(page => page.route),
+    ...PAGES.flatMap(page => childrenOf(page.key)).flatMap(child => [child.route, child.detail].filter(Boolean)),
+    ...EXEMPT_ROUTES,
+  ])
+  return names.filter(name => !covered.has(name))
+}
+
 export {
   PAGES,
   MORE_KEY,
@@ -135,4 +151,5 @@ export {
   pageLabel,
   isOverflow,
   routeMeta,
+  unlistedRoutes,
 }
