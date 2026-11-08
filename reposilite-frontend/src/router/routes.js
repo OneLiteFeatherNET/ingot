@@ -23,8 +23,12 @@
  * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.
+ *
+ * The same segments are listed in dashboard-segments.json, which the dashboard server and the backend
+ * read too. A test keeps the list and the routes below in step.
  */
 
+import dashboardSegments from './dashboard-segments.json'
 import { ACCESS_NODES, ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../store/nodeAccess'
 
 // `manager` stays on every admin route: it is what a session without a node list is judged by, and
@@ -94,4 +98,4 @@ const ROUTES = [
   { name: 'not-found', path: '/:pathMatch(.*)*', meta: { section: null } },
 ]
 
-export { ROUTES, ACCESS_TABS }
+export { ROUTES, ACCESS_TABS, dashboardSegments as DASHBOARD_SEGMENTS }
