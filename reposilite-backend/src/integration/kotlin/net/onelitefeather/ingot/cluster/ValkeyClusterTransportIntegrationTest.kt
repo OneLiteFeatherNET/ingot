@@ -66,21 +66,30 @@ internal class ValkeyClusterTransportIntegrationTest {
 
     @Test
     fun `a subscriber receives messages again after the broker restarts`() {
-        val url = busUrl("valkey", SharedContainers.valkey)
-        val received = LinkedBlockingQueue<String>()
-        openTransport(url, "node-b").subscribe { received.add(it) }
-        val publisher = openTransport(url, "node-a")
-        assertThat(deliver(publisher, received, "before-restart", DELIVERY_BOUND)).isEqualTo("before-restart")
+        // A fixed host port: a restart of a container with a random port can move the port, which would leave the URL stale.
+        val port = freePort()
+        val url = ClusterBusUrl.parse("valkey://127.0.0.1:$port")
+        val broker = startBrokerOn(port)
+        try {
+            val subscriber = openTransport(url, "node-b") as JedisClusterTransport
+            val received = LinkedBlockingQueue<String>()
+            subscriber.subscribe { received.add(it) }
+            val publisher = openTransport(url, "node-a")
+            assertThat(deliver(publisher, received, "before-restart", DELIVERY_BOUND)).isEqualTo("before-restart")
+            assertThat(subscriber.connectionState()).isEqualTo(ConnectionState.CONNECTED)
 
-        // A restart keeps the published port, so the URL stays valid. Only the connections are lost.
-        DockerClientFactory.instance().client()
-            .restartContainerCmd(SharedContainers.valkey.containerId)
-            .exec()
-        received.clear()
+            DockerClientFactory.instance().client()
+                .restartContainerCmd(broker.containerId)
+                .exec()
+            received.clear()
 
-        assertThat(deliver(publisher, received, "after-restart", RECONNECT_BOUND))
-            .describedAs("the subscriber should reconnect once the broker is back")
-            .isEqualTo("after-restart")
+            assertThat(deliver(publisher, received, "after-restart", RECONNECT_BOUND))
+                .describedAs("the subscriber should reconnect once the broker is back")
+                .isEqualTo("after-restart")
+            assertThat(subscriber.connectionState()).isEqualTo(ConnectionState.CONNECTED)
+        } finally {
+            broker.stop()
+        }
     }
 
     @Test
@@ -95,16 +104,7 @@ internal class ValkeyClusterTransportIntegrationTest {
         // Nothing listens on the port yet. Publishing must return instead of waiting for the broker.
         assertTimeoutPreemptively(PUBLISH_BOUND) { publisher.publish("while-down") }
 
-        // A broker of its own on the port the instance was started with, so the URL does not change.
-        val broker = GenericContainer(DockerImageName.parse(SharedContainers.VALKEY_IMAGE))
-            .withExposedPorts(SharedContainers.VALKEY_PORT)
-            .withCreateContainerCmdModifier { command ->
-                command.hostConfig!!.withPortBindings(
-                    PortBinding(Ports.Binding.bindPort(port), ExposedPort(SharedContainers.VALKEY_PORT))
-                )
-            }
-            .waitingFor(Wait.forListeningPort())
-        broker.start()
+        val broker = startBrokerOn(port)
         try {
             val message = "after-start-${UUID.randomUUID()}"
             assertThat(deliver(publisher, received, message, RECONNECT_BOUND))
@@ -151,6 +151,18 @@ internal class ValkeyClusterTransportIntegrationTest {
 
     private fun freePort(): Int =
         ServerSocket(0).use { it.localPort }
+
+    /** A broker of its own, published on [port] so that its URL stays valid across restarts. It is not shared. */
+    private fun startBrokerOn(port: Int): GenericContainer<*> =
+        GenericContainer(DockerImageName.parse(SharedContainers.VALKEY_IMAGE))
+            .withExposedPorts(SharedContainers.VALKEY_PORT)
+            .withCreateContainerCmdModifier { command ->
+                command.hostConfig!!.withPortBindings(
+                    PortBinding(Ports.Binding.bindPort(port), ExposedPort(SharedContainers.VALKEY_PORT))
+                )
+            }
+            .waitingFor(Wait.forListeningPort())
+            .also { it.start() }
 
     private companion object {
         val DELIVERY_BOUND: Duration = Duration.ofSeconds(30)

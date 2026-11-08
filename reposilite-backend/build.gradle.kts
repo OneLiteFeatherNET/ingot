@@ -149,6 +149,15 @@ dependencies {
     }
     implementation("com.google.protobuf:protobuf-java:4.35.0")
 
+    // Redis and Valkey transport of the optional cluster bus (MIT). Only plain PUBLISH and SUBSCRIBE are used, so the
+    // server needs no module. Pinned to a release at least two weeks old, as the Renovate policy requires.
+    val jedis = "8.0.2"
+    implementation("redis.clients:jedis:$jedis") {
+        // Jedis uses org.json only for its JSON module, which the transport never calls. The library is declared
+        // Public Domain, a licence this build does not allow, so it stays out of the bundle.
+        exclude(group = "org.json", module = "json")
+    }
+
     // ComparableVersion orders versions the way Maven does (qualifiers, RC, SNAPSHOT, numeric segments). Apache-2.0.
     // Its only runtime dependency is plexus-utils; a hand-written ordering gets these rules subtly wrong.
     val mavenArtifact = "3.9.16"

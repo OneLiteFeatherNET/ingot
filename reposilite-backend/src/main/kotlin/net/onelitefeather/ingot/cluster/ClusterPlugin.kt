@@ -53,7 +53,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 )
 class ClusterPlugin(
     private val sources: ClusterSources = ClusterSources.system(),
-    private val transports: Map<String, ClusterTransportFactory> = emptyMap(),
+    private val transports: Map<String, ClusterTransportFactory> = JedisClusterTransports,
     /** Replaces the lookup of the cluster identifier in the configuration table, for tests. */
     private val clusterIdentifier: (() -> String)? = null,
     private val clock: Clock = Clock.systemUTC(),
@@ -87,7 +87,7 @@ class ClusterPlugin(
         }
 
         logger.info("Cluster | connecting to ${url.redacted()}")
-        val transport = factory.open(url, settings)
+        val transport = factory.open(url, settings, identifier)
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
