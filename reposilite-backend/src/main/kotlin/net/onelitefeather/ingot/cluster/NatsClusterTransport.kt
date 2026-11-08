@@ -77,14 +77,22 @@ class NatsClusterTransport internal constructor(
 
     // Guarded by lock.
     private var state = ConnectionState.RECONNECTING
-    private var subscribed = false
     private var closed = false
+
+    // Held while the subscription is created, so that every caller returns only once it exists. Never taken inside lock.
+    private val subscriptionLock = ReentrantLock()
+
+    // Guarded by subscriptionLock.
+    private var subscribed = false
 
     // Read by the client's dispatcher thread, so it is volatile rather than guarded.
     @Volatile
     private var listener: ((String) -> Unit)? = null
 
-    /** The connection state as last reported by the client: connected, reconnecting or disabled. */
+    /**
+     * The connection state: connected, reconnecting or disabled. Once a listener is subscribed, the transport reports
+     * connected only after the broker confirmed the subscription, so an event published afterwards reaches this instance.
+     */
     override fun connectionState(): ConnectionState = lock.withLock { state }
 
     internal fun start() {
@@ -133,9 +141,17 @@ class NatsClusterTransport internal constructor(
         current.publish(subject, message.toByteArray(StandardCharsets.UTF_8))
     }
 
+    /**
+     * Subscribes [listener]. When the connection is already up, this returns once the broker confirmed the subscription or
+     * the confirmation bound passed. Otherwise the subscription is made and confirmed when the connection comes up.
+     */
     override fun subscribe(listener: (String) -> Unit) {
         this.listener = listener
-        connection.get()?.let { ensureSubscription(it) }
+        connection.get()?.let { current ->
+            if (!confirmSubscription(current)) {
+                log("Cluster | the bus did not confirm the subscription in time, it is confirmed again on the next reconnect")
+            }
+        }
     }
 
     override fun close() {
@@ -209,21 +225,38 @@ class NatsClusterTransport internal constructor(
     }
 
     /**
-     * Creates the one subscription of this instance once both a connection and a listener exist. The claim is taken under the
-     * lock; the client call runs outside it, because the client calls back into [onEvent] on its own threads. The client
-     * re-sends the subscription after every reconnect by itself.
+     * Creates the one subscription of this instance once both a connection and a listener exist, and returns whether it
+     * exists. A caller that finds another thread creating it waits for that thread, so no caller returns before the
+     * subscription has been handed to the client. The state lock is not held here, because the client calls back into
+     * [onEvent] on its own threads. The client re-sends the subscription after every reconnect by itself.
      */
-    private fun ensureSubscription(current: Connection) {
-        val claimed = lock.withLock {
-            if (subscribed || listener == null) {
-                false
-            } else {
+    private fun ensureSubscription(current: Connection): Boolean =
+        subscriptionLock.withLock {
+            if (listener == null) return false
+            if (!subscribed) {
+                current.createDispatcher { message -> deliver(message.data) }.subscribe(subject)
                 subscribed = true
-                true
             }
+            true
         }
-        if (claimed) {
-            current.createDispatcher { message -> deliver(message.data) }.subscribe(subject)
+
+    /**
+     * Makes sure the subscription exists and that the broker has processed it: a flush returns once the broker answered a
+     * ping sent after the subscription. Without a listener there is nothing to confirm. Returns `false` when the broker
+     * did not answer within [CONFIRM_BOUND] or the connection was lost meanwhile.
+     */
+    private fun confirmSubscription(current: Connection): Boolean {
+        if (!ensureSubscription(current)) return true
+        return try {
+            current.flush(CONFIRM_BOUND)
+            true
+        } catch (exception: TimeoutException) {
+            false
+        } catch (exception: IllegalStateException) {
+            false
+        } catch (exception: InterruptedException) {
+            Thread.currentThread().interrupt()
+            false
         }
     }
 
@@ -242,8 +275,12 @@ class NatsClusterTransport internal constructor(
         }
         when (event) {
             ConnectionListener.Events.CONNECTED, ConnectionListener.Events.RECONNECTED -> {
-                connection.get()?.let { ensureSubscription(it) }
-                changeState(ConnectionState.CONNECTED)
+                val established = connection.get() ?: return
+                if (confirmSubscription(established)) {
+                    changeState(ConnectionState.CONNECTED)
+                } else {
+                    log("Cluster | the bus did not confirm the subscription in time, it is confirmed again on the next reconnect")
+                }
             }
             ConnectionListener.Events.DISCONNECTED -> changeState(ConnectionState.RECONNECTING)
             ConnectionListener.Events.CLOSED -> if (!isClosed()) changeState(ConnectionState.DISABLED)
@@ -276,6 +313,9 @@ class NatsClusterTransport internal constructor(
 
     private companion object {
         val LOGGER = LoggerFactory.getLogger(NatsClusterTransport::class.java)
+
+        /** How long the broker may take to confirm the subscription before the transport stops waiting for it. */
+        val CONFIRM_BOUND: Duration = Duration.ofSeconds(10)
 
         /** Cluster identifiers are UUIDs. Anything that could change the subject is refused. */
         val SAFE_CLUSTER_IDENTIFIER = Regex("[A-Za-z0-9-]{1,64}")
