@@ -49,7 +49,10 @@ data class ClusterBusUrl(
 
         const val REDACTED = "REDACTED"
 
-        val ACCEPTED_SCHEMES: Set<String> = linkedSetOf("nats", "tls", "redis", "rediss", "valkey", "valkeys")
+        /** The database transport. It has no endpoint, so its URL is `database:` or `database://` and nothing else. */
+        const val DATABASE_SCHEME = "database"
+
+        val ACCEPTED_SCHEMES: Set<String> = linkedSetOf("nats", "tls", "redis", "rediss", "valkey", "valkeys", DATABASE_SCHEME)
 
         private val ENCRYPTED_SCHEMES = setOf("tls", "rediss", "valkeys")
 
@@ -59,6 +62,10 @@ data class ClusterBusUrl(
          * @throws ClusterConfigurationException when the URL cannot be parsed or its scheme is not accepted
          */
         fun parse(raw: String): ClusterBusUrl {
+            if (raw.trim().lowercase().startsWith("$DATABASE_SCHEME:")) {
+                return databaseUrl(raw.trim())
+            }
+
             val uri = try {
                 URI(raw)
             } catch (exception: URISyntaxException) {
@@ -80,6 +87,22 @@ data class ClusterBusUrl(
                 port = uri.port.takeIf { it > 0 },
                 username = userInfo?.substringBefore(':'),
                 password = userInfo?.takeIf { it.contains(':') }?.substringAfter(':'),
+            )
+        }
+
+        /**
+         * The database scheme takes no endpoint. A URL that carries one keeps a placeholder host, so the transport can refuse
+         * it without the host, the credentials or the raw text reaching a log. The refusal itself is the transport's decision.
+         */
+        private fun databaseUrl(raw: String): ClusterBusUrl {
+            val rest = raw.substringAfter(':').trim()
+            val bare = rest.isEmpty() || rest == "//"
+            return ClusterBusUrl(
+                scheme = DATABASE_SCHEME,
+                host = if (bare) "" else REDACTED,
+                port = null,
+                username = null,
+                password = null,
             )
         }
     }

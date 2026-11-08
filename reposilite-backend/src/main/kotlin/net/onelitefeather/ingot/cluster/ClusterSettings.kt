@@ -60,20 +60,24 @@ data class ClusterSettings(
     val console: Boolean,
     val failures: Boolean,
     val warnings: List<String>,
+    /** The poll interval of the database transport, in milliseconds. Other transports do not poll. */
+    val pollIntervalMillis: Long = DEFAULT_POLL_INTERVAL_MILLIS,
 ) {
 
     companion object {
 
+        const val DEFAULT_POLL_INTERVAL_MILLIS = 1000L
+        const val MINIMUM_POLL_INTERVAL_MILLIS = 200L
+
         private val REDIS_FAMILY = setOf("redis", "rediss", "valkey", "valkeys")
         private val NATS_FAMILY = setOf("nats", "tls")
-        private const val DATABASE_SCHEME = "database"
 
         /**
          * The default of `INGOT_CLUSTER_CONSOLE` for a bus scheme. Console lines are on by default, except on the database
          * transport, where every log line would become a row of `cluster_event`.
          */
         internal fun consoleFanOutDefault(scheme: String?): Boolean =
-            scheme != DATABASE_SCHEME
+            scheme != ClusterBusUrl.DATABASE_SCHEME
 
         /**
          * @throws ClusterConfigurationException when a value is malformed, which stops the startup
@@ -110,6 +114,9 @@ data class ClusterSettings(
                 warnings += "Cluster bus credentials are sent over the unencrypted scheme ${resolvedUrl.scheme}, use tls, rediss or valkeys to encrypt them"
             }
 
+            val onDatabase = resolvedUrl?.scheme == ClusterBusUrl.DATABASE_SCHEME
+            val pollInterval = if (onDatabase) pollIntervalOf(sources.variable("INGOT_CLUSTER_POLL_INTERVAL_MS"), warnings) else DEFAULT_POLL_INTERVAL_MILLIS
+
             return ClusterSettings(
                 url = resolvedUrl,
                 credentialsFile = credentialsFile,
@@ -121,7 +128,20 @@ data class ClusterSettings(
                 ),
                 failures = booleanOf("INGOT_CLUSTER_FAILURES", sources.variable("INGOT_CLUSTER_FAILURES"), default = false),
                 warnings = warnings,
+                pollIntervalMillis = pollInterval,
             )
+        }
+
+        /** The configured interval, raised to the minimum with one warning that names the effective interval. */
+        private fun pollIntervalOf(value: String?, warnings: MutableList<String>): Long {
+            val configured = value?.trim()?.takeIf { it.isNotEmpty() } ?: return DEFAULT_POLL_INTERVAL_MILLIS
+            val millis = configured.toLongOrNull()
+                ?: throw ClusterConfigurationException("INGOT_CLUSTER_POLL_INTERVAL_MS must be a whole number of milliseconds")
+            if (millis < MINIMUM_POLL_INTERVAL_MILLIS) {
+                warnings += "INGOT_CLUSTER_POLL_INTERVAL_MS is $millis ms, below the minimum, polling every $MINIMUM_POLL_INTERVAL_MILLIS ms"
+                return MINIMUM_POLL_INTERVAL_MILLIS
+            }
+            return millis
         }
 
         /** The first lookup that defines a non-blank value. */

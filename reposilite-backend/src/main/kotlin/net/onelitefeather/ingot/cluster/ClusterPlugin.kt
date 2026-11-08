@@ -48,7 +48,8 @@ import java.util.concurrent.CopyOnWriteArrayList
  * The optional cluster bus. Without a bus URL in any source it does nothing: no transport is opened, no thread starts and
  * no event is published. With a URL it creates the cluster identifier of the database and opens the transport of the scheme.
  *
- * [transports] maps each accepted scheme to its factory. A scheme without a factory leaves the instance without the bus.
+ * [transports] maps each accepted scheme to its factory. A scheme without a factory leaves the instance without the bus. When it is
+ * not given, the transports of this build are used.
  */
 @Plugin(
     name = "cluster",
@@ -69,7 +70,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 )
 class ClusterPlugin(
     private val sources: ClusterSources = ClusterSources.system(),
-    private val transports: Map<String, ClusterTransportFactory> = emptyMap(),
+    private val transports: Map<String, ClusterTransportFactory>? = null,
     /** Replaces the lookup of the cluster identifier in the configuration table, for tests. */
     private val clusterIdentifier: (() -> String)? = null,
     private val clock: Clock = Clock.systemUTC(),
@@ -102,7 +103,7 @@ class ClusterPlugin(
             ?: facade<ConfigurationFacade>().findOrCreateConfiguration(CLUSTER_IDENTIFIER_NAME) { UUID.randomUUID().toString() }
         logger.debug("Cluster | cluster identifier $identifier, instance ${settings.instanceId}")
 
-        val factory = transports[url.scheme]
+        val factory = (transports ?: productionTransports())[url.scheme]
         if (factory == null) {
             logger.warn("Cluster | no transport is available for ${url.scheme} in this build, the instance runs without the bus")
             attachStatus(ClusterStatusView(settings.instanceId, url, counters, RemoteInstanceStore(clock)) { ConnectionState.DISABLED })
@@ -110,7 +111,13 @@ class ClusterPlugin(
         }
 
         logger.info("Cluster | connecting to ${url.redacted()}")
-        val transport = factory.open(url, settings)
+        val transport = try {
+            factory.open(url, settings)
+        } catch (refused: ClusterTransportRefusedException) {
+            logger.error("Cluster | ${refused.message}")
+            attachStatus(ClusterStatusView(settings.instanceId, url, counters, RemoteInstanceStore(clock)) { ConnectionState.DISABLED })
+            return null
+        }
         registerInvalidations()
         // Console lines are shown and forwarded only while the switch is on, so the switch turns both directions off.
         val journalist = if (settings.console) consoleJournalist ?: reposilite().journalist else null
@@ -221,6 +228,16 @@ class ClusterPlugin(
         )
         publishPayload(outbox, cluster, origin, ClusterEventType.STATUS_SNAPSHOT, payload)
     }
+
+    /** The transports this build ships. The database transport uses the instance database, so it is built here. */
+    private fun productionTransports(): Map<String, ClusterTransportFactory> =
+        mapOf(
+            ClusterBusUrl.DATABASE_SCHEME to DatabaseTransportFactory(
+                database = { reposilite().database },
+                clock = clock,
+                log = { logger.warn(it) },
+            ),
+        )
 
     private fun dispatch(envelope: ClusterEnvelope) {
         handlers[envelope.type]?.forEach { it(envelope) }
