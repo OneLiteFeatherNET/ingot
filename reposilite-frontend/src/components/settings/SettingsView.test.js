@@ -156,7 +156,7 @@ describe('SettingsView page', () => {
     store.domains.value = ['maven']
     await mountSettings({ store })
 
-    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Configuration domains"]').exists()).toBe(false)
     expect(wrapper.get('h2').text()).toBe('Maven')
   })
 
@@ -166,7 +166,7 @@ describe('SettingsView page', () => {
     store.schemas.value.login = { title: 'Login' }
     await mountSettings({ store })
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    expect(wrapper.findAll('[aria-label="Configuration domains"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
   })
 
   it('shows the login domain as a card with links to its pages under Access when it is opened', async () => {
@@ -185,7 +185,7 @@ describe('SettingsView page', () => {
   it('shows one secondary tab per domain when there is more than one', async () => {
     await mountSettings()
 
-    expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    expect(wrapper.findAll('[aria-label="Configuration domains"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
   })
 
   it('puts the factory reset in a danger zone at the end of the page', async () => {
@@ -388,7 +388,7 @@ describe('SettingsView driven by the router', () => {
 
   it('writes a domain picked in the tabs into the address without adding a history entry', async () => {
     const { router } = await mountAt(['/', '/settings/maven'])
-    await wrapper.findAll('[role="tab"]').find(tab => tab.text() === 'Ingot').trigger('click')
+    await wrapper.findAll('[aria-label="Configuration domains"] a').find(tab => tab.text() === 'Ingot').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')

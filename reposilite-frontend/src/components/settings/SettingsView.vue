@@ -19,10 +19,11 @@ import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { JsonForms } from '@jsonforms/vue'
 import download from 'downloadjs'
+import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
-import SettingsTabs from './SettingsTabs.vue'
+import SideNavLayout from '../layout/SideNavLayout.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import CollectionEditor from './CollectionEditor.vue'
@@ -106,7 +107,16 @@ const activeDomain = computed(() => {
   return tabDomains.value[0] ?? domains.value[0]
 })
 
-const domainTabs = computed(() => tabDomains.value.map(domain => ({ key: domain, label: store.titleOf(domain) })))
+// Below 600px the side navigation is not drawn beside the domain; see SideNavLayout.
+const narrow = useMediaQuery('(max-width: 599px)')
+
+// The domains of the side navigation. With one domain there is nothing to switch between, so no navigation is drawn.
+const domainGroups = computed(() => (tabDomains.value.length > 1
+  ? [{
+    heading: 'Configuration',
+    links: tabDomains.value.map(domain => ({ key: domain, label: store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
+  }]
+  : []))
 
 const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
 const activeCollections = computed(() => (activeDomain.value && !isAccessDomain(activeDomain.value)
@@ -149,10 +159,6 @@ watch(
 watch([activeDomain, () => props.domain], ([domain, requested]) => {
   if (domain && domain !== requested) emit('update:domain', domain)
 }, { immediate: true })
-
-const selectDomain = (domain) => {
-  store.selectedDomain.value = domain
-}
 
 const selectEntry = (collection, id) => {
   router.push({ name: 'settings-entry', params: { domain: activeDomain.value, collection: collection.key, entry: id } })
@@ -448,63 +454,65 @@ watch(
     />
 
     <template v-if="activeDomain">
-      <SettingsTabs
-        v-if="tabDomains.length > 1"
-        :model-value="activeDomain"
+      <SideNavLayout
         label="Configuration domains"
-        variant="secondary"
-        :tabs="domainTabs"
-        @update:model-value="selectDomain"
-      />
-      <h2
-        v-else-if="!isAccessDomain(activeDomain)"
-        class="md-title-large text-on-surface"
+        section-label="Settings"
+        :groups="domainGroups"
+        :current="activeDomain"
+        :index-to="{ name: 'settings' }"
+        :narrow="narrow"
+        replace
       >
-        {{ store.titleOf(activeDomain) }}
-      </h2>
+        <h2
+          v-if="tabDomains.length <= 1 && !isAccessDomain(activeDomain)"
+          class="md-title-large text-on-surface"
+        >
+          {{ store.titleOf(activeDomain) }}
+        </h2>
 
-      <div
-        role="tabpanel"
-        class="mt-6 flex flex-col gap-8"
-      >
-        <AccessDomainCard
-          v-if="isAccessDomain(activeDomain)"
-          :domain="activeDomain"
-          :title="store.titleOf(activeDomain)"
-        />
-        <JsonForms
-          v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
-          :key="`domain-fields:${activeDomain}`"
-          :config="formsConfiguration"
-          :data="configurations[activeDomain]"
-          :schema="domainForm.schema"
-          :uischema="domainForm.layout"
-          :renderers="renderers"
-          :ajv="store.configurationValidator"
-          @change="onDomainChange(activeDomain, $event)"
-        />
+        <div
+          role="tabpanel"
+          class="mt-6 flex flex-col gap-8"
+        >
+          <AccessDomainCard
+            v-if="isAccessDomain(activeDomain)"
+            :domain="activeDomain"
+            :title="store.titleOf(activeDomain)"
+          />
+          <JsonForms
+            v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
+            :key="`domain-fields:${activeDomain}`"
+            :config="formsConfiguration"
+            :data="configurations[activeDomain]"
+            :schema="domainForm.schema"
+            :uischema="domainForm.layout"
+            :renderers="renderers"
+            :ajv="store.configurationValidator"
+            @change="onDomainChange(activeDomain, $event)"
+          />
 
-        <CollectionEditor
-          v-for="list in activeCollections"
-          :key="`${activeDomain}:${list.key}`"
-          :collection="list"
-          :entries="entriesOf(activeDomain, list)"
-          :keys="store.entryKeysOf(activeDomain, list.key)"
-          :selected-id="selectedIdFor(list)"
-          :back-href="backHref"
-          :renderers="renderers"
-          :validator="store.configurationValidator"
-          :guided-create="guidedCreateFor(list)"
-          :show-access="isRepositoryList(list)"
-          :typed="isRepositoryList(list)"
-          :server-error="saveError ?? ''"
-          @select="selectEntry(list, $event)"
-          @back="backToList"
-          @create="createEntry(list, $event)"
-          @change="updateEntry(list, $event)"
-          @delete="deleteEntry(list, $event)"
-        />
-      </div>
+          <CollectionEditor
+            v-for="list in activeCollections"
+            :key="`${activeDomain}:${list.key}`"
+            :collection="list"
+            :entries="entriesOf(activeDomain, list)"
+            :keys="store.entryKeysOf(activeDomain, list.key)"
+            :selected-id="selectedIdFor(list)"
+            :back-href="backHref"
+            :renderers="renderers"
+            :validator="store.configurationValidator"
+            :guided-create="guidedCreateFor(list)"
+            :show-access="isRepositoryList(list)"
+            :typed="isRepositoryList(list)"
+            :server-error="saveError ?? ''"
+            @select="selectEntry(list, $event)"
+            @back="backToList"
+            @create="createEntry(list, $event)"
+            @change="updateEntry(list, $event)"
+            @delete="deleteEntry(list, $event)"
+          />
+        </div>
+      </SideNavLayout>
     </template>
     <p
       v-else-if="!loadError"
