@@ -22,7 +22,13 @@ import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.extensions.error
 import com.reposilite.shared.extensions.attachmentHeaders
+import com.reposilite.shared.extensions.clearContentLength
+import com.reposilite.shared.extensions.contentLength
+import com.reposilite.shared.http.ByteRanges
+import com.reposilite.shared.http.ConditionalRequests
+import com.reposilite.shared.http.RangeDecision
 import com.reposilite.shared.extensions.uri
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
@@ -35,6 +41,7 @@ import io.javalin.community.routing.Route.HEAD
 import io.javalin.community.routing.Route.POST
 import io.javalin.community.routing.Route.PUT
 import io.javalin.http.Context
+import io.javalin.http.HttpStatus
 import io.javalin.http.HandlerType.HEAD as HEAD_METHOD
 import io.javalin.openapi.ContentType.FORM_DATA_MULTIPART
 import io.javalin.openapi.HttpMethod
@@ -44,6 +51,8 @@ import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
 import panda.std.Result
 import panda.std.asSuccess
+import java.io.InputStream
+import java.util.Optional
 
 const val X_GENERATE_CHECKSUMS = "X-Generate-Checksums"
 
@@ -82,23 +91,7 @@ internal class MavenEndpoints(
 
         return allDetails.flatMap { details ->
             when (details) {
-                is DocumentInfo ->
-                    when (ctx.method()) {
-                        HEAD_METHOD -> Unit.asSuccess()
-                        else -> mavenFacade.findData(request).map { data ->
-                            ctx.result(data)
-                            Unit
-                        }
-                    }.map {
-                        ctx.attachmentHeaders(
-                            name = details.name,
-                            contentType = details.contentType,
-                            contentLength = details.contentLength,
-                            lastTimeModified = details.lastModifiedTime,
-                            compressionStrategy = compressionStrategy,
-                            cache = mavenFacade.acceptsCachingOf(request),
-                        )
-                    }
+                is DocumentInfo -> serveDocument(ctx, request, details)
                 is DirectoryInfo -> {
                     ctx.html(
                         createDirectoryIndexPage(
@@ -114,6 +107,11 @@ internal class MavenEndpoints(
             }
         }
         .onError {
+            if (ctx.path().startsWith("/api/")) {
+                // No repository is called "api": this is a request for an API route that does not exist
+                ctx.error(it)
+                return@onError
+            }
             ctx.status(it.status).html(
                 frontendFacade.createNotFoundPage(
                     originUri = ctx.uri(),
@@ -122,6 +120,78 @@ internal class MavenEndpoints(
                 ),
             )
             mavenFacade.logger.debug("FIND | Could not find file due to $it")
+        }
+    }
+
+    /**
+     * Serves an artifact with an entity tag and byte range support (RFC 9110, sections 13 and 14). Requests that carry
+     * none of the conditional or range headers get the whole body exactly as before. Cache-Control is still decided by
+     * the repository, so snapshots and metadata stay uncached, also on 206 and 304 answers.
+     *
+     * Ranges are served from the repository's own storage. A file that is not stored yet (a first fetch through a
+     * proxy) is answered with the whole body. A ranged answer carries its own Content-Length for the stored bytes.
+     */
+    private fun serveDocument(ctx: Context, request: LookupRequest, details: DocumentInfo): Result<Unit, ErrorResponse> {
+        val etag = mavenFacade.findEntityTag(request, details)
+        val rangesSupported = details.contentLength >= 0
+
+        fun writeHeaders() {
+            ctx.attachmentHeaders(
+                name = details.name,
+                contentType = details.contentType,
+                contentLength = details.contentLength,
+                lastTimeModified = details.lastModifiedTime,
+                compressionStrategy = compressionStrategy,
+                cache = mavenFacade.acceptsCachingOf(request),
+            )
+            etag?.let { ctx.header("ETag", it) }
+            if (rangesSupported) {
+                ctx.header("Accept-Ranges", "bytes")
+            }
+        }
+
+        if (ConditionalRequests.isNotModified(ctx.header("If-None-Match"), ctx.header("If-Modified-Since"), etag, details.lastModifiedTime)) {
+            writeHeaders()
+            ctx.clearContentLength()
+            ctx.status(HttpStatus.NOT_MODIFIED)
+            return Unit.asSuccess()
+        }
+
+        val rangeHeader = ctx.header("Range")
+        if (rangesSupported && rangeHeader != null && ConditionalRequests.rangeApplies(ctx.header("If-Range"), etag, details.lastModifiedTime)) {
+            when (val decision = ByteRanges.resolve(rangeHeader, details.contentLength)) {
+                RangeDecision.Unsatisfiable -> {
+                    ctx.header("Accept-Ranges", "bytes")
+                    ctx.header("Content-Range", "bytes */${details.contentLength}")
+                    ctx.status(HttpStatus.RANGE_NOT_SATISFIABLE)
+                    return Unit.asSuccess()
+                }
+                is RangeDecision.Partial -> {
+                    // A HEAD answers with the status and headers of the GET, so it needs no stream
+                    val stream = when (ctx.method()) {
+                        HEAD_METHOD -> Optional.empty<InputStream>()
+                        else -> mavenFacade.findDataRange(request, decision.start, decision.length)
+                            .let { if (it.isErr) return it.map { } else it.get() }
+                    }
+                    if (stream.isPresent || ctx.method() == HEAD_METHOD) {
+                        writeHeaders()
+                        ctx.header("Content-Range", "bytes ${decision.start}-${decision.endInclusive}/${details.contentLength}")
+                        ctx.contentLength(decision.length)
+                        ctx.status(HttpStatus.PARTIAL_CONTENT)
+                        stream.ifPresent { ctx.result(it) }
+                        return Unit.asSuccess()
+                    }
+                }
+                RangeDecision.Full -> Unit
+            }
+        }
+
+        return when (ctx.method()) {
+            HEAD_METHOD -> Result.ok<Unit, ErrorResponse>(Unit).also { writeHeaders() }
+            else -> mavenFacade.findData(request).map { data ->
+                ctx.result(data)
+                writeHeaders()
+            }
         }
     }
 

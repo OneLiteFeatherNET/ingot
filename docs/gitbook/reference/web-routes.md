@@ -64,6 +64,9 @@ Not verified: the order between `/{repository}/<gav>` and the routes under `/api
 | Case | Status | Body |
 |------|--------|------|
 | File | `200` | The file content. With `HEAD`, the same headers and no body. |
+| File, with a single satisfiable `Range` | `206` | The requested bytes. See [Range and conditional requests](#range-and-conditional-requests). |
+| File, with a `Range` beyond the end | `416` | No body. `Content-Range: bytes */<size>`. |
+| File, with a matching `If-None-Match` or an unchanged `If-Modified-Since` | `304` | No body. |
 | Directory | `200` | The HTML directory index. See [Directory index](#directory-index). |
 | Path not found, repository not found, or `<gav>` is a directory where a file is needed | `404` | The 404 page with the reason in it. |
 | Anonymous request to a resource that needs credentials | `401` | The 404 page. The response carries `WWW-Authenticate: Basic realm="Ingot", charset="UTF-8"`. |
@@ -79,8 +82,26 @@ For a file, the response carries these headers:
 | `Content-Length` | Set when `compressionStrategy` is `none` and the length is known. |
 | `Last-Modified` | Set when the modification time is known. |
 | `Cache-Control` | `public, max-age=<seconds>` when the repository does not allow redeployment and the file is not `maven-metadata.xml`. Otherwise `no-cache, no-store, max-age=0`. |
+| `ETag` | A strong entity tag, set when the length and modification time are known. See [Range and conditional requests](#range-and-conditional-requests). |
+| `Accept-Ranges` | `bytes` when the length is known. |
 
 The `max-age` is 3600 seconds. The system property `reposilite.maven.maxAge` changes it. There is no `ingot.` spelling of this property.
+
+### Range and conditional requests
+
+Artifact downloads can be resumed and revalidated. A request without the headers below gets the same status, body and header values as before, plus `ETag` and `Accept-Ranges`.
+
+| Request header | Effect |
+|----------------|--------|
+| `Range: bytes=a-b`, `bytes=a-`, `bytes=-n` | One range answers `206` with `Content-Range: bytes a-b/<size>` and the partial `Content-Length`. A `HEAD` request gets the status and headers of the matching `GET`. A range that starts at or past the size, or a zero suffix, answers `416` with `Content-Range: bytes */<size>`. |
+| `Range` with several ranges, another unit, or a malformed value | Ignored. The full `200` answer. |
+| `If-Range` | A strong `ETag` that equals the current one, or a date equal to `Last-Modified`, keeps the range. Any other value serves the full `200`. |
+| `If-None-Match` | A listed tag equal to the current `ETag` (or `*`) answers `304` with no body and with `ETag`, `Last-Modified` and `Cache-Control`. |
+| `If-Modified-Since` | Answers `304` when the file is not newer than the date. Ignored when `If-None-Match` is sent. |
+
+The `ETag` is the stored checksum of the file when one sits beside it (`.sha256`, then `.sha1`, then `.md5`), in quotes. Without a stored checksum it is built from the size and the modification time. Files that are not cacheable, such as every file of a repository that allows redeployment and `maven-metadata.xml`, always use the size and time form. `Cache-Control` follows the same rules as for a full answer, also on `206` and `304`.
+
+A ranged read does not read the bytes before the range into memory. The file system storage seeks, and S3 storage sends a ranged `GetObject`. A file that a proxy repository has not stored yet is answered with the full `200` on that first request, and ranges work from the next request on, once the copy is stored. A proxy that does not store its files always answers with the full body. The same holds for `maven-metadata.xml` of a repository with mirrors under the default `PRIORITIZE_UPSTREAM_METADATA` policy while it is refreshed from the upstream (every request with the default `metadataMaxAge` of 0): the file may come from the upstream, so the full `200` is answered. A repository without mirrors serves metadata ranges like any other file.
 
 ### Access by visibility
 

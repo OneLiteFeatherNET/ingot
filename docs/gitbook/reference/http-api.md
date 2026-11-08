@@ -204,3 +204,5 @@ A file can be deployed with any HTTP client that supports Basic authentication, 
 {% hint style="warning" %}
 The OpenAPI document at `/openapi` is produced by the OpenAPI plugin that the server registers. Whether that document needs a token was not checked against a running instance. Check it there before you publish the path to a client.
 {% endhint %}
+
+For the shape of error answers, see [API errors](api-errors.md).

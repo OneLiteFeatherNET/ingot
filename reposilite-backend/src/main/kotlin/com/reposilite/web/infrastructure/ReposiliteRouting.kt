@@ -27,8 +27,9 @@ import io.javalin.http.ExceptionHandler
 import io.javalin.http.Handler
 import io.javalin.http.Header
 import io.javalin.http.HttpStatus.FORBIDDEN
-import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
 import io.javalin.util.javalinLazy
+import com.reposilite.shared.internalServer
+import com.reposilite.shared.extensions.error
 import com.reposilite.shared.toErrorResponse
 import net.onelitefeather.ingot.identity.session.CsrfPolicy
 
@@ -127,7 +128,7 @@ fun createReposiliteDsl(
                     dsl.consumeResponse()
                 } catch (throwable: Throwable) {
                     failureFacade.throwException(ctx.uri(), throwable)
-                    ctx.status(INTERNAL_SERVER_ERROR)
+                    ctx.error(internalServer("Internal server error"))
                 }
             }
         },
@@ -139,7 +140,7 @@ fun createReposiliteDsl(
                     dsl.consumeResponse()
                 } catch (throwable: Throwable) {
                     failureFacade.throwException(ctx.uri(), throwable)
-                    ctx.status(INTERNAL_SERVER_ERROR)
+                    ctx.error(internalServer("Internal server error"))
                 }
             }
         }

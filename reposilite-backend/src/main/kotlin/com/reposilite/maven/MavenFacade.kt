@@ -19,6 +19,7 @@ package com.reposilite.maven
 import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
+import com.reposilite.maven.api.Checksum
 import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.GeneratePomRequest
@@ -39,13 +40,16 @@ import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.storage.api.DirectoryInfo
+import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 import io.javalin.http.HttpStatus.METHOD_NOT_ALLOWED
 import panda.std.Result
+import com.reposilite.shared.http.ConditionalRequests
 import java.io.InputStream
 import java.time.Instant
+import java.util.Optional
 import java.util.concurrent.CompletableFuture
 
 class MavenFacade internal constructor(
@@ -80,6 +84,39 @@ class MavenFacade internal constructor(
     fun findData(lookupRequest: LookupRequest): Result<InputStream, ErrorResponse> =
         repositoryService.findInputStream(lookupRequest)
             .peek { touchMirrorCopy(lookupRequest) }
+
+    fun findDataRange(lookupRequest: LookupRequest, offset: Long, length: Long): Result<Optional<InputStream>, ErrorResponse> =
+        repositoryService.findInputStreamRange(lookupRequest, offset, length)
+            .peek { touchMirrorCopy(lookupRequest) }
+
+    /**
+     * The strong entity tag of a stored artifact: its stored checksum (`.sha256`, then `.sha1`, then `.md5`) when there is
+     * one, otherwise a tag from its size and modification time. Metadata and other files that are not cached change in
+     * place, so they skip the extra read and use the size and time tag.
+     */
+    fun findEntityTag(lookupRequest: LookupRequest, details: DocumentInfo): String? {
+        val repository = getRepository(lookupRequest.repository)
+        val fallback = ConditionalRequests.etag(details.contentLength, details.lastModifiedTime)
+        if (repository == null || !repository.acceptsCachingOf(lookupRequest.gav)) {
+            return fallback
+        }
+
+        return ENTITY_TAG_CHECKSUMS
+            .firstNotNullOfOrNull { checksum ->
+                val location = lookupRequest.gav.resolveSibling("${lookupRequest.gav.getSimpleName()}.${checksum.extension}")
+                if (!repository.storageProvider.exists(location)) {
+                    return@firstNotNullOfOrNull null
+                }
+                repository.storageProvider.getFile(location)
+                    .map { stream -> stream.use { it.readNBytes(CHECKSUM_READ_LIMIT).decodeToString() } }
+                    .orNull()
+                    ?.trim()
+                    ?.substringBefore(' ')
+                    ?.takeIf { it.isNotEmpty() && it.all { char -> char.isLetterOrDigit() } }
+                    ?.let { "\"$it\"" }
+            }
+            ?: fallback
+    }
 
     /**
      * Answers 405 when the repository is a typed proxy or group, which take no uploads. Hosted and untyped repositories pass.
@@ -220,5 +257,13 @@ class MavenFacade internal constructor(
 
     override fun getLogger(): Logger =
         journalist.logger
+
+    private companion object {
+        /** Strongest first. */
+        val ENTITY_TAG_CHECKSUMS = listOf(Checksum.SHA256, Checksum.SHA1, Checksum.MD5)
+
+        /** A hex digest and an optional file name fit well inside this. */
+        const val CHECKSUM_READ_LIMIT = 256
+    }
 
 }

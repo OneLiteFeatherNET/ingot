@@ -17,6 +17,8 @@
 package com.reposilite.frontend.infrastructure
 
 import com.reposilite.frontend.FrontendFacade
+import com.reposilite.shared.extensions.error
+import com.reposilite.shared.notFound
 import io.javalin.http.Context
 import io.javalin.http.ExceptionHandler
 import io.javalin.http.Handler
@@ -27,7 +29,9 @@ internal class NotFoundHandler(private val frontendFacade: FrontendFacade) : Han
 
     // It does not support async handlers
     private val defaultNotFoundHandler: (Context) -> Unit = { ctx ->
-        if (ctx.resultInputStream() == null) {
+        if (ctx.resultInputStream() == null && isApiPath(ctx.path())) {
+            ctx.error(notFound("Not found"))
+        } else if (ctx.resultInputStream() == null) {
             ctx.html(
                 frontendFacade.createNotFoundPage(
                     originUri = ctx.req().requestURI,
@@ -38,6 +42,9 @@ internal class NotFoundHandler(private val frontendFacade: FrontendFacade) : Han
             ctx.status(NOT_FOUND)
         }
     }
+
+    private fun isApiPath(path: String): Boolean =
+        path == "/api" || path.startsWith("/api/")
 
     override fun handle(ctx: Context) =
         defaultNotFoundHandler(ctx)
