@@ -74,6 +74,17 @@ Behavior of the entrypoint:
 
 The Compose files in the repository read `PORT`, `MEMORY`, `JAVA_COMPOSE_OPTS` and `INGOT_COMPOSE_OPTS` from a `.env` file and build `JAVA_OPTS` and `INGOT_OPTS` from them. These four names are Compose variables. The server does not read them.
 
+## Security header variables
+
+The server adds security headers to its responses. Two of them can be changed. The variables are read once when the server starts. Each has a system property as an alternative, used when the variable is unset.
+
+| Variable | System property | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_REPOSITORY_SANDBOX` | `ingot.repository.sandbox` | `true` | Repository files and the generated directory index are served with `Content-Security-Policy: sandbox`, so a browser runs an uploaded page without the origin of the dashboard. `false` leaves them without this header. The value is matched without regard to case, any other value keeps the sandbox. |
+| `INGOT_HSTS_MAX_AGE` | `ingot.hsts.maxAge` | unset | A positive number of seconds turns on `Strict-Transport-Security: max-age=<seconds>`. The header is sent only on HTTPS requests, that is a request over TLS served by Ingot or a request with `X-Forwarded-Proto: https`. Unset, zero or a value that is not a number sends no header. |
+
+The complete list of headers is in [Security headers](../explanation/security-headers.md).
+
 ## Dashboard image variables
 
 The separate dashboard image (`ghcr.io/onelitefeathernet/ingot-dashboard`) renders its web server configuration from these variables when it starts.
