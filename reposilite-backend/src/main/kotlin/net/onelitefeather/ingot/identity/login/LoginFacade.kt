@@ -95,6 +95,11 @@ class LoginFacade internal constructor(
         sessions?.logout(refreshToken, ip)
     }
 
+    /** Refuses the session tokens of a family that another instance revoked, see [SessionService.denyFamily]. */
+    internal fun denySessionFamily(familyId: String) {
+        sessions?.denyFamily(familyId)
+    }
+
     /**
      * The identity of the caller that presented a session token: the principal, addressed the way the authorization
      * facade resolves it. `null` when the token is not a valid, unexpired session of an active user.

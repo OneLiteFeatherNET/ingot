@@ -337,6 +337,37 @@ internal class SessionServiceTest {
     }
 
     @Test
+    fun `a logout refuses the session token of its family on this instance at once`() {
+        withSessions { fixture ->
+            // given: a session that is accepted before the logout
+            val session = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null)
+            assertThat(fixture.sessions.authenticate(session.sessionJwt)).describedAs("session accepted before the logout").isNotNull()
+
+            // when: the user logs out on this instance
+            fixture.sessions.logout(session.refreshToken)
+
+            // then: the session token is refused right away, not at its expiry
+            assertThat(fixture.sessions.authenticate(session.sessionJwt)).describedAs("session refused right after the logout").isNull()
+        }
+    }
+
+    @Test
+    fun `ending every session of a user refuses their session tokens on this instance at once`() {
+        withSessions { fixture ->
+            // given: a session of a user that is accepted before the revocation
+            val alice = fixture.user()
+            val session = fixture.sessions.start(alice, ip = "10.0.0.1", userAgent = null)
+            assertThat(fixture.sessions.authenticate(session.sessionJwt)).describedAs("session accepted before the revocation").isNotNull()
+
+            // when: all sessions of the user are ended
+            fixture.sessions.revokeAllSessions(alice.id)
+
+            // then: the session token is refused right away, not at its expiry
+            assertThat(fixture.sessions.authenticate(session.sessionJwt)).describedAs("session refused right after the revocation").isNull()
+        }
+    }
+
+    @Test
     fun `reports the lifetimes of the session and the refresh token for the cookies`() {
         withSessions { fixture ->
             val session = fixture.sessions.start(fixture.user(), ip = "10.0.0.1", userAgent = null)
