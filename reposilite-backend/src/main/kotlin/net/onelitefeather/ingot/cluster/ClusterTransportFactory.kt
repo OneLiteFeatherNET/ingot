@@ -18,11 +18,9 @@ package net.onelitefeather.ingot.cluster
 
 /**
  * Opens the connection to one bus. The plugin looks the factory up by the scheme of the configured URL, so a transport
- * class is only touched when its scheme is configured. The connection is closed when the instance is disposed.
- *
- * The returned value is replaced by the transport interface once the envelope codec exists.
+ * class is only touched when its scheme is configured. The transport is closed when the instance is disposed.
  */
 interface ClusterTransportFactory {
 
-    fun open(url: ClusterBusUrl, settings: ClusterSettings): AutoCloseable
+    fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport
 }

@@ -31,9 +31,15 @@ internal class ClusterPluginInertTest {
     private class CountingFactory : ClusterTransportFactory {
         var opened = 0
 
-        override fun open(url: ClusterBusUrl, settings: ClusterSettings): AutoCloseable {
+        override fun open(url: ClusterBusUrl, settings: ClusterSettings): ClusterTransport {
             opened++
-            return AutoCloseable {}
+            return object : ClusterTransport {
+                override fun publish(message: String) {}
+
+                override fun subscribe(listener: (String) -> Unit) {}
+
+                override fun close() {}
+            }
         }
     }
 

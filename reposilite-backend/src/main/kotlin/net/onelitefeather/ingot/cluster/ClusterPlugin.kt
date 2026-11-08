@@ -16,14 +16,20 @@
 
 package net.onelitefeather.ingot.cluster
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
+import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import java.time.Clock
+import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * The optional cluster bus. Without a bus URL in any source it does nothing: no transport is opened, no thread starts and
@@ -48,16 +54,31 @@ import java.util.UUID
 class ClusterPlugin(
     private val sources: ClusterSources = ClusterSources.system(),
     private val transports: Map<String, ClusterTransportFactory> = emptyMap(),
+    /** Replaces the lookup of the cluster identifier in the configuration table, for tests. */
+    private val clusterIdentifier: (() -> String)? = null,
+    private val clock: Clock = Clock.systemUTC(),
 ) : ReposilitePlugin() {
+
+    internal val counters = ClusterCounters()
+    private val payloads = ObjectMapper()
+    private val handlers = ConcurrentHashMap<ClusterEventType, CopyOnWriteArrayList<(ClusterEnvelope) -> Unit>>()
+
+    /**
+     * Registers what this instance does with a received event of [type]. The handler runs after the message has been
+     * accepted by [ClusterReceiver], and it must not publish anything: applying an event never causes another one.
+     */
+    internal fun onReceived(type: ClusterEventType, handler: (ClusterEnvelope) -> Unit) {
+        handlers.computeIfAbsent(type) { CopyOnWriteArrayList() }.add(handler)
+    }
 
     override fun initialize(): Facade? {
         val settings = ClusterSettings.read(sources)
         val url = settings.url ?: return null
         settings.warnings.forEach { logger.warn("Cluster | $it") }
 
-        val clusterIdentifier = facade<ConfigurationFacade>()
-            .findOrCreateConfiguration(CLUSTER_IDENTIFIER_NAME) { UUID.randomUUID().toString() }
-        logger.debug("Cluster | cluster identifier $clusterIdentifier, instance ${settings.instanceId}")
+        val identifier = clusterIdentifier?.invoke()
+            ?: facade<ConfigurationFacade>().findOrCreateConfiguration(CLUSTER_IDENTIFIER_NAME) { UUID.randomUUID().toString() }
+        logger.debug("Cluster | cluster identifier $identifier, instance ${settings.instanceId}")
 
         val factory = transports[url.scheme]
         if (factory == null) {
@@ -66,9 +87,33 @@ class ClusterPlugin(
         }
 
         logger.info("Cluster | connecting to ${url.redacted()}")
-        val connection = factory.open(url, settings)
-        event { _: ReposiliteDisposeEvent -> connection.close() }
+        val transport = factory.open(url, settings)
+        val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
+        transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
+
+        event { event: TokenStateChangedEvent ->
+            publish(transport, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
+        }
+        event { _: ReposiliteDisposeEvent -> transport.close() }
         return null
+    }
+
+    private fun dispatch(envelope: ClusterEnvelope) {
+        handlers[envelope.type]?.forEach { it(envelope) }
+    }
+
+    private fun publish(
+        transport: ClusterTransport,
+        cluster: String,
+        origin: String,
+        type: ClusterEventType,
+        fields: Map<String, String>,
+    ) {
+        val payload = payloads.createObjectNode()
+        fields.forEach { (name, value) -> payload.put(name, value) }
+        val envelope = ClusterEnvelope(type = type, cluster = cluster, origin = origin, at = Instant.now(clock), payload = payload)
+        transport.publish(ClusterEnvelopeCodec.encode(envelope))
+        counters.countPublished()
     }
 
     private companion object {
