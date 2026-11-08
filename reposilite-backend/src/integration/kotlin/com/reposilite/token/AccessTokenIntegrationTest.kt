@@ -31,9 +31,8 @@ import com.reposilite.token.api.CreateAccessTokenWithNoNameRequest
 import com.reposilite.token.api.SecretType
 import com.reposilite.token.specification.AccessTokenIntegrationSpecification
 import io.javalin.http.HttpStatus.FORBIDDEN
-import io.javalin.http.HttpStatus.NOT_FOUND
 import io.javalin.http.HttpStatus.OK
-import io.javalin.http.HttpStatus.PAYLOAD_TOO_LARGE
+import io.javalin.http.HttpStatus.CONTENT_TOO_LARGE
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import kong.unirest.core.Unirest.delete
 import kong.unirest.core.Unirest.get
@@ -153,8 +152,9 @@ internal abstract class AccessTokenIntegrationTest : AccessTokenIntegrationSpeci
             .asJacksonObject(ErrorResponse::class)
 
         // then: the request is refused as too large, and no token was created
-        assertErrorResponse(PAYLOAD_TOO_LARGE, response)
-        assertThat(get("$base/api/tokens/oversized").basicAuth(name, secret).asString().status).isEqualTo(NOT_FOUND.code)
+        assertErrorResponse(CONTENT_TOO_LARGE, response)
+        val listed = get("$base/api/tokens").basicAuth(name, secret).asString().body
+        assertThat(listed).describedAs("the refused token must not exist").doesNotContain("\"oversized\"")
     }
 
     @Test

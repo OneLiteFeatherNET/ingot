@@ -16,7 +16,7 @@
 
 package com.reposilite.web.api
 
-import io.javalin.http.HttpStatus.PAYLOAD_TOO_LARGE
+import io.javalin.http.HttpStatus.CONTENT_TOO_LARGE
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayInputStream
@@ -55,8 +55,8 @@ internal class BodyLimitTest {
     fun `answers 413 without reading the body when the declared length exceeds the limit`() {
         val result = readBoundedBody(declaredLength = 100, input = UnreadableBody, limit = 64)
 
-        assertThat(result.isError).isTrue()
-        assertThat(result.error.status).isEqualTo(PAYLOAD_TOO_LARGE.code)
+        assertThat(result.isOk).isFalse()
+        assertThat(result.error.status).isEqualTo(CONTENT_TOO_LARGE.code)
     }
 
     @Test
@@ -75,8 +75,8 @@ internal class BodyLimitTest {
 
         val result = readBoundedBody(declaredLength = -1, input = body, limit = 64)
 
-        assertThat(result.isError).isTrue()
-        assertThat(result.error.status).isEqualTo(PAYLOAD_TOO_LARGE.code)
+        assertThat(result.isOk).isFalse()
+        assertThat(result.error.status).isEqualTo(CONTENT_TOO_LARGE.code)
         assertThat(body.bytesRead).describedAs("the reader must stop at the limit plus one byte").isLessThanOrEqualTo(65L)
     }
 
@@ -84,8 +84,8 @@ internal class BodyLimitTest {
     fun `answers 413 for a body above the limit even when the declared length is small`() {
         val result = readBoundedBody(declaredLength = 10, input = ByteArrayInputStream(ByteArray(100)), limit = 64)
 
-        assertThat(result.isError).describedAs("the declared length must not be trusted over the bytes received").isTrue()
-        assertThat(result.error.status).isEqualTo(PAYLOAD_TOO_LARGE.code)
+        assertThat(result.isOk).describedAs("the declared length must not be trusted over the bytes received").isFalse()
+        assertThat(result.error.status).isEqualTo(CONTENT_TOO_LARGE.code)
     }
 
     @Test

@@ -22,7 +22,7 @@ import com.reposilite.shared.ErrorResponse
 import io.javalin.http.HttpStatus.BAD_REQUEST
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
-import io.javalin.http.HttpStatus.PAYLOAD_TOO_LARGE
+import io.javalin.http.HttpStatus.CONTENT_TOO_LARGE
 import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import kong.unirest.core.HttpRequestWithBody
@@ -564,7 +564,7 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
         val response = login(oversized).asJacksonObject(ErrorResponse::class)
 
         // then: the request is refused as too large, with the error body of the API
-        assertErrorResponse(PAYLOAD_TOO_LARGE, response)
+        assertErrorResponse(CONTENT_TOO_LARGE, response)
     }
 
     @Test
@@ -585,7 +585,7 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
         val body = (connection.errorStream ?: connection.inputStream).bufferedReader().readText()
 
         // then: the request is refused as too large, in the error shape of the API
-        assertThat(status).isEqualTo(PAYLOAD_TOO_LARGE.code)
+        assertThat(status).isEqualTo(CONTENT_TOO_LARGE.code)
         assertThat(body).contains("\"status\":413")
     }
 
