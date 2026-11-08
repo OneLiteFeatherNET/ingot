@@ -19,7 +19,7 @@
  * read from `meta.section`, and `meta.manager` marks the routes that need the manager
  * permission. Route names are the contract the links and the other views build on.
  *
- * The section segments (search, account, dashboard, access, tokens, console, maintenance, audit, settings) are top level names that a
+ * The section segments (search, account, dashboard, analytics, access, tokens, console, maintenance, audit, settings) are top level names that a
  * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.

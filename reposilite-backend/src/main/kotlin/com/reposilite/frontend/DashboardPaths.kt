@@ -32,6 +32,7 @@ internal object DashboardPaths {
         "/browse/<path>",
         "/search",
         "/dashboard",
+        "/analytics",
         "/tokens",
         "/tokens/{name}",
         "/console",
