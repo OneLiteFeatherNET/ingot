@@ -74,6 +74,7 @@ const sectionStub = vi.hoisted(() => (name, key) => async () => {
 vi.mock('../components/browser/FileBrowserView.vue', sectionStub('FileBrowserStub', 'overview'))
 vi.mock('../components/overview/RepositoryOverview.vue', sectionStub('RepositoryOverviewStub', 'overview'))
 vi.mock('../components/dashboard/DashboardView.vue', sectionStub('DashboardStub', 'dashboard'))
+vi.mock('../components/dashboard/AnalyticsView.vue', sectionStub('AnalyticsStub', 'analytics'))
 vi.mock('../components/access/AccessView.vue', sectionStub('AccessStub', 'access'))
 vi.mock('../components/console/ConsoleView.vue', sectionStub('ConsoleStub', 'console'))
 vi.mock('../components/maintenance/MaintenanceView.vue', sectionStub('MaintenanceStub', 'maintenance'))
@@ -126,7 +127,7 @@ const chooseLink = async (wrapper, label) => {
 
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
-const SECTION_LABELS = ['Overview', 'Search', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']
+const SECTION_LABELS = ['Overview', 'Search', 'Dashboard', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']
 // The bottom bar keeps the daily sections and puts the rarer admin pages under More.
 const BAR_LABELS = ['Overview', 'Search', 'Dashboard', 'Access']
 
@@ -169,6 +170,7 @@ describe('IndexPage section from the route', () => {
 
   it.each([
     ['/dashboard', 'dashboard'],
+    ['/analytics', 'analytics'],
     ['/access/users', 'access'],
     ['/access/machines/ci-bot', 'access'],
     ['/console', 'console'],
@@ -409,7 +411,7 @@ describe('IndexPage navigation', () => {
     await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
 
     const panel = wrapper.find('nav[aria-label="More sections"]')
-    expect(panel.findAll('a').map(link => link.text())).toEqual(['Console', 'Maintenance', 'Audit', 'Settings'])
+    expect(panel.findAll('a').map(link => link.text())).toEqual(['Analytics', 'Console', 'Maintenance', 'Audit', 'Settings'])
 
     await panel.findAll('a').find(link => link.text() === 'Audit').trigger('click')
 
@@ -438,7 +440,7 @@ describe('IndexPage navigation', () => {
 
     const shown = navigations(wrapper).flatMap(nav => nav.findAll('a').map(link => link.text()))
 
-    for (const label of ['Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']) {
+    for (const label of ['Dashboard', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings']) {
       expect(shown, `${label} needs a sign in`).not.toContain(label)
     }
   })

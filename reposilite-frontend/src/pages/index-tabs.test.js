@@ -30,7 +30,7 @@ describe('visibleSections', () => {
 
   it('offers every section to a visitor who may use all admin nodes, in the order of the navigation', () => {
     expect(labelsFor(['ingot.admin.*']))
-      .toEqual(['Overview', 'Search', 'Dashboard', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings'])
+      .toEqual(['Overview', 'Search', 'Dashboard', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit', 'Settings'])
   })
 
   it('offers every section to an instance admin with the lone wildcard', () => {
@@ -104,7 +104,7 @@ describe('section table', () => {
   it('marks exactly the manager sections as manager only', () => {
     const managerOnly = SECTIONS.filter(section => section.manager).map(section => section.key)
 
-    expect(managerOnly).toEqual(['dashboard', 'access', 'console', 'maintenance', 'audit', 'settings'])
+    expect(managerOnly).toEqual(['dashboard', 'analytics', 'access', 'console', 'maintenance', 'audit', 'settings'])
   })
 
   it('places the admin pages after console, settings stays last', () => {
@@ -127,6 +127,7 @@ describe('section table', () => {
 
     expect(nodes).toMatchObject({
       dashboard: 'ingot.admin.dashboard',
+      analytics: 'ingot.admin.dashboard',
       console: 'ingot.admin.console',
       maintenance: 'ingot.admin.maintenance',
       audit: 'ingot.admin.audit',
@@ -148,7 +149,7 @@ describe('section table', () => {
 
 describe('overflow', () => {
   it('moves the rare admin pages under More and keeps the daily ones in the bar', () => {
-    expect(SECTIONS.filter(section => isOverflow(section.key)).map(section => section.key)).toEqual(['console', 'maintenance', 'audit', 'settings'])
+    expect(SECTIONS.filter(section => isOverflow(section.key)).map(section => section.key)).toEqual(['analytics', 'console', 'maintenance', 'audit', 'settings'])
     expect(isOverflow('access')).toBe(false)
     expect(isOverflow('search')).toBe(false)
     expect(isOverflow('unknown')).toBe(false)
@@ -156,6 +157,23 @@ describe('overflow', () => {
 
   it('reserves a key for the More destination that cannot clash with a section', () => {
     expect(SECTIONS.map(section => section.key)).not.toContain(MORE_KEY)
+  })
+})
+
+describe('analytics section', () => {
+  it('sits right after the dashboard and opens the analytics route', () => {
+    const keys = SECTIONS.map(section => section.key)
+
+    expect(keys[keys.indexOf('dashboard') + 1]).toBe('analytics')
+    expect(SECTIONS.find(section => section.key === 'analytics')?.route).toBe('analytics')
+  })
+
+  it('is manager only, like the dashboard it sits beside', () => {
+    expect(SECTIONS.find(section => section.key === 'analytics')?.manager).toBe(true)
+  })
+
+  it('names the section in the document title', () => {
+    expect(sectionLabel('analytics')).toBe('Analytics')
   })
 })
 

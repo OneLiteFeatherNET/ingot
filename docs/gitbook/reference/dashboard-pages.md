@@ -23,7 +23,8 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/browse` and `/browse/<path>` | `browse` | Overview section. Shows the folder listing of the repository path. `/browse` alone shows the repository list. | Everyone, no sign-in needed. | Router (`/browse/:qualifier(.*)*`) and Backend (`/browse`, `/browse/<path>`) |
 | `/search` | `search` | Search. The artifact search. The query is kept in the address. | Everyone, no sign-in needed. | Router and Backend |
 | `/account` | `account` | My account. Profile, password and the tokens the user created. | Signed-in principals. Client-side only: the page shows a sign-in prompt to a visitor. | Router and Backend |
-| `/dashboard` | `dashboard` | Dashboard. Sections **Instance status**, **Resources** and **Traffic**, and a getting started card. | Node `ingot.admin.dashboard`. | Router and Backend |
+| `/dashboard` | `dashboard` | Dashboard. Sections **Instance status** and **Resources**, and a getting started card. | Node `ingot.admin.dashboard`. | Router and Backend |
+| `/analytics` | `analytics` | Analytics. Section **Traffic**: the resolved requests per repository over time. | Node `ingot.admin.dashboard`. | Router and Backend |
 | `/access` | `access` | No page of its own. Redirects to the first of **Users**, **Machine accounts** or **Teams** that the user may open, or to **Users** if none matches. | Any one of `ingot.admin.users`, `ingot.admin.tokens`, `ingot.admin.teams`. | Router and Backend (`/access`) |
 | `/access/users` | `access-users` | Access, tab **Users**. | Node `ingot.admin.users`. | Router. Backend (`/access/<path>`) |
 | `/access/users/:name` | `access-user` | Access, tab **Users**, detail of one user. | Node `ingot.admin.users`. | Router. Backend (`/access/<path>`) |
@@ -49,7 +50,7 @@ Rules for the "Who can open it" column:
 
 * A node is allowed when an entry of the session's node list equals it, or matches it with `*` in place of a segment. A lone `*` entry allows every node. The check is in `reposilite-frontend/src/store/nodeAccess.js`.
 * A session that has no node list falls back to the instance admin flag.
-* The labels of the navigation (**Overview**, **Search**, **Dashboard**, **Access**, **Console**, **Maintenance**, **Audit**, **Settings**) are defined in `reposilite-frontend/src/pages/index-tabs.js`. A section is left out of the navigation when the user lacks its node. The title of `/account` is **My account**.
+* The labels of the navigation (**Overview**, **Search**, **Dashboard**, **Analytics**, **Access**, **Console**, **Maintenance**, **Audit**, **Settings**) are defined in `reposilite-frontend/src/pages/index-tabs.js`. A section is left out of the navigation when the user lacks its node. The title of `/account` is **My account**.
 * The tab labels of **Access** (**Users**, **Machine accounts**, **Teams**, **SSO**, **LDAP**, **Security**, **Check**) are defined in `reposilite-frontend/src/components/access/AccessView.vue`. A tab is left out when the user lacks its node.
 
 ### Client-side guards
@@ -59,7 +60,7 @@ The router runs two guards, in `reposilite-frontend/src/router/create.js` and `r
 | Guard | Applies to | Behavior |
 | --- | --- | --- |
 | Password change | Every route except `account` | While the server asks the principal for a new password, the router redirects to `account`. |
-| Admin route | Routes whose meta marks them as admin pages (`manager: true`): `dashboard`, all `access-*` routes, `tokens`, `token-new`, `token`, `console`, `maintenance`, `audit`, `settings`, `settings-entry` | Waits until the session is known. A user with the node goes in. An anonymous visitor stays on the URL and sees the prompt **Sign in to open** the section, with a **Sign in** button, and the sign-in dialog opens. A signed-in user without the node is redirected to `overview` with the notice "You do not have access to that page". |
+| Admin route | Routes whose meta marks them as admin pages (`manager: true`): `dashboard`, `analytics`, all `access-*` routes, `tokens`, `token-new`, `token`, `console`, `maintenance`, `audit`, `settings`, `settings-entry` | Waits until the session is known. A user with the node goes in. An anonymous visitor stays on the URL and sees the prompt **Sign in to open** the section, with a **Sign in** button, and the sign-in dialog opens. A signed-in user without the node is redirected to `overview` with the notice "You do not have access to that page". |
 
 The `account` route is not an admin route. The sign-in prompt for it comes from the page component `reposilite-frontend/src/pages/IndexPage.vue`, not from the router guard.
 
@@ -88,6 +89,7 @@ With `defaultFrontend` on, `ResourcesFrontendHandler` (`reposilite-backend/src/m
 | `/browse/<path>` | Any path below `/browse`. |
 | `/search` | The search page. |
 | `/dashboard` | The dashboard page. |
+| `/analytics` | The analytics page. Only this exact path, no sub-paths. |
 | `/tokens` | The old token page. |
 | `/tokens/{name}` | One segment below `/tokens`, for example `/tokens/new`. |
 | `/console` | The console page. |
@@ -113,7 +115,7 @@ A path can be in the backend list but not in the router. The backend accepts any
 | --- | --- | --- |
 | `/` | No (served by a separate handler) | Yes (`overview`) |
 | `/browse`, `/browse/<path>` | Yes | Yes (one pattern) |
-| `/search`, `/account`, `/dashboard`, `/console`, `/maintenance`, `/audit` | Yes | Yes |
+| `/search`, `/account`, `/dashboard`, `/analytics`, `/console`, `/maintenance`, `/audit` | Yes | Yes |
 | `/tokens`, `/tokens/{name}` | Yes | Yes (`tokens`, `token-new`, `token`; all redirects) |
 | `/settings`, `/settings/<path>` | Yes | Yes (`settings` takes none or one segment below `/settings`, `settings-entry` takes three) |
 | `/access`, `/access/<path>` | Yes | Yes (`access` and eight routes below it) |
@@ -122,7 +124,7 @@ A path can be in the backend list but not in the router. The backend accepts any
 
 ### Repository ids that collide with a route
 
-The first segment of each route is a reserved segment: `browse`, `search`, `dashboard`, `tokens`, `console`, `maintenance`, `audit`, `settings`, `access` and `account`. The server also reserves `api` and `assets`. A repository can still use one of these ids. `DashboardRouteDecision` decides who answers a request on such a path:
+The first segment of each route is a reserved segment: `browse`, `search`, `dashboard`, `analytics`, `tokens`, `console`, `maintenance`, `audit`, `settings`, `access` and `account`. The server also reserves `api` and `assets`. A repository can still use one of these ids. `DashboardRouteDecision` decides who answers a request on such a path:
 
 | Request | Answered by |
 | --- | --- |
@@ -141,7 +143,8 @@ A page route returns the same file to everyone. The data on each page comes from
 | --- | --- | --- |
 | Overview, Search | Public maven and search endpoints | Repository visibility decides what the caller sees. |
 | My account | `/api/identity/me/*` | The caller must be authenticated. |
-| Dashboard | `/api/status/instance`, `/api/status/snapshots`, `/api/status/failures`, `/api/statistics/resolved/unique`, `/api/statistics/resolved/all` | Instance admin (`managerOnly`). |
+| Dashboard | `/api/status/instance`, `/api/status/snapshots`, `/api/status/failures` | Instance admin (`managerOnly`). |
+| Analytics | `/api/statistics/resolved/unique`, `/api/statistics/resolved/all` | Instance admin (`managerOnly`). |
 | Access, tab **Users** | `/api/identity/principals` (list, create) and the other `users` endpoints | Node `ingot.admin.users`. |
 | Access, tab **Machine accounts** | `/api/identity/principals` (list), and `/api/identity/principals/{name}/tokens` (list, create, delete) | The principal list checks `ingot.admin.users`. The token endpoints check `ingot.admin.tokens`. |
 | Access, tab **Teams** | The `/api/identity/teams` endpoints | Node `ingot.admin.teams`. |

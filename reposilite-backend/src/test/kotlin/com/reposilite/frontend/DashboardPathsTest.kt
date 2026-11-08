@@ -27,7 +27,7 @@ internal class DashboardPathsTest {
         val reserved = DashboardPaths.RESERVED_SEGMENTS
 
         // then: the dashboard routes and the API and asset segments are all covered
-        assertThat(reserved).containsExactlyInAnyOrder("browse", "search", "dashboard", "tokens", "console", "maintenance", "audit", "settings", "access", "account", "api", "assets")
+        assertThat(reserved).containsExactlyInAnyOrder("browse", "search", "dashboard", "analytics", "tokens", "console", "maintenance", "audit", "settings", "access", "account", "api", "assets")
     }
 
     @Test
@@ -50,6 +50,17 @@ internal class DashboardPathsTest {
         // then: the search page is a dashboard route without sub-paths, and its segment is reserved
         assertThat(reserved).describedAs("reserved segments").contains("search")
         assertThat(routes.filter { it.startsWith("/search") }).describedAs("search routes").containsExactly("/search")
+    }
+
+    @Test
+    fun `should answer the analytics path with the dashboard`() {
+        // when: the dashboard route table and the reserved segments are read
+        val reserved = DashboardPaths.RESERVED_SEGMENTS
+        val routes = DashboardPaths.APP_ROUTES
+
+        // then: the analytics page is a dashboard route without sub-paths, so a reload serves index.html
+        assertThat(reserved).describedAs("reserved segments").contains("analytics")
+        assertThat(routes.filter { it.startsWith("/analytics") }).describedAs("analytics routes").containsExactly("/analytics")
     }
 
     @Test

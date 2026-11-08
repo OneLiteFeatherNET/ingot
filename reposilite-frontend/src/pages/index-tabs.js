@@ -24,7 +24,7 @@
  * Search joined the sections with the artifact search (spec section 8.1), which makes eight for an
  * administrator, one more than the seven that M3 recommends for a rail; the bar keeps its five by
  * moving Console under More with Maintenance, the audit log and Settings. The daily pages (overview,
- * search, dashboard, access) stay one tap away.
+ * search, dashboard, access) stay one tap away. Analytics is a rarer page, so it sits under More as well.
  */
 
 import { ACCESS_NODES, ADMIN_NODES, requiredNodes } from '../store/nodeAccess'
@@ -33,6 +33,7 @@ const SECTIONS = [
   { key: 'overview', label: 'Overview', manager: false, route: 'overview' },
   { key: 'search', label: 'Search', manager: false, route: 'search' },
   { key: 'dashboard', label: 'Dashboard', manager: true, node: ADMIN_NODES.dashboard, route: 'dashboard' },
+  { key: 'analytics', label: 'Analytics', manager: true, node: ADMIN_NODES.dashboard, route: 'analytics', overflow: true },
   { key: 'access', label: 'Access', manager: true, anyNode: ACCESS_NODES, route: 'access' },
   { key: 'console', label: 'Console', manager: true, node: ADMIN_NODES.console, route: 'console', overflow: true },
   { key: 'maintenance', label: 'Maintenance', manager: true, node: ADMIN_NODES.maintenance, route: 'maintenance', overflow: true },

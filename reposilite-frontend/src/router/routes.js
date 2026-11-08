@@ -19,7 +19,7 @@
  * read from `meta.section`, and `meta.manager` marks the routes that need the manager
  * permission. Route names are the contract the links and the other views build on.
  *
- * The section segments (search, account, dashboard, access, tokens, console, maintenance, audit, settings) are top level names that a
+ * The section segments (search, account, dashboard, analytics, access, tokens, console, maintenance, audit, settings) are top level names that a
  * repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.
@@ -53,6 +53,8 @@ const ROUTES = [
   // Open to every signed in principal. `signedIn` shows the sign in prompt to a visitor.
   { name: 'account', path: '/account', meta: { section: 'account', signedIn: true } },
   { name: 'dashboard', path: '/dashboard', meta: adminRoute('dashboard', ADMIN_NODES.dashboard) },
+  // Usage over time. The same permission as the dashboard, so both tabs are offered to the same people.
+  { name: 'analytics', path: '/analytics', meta: adminRoute('analytics', ADMIN_NODES.dashboard) },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
   // the team in `:name`. `/access` has no page of its own and opens the user list.
   { name: 'access', path: '/access', redirect: { name: 'access-users' }, meta: ACCESS_ANY },

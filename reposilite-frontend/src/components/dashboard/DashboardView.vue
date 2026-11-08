@@ -17,14 +17,13 @@
 <script setup>
 import InstanceStatusPanel from './InstanceStatusPanel.vue'
 import ResourceTrends from './ResourceTrends.vue'
-import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
 import GettingStartedCard from './GettingStartedCard.vue'
 </script>
 
 <!--
-  Read top to bottom, the page answers three questions in the order an operator asks them:
-  is anything wrong right now, how have the resources been behaving, and what is the traffic
-  doing.
+  Read top to bottom, the page answers two questions in the order an operator asks them:
+  is anything wrong right now, and how have the resources been behaving. Traffic over time
+  is on the analytics tab.
   The panels fetch and poll themselves and are only ever mounted while this tab is open, so
   a slow endpoint holds up its own card instead of the whole page, and the polling stops by
   unmounting rather than by checking which tab is selected.
@@ -54,19 +53,6 @@ import GettingStartedCard from './GettingStartedCard.vue'
         Resources
       </h2>
       <ResourceTrends />
-    </section>
-
-    <section
-      class="pt-6"
-      aria-labelledby="traffic-heading"
-    >
-      <h2
-        id="traffic-heading"
-        class="pb-3 md-title-large text-on-surface"
-      >
-        Traffic
-      </h2>
-      <ResolvedRequestsChart />
     </section>
   </div>
 </template>
