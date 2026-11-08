@@ -66,7 +66,8 @@ internal class ValkeyClusterTransportIntegrationTest {
 
     @Test
     fun `a subscriber receives messages again after the broker restarts`() {
-        // A fixed host port: a restart of a container with a random port can move the port, which would leave the URL stale.
+        // A host port picked free at runtime and bound explicitly: a restart of a container with a random port can move the
+        // port, which would leave the URL stale.
         val port = freePort()
         val url = ClusterBusUrl.parse("valkey://127.0.0.1:$port")
         val broker = startBrokerOn(port)

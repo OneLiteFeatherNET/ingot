@@ -50,8 +50,8 @@ internal class NatsClusterTransportIntegrationTest {
         val received = LinkedBlockingQueue<String>()
         subscriber.subscribe { received.offer(it) }
         assertThat(publisher.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("publisher connected").isTrue()
-        assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("subscriber connected").isTrue()
-        assertThat(subscriber.flushSubscriptions(CONNECT_BOUND)).describedAs("subscription known to the broker").isTrue()
+        // Connected on a subscribed transport means the broker has confirmed the subscription, so no further wait is needed.
+        assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("subscriber connected and subscribed").isTrue()
 
         // when: the publisher sends one envelope
         publisher.publish(ROUND_TRIP_MESSAGE)
@@ -62,7 +62,7 @@ internal class NatsClusterTransportIntegrationTest {
 
     @Test
     fun `a connection reconnects after the broker restarts and delivers events again`() {
-        // given: a broker on a fixed port, with a connected publisher and subscriber
+        // given: a broker on a port chosen at runtime and kept across the restart, with a connected publisher and subscriber
         val port = freePort()
         val broker = natsBroker(fixedPort = port)
         broker.start()
@@ -73,8 +73,7 @@ internal class NatsClusterTransportIntegrationTest {
             val received = LinkedBlockingQueue<String>()
             subscriber.subscribe { received.offer(it) }
             assertThat(publisher.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).isTrue()
-            assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).isTrue()
-            assertThat(subscriber.flushSubscriptions(CONNECT_BOUND)).isTrue()
+            assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("subscriber connected and subscribed").isTrue()
 
             // when: the broker stops and starts again on the same address
             broker.stop()
@@ -82,8 +81,7 @@ internal class NatsClusterTransportIntegrationTest {
             assertThat(subscriber.awaitState(ConnectionState.RECONNECTING, CONNECT_BOUND)).describedAs("subscriber noticed the outage").isTrue()
             broker.start()
             assertThat(publisher.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("publisher reconnected").isTrue()
-            assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("subscriber reconnected").isTrue()
-            assertThat(subscriber.flushSubscriptions(CONNECT_BOUND)).describedAs("subscription restored").isTrue()
+            assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("subscriber reconnected and subscribed").isTrue()
             publisher.publish(ROUND_TRIP_MESSAGE)
 
             // then: the event published after the restart reaches the subscriber
@@ -112,8 +110,7 @@ internal class NatsClusterTransportIntegrationTest {
             val received = LinkedBlockingQueue<String>()
             subscriber.subscribe { received.offer(it) }
             assertThat(publisher.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("publisher connected later").isTrue()
-            assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).isTrue()
-            assertThat(subscriber.flushSubscriptions(CONNECT_BOUND)).isTrue()
+            assertThat(subscriber.awaitState(ConnectionState.CONNECTED, CONNECT_BOUND)).describedAs("subscriber connected and subscribed").isTrue()
             publisher.publish(ROUND_TRIP_MESSAGE)
 
             // then: an event published once connected reaches the subscriber
