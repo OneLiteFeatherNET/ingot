@@ -25,6 +25,8 @@ import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.status.ClusterStatusSource
+import com.reposilite.status.StatusFacade
 import java.time.Clock
 import java.time.Instant
 import java.util.UUID
@@ -49,6 +51,7 @@ import java.util.concurrent.CopyOnWriteArrayList
         "cleanup",
         "audit",
         "local-configuration",
+        "status",
     ],
 )
 class ClusterPlugin(
@@ -59,7 +62,7 @@ class ClusterPlugin(
     private val clock: Clock = Clock.systemUTC(),
 ) : ReposilitePlugin() {
 
-    internal val counters = ClusterCounters()
+    internal val counters = ClusterCounters(clock)
     private val payloads = ObjectMapper()
     private val handlers = ConcurrentHashMap<ClusterEventType, CopyOnWriteArrayList<(ClusterEnvelope) -> Unit>>()
 
@@ -83,11 +86,13 @@ class ClusterPlugin(
         val factory = transports[url.scheme]
         if (factory == null) {
             logger.warn("Cluster | no transport is available for ${url.scheme} in this build, the instance runs without the bus")
+            attachStatus(ClusterStatusView(url, counters) { ConnectionState.DISABLED })
             return null
         }
 
         logger.info("Cluster | connecting to ${url.redacted()}")
         val transport = factory.open(url, settings)
+        attachStatus(ClusterStatusView(url, counters) { transport.connectionState() })
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
@@ -105,6 +110,10 @@ class ClusterPlugin(
             transport.close()
         }
         return null
+    }
+
+    private fun attachStatus(source: ClusterStatusSource) {
+        extensions().getFacades().filterIsInstance<StatusFacade>().forEach { it.attachClusterStatus(source) }
     }
 
     private fun dispatch(envelope: ClusterEnvelope) {

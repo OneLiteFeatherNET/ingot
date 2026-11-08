@@ -42,6 +42,14 @@ class StatusFacade(
 
     private val cachedStatusSnapshots = EvictingQueue.create<StatusSnapshot>(12)
 
+    @Volatile
+    private var clusterStatusSource: ClusterStatusSource? = null
+
+    /** Adds the cluster section to the status response. Called by the cluster bus only, when a bus URL is configured. */
+    fun attachClusterStatus(source: ClusterStatusSource) {
+        clusterStatusSource = source
+    }
+
     private val cachedLatestVersion: Supplier<Result<String, String>> =
         Suppliers.memoizeWithExpiration({
             when {
@@ -91,7 +99,8 @@ class StatusFacade(
             maxMemory = (Runtime.getRuntime().maxMemory() / 1024 / 1024).toInt(),
             usedThreads = getUsedThreads(),
             maxThreads = maxThreads.get(),
-            failuresCount = failureFacade.getFailures().size
+            failuresCount = failureFacade.getFailures().size,
+            cluster = clusterStatusSource?.clusterStatus()
         )
 
     private fun getUsedThreads(): Int =

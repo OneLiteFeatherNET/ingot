@@ -16,14 +16,18 @@
 
 package net.onelitefeather.ingot.cluster
 
+import java.time.Clock
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 /** Counts of the bus traffic of this instance, shown in the status output. */
-class ClusterCounters {
+class ClusterCounters(private val clock: Clock = Clock.systemUTC()) {
 
     private val publishedCount = AtomicLong()
     private val appliedCount = AtomicLong()
     private val ignoredCount = AtomicLong()
+    private val lastReceived = AtomicReference<Instant?>(null)
 
     val published: Long
         get() = publishedCount.get()
@@ -33,6 +37,14 @@ class ClusterCounters {
 
     val ignored: Long
         get() = ignoredCount.get()
+
+    /** When the last message arrived from the bus, applied or not. Null before the first message. */
+    val lastReceivedAt: Instant?
+        get() = lastReceived.get()
+
+    fun countReceived() {
+        lastReceived.set(clock.instant())
+    }
 
     fun countPublished() {
         publishedCount.incrementAndGet()
@@ -61,6 +73,7 @@ class ClusterReceiver(
      * @return the envelope to apply, or `null` when the message is ignored
      */
     fun accept(raw: String): ClusterEnvelope? {
+        counters.countReceived()
         val envelope = when (val decoded = ClusterEnvelopeCodec.decode(raw)) {
             is ClusterDecodeResult.Accepted -> decoded.envelope
             is ClusterDecodeResult.Ignored -> return ignore()
