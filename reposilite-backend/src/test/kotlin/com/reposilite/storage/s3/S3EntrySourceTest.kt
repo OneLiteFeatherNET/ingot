@@ -1,6 +1,8 @@
 package com.reposilite.storage.s3
 
 import com.reposilite.storage.api.Location
+import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.status.FailureFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import panda.std.ResultAssertions.assertError
@@ -19,6 +21,7 @@ private val MODIFIED_AT: Instant = Instant.parse("2026-10-15T12:00:00.123Z")
 internal class S3EntrySourceTest {
 
     private val s3 = FakeS3Bucket(BUCKET)
+    private val failureFacade = FailureFacade(InMemoryLogger())
 
     @Test
     fun `should list the keys in key order with the size and the last modified time of each`() {
@@ -152,7 +155,7 @@ internal class S3EntrySourceTest {
 
         // when: the bucket is listed
         val error = assertError(
-            S3EntrySource(s3 = failingBucket, bucket = BUCKET).listEntries(Location.empty(), after = null, limit = 100)
+            S3EntrySource(s3 = failingBucket, bucket = BUCKET, failureFacade = failureFacade).listEntries(Location.empty(), after = null, limit = 100)
         )
 
         // then: the status is still a server error
@@ -165,7 +168,7 @@ internal class S3EntrySourceTest {
     }
 
     private fun source(keyPrefix: String = ""): S3EntrySource =
-        S3EntrySource(s3 = s3, bucket = BUCKET, keyPrefix = keyPrefix)
+        S3EntrySource(s3 = s3, bucket = BUCKET, keyPrefix = keyPrefix, failureFacade = failureFacade)
 
 }
 
