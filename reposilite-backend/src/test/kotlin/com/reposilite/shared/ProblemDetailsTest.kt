@@ -144,4 +144,15 @@ internal class ProblemDetailsTest {
         assertThat(body["detail"].asText()).isEqualTo("refused")
     }
 
+    @Test
+    fun `should keep the constructors and properties that plugins were compiled against`() {
+        val type = ErrorResponse::class.java
+
+        assertThat(type.getConstructor(Int::class.javaPrimitiveType, String::class.java, List::class.java)).isNotNull
+        assertThat(type.getConstructor(io.javalin.http.HttpStatus::class.java, String::class.java)).isNotNull
+        assertThat(type.getMethod("getStatus").returnType).isEqualTo(Int::class.javaPrimitiveType)
+        assertThat(type.getMethod("getMessage").returnType).isEqualTo(String::class.java)
+        assertThat(type.getMethod("getProblems").returnType).isEqualTo(List::class.java)
+    }
+
 }
