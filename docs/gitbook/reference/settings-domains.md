@@ -226,6 +226,7 @@ Fields of a repository:
 | `storagePolicy` | `PRIORITIZE_UPSTREAM_METADATA` or `STRICT` | `PRIORITIZE_UPSTREAM_METADATA` | How requests are handled when mirrors are configured. `STRICT` reads the stored copy first and asks the upstream only when it is missing. It is not an offline mode. |
 | `metadataMaxAge` | Long | `0` | Seconds that fetched metadata files stay valid with `PRIORITIZE_UPSTREAM_METADATA`. `0` fetches every time. |
 | `resolutionCacheMaxEntries` | Int | `0` | Size of the cache for routing decisions of metadata reads. `0` turns it off. At least 0. |
+| `resolutionCacheClusterMaxAgeSeconds` | Long | `0` | Seconds a routing decision may be used when a cluster bus is configured, measured from when it was recorded. `0` uses 300 seconds. Without a cluster bus the value is ignored and decisions keep their current lifetime. At least 0. |
 | `proxied` | List of mirror | empty | Mirrors associated with the repository. |
 
 Fields of a mirror in `proxied`:

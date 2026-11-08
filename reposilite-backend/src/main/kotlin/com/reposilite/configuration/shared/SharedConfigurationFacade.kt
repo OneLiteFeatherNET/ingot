@@ -315,6 +315,23 @@ class SharedConfigurationFacade(
     fun isUpdateRequired(): Boolean =
         sharedConfigurationProvider.isUpdateRequired()
 
+    /**
+     * Loads the stored document when the provider reports a newer revision. The scheduled poll and the cluster bus both call it.
+     *
+     * @return true when a newer document was loaded
+     */
+    internal fun reloadIfChanged(): Boolean =
+        synchronized(stateLock) {
+            if (!isUpdateRequired()) {
+                return@synchronized false
+            }
+
+            journalist.logger.info("Propagation | Shared configuration has been changed in ${getProviderName()}, updating current instance...")
+            loadSharedSettingsFromString(fetchConfiguration())
+            journalist.logger.info("Propagation | Sources have been updated successfully")
+            true
+        }
+
     fun isMutable(): Boolean =
         sharedConfigurationProvider.isMutable()
 

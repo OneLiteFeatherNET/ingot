@@ -77,6 +77,20 @@ internal class MavenSettingsLoadingTest {
     }
 
     @Test
+    fun `should load a maven block written before the cluster maximum age existed and keep it at zero`() {
+        // given: a shared configuration as it was written before the cluster maximum age was introduced
+        val document = """{ "maven": { "repositories": [ { "id": "releases", "visibility": "PUBLIC", "resolutionCacheMaxEntries": 16 } ] } }"""
+
+        // when: the document is loaded at startup
+        val result = sharedConfigurationFacade.loadSharedSettingsFromString(document)
+
+        // then: the load succeeds, the existing repository keeps its values and the new field takes its default of zero
+        assertThat(result.isOk).describedAs("result of loading a legacy maven block: ${result.errorOrNull()}").isTrue
+        assertThat(currentMavenSettings().resolutionCacheClusterMaxAgeSeconds).isZero()
+        assertThat(currentMavenSettings().repositories.single().resolutionCacheMaxEntries).isEqualTo(16)
+    }
+
+    @Test
     fun `should reject a shared configuration with an invalid tag and keep the previous settings`() {
         // given: a shared configuration with a tag that breaks the format
         val document = """{ "maven": { "repositories": [ { "id": "releases", "tags": [ "Team" ] } ] } }"""

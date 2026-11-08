@@ -68,6 +68,8 @@ class ClusterPlugin(
     private val clock: Clock = Clock.systemUTC(),
     /** Replaces the hand-over of a received usage snapshot to the maven plugin, for tests. */
     private val storageUsage: ((StorageUsageRefreshedEvent) -> Unit)? = null,
+    /** Applies the cache events through the running facades when null. */
+    private val cacheHooks: ClusterCacheHooks? = null,
 ) : ReposilitePlugin() {
 
     internal val counters = ClusterCounters()
@@ -117,6 +119,9 @@ class ClusterPlugin(
             onError = { logger.warn("Cluster | a message could not be sent: ${it.message}") },
         )
 
+        ClusterCacheEvents.install(this, cacheHooks ?: FacadeCacheHooks(this)) { type, fields ->
+            publish(outbox, identifier, settings.instanceId, type, fields)
+        }
         event { event: TokenStateChangedEvent ->
             publish(outbox, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
         }

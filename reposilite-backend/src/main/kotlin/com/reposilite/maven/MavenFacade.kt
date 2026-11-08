@@ -202,6 +202,10 @@ class MavenFacade internal constructor(
     fun getRepositories(): Collection<Repository> =
         repositoryService.repositoryProvider.getRepositories()
 
+    /** Bounds the lifetime of resolution entries, because a cluster bus is configured for this instance. See [resolutionCacheMaxAge]. */
+    internal fun bindResolutionCacheToClusterBus() =
+        repositoryService.repositoryProvider.bindToClusterBus()
+
     /** Usage figures of every repository as last computed, see [StorageUsageService]. */
     fun storageUsage(): StorageUsage =
         storageUsageService.current()
