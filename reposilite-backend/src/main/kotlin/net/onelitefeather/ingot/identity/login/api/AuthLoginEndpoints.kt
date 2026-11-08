@@ -239,4 +239,4 @@ private fun clearSessionCookies(ctx: Context, basePath: String) {
 }
 
 private fun secure(ctx: Context): Boolean =
-    SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"))
+    SessionCookies.isSecure(ctx)

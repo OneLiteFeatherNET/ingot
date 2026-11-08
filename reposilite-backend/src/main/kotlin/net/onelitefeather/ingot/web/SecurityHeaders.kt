@@ -110,7 +110,7 @@ class SecurityHeaders(private val settings: SecurityHeadersSettings) {
         }
 
         val maxAge = settings.hstsMaxAgeSeconds
-        if (maxAge != null && SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"))) {
+        if (maxAge != null && SessionCookies.isSecure(ctx)) {
             ctx.header("Strict-Transport-Security", "max-age=$maxAge")
         }
     }

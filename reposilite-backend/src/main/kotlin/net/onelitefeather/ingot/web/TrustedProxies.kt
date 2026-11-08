@@ -42,7 +42,8 @@ class TrustedProxies private constructor(private val networks: List<Network>) {
         return chain.lastOrNull { !isTrusted(it) } ?: chain.firstOrNull() ?: peer
     }
 
-    private fun isTrusted(address: String): Boolean {
+    /** Whether [address] is one of the trusted proxies. */
+    fun isTrusted(address: String): Boolean {
         val bytes = literalBytes(address) ?: return false
         return networks.any { it.contains(bytes) }
     }
@@ -75,6 +76,9 @@ class TrustedProxies private constructor(private val networks: List<Network>) {
         const val SYSTEM_PROPERTY = "ingot.trustedProxies"
 
         val NONE = TrustedProxies(emptyList())
+
+        /** The proxies configured for this process, read once. */
+        val configured: TrustedProxies by lazy { fromEnvironment() }
 
         /**
          * Reads comma separated IPv4 or IPv6 addresses and CIDR ranges. A malformed entry fails with an
