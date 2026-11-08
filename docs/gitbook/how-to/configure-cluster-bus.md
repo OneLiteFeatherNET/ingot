@@ -66,11 +66,23 @@ The file is used only with the `nats` and `tls` schemes. With a Redis or Valkey 
 
 Each replica announces itself with an identifier. It defaults to the host name, which is the pod name under Kubernetes, so the default is usually right. To set it explicitly, use `INGOT_CLUSTER_INSTANCE_ID`. Use a value that is unique among the replicas of the database.
 
+## Console fan-out
+
+With a bus configured, each replica forwards the live log lines it shows in its console to the other replicas. An administrator connected to the console of one replica sees the lines of all replicas. Each forwarded line is labelled with the replica that logged it, for example `[ingot-1] ...`. A line is forwarded only at the visibility threshold of the replica that logged it, and it is shown once on each replica.
+
+A forwarded line is not written to the local log of the receiving replica. It exists only in the live console sessions that are connected at that moment, and the console does not keep it for later sessions.
+
+Set `INGOT_CLUSTER_CONSOLE=false` to turn fan-out off. Each replica then keeps its console to itself, and token, configuration and session events still propagate.
+
+### Privacy
+
+A forwarded line leaves the replica in clear text and travels through the bus to every other replica. Anyone who can subscribe to the bus can read it, including the broker operator and every account that has subscribe permission on the subject. Log lines can contain host names, client addresses, repository paths and user names, so give the bus the same trust as the database. Use a `tls`, `rediss` or `valkeys` scheme for a bus that crosses a network boundary. Turn fan-out off when the lines of one replica must not leave it.
+
 ## Switches
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `INGOT_CLUSTER_CONSOLE` | `true` when a bus is configured | Switches the forwarding of live console log lines between replicas. Set `false` to keep the console of each replica to itself while the rest of the bus keeps working. |
+| `INGOT_CLUSTER_CONSOLE` | `true` when a bus is configured | Switches the forwarding of live console log lines between replicas, in both directions. Set `false` to keep the console of each replica to itself while the rest of the bus keeps working. See [Console fan-out](#console-fan-out) for the privacy note. |
 | `INGOT_CLUSTER_FAILURES` | `false` | Switches the aggregation of recorded failures across replicas. Off, each replica lists only the failures it recorded. |
 
 Accepted values are `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`, in any case. Any other value stops the start and names the variable.
