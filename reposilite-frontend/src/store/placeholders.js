@@ -79,14 +79,21 @@ const substituted = (value, token) => !value.includes(token)
 
 /*
  * The mount point of the dashboard. A bundled dashboard has the server's base path where the
- * placeholder was, so the literal itself is the value. A detached dashboard has no substitution
- * and takes the base path its build was made for, which Vite keeps as BASE_URL. The bundled Vite
- * base is relative (the server strips its slashes), so it is not used there.
+ * placeholder was, so the literal itself is the value. A detached dashboard has no substitution:
+ * its server fills the base element of the document in at start, so that element is read. Only
+ * without it does the base path the build was made for, which Vite keeps as BASE_URL, count.
+ * The bundled Vite base is relative (the server strips its slashes), so it is not used there.
  */
 export const resolveMountPath = (
   bundledValue = '{{REPOSILITE.BASE_PATH}}',
   viteBase = import.meta.env.BASE_URL
-) => (substituted(bundledValue, 'REPOSILITE.BASE_PATH') ? bundledValue : viteBase)
+) => {
+  if (substituted(bundledValue, 'REPOSILITE.BASE_PATH')) {
+    return bundledValue
+  }
+  const href = document.querySelector('base')?.getAttribute('href')
+  return href ? new URL(href, location.href).pathname : viteBase
+}
 
 const read = (value, token) => {
   if (substituted(value, token)) {
