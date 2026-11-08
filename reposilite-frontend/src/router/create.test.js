@@ -467,3 +467,47 @@ describe('routes gated by permission nodes', () => {
     expect(router.currentRoute.value.name).toBe('audit')
   })
 })
+
+describe('the /access address forwards or shows the index', () => {
+  // The width is injected, as the session is: the router reads no window.
+  const sessionWith = (...nodes) => ({
+    isManager: () => true,
+    isLogged: () => true,
+    can: (node) => nodes.includes(node),
+    whenSessionKnown: () => Promise.resolve()
+  })
+
+  it('replaces /access with the one page a visitor may open', async () => {
+    const router = makeRouter(sessionWith('ingot.admin.tokens'))
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name, 'the tokens node alone permits only the check page').toBe('access-check')
+    expect(router.options.history.state.replaced, 'the forward leaves no history step behind').toBe(true)
+  })
+
+  it('forwards /access to the first permitted page on a wide screen', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.teams'), narrow: () => false })
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name).toBe('access-teams')
+  })
+
+  it('stays at /access on a narrow screen when several pages are permitted, so the index shows', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.teams'), narrow: () => true })
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name).toBe('access')
+    expect(router.currentRoute.value.fullPath).toBe('/access')
+  })
+
+  it('forwards /access to the one permitted page on a narrow screen too', async () => {
+    const router = makeRouter({ ...sessionWith('ingot.admin.tokens'), narrow: () => true })
+
+    await router.push('/access')
+
+    expect(router.currentRoute.value.name, 'the forward depends on permissions, not on the width').toBe('access-check')
+  })
+})
