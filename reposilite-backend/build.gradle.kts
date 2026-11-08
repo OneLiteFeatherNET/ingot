@@ -149,6 +149,15 @@ dependencies {
     }
     implementation("com.google.protobuf:protobuf-java:4.35.0")
 
+    // Redis and Valkey transport of the optional cluster bus (MIT). Only plain PUBLISH and SUBSCRIBE are used, so the
+    // server needs no module. Pinned to a release at least two weeks old, as the Renovate policy requires.
+    val jedis = "8.0.2"
+    implementation("redis.clients:jedis:$jedis") {
+        // Jedis uses org.json only for its JSON module, which the transport never calls. The library is declared
+        // Public Domain, a licence this build does not allow, so it stays out of the bundle.
+        exclude(group = "org.json", module = "json")
+    }
+
     // ComparableVersion orders versions the way Maven does (qualifiers, RC, SNAPSHOT, numeric segments). Apache-2.0.
     // Its only runtime dependency is plexus-utils; a hand-written ordering gets these rules subtly wrong.
     val mavenArtifact = "3.9.16"
@@ -171,6 +180,14 @@ dependencies {
     api("commons-codec:commons-codec:1.22.0")
     api("com.google.guava:guava:33.7.2-android")
     testImplementation("com.google.http-client:google-http-client-jackson2:$httpClient")
+
+    // NATS client for the optional cluster bus (net.onelitefeather.ingot.cluster). Apache-2.0. It brings its own Bouncy
+    // Castle build under another artifact name, which would duplicate the org.bouncycastle packages pinned above, so that
+    // one is excluded and the pinned bcprov serves the NKey signatures.
+    val jnats = "2.26.4"
+    implementation("io.nats:jnats:$jnats") {
+        exclude(group = "org.bouncycastle")
+    }
 
     val journalist = "1.0.12"
     api("com.reposilite:journalist:$journalist")

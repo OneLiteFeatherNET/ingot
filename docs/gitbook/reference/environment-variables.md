@@ -105,6 +105,22 @@ The separate dashboard image (`ghcr.io/onelitefeathernet/ingot-dashboard`) rende
 
 The image has a build argument `INGOT_BASE_PATH` (default `/`) that sets the base path of the bundled dashboard when the image is built. It is not read at run time.
 
+## Cluster bus variables
+
+The cluster plugin reads these settings at start. Without `INGOT_CLUSTER_URL` or its fallback, none of them has an effect. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_CLUSTER_URL` | `REPOSILITE_CLUSTER_URL`, and the system property `ingot.cluster.url` wins over both | unset, bus off | Bus URL with one of the schemes `nats`, `tls`, `redis`, `rediss`, `valkey`, `valkeys`, `database`. Any other scheme stops the start. `database:` uses the instance database and is refused on SQLite and H2, which keeps the instance running without the bus. |
+| `INGOT_CLUSTER_PASSWORD` | `REPOSILITE_CLUSTER_PASSWORD` | unset | Password for the bus when the URL carries none. A password in the URL wins. |
+| `INGOT_CLUSTER_CREDENTIALS` | system property `ingot.cluster.credentials`, which wins | unset | Path to a NATS `.creds` file for brokers in operator mode. Used with `nats` and `tls` only. |
+| `INGOT_CLUSTER_INSTANCE_ID` | system property `ingot.cluster.instance`, which wins | host name | Identifier of this replica in the bus and in the status output. |
+| `INGOT_CLUSTER_CONSOLE` | none | `true` when a bus is configured, `false` on the `database` transport | `false` turns off the forwarding of live console log lines between replicas. `true` turns it on, which the `database` transport needs explicitly. |
+| `INGOT_CLUSTER_POLL_INTERVAL_MS` | none | `1000` | Poll interval of the `database` transport in milliseconds. Values below 200 are raised to 200 with one warning. Other transports ignore it. |
+| `INGOT_CLUSTER_FAILURES` | none | `false` | `true` aggregates recorded failures across replicas. |
+
+Boolean variables accept `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`, in any case. Credentials are never printed. The log shows the URL with the credentials replaced by `REDACTED`.
+
 ## Names that do not follow the rule
 
 These settings are read directly. They do not accept the `INGOT_LOCAL_` prefix, and most of them do not accept an `INGOT_` spelling at all.
@@ -130,6 +146,17 @@ These are JVM system properties. There is no environment variable form. Pass the
 | `reposilite.s3.skip-bucket-creation` | `false` | Does not create the bucket when it does not exist. |
 
 The S3 client also reads the standard `AWS_REGION` environment variable when a repository sets no `region`. See [Storage providers](storage-providers.md).
+
+### Proxy upstream status
+
+Read once at startup, in this order: the system property `ingot.proxy.upstreamStatus`, the environment variable `INGOT_PROXY_UPSTREAM_STATUS`, the system property `reposilite.proxy.upstreamStatus`, the environment variable `REPOSILITE_PROXY_UPSTREAM_STATUS`. The first one that is set wins. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.
+
+| Value | Meaning |
+| --- | --- |
+| `legacy` (default) | A proxy repository answers upstream failures with the statuses Reposilite always used. Existing Maven and Gradle clients keep working unchanged. |
+| `strict` | A proxy answers `504` when the upstream times out, `502` when it is unreachable, answers an error status other than `404` or `410`, or answers an HTML page, and `404` when the upstream answers `404` or `410`. |
+
+The value is compared without regard to case. Any other value stops the startup with a message that names `INGOT_PROXY_UPSTREAM_STATUS`. See [Create proxy repositories](../how-to/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
 
 ### Other system properties
 

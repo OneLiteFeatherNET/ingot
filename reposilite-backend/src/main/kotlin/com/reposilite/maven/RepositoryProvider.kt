@@ -48,6 +48,7 @@ internal class RepositoryProvider(
     resolutionProvider: ResolutionProvider,
     repositorySecurityProvider: RepositorySecurityProvider,
     repositoriesSource: Reference<List<RepositorySettings>>,
+    resolutionCacheClusterMaxAge: Reference<Long>,
     artifactIndexSink: ArtifactIndexSink,
 ) {
 
@@ -69,9 +70,33 @@ internal class RepositoryProvider(
     /** The repositories the current configuration built, with the settings each one was built from. */
     private var built: List<BuiltRepository> = emptyList()
 
+    /** The stored cluster maximum age of resolution entries, in seconds. */
+    @Volatile
+    private var clusterMaxAgeSeconds: Long = 0L
+
+    /** Whether a cluster bus is configured for this instance. Set once the bus has opened. */
+    @Volatile
+    private var clusterBusConfigured: Boolean = false
+
     init {
+        clusterMaxAgeSeconds = resolutionCacheClusterMaxAge.get()
         apply(repositoriesSource.get())
         repositoriesSource.subscribe { apply(it) }
+        resolutionCacheClusterMaxAge.subscribe {
+            clusterMaxAgeSeconds = it
+            boundResolutionCaches()
+        }
+    }
+
+    /** Called by the cluster plugin once its bus is open: resolution entries are bounded from now on, in every repository. */
+    fun bindToClusterBus() {
+        clusterBusConfigured = true
+        boundResolutionCaches()
+    }
+
+    private fun boundResolutionCaches() {
+        val maxAge = resolutionCacheMaxAge(clusterMaxAgeSeconds, clusterBusConfigured)
+        repositories.values.forEach { it.resolutionCache?.maxAge = maxAge }
     }
 
     /**
@@ -115,6 +140,7 @@ internal class RepositoryProvider(
 
         built = next
         repositories = next.associate { it.repository.name to it.repository }
+        boundResolutionCaches()
         previous
             .filter { old -> next.none { it.repository === old.repository } }
             .forEach { it.repository.shutdown() }

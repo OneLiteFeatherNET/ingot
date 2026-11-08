@@ -67,7 +67,7 @@ internal class MavenComponents(
         RepositorySecurityProvider(accessTokenFacade)
 
     private fun metadataService(): MetadataService =
-        MetadataService(securityProvider(), clock, journalist, artifactIndexSink)
+        MetadataService(securityProvider(), clock, journalist, artifactIndexSink, extensions)
 
     private fun mirrorService(): MirrorService =
         MirrorService(
@@ -79,7 +79,7 @@ internal class MavenComponents(
         )
 
     private fun resolutionProvider(): ResolutionProvider =
-        ResolutionProvider(journalist)
+        ResolutionProvider(journalist, extensions)
 
     private fun repositoryProvider(
         mirrorService: MirrorService = mirrorService(),
@@ -99,6 +99,7 @@ internal class MavenComponents(
             extensions = extensions,
             repositorySecurityProvider = securityProvider,
             repositoriesSource = mavenSettings.computed { it.repositories },
+            resolutionCacheClusterMaxAge = mavenSettings.computed { it.resolutionCacheClusterMaxAgeSeconds },
             artifactIndexSink = artifactIndexSink,
         )
 
@@ -128,6 +129,7 @@ internal class MavenComponents(
             clock = clock,
             targets = { storageTargets(repositoryProvider.getRepositories(), mavenSettings.get().repositories) },
             executor = ioService,
+            publish = { extensions.emitEvent(it) },
         )
 
 }

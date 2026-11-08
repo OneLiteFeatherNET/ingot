@@ -144,6 +144,21 @@ class S3StorageProvider(
             failed("read $location", exception)
         }
 
+    override fun getFile(location: Location, offset: Long, length: Long): Result<InputStream, ErrorResponse> =
+        try {
+            val request = GetObjectRequest.builder()
+            request.bucket(bucket)
+            request.key(location.toBucketKey())
+            request.range("bytes=$offset-${offset + length - 1}")
+            s3.getObject(request.build()).asSuccess()
+        } catch (_: NoSuchKeyException) {
+            notFoundError("File not found: $location")
+        } catch (exception: S3Exception) {
+            s3Error("read $location", location, exception)
+        } catch (exception: Exception) {
+            failed("read $location", exception)
+        }
+
     override fun getFileDetails(location: Location): Result<FileDetails, ErrorResponse> =
         when {
             // The repository root is always a directory. Its key is the prefix, and a folder object created at

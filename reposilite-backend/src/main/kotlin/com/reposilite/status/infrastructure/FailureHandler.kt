@@ -15,6 +15,8 @@
  */
 package com.reposilite.status.infrastructure
 
+import com.reposilite.shared.extensions.error
+import com.reposilite.shared.internalServer
 import com.reposilite.status.FailureFacade
 import io.javalin.http.Context
 import io.javalin.http.ExceptionHandler
@@ -31,6 +33,9 @@ internal class FailureHandler(private val failureFacade: FailureFacade) : Except
         } catch (failure: Exception) {
             System.err.println("Failure handler could not record ${exception.javaClass.name}: $failure")
         }
+
+        // The answer never carries the exception: its text and stack trace stay in the failure record.
+        runCatching { context.error(internalServer("Internal server error")) }
     }
 
     private fun source(context: Context): String =

@@ -22,6 +22,7 @@ import com.reposilite.journalist.Logger
 import com.reposilite.plugin.api.Facade
 import java.time.Clock
 import java.time.Instant
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * One aggregated failure. Occurrences that render identically are folded into the same record:
@@ -48,6 +49,12 @@ class FailureFacade(
     private val failures = LinkedHashMap<String, FailureRecord>()
     private var lastId = 0L
 
+    // Notified with each record after it is stored, so that the cluster bus can publish it.
+    private val recordedListeners = CopyOnWriteArrayList<(FailureRecord) -> Unit>()
+
+    // Failures recorded by other instances, merged in on read. Empty unless the cluster bus aggregates failures.
+    private val remoteSources = CopyOnWriteArrayList<() -> Collection<FailureRecord>>()
+
     fun throwException(identifier: String, throwable: Throwable) =
         throwException(identifier, Channel.ERROR, throwable)
 
@@ -58,9 +65,9 @@ class FailureFacade(
         val now = clock.instant()
 
         // Recorded first: the journal's subscribers run on this thread and may fail, which must not lose the failure.
-        synchronized(lock) {
+        val record = synchronized(lock) {
             val existing = failures[rendered]
-            failures[rendered] = existing?.copy(timestamp = now, count = existing.count + 1)
+            val stored = existing?.copy(timestamp = now, count = existing.count + 1)
                 ?: FailureRecord(
                     id = ++lastId,
                     timestamp = now,
@@ -70,8 +77,14 @@ class FailureFacade(
                     stacktrace = exceptionToString(throwable),
                     count = 1
                 )
+            failures[rendered] = stored
+            stored
         }
 
+        recordedListeners.forEach { listener ->
+            runCatching { listener(record) }
+                .onFailure { System.err.println("Failure of $identifier was recorded, but a listener failed: $it") }
+        }
         publish(identifier, channel, throwable)
     }
 
@@ -108,12 +121,23 @@ class FailureFacade(
         synchronized(lock) { failures.keys.toList() }
 
     /**
-     * Recorded failures, newest first.
+     * Recorded failures, newest first. Failures of other instances, when they are merged in, are listed with the local ones.
      */
-    fun getFailureRecords(): List<FailureRecord> =
-        synchronized(lock) {
-            failures.values.sortedWith(compareByDescending<FailureRecord> { it.timestamp }.thenByDescending { it.id })
-        }
+    fun getFailureRecords(): List<FailureRecord> {
+        val local = synchronized(lock) { failures.values.toList() }
+        val remote = remoteSources.flatMap { it() }
+        return (local + remote).sortedWith(compareByDescending<FailureRecord> { it.timestamp }.thenByDescending { it.id })
+    }
+
+    /** Called with every failure this instance records from now on. */
+    internal fun onRecorded(listener: (FailureRecord) -> Unit) {
+        recordedListeners.add(listener)
+    }
+
+    /** Adds the failures of other instances to what [getFailureRecords] lists. They are not counted by [getFailures]. */
+    internal fun mergeRemote(source: () -> Collection<FailureRecord>) {
+        remoteSources.add(source)
+    }
 
     fun clearFailures() =
         synchronized(lock) { failures.clear() }

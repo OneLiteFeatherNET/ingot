@@ -69,6 +69,8 @@ Some state is kept by each replica for itself. Plan for it when you run more tha
 
 Repository content is outside the database. Its location decides what replicas can share. Filesystem storage needs a volume that every replica can reach, and S3 storage needs a bucket that every replica can reach.
 
+An optional cluster bus can tell the other replicas at once when one of them changes a token, a session or a resolution entry, and it can show their log lines. The database remains the source of truth, so the bus only shortens the time until the other replicas catch up. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
+
 ## What is not provided yet
 
 * **No readiness endpoint.** The health endpoint `/api/status/health` reports that the server is alive. Ingot has no separate endpoint that reports that a replica is ready to serve traffic. A load balancer cannot wait for a replica to finish its start-up steps, such as the database migrations.
@@ -81,3 +83,4 @@ Repository content is outside the database. Its location decides what replicas c
 * [Sessions, login and CSRF](sessions-and-login.md) explains the sessions that replicas share.
 * [Identity model](identity-model.md) explains the data that every replica reads.
 * [Back up before upgrading](../how-to/back-up-before-upgrading.md) describes what to save before a change to a shared database.
+* [Configure the cluster bus](../how-to/configure-cluster-bus.md) describes the optional bus between replicas.

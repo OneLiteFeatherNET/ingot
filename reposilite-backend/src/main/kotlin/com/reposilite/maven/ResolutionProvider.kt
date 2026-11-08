@@ -19,6 +19,8 @@ package com.reposilite.maven
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.api.METADATA_FILE
+import com.reposilite.plugin.Extensions
+import com.reposilite.plugin.api.ResolutionInvalidatedEvent
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.Location
@@ -28,6 +30,7 @@ import panda.std.Result
 
 internal class ResolutionProvider(
     private val journalist: Journalist,
+    private val extensions: Extensions,
 ) : Journalist {
 
     private data class ResolveAttempt<T>(
@@ -72,6 +75,7 @@ internal class ResolutionProvider(
     fun invalidate(repository: Repository, gav: Location): Boolean {
         if (gav.isResolutionMetadata()) {
             repository.resolutionCache?.invalidate(gav)
+            extensions.emitEvent(ResolutionInvalidatedEvent(repository.name, gav.toString()))
             return true
         }
 

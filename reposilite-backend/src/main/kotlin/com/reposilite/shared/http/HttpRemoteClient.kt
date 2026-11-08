@@ -35,11 +35,15 @@ import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.UNKNOWN_LENGTH
 import com.reposilite.storage.getExtension
 import io.javalin.http.ContentType
+import io.javalin.http.HttpStatus.BAD_GATEWAY
+import io.javalin.http.HttpStatus.GATEWAY_TIMEOUT
 import io.javalin.http.HttpStatus.NOT_ACCEPTABLE
+import io.javalin.http.HttpStatus.NOT_FOUND
 import panda.std.Result
 import panda.std.asSuccess
 import java.io.InputStream
 import java.net.Proxy
+import java.net.SocketTimeoutException
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -57,7 +61,24 @@ object HttpRemoteClientProvider : RemoteClientProvider {
 
 }
 
-class HttpRemoteClient(private val journalist: Journalist, proxy: Proxy?) : RemoteClient, Journalist {
+/** Creates clients that report upstream failures the way [upstreamStatus] says. */
+class ConfiguredHttpRemoteClientProvider(
+    private val upstreamStatus: UpstreamStatusMode,
+    private val millisPerTimeoutUnit: Int = 1000,
+) : RemoteClientProvider {
+
+    override fun createClient(journalist: Journalist, proxy: Proxy?): RemoteClient =
+        HttpRemoteClient(journalist, proxy, upstreamStatus, millisPerTimeoutUnit)
+
+}
+
+class HttpRemoteClient(
+    private val journalist: Journalist,
+    proxy: Proxy?,
+    private val upstreamStatus: UpstreamStatusMode = UpstreamStatusMode.LEGACY,
+    /** Milliseconds one configured timeout second stands for; only tests lower it so that a timeout fires quickly. */
+    private val millisPerTimeoutUnit: Int = 1000,
+) : RemoteClient, Journalist {
 
     private val requestFactory = NetHttpTransport.Builder()
         .setProxy(proxy)
@@ -116,8 +137,8 @@ class HttpRemoteClient(private val journalist: Journalist, proxy: Proxy?) : Remo
         }
         val request = requestFactory.buildRequest(method, url, null)
         request.throwExceptionOnExecuteError = false
-        request.connectTimeout = connectTimeout * 1000
-        request.readTimeout = readTimeout * 1000
+        request.connectTimeout = connectTimeout * millisPerTimeoutUnit
+        request.readTimeout = readTimeout * millisPerTimeoutUnit
         request.authenticateWith(credentials)
         return request.asSuccess()
     }
@@ -127,7 +148,12 @@ class HttpRemoteClient(private val journalist: Journalist, proxy: Proxy?) : Remo
             val response = this.execute()
             logger.debug("HttpRemoteClient | $url responded with ${response.statusCode} (Content-Type: ${response.contentType})")
 
+            val strict = upstreamStatus == UpstreamStatusMode.STRICT
+
             when {
+                strict && (response.statusCode == 404 || response.statusCode == 410) -> NOT_FOUND.toErrorResult("Not found upstream")
+                strict && response.isSuccessStatusCode.not() -> BAD_GATEWAY.toErrorResult("Upstream answered ${response.statusCode}")
+                strict && response.contentType == ContentType.HTML -> BAD_GATEWAY.toErrorResult("Upstream answered an unexpected content type")
                 response.contentType == ContentType.HTML -> NOT_ACCEPTABLE.toErrorResult("Illegal file type (${response.contentType})")
                 response.isSuccessStatusCode.not() -> NOT_ACCEPTABLE.toErrorResult("Unsuccessful request (${response.statusCode})")
                 else -> consumer(response)
@@ -150,6 +176,12 @@ class HttpRemoteClient(private val journalist: Journalist, proxy: Proxy?) : Remo
     private fun <V> createExceptionResponse(uri: String, exception: Exception): Result<V, ErrorResponse> {
         logger.debug("HttpRemoteClient | Cannot get $uri")
         logger.exception(Channel.DEBUG, exception)
+        if (upstreamStatus == UpstreamStatusMode.STRICT) {
+            return when (exception) {
+                is SocketTimeoutException -> GATEWAY_TIMEOUT.toErrorResult("Upstream did not answer in time")
+                else -> BAD_GATEWAY.toErrorResult("Upstream is not reachable")
+            }
+        }
         return badRequestError("Upstream request failed")
     }
 

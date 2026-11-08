@@ -190,7 +190,9 @@ jobs:
       # directory that stayed empty, an nginx serving no server block.
       #
       # The suite lives in reposilite-backend/src/containerTest and runs both images the way
-      # a deployment does, including an upgrade rehearsal against the real upstream image.
+      # a deployment does, including an upgrade rehearsal against the real upstream image,
+      # two replicas that find each other through a NATS broker on one MariaDB database, and
+      # the previous release running beside the new image on that database.
       # It is a suite of its own because it needs an image that already exists, which is why
       # it cannot be part of the normal build.
       - name: "Set up Java"

@@ -220,6 +220,8 @@ As of this writing, the code does not yet do the following, which the design for
 Until these are fixed, run one replica. Several replicas are only safe if you accept these risks. The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.
 {% endhint %}
 
+An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](configure-cluster-bus.md).
+
 ## Expose the instance with ingress
 
 Turn on the ingress of the chart and set your host name and ingress class:
@@ -245,5 +247,6 @@ Apply the change with `helm upgrade --install` and the same `--version` and valu
 
 * [Run with Docker](install-with-docker.md) describes the same image without an orchestrator.
 * [Configure a database](configure-database.md) lists the database forms and their rules.
+* [Configure the cluster bus](configure-cluster-bus.md) sets the optional message bus between replicas.
 * [Use S3 storage](use-s3-storage.md) explains the S3 settings per repository.
 * [Create proxy repositories](create-proxy-repositories.md) for a proxy with a shared or large cache.

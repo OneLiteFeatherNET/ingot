@@ -147,6 +147,7 @@ class LoginPlugin : ReposilitePlugin() {
                 settings = loginSettings,
                 clock = clock,
                 audit = audit,
+                publish = { auditExtensions.emitEvent(it) },
             )
         } else {
             null

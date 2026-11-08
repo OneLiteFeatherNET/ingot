@@ -51,6 +51,7 @@ import panda.std.Result
 import panda.std.asSuccess
 import panda.std.ok
 import java.io.InputStream
+import java.util.Optional
 
 internal class RepositoryService(
     private val journalist: Journalist,
@@ -193,6 +194,21 @@ internal class RepositoryService(
 
     fun findInputStream(lookupRequest: LookupRequest): Result<InputStream, ErrorResponse> =
         resolve(lookupRequest) { repository, gav -> findInputStream(repository, gav, lookupRequest.accessToken) }
+
+    /**
+     * [length] bytes from [offset] of a file held by the repository's own storage, or an empty answer when the file
+     * has to come from a mirror (not stored yet, or mirrors take precedence). The caller then serves the whole file.
+     */
+    fun findInputStreamRange(lookupRequest: LookupRequest, offset: Long, length: Long): Result<Optional<InputStream>, ErrorResponse> =
+        resolve(lookupRequest) { repository, gav ->
+            when {
+                // Without mirrors nothing can replace the stored file, so metadata is ranged like any other file
+                (repository.mirrorHosts.isNotEmpty() && mirrorService.shouldPrioritizeMirrorRepository(repository, gav)) || !repository.storageProvider.exists(gav) ->
+                    Result.ok<Optional<InputStream>, ErrorResponse>(Optional.empty())
+                else ->
+                    repository.storageProvider.getFile(gav, offset, length).map { Optional.of(it) }
+            }
+        }
 
     private fun findInputStream(repository: Repository, gav: Location, accessToken: AccessTokenIdentifier? = null): Result<InputStream, ErrorResponse> {
         val result = resolutionProvider.resolve(
