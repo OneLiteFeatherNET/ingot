@@ -49,7 +49,7 @@ internal fun natsBroker(fixedPort: Int? = null, configuration: ByteArray? = null
     if (fixedPort != null) {
         container.withCreateContainerCmdModifier { command ->
             command.withHostConfig(
-                command.hostConfig.withPortBindings(
+                command.hostConfig!!.withPortBindings(
                     PortBinding(Ports.Binding.bindPort(fixedPort), ExposedPort(SharedContainers.NATS_PORT))
                 )
             )

@@ -65,7 +65,15 @@ internal class NatsOperatorFixture(clock: Clock) {
         issuer = account,
         subject = userPublic,
         issuerPublic = accountPublic,
-        nats = mapOf("type" to "user", "version" to 2, "pub" to emptyMap<String, Any>(), "sub" to emptyMap<String, Any>()),
+        nats = mapOf(
+            "type" to "user",
+            "version" to 2,
+            "subs" to -1,
+            "data" to -1,
+            "payload" to -1,
+            "pub" to mapOf("allow" to listOf("ingot.>")),
+            "sub" to mapOf("allow" to listOf("ingot.>")),
+        ),
     )
 
     /** The server configuration of an operator mode broker: the operator and the preloaded account, no users. */

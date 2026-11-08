@@ -100,9 +100,9 @@ internal class NatsClusterTransportIntegrationTest {
         val url = localNatsUrl(port)
 
         // when: the publisher is opened while the broker is down, it neither blocks nor reports itself connected
-        val publisher = assertTimeoutPreemptively(Duration.ofSeconds(10)) { open(url, cluster = "late-start") }
-        assertTimeoutPreemptively(Duration.ofSeconds(5)) { runCatching { publisher.publish("while down") } }
-        assertThat(publisher.connectionState).isNotEqualTo(ConnectionState.CONNECTED)
+        val publisher = assertTimeoutPreemptively<NatsClusterTransport>(Duration.ofSeconds(10)) { open(url, cluster = "late-start") }
+        assertTimeoutPreemptively<Result<Unit>>(Duration.ofSeconds(5)) { runCatching { publisher.publish("while down") } }
+        assertThat(publisher.connectionState()).isNotEqualTo(ConnectionState.CONNECTED)
 
         // and: the broker starts later
         val broker = natsBroker(fixedPort = port)
