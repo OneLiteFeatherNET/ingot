@@ -35,6 +35,7 @@ import com.reposilite.maven.api.SaveMetadataRequest
 import com.reposilite.maven.api.VersionLookupRequest
 import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.plugin.api.Facade
+import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.storage.api.DirectoryInfo
@@ -208,6 +209,10 @@ class MavenFacade internal constructor(
     /** Starts measuring the storage usage in the background, or joins a measurement that is already running. */
     fun refreshStorageUsage(): CompletableFuture<StorageUsage> =
         storageUsageService.refresh()
+
+    /** Applies usage figures another instance computed, see [StorageUsageService.applyReceived]. */
+    internal fun applyReceivedStorageUsage(event: StorageUsageRefreshedEvent): Boolean =
+        storageUsageService.applyReceived(event)
 
     override fun getLogger(): Logger =
         journalist.logger
