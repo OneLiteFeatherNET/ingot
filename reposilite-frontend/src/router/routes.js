@@ -67,6 +67,8 @@ const ROUTES = [
   { name: 'audit', path: '/audit', meta: routeMeta('audit') },
   // The authentication settings are edited under Access, so a link to their old settings tab ends there.
   { name: 'settings-authentication', path: '/settings/authentication', redirect: { name: 'access-ldap' }, meta: routeMeta('access', 'ldap') },
+  // The sign in settings are edited under Access too. Placed before the generic settings route, which would take `login` as a domain.
+  { name: 'settings-login', path: '/settings/login', redirect: { name: 'access-sso' }, meta: routeMeta('access', 'sso') },
   { name: 'settings', path: '/settings/:domain?', meta: routeMeta('settings') },
   {
     name: 'settings-entry',
