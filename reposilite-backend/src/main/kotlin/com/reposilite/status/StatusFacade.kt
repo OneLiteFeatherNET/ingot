@@ -28,6 +28,8 @@ import com.reposilite.status.api.StatusSnapshot
 import panda.std.Result
 import panda.std.reactive.Reference
 import panda.utilities.IOUtils
+import java.time.Clock
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
@@ -37,7 +39,8 @@ class StatusFacade(
     private val maxThreads: Reference<Int>,
     private val status: () -> Boolean,
     private val remoteVersionUrl: String,
-    private val failureFacade: FailureFacade
+    private val failureFacade: FailureFacade,
+    private val clock: Clock = Clock.systemUTC(),
 ) : Facade {
 
     private val cachedStatusSnapshots = EvictingQueue.create<StatusSnapshot>(12)
@@ -45,9 +48,16 @@ class StatusFacade(
     @Volatile
     private var clusterStatusSource: ClusterStatusSource? = null
 
+    private val snapshotListeners = CopyOnWriteArrayList<(InstanceFigures) -> Unit>()
+
     /** Adds the cluster section to the status response. Called by the cluster bus only, when a bus URL is configured. */
     fun attachClusterStatus(source: ClusterStatusSource) {
         clusterStatusSource = source
+    }
+
+    /** Calls [listener] with the figures each time a snapshot is recorded, on the thread that records it. */
+    fun onSnapshotRecorded(listener: (InstanceFigures) -> Unit) {
+        snapshotListeners.add(listener)
     }
 
     private val cachedLatestVersion: Supplier<Result<String, String>> =
@@ -84,24 +94,50 @@ class StatusFacade(
     fun recordStatusSnapshot() {
         cachedStatusSnapshots.add(
             StatusSnapshot(
+                at = clock.millis(),
                 memory = getUsedMemory().roundToInt(),
                 threads = getUsedThreads()
             )
         )
+
+        val figures = instanceFigures()
+        snapshotListeners.forEach { listener ->
+            runCatching { listener(figures) }
+                .onFailure { failureFacade.logger.warn("Status snapshot listener failed: ${it.message}") }
+        }
     }
 
     fun fetchInstanceStatus(): InstanceStatusResponse =
         InstanceStatusResponse(
             version = VERSION,
             latestVersion = cachedLatestVersion.get().fold({ it }, { it }),
-            uptime = System.currentTimeMillis() - getUptime(),
+            uptime = clock.millis() - getUptime(),
             usedMemory = getUsedMemory(),
             maxMemory = (Runtime.getRuntime().maxMemory() / 1024 / 1024).toInt(),
             usedThreads = getUsedThreads(),
             maxThreads = maxThreads.get(),
             failuresCount = failureFacade.getFailures().size,
-            cluster = clusterStatusSource?.clusterStatus()
+            cluster = clusterStatusSource?.let { it.clusterStatus(instanceFigures()) }
         )
+
+    /** The figures of this instance, as the cluster sees them. */
+    fun instanceFigures(): InstanceFigures =
+        InstanceFigures(
+            version = VERSION,
+            uptimeStart = getUptime(),
+            usedMemory = getUsedMemory(),
+            maxMemory = (Runtime.getRuntime().maxMemory() / 1024 / 1024).toInt(),
+            usedThreads = getUsedThreads(),
+            maxThreads = maxThreads.get(),
+            failuresCount = failureFacade.getFailures().size,
+            health = if (isAlive()) "up" else "down",
+            interval = snapshotIntervalMillis(),
+            samples = getLatestStatusSnapshots().toList(),
+        )
+
+    /** Matches [StatusSnapshotScheduler]: one minute while fewer than twelve snapshots are kept, then one hour. */
+    private fun snapshotIntervalMillis(): Long =
+        if (cachedStatusSnapshots.size >= 12) TimeUnit.HOURS.toMillis(1) else TimeUnit.MINUTES.toMillis(1)
 
     private fun getUsedThreads(): Int =
         Thread.activeCount()

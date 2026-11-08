@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.cluster
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -26,6 +27,7 @@ import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.status.ClusterStatusSource
+import com.reposilite.status.InstanceFigures
 import com.reposilite.status.StatusFacade
 import java.time.Clock
 import java.time.Instant
@@ -86,13 +88,15 @@ class ClusterPlugin(
         val factory = transports[url.scheme]
         if (factory == null) {
             logger.warn("Cluster | no transport is available for ${url.scheme} in this build, the instance runs without the bus")
-            attachStatus(ClusterStatusView(url, counters) { ConnectionState.DISABLED })
+            attachStatus(ClusterStatusView(settings.instanceId, url, counters, RemoteInstanceStore(clock)) { ConnectionState.DISABLED })
             return null
         }
 
         logger.info("Cluster | connecting to ${url.redacted()}")
         val transport = factory.open(url, settings)
-        attachStatus(ClusterStatusView(url, counters) { transport.connectionState() })
+        val store = RemoteInstanceStore(clock)
+        onReceived(ClusterEventType.STATUS_SNAPSHOT) { store.accept(it) }
+        attachStatus(ClusterStatusView(settings.instanceId, url, counters, store) { transport.connectionState() })
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
@@ -105,6 +109,9 @@ class ClusterPlugin(
         event { event: TokenStateChangedEvent ->
             publish(outbox, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
         }
+        statusFacades().forEach { status ->
+            status.onSnapshotRecorded { figures -> publishStatus(outbox, identifier, settings.instanceId, figures) }
+        }
         event { _: ReposiliteDisposeEvent ->
             outbox.close()
             transport.close()
@@ -112,8 +119,34 @@ class ClusterPlugin(
         return null
     }
 
+    private fun statusFacades(): List<StatusFacade> =
+        extensions().getFacades().filterIsInstance<StatusFacade>()
+
     private fun attachStatus(source: ClusterStatusSource) {
-        extensions().getFacades().filterIsInstance<StatusFacade>().forEach { it.attachClusterStatus(source) }
+        statusFacades().forEach { it.attachClusterStatus(source) }
+    }
+
+    /** One event per snapshot the status records, carrying the figures of this instance and its latest sample. */
+    private fun publishStatus(outbox: ClusterOutbox, cluster: String, origin: String, figures: InstanceFigures) {
+        val sample = figures.samples.lastOrNull() ?: return
+        val payload = payloads.createObjectNode()
+            .put("version", figures.version)
+            .put("uptimeStart", figures.uptimeStart)
+            .put("usedMemory", figures.usedMemory)
+            .put("maxMemory", figures.maxMemory)
+            .put("usedThreads", figures.usedThreads)
+            .put("maxThreads", figures.maxThreads)
+            .put("failuresCount", figures.failuresCount)
+            .put("health", figures.health)
+            .put("interval", figures.interval)
+        payload.set<ObjectNode>(
+            "sample",
+            payloads.createObjectNode()
+                .put("at", sample.at)
+                .put("memory", sample.memory)
+                .put("threads", sample.threads),
+        )
+        enqueue(outbox, cluster, origin, ClusterEventType.STATUS_SNAPSHOT, payload)
     }
 
     private fun dispatch(envelope: ClusterEnvelope) {
@@ -129,6 +162,10 @@ class ClusterPlugin(
     ) {
         val payload = payloads.createObjectNode()
         fields.forEach { (name, value) -> payload.put(name, value) }
+        enqueue(outbox, cluster, origin, type, payload)
+    }
+
+    private fun enqueue(outbox: ClusterOutbox, cluster: String, origin: String, type: ClusterEventType, payload: ObjectNode) {
         val envelope = ClusterEnvelope(type = type, cluster = cluster, origin = origin, at = Instant.now(clock), payload = payload)
         outbox.offer(ClusterEnvelopeCodec.encode(envelope))
         counters.countPublished()
