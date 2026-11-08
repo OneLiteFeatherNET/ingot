@@ -44,6 +44,8 @@ export function createIngotRouter() {
     can,
     isLogged: () => isLogged.value,
     mustChangePassword: () => mustChangePassword.value,
-    notify: createInfoToastOnce
+    notify: createInfoToastOnce,
+    // The same breakpoint as the side navigation: below 600px it is an index.
+    narrow: () => window.matchMedia('(max-width: 599px)').matches
   })
 }
