@@ -14,6 +14,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import panda.std.Result
+import panda.std.ResultAssertions.assertError
 import panda.std.ResultAssertions.assertOk
 import panda.std.asSuccess
 import java.nio.file.Files
@@ -121,6 +122,26 @@ internal class WalkingEntrySourceTest {
 
         // then: the walking fallback is used
         assertThat(source).describedAs("source of a provider without a native listing").isInstanceOf(WalkingEntrySource::class.java)
+    }
+
+    @Test
+    fun `should answer a server error without the failure message when the listing fails`() {
+        // given: a provider whose directories cannot be read, failing with a message that names an internal detail
+        val storage = object : StorageProvider by plainStorage() {
+            override fun getFileDetails(location: Location): Result<out FileDetails, ErrorResponse> =
+                throw IllegalStateException("internal-detail-42")
+        }
+
+        // when: the entries are listed
+        val error = assertError(WalkingEntrySource(storage).listEntries(Location.empty(), after = null, limit = 10))
+
+        // then: the status is still a server error
+        assertThat(error.status).describedAs("status of a failed listing").isEqualTo(500)
+
+        // and: neither the failure message nor the class name reach the response
+        assertThat(error.message)
+            .describedAs("message of a failed listing")
+            .doesNotContain("internal-detail-42", "IllegalStateException")
     }
 
     private fun file(path: String, size: Int = 1): Path =
