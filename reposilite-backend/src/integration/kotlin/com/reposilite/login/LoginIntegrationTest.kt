@@ -22,6 +22,7 @@ import com.reposilite.shared.ErrorResponse
 import io.javalin.http.HttpStatus.BAD_REQUEST
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
+import io.javalin.http.HttpStatus.PAYLOAD_TOO_LARGE
 import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import kong.unirest.core.HttpRequestWithBody
@@ -35,6 +36,8 @@ import net.onelitefeather.ingot.identity.login.api.SetupStatusResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.net.HttpURLConnection
+import java.net.URI
 
 @ExtendWith(RecommendedLocalSpecificationJunitExtension::class)
 internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
@@ -550,6 +553,59 @@ internal class LocalLoginIntegrationTest : ReposiliteSpecification() {
 
         // then: the request is a bad request
         assertErrorResponse(BAD_REQUEST, response)
+    }
+
+    @Test
+    fun `answers a login body above 64 KiB with 413 and the error shape`() {
+        // given: a login body that is larger than the small JSON limit, and announces its length
+        val oversized = """{"provider":"local","username":"alice","password":"${"a".repeat(70_000)}"}"""
+
+        // when: the login is sent
+        val response = login(oversized).asJacksonObject(ErrorResponse::class)
+
+        // then: the request is refused as too large, with the error body of the API
+        assertErrorResponse(PAYLOAD_TOO_LARGE, response)
+    }
+
+    @Test
+    fun `answers a chunked login body above 64 KiB with 413`() {
+        // given: a login body above the small JSON limit, sent with chunked transfer encoding and no Content-Length
+        val oversized = """{"provider":"local","username":"alice","password":"${"a".repeat(70_000)}"}""".toByteArray()
+        val connection = (URI.create("$base/api/auth/login").toURL().openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setChunkedStreamingMode(1024)
+            setRequestProperty("Content-Type", "application/json")
+        }
+
+        // when: the body is written, and the server answers
+        // the server may close the connection after its answer, so a write that fails late does not hide the answer
+        runCatching { connection.outputStream.use { it.write(oversized) } }
+        val status = connection.responseCode
+        val body = (connection.errorStream ?: connection.inputStream).bufferedReader().readText()
+
+        // then: the request is refused as too large, in the error shape of the API
+        assertThat(status).isEqualTo(PAYLOAD_TOO_LARGE.code)
+        assertThat(body).contains("\"status\":413")
+    }
+
+    @Test
+    fun `marks the session cookies Secure when a proxy terminates TLS`() {
+        // given: a user with a password
+        loginFacade.createUser("sia-secure", "Sia", password)
+
+        // when: the user logs in through a proxy that forwards an https request
+        val headers = http.post("$base/api/auth/login")
+            .header("Content-Type", "application/json")
+            .header("X-Forwarded-Proto", "https")
+            .body("""{"provider":"local","username":"sia-secure","password":"$password"}""")
+            .asJacksonObject(LoginResponse::class)
+            .headers
+            .get("Set-Cookie")
+
+        // then: every session cookie carries the Secure attribute
+        assertThat(headers).describedAs("cookies: $headers").hasSize(3)
+        assertThat(headers.all { it.contains("; Secure") }).describedAs("every cookie must be Secure over TLS: $headers").isTrue()
     }
 
 }
