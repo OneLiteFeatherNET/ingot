@@ -101,7 +101,7 @@ Artifact downloads can be resumed and revalidated. A request without the headers
 
 The `ETag` is the stored checksum of the file when one sits beside it (`.sha256`, then `.sha1`, then `.md5`), in quotes. Without a stored checksum it is built from the size and the modification time. Files that are not cacheable, such as every file of a repository that allows redeployment and `maven-metadata.xml`, always use the size and time form. `Cache-Control` follows the same rules as for a full answer, also on `206` and `304`.
 
-A ranged read does not read the bytes before the range into memory. The file system storage seeks, and S3 storage sends a ranged `GetObject`. A file that a proxy repository has not stored yet is answered with the full `200` on that first request, and ranges work from the next request on, once the copy is stored. A proxy that does not store its files always answers with the full body.
+A ranged read does not read the bytes before the range into memory. The file system storage seeks, and S3 storage sends a ranged `GetObject`. A file that a proxy repository has not stored yet is answered with the full `200` on that first request, and ranges work from the next request on, once the copy is stored. A proxy that does not store its files always answers with the full body. The same holds for `maven-metadata.xml` of a repository with mirrors under the default `PRIORITIZE_UPSTREAM_METADATA` policy while it is refreshed from the upstream (every request with the default `metadataMaxAge` of 0): the file may come from the upstream, so the full `200` is answered. A repository without mirrors serves metadata ranges like any other file.
 
 ### Access by visibility
 

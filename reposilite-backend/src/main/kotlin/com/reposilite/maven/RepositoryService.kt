@@ -202,7 +202,8 @@ internal class RepositoryService(
     fun findInputStreamRange(lookupRequest: LookupRequest, offset: Long, length: Long): Result<Optional<InputStream>, ErrorResponse> =
         resolve(lookupRequest) { repository, gav ->
             when {
-                mirrorService.shouldPrioritizeMirrorRepository(repository, gav) || !repository.storageProvider.exists(gav) ->
+                // Without mirrors nothing can replace the stored file, so metadata is ranged like any other file
+                (repository.mirrorHosts.isNotEmpty() && mirrorService.shouldPrioritizeMirrorRepository(repository, gav)) || !repository.storageProvider.exists(gav) ->
                     Result.ok<Optional<InputStream>, ErrorResponse>(Optional.empty())
                 else ->
                     repository.storageProvider.getFile(gav, offset, length).map { Optional.of(it) }

@@ -229,15 +229,18 @@ internal abstract class MavenRangeIntegrationTest : MavenIntegrationSpecificatio
     }
 
     @Test
-    fun `should keep the no-cache headers of maven metadata`() {
+    fun `should keep the no-cache headers of maven metadata and range it when no mirror can replace it`() {
         val metadata = "com/reposilite/ranged/maven-metadata.xml"
         deploy(file = metadata)
 
         val response = get(url(file = metadata)).asBytes()
+        val partial = get(url(file = metadata)).header("Range", "bytes=0-9").asBytes()
         val notModified = get(url(file = metadata)).header("If-None-Match", response.headers.getFirst(ETAG)).asBytes()
 
         assertThat(response.status).isEqualTo(200)
         assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
+        assertThat(partial.status).isEqualTo(206)
+        assertThat(partial.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
         assertThat(notModified.status).isEqualTo(304)
         assertThat(notModified.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
     }
