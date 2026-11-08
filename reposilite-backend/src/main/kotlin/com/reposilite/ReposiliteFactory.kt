@@ -27,6 +27,7 @@ import com.reposilite.shared.extensions.newFixedThreadPool
 import com.reposilite.shared.extensions.newSingleThreadScheduledExecutor
 import com.reposilite.web.HttpServer
 import net.onelitefeather.ingot.deploy.DeployTargetResolver
+import net.onelitefeather.ingot.deploy.logWarnings
 import kotlin.io.path.absolutePathString
 
 object ReposiliteFactory {
@@ -68,7 +69,7 @@ object ReposiliteFactory {
         journalist.logger.info("Configuration: ${parameters.localConfigurationPath.absolutePathString()}")
         journalist.logger.info("Pool limits: ${localConfiguration.webThreadPool.get()} WEB threads / ${localConfiguration.ioThreadPool.get()} IO threads / ${localConfiguration.databaseThreadPool.get()} DB connections")
         if (parameters.testEnv) journalist.logger.info("Test environment: Enabled")
-        deployTargetResolution.warnings.forEach { journalist.logger.warn(it) }
+        deployTargetResolution.logWarnings(journalist.logger)
 
         val reposilite = Reposilite(
             journalist = journalist,

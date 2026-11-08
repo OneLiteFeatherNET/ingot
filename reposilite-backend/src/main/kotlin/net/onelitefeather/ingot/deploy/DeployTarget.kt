@@ -16,6 +16,15 @@
 
 package net.onelitefeather.ingot.deploy
 
+import com.reposilite.journalist.Logger
+
+/**
+ * Writes each warning of this resolution to [logger], once at start.
+ */
+fun DeployTargetResolution.logWarnings(logger: Logger) {
+    warnings.forEach { logger.warn(it) }
+}
+
 /**
  * What this instance serves. `all` is the default and serves the dashboard together with the API and the Maven
  * endpoints. `server` serves the API and the Maven endpoints only.
