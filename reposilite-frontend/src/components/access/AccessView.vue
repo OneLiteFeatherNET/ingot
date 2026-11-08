@@ -33,13 +33,13 @@ import CheckPermissionView from './check/CheckPermissionView.vue'
  * is a real link to its own address.
  *
  * Props:
- *   tab   users, machines, teams, sso, ldap, security or check (the permission check)
+ *   tab   users, machines, teams, sso, ldap, security or check (the permission check); none shows the index
  *   name  the open user, machine account or team, if any
  */
 defineProps({
   tab: {
     type: String,
-    default: 'users',
+    default: undefined,
     validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap', 'security', 'check'].includes(value)
   },
   name: {
@@ -108,7 +108,7 @@ const sideNav = sideNavOf('access')
           v-else-if="tab === 'teams'"
           :name="name"
         />
-        <CheckPermissionView v-else />
+        <CheckPermissionView v-else-if="tab === 'check'" />
       </div>
     </SideNavLayout>
   </section>

@@ -215,9 +215,9 @@ const replaceQuery = (key, value) => {
   return router.replace({ name: route.name, params: route.params, query: next })
 }
 
-// Access: the tab on screen (users, machines, teams, sso, ldap, security or check) and the name of the principal or team that
+// Access: the tab on screen (users, machines, teams, sso, ldap, security or check; none at /access, which is the index on a narrow screen) and the name of the principal or team that
 // is open. The view moves between them through the router itself. The registry maps each route to its tab.
-const accessTab = computed(() => accessTabOf(route.name) ?? 'users')
+const accessTab = computed(() => accessTabOf(route.name))
 const accessName = computed(() => (section.value === 'access' ? route.params.name : undefined))
 
 // Console: the level switches and the text filter, as the views read and write them.
