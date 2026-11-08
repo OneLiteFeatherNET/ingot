@@ -135,7 +135,7 @@ Set `response` to a `Result<R, ErrorResponse>`. Use `notFoundError(message)` fro
 | `String` | Plain text |
 | `InputStream` | Streamed body |
 | `HtmlResponse` | HTML |
-| `ErrorResponse` | Error with its status code |
+| `ErrorResponse` | Error with its status code, as described in [API errors](api-errors.md) |
 | Any other object | JSON |
 
 If two routes have the same method and path, the first one registered wins.
