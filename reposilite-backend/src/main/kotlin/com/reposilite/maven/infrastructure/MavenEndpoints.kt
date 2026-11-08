@@ -187,6 +187,7 @@ internal class MavenEndpoints(
             requireGav { gav ->
                 requireRepository { repository ->
                     response = mavenFacade.checkAcceptsUploads(repository)
+                        .onError { ctx.header(Header.ALLOW, READ_METHODS) }
                         .flatMap { mavenFacade.deleteFile(DeleteRequest(this.identifier, repository, gav, getSessionIdentifier())) }
                 }
             }
