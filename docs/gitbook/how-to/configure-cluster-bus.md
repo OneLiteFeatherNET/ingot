@@ -140,7 +140,7 @@ With a bus URL, the instance status (`GET /api/status/instance`, which the dashb
 
 The section has two parts:
 
-* `bus` reports the connection state (`connected`, `reconnecting` or `disabled`), the time of the last message received from the bus, and the number of messages this replica published, applied and ignored. The URL is shown with `REDACTED` in place of the credentials.
+* `bus` reports the connection state (`connected`, `reconnecting` or `disabled`), the time of the last message received from the bus, and the number of messages this replica published, applied and ignored. On the database transport it also shows `dropped`, the number of events too large to be stored. The URL is shown with `REDACTED` in place of the credentials.
 * `instances` lists this replica first, then every other replica the bus has reported on, sorted by identifier. Each entry shows its version, its last restart, its memory and threads, its failures, its health (`up`, `down` or `unknown`) and its recent samples.
 
 The cluster summary above the list follows fixed rules. Memory and threads are summed over the instances, and so are the failure counts. The uptime is the shortest one, which belongs to the most recent restart. The version is shown once when all replicas agree, and as `mixed` with the list of versions otherwise. The health is that of the worst instance. Failure lists stay per replica unless `INGOT_CLUSTER_FAILURES` is on.
