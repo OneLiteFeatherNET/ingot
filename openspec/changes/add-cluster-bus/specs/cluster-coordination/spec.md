@@ -34,9 +34,10 @@ The instance SHALL read the bus URL from the system property `ingot.cluster.url`
 
 ### Requirement: Accepted bus schemes
 
-The instance SHALL accept bus URLs with the schemes `nats`, `tls` (NATS over TLS), `redis`, `rediss` (TLS), `valkey` and
-`valkeys` (TLS). Any other scheme SHALL stop the startup with a configuration error that names the accepted schemes and does
-not print the URL.
+The instance SHALL accept bus URLs with the schemes `nats`, `tls` (NATS over TLS), `redis`, `rediss` (TLS), `valkey`,
+`valkeys` (TLS), and `database:` or `database://` for the database transport. Any other scheme SHALL stop the startup with a
+configuration error that names the accepted schemes and does not print the URL. The database transport is the one exception to
+the startup stop: its refusals are defined in the database requirements below.
 
 #### Scenario: Unknown scheme stops startup
 
@@ -283,6 +284,127 @@ unencrypted scheme, the instance SHALL log a warning.
 
 - **WHEN** the bus URL has credentials and an unencrypted scheme
 - **THEN** the instance logs a warning that names the scheme and not the credentials
+
+### Requirement: Database transport uses the shared database
+
+The instance SHALL accept `database:` and `database://` as a bus URL. The database transport SHALL use the database connection the
+instance already has, SHALL need no host, port or credentials, and SHALL store its events in the table `cluster_event` of that
+database. A database bus URL that carries a host or credentials SHALL be refused without echoing the URL, and the instance SHALL keep
+serving requests with the bus off.
+
+#### Scenario: Database scheme uses the shared database
+
+- **WHEN** the bus URL is `database:` and the instance runs on MariaDB, MySQL or PostgreSQL
+- **THEN** the instance publishes and receives events through `cluster_event` in its own database, and opens no other connection
+
+#### Scenario: Database scheme with a host is refused
+
+- **WHEN** the bus URL is `database://broker.example`
+- **THEN** the instance logs one configuration error that does not echo the URL, keeps the bus off and keeps serving requests
+
+### Requirement: Database transport is refused on file databases
+
+When the instance runs on SQLite or H2, the database transport SHALL NOT start. The instance SHALL log one error that names the
+databases the transport needs, SHALL keep the bus off and SHALL keep serving requests. Unlike an unknown scheme, this refusal SHALL NOT
+stop the startup.
+
+#### Scenario: File database refuses the database scheme
+
+- **WHEN** the bus URL is `database:` and the instance runs on SQLite or H2
+- **THEN** the instance logs one error, publishes no event, starts no polling thread, and serves requests normally
+
+### Requirement: Database transport delivers within the poll interval
+
+Instances on the database transport SHALL poll `cluster_event` every poll interval. The interval is set by
+`INGOT_CLUSTER_POLL_INTERVAL_MS`, defaults to 1000 ms, and SHALL NOT be shorter than 200 ms. An event SHALL reach every other instance
+within one poll interval after its insert commits.
+
+#### Scenario: Event reaches another instance within the poll interval
+
+- **WHEN** instance A commits a token change and the poll interval is 1000 ms
+- **THEN** instance B applies the change within one poll interval after the commit
+
+#### Scenario: Interval below the minimum is raised
+
+- **WHEN** `INGOT_CLUSTER_POLL_INTERVAL_MS` is set to 50
+- **THEN** the instance polls every 200 ms and logs one warning that names the effective interval
+
+### Requirement: Database transport orders by id and delivers each event once
+
+The database transport SHALL order rows by their id, never by their time. Each poll SHALL also re-read the last 100 ids below its
+watermark, and SHALL deliver every id at most once.
+
+#### Scenario: Late commit with a lower id is delivered once
+
+- **WHEN** instance A's insert with id 10 commits after instance A's insert with id 11 is already visible to instance B
+- **THEN** instance B applies the events of ids 10 and 11, each exactly once
+
+### Requirement: Database transport does not replay history on connect
+
+When an instance connects to the database transport, it SHALL start from the largest id present at that moment. It SHALL NOT apply
+rows stored before it connected.
+
+#### Scenario: Connect after events were stored
+
+- **WHEN** `cluster_event` already holds rows and instance B connects
+- **THEN** instance B applies none of the stored rows, and applies the rows inserted after it connected
+
+### Requirement: Database transport removes old rows
+
+Rows older than five minutes SHALL be removed from `cluster_event`. At most one instance per five-minute window SHALL run the removal,
+and the database SHALL decide which instance runs it through a `ScheduledJobClaims` claim. The bus SHALL NOT take part in this decision.
+
+#### Scenario: Old rows are removed by one instance
+
+- **WHEN** two instances reach the same five-minute window and a row is more than five minutes old
+- **THEN** exactly one of them removes the row, and the other records nothing for that window
+
+#### Scenario: A skipped window is caught up
+
+- **WHEN** the instance that claimed a window stops before it removes the rows
+- **THEN** the next window removes every row older than its cut-off
+
+### Requirement: Database transport payloads are limited
+
+An envelope stored on the database transport SHALL NOT exceed 16 KiB. A larger envelope SHALL NOT be inserted, SHALL be counted as
+dropped and SHALL be logged once.
+
+#### Scenario: Oversized envelope is dropped and counted
+
+- **WHEN** an event serialises to more than 16 KiB
+- **THEN** no row is inserted for it, the dropped counter increases, and one log line names the event type and not its payload
+
+### Requirement: Database transport failures follow the bus fallback
+
+A failing poll or insert on the database transport SHALL count as a broker disconnect. The instance SHALL reconnect with the same bounded
+backoff, SHALL keep the same bounded outbound queue, and SHALL fall back to database-authoritative behaviour. Requests SHALL NOT wait
+for the database transport.
+
+#### Scenario: Failing insert does not block the caller
+
+- **WHEN** an insert into `cluster_event` fails while a token change is published
+- **THEN** the request that made the change completes, the event is retried through the outbound queue, and the status output reports
+  the transport as reconnecting
+
+#### Scenario: Status names the transport
+
+- **WHEN** the instance runs on the database transport
+- **THEN** the status output reports the transport as `database`
+
+### Requirement: Console fan-out is off by default on the database transport
+
+On the database transport, console fan-out SHALL be off unless `INGOT_CLUSTER_CONSOLE` is set to `true`. Every other event type SHALL
+stay on.
+
+#### Scenario: Database transport without the switch
+
+- **WHEN** the bus is the database transport and `INGOT_CLUSTER_CONSOLE` is not set
+- **THEN** no log line is inserted into `cluster_event`, and token, configuration and session events are still published
+
+#### Scenario: Database transport with the switch enabled
+
+- **WHEN** the bus is the database transport and `INGOT_CLUSTER_CONSOLE` is set to `true`
+- **THEN** log lines are published as rows and reach the console sessions of the other instances
 
 ### Requirement: Bus state is observable
 
