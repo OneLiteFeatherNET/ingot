@@ -99,6 +99,7 @@ internal class MavenComponents(
             extensions = extensions,
             repositorySecurityProvider = securityProvider,
             repositoriesSource = mavenSettings.computed { it.repositories },
+            resolutionCacheClusterMaxAge = mavenSettings.computed { it.resolutionCacheClusterMaxAgeSeconds },
             artifactIndexSink = artifactIndexSink,
         )
 

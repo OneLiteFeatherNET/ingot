@@ -17,14 +17,43 @@
 package com.reposilite.maven
 
 import com.reposilite.storage.api.Location
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.LongAdder
 
-internal class ResolutionCache(private val maxEntries: Int) {
+/** The maximum age of a resolution entry in cluster mode when the stored value is 0. */
+internal const val CLUSTER_RESOLUTION_MAX_AGE_SECONDS = 300L
+
+/**
+ * The maximum age of resolution entries. Without a bus the entries keep their current lifetime, whatever is stored. With a bus
+ * a positive stored value is the maximum age, and 0 means [CLUSTER_RESOLUTION_MAX_AGE_SECONDS].
+ */
+internal fun resolutionCacheMaxAge(storedSeconds: Long, clusterBusConfigured: Boolean): Duration? =
+    when {
+        !clusterBusConfigured -> null
+        storedSeconds > 0 -> Duration.ofSeconds(storedSeconds)
+        else -> Duration.ofSeconds(CLUSTER_RESOLUTION_MAX_AGE_SECONDS)
+    }
+
+/**
+ * @param maxAge how long a recorded decision may be used, measured from when it was recorded (a lookup does not renew it).
+ *   Null keeps every decision until it is evicted, invalidated or purged.
+ */
+internal class ResolutionCache(
+    private val maxEntries: Int,
+    maxAge: Duration? = null,
+    private val clock: Clock = Clock.systemUTC(),
+) {
 
     private data class Key(val prefix: Location, val authenticated: Boolean)
 
-    private class Entry(val origin: Origin) {
+    /** Set when a cluster bus is configured, see [resolutionCacheMaxAge]. */
+    @Volatile
+    var maxAge: Duration? = maxAge
+
+    private class Entry(val origin: Origin, val recordedAt: Instant) {
         val hitCount = LongAdder()
     }
 
@@ -46,6 +75,11 @@ internal class ResolutionCache(private val maxEntries: Int) {
         var prefix = exactPrefix
         while (prefix != Location.empty()) {
             val entry = entries[Key(prefix, authenticated)]
+            if (entry != null && isExpired(entry)) {
+                entries.remove(Key(prefix, authenticated), entry)
+                prefix = prefix.getParent()
+                continue
+            }
             if (entry != null) {
                 // Negative is authoritative only at the exact prefix — it says "this metadata file returned 404",
                 // not "every descendant is empty." Local/Remote pins still inherit down (routing decisions).
@@ -75,7 +109,7 @@ internal class ResolutionCache(private val maxEntries: Int) {
         if (!entries.containsKey(key) && entries.size >= maxEntries) {
             evictDownTo(maxEntries - 1)
         }
-        entries[key] = Entry(origin)
+        entries[key] = Entry(origin, clock.instant())
     }
 
     fun invalidate(gav: Location) {
@@ -101,6 +135,9 @@ internal class ResolutionCache(private val maxEntries: Int) {
             .sortedByDescending { it.hitCount }
             .take(top.coerceAtLeast(0))
             .toList()
+
+    private fun isExpired(entry: Entry): Boolean =
+        maxAge?.let { !clock.instant().isBefore(entry.recordedAt.plus(it)) } ?: false
 
     private fun evictDownTo(targetSize: Int) {
         synchronized(evictionLock) {

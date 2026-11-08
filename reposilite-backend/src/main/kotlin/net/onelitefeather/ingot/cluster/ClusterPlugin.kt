@@ -57,6 +57,8 @@ class ClusterPlugin(
     /** Replaces the lookup of the cluster identifier in the configuration table, for tests. */
     private val clusterIdentifier: (() -> String)? = null,
     private val clock: Clock = Clock.systemUTC(),
+    /** Applies the cache events through the running facades when null. */
+    private val cacheHooks: ClusterCacheHooks? = null,
 ) : ReposilitePlugin() {
 
     internal val counters = ClusterCounters()
@@ -97,6 +99,9 @@ class ClusterPlugin(
             onError = { logger.warn("Cluster | a message could not be sent: ${it.message}") },
         )
 
+        ClusterCacheEvents.install(this, cacheHooks ?: FacadeCacheHooks(this)) { type, fields ->
+            publish(outbox, identifier, settings.instanceId, type, fields)
+        }
         event { event: TokenStateChangedEvent ->
             publish(outbox, identifier, settings.instanceId, ClusterEventType.TOKEN_CHANGED, mapOf("name" to event.tokenName))
         }
