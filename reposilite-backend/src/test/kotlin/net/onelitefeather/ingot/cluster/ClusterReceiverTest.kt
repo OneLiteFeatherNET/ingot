@@ -57,7 +57,7 @@ internal class ClusterReceiverTest {
 
     @Test
     fun `an envelope with an unknown event type is ignored and counted`() {
-        val envelope = receiver.accept(wire(type = "status.snapshot"))
+        val envelope = receiver.accept(wire(type = "future.event"))
 
         assertThat(envelope).isNull()
         assertThat(counters.ignored).isEqualTo(1)

@@ -33,7 +33,10 @@ import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
+import com.reposilite.status.ClusterStatusSource
 import com.reposilite.status.FailureFacade
+import com.reposilite.status.InstanceFigures
+import com.reposilite.status.StatusFacade
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import java.time.Clock
 import java.time.Instant
@@ -61,6 +64,7 @@ import java.util.concurrent.CopyOnWriteArrayList
         "local-configuration",
         "login",
         "failure",
+        "status",
     ],
 )
 class ClusterPlugin(
@@ -77,7 +81,7 @@ class ClusterPlugin(
     private val consoleJournalist: ReposiliteJournalist? = null,
 ) : ReposilitePlugin() {
 
-    internal val counters = ClusterCounters()
+    internal val counters = ClusterCounters(clock)
     private val payloads = ObjectMapper()
     private val handlers = ConcurrentHashMap<ClusterEventType, CopyOnWriteArrayList<(ClusterEnvelope) -> Unit>>()
 
@@ -101,6 +105,7 @@ class ClusterPlugin(
         val factory = transports[url.scheme]
         if (factory == null) {
             logger.warn("Cluster | no transport is available for ${url.scheme} in this build, the instance runs without the bus")
+            attachStatus(ClusterStatusView(settings.instanceId, url, counters, RemoteInstanceStore(clock)) { ConnectionState.DISABLED })
             return null
         }
 
@@ -113,6 +118,9 @@ class ClusterPlugin(
             onReceived(ClusterEventType.CONSOLE_LINE) { deliverRemote(journalist, it) }
         }
 
+        val store = RemoteInstanceStore(clock)
+        onReceived(ClusterEventType.STATUS_SNAPSHOT) { store.accept(it) }
+        attachStatus(ClusterStatusView(settings.instanceId, url, counters, store) { transport.connectionState() })
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         onReceived(ClusterEventType.STORAGE_USAGE) { envelope ->
             StorageUsageMessage.fromPayload(envelope.payload)?.let { applyStorageUsage(it) }
@@ -144,6 +152,9 @@ class ClusterPlugin(
         }
         remoteFailures?.let { aggregateFailures(outbox, identifier, settings.instanceId, it) }
         val stopConsole = journalist?.let { forwardConsole(it, transport, identifier, settings.instanceId) }
+        statusFacades().forEach { status ->
+            status.onSnapshotRecorded { figures -> publishStatus(outbox, identifier, settings.instanceId, figures) }
+        }
         event { _: ReposiliteDisposeEvent ->
             outbox.close()
             stopConsole?.invoke()
@@ -180,6 +191,36 @@ class ClusterPlugin(
 
     private inline fun <reified F : Facade> facadeOrNull(): F? =
         extensions().getFacades().filterIsInstance<F>().firstOrNull()
+
+    private fun statusFacades(): List<StatusFacade> =
+        extensions().getFacades().filterIsInstance<StatusFacade>()
+
+    private fun attachStatus(source: ClusterStatusSource) {
+        statusFacades().forEach { it.attachClusterStatus(source) }
+    }
+
+    /** One event per snapshot the status records, carrying the figures of this instance and its latest sample. */
+    private fun publishStatus(outbox: ClusterOutbox, cluster: String, origin: String, figures: InstanceFigures) {
+        val sample = figures.samples.lastOrNull() ?: return
+        val payload = payloads.createObjectNode()
+            .put("version", figures.version)
+            .put("uptimeStart", figures.uptimeStart)
+            .put("usedMemory", figures.usedMemory)
+            .put("maxMemory", figures.maxMemory)
+            .put("usedThreads", figures.usedThreads)
+            .put("maxThreads", figures.maxThreads)
+            .put("failuresCount", figures.failuresCount)
+            .put("health", figures.health)
+            .put("interval", figures.interval)
+        payload.set<ObjectNode>(
+            "sample",
+            payloads.createObjectNode()
+                .put("at", sample.at)
+                .put("memory", sample.memory)
+                .put("threads", sample.threads),
+        )
+        publishPayload(outbox, cluster, origin, ClusterEventType.STATUS_SNAPSHOT, payload)
+    }
 
     private fun dispatch(envelope: ClusterEnvelope) {
         handlers[envelope.type]?.forEach { it(envelope) }

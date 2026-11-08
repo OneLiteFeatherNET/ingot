@@ -26,4 +26,9 @@ interface ClusterTransport : AutoCloseable {
 
     /** Delivers every message received from the bus to [listener], on a thread of the transport. */
     fun subscribe(listener: (String) -> Unit)
+
+    /**
+     * The state of the connection, shown in the status output. A transport that cannot lose its connection keeps the default.
+     */
+    fun connectionState(): ConnectionState = ConnectionState.CONNECTED
 }

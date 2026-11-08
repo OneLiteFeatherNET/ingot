@@ -27,7 +27,49 @@ data class InstanceStatusResponse(
     val maxMemory: Int,
     val usedThreads: Int,
     val maxThreads: Int,
-    val failuresCount: Int
+    val failuresCount: Int,
+    /** Present only when a cluster bus is configured, so that a response without a bus keeps its shape */
+    val cluster: ClusterStatusResponse? = null
+)
+
+data class ClusterStatusResponse(
+    val bus: ClusterBusResponse,
+    /** The local instance first, then the instances received from the bus, ordered by identifier */
+    val instances: List<ClusterInstanceResponse>
+)
+
+data class ClusterInstanceResponse(
+    val id: String,
+    val version: String,
+    /** Epoch milliseconds of the last restart of that instance */
+    val uptimeStart: Long,
+    val usedMemory: Double,
+    val maxMemory: Int,
+    val usedThreads: Int,
+    val maxThreads: Int,
+    val failuresCount: Int,
+    /** up, down or unknown */
+    val health: String,
+    /** True after one interval without a snapshot. Instances silent for three intervals are dropped. */
+    val stale: Boolean,
+    /** Milliseconds between two snapshots of that instance */
+    val interval: Long,
+    /** Oldest first, epoch milliseconds in at */
+    val samples: List<StatusSnapshot>
+)
+
+data class ClusterBusResponse(
+    /** connected, reconnecting or disabled */
+    val state: String,
+    /** The transport, named after the scheme of the bus URL */
+    val transport: String,
+    /** The bus URL with its credentials replaced by a placeholder */
+    val url: String,
+    /** Epoch milliseconds of the last message received from the bus, absent before the first one */
+    val lastReceivedAt: Long? = null,
+    val published: Long,
+    val applied: Long,
+    val ignored: Long
 )
 
 data class StatusSnapshot(
