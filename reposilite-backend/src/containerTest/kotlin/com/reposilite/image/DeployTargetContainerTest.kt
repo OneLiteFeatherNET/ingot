@@ -20,6 +20,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.testcontainers.containers.wait.strategy.Wait
+import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 /**
  * The deploy target as an operator sets it in a container: `INGOT_TARGET=server` and the legacy
@@ -40,6 +42,26 @@ class DeployTargetContainerTest {
     @DisplayName("INGOT_LOCAL_DEFAULTFRONTEND=false answers the health endpoint and does not serve the dashboard")
     fun `legacy default frontend switch off serves the api without the dashboard`() {
         assertServesApiWithoutDashboard(mapOf("INGOT_LOCAL_DEFAULTFRONTEND" to "false"))
+    }
+
+    @Test
+    @DisplayName("an unknown INGOT_TARGET stops the start with exit code 1 and one error line, without a stack trace")
+    fun `an unknown target stops the start with exit code 1 and one error line`() {
+        // The container is run with docker directly: a refused start never reaches a wait strategy, and testcontainers
+        // forgets a container whose start failed, so its exit code and logs are read from the docker CLI instead.
+        val process = ProcessBuilder("docker", "run", "--rm", "-e", "INGOT_TARGET=sever", ImageUnderTest.server.toString())
+            .redirectErrorStream(true)
+            .start()
+        val finished = process.waitFor(3, TimeUnit.MINUTES)
+        val output = process.inputStream.bufferedReader().readText()
+        if (!finished) process.destroyForcibly()
+
+        assertThat(finished).describedAs("the refused start ended within three minutes").isTrue()
+        assertThat(process.exitValue()).describedAs("exit code of the refused start, output was:\n%s", output).isEqualTo(1)
+        assertThat(output.lines().filter { "Unknown deploy target" in it })
+            .describedAs("error lines naming the unknown target, output was:\n%s", output)
+            .hasSize(1)
+        assertThat(output).describedAs("output must not carry a stack trace").doesNotContain("Exception in thread")
     }
 
     private fun assertServesApiWithoutDashboard(environment: Map<String, String>) {

@@ -19,6 +19,11 @@ package net.onelitefeather.ingot.deploy
 import com.reposilite.journalist.Logger
 
 /**
+ * A set target source carries a value that is not a deploy target. The message names the source and lists the valid values.
+ */
+class UnknownDeployTargetException(message: String) : IllegalArgumentException(message)
+
+/**
  * Writes each warning of this resolution to [logger], once at start.
  */
 fun DeployTargetResolution.logWarnings(logger: Logger) {
@@ -87,7 +92,7 @@ object DeployTargetResolver {
 
         val (source, value) = setSource
         val target = DeployTarget.parse(value)
-            ?: throw IllegalArgumentException("Unknown deploy target '$value' from $source. Valid values: ${DeployTarget.VALID_VALUES}.")
+            ?: throw UnknownDeployTargetException("Unknown deploy target '$value' from $source. Valid values: ${DeployTarget.VALID_VALUES}.")
 
         // The legacy switch states a target only when it is off. Its default (on) is not a statement about the target,
         // so a plain start with a target set does not warn.
