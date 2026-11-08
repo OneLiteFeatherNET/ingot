@@ -40,9 +40,7 @@ const createAppRouter = ({
   whenSessionKnown = () => Promise.resolve(),
   isManager = () => false,
   can = () => isManager(),
-  isLogged = () => false,
   mustChangePassword = () => false,
-  notify = () => {},
   narrow = () => false
 }) => {
   const router = createRouter({
@@ -59,7 +57,7 @@ const createAppRouter = ({
   })
 
   router.beforeEach(createPasswordChangeGuard({ mustChangePassword }))
-  router.beforeEach(createManagerGuard({ whenSessionKnown, isManager, isLogged, can, notify }))
+  router.beforeEach(createManagerGuard({ whenSessionKnown }))
 
   // /access forwards to the one page a visitor may open, or to the first one on a wide screen, and shows
   // the index of the pages on a narrow screen. It runs after the manager guard, which has waited for the session.

@@ -18,7 +18,6 @@ import { createWebHistory } from 'vue-router'
 import IndexPage from '../pages/IndexPage.vue'
 import usePlaceholders from '../store/placeholders'
 import { useSession, whenSessionKnown } from '../store/session'
-import { createInfoToastOnce } from '../helpers/toast'
 import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
 
@@ -44,7 +43,6 @@ export function createIngotRouter() {
     can,
     isLogged: () => isLogged.value,
     mustChangePassword: () => mustChangePassword.value,
-    notify: createInfoToastOnce,
     // The same breakpoint as the side navigation: below 600px it is an index.
     narrow: () => window.matchMedia('(max-width: 599px)').matches
   })
