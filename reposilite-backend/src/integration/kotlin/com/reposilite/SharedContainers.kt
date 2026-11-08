@@ -31,10 +31,25 @@ internal object SharedContainers {
             .also { it.start() }
     }
 
+    val nats: GenericContainer<*> by lazy {
+        GenericContainer(DockerImageName.parse(NATS_IMAGE))
+            .withExposedPorts(NATS_PORT)
+            .waitingFor(Wait.forLogMessage(".*Server is ready.*", 1))
+            .also { it.start() }
+    }
+
     const val FLOCI_PORT = 4566
+
+    const val NATS_PORT = 4222
+
+    const val NATS_IMAGE = "nats:2.12-alpine"
 
 }
 
 /** Endpoint of the shared Floci instance as seen from the test JVM. */
 internal fun GenericContainer<*>.s3Endpoint(): String =
     "http://$host:${getMappedPort(SharedContainers.FLOCI_PORT)}"
+
+/** Client URL of the shared NATS broker as seen from the test JVM. */
+internal fun GenericContainer<*>.natsUrl(): String =
+    "nats://$host:${getMappedPort(SharedContainers.NATS_PORT)}"
