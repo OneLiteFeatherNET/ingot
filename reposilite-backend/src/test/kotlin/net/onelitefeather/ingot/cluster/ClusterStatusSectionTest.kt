@@ -93,6 +93,20 @@ internal class ClusterStatusSectionTest {
             }
     }
 
+    /** A transport that refused [dropped] envelopes for exceeding its limits, as the database transport counts them. */
+    private class DroppingFactory(private val dropped: Long) : ClusterTransportFactory {
+        override fun open(url: ClusterBusUrl, settings: ClusterSettings, clusterIdentifier: String): ClusterTransport =
+            object : ClusterTransport {
+                override fun publish(message: String) {}
+
+                override fun subscribe(listener: (String) -> Unit) {}
+
+                override fun droppedCount(): Long = dropped
+
+                override fun close() {}
+            }
+    }
+
     @Test
     fun `the cluster section reports a connected bus with the last received event time and the counts`() {
         // given: two instances on one bus, the second one counts what it receives
@@ -184,5 +198,29 @@ internal class ClusterStatusSectionTest {
         assertThat(bus.path("state").asText()).isEqualTo("disabled")
         assertThat(bus.path("transport").asText()).isEqualTo("valkey")
         assertThat(bus.has("lastReceivedAt")).describedAs("no event was received on a disabled bus").isFalse()
+    }
+
+    @Test
+    fun `the bus block reports the envelopes the transport dropped for exceeding its limits`() {
+        // given: an instance whose transport dropped three oversized envelopes
+        val instance = startInstance("ingot-a", "database:", mapOf("database" to DroppingFactory(dropped = 3)))
+
+        // when: the status is read
+        val bus = statusJson(instance).bus()
+
+        // then: the dropped count is shown beside the other counts
+        assertThat(bus.path("dropped").asLong()).isEqualTo(3)
+    }
+
+    @Test
+    fun `the bus block has no dropped count on a transport without a size limit`() {
+        // given: an instance on a bus whose transport never drops an envelope
+        val instance = startInstance("ingot-a", "tls://hub.example:4222", mapOf("tls" to hub.factory()))
+
+        // when: the status is read
+        val bus = statusJson(instance).bus()
+
+        // then: the field is absent rather than zero
+        assertThat(bus.has("dropped")).describedAs("a transport without a size limit reports no dropped count").isFalse()
     }
 }
