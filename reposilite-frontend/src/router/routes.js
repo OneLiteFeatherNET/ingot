@@ -53,6 +53,8 @@ const ROUTES = [
   // Open to every signed in principal. `signedIn` shows the sign in prompt to a visitor.
   { name: 'account', path: '/account', meta: { section: 'account', signedIn: true } },
   { name: 'dashboard', path: '/dashboard', meta: adminRoute('dashboard', ADMIN_NODES.dashboard) },
+  // Usage over time. The same permission as the dashboard, so both tabs are offered to the same people.
+  { name: 'analytics', path: '/analytics', meta: adminRoute('analytics', ADMIN_NODES.dashboard) },
   // The access section: users, machine accounts and teams. The detail routes name the principal or
   // the team in `:name`. `/access` has no page of its own and opens the user list.
   { name: 'access', path: '/access', redirect: { name: 'access-users' }, meta: ACCESS_ANY },

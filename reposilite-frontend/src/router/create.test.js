@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
+import { ROUTES } from './routes'
 
 // Every route renders the same shell in the application. Here the shell is an empty stub,
 // because what it shows is tested with the page itself.
@@ -48,6 +49,7 @@ describe('route to section mapping', () => {
     ['/search?q=commons&origin=mirror', 'search'],
     ['/account', 'account'],
     ['/dashboard', 'dashboard'],
+    ['/analytics', 'analytics'],
     ['/access/users', 'access'],
     ['/access/users/alice', 'access'],
     ['/access/machines', 'access'],
@@ -135,6 +137,31 @@ describe('route names and parameters', () => {
 
     expect(router.currentRoute.value.name).toBe('settings')
     expect(router.currentRoute.value.params.domain).toBe('maven')
+  })
+})
+
+describe('analytics route', () => {
+  it('carries the same guard meta as the dashboard, so the same people see both', () => {
+    const dashboard = ROUTES.find(route => route.name === 'dashboard')
+    const analytics = ROUTES.find(route => route.name === 'analytics')
+
+    expect(analytics?.path).toBe('/analytics')
+    expect(analytics?.meta).toEqual({ ...dashboard.meta, section: 'analytics' })
+  })
+
+  it('sends a signed in user without the manager permission to overview', async () => {
+    const notify = vi.fn()
+    const router = makeRouter({
+      isManager: () => false,
+      isLogged: () => true,
+      notify,
+      whenSessionKnown: () => Promise.resolve()
+    })
+
+    await router.push('/analytics')
+
+    expect(router.currentRoute.value.name).toBe('overview')
+    expect(notify).toHaveBeenCalledTimes(1)
   })
 })
 

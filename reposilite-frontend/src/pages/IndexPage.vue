@@ -31,6 +31,7 @@ import PageFooter from '../components/footer/PageFooter.vue'
 import OverviewIcon from '../components/icons/OverviewIcon.vue'
 import SearchIcon from '../components/icons/SearchIcon.vue'
 import DashboardIcon from '../components/icons/DashboardIcon.vue'
+import AnalyticsIcon from '../components/icons/AnalyticsIcon.vue'
 import AccessIcon from '../components/icons/AccessIcon.vue'
 import ConsoleIcon from '../components/icons/ConsoleIcon.vue'
 import CleaningIcon from '../components/icons/CleaningIcon.vue'
@@ -60,6 +61,7 @@ const lazyView = (loader) => defineAsyncComponent({
 const ConsoleView = lazyView(() => import('../components/console/ConsoleView.vue'))
 const MaintenanceView = lazyView(() => import('../components/maintenance/MaintenanceView.vue'))
 const DashboardView = lazyView(() => import('../components/dashboard/DashboardView.vue'))
+const AnalyticsView = lazyView(() => import('../components/dashboard/AnalyticsView.vue'))
 const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
@@ -71,6 +73,7 @@ const SECTION_ICONS = {
   overview: OverviewIcon,
   search: SearchIcon,
   dashboard: DashboardIcon,
+  analytics: AnalyticsIcon,
   access: AccessIcon,
   console: ConsoleIcon,
   maintenance: CleaningIcon,
@@ -327,6 +330,7 @@ const activeLabel = computed(() => sectionLabel(section.value))
       <SearchView v-else-if="section === 'search'" />
       <AccountView v-else-if="section === 'account'" />
       <DashboardView v-else-if="section === 'dashboard'" />
+      <AnalyticsView v-else-if="section === 'analytics'" />
       <AccessView
         v-else-if="section === 'access'"
         :tab="accessTab"
