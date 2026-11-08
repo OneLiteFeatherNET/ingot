@@ -37,6 +37,7 @@ import com.reposilite.plugin.Extensions
 import com.reposilite.shared.http.AuthenticationMethod.BASIC
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.http.FakeRemoteClientProvider
+import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.shared.notFoundError
 import io.javalin.http.HttpStatus.BAD_GATEWAY
 import io.javalin.http.HttpStatus.TOO_MANY_REQUESTS
@@ -135,11 +136,14 @@ internal abstract class MavenSpecification {
     /** The executor the components run their IO tasks on. A test may replace it to control how many tasks run at once. */
     protected open fun createIoService(): ExecutorService = Executors.newCachedThreadPool()
 
+    /** The client provider the components fetch from upstream with. By default a fake that answers from this specification; a test may replace it with a real one. */
+    protected open fun remoteClientProvider(): RemoteClientProvider? = null
+
     @BeforeEach
     fun initializeFacade() {
         this.ioService = createIoService()
 
-        val remoteClientProvider = FakeRemoteClientProvider(
+        val remoteClientProvider = remoteClientProvider() ?: FakeRemoteClientProvider(
             headHandler = { uri, credentials, _, _ ->
                 remoteRequestsByUri.computeIfAbsent(uri) { AtomicInteger() }.incrementAndGet()
                 if (uri.startsWith(REMOTE_REPOSITORY_THROTTLED))
