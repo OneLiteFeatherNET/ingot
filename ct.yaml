@@ -1,0 +1,7 @@
+chart-dirs:
+  - charts
+# Chart versions are set by release-please when a release is cut, so a pull request does not bump them.
+check-version-increment: false
+# Maintainers are GitHub-free names here, not accounts that ct can look up.
+validate-maintainers: false
+helm-extra-args: --timeout 300s
