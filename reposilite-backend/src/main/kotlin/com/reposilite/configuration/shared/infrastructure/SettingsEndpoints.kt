@@ -28,6 +28,7 @@ import com.reposilite.shared.badRequest
 import com.reposilite.shared.badRequestError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.status.FailureFacade
 import io.javalin.community.routing.Route
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.PUT
@@ -51,6 +52,7 @@ import java.io.InputStream
 internal class SettingsEndpoints(
     private val sharedConfigurationFacade: SharedConfigurationFacade,
     private val hideSecrets: Reference<Boolean>,
+    private val failureFacade: FailureFacade,
 ) : ReposiliteRoutes() {
 
     @OpenApi(
@@ -189,7 +191,10 @@ internal class SettingsEndpoints(
         }
 
         return runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(restored.get(), reference.type) as SharedSettings }
-            .getOrElse { return badRequest("Body does not match the settings of '$name': ${it.message}").asError() }
+            .getOrElse {
+                failureFacade.throwException("Settings body of '$name' does not match its type", it)
+                return badRequest("Body does not match the settings of '$name'").asError()
+            }
             .asSuccess()
     }
 

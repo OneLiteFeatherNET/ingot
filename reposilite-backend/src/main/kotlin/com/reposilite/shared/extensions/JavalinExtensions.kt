@@ -26,13 +26,13 @@ import io.javalin.http.HandlerType.HEAD
 import io.javalin.http.HandlerType.OPTIONS
 import io.javalin.http.Header
 import io.javalin.http.Header.CACHE_CONTROL
-import io.javalin.http.Header.CONTENT_SECURITY_POLICY
 import io.javalin.http.Header.LAST_MODIFIED
 import io.javalin.http.HttpStatus
 import java.io.Closeable
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URLEncoder
+import net.onelitefeather.ingot.web.SecurityHeaders
 import java.nio.charset.Charset
 import kotlin.time.Duration.Companion.hours
 import org.eclipse.jetty.ee10.servlet.HttpOutput
@@ -123,7 +123,7 @@ internal fun Context.attachmentHeaders(
     compressionStrategy: String,
     cache: Boolean,
 ) {
-    header(CONTENT_SECURITY_POLICY, "sandbox")
+    SecurityHeaders.markRepositoryContent(this)
 
     if (!contentType.isHumanReadable) {
         contentDisposition("""attachment; filename="$name"; filename*=utf-8''${URLEncoder.encode(name, "utf-8")}""")

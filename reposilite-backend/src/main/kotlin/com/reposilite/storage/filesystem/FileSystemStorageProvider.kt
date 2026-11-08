@@ -17,6 +17,7 @@
 package com.reposilite.storage.filesystem
 
 import com.reposilite.journalist.Journalist
+import com.reposilite.status.FailureFacade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.notFound
@@ -80,7 +81,8 @@ import kotlin.io.path.useDirectoryEntries
 abstract class FileSystemStorageProvider protected constructor(
     val journalist: Journalist,
     val rootDirectory: Path,
-) : StorageProvider, StorageEntrySource by FileSystemEntrySource(rootDirectory) {
+    private val failureFacade: FailureFacade,
+) : StorageProvider, StorageEntrySource by FileSystemEntrySource(rootDirectory, failureFacade) {
 
     private enum class LockMode {
         READ,
@@ -342,9 +344,11 @@ abstract class FileSystemStorageProvider protected constructor(
         try {
             sizeOf(rootDirectory.toRealPath()).asSuccess()
         } catch (exception: IOException) {
-            INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage: ${exception.message}")
+            failureFacade.throwException("Cannot measure the storage usage of $rootDirectory", exception)
+            INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage")
         } catch (exception: UncheckedIOException) {
-            INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage: ${exception.message}")
+            failureFacade.throwException("Cannot measure the storage usage of $rootDirectory", exception)
+            INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage")
         }
 
     /** Bytes of the regular files at or below the given path. Symbolic links are neither followed nor counted. */

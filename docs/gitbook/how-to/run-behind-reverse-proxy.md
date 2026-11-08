@@ -24,7 +24,7 @@ To let Ingot serve HTTPS itself, read [Enable TLS](enable-tls.md) instead.
    * `X-Forwarded-Proto`, the scheme the client used. When it is `https`, Ingot marks the session cookies `Secure` and builds the OpenID Connect redirect with `https`.
    * A header that carries the client address, for example `X-Real-IP`.
 
-   Ingot uses the value of the client address header exactly as it arrives. It does not take the first entry of a list. Make the proxy send one address, the connecting client, and not a chain that the client could extend.
+   Without trusted proxies, Ingot uses the value of the client address header exactly as it arrives. It does not take the first entry of a list. Make the proxy send one address, the connecting client, and not a chain that the client could extend, or list your proxies as in step 4.
 
 3. Tell Ingot which header carries the client address. `forwardedIp` is a shared setting in the `web` domain, not a key of `configuration.cdn`. Its default is `X-Forwarded-For`. Read the current `web` settings, change `forwardedIp`, and send the whole object back:
 
@@ -35,11 +35,13 @@ To let Ingot serve HTTPS itself, read [Enable TLS](enable-tls.md) instead.
      -d '<the object you read, with "forwardedIp" set to "X-Real-IP">'
    ```
 
-4. If Ingot runs under a path, set the base path. See [Serve under a path](#serve-under-a-path).
+4. Tell Ingot which proxies to believe. See [Trust your proxies](#trust-your-proxies).
 
-5. If users sign in with OpenID Connect, set the public address of the dashboard. See [Single sign-on redirect](#single-sign-on-redirect).
+5. If Ingot runs under a path, set the base path. See [Serve under a path](#serve-under-a-path).
 
-6. Check the result. The health endpoint needs no login:
+6. If users sign in with OpenID Connect, set the public address of the dashboard. See [Single sign-on redirect](#single-sign-on-redirect).
+
+7. Check the result. The health endpoint needs no login:
 
    ```bash
    curl -f https://repo.example.org/api/status/health
@@ -169,6 +171,24 @@ Two settings differ from the other proxies:
 
 Use a dedicated host name for the tunnel. Serving Ingot under a path through a tunnel needs a URL rewrite in Cloudflare, which this page does not cover.
 
+## Trust your proxies
+
+By default Ingot believes the client address header from every connection. A client can then send its own `X-Forwarded-For` and choose the address that the login lockout, the brute-force protection and the audit log record. Every made-up value counts as a new client, so a locked-out attacker simply tries again under another address. Ingot logs a warning at startup while the header is in use and no proxy is trusted.
+
+Set `INGOT_TRUSTED_PROXIES` (or `-Dingot.trustedProxies`) to the addresses of your proxies, comma-separated, as IPv4 or IPv6 addresses or CIDR ranges:
+
+```bash
+INGOT_TRUSTED_PROXIES=10.0.0.0/8,fd00::/8,192.168.1.5
+```
+
+With the setting in place:
+
+* The client address header is only read when the connection comes from a trusted proxy. A request that reaches Ingot directly is recorded under its own address, whatever header it carries.
+* When the header holds a list, the client is the rightmost address that is not a trusted proxy. Whatever a client prepends to the list is ignored.
+* A malformed entry, such as a host name or a prefix out of range, stops the start with a message that names the entry. Ingot does not guess.
+
+The setting works with any header name in `forwardedIp`. Leaving it unset keeps the behavior of earlier versions, so an existing installation needs no change.
+
 ## Serve under a path
 
 Ingot has no path prefix of its own. The proxy removes the prefix, so that Ingot receives `/` for a request to `https://example.org/ingot/`. Then tell Ingot the prefix.
@@ -220,6 +240,10 @@ OpenID Connect providers redirect the browser back to Ingot after the sign-in. T
 3. Register the callback URI at the identity provider. Ingot builds it as `<publicUrl>/api/auth/oidc/<provider-id>/callback`, for example `https://repo.example.org/ingot/api/auth/oidc/entra/callback`. The provider ID is the `id` of the provider in the login settings.
 
 With an empty `publicUrl`, Ingot builds the redirect from the `Host` header and `X-Forwarded-Proto`. That works only when the proxy sends both headers correctly.
+
+## Strict transport security
+
+Ingot sends `Strict-Transport-Security` only when you ask for it, with `INGOT_HSTS_MAX_AGE` set to a number of seconds, for example `31536000`. It sends the header only on requests that arrived over HTTPS, which behind a proxy means `X-Forwarded-Proto: https`. Do not set both here and in the proxy, or the browser receives the header twice. See [Environment variables](../reference/environment-variables.md#security-header-variables).
 
 ## Verify
 

@@ -2,6 +2,8 @@ package com.reposilite.storage.filesystem
 
 import com.reposilite.storage.StorageEntry
 import com.reposilite.storage.api.Location
+import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.status.FailureFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -134,7 +136,7 @@ internal class FileSystemEntrySourceTest {
     }
 
     private fun source(): FileSystemEntrySource =
-        FileSystemEntrySource(root)
+        FileSystemEntrySource(root, FailureFacade(InMemoryLogger()))
 
     private fun file(path: String, size: Int = 1): Path =
         root.resolve(path).createParentDirectories().also { it.writeBytes(ByteArray(size)) }

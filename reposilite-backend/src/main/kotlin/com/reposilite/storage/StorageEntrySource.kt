@@ -19,6 +19,7 @@ package com.reposilite.storage
 
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.internalServerError
+import com.reposilite.status.FailureFacade
 import com.reposilite.storage.api.Location
 import java.time.Instant
 import panda.std.Result
@@ -67,8 +68,8 @@ data class StorageEntryPage(
  * The entry source of this provider: the provider itself when it implements [StorageEntrySource], otherwise a
  * [WalkingEntrySource] over the generic listing.
  */
-fun StorageProvider.entrySource(): StorageEntrySource =
-    this as? StorageEntrySource ?: WalkingEntrySource(this)
+fun StorageProvider.entrySource(failureFacade: FailureFacade): StorageEntrySource =
+    this as? StorageEntrySource ?: WalkingEntrySource(this, failureFacade)
 
 /**
  * Orders paths by their segments, one segment at a time. A path whose segments are a prefix of another path's
@@ -109,7 +110,10 @@ internal fun paginate(entries: Sequence<StorageEntry>, limit: Int): StorageEntry
  * so every page costs a full walk. It is slow on large storages but correct, and it keeps third-party providers
  * working without any change to the [StorageProvider] contract.
  */
-class WalkingEntrySource(private val storage: StorageProvider) : StorageEntrySource {
+class WalkingEntrySource(
+    private val storage: StorageProvider,
+    private val failureFacade: FailureFacade,
+) : StorageEntrySource {
 
     override fun listEntries(prefix: Location, after: String?, limit: Int): Result<StorageEntryPage, ErrorResponse> {
         require(limit > 0) { "limit must be positive, was $limit" }
@@ -135,7 +139,8 @@ class WalkingEntrySource(private val storage: StorageProvider) : StorageEntrySou
 
             paginate(entries, limit).asSuccess()
         } catch (exception: Exception) {
-            internalServerError(exception.message ?: exception::class.toString())
+            failureFacade.throwException("Cannot list the entries of the storage", exception)
+            internalServerError("Storage failure")
         }
     }
 

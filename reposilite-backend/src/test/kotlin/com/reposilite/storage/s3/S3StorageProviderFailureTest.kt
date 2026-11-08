@@ -28,6 +28,8 @@ import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.exception.SdkClientException
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectResponse
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest
@@ -77,6 +79,9 @@ internal class S3StorageProviderFailureTest {
         override fun putObject(request: PutObjectRequest, body: RequestBody): PutObjectResponse =
             throw failure
 
+        override fun deleteObject(request: DeleteObjectRequest): DeleteObjectResponse =
+            throw failure
+
         override fun listObjectsV2(request: ListObjectsV2Request): ListObjectsV2Response =
             listFailure?.let { throw it } ?: ListObjectsV2Response.builder()
                 .contents(keys.filter { it.startsWith(request.prefix().orEmpty()) }.map { S3Object.builder().key(it).size(1).build() })
@@ -121,6 +126,38 @@ internal class S3StorageProviderFailureTest {
 
         // then: it is reported as not found
         assertThat(assertError(result).status).describedAs("status of NoSuchKey").isEqualTo(404)
+    }
+
+    @Test
+    fun `removeFile should not expose the S3 failure message when the delete fails`() {
+        // given: S3 rejects the delete with a message that names an internal detail
+        val provider = providerFailingWith(S3Exception.builder().statusCode(500).message("internal-detail-42").build())
+
+        // when: the file is removed
+        val error = assertError(provider.removeFile(file.toLocation()))
+
+        // then: the status is still a server error
+        assertThat(error.status).describedAs("status of a failed delete").isEqualTo(500)
+
+        // and: neither the failure message nor the class name reach the response
+        assertThat(error.message)
+            .describedAs("message of a failed delete")
+            .doesNotContain("internal-detail-42", "S3Exception")
+    }
+
+    @Test
+    fun `getFileSize should not expose the S3 message of a missing key`() {
+        // given: a missing object, answered by S3 with a NoSuchKey message that names an internal detail
+        val provider = providerFailingWith(NoSuchKeyException.builder().statusCode(404).message("internal-detail-42").build())
+
+        // when: the size of the file is requested
+        val error = assertError(provider.getFileSize(file.toLocation()))
+
+        // then: the status is still not found
+        assertThat(error.status).describedAs("status of a missing key").isEqualTo(404)
+
+        // and: the S3 message does not reach the response
+        assertThat(error.message).describedAs("message of a missing key").doesNotContain("internal-detail-42")
     }
 
     @Test

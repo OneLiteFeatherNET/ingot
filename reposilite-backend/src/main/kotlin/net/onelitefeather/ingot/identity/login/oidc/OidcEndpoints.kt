@@ -114,12 +114,12 @@ internal class AuthOidcEndpoints(
     override val routes = routes(login, callback)
 
     private fun redirectUri(ctx: Context, id: String): String {
-        val scheme = if (SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"))) "https" else "http"
+        val scheme = if (SessionCookies.isSecure(ctx)) "https" else "http"
         return OidcRedirectUri.of(publicUrl(), scheme, ctx.host().orEmpty(), basePath.get(), id)
     }
 
     private fun writeSessionCookies(ctx: Context, session: SessionTokens, base: String) {
-        SessionCookies.setCookies(session, base, SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto")))
+        SessionCookies.setCookies(session, base, SessionCookies.isSecure(ctx))
             .forEach { ctx.res().addHeader("Set-Cookie", it) }
     }
 
@@ -132,7 +132,7 @@ internal class AuthOidcEndpoints(
     }
 
     private fun cookie(name: String, value: String, maxAgeSeconds: Long, ctx: Context): String {
-        val secure = if (SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"))) "; Secure" else ""
+        val secure = if (SessionCookies.isSecure(ctx)) "; Secure" else ""
         return "$name=$value; Path=${trimmedBase(basePath.get())}/api/auth/oidc; Max-Age=$maxAgeSeconds; HttpOnly; SameSite=Lax$secure"
     }
 

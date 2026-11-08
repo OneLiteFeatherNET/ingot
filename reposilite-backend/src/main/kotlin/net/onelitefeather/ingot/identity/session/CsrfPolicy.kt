@@ -29,7 +29,17 @@ import java.security.MessageDigest
 internal object CsrfPolicy {
 
     private val SAFE_METHODS = setOf("GET", "HEAD", "OPTIONS", "TRACE")
-    private val EXEMPT_PATH_SUFFIXES = listOf("/api/auth/login", "/api/auth/setup")
+    private val EXEMPT_ROUTES = listOf("/api/auth/login", "/api/auth/setup")
+
+    /**
+     * The exempt routes, at the root and below the configured base path. The root is kept because a reverse proxy may
+     * strip the base path before the request arrives. The paths are compared exactly: a suffix match would also exempt
+     * a repository path such as `/releases/api/auth/login`, which is an ordinary deployment that needs the token.
+     */
+    private fun exemptPaths(basePath: String): Set<String> {
+        val base = basePath.trim().trimEnd('/').let { if (it.isEmpty() || it.startsWith('/')) it else "/$it" }
+        return (EXEMPT_ROUTES + EXEMPT_ROUTES.map { base + it }).toSet()
+    }
 
     data class Request(
         val method: String,
@@ -42,7 +52,7 @@ internal object CsrfPolicy {
     )
 
     /** `true` when the request must be refused with 403. */
-    fun violation(request: Request): Boolean {
+    fun violation(request: Request, basePath: String = "/"): Boolean {
         if (request.method.uppercase() in SAFE_METHODS) {
             return false
         }
@@ -52,7 +62,7 @@ internal object CsrfPolicy {
         if (request.sessionCookie == null && request.refreshCookie == null) {
             return false
         }
-        if (EXEMPT_PATH_SUFFIXES.any { request.path.endsWith(it) }) {
+        if (request.path.trimEnd('/') in exemptPaths(basePath)) {
             return false
         }
         val expected = request.csrfCookie

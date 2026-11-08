@@ -23,6 +23,7 @@ import io.javalin.community.routing.Route
 import io.javalin.community.routing.dsl.DefaultDslRoute
 import io.javalin.community.routing.dsl.DslContainer
 import io.javalin.community.routing.dsl.DslRoute
+import panda.std.asError
 
 abstract class ReposiliteRoutes : DslContainer<DslRoute<ContextDsl<*>, Unit>, ContextDsl<*>, Unit> {
 
@@ -42,6 +43,8 @@ abstract class ReposiliteRoutes : DslContainer<DslRoute<ContextDsl<*>, Unit>, Co
 class ReposiliteRoute<R>(
     val path: String,
     vararg val methods: Route,
+    /** Largest request body the route reads; a larger one is answered with 413 before the handler runs. */
+    val bodyLimit: Long? = null,
     val handler: ContextDsl<R>.() -> Unit
 ) {
 
@@ -59,14 +62,26 @@ class ReposiliteRoute<R>(
     )
 
     @Suppress("UNCHECKED_CAST")
-    fun toDslRoutes(): Set<ReposiliteDslRoute> =
-        methods.mapTo(HashSet()) { method ->
-            @Suppress("UNCHECKED_CAST")
+    fun toDslRoutes(): Set<ReposiliteDslRoute> {
+        val route = handler as ContextDsl<*>.() -> Unit
+        val guarded = bodyLimit?.let { limit -> withBodyLimit(limit, route) } ?: route
+        return methods.mapTo(HashSet()) { method ->
             DefaultDslRoute(
                 path = path,
                 method = method,
-                handler = handler as ContextDsl<*>.() -> Unit
+                handler = guarded
             )
         }
+    }
+
+    /** Reads the body within [limit] before [route] runs, and hands the bytes to the route's body parsing. */
+    private fun withBodyLimit(limit: Long, route: ContextDsl<*>.() -> Unit): ContextDsl<*>.() -> Unit = {
+        readBoundedBody(ctx.req().contentLengthLong, ctx.bodyInputStream(), limit)
+            .onError { response = it.asError() }
+            .peek { bytes ->
+                boundedBody = bytes
+                route()
+            }
+    }
 
 }

@@ -51,6 +51,14 @@ System properties follow the same rules with the lower-case prefixes `ingot.loca
 | `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `REPOSILITE_LOCAL_SEARCHENGINE` |
 | `debugEnabled` | `INGOT_LOCAL_DEBUGENABLED` | `REPOSILITE_LOCAL_DEBUGENABLED` |
 
+## Server variables
+
+The server process reads these variables itself, not the entrypoint.
+
+| Variable | System property | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). |
+
 ## Container variables
 
 The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
@@ -73,6 +81,17 @@ Behavior of the entrypoint:
 | Log files | The entrypoint sets `-Dtinylog.writerFile.file=/var/log/reposilite/log_{date}.txt` and `-Dtinylog.writerFile.latest=/var/log/reposilite/latest.log`. |
 
 The Compose files in the repository read `PORT`, `MEMORY`, `JAVA_COMPOSE_OPTS` and `INGOT_COMPOSE_OPTS` from a `.env` file and build `JAVA_OPTS` and `INGOT_OPTS` from them. These four names are Compose variables. The server does not read them.
+
+## Security header variables
+
+The server adds security headers to its responses. Two of them can be changed. The variables are read once when the server starts. Each has a system property as an alternative, used when the variable is unset.
+
+| Variable | System property | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_REPOSITORY_SANDBOX` | `ingot.repository.sandbox` | `true` | Repository files and the generated directory index are served with `Content-Security-Policy: sandbox`, so a browser runs an uploaded page without the origin of the dashboard. `false` leaves them without this header. The value is matched without regard to case, any other value keeps the sandbox. |
+| `INGOT_HSTS_MAX_AGE` | `ingot.hsts.maxAge` | unset | A positive number of seconds turns on `Strict-Transport-Security: max-age=<seconds>`. The header is sent only on HTTPS requests, that is a request over TLS served by Ingot or a request with `X-Forwarded-Proto: https`. Unset, zero or a value that is not a number sends no header. |
+
+The complete list of headers is in [Security headers](../explanation/security-headers.md).
 
 ## Dashboard image variables
 

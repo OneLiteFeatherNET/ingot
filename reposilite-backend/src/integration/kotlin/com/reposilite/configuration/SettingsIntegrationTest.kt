@@ -128,6 +128,27 @@ internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecificati
         }
     }
 
+    @Test
+    fun `should not expose the parser message when a settings body does not match the type`() {
+        // given: a permitted token
+        val (permittedName, permittedSecret) = useDefaultManagementToken()
+
+        // when: an object is sent for a string setting
+        val response = Unirest.put("$base/api/settings/domain/web")
+            .basicAuth(permittedName, permittedSecret)
+            .header("Content-Type", "application/json")
+            .body("""{"forwardedIp":{"nested":1}}""")
+            .asString()
+
+        // then: the request is rejected as a bad request
+        assertThat(response.status).describedAs("status of a mismatched body").isEqualTo(BAD_REQUEST.code)
+
+        // and: the Jackson message and the Java type names do not reach the response
+        assertThat(response.body)
+            .describedAs("body of a mismatched settings document")
+            .doesNotContain("Cannot deserialize", "java.lang", "com.fasterxml")
+    }
+
     private val customSettings = mapOf(
         "web" to WebSettings(forwardedIp = "test"),
         "authentication" to AuthenticationSettings(ldap = LdapSettings(enabled = true)),
