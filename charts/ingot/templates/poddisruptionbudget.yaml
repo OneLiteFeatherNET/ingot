@@ -11,9 +11,6 @@ spec:
   selector:
     matchLabels:
       {{- include "ingot.selectorLabels" . | nindent 6 }}
-      {{- if eq .Values.mode "split" }}
-      app.kubernetes.io/component: server
-      {{- end }}
 {{- if eq .Values.mode "split" }}
 ---
 apiVersion: policy/v1
@@ -22,13 +19,11 @@ metadata:
   name: {{ include "ingot.dashboardFullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "ingot.labels" . | nindent 4 }}
-    app.kubernetes.io/component: dashboard
+    {{- include "ingot.dashboardLabels" . | nindent 4 }}
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-      {{- include "ingot.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: dashboard
+      {{- include "ingot.dashboardSelectorLabels" . | nindent 6 }}
 {{- end }}
 {{- end }}

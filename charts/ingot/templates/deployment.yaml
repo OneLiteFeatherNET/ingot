@@ -9,9 +9,6 @@ metadata:
   {{- end }}
   labels:
   {{- include "ingot.labels" . | nindent 4 -}}
-  {{- if eq .Values.mode "split" }}
-    app.kubernetes.io/component: server
-  {{- end }}
   {{- with .Values.deployment.labels }}
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -22,9 +19,6 @@ spec:
   selector:
     matchLabels:
       {{- include "ingot.selectorLabels" . | nindent 6 }}
-      {{- if eq .Values.mode "split" }}
-      app.kubernetes.io/component: server
-      {{- end }}
   strategy:
     type: RollingUpdate
     {{- with .Values.rollingUpdate }}
@@ -40,9 +34,6 @@ spec:
       {{- end }}
       labels:
       {{- include "ingot.labels" . | nindent 8 }}
-      {{- if eq .Values.mode "split" }}
-        app.kubernetes.io/component: server
-      {{- end }}
       {{- with .Values.deployment.podLabels }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

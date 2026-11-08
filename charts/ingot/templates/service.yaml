@@ -9,9 +9,6 @@ metadata:
   {{- end }}
   labels:
     {{- include "ingot.labels" . | nindent 4 }}
-    {{- if eq .Values.mode "split" }}
-    app.kubernetes.io/component: server
-    {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -21,6 +18,3 @@ spec:
       name: http
   selector:
     {{- include "ingot.selectorLabels" . | nindent 4 }}
-    {{- if eq .Values.mode "split" }}
-    app.kubernetes.io/component: server
-    {{- end }}

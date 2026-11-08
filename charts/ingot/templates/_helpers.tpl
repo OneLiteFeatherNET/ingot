@@ -37,12 +37,21 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Selector labels. They are the same as the upstream chart, so the all-in-one workload keeps its selector.
-In split mode the workloads add app.kubernetes.io/component, so that the server Service never selects a dashboard pod.
+Selector labels of the server. They are the same as the upstream chart, in every mode, so that a release moved
+from the all-in-one workload to split keeps the immutable selector of its Deployment.
 */}}
 {{- define "ingot.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "ingot.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Selector labels of the dashboard. The instance differs from the server, so the server Service never selects a
+dashboard pod and the dashboard Service never selects a server pod.
+*/}}
+{{- define "ingot.dashboardSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "ingot.name" . }}
+app.kubernetes.io/instance: {{ printf "%s-dashboard" .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
@@ -51,6 +60,18 @@ Common labels
 {{- define "ingot.labels" -}}
 helm.sh/chart: {{ include "ingot.chart" . }}
 {{ include "ingot.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Common labels of the dashboard workload and its Service
+*/}}
+{{- define "ingot.dashboardLabels" -}}
+helm.sh/chart: {{ include "ingot.chart" . }}
+{{ include "ingot.dashboardSelectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
