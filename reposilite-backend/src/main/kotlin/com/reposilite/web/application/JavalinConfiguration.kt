@@ -41,6 +41,7 @@ import io.javalin.json.JavalinJackson
 import io.javalin.openapi.plugin.OpenApiPlugin
 import io.javalin.plugin.bundled.SslRedirectPlugin
 import kotlin.time.Duration.Companion.minutes
+import net.onelitefeather.ingot.web.TrustedProxies
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.ServerConnector
 import org.eclipse.jetty.util.thread.ThreadPool
@@ -70,7 +71,7 @@ internal object JavalinConfiguration {
             }
         }
 
-        configureJavalin(config, localConfiguration, webSettings)
+        configureJavalin(reposilite, config, localConfiguration, webSettings)
         configureJsonSerialization(config)
         configureSSL(reposilite, localConfiguration, config)
         configureCors(config)
@@ -79,10 +80,12 @@ internal object JavalinConfiguration {
         configureRoutingPlugin(config, reposilite)
     }
 
-    private fun configureJavalin(config: JavalinConfig, localConfiguration: LocalConfiguration, webSettings: Reference<WebSettings>) {
+    private fun configureJavalin(reposilite: Reposilite, config: JavalinConfig, localConfiguration: LocalConfiguration, webSettings: Reference<WebSettings>) {
         config.startup.showJavalinBanner = false
         config.http.asyncTimeout = 10.minutes.inWholeMilliseconds
-        config.contextResolver.ip = { it.header(webSettings.get().forwardedIp) ?: it.req().remoteAddr }
+        val trustedProxies = TrustedProxies.fromEnvironment()
+        TrustedProxies.startupWarning(trustedProxies, webSettings.get().forwardedIp)?.let { reposilite.logger.warn(it) }
+        config.contextResolver.ip = { trustedProxies.resolve(it.req().remoteAddr, it.header(webSettings.get().forwardedIp)) }
 
         System.getProperty("javalin.maxRequestSize")?.let {
             config.http.maxRequestSize = it.toLong()

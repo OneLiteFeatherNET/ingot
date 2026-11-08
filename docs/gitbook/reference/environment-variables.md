@@ -51,6 +51,14 @@ System properties follow the same rules with the lower-case prefixes `ingot.loca
 | `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `REPOSILITE_LOCAL_SEARCHENGINE` |
 | `debugEnabled` | `INGOT_LOCAL_DEBUGENABLED` | `REPOSILITE_LOCAL_DEBUGENABLED` |
 
+## Server variables
+
+The server process reads these variables itself, not the entrypoint.
+
+| Variable | System property | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). |
+
 ## Container variables
 
 The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
