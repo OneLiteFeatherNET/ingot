@@ -172,6 +172,20 @@ describe('configuration store', () => {
     expect(updateCalls, 'no domain may be written while a domain is invalid').toBe(0)
   })
 
+  it('saves only the named domains and keeps the edits of the others as a draft', async () => {
+    const written = []
+    const client = fakeClient({ update: async (domain) => { written.push(domain); return { data: {} } } })
+    const store = await loadedStore(client)
+    store.setDomainData('maven', { name: 'edited' })
+    store.setDomainData('frontend', { name: 'edited' })
+
+    const saved = await store.saveConfiguration(['frontend'])
+
+    expect(saved, 'the named domain must be saved').toBe(true)
+    expect(written, 'only the named domain may be written').toEqual(['frontend'])
+    expect(store.isDirty('maven'), 'the edit of the other domain must stay a draft').toBe(true)
+  })
+
   it('discards pending edits by restoring the server snapshot', async () => {
     const store = await loadedStore()
     store.setDomainData('maven', { name: 'edited' })

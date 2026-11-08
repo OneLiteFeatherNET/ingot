@@ -24,6 +24,7 @@ import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
 import SsoProvidersPanel from './SsoProvidersPanel.vue'
 import LdapPanel from './LdapPanel.vue'
+import SecurityPanel from './SecurityPanel.vue'
 import CheckPermissionView from './check/CheckPermissionView.vue'
 
 /*
@@ -31,14 +32,14 @@ import CheckPermissionView from './check/CheckPermissionView.vue'
  * and the open principal come from the address, and a tab change goes through the router.
  *
  * Props:
- *   tab   users, machines, teams, sso, ldap or check (the permission check)
+ *   tab   users, machines, teams, sso, ldap, security or check (the permission check)
  *   name  the open user, machine account or team, if any
  */
 defineProps({
   tab: {
     type: String,
     default: 'users',
-    validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap', 'check'].includes(value)
+    validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap', 'security', 'check'].includes(value)
   },
   name: {
     type: String,
@@ -59,6 +60,7 @@ const ALL_TABS = [
   { key: 'teams', label: 'Teams', nodes: [ADMIN_NODES.teams] },
   { key: 'sso', label: 'SSO', nodes: [INSTANCE_ADMIN_NODE] },
   { key: 'ldap', label: 'LDAP', nodes: [INSTANCE_ADMIN_NODE] },
+  { key: 'security', label: 'Security', nodes: [INSTANCE_ADMIN_NODE] },
   { key: 'check', label: 'Check', nodes: ACCESS_NODES }
 ]
 const TABS = computed(() => ALL_TABS.filter(tab => tab.nodes.some(node => can(node))))
@@ -107,6 +109,9 @@ const select = (key) => router.push({ name: `access-${key}` })
       />
       <LdapPanel
         v-else-if="tab === 'ldap'"
+      />
+      <SecurityPanel
+        v-else-if="tab === 'security'"
       />
       <TeamsPanel
         v-else-if="tab === 'teams'"

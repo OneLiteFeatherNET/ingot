@@ -20,10 +20,14 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { ROUTES } from '../../router/routes'
 import AccessView from './AccessView.vue'
+import { authenticationStore } from './authenticationTestKit'
+import { configurationStoreKey } from '../../store/configuration'
+import { INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
 
 const holder = vi.hoisted(() => ({ session: null }))
 
-vi.mock('../../store/session', () => ({ useSession: () => holder.session }))
+// The configuration store reads the session when it is imported, before the test sets the holder.
+vi.mock('../../store/session', () => ({ useSession: () => holder.session ?? { client: { value: null } } }))
 
 vi.mock('../../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
@@ -46,7 +50,11 @@ describe('AccessView', () => {
     })
     await router.push(url)
     await router.isReady()
-    wrapper = mount(AccessView, { props, attachTo: document.body, global: { plugins: [router] } })
+    wrapper = mount(AccessView, {
+      props,
+      attachTo: document.body,
+      global: { plugins: [router], provide: { [configurationStoreKey]: authenticationStore() } }
+    })
     await flushPromises()
   }
 
@@ -79,7 +87,31 @@ describe('AccessView', () => {
   it('offers users, machine accounts and teams as tabs', async () => {
     await mountView({ tab: 'users' })
 
-    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP', 'Check'])
+    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP', 'Security', 'Check'])
+  })
+
+  it('opens the security page from the Security tab and shows its panel', async () => {
+    await mountView({ tab: 'security' }, '/access/security')
+
+    expect(tabs().filter(tab => tab.attributes('aria-selected') === 'true').map(tab => tab.text())).toEqual(['Security'])
+    expect(wrapper.find('[data-test="security"]').exists()).toBe(true)
+  })
+
+  it('moves to the security page through the router', async () => {
+    await mountView({ tab: 'teams' }, '/access/teams')
+
+    await tabs()[5].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/access/security')
+  })
+
+  it('hides the Security tab from a user without the instance admin node', async () => {
+    holder.session.can = (node) => node !== INSTANCE_ADMIN_NODE
+
+    await mountView({ tab: 'teams' }, '/access/teams')
+
+    expect(tabs().map(tab => tab.text()), 'the tabs that need the instance admin node are hidden, not greyed out').toEqual(['Users', 'Machine accounts', 'Teams', 'Check'])
   })
 
   it('opens the single sign on page from the SSO tab and shows its panel', async () => {
@@ -133,7 +165,7 @@ describe('AccessView', () => {
   it('moves to the check route from the Check tab', async () => {
     await mountView({ tab: 'users' })
 
-    await tabs()[5].trigger('click')
+    await tabs()[6].trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('access-check')
@@ -159,7 +191,7 @@ describe('AccessView', () => {
   it('moves to the check route from the Check tab', async () => {
     await mountView({ tab: 'users' })
 
-    await tabs()[5].trigger('click')
+    await tabs()[6].trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('access-check')

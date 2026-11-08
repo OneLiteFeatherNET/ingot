@@ -33,7 +33,8 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/access/teams/:name` | `access-team` | Access, tab **Teams**, detail of one team. | Node `ingot.admin.teams`. | Router. Backend (`/access/<path>`) |
 | `/access/check` | `access-check` | Access, tab **Check**. The permission check. `principal`, `node` and `token` come from the query string. | Any one of `ingot.admin.users`, `ingot.admin.tokens`, `ingot.admin.teams`. | Router. Backend (`/access/<path>`) |
 | `/access/sso` | `access-sso` | Access, tab **SSO**. The single sign-on providers. | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
-| `/access/ldap` | `access-ldap` | Access, tab **LDAP**. The LDAP provider. | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
+| `/access/ldap` | `access-ldap` | Access, tab **LDAP**. The LDAP sign in to the dashboard, and the LDAP of Maven and Gradle clients (`authentication` settings domain). | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
+| `/access/security` | `access-security` | Access, tab **Security**. The brute force protection (`authentication` settings domain). | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
 | `/tokens` | `tokens` | Redirects to `/access/machines`. Keeps old links working. | Node `ingot.admin.tokens`. | Router and Backend |
 | `/tokens/new` | `token-new` | Redirects to `/access/machines`. | Node `ingot.admin.tokens`. | Router. Backend (`/tokens/{name}`) |
 | `/tokens/:name` | `token` | Redirects to `/access/machines/:name`. | Node `ingot.admin.tokens`. | Router. Backend (`/tokens/{name}`) |
@@ -49,7 +50,7 @@ Rules for the "Who can open it" column:
 * A node is allowed when an entry of the session's node list equals it, or matches it with `*` in place of a segment. A lone `*` entry allows every node. The check is in `reposilite-frontend/src/store/nodeAccess.js`.
 * A session that has no node list falls back to the instance admin flag.
 * The labels of the navigation (**Overview**, **Search**, **Dashboard**, **Access**, **Console**, **Maintenance**, **Audit**, **Settings**) are defined in `reposilite-frontend/src/pages/index-tabs.js`. A section is left out of the navigation when the user lacks its node. The title of `/account` is **My account**.
-* The tab labels of **Access** (**Users**, **Machine accounts**, **Teams**, **SSO**, **LDAP**, **Check**) are defined in `reposilite-frontend/src/components/access/AccessView.vue`. A tab is left out when the user lacks its node.
+* The tab labels of **Access** (**Users**, **Machine accounts**, **Teams**, **SSO**, **LDAP**, **Security**, **Check**) are defined in `reposilite-frontend/src/components/access/AccessView.vue`. A tab is left out when the user lacks its node.
 
 ### Client-side guards
 
@@ -145,7 +146,7 @@ A page route returns the same file to everyone. The data on each page comes from
 | Access, tab **Machine accounts** | `/api/identity/principals` (list), and `/api/identity/principals/{name}/tokens` (list, create, delete) | The principal list checks `ingot.admin.users`. The token endpoints check `ingot.admin.tokens`. |
 | Access, tab **Teams** | The `/api/identity/teams` endpoints | Node `ingot.admin.teams`. |
 | Access, tab **Check** | `/api/identity/check` | Authenticated. Instance admins may check any principal, others only their own. |
-| Access, tabs **SSO** and **LDAP** | `/api/settings/domain/{name}` (PUT), `/api/auth/providers/oidc/{id}/test`, `/api/auth/providers/ldap/test` | Instance admin (`managerOnly`). |
+| Access, tabs **SSO**, **LDAP** and **Security** | `/api/settings/domain/{name}` (PUT), `/api/auth/providers/oidc/{id}/test`, `/api/auth/providers/ldap/test` | Instance admin (`managerOnly`). |
 | Console | `/api/console/execute`, `/api/console/log` | Instance admin. |
 | Maintenance | `/api/maven/storage`, `/api/maven/search/index` and its `rebuild`, `verify` and `cancel` endpoints, `/api/cleanup/*` | Instance admin (`managerOnly`). |
 | Audit | `/api/audit`, `/api/audit/export` | Instance admin (`managerOnly`). |

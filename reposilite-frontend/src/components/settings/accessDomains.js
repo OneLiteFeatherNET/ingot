@@ -16,8 +16,10 @@
 
 /*
  * The settings domains that have a dedicated page under Access. Their settings are edited there, next to the
- * users and teams they affect, so the generic settings form does not offer them as tabs. A domain stays loaded
+ * users and teams they affect, so the generic settings form does not offer them. A domain stays loaded
  * and keeps traveling with the export, the import and the factory reset.
+ *
+ * `showsTab` keeps the domain in the settings tabs, where its card with the links is the content.
  */
 const ACCESS_DOMAINS = {
   login: {
@@ -26,12 +28,20 @@ const ACCESS_DOMAINS = {
       { name: 'access-sso', label: 'Single sign on' },
       { name: 'access-ldap', label: 'LDAP' }
     ]
+  },
+  authentication: {
+    text: 'The LDAP directory of Maven and Gradle clients and the brute force protection are managed under Access, next to the sign in providers.',
+    links: [
+      { name: 'access-ldap', label: 'Maven and Gradle LDAP' },
+      { name: 'access-security', label: 'Brute force protection' }
+    ],
+    showsTab: true
   }
 }
 
 const isAccessDomain = (domain) => Object.prototype.hasOwnProperty.call(ACCESS_DOMAINS, domain)
 
 // The domains the settings tabs offer, in the order the server lists them.
-const settingsTabDomains = (domains) => domains.filter(domain => !isAccessDomain(domain))
+const settingsTabDomains = (domains) => domains.filter(domain => !isAccessDomain(domain) || ACCESS_DOMAINS[domain].showsTab === true)
 
 export { ACCESS_DOMAINS, isAccessDomain, settingsTabDomains }

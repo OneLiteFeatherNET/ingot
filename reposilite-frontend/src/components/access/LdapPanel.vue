@@ -24,14 +24,15 @@ import MdSwitch from '../md/MdSwitch.vue'
 import MdTextField from '../md/MdTextField.vue'
 import { validateLdap } from './loginSettings'
 import { useLoginSettings } from './useLoginSettings'
+import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
 
 /*
- * The LDAP directory that signs users in to the dashboard. One form for the connection, the bind,
- * the user and group search and the admin groups; the test looks up an optional user against the
- * saved configuration, so it is offered only while the form matches what is saved.
- *
- * The directory that Maven clients use for basic authentication is configured elsewhere, in the
- * authentication settings, and does not change when this one does.
+ * The page has two LDAP directories. The first signs users in to the dashboard: one form for the
+ * connection, the bind, the user and group search and the admin groups; the test looks up an optional
+ * user against the saved configuration, so it is offered only while the form matches what is saved.
+ * The second, below, is the directory that Maven and Gradle clients use for basic authentication. It
+ * is the LDAP group of the authentication settings, edited with the same form as Settings had, and
+ * saved on its own. Neither one changes when the other does.
  */
 const { client } = useSession()
 const {
@@ -105,12 +106,12 @@ onMounted(load)
         id="ldap-title"
         class="md-title-large text-on-surface"
       >
-        LDAP sign in
+        Dashboard sign in
       </h3>
       <p class="md-body-medium text-on-surface-variant">
-        Users with an account in the directory sign in with their directory username and password.
-        The LDAP that Maven clients use for basic authentication is set in the authentication settings
-        and is separate from this one.
+        Users with an account in the directory sign in to this dashboard with their directory username and password.
+        The directory that Maven and Gradle clients use is set in the section Maven and Gradle clients below,
+        and does not change this one.
       </p>
     </div>
 
@@ -414,6 +415,29 @@ onMounted(load)
           The test failed: {{ testResult.error }}
         </p>
       </div>
+    </section>
+
+    <section
+      aria-labelledby="ldap-clients-title"
+      class="flex flex-col gap-6 border-t border-outline-variant pt-6"
+      data-test="ldap-clients"
+    >
+      <div class="flex flex-col gap-1">
+        <h3
+          id="ldap-clients-title"
+          class="md-title-large text-on-surface"
+        >
+          Maven and Gradle clients
+        </h3>
+        <p class="md-body-medium text-on-surface-variant">
+          Maven and Gradle clients sign in to the repositories with the directory below, through basic
+          authentication. It is separate from the dashboard sign in above.
+        </p>
+      </div>
+      <AuthenticationGroupForm
+        group="ldap"
+        save-label="Save Maven and Gradle LDAP"
+      />
     </section>
   </section>
 </template>
