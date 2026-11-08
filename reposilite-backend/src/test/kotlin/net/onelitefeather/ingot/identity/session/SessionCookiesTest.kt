@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.identity.session
 
 import net.onelitefeather.ingot.identity.model.PrincipalKind
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
+import net.onelitefeather.ingot.web.TrustedProxies
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.Instant
@@ -110,6 +111,32 @@ internal class SessionCookiesTest {
         assertThat(SessionCookies.isSecure(scheme = "https", forwardedProto = null)).isTrue()
         assertThat(SessionCookies.isSecure(scheme = "http", forwardedProto = null)).isFalse()
         assertThat(SessionCookies.isSecure(scheme = "http", forwardedProto = "https, http")).isTrue()
+    }
+
+    @Test
+    fun `honours the forwarded scheme from a trusted proxy`() {
+        val proxies = TrustedProxies.parse("10.0.0.0/8")
+
+        assertThat(SessionCookies.isSecure("http", "https", peer = "10.1.2.3", trustedProxies = proxies)).isTrue()
+    }
+
+    @Test
+    fun `ignores the forwarded scheme from a peer that is not a trusted proxy`() {
+        val proxies = TrustedProxies.parse("10.0.0.0/8")
+
+        assertThat(SessionCookies.isSecure("http", "https", peer = "203.0.113.9", trustedProxies = proxies)).isFalse()
+    }
+
+    @Test
+    fun `keeps a direct https request secure whoever the peer is`() {
+        val proxies = TrustedProxies.parse("10.0.0.0/8")
+
+        assertThat(SessionCookies.isSecure("https", null, peer = "203.0.113.9", trustedProxies = proxies)).isTrue()
+    }
+
+    @Test
+    fun `reads the forwarded scheme from any peer while no trusted proxies are set`() {
+        assertThat(SessionCookies.isSecure("http", "https", peer = "203.0.113.9", trustedProxies = TrustedProxies.NONE)).isTrue()
     }
 
 }
