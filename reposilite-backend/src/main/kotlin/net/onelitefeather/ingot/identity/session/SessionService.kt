@@ -114,12 +114,16 @@ class SessionService internal constructor(
     fun revokeAllSessions(principalId: Int) {
         val families = store.activeFamilyIdsOfPrincipal(principalId)
         store.revokeAllOfPrincipal(principalId, Instant.now(clock))
-        families.forEach { publish(SessionFamilyRevokedEvent(it)) }
+        families.forEach { family ->
+            denyFamily(family)
+            publish(SessionFamilyRevokedEvent(family))
+        }
     }
 
-    /** Revokes a family and announces it once the revocation is stored. */
+    /** Revokes a family, refuses its session tokens here at once, and announces it once the revocation is stored. */
     private fun revokeFamily(familyId: String, at: Instant) {
         store.revokeFamily(familyId, at)
+        denyFamily(familyId)
         publish(SessionFamilyRevokedEvent(familyId))
     }
 
@@ -133,9 +137,9 @@ class SessionService internal constructor(
     }
 
     /**
-     * Refuses the session tokens of a family that another instance revoked. Only this instance's memory changes: nothing is
-     * written to the database and nothing is published. An entry lasts one session lifetime from now. A token of the family
-     * that exists now expires within that lifetime, and no token of a revoked family can be issued again.
+     * Refuses the session tokens of a family that was revoked, here or on another instance. Only this instance's memory
+     * changes: nothing is written to the database and nothing is published. An entry lasts one session lifetime from now.
+     * A token of the family that exists now expires within that lifetime, and no token of a revoked family can be issued again.
      */
     internal fun denyFamily(familyId: String) {
         val now = Instant.now(clock)
