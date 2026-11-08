@@ -66,7 +66,7 @@ Not verified: the order between `/{repository}/<gav>` and the routes under `/api
 | File | `200` | The file content. With `HEAD`, the same headers and no body. |
 | Directory | `200` | The HTML directory index. See [Directory index](#directory-index). |
 | Path not found, repository not found, or `<gav>` is a directory where a file is needed | `404` | The 404 page with the reason in it. |
-| Anonymous request to a resource that needs credentials | `401` | The 404 page. The response carries `WWW-Authenticate: Basic realm="Ingot", charset="UTF-8"`. |
+| Anonymous request to a resource that needs credentials | `401` | The 404 page. The response carries `WWW-Authenticate: Basic realm="Ingot", charset="UTF-8"`. A request under `/api` carries `WWW-Authenticate: Bearer realm="Ingot"` instead, so browsers do not show a login popup. |
 | Authenticated request without the right to read | `403` | The 404 page. |
 | Invalid location | `400` | A JSON error with `status` and `message`. |
 
@@ -107,7 +107,7 @@ Credentials are optional on read routes. Credentials that are wrong are treated 
 | `PUT`, `POST` | Deploys the request body to the path. The header `X-Generate-Checksums: true` asks Ingot to generate checksums for the file. |
 | `DELETE` | Deletes the path from the repository. |
 
-Both need valid credentials (`401` otherwise). A token that is not authorized for the path answers `403`. An unknown repository answers `404`. The repository adds its own checks, such as the redeployment setting and the delete right, and this page does not list their statuses. The route description also lists `507` for a deploy when Ingot has not enough disk space to store the file.
+Both need valid credentials (`401` otherwise). A deployment to a `PROXY` or a `GROUP` answers `405` with `Allow: GET, HEAD`, the methods those repositories still answer. A token that is not authorized for the path answers `403`. An unknown repository answers `404`. The repository adds its own checks, such as the redeployment setting and the delete right, and this page does not list their statuses. The route description also lists `507` for a deploy when Ingot has not enough disk space to store the file.
 
 A request that authenticates with the session cookie and changes state must send the value of the `ingot_csrf` cookie in the `X-CSRF-Token` header, or it answers `403`. Requests with an `Authorization` header are exempt.
 
