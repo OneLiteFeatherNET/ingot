@@ -40,19 +40,7 @@ The accepted schemes are:
 
 Valkey is named first among the Redis family. Redis and Valkey are used only to publish and to receive events. They never hold locks, counters or sessions, and no server module is needed.
 
-Any other scheme stops the start with a configuration error. The error names the accepted schemes and does not print the URL, because the URL may carry a password. The `database` scheme is the exception: it does not stop the start, see the next section.
-
-## Database transport
-
-The `database:` scheme needs no broker. Each replica publishes its events as rows of a table, `cluster_event`, in its own database, and reads the rows of the other replicas. It uses the connection pool that the instance already has. Use it when the replicas run on MariaDB, MySQL or PostgreSQL and you do not want to operate a message broker.
-
-Set the URL to `database:` with nothing after the colon. `database://` is accepted as well. A host or credentials in the URL are refused, and the error does not print the URL.
-
-The transport is refused on SQLite and H2. A file database cannot be shared between instances. The instance logs one error that names the databases the transport needs, keeps the bus off and keeps serving requests.
-
-An event reaches the other replicas within one poll interval after it is stored. The interval is set with `INGOT_CLUSTER_POLL_INTERVAL_MS`, which defaults to 1000 and is raised to 200 when it is set lower. Every replica reads the table once per interval, so a short interval adds database load. A replica that starts does not apply the rows stored before it started. Rows older than five minutes are removed by one replica per five-minute window. An event larger than 16 KiB is not stored, and the log names its type.
-
-Console forwarding is off on this transport by default, because every log line would become a row. Set `INGOT_CLUSTER_CONSOLE=true` to turn it on.
+Any other scheme stops the start with a configuration error. The error names the accepted schemes and does not print the URL, because the URL may carry a password. The `database` scheme is the exception: it does not stop the start, see [Database transport](#database-transport).
 
 Example for a Kubernetes deployment, where the URL can live in a ConfigMap and the password in a Secret:
 
@@ -87,6 +75,28 @@ Each replica opens one connection that subscribes to the channel of its cluster,
 Brokers in operator mode accept no user name and password. They expect a `.creds` file that holds a user JWT and an NKEY seed. Point Ingot at that file with the system property `ingot.cluster.credentials` or the variable `INGOT_CLUSTER_CREDENTIALS`. The system property wins when both are set.
 
 The file is used only with the `nats` and `tls` schemes. With a Redis or Valkey scheme it is ignored, and the log says so. Mount the file from a Secret. Ingot does not print its contents.
+
+## NATS over TLS
+
+The `nats` scheme connects in clear text. The `tls` scheme requires TLS on the broker. Ingot uses the trust store of the Java runtime to check the broker certificate, and it has no separate trust setting for the bus. A certificate that the runtime does not trust stops the connection, and the log then says that the bus is not reachable. Use `tls` whenever credentials or console lines cross the network.
+
+Ingot publishes and receives core NATS messages on the subject `ingot.<cluster>.events`, where `<cluster>` is the cluster identifier stored in the database. Replicas of other Ingot databases on the same broker use their own subject and never see these events. The broker keeps no copy of a message. An event sent while a replica is disconnected is lost, and that replica converges through the database as described above. Broker access rules can limit who publishes to or subscribes on `ingot.*`.
+
+## Licensing
+
+The NATS client library, `jnats`, is licensed under the Apache License 2.0, and Ingot bundles it in the server image. The NATS server is also Apache 2.0 licensed, so running a broker you operate yourself adds no license obligation for Ingot.
+
+## Database transport
+
+The `database:` scheme needs no broker. Each replica publishes its events as rows of a table, `cluster_event`, in its own database, and reads the rows of the other replicas. It uses the connection pool that the instance already has. Use it when the replicas run on MariaDB, MySQL or PostgreSQL and you do not want to operate a message broker.
+
+Set the URL to `database:` with nothing after the colon. `database://` is accepted as well. A host or credentials in the URL are refused, and the error does not print the URL.
+
+The transport is refused on SQLite and H2. A file database cannot be shared between instances. The instance logs one error that names the databases the transport needs, keeps the bus off and keeps serving requests.
+
+An event reaches the other replicas within one poll interval after it is stored. The interval is set with `INGOT_CLUSTER_POLL_INTERVAL_MS`, which defaults to 1000 and is raised to 200 when it is set lower. Every replica reads the table once per interval, so a short interval adds database load. A replica that starts does not apply the rows stored before it started. Rows older than five minutes are removed by one replica per five-minute window. An event larger than 16 KiB is not stored, and the log names its type.
+
+Console forwarding is off on this transport by default, because every log line would become a row. Set `INGOT_CLUSTER_CONSOLE=true` to turn it on.
 
 ## Instance identifier
 

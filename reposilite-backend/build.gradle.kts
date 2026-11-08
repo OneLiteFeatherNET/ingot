@@ -181,6 +181,14 @@ dependencies {
     api("com.google.guava:guava:33.7.2-android")
     testImplementation("com.google.http-client:google-http-client-jackson2:$httpClient")
 
+    // NATS client for the optional cluster bus (net.onelitefeather.ingot.cluster). Apache-2.0. It brings its own Bouncy
+    // Castle build under another artifact name, which would duplicate the org.bouncycastle packages pinned above, so that
+    // one is excluded and the pinned bcprov serves the NKey signatures.
+    val jnats = "2.26.4"
+    implementation("io.nats:jnats:$jnats") {
+        exclude(group = "org.bouncycastle")
+    }
+
     val journalist = "1.0.12"
     api("com.reposilite:journalist:$journalist")
     implementation("com.reposilite:journalist-slf4j:$journalist")

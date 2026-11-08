@@ -237,7 +237,7 @@ class ClusterPlugin(
                 clock = clock,
                 log = { logger.warn(it) },
             ),
-        ) + JedisClusterTransports
+        ) + JedisClusterTransports + NatsClusterTransportFactory().let { nats -> mapOf("nats" to nats, "tls" to nats) }
 
     private fun dispatch(envelope: ClusterEnvelope) {
         handlers[envelope.type]?.forEach { it(envelope) }
