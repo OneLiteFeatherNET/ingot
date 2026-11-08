@@ -93,6 +93,25 @@ When a request arrives, Ingot does the following for the proxy:
 Maven metadata is the exception. With the default storage policy `PRIORITIZE_UPSTREAM_METADATA`, Ingot asks the remote first for `maven-metadata.xml` when the local copy is older than `metadataMaxAge` seconds. The default `metadataMaxAge` is `0`, so the remote is asked on every request for metadata. `STRICT` does not give a fully offline copy: a file that is missing locally is still requested from the mirror hosts, so do not rely on it to run without network access.
 {% endhint %}
 
+## Choose the status for upstream failures
+
+By default (`INGOT_PROXY_UPSTREAM_STATUS=legacy`) the proxy keeps the statuses Reposilite always answered. A file that is not stored locally gives `404` for any upstream failure, because the local result replaces the error. A metadata request, which asks the remote first, gives `406` when the upstream answers an error status or an HTML page, and `400` when the upstream is unreachable or times out. The message of the `400` is `Upstream request failed`.
+
+With `INGOT_PROXY_UPSTREAM_STATUS=strict` the proxy reports what went wrong, for artifacts and metadata alike:
+
+| Upstream | Client gets |
+| --- | --- |
+| Answers `404` or `410` | `404` |
+| Times out (connect or read) | `504` |
+| Unreachable, answers another error status, or answers an HTML page | `502` |
+| Stored locally | The stored file, in both modes |
+
+A group repository goes on with its next member after a `404` or a failing member, and answers with the first member that has the file. When every member fails, the group answers with the worst status, so a down member gives `502` rather than a false `404`. In `strict` an upstream `404` for a metadata file is also remembered when `resolutionCacheMaxEntries` is above `0`, within that limit.
+
+{% hint style="warning" %}
+Gradle goes to the next repository only on `404`. A `502` or `504` from a repository fails the build, so choose `strict` only when you want a failing mirror to be visible and not silently skipped. The setting and its fallbacks are listed in [Environment variables](../reference/environment-variables.md#proxy-upstream-status).
+{% endhint %}
+
 ## Keep a copy with store
 
 With `store` set to `true`, a fetched file is written to the storage of the repository, at the same path, before the client receives it. The next request for that file is served from storage.

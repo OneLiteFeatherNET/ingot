@@ -112,6 +112,17 @@ These are JVM system properties. There is no environment variable form. Pass the
 
 The S3 client also reads the standard `AWS_REGION` environment variable when a repository sets no `region`. See [Storage providers](storage-providers.md).
 
+### Proxy upstream status
+
+Read once at startup, in this order: the system property `ingot.proxy.upstreamStatus`, the environment variable `INGOT_PROXY_UPSTREAM_STATUS`, the system property `reposilite.proxy.upstreamStatus`, the environment variable `REPOSILITE_PROXY_UPSTREAM_STATUS`. The first one that is set wins. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.
+
+| Value | Meaning |
+| --- | --- |
+| `legacy` (default) | A proxy repository answers upstream failures with the statuses Reposilite always used. Existing Maven and Gradle clients keep working unchanged. |
+| `strict` | A proxy answers `504` when the upstream times out, `502` when it is unreachable, answers an error status other than `404` or `410`, or answers an HTML page, and `404` when the upstream answers `404` or `410`. |
+
+The value is compared without regard to case. Any other value stops the startup with a message that names `INGOT_PROXY_UPSTREAM_STATUS`. See [Create proxy repositories](../how-to/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
+
 ### Other system properties
 
 | System property | Default | Meaning |
