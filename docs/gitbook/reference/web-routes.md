@@ -244,6 +244,8 @@ The dashboard is a single page application. These routes answer with the bundled
 | `/account` | None. |
 | `/assets/<path>` | Bundled files. `GET` only. |
 
+The router adds no segment of its own below `/settings` and `/access`. `/settings` without a domain shows the settings hub, `/settings/login` redirects to `/access/sso`, `/settings/authentication` redirects to `/access/ldap`, and `/access` is forwarded to a page or shows the index of the Access pages on a narrow screen. See [Dashboard pages](dashboard-pages.md).
+
 All of these answer `GET` and `HEAD` except `/assets/<path>`. A path that is not in this list is not served the dashboard shell. There is no catch-all.
 
 ### A repository with the id of a dashboard route
