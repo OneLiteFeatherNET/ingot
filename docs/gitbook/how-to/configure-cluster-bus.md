@@ -62,6 +62,16 @@ Brokers in operator mode accept no user name and password. They expect a `.creds
 
 The file is used only with the `nats` and `tls` schemes. With a Redis or Valkey scheme it is ignored, and the log says so. Mount the file from a Secret. Ingot does not print its contents.
 
+## NATS over TLS
+
+The `nats` scheme connects in clear text. The `tls` scheme requires TLS on the broker. Ingot uses the trust store of the Java runtime to check the broker certificate, and it has no separate trust setting for the bus. A certificate that the runtime does not trust stops the connection, and the log then says that the bus is not reachable. Use `tls` whenever credentials or console lines cross the network.
+
+Ingot publishes and receives core NATS messages on the subject `ingot.<cluster>.events`, where `<cluster>` is the cluster identifier stored in the database. Replicas of other Ingot databases on the same broker use their own subject and never see these events. The broker keeps no copy of a message. An event sent while a replica is disconnected is lost, and that replica converges through the database as described above. Broker access rules can limit who publishes to or subscribes on `ingot.*`.
+
+## Licensing
+
+The NATS client library, `jnats`, is licensed under the Apache License 2.0, and Ingot bundles it in the server image. The NATS server is also Apache 2.0 licensed, so running a broker you operate yourself adds no license obligation for Ingot.
+
 ## Instance identifier
 
 Each replica announces itself with an identifier. It defaults to the host name, which is the pod name under Kubernetes, so the default is usually right. To set it explicitly, use `INGOT_CLUSTER_INSTANCE_ID`. Use a value that is unique among the replicas of the database.
