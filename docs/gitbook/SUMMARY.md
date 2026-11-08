@@ -86,6 +86,7 @@
 ### HTTP and web
 
 * [HTTP API overview](reference/http-api.md)
+* [API errors](reference/api-errors.md)
 * [Search filters and API](reference/search-filters-and-api.md)
 * [Web routes](reference/web-routes.md)
 * [Dashboard pages](reference/dashboard-pages.md)

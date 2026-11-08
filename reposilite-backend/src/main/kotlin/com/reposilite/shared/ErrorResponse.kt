@@ -26,6 +26,9 @@ import panda.std.asError
 /**
  * An error answer. [problems] is set only when a list was refused: one entry per problem, with the item it belongs to.
  * It is additive, so clients that read `status` and `message` keep working, and it is left out of every other answer.
+ *
+ * The answer also carries the members of RFC 9457 Problem Details: [type], [title], [detail] and [instance]. They are
+ * declared in the body on purpose: the constructor, the properties and `copy` stay exactly as plugins compiled them.
  */
 data class ErrorResponse(
     val status: Int,
@@ -34,6 +37,20 @@ data class ErrorResponse(
 ) {
 
     constructor(code: HttpStatus, message: String) : this(code.code, message)
+
+    /** A URI that identifies the kind of problem. `about:blank` means that the status code says it all. */
+    var type: String = "about:blank"
+
+    /** The path of the request this answer belongs to. It is filled in when the answer is written. */
+    var instance: String? = null
+
+    /** The reason phrase of [status]. */
+    val title: String?
+        get() = if (status == 500) "Internal Server Error" else org.eclipse.jetty.http.HttpStatus.getMessage(status)
+
+    /** Mirrors [message], which is the member existing clients read. */
+    val detail: String
+        get() = message
 
     fun updateMessage(transform: (String) -> String): ErrorResponse =
         ErrorResponse(status, transform(message), problems)
