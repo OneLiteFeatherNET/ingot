@@ -16,10 +16,20 @@
 package com.reposilite
 
 import com.reposilite.configuration.generateRequestedConfiguration
+import net.onelitefeather.ingot.deploy.UnknownDeployTargetException
+import net.onelitefeather.ingot.deploy.toStartupRefusal
 import picocli.CommandLine
+import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
-    createWithParameters(*args)?.launch()
+    try {
+        createWithParameters(*args)?.launch()
+    } catch (exception: UnknownDeployTargetException) {
+        // A refused target is an operator error, so it ends the process with one line and no stack trace.
+        val refusal = exception.toStartupRefusal()
+        System.err.println(refusal.line)
+        exitProcess(refusal.exitCode)
+    }
 }
 
 fun createWithParameters(vararg args: String): Reposilite? {

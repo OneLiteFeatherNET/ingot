@@ -51,6 +51,14 @@ System properties follow the same rules with the lower-case prefixes `ingot.loca
 | `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `REPOSILITE_LOCAL_SEARCHENGINE` |
 | `debugEnabled` | `INGOT_LOCAL_DEBUGENABLED` | `REPOSILITE_LOCAL_DEBUGENABLED` |
 
+## Deploy target
+
+The deploy target is read once at start. See [Deploy targets](deploy-targets.md) for the values, the precedence and the legacy switch.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `INGOT_TARGET` | unset, which means `all` | Deploy target of the instance. `all` serves the dashboard, the API and the repositories. `server` serves the API and the repositories only. An empty value counts as unset. Any other value stops the start. The command line option `--target` and the system property `ingot.target` take precedence over it. |
+
 ## Container variables
 
 The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
