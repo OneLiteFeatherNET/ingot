@@ -47,6 +47,8 @@ internal class ClusterFailureAggregationTest {
         val variables = buildMap {
             put("INGOT_CLUSTER_URL", "nats://hub.example:4222")
             put("INGOT_CLUSTER_INSTANCE_ID", instanceId)
+            // no running instance here: console fan-out needs the journalist of a running instance
+            put("INGOT_CLUSTER_CONSOLE", "false")
             failureSwitch?.let { put("INGOT_CLUSTER_FAILURES", it) }
         }
         val extensions = Extensions(InMemoryLogger())

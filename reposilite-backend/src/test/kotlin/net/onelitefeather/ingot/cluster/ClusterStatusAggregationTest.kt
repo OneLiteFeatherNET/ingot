@@ -73,7 +73,8 @@ internal class ClusterStatusAggregationTest {
 
     private fun startInstance(instanceId: String): Instance {
         val logger = InMemoryLogger()
-        val variables = mapOf("INGOT_CLUSTER_URL" to url, "INGOT_CLUSTER_INSTANCE_ID" to instanceId)
+        // no running instance here: console fan-out needs the journalist of a running instance
+        val variables = mapOf("INGOT_CLUSTER_URL" to url, "INGOT_CLUSTER_INSTANCE_ID" to instanceId, "INGOT_CLUSTER_CONSOLE" to "false")
         val extensions = Extensions(logger)
         val status = StatusFacade(
             testEnv = true,

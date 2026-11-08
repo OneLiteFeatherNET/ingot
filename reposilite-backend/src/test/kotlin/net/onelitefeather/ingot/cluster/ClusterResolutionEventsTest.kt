@@ -66,6 +66,8 @@ internal class ClusterResolutionEventsTest {
     private fun startInstance(instanceId: String, hooks: ClusterCacheHooks, withBus: Boolean = true): Pair<Extensions, ClusterPlugin> {
         val variables = buildMap {
             put("INGOT_CLUSTER_INSTANCE_ID", instanceId)
+            // no running instance here: console fan-out needs the journalist of a running instance
+            put("INGOT_CLUSTER_CONSOLE", "false")
             if (withBus) put("INGOT_CLUSTER_URL", "nats://hub.example:4222")
         }
         val extensions = Extensions(InMemoryLogger())
