@@ -75,6 +75,21 @@ Each replica announces itself with an identifier. It defaults to the host name, 
 
 Accepted values are `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`, in any case. Any other value stops the start and names the variable.
 
+## Cluster view in the status
+
+With a bus URL, the instance status (`GET /api/status/instance`, which the dashboard shows) gets a `cluster` section. Without a bus URL the section is absent, and the response is the same as before the bus existed.
+
+The section has two parts:
+
+* `bus` reports the connection state (`connected`, `reconnecting` or `disabled`), the time of the last message received from the bus, and the number of messages this replica published, applied and ignored. The URL is shown with `REDACTED` in place of the credentials.
+* `instances` lists this replica first, then every other replica the bus has reported on, sorted by identifier. Each entry shows its version, its last restart, its memory and threads, its failures, its health (`up`, `down` or `unknown`) and its recent samples.
+
+The cluster summary above the list follows fixed rules. Memory and threads are summed over the instances, and so are the failure counts. The uptime is the shortest one, which belongs to the most recent restart. The version is shown once when all replicas agree, and as `mixed` with the list of versions otherwise. The health is that of the worst instance. Failure lists stay per replica unless `INGOT_CLUSTER_FAILURES` is on.
+
+Each replica publishes a snapshot whenever it records one of its own status snapshots, which is every minute for the first twelve and then every hour. The stale rule applies to the entries of the other replicas. An entry is stale when its last snapshot is older than one interval. A stale entry stays in the list, marked as stale, so that a replica which stopped reporting remains visible. An entry is dropped when its last snapshot is older than three intervals.
+
+The memory and thread graphs draw one line per replica. They never add the replicas together, because each replica samples at its own moment.
+
 ## Status of this release
 
 The settings above are read and checked when the instance starts. The bus connects only through a transport that is part of the build for its scheme. When a URL names a scheme without a transport in the build, the instance logs a warning, runs without the bus, and keeps serving requests.
