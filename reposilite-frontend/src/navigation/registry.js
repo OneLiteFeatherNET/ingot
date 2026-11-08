@@ -39,6 +39,8 @@
  * Functions:
  * - visiblePages(can)            the rail pages a visitor may open, in rail order (no account page)
  * - visibleChildren(key, can)    the children of a page the visitor may open
+ * - groupedChildren(key, can)  the visible children in headed groups, as SideNavLayout takes them
+ * - sideNavOf(key)              { label, sectionLabel, indexTo } of a page for SideNavLayout
  * - firstAccessRoute(can)        the route /access opens: the first permitted landing page, or users
  * - accessTabOf(routeName)       the Access tab key of a route, including its detail routes
  * - pageByKey(key), pageLabel(key), isOverflow(key)
@@ -102,6 +104,28 @@ const visiblePages = (can) =>
 
 const visibleChildren = (key, can) => childrenOf(key).filter(child => allowedBy(child.permission, can))
 
+// Children in their groups, in the order the groups first appear: [{ heading, links: [{ key, label, to }] }].
+// A group without a visible child is left out. `to` is the router location of the child.
+const groupedChildren = (key, can) => {
+  const groups = []
+  visibleChildren(key, can).forEach(child => {
+    let group = groups.find(entry => entry.heading === child.group)
+    if (!group) {
+      group = { heading: child.group, links: [] }
+      groups.push(group)
+    }
+    group.links.push({ key: child.key, label: child.label, to: { name: child.route } })
+  })
+  return groups
+}
+
+// What SideNavLayout needs of a page except the groups: the accessible name of the navigation, the first
+// crumb and the location of the index. All three come from the entry of the page.
+const sideNavOf = (key) => {
+  const page = pageByKey(key)
+  return { label: `${page.label} sections`, sectionLabel: page.label, indexTo: { name: page.route } }
+}
+
 const firstAccessRoute = (can) => {
   const landing = visibleChildren('access', can).find(child => child.landing)
     ?? childrenOf('access').find(child => child.landing)
@@ -146,6 +170,8 @@ export {
   pageByKey,
   visiblePages,
   visibleChildren,
+  groupedChildren,
+  sideNavOf,
   firstAccessRoute,
   accessTabOf,
   pageLabel,
