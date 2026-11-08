@@ -18,6 +18,8 @@ package com.reposilite.maven
 
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.application.RepositorySettings
+import com.reposilite.plugin.api.StorageUsageFigure
+import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.filesystem.FileSystemStorageProvider
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
@@ -104,6 +106,7 @@ internal class StorageUsageService(
     private val clock: Clock,
     private val targets: () -> List<StorageTarget>,
     private val executor: Executor,
+    private val publish: (StorageUsageRefreshedEvent) -> Unit = {},
 ) {
 
     private val lock = Any()
@@ -127,12 +130,44 @@ internal class StorageUsageService(
             }
         }
 
+    /**
+     * Replaces the figures with a snapshot another instance computed. A snapshot that is not newer than the figures held
+     * here is refused, so an out-of-order delivery cannot roll the figures back. Nothing is published: a received snapshot
+     * must not be sent on again.
+     *
+     * @return true when the snapshot was applied
+     */
+    internal fun applyReceived(event: StorageUsageRefreshedEvent): Boolean {
+        val configured = targets().associateBy { it.id }
+        return synchronized(lock) {
+            if (computedAt != null && !event.computedAt.isAfter(computedAt)) {
+                return false
+            }
+            repositories = event.repositories.map { figure ->
+                val target = configured[figure.id]
+                RepositoryStorageUsage(
+                    id = figure.id,
+                    usedBytes = figure.usedBytes,
+                    quota = target?.quota,
+                    quotaBytes = target?.let { quotaBytes(it) },
+                    fileCount = figure.fileCount,
+                    storageType = target?.storageType ?: "fs",
+                    group = target?.group ?: false,
+                )
+            }
+            computedAt = event.computedAt
+            true
+        }
+    }
+
     private fun compute(): StorageUsage {
         val measured = targets().map { measure(it) }
+        val computed = clock.instant()
         synchronized(lock) {
             repositories = measured
-            computedAt = clock.instant()
+            computedAt = computed
         }
+        publish(StorageUsageRefreshedEvent(computed, measured.map { StorageUsageFigure(it.id, it.usedBytes, it.fileCount) }))
         return current()
     }
 

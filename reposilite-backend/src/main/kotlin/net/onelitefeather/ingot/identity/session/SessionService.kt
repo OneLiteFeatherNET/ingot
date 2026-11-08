@@ -19,6 +19,8 @@ package net.onelitefeather.ingot.identity.session
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
+import com.reposilite.plugin.api.Event
+import com.reposilite.plugin.api.SessionFamilyRevokedEvent
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
 import net.onelitefeather.ingot.identity.model.PrincipalKind
@@ -31,6 +33,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.Base64
+import java.util.concurrent.ConcurrentHashMap
 
 /** Everything a client receives when a session starts or is renewed. */
 data class SessionTokens(
@@ -57,7 +60,11 @@ class SessionService internal constructor(
     private val settings: Reference<LoginSettings>,
     private val clock: Clock,
     private val audit: (AuditEvent) -> Unit,
+    private val publish: (Event) -> Unit = {},
 ) {
+
+    /** Families revoked elsewhere, each mapped to the instant until which its session tokens are refused here. */
+    private val deniedFamilies = ConcurrentHashMap<String, Instant>()
 
     fun start(principal: PrincipalRecord, ip: String?, userAgent: String?): SessionTokens {
         val loginEnd = Instant.now(clock).plus(absoluteLifetime())
@@ -77,17 +84,17 @@ class SessionService internal constructor(
         }
         val familyEnd = store.familyStartedAt(presented.familyId)?.plus(absoluteLifetime()) ?: presented.createdAt.plus(absoluteLifetime())
         if (!now.isBefore(familyEnd)) {
-            store.revokeFamily(presented.familyId, now)
+            revokeFamily(presented.familyId, now)
             return null
         }
         if (presented.usedAt != null || !store.claimRefreshToken(presented.id, now)) {
-            store.revokeFamily(presented.familyId, now)
+            revokeFamily(presented.familyId, now)
             audit(AuditEvent(action = AuditAction.SESSION_REFRESH_REUSE_DETECTED, actor = actorOf(presented.principalId, ip), success = false))
             return null
         }
         val principal = activePrincipal(presented.principalId)
         if (principal == null) {
-            store.revokeFamily(presented.familyId, now)
+            revokeFamily(presented.familyId, now)
             return null
         }
         return issue(principal, familyId = presented.familyId, ip = ip, userAgent = userAgent, familyEnd = familyEnd)
@@ -99,19 +106,54 @@ class SessionService internal constructor(
             return
         }
         val record = store.findRefreshToken(RandomTokens.hash(refreshToken)) ?: return
-        store.revokeFamily(record.familyId, Instant.now(clock))
+        revokeFamily(record.familyId, Instant.now(clock))
         audit(AuditEvent(action = AuditAction.LOGOUT, actor = actorOf(record.principalId, ip)))
     }
 
     /** Ends every session of a principal, on every instance. Used when its password changes or is reset. */
     fun revokeAllSessions(principalId: Int) {
+        val families = store.activeFamilyIdsOfPrincipal(principalId)
         store.revokeAllOfPrincipal(principalId, Instant.now(clock))
+        families.forEach { family ->
+            denyFamily(family)
+            publish(SessionFamilyRevokedEvent(family))
+        }
+    }
+
+    /** Revokes a family, refuses its session tokens here at once, and announces it once the revocation is stored. */
+    private fun revokeFamily(familyId: String, at: Instant) {
+        store.revokeFamily(familyId, at)
+        denyFamily(familyId)
+        publish(SessionFamilyRevokedEvent(familyId))
     }
 
     /** The verified claims of a session token whose principal is still active, or `null`. */
     fun authenticate(sessionJwt: String): VerifiedSession? {
         val verified = signer.verify(sessionJwt) ?: return null
+        if (isDenied(verified.familyId)) {
+            return null
+        }
         return verified.takeIf { activePrincipal(it.principalId) != null }
+    }
+
+    /**
+     * Refuses the session tokens of a family that was revoked, here or on another instance. Only this instance's memory
+     * changes: nothing is written to the database and nothing is published. An entry lasts one session lifetime from now.
+     * A token of the family that exists now expires within that lifetime, and no token of a revoked family can be issued again.
+     */
+    internal fun denyFamily(familyId: String) {
+        val now = Instant.now(clock)
+        deniedFamilies.entries.removeIf { !now.isBefore(it.value) }
+        deniedFamilies[familyId] = now.plus(Duration.ofMinutes(settings.get().sessionLifetimeMinutes))
+    }
+
+    private fun isDenied(familyId: String): Boolean {
+        val until = deniedFamilies[familyId] ?: return false
+        if (Instant.now(clock).isBefore(until)) {
+            return true
+        }
+        deniedFamilies.remove(familyId, until)
+        return false
     }
 
     private fun absoluteLifetime(): Duration =

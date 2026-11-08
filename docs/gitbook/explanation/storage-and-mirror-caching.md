@@ -111,6 +111,14 @@ Deploying, deleting or saving metadata drops the entries for the directory of th
 
 The cache lives in memory, in each server process. A restart empties it. Each instance of a clustered deployment has its own cache.
 
+### Maximum age in cluster mode
+
+When a cluster bus is configured, a routing decision expires after a maximum age even if no invalidation arrived. The setting `resolutionCacheClusterMaxAgeSeconds` in the `maven` domain sets that age in seconds. A value of `0` uses the cluster default of 300 seconds. The age is measured from when the decision was recorded, and a lookup does not renew it. An expired decision is dropped, and the next request resolves the file again.
+
+Without a cluster bus the setting has no effect, so a single instance keeps the lifetime described above.
+
+With a bus, an invalidation received from another instance drops the matching entry at once. The maximum age covers the case where that message was lost.
+
 The console command `cache resolution stats [repository] [--top N]` shows the entries with the most hits. `cache resolution purge [repository]` empties the cache for one repository or for all of them.
 
 ## Metadata caching

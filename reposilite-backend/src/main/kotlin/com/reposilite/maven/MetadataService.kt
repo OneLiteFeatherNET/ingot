@@ -40,6 +40,8 @@ import com.reposilite.maven.api.Versioning
 import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.maven.api.extractReleaseVersions
 import com.reposilite.maven.api.extractSnapshotVersions
+import com.reposilite.plugin.Extensions
+import com.reposilite.plugin.api.ResolutionInvalidatedEvent
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.internalServer
 import com.reposilite.shared.notFound
@@ -62,6 +64,7 @@ internal class MetadataService(
     private val clock: Clock,
     private val journalist: Journalist,
     private val artifactIndexSink: ArtifactIndexSink,
+    private val extensions: Extensions,
 ) : Journalist {
 
     private val xml by lazy {
@@ -83,7 +86,7 @@ internal class MetadataService(
                 .mapErr { internalServer("Cannot parse metadata file") }
                 .flatMap { repository.storageProvider.putFile(gav.resolveMetadataFile(), it.inputStream()).map { _ -> it } }
                 .flatMap { repository.writeFileChecksums(gav.resolveMetadataFile(), it) }
-                .peek { repository.resolutionCache?.invalidate(gav.resolveMetadataFile()) }
+                .peek { invalidateResolution(repository, gav.resolveMetadataFile()) }
                 .map { metadata }
         }
 
@@ -297,8 +300,13 @@ internal class MetadataService(
         }
 
         repository.writeFileChecksums(metadataFile, content)
-            .peek { repository.resolutionCache?.invalidate(metadataFile) }
+            .peek { invalidateResolution(repository, metadataFile) }
             .onError { logger.warn("METADATA | Cannot rewrite checksums of $metadataFile in ${repository.name}: ${it.message}") }
+    }
+
+    private fun invalidateResolution(repository: Repository, metadataFile: Location) {
+        repository.resolutionCache?.invalidate(metadataFile)
+        extensions.emitEvent(ResolutionInvalidatedEvent(repository.name, metadataFile.toString()))
     }
 
     private fun isListedVersion(repository: Repository, artifactDirectory: Location, version: String): Boolean =
