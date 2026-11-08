@@ -44,6 +44,7 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/audit` | `audit` | Audit log. The audit events. The filters are kept in the query string. | Node `ingot.admin.audit`. | Router and Backend |
 | `/settings` and `/settings/:domain` | `settings` | Settings. The shared configuration. The optional `:domain` selects a settings domain. | Node `ingot.admin.settings`. | Router (`/settings/:domain?`) and Backend (`/settings`, `/settings/<path>`) |
 | `/settings/:domain/:collection/:entry` | `settings-entry` | Settings, one entry of a collection in a domain. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
+| `/settings/authentication` | `settings-authentication` | Redirects to `/access/ldap`. The authentication settings are edited under Access. | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/settings/<path>`) |
 | any other path (`/:pathMatch(.*)*`) | `not-found` | Not-found view, rendered by the app. | Everyone. | Router only. See [Unlisted paths](#unlisted-paths). |
 
 Rules for the "Who can open it" column:
@@ -60,7 +61,7 @@ The router runs two guards, in `reposilite-frontend/src/router/create.js` and `r
 | Guard | Applies to | Behavior |
 | --- | --- | --- |
 | Password change | Every route except `account` | While the server asks the principal for a new password, the router redirects to `account`. |
-| Admin route | Routes whose meta marks them as admin pages (`manager: true`): `dashboard`, `analytics`, all `access-*` routes, `tokens`, `token-new`, `token`, `console`, `maintenance`, `audit`, `settings`, `settings-entry` | Waits until the session is known. A user with the node goes in. An anonymous visitor stays on the URL and sees the prompt **Sign in to open** the section, with a **Sign in** button, and the sign-in dialog opens. A signed-in user without the node is redirected to `overview` with the notice "You do not have access to that page". |
+| Admin route | Routes whose meta marks them as admin pages (`manager: true`): `dashboard`, `analytics`, all `access-*` routes, `tokens`, `token-new`, `token`, `console`, `maintenance`, `audit`, `settings`, `settings-entry`, `settings-authentication` | Waits until the session is known. A user with the node goes in. An anonymous visitor stays on the URL and sees the prompt **Sign in to open** the section, with a **Sign in** button, and the sign-in dialog opens. A signed-in user without the node is redirected to `overview` with the notice "You do not have access to that page". |
 
 The `account` route is not an admin route. The sign-in prompt for it comes from the page component `reposilite-frontend/src/pages/IndexPage.vue`, not from the router guard.
 
@@ -117,7 +118,7 @@ A path can be in the backend list but not in the router. The backend accepts any
 | `/browse`, `/browse/<path>` | Yes | Yes (one pattern) |
 | `/search`, `/account`, `/dashboard`, `/analytics`, `/console`, `/maintenance`, `/audit` | Yes | Yes |
 | `/tokens`, `/tokens/{name}` | Yes | Yes (`tokens`, `token-new`, `token`; all redirects) |
-| `/settings`, `/settings/<path>` | Yes | Yes (`settings` takes none or one segment below `/settings`, `settings-entry` takes three) |
+| `/settings`, `/settings/<path>` | Yes | Yes (`settings` takes none or one segment below `/settings`, `settings-entry` takes three, `settings-authentication` redirects `authentication`) |
 | `/access`, `/access/<path>` | Yes | Yes (`access` and eight routes below it) |
 | `/index.html`, `/assets/<path>` | Served, but not in `APP_ROUTES` | No |
 | `/:pathMatch(.*)*` | No | Yes (`not-found`) |

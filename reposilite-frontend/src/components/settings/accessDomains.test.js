@@ -38,7 +38,7 @@ describe('accessDomains', () => {
     expect(settingsTabDomains(['login'])).toEqual([])
   })
 
-  it('keeps the tab of the authentication domain, because its card is what the tab shows', () => {
-    expect(settingsTabDomains(['maven', 'authentication', 'login'])).toEqual(['maven', 'authentication'])
+  it('takes the authentication domain out of the tabs, because it is edited under Access', () => {
+    expect(settingsTabDomains(['maven', 'authentication', 'login'])).toEqual(['maven'])
   })
 })

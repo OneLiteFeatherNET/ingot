@@ -174,6 +174,14 @@ describe('access and the old token routes', () => {
     expect(router.currentRoute.value.fullPath).toBe('/access/users')
   })
 
+  it('redirects /settings/authentication to the LDAP page under Access', async () => {
+    const router = makeRouter()
+
+    await router.push('/settings/authentication')
+
+    expect(router.currentRoute.value.fullPath, 'the authentication settings are edited under Access now').toBe('/access/ldap')
+  })
+
   it('redirects /tokens to the machine accounts', async () => {
     const router = makeRouter()
 
