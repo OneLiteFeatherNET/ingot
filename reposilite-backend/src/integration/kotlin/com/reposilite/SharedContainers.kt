@@ -33,6 +33,17 @@ internal object SharedContainers {
 
     const val FLOCI_PORT = 4566
 
+    /** Valkey as the cluster bus. Only publish and subscribe run against it, so no module or persistence is needed. */
+    val valkey: GenericContainer<*> by lazy {
+        GenericContainer(DockerImageName.parse(VALKEY_IMAGE))
+            .withExposedPorts(VALKEY_PORT)
+            .waitingFor(Wait.forListeningPort())
+            .also { it.start() }
+    }
+
+    const val VALKEY_IMAGE = "valkey/valkey:8.1.11-alpine"
+    const val VALKEY_PORT = 6379
+
 }
 
 /** Endpoint of the shared Floci instance as seen from the test JVM. */
