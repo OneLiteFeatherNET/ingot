@@ -125,6 +125,14 @@ internal class UpstreamStatusLegacyTest : UpstreamStatusSpecification() {
         assertThat(statusOf(metadata("boom"))).describedAs("metadata status of an unexpected exception").isEqualTo(500)
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvSource("refused", "slow")
+    fun `should answer 400 with a generic message that holds no class name or exception text`(repository: String) {
+        val message = errorOf(metadata(repository)).message
+
+        assertThat(message).describedAs("message of $repository").contains("Upstream request failed").doesNotContain("java.", "Exception")
+    }
+
     @Test
     fun `should record no missing metadata entry when the upstream answers 404`() {
         // when: the metadata file is requested and the upstream answers 404
