@@ -17,16 +17,20 @@
 package net.onelitefeather.ingot.cluster
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.configuration.ConfigurationFacade
+import com.reposilite.maven.MavenFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
-import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
+import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.SessionFamilyRevokedEvent
+import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.plugin.api.TokenStateChangedEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.status.FailureFacade
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import java.time.Clock
 import java.time.Instant
@@ -53,6 +57,7 @@ import java.util.concurrent.CopyOnWriteArrayList
         "audit",
         "local-configuration",
         "login",
+        "failure",
     ],
 )
 class ClusterPlugin(
@@ -61,6 +66,8 @@ class ClusterPlugin(
     /** Replaces the lookup of the cluster identifier in the configuration table, for tests. */
     private val clusterIdentifier: (() -> String)? = null,
     private val clock: Clock = Clock.systemUTC(),
+    /** Replaces the hand-over of a received usage snapshot to the maven plugin, for tests. */
+    private val storageUsage: ((StorageUsageRefreshedEvent) -> Unit)? = null,
 ) : ReposilitePlugin() {
 
     internal val counters = ClusterCounters()
@@ -94,6 +101,14 @@ class ClusterPlugin(
         val transport = factory.open(url, settings)
         registerInvalidations()
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
+        onReceived(ClusterEventType.STORAGE_USAGE) { envelope ->
+            StorageUsageMessage.fromPayload(envelope.payload)?.let { applyStorageUsage(it) }
+        }
+        val remoteFailures = if (settings.failures) {
+            RemoteFailures().also { remote -> onReceived(ClusterEventType.FAILURE_RECORDED) { remote.accept(it) } }
+        } else {
+            null
+        }
         transport.subscribe { raw -> receiver.accept(raw)?.let { dispatch(it) } }
 
         val outbox = ClusterOutbox(OUTBOX_CAPACITY)
@@ -108,6 +123,10 @@ class ClusterPlugin(
         event { event: SessionFamilyRevokedEvent ->
             publish(outbox, identifier, settings.instanceId, ClusterEventType.SESSION_REVOKED, mapOf("family" to event.familyId))
         }
+        event { event: StorageUsageRefreshedEvent ->
+            publishPayload(outbox, identifier, settings.instanceId, ClusterEventType.STORAGE_USAGE, StorageUsageMessage.toPayload(event))
+        }
+        remoteFailures?.let { aggregateFailures(outbox, identifier, settings.instanceId, it) }
         event { _: ReposiliteDisposeEvent ->
             outbox.close()
             transport.close()
@@ -148,6 +167,29 @@ class ClusterPlugin(
         handlers[envelope.type]?.forEach { it(envelope) }
     }
 
+    /** Publishes each failure this instance records, and merges the ones the other instances published into the failure list. */
+    private fun aggregateFailures(outbox: ClusterOutbox, cluster: String, origin: String, remote: RemoteFailures) {
+        val failures = facade<FailureFacade>()
+        failures.mergeRemote { remote.snapshot() }
+        failures.onRecorded { record ->
+            val payload = payloads.createObjectNode()
+                .put("source", record.source)
+                .put("type", record.type)
+            record.message?.let { payload.put("message", it) }
+            publishPayload(outbox, cluster, origin, ClusterEventType.FAILURE_RECORDED, payload)
+        }
+    }
+
+    /** Hands a received snapshot to the maven plugin, which keeps it in place of its own figures. */
+    private fun applyStorageUsage(event: StorageUsageRefreshedEvent) {
+        val receiver = storageUsage
+        if (receiver != null) {
+            receiver(event)
+        } else {
+            facade<MavenFacade>().applyReceivedStorageUsage(event)
+        }
+    }
+
     private fun publish(
         outbox: ClusterOutbox,
         cluster: String,
@@ -157,6 +199,16 @@ class ClusterPlugin(
     ) {
         val payload = payloads.createObjectNode()
         fields.forEach { (name, value) -> payload.put(name, value) }
+        publishPayload(outbox, cluster, origin, type, payload)
+    }
+
+    private fun publishPayload(
+        outbox: ClusterOutbox,
+        cluster: String,
+        origin: String,
+        type: ClusterEventType,
+        payload: ObjectNode,
+    ) {
         val envelope = ClusterEnvelope(type = type, cluster = cluster, origin = origin, at = Instant.now(clock), payload = payload)
         outbox.offer(ClusterEnvelopeCodec.encode(envelope))
         counters.countPublished()

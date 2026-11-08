@@ -75,6 +75,16 @@ Each replica announces itself with an identifier. It defaults to the host name, 
 
 Accepted values are `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`, in any case. Any other value stops the start and names the variable.
 
+## Failure aggregation
+
+With `INGOT_CLUSTER_FAILURES` set to `true` and a bus URL, each replica publishes the failures it records. The failure list of every replica then shows the failures of the other replicas as well, merged in memory when the list is read. Without the switch, nothing is published and each replica lists only its own failures.
+
+* The merged failures live in memory. A restart clears them, as it clears the local list.
+* A stack trace stays with the replica that recorded it. The other replicas show the source, the exception type and the message.
+* The message of a failure crosses the bus, so anyone who can read the bus can read it. Limit the broker access rules to the replicas.
+* Clearing the failures on one replica does not clear the failures of the others.
+* The failure count in the status of a replica counts only the failures that replica recorded itself. The console command `failures` lists only the failures of the replica it runs on.
+
 ## Status of this release
 
 The settings above are read and checked when the instance starts. The bus connects only through a transport that is part of the build for its scheme. When a URL names a scheme without a transport in the build, the instance logs a warning, runs without the bus, and keeps serving requests.
