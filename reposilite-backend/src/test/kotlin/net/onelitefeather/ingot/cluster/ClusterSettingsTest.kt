@@ -67,6 +67,18 @@ internal class ClusterSettingsTest {
     }
 
     @Test
+    fun `the instance system property takes precedence over the variable and the host name`() {
+        val settings = ClusterSettings.read(
+            sources(
+                properties = mapOf("ingot.cluster.instance" to "from-property"),
+                variables = mapOf("INGOT_CLUSTER_INSTANCE_ID" to "from-variable"),
+            )
+        )
+
+        assertThat(settings.instanceId).isEqualTo("from-property")
+    }
+
+    @Test
     fun `no url in any source leaves the bus unconfigured`() {
         assertThat(ClusterSettings.read(sources()).url).isNull()
     }

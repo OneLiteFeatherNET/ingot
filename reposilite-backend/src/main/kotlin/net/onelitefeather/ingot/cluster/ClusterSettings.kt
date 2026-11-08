@@ -50,7 +50,8 @@ data class ClusterSources(
  *
  * The bus URL comes from the system property `ingot.cluster.url`, then `INGOT_CLUSTER_URL`, then the legacy
  * `REPOSILITE_CLUSTER_URL`. A password the URL does not carry comes from `INGOT_CLUSTER_PASSWORD`, then
- * `REPOSILITE_CLUSTER_PASSWORD`. The NATS credentials file comes from `ingot.cluster.credentials`, then
+ * `REPOSILITE_CLUSTER_PASSWORD`. The instance identifier comes from the system property `ingot.cluster.instance`, then
+ * `INGOT_CLUSTER_INSTANCE_ID`, then the host name. The NATS credentials file comes from `ingot.cluster.credentials`, then
  * `INGOT_CLUSTER_CREDENTIALS`. Only the path is read here; its contents are never read by this class.
  */
 data class ClusterSettings(
@@ -120,7 +121,10 @@ data class ClusterSettings(
             return ClusterSettings(
                 url = resolvedUrl,
                 credentialsFile = credentialsFile,
-                instanceId = firstDefined({ sources.variable("INGOT_CLUSTER_INSTANCE_ID") }) ?: sources.hostName(),
+                instanceId = firstDefined(
+                    { sources.property("ingot.cluster.instance") },
+                    { sources.variable("INGOT_CLUSTER_INSTANCE_ID") },
+                ) ?: sources.hostName(),
                 console = booleanOf(
                     "INGOT_CLUSTER_CONSOLE",
                     sources.variable("INGOT_CLUSTER_CONSOLE"),
