@@ -125,6 +125,8 @@ scheme is configured, so an instance without a URL never touches a client librar
 - **Licensing:** Valkey is BSD-3-Clause. Redis 8 is distributed under RSALv2, SSPLv1 or AGPLv3. The change uses only the plain
   publish and subscribe commands, so either server works with the same code. The documentation names Valkey first. The server
   terms are re-checked before the release.
+- **Database** (`database:`, `database://`): no client library. It uses the connection pool the instance already has, and its
+  table and polling are described in decision 15.
 - Client versions are pinned at implementation time, at least two weeks old, as the repository's Renovate policy requires.
 
 Redis and Valkey are accepted as transports only. This supersedes the HA design's statement that Redis has no remaining niche
@@ -204,8 +206,8 @@ The transport reconnects with exponential backoff from one second to sixty secon
 function that takes the clock and the attempt number, so tests cover it without sleeping. The state change is logged once per
 transition. The outbound queue is bounded, so an outage cannot grow memory.
 
-Status output reports the state (connected, reconnecting, disabled), the last received event time, and the counts of published,
-applied and ignored events. The URL is shown with its credentials replaced.
+Status output reports the transport (`nats`, `redis`, `valkey` or `database`), the state (connected, reconnecting, disabled), the
+last received event time, and the counts of published, applied and ignored events. The URL is shown with its credentials replaced.
 
 ### 13. Configuration and credentials
 
@@ -214,10 +216,12 @@ Bus settings are instance settings, so they belong to the local configuration ra
 | Setting | Source |
 |---|---|
 | Bus URL | `ingot.cluster.url`, then `INGOT_CLUSTER_URL`, then `REPOSILITE_CLUSTER_URL` |
+| Database transport URL | `INGOT_CLUSTER_URL=database:` (or `database://`), with no host and no credentials. Uses the instance's own database. Refused on SQLite and H2 (decision 15) |
+| Poll interval, database transport only | `INGOT_CLUSTER_POLL_INTERVAL_MS`, default 1000, raised to 200 when lower |
 | Password, when the URL has none | `INGOT_CLUSTER_PASSWORD`, then `REPOSILITE_CLUSTER_PASSWORD`, so that the URL can live in a ConfigMap and the password in a Secret |
 | NATS credentials file, NATS schemes only | `ingot.cluster.credentials`, then `INGOT_CLUSTER_CREDENTIALS`: path to a `.creds` file (user JWT plus NKEY seed) for brokers in operator (decentralised JWT) mode, which accept no user and password. Mounted from a Secret. Ignored with a warning for Redis and Valkey |
 | Instance identifier | `INGOT_CLUSTER_INSTANCE_ID`, default the host name, which is the pod name under Kubernetes |
-| Console fan-out | `INGOT_CLUSTER_CONSOLE`, default on when a bus is configured |
+| Console fan-out | `INGOT_CLUSTER_CONSOLE`, default on when a bus is configured, and off on the database transport (decision 15) |
 | Failure aggregation | `INGOT_CLUSTER_FAILURES`, default off |
 
 These variables are read by the cluster plugin's own factory, not by the local configuration factory, so the `INGOT_LOCAL_` namespace
@@ -234,6 +238,62 @@ lists the other plugins, including `net.onelitefeather.ingot.identity.login.appl
 
 The plugin registers its event listeners and its subscriptions during initialisation. Without a URL, it registers nothing that
 does work at runtime.
+
+### 15. Database transport
+
+The `database:` scheme (also `database://`) uses the database the instance already has. It needs no host, port or credentials,
+and it uses the Exposed connection pool that every repository uses. It serves deployments that run several instances on MariaDB,
+MySQL or PostgreSQL and do not want to operate a message broker. A file database cannot be shared by instances, so on SQLite or
+H2 the scheme is refused with one error, the bus stays off and the instance keeps running. A `database:` URL with a host or with
+credentials is refused the same way, and the error does not echo the URL.
+
+Storage: one table, `cluster_event`, is created with `SchemaUtils.create` in the transport's initialisation, as the repositories
+create `scheduled_job_claim` and the other tables. Its columns are an auto-increment `id` (primary key), `cluster` (the cluster
+identifier), `origin` (the publishing instance), `created_at` (epoch milliseconds from the publisher's injected clock) and
+`payload` (text, the serialised envelope). Publishing is an insert, made on the bus's outbound thread of decision 10 and 12, so
+neither logging nor a request waits for it.
+
+Polling: each instance reads `cluster_event` every poll interval, `INGOT_CLUSTER_POLL_INTERVAL_MS` (default 1000, raised to 200 with
+one warning when lower). It reads rows with an id above its watermark and skips rows from its own origin. The watermark starts at
+the largest id present at connect, so stored history is never replayed.
+
+Ordering: auto-increment values are assigned at insert, not at commit. A row with a lower id can therefore become visible after a
+row with a higher id, and a watermark alone would skip it. Each poll also re-reads the last 100 ids below the watermark and delivers
+only the ids not yet delivered, which are kept in a bounded set for that window. A transaction that stays open while 100 newer rows
+commit is missed, and the time bounds of the cluster-coordination spec cover that case. Ordering
+relies only on the id, never on time, so clock skew between instances changes when a row is removed, not the order in which rows
+are read.
+
+Payload limit: the envelope stored in `payload` is limited to 16 KiB. This change sets that limit, because no limit was defined
+before. A larger envelope is not inserted, is counted as dropped and is logged once.
+
+Retention: rows older than five minutes are deleted. The window is a fixed value in this change, not a setting. At most one instance
+per window runs the deletion. Each window is a `ScheduledJobClaims` claim with the key `cluster-event-prune:<window index>`, where the
+window index is the epoch milliseconds of the claiming instance divided by the window length, and the instance whose claim succeeds
+deletes the rows older than the window. The claim was chosen over an idempotent delete by every instance because concurrent range
+deletes on one index take overlapping gap locks in InnoDB and can deadlock. Reusing the claim adds no mechanism. A window whose claimant
+stops early is caught up by the next window, since the delete removes everything older than the cut-off. Instances with skewed clocks
+can compute different window indexes near a boundary and both delete; the delete is idempotent, so the result is the same.
+
+Console: fan-out is off by default on this transport, because every log line would become a row. `INGOT_CLUSTER_CONSOLE=true`
+enables it explicitly. All other events stay on.
+
+Expectations: an event reaches the other instances within one poll interval after its insert commits. Database load per instance is
+one indexed range query per poll, one insert per published event and one claim per window. The table size is bounded by the event rate
+multiplied by the retention window.
+
+Failure: a failing poll or insert counts as a broker disconnect. It uses the same reconnect backoff, the same bounded outbound queue
+and the same fallback to database-authoritative behaviour. The status output shows the transport as `database`.
+
+Alternatives considered:
+
+- **PostgreSQL LISTEN/NOTIFY.** It wakes readers without a poll, but it exists only on PostgreSQL and needs a dedicated connection
+  outside the pool. It stays a possible later optimisation for PostgreSQL. Polling remains the portable path for MariaDB, MySQL and
+  PostgreSQL alike.
+- **Peer-to-peer HTTP, or JGroups over a Kubernetes headless service.** Both need discovery and open ports between pods. The bus is
+  configured by a URL only, and discovery is a non-goal of this change.
+- **Database polling (chosen).** Every multi-instance deployment already shares the database. The transport needs no extra
+  infrastructure and no client library, and one code path serves all supported databases.
 
 ## Risks / Trade-offs
 
@@ -252,6 +312,9 @@ does work at runtime.
 - **Public event types become a compatibility promise.** Mitigation: experimental marking until one release has shipped, and
   additive changes only.
 - **Blocking thread per subscription.** Mitigation: one subscription per instance, a dedicated thread, and the reconnect loop above.
+- **Database load and table growth (database transport).** Each poll is one range query on the primary key, and every event is a
+  row. Mitigation: the poll interval setting, console fan-out off by default on this transport, the payload limit and the retention
+  window of decision 15.
 
 ## Migration Plan
 
@@ -278,6 +341,10 @@ timeout, and no test sleeps.
 - **Two-instance tests** against one MariaDB or PostgreSQL database and one bus: a token disabled on one instance is refused on the
   other, a logout ends the session on the other, a saved configuration applies before the next poll, and console lines from one
   instance appear in a session on the other, each once.
+- **Database transport**: integration tests against the MariaDB and PostgreSQL containers in `SharedContainers`, with two instances
+  on their own database names. They cover a publish and receive round trip within a bounded latch, no replay of stored rows on
+  connect, removal after the retention window, and the refusal on SQLite and H2 with the instance still serving requests. Unit
+  tests cover the poll interval clamp, the re-read of late ids, the retention cut-off and the console default.
 - **Bound tests**: each fallback bound is tested with its event dropped, using the injected clock and the scheduler the plugin
   receives, not wall time.
 

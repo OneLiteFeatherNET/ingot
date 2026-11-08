@@ -18,8 +18,12 @@ pluggable transport. Without a configured URL it does nothing.
   and the legacy `REPOSILITE_CLUSTER_URL` as fallback. Without the URL the new `cluster` plugin starts no thread, opens no
   connection and emits no event. Behaviour is identical to today.
 - Accepted schemes: `nats://` and `tls://` for NATS; `redis://`, `rediss://`, `valkey://` and `valkeys://` for Redis and
-  Valkey. Redis and Valkey are transports only, over plain publish and subscribe. They never hold locks, counters or
-  revisions, and the change needs no server module.
+  Valkey; `database:` (also `database://`) for the database transport. Redis and Valkey are transports only, over plain
+  publish and subscribe. They never hold locks, counters or revisions, and the change needs no server module.
+- A database transport for clusters without a message broker. Every multi-instance deployment already shares one MariaDB,
+  MySQL or PostgreSQL database, and the transport uses that connection. Instances insert their events as rows of one new table,
+  `cluster_event`, and poll it every `INGOT_CLUSTER_POLL_INTERVAL_MS` (default 1000 ms). It needs no broker and no new
+  dependency. On SQLite and H2 the scheme is refused and the bus stays off, because a file database cannot be shared by instances.
 - Best-effort events for: resolution cache invalidation, shared configuration change hints, token state changes that drop
   cached credentials, session family revocation, console log fan-out and storage usage snapshots. Failure aggregation is
   optional and off by default.
@@ -99,11 +103,14 @@ its code is not needed, so it must not be re-applied.
 - Dashboard: `InstanceStatusPanel.vue` and `ResourceTrends.vue` in `reposilite-frontend` for the cluster summary, the per-instance
   list and the per-instance graph series. The status snapshot code in `com.reposilite.status` gets a publish hook and a cluster view.
 - Dependencies: the NATS client (`io.nats:jnats`, Apache 2.0) and Jedis (MIT) in `reposilite-backend`. A transport class loads
-  only when its scheme is configured.
+  only when its scheme is configured. The database transport adds no dependency.
 - Image: additional jars for the two clients and their pool. Paths, port, volume, entrypoint and environment variables do not change.
 - Database: one row in the existing configuration table holds the cluster identifier, created through
-  `ConfigurationFacade.findOrCreateConfiguration`, as `jwt-signing-key` and `entity-tag-key` are. No table is added.
+  `ConfigurationFacade.findOrCreateConfiguration`, as `jwt-signing-key` and `entity-tag-key` are. One table, `cluster_event`,
+  is added for the database transport only. It is created when that transport is selected, and its rows are pruned through the
+  existing `ScheduledJobClaims`, which gets no new table.
 - Docs: one new how-to guide, and the pages named under What Changes.
 - Tests: unit tests with an in-memory transport, and integration tests against NATS and Valkey containers added to the
   existing per-JVM singleton `SharedContainers` (`reposilite-backend/src/integration/kotlin/com/reposilite/SharedContainers.kt`),
-  beside its MariaDB, PostgreSQL and Floci containers.
+  beside its MariaDB, PostgreSQL and Floci containers. The database transport adds integration tests against the MariaDB and
+  PostgreSQL containers of the same object, with no broker container.
