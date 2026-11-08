@@ -185,6 +185,47 @@ jobs:
           set -euo pipefail
           gh release upload "$TAG" "reposilite-backend/build/libs/ingot-${VERSION}.jar" --clobber
 
+  # Publishes the Helm chart as OCI on releases only, and only after the container job of the
+  # same release pushed the images the chart deploys. Release Please writes the release version
+  # into Chart.yaml, so the chart carries the version of those images.
+  chart:
+    name: "Helm chart"
+    needs: [ release-please, container ]
+    if: >-
+      always() && !cancelled()
+      && needs.release-please.outputs.release_created == 'true'
+      && needs.container.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+
+      - name: "Set up Helm"
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
+        with:
+          version: v4.3.0
+
+      - name: "Package the chart"
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          helm package charts/ingot --destination "$RUNNER_TEMP/chart"
+          test -f "$RUNNER_TEMP/chart/ingot-${VERSION}.tgz"
+
+      - name: "Log in to the GitHub Container Registry"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: "Push the chart"
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: helm push "$RUNNER_TEMP/chart/ingot-${VERSION}.tgz" oci://ghcr.io/onelitefeathernet/charts
+
   # Container images go to the GitHub Container Registry. The OneLiteFeather
   # docker-publish reusable targets Harbor and exposes no platforms input, so this is a
   # repository specific job. Publishing to ghcr.io needs no registry secret: the built in
