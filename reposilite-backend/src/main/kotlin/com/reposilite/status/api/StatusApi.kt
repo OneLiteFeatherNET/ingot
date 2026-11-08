@@ -69,7 +69,9 @@ data class ClusterBusResponse(
     val lastReceivedAt: Long? = null,
     val published: Long,
     val applied: Long,
-    val ignored: Long
+    val ignored: Long,
+    /** Envelopes the transport did not send because they exceed its limits, absent on transports without such a limit */
+    val dropped: Long? = null
 )
 
 data class StatusSnapshot(

@@ -127,7 +127,7 @@ class ClusterPlugin(
 
         val store = RemoteInstanceStore(clock)
         onReceived(ClusterEventType.STATUS_SNAPSHOT) { store.accept(it) }
-        attachStatus(ClusterStatusView(settings.instanceId, url, counters, store) { transport.connectionState() })
+        attachStatus(ClusterStatusView(settings.instanceId, url, counters, store, { transport.droppedCount() }) { transport.connectionState() })
         val receiver = ClusterReceiver(identifier, settings.instanceId, counters)
         onReceived(ClusterEventType.STORAGE_USAGE) { envelope ->
             StorageUsageMessage.fromPayload(envelope.payload)?.let { applyStorageUsage(it) }

@@ -31,4 +31,10 @@ interface ClusterTransport : AutoCloseable {
      * The state of the connection, shown in the status output. A transport that cannot lose its connection keeps the default.
      */
     fun connectionState(): ConnectionState = ConnectionState.CONNECTED
+
+    /**
+     * How many envelopes this transport did not send because they exceed its limits, shown in the status output. A
+     * transport without such a limit keeps the default, and the status then has no dropped count.
+     */
+    fun droppedCount(): Long? = null
 }

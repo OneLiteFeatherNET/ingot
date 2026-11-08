@@ -76,6 +76,8 @@ internal class DatabaseClusterTransport(
     val dropped: Long
         get() = droppedCount.get()
 
+    override fun droppedCount(): Long = dropped
+
     override fun publish(message: String) {
         val envelope = requireNotNull((ClusterEnvelopeCodec.decode(message) as? ClusterDecodeResult.Accepted)?.envelope) {
             "Cluster | only an envelope can be published on the database transport"

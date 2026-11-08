@@ -31,6 +31,7 @@ internal class ClusterStatusView(
     private val url: ClusterBusUrl,
     private val counters: ClusterCounters,
     private val store: RemoteInstanceStore,
+    private val dropped: () -> Long? = { null },
     private val state: () -> ConnectionState,
 ) : ClusterStatusSource {
 
@@ -44,6 +45,7 @@ internal class ClusterStatusView(
                 published = counters.published,
                 applied = counters.applied,
                 ignored = counters.ignored,
+                dropped = dropped(),
             ),
             instances = listOf(local.toResponse(instanceId, stale = false)) +
                 store.instances().filter { it.id != instanceId },
