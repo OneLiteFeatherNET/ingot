@@ -60,7 +60,7 @@ internal class DatabaseTransportFactory(
             claims = claims(current, clock),
             clock = clock,
             scheduler = scheduler,
-            pollIntervalMillis = POLL_INTERVAL_MILLIS,
+            pollIntervalMillis = settings.pollIntervalMillis,
             instanceId = settings.instanceId,
             log = log,
         )
@@ -68,8 +68,5 @@ internal class DatabaseTransportFactory(
 
     private companion object {
         val SHARED_VENDORS = setOf("mariadb", "mysql", "postgresql")
-
-        // Replaced by the configured poll interval once it is read from the settings.
-        const val POLL_INTERVAL_MILLIS = 1000L
     }
 }

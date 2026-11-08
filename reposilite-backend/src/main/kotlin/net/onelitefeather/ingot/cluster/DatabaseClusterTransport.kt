@@ -48,6 +48,7 @@ internal class DatabaseClusterTransport(
     private val pollLock = Any()
     private var watermark = 0L
     private var started = false
+    private val delivered = HashSet<Long>()
     private var lastPrunedWindow: Long? = null
     private var poller: AutoCloseable? = null
 
@@ -118,12 +119,18 @@ internal class DatabaseClusterTransport(
             try {
                 if (!started) {
                     watermark = store.maxId()
+                    // Rows already stored in the window are history: they count as delivered, so they are never applied.
+                    store.since(watermark - REREAD_IDS).forEach { delivered += it.id }
                     started = true
                 }
-                for (row in store.since(watermark)) {
-                    watermark = row.id
+                // Ids are assigned at insert, not at commit, so a lower id can become visible after a higher one. The window
+                // below the watermark is read again, and the delivered set keeps each id to one delivery.
+                for (row in store.since(watermark - REREAD_IDS)) {
+                    if (!delivered.add(row.id)) continue
+                    if (row.id > watermark) watermark = row.id
                     if (row.origin != instanceId) deliver(row.payload)
                 }
+                delivered.removeIf { it <= watermark - REREAD_IDS }
                 pruneIfDue(now)
                 recordSuccess()
             } catch (exception: Exception) {
@@ -148,7 +155,7 @@ internal class DatabaseClusterTransport(
         lastPrunedWindow = window
         try {
             if (claims.claim("$PRUNE_KEY_PREFIX$window")) {
-                store.deleteCreatedBefore(now - RETENTION_MILLIS)
+                store.deleteCreatedBefore(retentionCutoffMillis(now))
             }
         } catch (exception: Exception) {
             log("Cluster | removing old cluster events failed: ${exception.javaClass.simpleName}")
@@ -190,6 +197,13 @@ internal class DatabaseClusterTransport(
     private companion object {
         const val PRUNE_KEY_PREFIX = "cluster-event-prune:"
         const val PRUNE_WINDOW_MILLIS = 5 * 60 * 1000L
-        const val RETENTION_MILLIS = 5 * 60 * 1000L
+
+        /** How many ids below the watermark every poll reads again. */
+        const val REREAD_IDS = 100L
     }
 }
+
+private const val RETENTION_MILLIS = 5 * 60 * 1000L
+
+/** Rows created before this instant are removed. A pure function of the clock reading, so tests need no database. */
+internal fun retentionCutoffMillis(nowMillis: Long): Long = nowMillis - RETENTION_MILLIS
