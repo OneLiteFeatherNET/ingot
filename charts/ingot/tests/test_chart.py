@@ -138,6 +138,29 @@ class ChartRenderTest(unittest.TestCase):
         services = of_kind(render(split_values()), "Service")
         self.assertEqual(2, len(services), "split mode must render a server and a dashboard Service")
 
+    def test_split_server_keeps_the_all_in_one_selector(self):
+        all_in_one = named(render(), "Deployment", SERVER)["spec"]["selector"]["matchLabels"]
+        split = named(render(split_values()), "Deployment", SERVER)["spec"]["selector"]["matchLabels"]
+        self.assertEqual(
+            all_in_one,
+            split,
+            "the server selector is immutable, so moving an all-in-one release to split must keep it",
+        )
+
+    def test_split_server_service_does_not_select_dashboard_pods(self):
+        manifests = render(split_values())
+        selector = named(manifests, "Service", SERVER)["spec"]["selector"]
+        dashboard_labels = named(manifests, "Deployment", DASHBOARD)["spec"]["template"]["metadata"]["labels"]
+        selects_dashboard = all(dashboard_labels.get(key) == value for key, value in selector.items())
+        self.assertFalse(selects_dashboard, "the server Service must not route traffic to dashboard pods")
+
+    def test_split_dashboard_service_does_not_select_server_pods(self):
+        manifests = render(split_values())
+        selector = named(manifests, "Service", DASHBOARD)["spec"]["selector"]
+        server_labels = named(manifests, "Deployment", SERVER)["spec"]["template"]["metadata"]["labels"]
+        selects_server = all(server_labels.get(key) == value for key, value in selector.items())
+        self.assertFalse(selects_server, "the dashboard Service must not route traffic to server pods")
+
     def test_split_server_sets_ingot_target_to_server(self):
         deployment = named(render(split_values()), "Deployment", SERVER)
         self.assertEqual(
