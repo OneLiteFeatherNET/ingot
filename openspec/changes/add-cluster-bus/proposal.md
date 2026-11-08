@@ -26,6 +26,9 @@ pluggable transport. Without a configured URL it does nothing.
 - The database stays authoritative. A lost event delays convergence until the existing polling (shared configuration,
   ten seconds) or a time bound takes over. The resolution cache gains a maximum age, which applies only when the bus is
   configured.
+- Aggregated instance status: with a bus configured, the dashboard status cards and the memory and thread graphs show a
+  cluster summary and one entry or series per instance, instead of only the instance that answered. The status output gains
+  a cluster view, and its existing fields keep their meaning. Without a bus nothing changes.
 - Single-runner jobs (cleanup policy runs and the audit retention purge) keep using the existing `ScheduledJobClaims` on
   origin/main. The bus does not take part in those claims, and this change adds no claim table.
 - Add new core events on the existing extension mechanism for the state the cluster plugin must observe. Existing
@@ -93,6 +96,8 @@ its code is not needed, so it must not be re-applied.
   `ResolutionCache` is `internal`. Small hooks in `auth`, `maven`, `token`, `console`, `configuration`, `cleanup` and `audit`
   under `com.reposilite.*`, and in `identity` under `net.onelitefeather.ingot.identity`. Additive event types in
   `com.reposilite.plugin.api`.
+- Dashboard: `InstanceStatusPanel.vue` and `ResourceTrends.vue` in `reposilite-frontend` for the cluster summary, the per-instance
+  list and the per-instance graph series. The status snapshot code in `com.reposilite.status` gets a publish hook and a cluster view.
 - Dependencies: the NATS client (`io.nats:jnats`, Apache 2.0) and Jedis (MIT) in `reposilite-backend`. A transport class loads
   only when its scheme is configured.
 - Image: additional jars for the two clients and their pool. Paths, port, volume, entrypoint and environment variables do not change.

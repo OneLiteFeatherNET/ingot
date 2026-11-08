@@ -30,7 +30,7 @@ Line numbers are left out because they drift; the class and file names are the r
 | Basic and token brute-force counter, off by default | `com/reposilite/auth/AuthenticationFacade.kt` | Allowance multiplied by the number of pods | Weaker protection when enabled | Out of scope (HA stage 3.3) |
 | Metadata and file locks | `com/reposilite/storage/filesystem/FileSystemStorageProvider.kt`; S3 has none | Locks end at the process boundary | Lost metadata updates (HA stage 1.2) | Out of scope, database row lock |
 | S3 HEAD metadata cache, opt-in (Caffeine) | `com/reposilite/storage/s3/S3StorageProviderFactory.kt` | Time-bounded per pod | Acceptable, already bounded by configuration | No change |
-| Status snapshots, in memory | `com/reposilite/status/StatusFacade.kt` | Graphs show the pod that is asked | Expected for per-instance graphs | No change, documented |
+| Status snapshots, in memory | `com/reposilite/status/StatusFacade.kt` | Graphs show the pod that is asked | Dashboard status and graphs show only the pod that answered, so operators see one replica | Status snapshot event; the dashboard shows a cluster summary plus one entry per instance |
 | Console connection registries | `ConsoleSseRegistry.kt` (concurrent, on main); `ConsoleWebSocketHandler.kt` (synchronised `WeakHashMap`) | Guarded on main | None | No change |
 
 ## Goals / Non-Goals
@@ -182,7 +182,19 @@ subscribers only, labelled with the origin instance, and are not written to the 
 The backlog a session receives on connection stays local to its instance. Fan-out covers live lines only. That is recorded as an open
 question.
 
-### 11. Connection management and status
+### 11. Aggregated instance status
+
+Each instance publishes a `status.snapshot` event each time `StatusFacade` records one of its in-memory snapshots, so the event follows the same schedule as the recording. The event carries the instance identifier, the version, the uptime start, used and maximum memory, used and maximum threads, the failure count, the latest snapshot sample and the interval at which the instance records snapshots. The interval is carried so that receivers can judge staleness. The event carries no secrets and no hostname beyond the instance identifier.
+
+Each receiver keeps the last snapshot per instance. An instance whose last snapshot is older than one interval is shown as stale. An instance whose last snapshot is older than three intervals is dropped. A stale entry stays visible until it is dropped, so an operator sees a replica that stopped reporting rather than a replica that silently vanished.
+
+The cluster summary follows fixed rules. Memory used and maximum are summed, and so are threads used and maximum. The failure count is summed as a count only. The failure list stays per instance unless failure aggregation is switched on. Uptime shows the shortest value, which belongs to the most recent restart. Version shows the single version when all instances agree, and otherwise shows "mixed" together with the list of versions. Health is the health of the worst instance.
+
+The memory and thread graphs show one series per instance rather than a sum. Each pod takes its samples at a different moment, so a sum would draw a curve that no instance ever had.
+
+Without a bus nothing changes. The existing status API response keeps its fields and their meaning. The cluster view is an additional field or endpoint, never a change to an existing field, so a client that reads only the existing fields gets the same response as before.
+
+### 12. Connection management and status
 
 The transport reconnects with exponential backoff from one second to sixty seconds, with jitter. Each delay comes from a pure policy
 function that takes the clock and the attempt number, so tests cover it without sleeping. The state change is logged once per
@@ -191,7 +203,7 @@ transition. The outbound queue is bounded, so an outage cannot grow memory.
 Status output reports the state (connected, reconnecting, disabled), the last received event time, and the counts of published,
 applied and ignored events. The URL is shown with its credentials replaced.
 
-### 12. Configuration and credentials
+### 13. Configuration and credentials
 
 Bus settings are instance settings, so they belong to the local configuration rather than to the shared configuration:
 
@@ -207,7 +219,7 @@ These variables are read by the cluster plugin's own factory, not by the local c
 stays unchanged. The URL is parsed once. Credentials are removed from it before anything is logged. A warning is logged when
 credentials are sent over an unencrypted scheme.
 
-### 13. Plugin layout
+### 14. Plugin layout
 
 A new `cluster` plugin lives in package `net.onelitefeather.ingot.cluster` in `reposilite-backend`. It must be in the same module as
 `ResolutionCache`, which is `internal`. It declares dependencies on the plugins whose facades it observes, using the names in their

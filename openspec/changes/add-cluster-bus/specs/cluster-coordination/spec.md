@@ -277,6 +277,45 @@ and ignored, in its status output.
 - **WHEN** the bus is unreachable
 - **THEN** the status output reports the bus as disconnected with the time of the last received event
 
+### Requirement: Status is aggregated across instances
+
+When a cluster bus is configured, the instance SHALL show a cluster summary built from the status snapshots of every instance it knows,
+including its own. The summary SHALL sum memory, threads and failure counts, show the shortest uptime, the single version or "mixed", and
+the worst health. An instance SHALL be shown as stale after one interval without a snapshot, and dropped after three intervals.
+
+#### Scenario: Two instances are summarised together
+
+- **WHEN** a bus is configured and instances A and B each publish a status snapshot
+- **THEN** the cluster summary reports the sum of their used and maximum memory, the sum of their used and maximum threads and the sum of their failure counts, and lists both instances with their own figures
+
+#### Scenario: Different versions are shown as mixed
+
+- **WHEN** instance A runs version 1.2.0 and instance B runs version 1.3.0
+- **THEN** the cluster summary shows the version as "mixed" and lists both versions
+
+#### Scenario: Silent instance is stale, then dropped
+
+- **WHEN** instance B stops publishing status snapshots
+- **THEN** the cluster summary shows instance B as stale once its last snapshot is older than one interval, and drops instance B once that snapshot is older than three intervals
+
+### Requirement: Status graphs show one series per instance
+
+The memory and thread graphs SHALL show one series per instance and SHALL NOT sum samples across instances, because each instance takes its samples at a different moment.
+
+#### Scenario: Graph draws one series per instance
+
+- **WHEN** a bus is configured and instances A and B have recorded memory samples
+- **THEN** the memory graph shows one series for A and one for B, and no series that adds them together
+
+### Requirement: Status is unchanged without a bus
+
+Without a cluster bus URL, the status output SHALL keep its existing fields with their existing meaning, and SHALL NOT contain a cluster summary.
+
+#### Scenario: No bus leaves the status response unchanged
+
+- **WHEN** no cluster bus URL is configured
+- **THEN** the status response has the same fields and values as before this change, and no cluster summary is present
+
 ### Requirement: Mixed versions are tolerated
 
 An instance SHALL ignore an event whose envelope version or event type it does not know, and SHALL count that event as ignored. An
