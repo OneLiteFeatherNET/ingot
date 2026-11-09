@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { nextTick } from 'vue'
 import { createRouter } from 'vue-router'
 import { ROUTES } from './routes'
 import { firstAccessRoute, visibleChildren } from '../navigation/registry'
@@ -69,8 +70,15 @@ const createAppRouter = ({
     return { name: firstAccessRoute(can), replace: true }
   })
 
-  router.afterEach((to) => {
+  router.afterEach((to, from, failure) => {
     document.title = pageTitle(to, siteTitle)
+
+    // A new page takes the focus, so that a screen reader announces it. The first navigation of a page load is the
+    // page the visitor opened, and a change of query or hash inside a page is a control in use, so neither moves it.
+    const firstNavigation = from.matched.length === 0
+    if (!failure && !firstNavigation && to.path !== from.path) {
+      nextTick(() => document.getElementById('main')?.focus())
+    }
   })
 
   return router
