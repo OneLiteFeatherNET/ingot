@@ -206,6 +206,21 @@ internal fun prefersProblemJson(accept: String?): Boolean {
 fun Context.error(status: HttpStatus, error: Any): Context =
     error(status.code, error)
 
+/**
+ * Builds a Vary value from the earlier values and the names that the answer depends on. The earlier names keep their
+ * order, and each name is appended unless it is already listed in any letter case. A wildcard already covers every
+ * request header, so it is returned unchanged.
+ */
+internal fun mergeVary(existing: Collection<String>, names: Collection<String>): String {
+    val merged = existing.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+    if ("*" in merged) return "*"
+
+    names
+        .filterNot { name -> merged.any { it.equals(name, ignoreCase = true) } }
+        .forEach { merged += it }
+    return merged.joinToString(separator = ", ")
+}
+
 fun Context.error(status: Int, error: Any): Context =
     when (error) {
         is ErrorResponse -> {
@@ -214,6 +229,8 @@ fun Context.error(status: Int, error: Any): Context =
             if (prefersProblemJson(header(Header.ACCEPT))) {
                 contentType(PROBLEM_JSON)
             }
+            // The content type depends on Accept, with or without problem details, so every negotiated answer varies on it
+            header(Header.VARY, mergeVary(res().getHeaders(Header.VARY), listOf(Header.ACCEPT)))
             this
         }
         else -> status(status).json(error)
