@@ -723,3 +723,29 @@ describe('IndexPage bottom bar height', () => {
     expect(rootBarHeight(), 'a page that is gone must not leave an offset behind').toBe('')
   })
 })
+
+describe('IndexPage main landmark', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  it('wraps the page content in exactly one main landmark that takes focus programmatically', async () => {
+    const { wrapper } = await mountAt('/dashboard', { manager: true })
+
+    expect(wrapper.findAll('main#main[tabindex="-1"]'), 'one main element with the skip link target').toHaveLength(1)
+  })
+
+  it('keeps the page header outside the main landmark', async () => {
+    const { wrapper } = await mountAt('/dashboard', { manager: true })
+    const main = wrapper.find('main')
+
+    expect(wrapper.find('header').exists(), 'the header is on the page').toBe(true)
+    expect(main.find('header').exists(), 'the header is not inside main').toBe(false)
+  })
+
+  it('keeps the shown section inside the main landmark', async () => {
+    const { wrapper } = await mountAt('/dashboard', { manager: true })
+
+    expect(wrapper.find('main [data-test="section"]').exists(), 'the content is inside main').toBe(true)
+  })
+})
