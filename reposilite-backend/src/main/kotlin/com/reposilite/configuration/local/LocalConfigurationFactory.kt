@@ -21,6 +21,7 @@ import com.reposilite.configuration.local.infrastructure.LocalConfigurationProvi
 import com.reposilite.journalist.Journalist
 import panda.std.reactive.Reference
 import panda.std.reactive.ReferenceUtils
+import java.io.PrintStream
 import java.lang.IllegalArgumentException
 import kotlin.reflect.full.declaredMemberProperties
 
@@ -47,7 +48,8 @@ internal object LocalConfigurationFactory {
     internal fun applyCustomProperties(
         journalist: Journalist?,
         localConfiguration: LocalConfiguration,
-        properties: Map<String, String>
+        properties: Map<String, String>,
+        errorOutput: PrintStream = System.err,
     ) {
         properties.forEach { (key, value) ->
             val property = localConfiguration::class.declaredMemberProperties.find { it.name.equals(key, ignoreCase = true) } ?: run {
