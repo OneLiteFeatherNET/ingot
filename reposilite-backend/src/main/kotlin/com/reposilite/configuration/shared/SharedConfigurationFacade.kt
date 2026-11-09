@@ -16,6 +16,7 @@
 
 package com.reposilite.configuration.shared
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.github.victools.jsonschema.generator.SchemaGenerator
@@ -123,7 +124,12 @@ class SharedConfigurationFacade(
         sharedConfigurationProvider.fetchConfiguration()
 
     internal fun loadSharedSettingsFromString(content: String): Result<Unit, SharedSettingsUpdateException> {
-        val updateResult = supplyThrowing { DEFAULT_OBJECT_MAPPER.readTree(content) }
+        val document = supplyThrowing { DEFAULT_OBJECT_MAPPER.readTree(content) }
+        if (document.isErr) {
+            reportUnreadableDocument(document.error)
+        }
+
+        val updateResult = document
             .map { node -> getDomainNames().asSequence().filter { node.has(it) }.associateWith { node.get(it) } }
             .orElseGet { emptyMap() }
             .map { (name, obj) ->
@@ -153,6 +159,16 @@ class SharedConfigurationFacade(
             .takeIf { it.isNotEmpty() }
             ?.let { SharedSettingsUpdateException(errors = it).asError() }
             ?: ok()
+    }
+
+    /**
+     * Logs where the parser stopped. The parser message is left out: it can quote the token it rejected, and the document holds
+     * credentials. Every domain then falls back to its defaults, as it always did.
+     */
+    private fun reportUnreadableDocument(error: Exception) {
+        val location = (error as? JsonProcessingException)?.location
+        val position = location?.let { "line ${it.lineNr}, column ${it.columnNr}" } ?: "an unknown position"
+        journalist.logger.error("Shared configuration | Cannot read ${sharedConfigurationProvider.name()} at $position (${error::class.simpleName}), domains fall back to defaults")
     }
 
     /**
