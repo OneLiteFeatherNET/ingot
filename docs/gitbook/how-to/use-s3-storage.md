@@ -63,7 +63,7 @@ The S3 keys are stored with the repository settings in the database. Anyone who 
 | Region | `region` | empty | Empty uses the `AWS_REGION` environment variable of the Ingot process, and `reposilite` if that is not set. |
 | Key Prefix | `prefix` | empty | Added in front of every object key. |
 | Shared Bucket | `sharedBucket` | off | Puts each repository under its own name inside the bucket. |
-| Local Metadata Cache | `metadataCacheSettings` | off | Caches object metadata inside one instance. Other instances do not see the cache. |
+| Local Metadata Cache | `metadataCacheSettings` | off | Caches object metadata inside one instance. Other instances do not see the cache. Mutable metadata is never cached, and with a cluster bus an entry is used for at most 300 seconds. |
 
 For AWS, set the region of your bucket.
 
