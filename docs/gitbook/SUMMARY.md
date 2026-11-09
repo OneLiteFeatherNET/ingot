@@ -20,6 +20,7 @@
 * [Run behind a reverse proxy](how-to/run-behind-reverse-proxy.md)
 * [Enable TLS](how-to/enable-tls.md)
 * [Configure a database](how-to/configure-database.md)
+* [Configure the cluster bus](how-to/configure-cluster-bus.md)
 * [Use S3 storage](how-to/use-s3-storage.md)
 * [Serve a custom frontend](how-to/serve-custom-frontend.md)
 * [Customize branding](how-to/customize-branding.md)
@@ -89,6 +90,7 @@
 ### HTTP and web
 
 * [HTTP API overview](reference/http-api.md)
+* [API errors](reference/api-errors.md)
 * [Search filters and API](reference/search-filters-and-api.md)
 * [Web routes](reference/web-routes.md)
 * [Dashboard pages](reference/dashboard-pages.md)
@@ -111,6 +113,7 @@
 * [Identity model](explanation/identity-model.md)
 * [How permissions are evaluated](explanation/permission-evaluation.md)
 * [Sessions, login and CSRF](explanation/sessions-and-login.md)
+* [Security headers](explanation/security-headers.md)
 * [Token migration](explanation/token-migration.md)
 
 ### Search

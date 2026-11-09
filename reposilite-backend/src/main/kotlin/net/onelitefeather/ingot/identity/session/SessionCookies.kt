@@ -16,6 +16,9 @@
 
 package net.onelitefeather.ingot.identity.session
 
+import io.javalin.http.Context
+import net.onelitefeather.ingot.web.TrustedProxies
+
 /**
  * The three cookies of a browser session, as `Set-Cookie` header values. The session token and the refresh token are
  * HttpOnly, so page scripts cannot read them. The csrf token is not HttpOnly: the page echoes it in a header, which is
@@ -45,11 +48,22 @@ internal object SessionCookies {
 
     /**
      * A request is secure when it arrived over TLS, or when a proxy in front of Ingot terminated TLS and says so in
-     * `X-Forwarded-Proto`. The first value counts when the header lists several proxies.
+     * `X-Forwarded-Proto`. The first value counts when the header lists several proxies. When trusted proxies are
+     * configured, the header only counts if the direct [peer] is one of them, like the forwarded client address.
      */
-    fun isSecure(scheme: String, forwardedProto: String?): Boolean =
+    fun isSecure(
+        scheme: String,
+        forwardedProto: String?,
+        peer: String? = null,
+        trustedProxies: TrustedProxies = TrustedProxies.NONE,
+    ): Boolean =
         scheme.equals("https", ignoreCase = true) ||
-            forwardedProto?.substringBefore(',')?.trim()?.equals("https", ignoreCase = true) == true
+            ((!trustedProxies.enabled || (peer != null && trustedProxies.isTrusted(peer))) &&
+                forwardedProto?.substringBefore(',')?.trim()?.equals("https", ignoreCase = true) == true)
+
+    /** [isSecure] for a request, with the proxies the operator configured. */
+    fun isSecure(ctx: Context): Boolean =
+        isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"), ctx.req().remoteAddr, TrustedProxies.configured)
 
     private fun cookie(name: String, value: String, path: String, maxAgeSeconds: Long, httpOnly: Boolean, secure: Boolean): String {
         val attributes = buildList {

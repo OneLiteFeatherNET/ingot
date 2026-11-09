@@ -27,6 +27,7 @@ import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
+import com.reposilite.plugin.api.SharedConfigurationChangedEvent
 import com.reposilite.shared.EntityTag
 import com.reposilite.shared.EntityTagSigner
 import com.reposilite.shared.ErrorResponse
@@ -171,6 +172,7 @@ class SharedConfigurationFacade(
 
                 if (storeRendered(revision)) {
                     recordSettingsChange(name, before, body, actor)
+                    extensions.emitEvent(SharedConfigurationChangedEvent(name))
                     return result
                 }
             }
@@ -231,6 +233,7 @@ class SharedConfigurationFacade(
 
                 if (storeRendered(revision)) {
                     recordSettingsChange(name, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(current), applied.get(), actor)
+                    extensions.emitEvent(SharedConfigurationChangedEvent(name))
                     return applied.map { it.snapshot() }
                 }
             }
@@ -311,6 +314,23 @@ class SharedConfigurationFacade(
 
     fun isUpdateRequired(): Boolean =
         sharedConfigurationProvider.isUpdateRequired()
+
+    /**
+     * Loads the stored document when the provider reports a newer revision. The scheduled poll and the cluster bus both call it.
+     *
+     * @return true when a newer document was loaded
+     */
+    internal fun reloadIfChanged(): Boolean =
+        synchronized(stateLock) {
+            if (!isUpdateRequired()) {
+                return@synchronized false
+            }
+
+            journalist.logger.info("Propagation | Shared configuration has been changed in ${getProviderName()}, updating current instance...")
+            loadSharedSettingsFromString(fetchConfiguration())
+            journalist.logger.info("Propagation | Sources have been updated successfully")
+            true
+        }
 
     fun isMutable(): Boolean =
         sharedConfigurationProvider.isMutable()

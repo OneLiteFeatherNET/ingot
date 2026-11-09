@@ -24,6 +24,15 @@ const TimeSeriesChart = defineAsyncComponent(() => import('./TimeSeriesChart.vue
 
 const POLL_INTERVAL_MS = 30000
 
+// Set when a message bus is configured: the instances of the cluster, each with its own samples.
+// Without one the charts keep drawing the local history.
+const props = defineProps({
+  cluster: {
+    type: Object,
+    default: null
+  }
+})
+
 const { client } = useSession()
 const snapshots = ref(null)
 const failed = ref(false)
@@ -60,23 +69,40 @@ onBeforeUnmount(() => clearInterval(timer))
  * taller line, and the comparison the reader took from that shape meant nothing. They are
  * two charts now, stacked, sharing a time axis: the trends stay comparable, the magnitudes
  * no longer pretend to be.
+ *
+ * With a cluster, each instance is one series. The instances take their samples at different
+ * moments, so adding them together would draw a curve that no instance ever had.
  */
-const memorySeries = computed(() => [{
-  name: 'Used memory',
-  data: snapshots.value.map(record => [record.at, record.memory])
-}])
+const instances = computed(() => props.cluster?.instances ?? null)
 
-const threadsSeries = computed(() => [{
-  name: 'Used threads',
-  data: snapshots.value.map(record => [record.at, record.threads])
-}])
+const seriesPerInstance = (key) => instances.value.map(instance => ({
+  name: instance.id,
+  data: instance.samples.map(sample => [sample.at, sample[key]])
+}))
+
+const memorySeries = computed(() => instances.value
+  ? seriesPerInstance('memory')
+  : [{
+    name: 'Used memory',
+    data: (snapshots.value ?? []).map(record => [record.at, record.memory])
+  }])
+
+const threadsSeries = computed(() => instances.value
+  ? seriesPerInstance('threads')
+  : [{
+    name: 'Used threads',
+    data: (snapshots.value ?? []).map(record => [record.at, record.threads])
+  }])
 
 // A failed first request ends the placeholders and shows the error. A failure after data has
-// arrived keeps the last good snapshots on screen and only reports through the toast.
-const loading = computed(() => snapshots.value === null && !failed.value)
+// arrived keeps the last good snapshots on screen and only reports through the toast. With a
+// cluster the charts have their data from the status, so the snapshot request does not gate them.
+const loading = computed(() => !instances.value && snapshots.value === null && !failed.value)
 const errorMessage = computed(() =>
-  snapshots.value === null && failed.value ? 'Cannot load resource history.' : '')
-const empty = computed(() => snapshots.value !== null && snapshots.value.length === 0)
+  !instances.value && snapshots.value === null && failed.value ? 'Cannot load resource history.' : '')
+const empty = computed(() => instances.value
+  ? instances.value.every(instance => instance.samples.length === 0)
+  : snapshots.value !== null && snapshots.value.length === 0)
 </script>
 
 <template>

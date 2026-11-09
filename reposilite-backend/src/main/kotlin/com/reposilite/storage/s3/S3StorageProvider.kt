@@ -68,7 +68,7 @@ class S3StorageProvider(
     private val s3: S3Client,
     private val bucket: String,
     private val keyPrefix: String = "",
-) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix), Journalist {
+) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix, failureFacade), Journalist {
 
     init {
         if (!skipBucketCreation) {
@@ -139,6 +139,21 @@ class S3StorageProvider(
             notFoundError("File not found: $location")
         } catch (exception: S3Exception) {
             // A bare 404 carries no NoSuchKey body, so it is only recognised by its status code
+            s3Error("read $location", location, exception)
+        } catch (exception: Exception) {
+            failed("read $location", exception)
+        }
+
+    override fun getFile(location: Location, offset: Long, length: Long): Result<InputStream, ErrorResponse> =
+        try {
+            val request = GetObjectRequest.builder()
+            request.bucket(bucket)
+            request.key(location.toBucketKey())
+            request.range("bytes=$offset-${offset + length - 1}")
+            s3.getObject(request.build()).asSuccess()
+        } catch (_: NoSuchKeyException) {
+            notFoundError("File not found: $location")
+        } catch (exception: S3Exception) {
             s3Error("read $location", location, exception)
         } catch (exception: Exception) {
             failed("read $location", exception)
@@ -236,7 +251,7 @@ class S3StorageProvider(
 
             ok(Unit)
         } catch (exception: Exception) {
-            internalServerError(exception.message ?: exception::class.toString())
+            failed("remove $location", exception)
         }
     }
 
@@ -298,7 +313,7 @@ class S3StorageProvider(
             request.key(location.toBucketKey())
             s3.headObject(request.build()).asSuccess()
         } catch (ignored: NoSuchKeyException) {
-            notFoundError(ignored.message ?: "File not found")
+            notFoundError("File not found: $location")
         } catch (exception: S3Exception) {
             // HEAD has no error body, so a missing key arrives as a bare 404 rather than NoSuchKey
             s3Error("HEAD ${location.toBucketKey()}", location, exception)

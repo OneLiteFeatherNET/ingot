@@ -42,6 +42,10 @@ describe('pageTitle', () => {
     expect(pageTitle({ name: 'settings-entry', params: {}, meta: { section: 'settings' } }, SITE)).toBe('Settings · Ingot Repository')
   })
 
+  it('names the audit page Audit log', () => {
+    expect(pageTitle({ name: 'audit', params: {}, meta: { section: 'audit' } }, SITE)).toBe('Audit log · Ingot Repository')
+  })
+
   it('names the account page', () => {
     expect(pageTitle({ name: 'account', params: {}, meta: { section: 'account' } }, SITE)).toBe('My account · Ingot Repository')
   })

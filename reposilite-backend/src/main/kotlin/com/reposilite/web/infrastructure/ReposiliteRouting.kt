@@ -15,6 +15,7 @@ import com.reposilite.token.api.AccessTokenDto
 import com.reposilite.web.infrastructure.ReposiliteDsl.ReposiliteConfiguration
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.session.SessionCookies
+import panda.std.reactive.Reference
 import panda.std.asSuccess
 import panda.std.Result
 import io.javalin.community.routing.dsl.DslExceptionHandler
@@ -27,8 +28,9 @@ import io.javalin.http.ExceptionHandler
 import io.javalin.http.Handler
 import io.javalin.http.Header
 import io.javalin.http.HttpStatus.FORBIDDEN
-import io.javalin.http.HttpStatus.INTERNAL_SERVER_ERROR
 import io.javalin.util.javalinLazy
+import com.reposilite.shared.internalServer
+import com.reposilite.shared.extensions.error
 import com.reposilite.shared.toErrorResponse
 import net.onelitefeather.ingot.identity.session.CsrfPolicy
 
@@ -72,6 +74,7 @@ fun createReposiliteDsl(
     authenticationFacade: AuthenticationFacade,
     failureFacade: FailureFacade,
     loginFacade: LoginFacade,
+    basePath: Reference<String>,
 ): ReposiliteRouting {
     /**
      * A request with an Authorization header is authenticated by it, as before. Without one, a browser session cookie
@@ -117,7 +120,7 @@ fun createReposiliteDsl(
         routeFactory = { route ->
             Handler { ctx ->
                 try {
-                    if (CsrfPolicy.violation(ctx.csrfRequest())) {
+                    if (CsrfPolicy.violation(ctx.csrfRequest(), basePath.get())) {
                         ctx.status(FORBIDDEN)
                         ctx.response(FORBIDDEN.toErrorResponse("Cookie request refused: the X-CSRF-Token header does not match the session"))
                         return@Handler
@@ -127,7 +130,7 @@ fun createReposiliteDsl(
                     dsl.consumeResponse()
                 } catch (throwable: Throwable) {
                     failureFacade.throwException(ctx.uri(), throwable)
-                    ctx.status(INTERNAL_SERVER_ERROR)
+                    ctx.error(internalServer("Internal server error"))
                 }
             }
         },
@@ -139,7 +142,7 @@ fun createReposiliteDsl(
                     dsl.consumeResponse()
                 } catch (throwable: Throwable) {
                     failureFacade.throwException(ctx.uri(), throwable)
-                    ctx.status(INTERNAL_SERVER_ERROR)
+                    ctx.error(internalServer("Internal server error"))
                 }
             }
         }

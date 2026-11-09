@@ -22,6 +22,7 @@ import com.reposilite.shared.errorResponse
 import com.reposilite.shared.unauthorizedError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import io.javalin.community.routing.Route
 import io.javalin.http.Context
 import io.javalin.http.HttpStatus.CONFLICT
@@ -85,7 +86,7 @@ internal class AuthLoginEndpoints(
             OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ]
     )
-    private val login = ReposiliteRoute<LoginResponse>("/api/auth/login", Route.POST) {
+    private val login = ReposiliteRoute<LoginResponse>("/api/auth/login", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         val request = runCatching { body<LoginRequest>() }.getOrNull()
         val provider = request?.provider?.takeIf { it.isNotBlank() }
         val username = request?.username?.takeIf { it.isNotBlank() }
@@ -135,7 +136,7 @@ internal class AuthLoginEndpoints(
             OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ]
     )
-    private val setup = ReposiliteRoute<LoginResponse>("/api/auth/setup", Route.POST) {
+    private val setup = ReposiliteRoute<LoginResponse>("/api/auth/setup", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         val request = runCatching { body<SetupRequest>() }.getOrNull()
         val code = request?.setupCode?.takeIf { it.isNotBlank() }
         val username = request?.username?.takeIf { it.isNotBlank() }
@@ -167,7 +168,7 @@ internal class AuthLoginEndpoints(
             OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ]
     )
-    private val refresh = ReposiliteRoute<SessionResponse>("/api/auth/refresh", Route.POST) {
+    private val refresh = ReposiliteRoute<SessionResponse>("/api/auth/refresh", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         val session = ctx.cookie(SessionCookies.REFRESH)?.let { facade.refreshSession(it, ctx.ip(), ctx.header("User-Agent")) }
 
         response = if (session == null) {
@@ -189,7 +190,7 @@ internal class AuthLoginEndpoints(
             OpenApiResponse(status = "200", description = "Logged out"),
         ]
     )
-    private val logout = ReposiliteRoute<Unit>("/api/auth/logout", Route.POST) {
+    private val logout = ReposiliteRoute<Unit>("/api/auth/logout", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         facade.endSession(ctx.cookie(SessionCookies.REFRESH), ctx.ip())
         clearSessionCookies(ctx, basePath.get())
         response = Unit.asSuccess()
@@ -238,4 +239,4 @@ private fun clearSessionCookies(ctx: Context, basePath: String) {
 }
 
 private fun secure(ctx: Context): Boolean =
-    SessionCookies.isSecure(ctx.scheme(), ctx.header("X-Forwarded-Proto"))
+    SessionCookies.isSecure(ctx)

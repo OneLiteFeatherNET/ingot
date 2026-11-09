@@ -16,11 +16,10 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useMediaQuery } from '@vueuse/core'
 import { useSession } from '../../store/session'
-import { ACCESS_TABS } from '../../router/routes'
-import { ACCESS_NODES, INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
-import SettingsTabs from '../settings/SettingsTabs.vue'
+import { groupedChildren, sideNavOf } from '../../navigation/registry'
+import SideNavLayout from '../layout/SideNavLayout.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
 import SsoProvidersPanel from './SsoProvidersPanel.vue'
@@ -29,17 +28,18 @@ import SecurityPanel from './SecurityPanel.vue'
 import CheckPermissionView from './check/CheckPermissionView.vue'
 
 /*
- * The Access section for instance admins: users, machine accounts and teams, as tabs. The tab
- * and the open principal come from the address, and a tab change goes through the router.
+ * The Access section for instance admins: users, machine accounts and teams, and the provider pages,
+ * in a side navigation. The section and the open principal come from the address, and each section
+ * is a real link to its own address.
  *
  * Props:
- *   tab   users, machines, teams, sso, ldap, security or check (the permission check)
+ *   tab   users, machines, teams, sso, ldap, security or check (the permission check); none shows the index
  *   name  the open user, machine account or team, if any
  */
 defineProps({
   tab: {
     type: String,
-    default: 'users',
+    default: undefined,
     validator: (value) => ['users', 'machines', 'teams', 'sso', 'ldap', 'security', 'check'].includes(value)
   },
   name: {
@@ -48,24 +48,15 @@ defineProps({
   }
 })
 
-const router = useRouter()
-
 const { can } = useSession()
 
-// A tab whose node the user lacks is left out, not greyed out. The check is open to anyone who
-// may use one of the three lists. The provider pages save the instance settings and test the
-// provider connection, which the server answers only to the full instance admin.
-// The three lists come from ACCESS_TABS, the same node the route guard checks for each of them.
-const ALL_TABS = [
-  ...ACCESS_TABS.map(tab => ({ key: tab.key, label: tab.label, nodes: [tab.node] })),
-  { key: 'sso', label: 'SSO', nodes: [INSTANCE_ADMIN_NODE] },
-  { key: 'ldap', label: 'LDAP', nodes: [INSTANCE_ADMIN_NODE] },
-  { key: 'security', label: 'Security', nodes: [INSTANCE_ADMIN_NODE] },
-  { key: 'check', label: 'Check', nodes: ACCESS_NODES }
-]
-const TABS = computed(() => ALL_TABS.filter(tab => tab.nodes.some(node => can(node))))
+// Below 600px the side navigation is an index instead of a column beside the page; see SideNavLayout.
+const narrow = useMediaQuery('(max-width: 599px)')
 
-const select = (key) => router.push({ name: `access-${key}` })
+// A section whose node the user lacks is left out, not greyed out. The sections, their groups and the
+// node each one needs come from the navigation registry, the same node the route guard checks.
+const groups = computed(() => groupedChildren('access', can))
+const sideNav = sideNavOf('access')
 </script>
 
 <template>
@@ -85,39 +76,40 @@ const select = (key) => router.push({ name: `access-${key}` })
       </p>
     </div>
 
-    <SettingsTabs
-      class="[&_[role=tab]]:shrink-0 [&_[role=tab]]:whitespace-nowrap max-[600px]:[&_[role=tab]]:px-2"
-      :model-value="tab"
-      label="Access sections"
-      :tabs="TABS"
-      @update:model-value="select"
-    />
-
-    <div class="pt-4">
-      <PrincipalsPanel
-        v-if="tab === 'users'"
-        kind="USER"
-        :name="name"
-      />
-      <PrincipalsPanel
-        v-else-if="tab === 'machines'"
-        kind="MACHINE"
-        :name="name"
-      />
-      <SsoProvidersPanel
-        v-else-if="tab === 'sso'"
-      />
-      <LdapPanel
-        v-else-if="tab === 'ldap'"
-      />
-      <SecurityPanel
-        v-else-if="tab === 'security'"
-      />
-      <TeamsPanel
-        v-else-if="tab === 'teams'"
-        :name="name"
-      />
-      <CheckPermissionView v-else />
-    </div>
+    <SideNavLayout
+      :label="sideNav.label"
+      :section-label="sideNav.sectionLabel"
+      :groups="groups"
+      :current="tab"
+      :index-to="sideNav.indexTo"
+      :narrow="narrow"
+    >
+      <div>
+        <PrincipalsPanel
+          v-if="tab === 'users'"
+          kind="USER"
+          :name="name"
+        />
+        <PrincipalsPanel
+          v-else-if="tab === 'machines'"
+          kind="MACHINE"
+          :name="name"
+        />
+        <SsoProvidersPanel
+          v-else-if="tab === 'sso'"
+        />
+        <LdapPanel
+          v-else-if="tab === 'ldap'"
+        />
+        <SecurityPanel
+          v-else-if="tab === 'security'"
+        />
+        <TeamsPanel
+          v-else-if="tab === 'teams'"
+          :name="name"
+        />
+        <CheckPermissionView v-else-if="tab === 'check'" />
+      </div>
+    </SideNavLayout>
   </section>
 </template>

@@ -59,6 +59,14 @@ The deploy target is read once at start. See [Deploy targets](deploy-targets.md)
 | --- | --- | --- |
 | `INGOT_TARGET` | unset, which means `all` | Deploy target of the instance. `all` serves the dashboard, the API and the repositories. `server` serves the API and the repositories only. An empty value counts as unset. Any other value stops the start. The command line option `--target` and the system property `ingot.target` take precedence over it. |
 
+## Server variables
+
+The server process reads these variables itself, not the entrypoint.
+
+| Variable | System property | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). |
+
 ## Container variables
 
 The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
@@ -82,6 +90,17 @@ Behavior of the entrypoint:
 
 The Compose files in the repository read `PORT`, `MEMORY`, `JAVA_COMPOSE_OPTS` and `INGOT_COMPOSE_OPTS` from a `.env` file and build `JAVA_OPTS` and `INGOT_OPTS` from them. These four names are Compose variables. The server does not read them.
 
+## Security header variables
+
+The server adds security headers to its responses. Two of them can be changed. The variables are read once when the server starts. Each has a system property as an alternative, used when the variable is unset.
+
+| Variable | System property | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_REPOSITORY_SANDBOX` | `ingot.repository.sandbox` | `true` | Repository files and the generated directory index are served with `Content-Security-Policy: sandbox`, so a browser runs an uploaded page without the origin of the dashboard. `false` leaves them without this header. The value is matched without regard to case, any other value keeps the sandbox. |
+| `INGOT_HSTS_MAX_AGE` | `ingot.hsts.maxAge` | unset | A positive number of seconds turns on `Strict-Transport-Security: max-age=<seconds>`. The header is sent only on HTTPS requests, that is a request over TLS served by Ingot or a request with `X-Forwarded-Proto: https`. Unset, zero or a value that is not a number sends no header. |
+
+The complete list of headers is in [Security headers](../explanation/security-headers.md).
+
 ## Dashboard image variables
 
 The separate dashboard image (`ghcr.io/onelitefeathernet/ingot-dashboard`) reads these variables when its container starts.
@@ -94,6 +113,22 @@ The separate dashboard image (`ghcr.io/onelitefeathernet/ingot-dashboard`) reads
 | `INGOT_RESOLVER` | not set | Not used any more. A value that is set is accepted and ignored. |
 
 The image has no build argument for the base path, so one image serves any base path.
+
+## Cluster bus variables
+
+The cluster plugin reads these settings at start. Without `INGOT_CLUSTER_URL` or its fallback, none of them has an effect. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_CLUSTER_URL` | `REPOSILITE_CLUSTER_URL`, and the system property `ingot.cluster.url` wins over both | unset, bus off | Bus URL with one of the schemes `nats`, `tls`, `redis`, `rediss`, `valkey`, `valkeys`, `database`. Any other scheme stops the start. `database:` uses the instance database and is refused on SQLite and H2, which keeps the instance running without the bus. |
+| `INGOT_CLUSTER_PASSWORD` | `REPOSILITE_CLUSTER_PASSWORD` | unset | Password for the bus when the URL carries none. A password in the URL wins. |
+| `INGOT_CLUSTER_CREDENTIALS` | system property `ingot.cluster.credentials`, which wins | unset | Path to a NATS `.creds` file for brokers in operator mode. Used with `nats` and `tls` only. |
+| `INGOT_CLUSTER_INSTANCE_ID` | system property `ingot.cluster.instance`, which wins | host name | Identifier of this replica in the bus and in the status output. |
+| `INGOT_CLUSTER_CONSOLE` | none | `true` when a bus is configured, `false` on the `database` transport | `false` turns off the forwarding of live console log lines between replicas. `true` turns it on, which the `database` transport needs explicitly. |
+| `INGOT_CLUSTER_POLL_INTERVAL_MS` | none | `1000` | Poll interval of the `database` transport in milliseconds. Values below 200 are raised to 200 with one warning. Other transports ignore it. |
+| `INGOT_CLUSTER_FAILURES` | none | `false` | `true` aggregates recorded failures across replicas. |
+
+Boolean variables accept `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`, in any case. Credentials are never printed. The log shows the URL with the credentials replaced by `REDACTED`.
 
 ## Names that do not follow the rule
 
@@ -120,6 +155,17 @@ These are JVM system properties. There is no environment variable form. Pass the
 | `reposilite.s3.skip-bucket-creation` | `false` | Does not create the bucket when it does not exist. |
 
 The S3 client also reads the standard `AWS_REGION` environment variable when a repository sets no `region`. See [Storage providers](storage-providers.md).
+
+### Proxy upstream status
+
+Read once at startup, in this order: the system property `ingot.proxy.upstreamStatus`, the environment variable `INGOT_PROXY_UPSTREAM_STATUS`, the system property `reposilite.proxy.upstreamStatus`, the environment variable `REPOSILITE_PROXY_UPSTREAM_STATUS`. The first one that is set wins. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.
+
+| Value | Meaning |
+| --- | --- |
+| `legacy` (default) | A proxy repository answers upstream failures with the statuses Reposilite always used. Existing Maven and Gradle clients keep working unchanged. |
+| `strict` | A proxy answers `504` when the upstream times out, `502` when it is unreachable, answers an error status other than `404` or `410`, or answers an HTML page, and `404` when the upstream answers `404` or `410`. |
+
+The value is compared without regard to case. Any other value stops the startup with a message that names `INGOT_PROXY_UPSTREAM_STATUS`. See [Create proxy repositories](../how-to/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
 
 ### Other system properties
 

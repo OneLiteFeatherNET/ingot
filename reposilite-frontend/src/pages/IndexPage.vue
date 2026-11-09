@@ -40,13 +40,11 @@ import HistoryIcon from '../components/icons/HistoryIcon.vue'
 import MoreIcon from '../components/icons/MoreIcon.vue'
 import NotFoundView from '../components/util/NotFoundView.vue'
 import { property } from '../helpers/vue-extensions'
-import { createInfoToastOnce } from '../helpers/toast'
 import { routeAllowed } from '../store/nodeAccess'
-import { NO_ACCESS_MESSAGE } from '../router/guard'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { SECTIONS, MORE_KEY, visibleSections, sectionLabel, isOverflow } from './index-tabs'
+import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf } from '../navigation/registry'
 import { qualifierOf, browseLocation } from '../router/paths'
 import { textFromParam, textParam, optionalParam } from '../router/url-state'
 
@@ -113,26 +111,19 @@ watch(() => mustChangePassword?.value, sendToAccount)
 
 // The sign in dialog lives in the header of this page, so it is asked for once the page is on
 // screen. A request made earlier, while the router was still deciding, would reach nobody.
-// A sign in that turns out not to grant the permission sends the visitor where the router
-// would have: to overview, with the same notice.
+// A signed in visitor without the permission stays at the address and sees the no access state.
 const askForSignIn = () => {
   if (!sectionAllowed.value && !isLogged.value) openLogin()
 }
 onMounted(askForSignIn)
 watch([sectionAllowed, isLogged], ([allowed, logged]) => {
-  if (allowed) return
-  if (logged) {
-    createInfoToastOnce(NO_ACCESS_MESSAGE)
-    router.replace({ name: 'overview' })
-  } else {
-    openLogin()
-  }
+  if (!allowed && !logged) openLogin()
 })
 const browsedPath = computed(() => qualifierOf(route.params))
 
 // One section on its own needs no navigation: the bar and the rail are left out, and the
 // page keeps its full width.
-const menuSections = computed(() => visibleSections(can))
+const menuSections = computed(() => visiblePages(can))
 const hasNavigation = computed(() => menuSections.value.length > 1)
 
 // The snackbar lives outside this page, so it learns the bar height from the document root.
@@ -150,30 +141,36 @@ onBeforeUnmount(() => {
 const locationOf = (key) =>
   key === 'overview'
     ? browseLocation(browsedPath.value)
-    : { name: SECTIONS.find(entry => entry.key === key).route }
+    : { name: pageByKey(key).route }
 
 // The bar and the rail share these destinations. Each one is a real link, so it can be
 // opened in a new tab and the browser's history works.
-const destinations = computed(() => menuSections.value.map(entry => ({
+const destinationOf = (entry) => ({
   key: entry.key,
   label: entry.label,
   href: router.resolve(locationOf(entry.key)).href,
-})))
+})
+
+// The rail draws the destinations in their groups; `group` is the name the rail labels a block with.
+const railItems = computed(() => railGroups(can).flatMap(group =>
+  group.pages.map(entry => ({ ...destinationOf(entry), group: group.heading }))))
 
 const selectSection = (key) => router.push(locationOf(key))
 
-// The bottom bar cannot hold every section, so the rarer ones sit under a More item. That item
-// opens a small panel above the bar, and it stays active while one of its sections is on screen.
-const overflowDestinations = computed(() => destinations.value.filter(item => isOverflow(item.key)))
-const barItems = computed(() =>
-  overflowDestinations.value.length === 0
-    ? destinations.value
-    : [
-      ...destinations.value.filter(item => !isOverflow(item.key)),
-      { key: MORE_KEY, label: 'More' },
-    ]
-)
-const barSection = computed(() => (isOverflow(section.value) ? MORE_KEY : section.value))
+// The bottom bar holds the first four permitted sections. When some are left over they sit under a More
+// item, which opens a small panel above the bar under the group headings, and it stays active while one of
+// its sections is on screen.
+const layout = computed(() => barLayout(can))
+const moreGroups = computed(() => layout.value.more.map(group => ({
+  heading: group.heading,
+  items: group.pages.map(destinationOf),
+})))
+const moreKeys = computed(() => moreGroups.value.flatMap(group => group.items.map(item => item.key)))
+const barItems = computed(() => [
+  ...layout.value.bar.map(destinationOf),
+  ...(moreKeys.value.length > 0 ? [{ key: MORE_KEY, label: 'More' }] : []),
+])
+const barSection = computed(() => (moreKeys.value.includes(section.value) ? MORE_KEY : section.value))
 const moreOpen = ref(false)
 
 const selectBarItem = (key) => {
@@ -215,21 +212,9 @@ const replaceQuery = (key, value) => {
   return router.replace({ name: route.name, params: route.params, query: next })
 }
 
-// Access: the tab on screen (users, machines, teams, sso, ldap, security or check) and the name of the principal or team that
-// is open. The view moves between them through the router itself.
-const ACCESS_TABS = {
-  'access-users': 'users',
-  'access-user': 'users',
-  'access-machines': 'machines',
-  'access-machine': 'machines',
-  'access-check': 'check',
-  'access-teams': 'teams',
-  'access-team': 'teams',
-  'access-sso': 'sso',
-  'access-ldap': 'ldap',
-  'access-security': 'security'
-}
-const accessTab = computed(() => ACCESS_TABS[route.name] ?? 'users')
+// Access: the tab on screen (users, machines, teams, sso, ldap, security or check; none at /access, which is the index on a narrow screen) and the name of the principal or team that
+// is open. The view moves between them through the router itself. The registry maps each route to its tab.
+const accessTab = computed(() => accessTabOf(route.name))
 const accessName = computed(() => (section.value === 'access' ? route.params.name : undefined))
 
 // Console: the level switches and the text filter, as the views read and write them.
@@ -242,7 +227,7 @@ const setConsoleSearch = (text) => replaceQuery('q', textParam(text))
 const setDomain = (domain) =>
   router.replace({ name: 'settings', params: { domain }, query: route.query })
 
-const activeLabel = computed(() => sectionLabel(section.value))
+const activeLabel = computed(() => pageLabel(section.value))
 </script>
 
 <template>
@@ -284,6 +269,28 @@ const activeLabel = computed(() => sectionLabel(section.value))
       :class="hasNavigation ? 'pane-sheet min-[600px]:flex min-[600px]:min-h-[calc(100dvh_-_4rem)] min-[600px]:flex-col min-[600px]:rounded-tl-corner-extra-large min-[1600px]:mr-4 min-[1600px]:rounded-tr-corner-extra-large' : ''"
     >
       <NotFoundView v-if="route.name === 'not-found'" />
+      <section
+        v-else-if="!sectionAllowed && isLogged"
+        data-test="no-access"
+        class="container mx-auto flex flex-col items-start gap-4 py-12"
+        aria-labelledby="no-access-title"
+      >
+        <h2
+          id="no-access-title"
+          class="md-headline-small text-on-surface"
+        >
+          {{ activeLabel }}
+        </h2>
+        <p class="md-body-large text-on-surface-variant">
+          You do not have access to this page.
+        </p>
+        <RouterLink
+          :to="{ name: 'overview' }"
+          class="md-focus-ring md-label-large text-primary"
+        >
+          {{ pageLabel('overview') }}
+        </RouterLink>
+      </section>
       <section
         v-else-if="!sectionAllowed"
         class="container mx-auto flex flex-col items-start gap-4 py-12"
@@ -373,29 +380,42 @@ const activeLabel = computed(() => sectionLabel(section.value))
         @keydown.esc="moreOpen = false"
       >
         <nav aria-label="More sections">
-          <ul
-            role="list"
-            class="flex list-none flex-col gap-1"
+          <div
+            v-for="group in moreGroups"
+            :key="group.heading"
+            role="group"
+            :aria-label="group.heading"
           >
-            <li
-              v-for="item in overflowDestinations"
-              :key="item.key"
+            <p
+              class="md-label-medium px-4 py-2 text-on-surface-variant"
+              aria-hidden="true"
             >
-              <a
-                :href="item.href"
-                :aria-current="section === item.key ? 'page' : undefined"
-                class="md-state-layer md-focus-ring flex items-center gap-3 rounded-corner-medium px-4 py-3 no-underline"
-                :class="section === item.key ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
-                @click="openOverflowItem($event, item.key)"
+              {{ group.heading }}
+            </p>
+            <ul
+              role="list"
+              class="flex list-none flex-col gap-1"
+            >
+              <li
+                v-for="item in group.items"
+                :key="item.key"
               >
-                <component
-                  :is="SECTION_ICONS[item.key]"
-                  :filled="section === item.key"
-                />
-                <span class="md-label-large">{{ item.label }}</span>
-              </a>
-            </li>
-          </ul>
+                <a
+                  :href="item.href"
+                  :aria-current="section === item.key ? 'page' : undefined"
+                  class="md-state-layer md-focus-ring flex items-center gap-3 rounded-corner-medium px-4 py-3 no-underline"
+                  :class="section === item.key ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface'"
+                  @click="openOverflowItem($event, item.key)"
+                >
+                  <component
+                    :is="SECTION_ICONS[item.key]"
+                    :filled="section === item.key"
+                  />
+                  <span class="md-label-large">{{ item.label }}</span>
+                </a>
+              </li>
+            </ul>
+          </div>
         </nav>
       </div>
       <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[600px]:hidden">
@@ -415,7 +435,7 @@ const activeLabel = computed(() => sectionLabel(section.value))
       <div class="fixed inset-y-0 left-0 z-20 hidden w-20 min-[600px]:block">
         <MdNavigationRail
           class="h-full"
-          :items="destinations"
+          :items="railItems"
           :model-value="section"
           @update:model-value="selectSection"
         >

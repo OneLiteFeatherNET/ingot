@@ -124,3 +124,162 @@ describe('InstanceStatusPanel', () => {
     wrapper.unmount()
   })
 })
+
+describe('InstanceStatusPanel cluster view', () => {
+  const NOW = Date.UTC(2026, 10, 8, 12, 0, 0)
+  const MINUTE = 60 * 1000
+  const HOUR = 60 * MINUTE
+
+  // The clock is the system time, faked so the uptime of each instance is the same on every run.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    vi.setSystemTime(NOW)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  const member = (overrides = {}) => ({
+    id: 'ingot-0',
+    version: '1.3.0',
+    uptimeStart: NOW - 2 * HOUR,
+    usedMemory: 100,
+    maxMemory: 512,
+    usedThreads: 3,
+    maxThreads: 20,
+    failuresCount: 0,
+    health: 'up',
+    stale: false,
+    interval: 60000,
+    samples: [],
+    ...overrides
+  })
+
+  const mountWithStatus = async (status) => {
+    session.client = ref(clientWith(() => Promise.resolve({ data: status })))
+    const wrapper = mount(InstanceStatusPanel)
+    await flushPromises()
+    return wrapper
+  }
+
+  it('shows the cluster summary above the per-instance list', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: { instances: [member(), member({ id: 'ingot-1' })] }
+    })
+
+    const summary = wrapper.find('[data-testid="cluster-summary"]')
+    const list = wrapper.find('[data-testid="cluster-instances"]')
+    expect(summary.exists(), 'the cluster summary is shown when a bus is configured').toBe(true)
+    expect(list.exists(), 'the per-instance list is shown when a bus is configured').toBe(true)
+    expect(summary.element.compareDocumentPosition(list.element) & Node.DOCUMENT_POSITION_FOLLOWING, 'the summary comes before the list').toBeTruthy()
+    wrapper.unmount()
+  })
+
+  it('lists every instance with its own version', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: { instances: [member({ version: '1.3.0' }), member({ id: 'ingot-1', version: '1.3.0' })] }
+    })
+
+    const items = wrapper.findAll('[data-testid="cluster-instance"]')
+    expect(items, 'one row per instance').toHaveLength(2)
+    expect(items[0].text()).toContain('ingot-0')
+    expect(items[1].text()).toContain('ingot-1')
+    wrapper.unmount()
+  })
+
+  it('sums the memory, threads and failures of the instances in the summary', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: {
+        instances: [
+          member({ usedMemory: 100, usedThreads: 3, maxThreads: 20, failuresCount: 1 }),
+          member({ id: 'ingot-1', usedMemory: 151.5, usedThreads: 5, maxThreads: 20, failuresCount: 2 })
+        ]
+      }
+    })
+
+    const summary = wrapper.find('[data-testid="cluster-summary"]').text()
+    expect(summary, 'used memory is the sum, not the first instance').toContain('251.5 MB')
+    expect(summary, 'maximum memory is the sum of both limits').toContain('of 1024 MB available')
+    expect(summary, 'maximum threads is the sum of both pools').toContain('of 40 in the pool')
+    expect(summary, 'failures are summed as a count').toContain('3 failures recorded')
+    wrapper.unmount()
+  })
+
+  it('marks a stale instance as stale and leaves the others unmarked', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: {
+        instances: [member(), member({ id: 'ingot-1', stale: true })]
+      }
+    })
+
+    const items = wrapper.findAll('[data-testid="cluster-instance"]')
+    expect(items[0].text(), 'a reporting instance is not marked').not.toContain('Stale')
+    expect(items[1].text(), 'a replica that stopped reporting is marked').toContain('Stale')
+    wrapper.unmount()
+  })
+
+  it('shows mixed when the instances run different versions, and lists both versions', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: {
+        instances: [member({ version: '1.2.0' }), member({ id: 'ingot-1', version: '1.3.0' })]
+      }
+    })
+
+    const summary = wrapper.find('[data-testid="cluster-summary"]').text()
+    expect(summary, 'the version of a mixed cluster is named mixed').toContain('mixed')
+    expect(summary, 'every version in the cluster is listed').toContain('1.2.0')
+    expect(summary, 'every version in the cluster is listed').toContain('1.3.0')
+    wrapper.unmount()
+  })
+
+  it('shows the shortest uptime and the worst health of the cluster', async () => {
+    const wrapper = await mountWithStatus({
+      ...INSTANCE,
+      cluster: {
+        instances: [
+          member({ uptimeStart: NOW - 2 * HOUR, health: 'up' }),
+          member({ id: 'ingot-1', uptimeStart: NOW - 30 * MINUTE, health: 'down' })
+        ]
+      }
+    })
+
+    const summary = wrapper.find('[data-testid="cluster-summary"]').text()
+    expect(summary, 'the restart 30 minutes ago sets the shortest uptime').toContain('30m 0s')
+    expect(summary, 'one unhealthy instance makes the cluster unhealthy').toContain('Unhealthy')
+    wrapper.unmount()
+  })
+
+  it('renders as before, with no cluster section, when the status has no cluster field', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE })
+
+    expect(wrapper.find('[data-testid="cluster-summary"]').exists(), 'no summary without a bus').toBe(false)
+    expect(wrapper.find('[data-testid="cluster-instances"]').exists(), 'no instance list without a bus').toBe(false)
+    expect(wrapper.text(), 'the existing tiles are still shown').toContain('Used memory')
+    expect(wrapper.text()).toContain('Uptime')
+    expect(wrapper.text()).toContain('Version')
+    wrapper.unmount()
+  })
+
+  it('hands the cluster to its parent on every poll so the trends can use it', async () => {
+    const instances = [member()]
+    const wrapper = await mountWithStatus({ ...INSTANCE, cluster: { instances } })
+
+    expect(wrapper.emitted('cluster').at(-1), 'the parent receives the instances of the status').toEqual([{ instances }])
+    wrapper.unmount()
+  })
+
+  it('hands null to its parent when there is no cluster, so the trends stay on the local history', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE })
+
+    expect(wrapper.emitted('cluster').at(-1), 'no bus means no cluster for the trends').toEqual([null])
+    wrapper.unmount()
+  })
+})

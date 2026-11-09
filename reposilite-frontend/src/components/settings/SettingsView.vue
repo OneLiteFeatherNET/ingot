@@ -19,11 +19,17 @@ import { computed, inject, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { JsonForms } from '@jsonforms/vue'
 import download from 'downloadjs'
+import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
+import { useSession } from '../../store/session'
+import { ADMIN_NODES } from '../../store/nodeAccess'
+import { groupedSettingsDomains, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
-import SettingsTabs from './SettingsTabs.vue'
+import SideNavLayout from '../layout/SideNavLayout.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
+import SettingsHub from './SettingsHub.vue'
+import { hubGroups } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
@@ -106,7 +112,22 @@ const activeDomain = computed(() => {
   return tabDomains.value[0] ?? domains.value[0]
 })
 
-const domainTabs = computed(() => tabDomains.value.map(domain => ({ key: domain, label: store.titleOf(domain) })))
+// Below 600px the side navigation is not drawn beside the domain; see SideNavLayout.
+const narrow = useMediaQuery('(max-width: 599px)')
+
+// The domains of the side navigation, in the category groups of the registry. With one domain there is
+// nothing to switch between, so no navigation is drawn.
+const sideNav = sideNavOf('settings')
+const domainGroups = computed(() => (tabDomains.value.length > 1
+  ? groupedSettingsDomains(tabDomains.value).map(group => ({
+    heading: group.heading,
+    links: group.domains.map(domain => ({ key: domain, label: store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
+  }))
+  : []))
+
+// With no domain in the address and several to choose from, the page is the hub. With one domain the
+// address is replaced with it, as the watcher below reports.
+const hubShown = computed(() => !props.domain && tabDomains.value.length > 1)
 
 const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
 const activeCollections = computed(() => (activeDomain.value && !isAccessDomain(activeDomain.value)
@@ -147,12 +168,8 @@ watch(
 // address names none or one the server does not have, or once the list has arrived. The page answers
 // with a replace, after which the two agree and nothing is reported again, so there is no loop.
 watch([activeDomain, () => props.domain], ([domain, requested]) => {
-  if (domain && domain !== requested) emit('update:domain', domain)
+  if (domain && domain !== requested && !hubShown.value) emit('update:domain', domain)
 }, { immediate: true })
-
-const selectDomain = (domain) => {
-  store.selectedDomain.value = domain
-}
 
 const selectEntry = (collection, id) => {
   router.push({ name: 'settings-entry', params: { domain: activeDomain.value, collection: collection.key, entry: id } })
@@ -290,6 +307,22 @@ const sheetChanges = computed(() => (reviewingConflict.value ? conflictChanges.v
 const openConflictReview = async () => {
   if (await reviewConflict()) conflictReviewOpen.value = true
 }
+
+/*
+ * The hub shows the saved value of each domain and marks the ones whose draft differs. Editing is gated by one
+ * node, so a visitor either may edit every domain or none. A session without a node check, as the tests
+ * provide, is taken to edit.
+ */
+const session = useSession()
+const mayEdit = () => (typeof session.can === 'function' ? session.can(ADMIN_NODES.settings) : true)
+const hubCards = computed(() => hubGroups({
+  domains: domains.value,
+  schemas: store.schemas.value,
+  saved: savedSettings.value,
+  unsaved: [...new Set(changes.value.map(change => change.domain))],
+  titleOf: store.titleOf,
+  editable: mayEdit
+}))
 
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
 watch(() => changes.value.length, (count) => {
@@ -447,64 +480,70 @@ watch(
       @dismiss="importErrors = []"
     />
 
-    <template v-if="activeDomain">
-      <SettingsTabs
-        v-if="tabDomains.length > 1"
-        :model-value="activeDomain"
-        label="Configuration domains"
-        variant="secondary"
-        :tabs="domainTabs"
-        @update:model-value="selectDomain"
-      />
-      <h2
-        v-else-if="!isAccessDomain(activeDomain)"
-        class="md-title-large text-on-surface"
+    <SettingsHub
+      v-if="hubShown"
+      :groups="hubCards"
+    />
+    <template v-else-if="activeDomain">
+      <SideNavLayout
+        :label="sideNav.label"
+        :section-label="sideNav.sectionLabel"
+        :groups="domainGroups"
+        :current="activeDomain"
+        :index-to="sideNav.indexTo"
+        :narrow="narrow"
+        replace
       >
-        {{ store.titleOf(activeDomain) }}
-      </h2>
+        <h2
+          v-if="tabDomains.length <= 1 && !isAccessDomain(activeDomain)"
+          class="md-title-large text-on-surface"
+        >
+          {{ store.titleOf(activeDomain) }}
+        </h2>
 
-      <div
-        role="tabpanel"
-        class="mt-6 flex flex-col gap-8"
-      >
-        <AccessDomainCard
-          v-if="isAccessDomain(activeDomain)"
-          :domain="activeDomain"
-          :title="store.titleOf(activeDomain)"
-        />
-        <JsonForms
-          v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
-          :key="`domain-fields:${activeDomain}`"
-          :config="formsConfiguration"
-          :data="configurations[activeDomain]"
-          :schema="domainForm.schema"
-          :uischema="domainForm.layout"
-          :renderers="renderers"
-          :ajv="store.configurationValidator"
-          @change="onDomainChange(activeDomain, $event)"
-        />
+        <div
+          role="tabpanel"
+          class="mt-6 flex flex-col gap-8"
+        >
+          <AccessDomainCard
+            v-if="isAccessDomain(activeDomain)"
+            :domain="activeDomain"
+            :title="store.titleOf(activeDomain)"
+          />
+          <JsonForms
+            v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
+            :key="`domain-fields:${activeDomain}`"
+            :config="formsConfiguration"
+            :data="configurations[activeDomain]"
+            :schema="domainForm.schema"
+            :uischema="domainForm.layout"
+            :renderers="renderers"
+            :ajv="store.configurationValidator"
+            @change="onDomainChange(activeDomain, $event)"
+          />
 
-        <CollectionEditor
-          v-for="list in activeCollections"
-          :key="`${activeDomain}:${list.key}`"
-          :collection="list"
-          :entries="entriesOf(activeDomain, list)"
-          :keys="store.entryKeysOf(activeDomain, list.key)"
-          :selected-id="selectedIdFor(list)"
-          :back-href="backHref"
-          :renderers="renderers"
-          :validator="store.configurationValidator"
-          :guided-create="guidedCreateFor(list)"
-          :show-access="isRepositoryList(list)"
-          :typed="isRepositoryList(list)"
-          :server-error="saveError ?? ''"
-          @select="selectEntry(list, $event)"
-          @back="backToList"
-          @create="createEntry(list, $event)"
-          @change="updateEntry(list, $event)"
-          @delete="deleteEntry(list, $event)"
-        />
-      </div>
+          <CollectionEditor
+            v-for="list in activeCollections"
+            :key="`${activeDomain}:${list.key}`"
+            :collection="list"
+            :entries="entriesOf(activeDomain, list)"
+            :keys="store.entryKeysOf(activeDomain, list.key)"
+            :selected-id="selectedIdFor(list)"
+            :back-href="backHref"
+            :renderers="renderers"
+            :validator="store.configurationValidator"
+            :guided-create="guidedCreateFor(list)"
+            :show-access="isRepositoryList(list)"
+            :typed="isRepositoryList(list)"
+            :server-error="saveError ?? ''"
+            @select="selectEntry(list, $event)"
+            @back="backToList"
+            @create="createEntry(list, $event)"
+            @change="updateEntry(list, $event)"
+            @delete="deleteEntry(list, $event)"
+          />
+        </div>
+      </SideNavLayout>
     </template>
     <p
       v-else-if="!loadError"

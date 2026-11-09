@@ -1,8 +1,11 @@
 package com.reposilite.storage.s3
 
 import com.reposilite.storage.api.Location
+import com.reposilite.journalist.backend.InMemoryLogger
+import com.reposilite.status.FailureFacade
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import panda.std.ResultAssertions.assertError
 import panda.std.ResultAssertions.assertOk
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
@@ -18,6 +21,7 @@ private val MODIFIED_AT: Instant = Instant.parse("2026-10-15T12:00:00.123Z")
 internal class S3EntrySourceTest {
 
     private val s3 = FakeS3Bucket(BUCKET)
+    private val failureFacade = FailureFacade(InMemoryLogger())
 
     @Test
     fun `should list the keys in key order with the size and the last modified time of each`() {
@@ -141,8 +145,30 @@ internal class S3EntrySourceTest {
         assertThat(page.entries.map { it.path.toString() }).containsExactly("b.jar")
     }
 
+    @Test
+    fun `should answer a server error without the failure message when the listing fails`() {
+        // given: a bucket whose listing fails with a message that names an internal detail
+        val failingBucket = object : S3Client by s3 {
+            override fun listObjectsV2(request: ListObjectsV2Request): ListObjectsV2Response =
+                throw IllegalStateException("internal-detail-42")
+        }
+
+        // when: the bucket is listed
+        val error = assertError(
+            S3EntrySource(s3 = failingBucket, bucket = BUCKET, failureFacade = failureFacade).listEntries(Location.empty(), after = null, limit = 100)
+        )
+
+        // then: the status is still a server error
+        assertThat(error.status).describedAs("status of a failed listing").isEqualTo(500)
+
+        // and: neither the failure message nor the class name reach the response
+        assertThat(error.message)
+            .describedAs("message of a failed listing")
+            .doesNotContain("internal-detail-42", "IllegalStateException")
+    }
+
     private fun source(keyPrefix: String = ""): S3EntrySource =
-        S3EntrySource(s3 = s3, bucket = BUCKET, keyPrefix = keyPrefix)
+        S3EntrySource(s3 = s3, bucket = BUCKET, keyPrefix = keyPrefix, failureFacade = failureFacade)
 
 }
 

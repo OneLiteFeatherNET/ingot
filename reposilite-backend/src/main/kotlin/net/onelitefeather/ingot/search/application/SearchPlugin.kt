@@ -27,6 +27,7 @@ import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
+import com.reposilite.status.FailureFacade
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
@@ -62,7 +63,7 @@ import kotlin.random.Random
  */
 @Plugin(
     name = "search",
-    dependencies = ["local-configuration", "shared-configuration", "maven"],
+    dependencies = ["local-configuration", "shared-configuration", "maven", "failure"],
     settings = SearchSettings::class,
 )
 internal class SearchPlugin : ReposilitePlugin() {
@@ -110,7 +111,7 @@ internal class SearchPlugin : ReposilitePlugin() {
 
         val runs = RunStore(database, clock)
         val rows = IndexRowStore(database)
-        val repositories = MavenRepositoryEntries(maven)
+        val repositories = MavenRepositoryEntries(maven, facade<FailureFacade>())
         val claims = SqlScheduledJobClaims(database, clock, instanceId)
         val settings = facade<SharedConfigurationFacade>().getDomainSettings<SearchSettings>()
         val rebuild = RebuildService(

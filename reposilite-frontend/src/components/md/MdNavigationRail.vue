@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { clearRailWidth, publishRailWidth } from '../../helpers/navigation-rail'
 
 /*
@@ -26,6 +26,10 @@ import { clearRailWidth, publishRailWidth } from '../../helpers/navigation-rail'
  *
  * It takes the same props and emits the same events as MdNavigationBar, so the two can show
  * the same destinations. The parent decides which of the two is on screen (CSS only).
+ *
+ * An item may carry a `group` (the group name). Neighbouring items of one group are drawn together as an
+ * element labelled with the group name, with a divider between groups. Items without a group form one
+ * unnamed list, as before.
  */
 const props = defineProps({
   items: {
@@ -47,6 +51,17 @@ const emit = defineEmits(['update:modelValue'])
 // The rail publishes its width for overlays such as the snackbar, and withdraws it when it leaves.
 onMounted(() => publishRailWidth())
 onBeforeUnmount(() => clearRailWidth())
+
+// Neighbouring items with the same `group` form one block, in the order the items were given.
+const blocks = computed(() => props.items.reduce((all, item) => {
+  const last = all[all.length - 1]
+  if (last && last.group === item.group) {
+    last.items.push(item)
+  } else {
+    all.push({ group: item.group, items: [item] })
+  }
+  return all
+}, []))
 
 const isActive = (item) => item.key === props.modelValue
 
@@ -75,41 +90,50 @@ const select = (item, event) => {
     :aria-label="label"
     class="flex h-full w-20 flex-col items-center bg-surface-container pt-11 text-on-surface"
   >
-    <ul
-      role="list"
-      class="flex w-full list-none flex-col items-center gap-2"
+    <div
+      v-for="(block, index) in blocks"
+      :key="block.group ?? index"
+      :role="block.group ? 'group' : undefined"
+      :aria-label="block.group"
+      class="flex w-full flex-col items-center"
+      :class="index > 0 ? 'mt-2 border-t border-outline-variant pt-2' : ''"
     >
-      <li
-        v-for="item in items"
-        :key="item.key"
-        class="flex w-full"
+      <ul
+        role="list"
+        class="flex w-full list-none flex-col items-center gap-2"
       >
-        <component
-          :is="item.href ? 'a' : 'button'"
-          :href="item.href"
-          :type="item.href ? undefined : 'button'"
-          :aria-current="isActive(item) ? 'page' : undefined"
-          class="md-state-layer md-focus-ring-inset relative flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
-          :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
-          @click="select(item, $event)"
+        <li
+          v-for="item in block.items"
+          :key="item.key"
+          class="flex w-full"
         >
-          <span
-            class="flex h-8 w-14 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-medium2) ease-md-standard motion-reduce:transition-none [&>svg]:size-6"
-            :class="isActive(item) ? 'bg-secondary-container text-on-secondary-container' : ''"
-            aria-hidden="true"
+          <component
+            :is="item.href ? 'a' : 'button'"
+            :href="item.href"
+            :type="item.href ? undefined : 'button'"
+            :aria-current="isActive(item) ? 'page' : undefined"
+            class="md-state-layer md-focus-ring-inset relative flex min-h-14 w-full flex-col items-center justify-center gap-1 rounded-corner-large py-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
+            :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
+            @click="select(item, $event)"
           >
-            <slot
-              name="icon"
-              :item="item"
-              :active="isActive(item)"
-            />
-          </span>
-          <span
-            class="md-label-medium"
-            :class="isActive(item) ? 'md-label-medium-prominent text-on-surface' : ''"
-          >{{ item.label }}</span>
-        </component>
-      </li>
-    </ul>
+            <span
+              class="flex h-8 w-14 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-medium2) ease-md-standard motion-reduce:transition-none [&>svg]:size-6"
+              :class="isActive(item) ? 'bg-secondary-container text-on-secondary-container' : ''"
+              aria-hidden="true"
+            >
+              <slot
+                name="icon"
+                :item="item"
+                :active="isActive(item)"
+              />
+            </span>
+            <span
+              class="md-label-medium"
+              :class="isActive(item) ? 'md-label-medium-prominent text-on-surface' : ''"
+            >{{ item.label }}</span>
+          </component>
+        </li>
+      </ul>
+    </div>
   </nav>
 </template>

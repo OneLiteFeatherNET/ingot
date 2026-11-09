@@ -29,7 +29,9 @@ import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import panda.std.Result
 import panda.std.reactive.Reference
+import java.net.InetSocketAddress
 import java.nio.channels.ClosedChannelException
+import net.onelitefeather.ingot.web.TrustedProxies
 import java.util.Collections
 import java.util.WeakHashMap
 import java.util.function.Consumer
@@ -48,7 +50,8 @@ internal class ConsoleWebSocketHandler(
     private val journalist: ReposiliteJournalist,
     private val consoleAuthenticator: ConsoleAuthenticator,
     private val consoleFacade: ConsoleFacade,
-    private val forwardedIp: Reference<String>
+    private val forwardedIp: Reference<String>,
+    private val trustedProxies: TrustedProxies = TrustedProxies.NONE,
 ) : Consumer<WsConfig> {
 
     /**
@@ -133,9 +136,14 @@ internal class ConsoleWebSocketHandler(
         return identity.map { "${it.name}@$host" }
     }
 
-    private fun WsContext.getHost(): String =
-        forwardedIp.get()?.let { header(it) }
+    private fun WsContext.getHost(): String {
+        val peer = (session.remoteSocketAddress as? InetSocketAddress)?.address?.hostAddress
+        if (trustedProxies.enabled && peer != null) {
+            return trustedProxies.resolve(peer, forwardedIp.get()?.let { header(it) })
+        }
+        return forwardedIp.get()?.let { header(it) }
             ?: session.remoteSocketAddress?.toString()
             ?: "unknown host"
+    }
 
 }

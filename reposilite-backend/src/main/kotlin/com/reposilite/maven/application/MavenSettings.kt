@@ -45,7 +45,15 @@ data class MavenSettings(
         RepositorySettings("releases"),
         RepositorySettings("snapshots"),
         RepositorySettings("private", visibility = PRIVATE),
-    )
+    ),
+    @get:Doc(title = "Resolution cache maximum age in cluster mode", description = """
+        Maximum age in seconds of a cached routing decision (see Resolution cache size) when a cluster bus is configured.
+        Entries expire after this age even when an invalidation was not delivered.<br/>
+        Without a cluster bus this value is ignored and entries keep their current lifetime.<br/>
+        0: use the cluster default of 300 seconds<br/>
+        (Default: 0)
+    """)
+    val resolutionCacheClusterMaxAgeSeconds: Long = 0L,
 ) : ValidatedSettings {
 
     override fun violations(): List<String> =

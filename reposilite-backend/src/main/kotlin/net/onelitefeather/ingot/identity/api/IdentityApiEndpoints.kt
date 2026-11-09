@@ -21,13 +21,13 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import io.javalin.community.routing.Route.DELETE
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.PATCH
 import io.javalin.community.routing.Route.POST
 import io.javalin.community.routing.Route.PUT
 import io.javalin.http.Header
-import io.javalin.http.bodyAsClass
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
@@ -62,7 +62,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         requestBody = OpenApiRequestBody(content = [OpenApiContent(CreatePrincipalRequest::class)], required = true),
         methods = [HttpMethod.POST],
     )
-    val createPrincipal = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals", POST) {
+    val createPrincipal = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals", POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("users") {
             response = readBody<CreatePrincipalRequest>()
                 .flatMap { request -> identity.createPrincipal(request, actor = auditActor()) }
@@ -98,7 +98,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         requestBody = OpenApiRequestBody(content = [OpenApiContent(UpdatePrincipalRequest::class)], required = true),
         methods = [HttpMethod.PATCH],
     )
-    val updatePrincipal = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}", PATCH) {
+    val updatePrincipal = ReposiliteRoute<PrincipalDetailDto>("/api/identity/principals/{name}", PATCH, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("users") {
             response = readBody<UpdatePrincipalRequest>()
                 .flatMap { request -> identity.updatePrincipal(requireParameter("name"), request, ctx.header(Header.IF_MATCH), actor = auditActor()) }
@@ -143,7 +143,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         requestBody = OpenApiRequestBody(content = [OpenApiContent(CreateTokenRequest::class)], required = true),
         methods = [HttpMethod.POST],
     )
-    val createToken = ReposiliteRoute<CreatedTokenDto>("/api/identity/principals/{name}/tokens", POST) {
+    val createToken = ReposiliteRoute<CreatedTokenDto>("/api/identity/principals/{name}/tokens", POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("tokens") {
             response = readBody<CreateTokenRequest>()
                 .flatMap { request -> identity.createToken(requireParameter("name"), request, caller = identifier, actor = auditActor()) }
@@ -185,7 +185,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         requestBody = OpenApiRequestBody(content = [OpenApiContent(CreateTeamRequest::class)], required = true),
         methods = [HttpMethod.POST],
     )
-    val createTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams", POST) {
+    val createTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams", POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("teams") {
             response = readBody<CreateTeamRequest>()
                 .flatMap { request -> identity.createTeam(request, actor = auditActor()) }
@@ -221,7 +221,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         requestBody = OpenApiRequestBody(content = [OpenApiContent(UpdateTeamRequest::class)], required = true),
         methods = [HttpMethod.PATCH],
     )
-    val updateTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}", PATCH) {
+    val updateTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}", PATCH, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("teams") {
             response = readBody<UpdateTeamRequest>()
                 .flatMap { request -> identity.updateTeam(requireParameter("name"), request, ctx.header(Header.IF_MATCH), actor = auditActor()) }
@@ -518,7 +518,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
 
     /** Reads the request body, answering 400 when it cannot be read. */
     private inline fun <reified B : Any> ContextDsl<*>.readBody(): Result<B, ErrorResponse> =
-        supplyThrowing { ctx.bodyAsClass<B>() }.mapErr { badRequest("Failed to read body") }
+        supplyThrowing { body<B>() }.mapErr { badRequest("Failed to read body") }
 
     override val routes = routes(
         listPrincipals, createPrincipal, getPrincipal, updatePrincipal, deletePrincipal,

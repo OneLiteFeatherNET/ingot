@@ -22,12 +22,14 @@ import io.javalin.http.HttpStatus.UNAUTHORIZED
 
 private const val WWW_AUTHENTICATE = "www-authenticate"
 private const val WWW_BASIC_REALM = """Basic realm="Ingot", charset="UTF-8""""
+// Browsers show a login popup for Basic only. The API is used by the dashboard, which signs in itself, so it gets Bearer.
+private const val WWW_BEARER_REALM = """Bearer realm="Ingot""""
 
 internal class PostAuthHandler : ReposiliteRoutes() {
 
     private val realmDescription = ReposiliteRoute<Unit>("/{repository}/<*>", Route.AFTER) {
-        if (ctx.status() == UNAUTHORIZED && !uri.startsWith("/api")) {
-            ctx.header(WWW_AUTHENTICATE, WWW_BASIC_REALM)
+        if (ctx.status() == UNAUTHORIZED) {
+            ctx.header(WWW_AUTHENTICATE, if (uri.startsWith("/api")) WWW_BEARER_REALM else WWW_BASIC_REALM)
         }
     }
 

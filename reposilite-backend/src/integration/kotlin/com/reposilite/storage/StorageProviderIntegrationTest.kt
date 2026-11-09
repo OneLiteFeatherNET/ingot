@@ -53,6 +53,19 @@ internal abstract class StorageProviderIntegrationTest : StorageProviderSpecific
     }
 
     @Test
+    fun `should return only the requested window of a stored file`() {
+        // given: a stored file of known content
+        val resource = "/directory/ranged.data".toLocation()
+        storageProvider.putFile(resource, "0123456789".toByteArray().inputStream())
+
+        // when: a window in the middle of it is requested
+        val bytes = assertOk(storageProvider.getFile(resource, 3, 4)).use { it.readBytes() }
+
+        // then: only that window is returned
+        assertThat(String(bytes)).isEqualTo("3456")
+    }
+
+    @Test
     fun `should return error if non-existing resource has been requested` () {
         // given: some path to the resource that doesn't exist
         val resource = "/not/found.data".toLocation()

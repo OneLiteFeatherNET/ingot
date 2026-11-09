@@ -41,6 +41,9 @@ import io.javalin.json.JavalinJackson
 import io.javalin.openapi.plugin.OpenApiPlugin
 import io.javalin.plugin.bundled.SslRedirectPlugin
 import kotlin.time.Duration.Companion.minutes
+import net.onelitefeather.ingot.web.TrustedProxies
+import net.onelitefeather.ingot.web.SecurityHeaders
+import net.onelitefeather.ingot.web.SecurityHeadersSettings
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.ServerConnector
 import org.eclipse.jetty.util.thread.ThreadPool
@@ -70,19 +73,22 @@ internal object JavalinConfiguration {
             }
         }
 
-        configureJavalin(config, localConfiguration, webSettings)
+        configureJavalin(reposilite, config, localConfiguration, webSettings)
         configureJsonSerialization(config)
         configureSSL(reposilite, localConfiguration, config)
         configureCors(config)
+        configureSecurityHeaders(config)
         configureOpenApi(config, frontendSettings.get())
         configureDebug(reposilite, localConfiguration, config)
         configureRoutingPlugin(config, reposilite)
     }
 
-    private fun configureJavalin(config: JavalinConfig, localConfiguration: LocalConfiguration, webSettings: Reference<WebSettings>) {
+    private fun configureJavalin(reposilite: Reposilite, config: JavalinConfig, localConfiguration: LocalConfiguration, webSettings: Reference<WebSettings>) {
         config.startup.showJavalinBanner = false
         config.http.asyncTimeout = 10.minutes.inWholeMilliseconds
-        config.contextResolver.ip = { it.header(webSettings.get().forwardedIp) ?: it.req().remoteAddr }
+        val trustedProxies = TrustedProxies.fromEnvironment()
+        TrustedProxies.startupWarning(trustedProxies, webSettings.get().forwardedIp)?.let { reposilite.logger.warn(it) }
+        config.contextResolver.ip = { trustedProxies.resolve(it.req().remoteAddr, it.header(webSettings.get().forwardedIp)) }
 
         System.getProperty("javalin.maxRequestSize")?.let {
             config.http.maxRequestSize = it.toLong()
@@ -104,7 +110,8 @@ internal object JavalinConfiguration {
             failureFacade = extensionManager.facade(),
             accessTokenFacade = extensionManager.facade(),
             authenticationFacade = extensionManager.facade(),
-            loginFacade = extensionManager.facade()
+            loginFacade = extensionManager.facade(),
+            basePath = extensionManager.facade<LocalConfiguration>().basePath,
         )
 
         val dslRoutes = extensionManager.emitEvent(RoutingSetupEvent(reposilite))
@@ -175,6 +182,11 @@ internal object JavalinConfiguration {
                 it.exposeHeader(Header.ETAG)
             }
         }
+    }
+
+    private fun configureSecurityHeaders(config: JavalinConfig) {
+        val securityHeaders = SecurityHeaders(SecurityHeadersSettings.resolve())
+        config.routes.after { ctx -> securityHeaders.apply(ctx) }
     }
 
     private fun configureOpenApi(config: JavalinConfig, frontendSettings: FrontendSettings) {
