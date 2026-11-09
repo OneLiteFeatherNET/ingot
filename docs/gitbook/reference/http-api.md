@@ -166,7 +166,7 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 | DELETE | `/api/status/failures` | Instance admin | Clears the recorded failures. |
 | GET | `/api/statistics/resolved/all` | Instance admin | Returns the resolved-request statistics of all paths. |
 | GET | `/api/statistics/resolved/unique` | Instance admin | Returns the number of unique resolved records. |
-| GET | `/api/statistics/resolved/phrase/{limit}/{repository}/<gav>` | Path permission, read | Returns the resolved-request statistics of one path. |
+| GET | `/api/statistics/resolved/phrase/{limit}/{repository}/<gav>` | Path permission, read | Returns up to `{limit}` resolved-request entries whose path contains the phrase, highest count first, with their sum. `{limit}` must be a whole number from 1 to 100, otherwise the answer is `400`. A token sees only the entries under paths it may read, and the limit applies after that filter. A manager sees every entry. |
 
 ## Console
 
