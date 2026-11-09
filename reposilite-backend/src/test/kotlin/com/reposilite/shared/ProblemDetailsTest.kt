@@ -107,6 +107,20 @@ internal class ProblemDetailsTest {
     }
 
     @Test
+    fun `should vary an api error answer on accept when the client sends no accept header`() {
+        val response = get("/api/missing")
+
+        assertThat(response.headers().firstValue("Vary").orElse("")).describedAs("Vary of an api error").contains("Accept")
+    }
+
+    @Test
+    fun `should vary an api error answer on accept when the client prefers problem json`() {
+        val response = get("/api/missing", accept = "application/problem+json")
+
+        assertThat(response.headers().firstValue("Vary").orElse("")).describedAs("Vary of an api error").contains("Accept")
+    }
+
+    @Test
     fun `should answer a javalin http response exception in the same shape`() {
         val response = get("/api/rejected")
 
