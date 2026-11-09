@@ -71,3 +71,7 @@ The `INGOT_` names are read first. Where a `REPOSILITE_` name exists, it is read
 Files of `PRIVATE` and `HIDDEN` repositories, and files that a group serves from a private member, are now answered with `Cache-Control: private, max-age=<seconds>` instead of `public`. A shared cache in front of Ingot, such as a CDN or a company proxy, no longer stores those answers, so a file downloaded with credentials is not handed to other clients. Maven, Gradle and the dashboard ignore the header, and status codes, bodies and `ETag` values stay the same. Refused `401` answers for files carry `no-cache, no-store, max-age=0`.
 
 No configuration change is needed. To restore the old `public` value for these answers, set `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC=true`. Do that only when the cache in front of Ingot may keep access-controlled files for other clients. See [Environment variables](environment-variables.md#maven-cache-control).
+
+### Mirror extensions
+
+The default `allowedExtensions` of a mirrored repository now includes `.sigstore.json`. A stored list is kept on upgrade and is not rewritten. To let a mirror with a stored list serve Sigstore bundles, add `.sigstore.json` to its `allowedExtensions` in the settings.

@@ -28,6 +28,7 @@ import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.maven.api.PomDetails
 import com.reposilite.maven.api.VersionLookupRequest
+import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.maven.specification.MavenSpecification
@@ -425,6 +426,50 @@ internal class MavenFacadeTest : MavenSpecification() {
             // then: the blank entry does not act as a filter and the file is served
             val (_, data) = assertOk(response)
             assertThat(data.readBytes().decodeToString()).isEqualTo(REMOTE_CONTENT)
+        }
+
+        @Test
+        fun `should include sigstore bundles in the default allowed extensions of a mirror` () {
+            // when: a mirror is created without an allowedExtensions value
+            val defaultExtensions = MirroredRepositorySettings(reference = REMOTE_REPOSITORY).allowedExtensions
+
+            // then: the default keeps the artifact, checksum and signature extensions and adds the sigstore bundle
+            assertThat(defaultExtensions)
+                .`as`("default allowedExtensions of a mirror")
+                .contains(".jar", ".pom", ".sha512", ".asc", ".sigstore.json")
+        }
+
+        @Test
+        fun `should proxy sigstore bundle through a mirror with the default extensions` () {
+            // given: a sigstore bundle beside an artifact, available upstream and served by a mirror with the default allowedExtensions
+            val file = FileSpec("PROXIED-DEFAULT-EXTENSIONS", "/com/example/a/1.0/a-1.0.jar.sigstore.json", REMOTE_CONTENT)
+
+            // when: the bundle is requested
+            val response = mavenFacade.findFile(file.toLookupRequest(UNAUTHORIZED))
+
+            // then: the bundle is proxied and served
+            val (_, data) = assertOk(response)
+            assertThat(data.readBytes().decodeToString()).isEqualTo(REMOTE_CONTENT)
+        }
+
+        @Test
+        fun `should keep a stored extension list without sigstore bundles and not contact the remote host` () {
+            // given: a mirror whose stored allowedExtensions predates the new default and holds .jar, .pom and .asc only
+            mavenSettings.update(MavenSettings(repositories = repositories() + RepositorySettings(
+                "PROXIED-STORED-EXTENSIONS", visibility = PUBLIC, proxied = mutableListOf(
+                    MirroredRepositorySettings(reference = REMOTE_REPOSITORY, store = true, authorization = REMOTE_AUTH, allowedExtensions = listOf(".jar", ".pom", ".asc"))
+                )
+            )))
+            val file = FileSpec("PROXIED-STORED-EXTENSIONS", "/com/example/a/1.0/a-1.0.jar.sigstore.json", REMOTE_CONTENT)
+
+            // when: the bundle is requested
+            val response = mavenFacade.findFile(file.toLookupRequest(UNAUTHORIZED))
+
+            // then: the bundle is refused as a missing file and the remote host is never asked for it
+            assertError(response)
+            assertThat(remoteRequestsByUri.keys.filter { it.endsWith(file.gav) })
+                .`as`("remote requests for ${file.gav}")
+                .isEmpty()
         }
 
         @Test

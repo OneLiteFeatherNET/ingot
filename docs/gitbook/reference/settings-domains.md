@@ -236,7 +236,7 @@ Fields of a mirror in `proxied`:
 | `reference` | String | empty | Id of another local repository, or the URL of a remote repository. Not empty. |
 | `store` | Boolean | `false` | Stores proxied artifacts locally. |
 | `allowedGroups` | List of String | empty | Allowed artifact groups. Empty allows all. |
-| `allowedExtensions` | List of String | `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, `.md5`, `.sha1`, `.sha256`, `.sha512`, `.asc` | Accepted file extensions. Empty allows all. The value `<none>` permits files without an extension. |
+| `allowedExtensions` | List of String | `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, `.md5`, `.sha1`, `.sha256`, `.sha512`, `.asc`, `.sigstore.json` | Accepted file extensions. Empty allows all. The value `<none>` permits files without an extension. |
 | `connectTimeout` | Int | `3` | Seconds to wait for the connection to the remote host. At least 0. |
 | `readTimeout` | Int | `15` | Seconds to read data from the remote host. At least 0. |
 | `authorization` | Object or null | `null` | Credentials for the remote host. |

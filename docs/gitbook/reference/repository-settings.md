@@ -153,7 +153,7 @@ An entry of `proxied` describes one repository that this repository can fetch fi
 | `reference` | Link | string | empty | The id of a local repository or the URL of a remote repository. At least 1 character. A trailing slash is ignored. An empty reference is skipped with a warning. |
 | `store` | Store | boolean | `false` | Saves fetched files in this repository. Without it, files are streamed and not kept. |
 | `allowedGroups` | Allowed Groups | list of strings | empty | Group ids that may be fetched. An empty list allows all. A group matches when the request path starts with the group id with dots replaced by slashes. |
-| `allowedExtensions` | Allowed Extensions | list of strings | `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, `.md5`, `.sha1`, `.sha256`, `.sha512`, `.asc` | Accepted file name endings. An empty list allows all files. The value `<none>` allows files without an extension. |
+| `allowedExtensions` | Allowed Extensions | list of strings | `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, `.md5`, `.sha1`, `.sha256`, `.sha512`, `.asc`, `.sigstore.json` | Accepted file name endings. An empty list allows all files. The value `<none>` allows files without an extension. |
 | `connectTimeout` | Connect Timeout | integer (seconds), at least 0 | `3` | Time to wait for the connection to a remote host. |
 | `readTimeout` | Read Timeout | integer (seconds), at least 0 | `15` | Time to wait for data from a remote host. |
 | `authorization` | Mirror Credentials | object or absent | absent | Credentials for the referenced repository. See below. |

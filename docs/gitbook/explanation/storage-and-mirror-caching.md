@@ -28,7 +28,7 @@ For most files, Ingot tries the local storage first. Remote hosts are tried only
 
 A file must pass the rules of a host before Ingot asks that host. The host is skipped when:
 
-* the file extension is not in `allowedExtensions`. The default list covers `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, the checksum types and `.asc`. Extensionless files need the marker `<none>`.
+* the file extension is not in `allowedExtensions`. The default list covers `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, the checksum types, `.asc` and `.sigstore.json`. Extensionless files need the marker `<none>`.
 * the artifact group is not in `allowedGroups`, when that list is set.
 * the host has `authenticatedFetchingOnly` set and the caller is anonymous.
 
