@@ -22,6 +22,7 @@ import com.reposilite.ExperimentalLocalSpecificationJunitExtension
 import com.reposilite.ExperimentalRemoteSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
+import com.reposilite.ReposiliteObjectMapper
 import com.reposilite.VERSION
 import com.reposilite.status.api.FailuresResponse
 import com.reposilite.status.api.HealthResponse
@@ -31,6 +32,7 @@ import com.reposilite.status.specification.StatusIntegrationSpecification
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
+import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import kong.unirest.core.Unirest.delete
 import kong.unirest.core.Unirest.get
@@ -103,6 +105,43 @@ internal abstract class StatusIntegrationTest : StatusIntegrationSpecification()
         // then: it responds with 200 and a healthy status
         assertThat(response.status).isEqualTo(OK.code)
         assertThat(response.body.status).isEqualTo("UP")
+    }
+
+    @Test
+    fun `should answer ready without credentials when every readiness check passes`() {
+        // when: readiness is requested without credentials
+        val response = get("$base/api/status/ready").asString()
+
+        // then: the instance answers 200 with no failing check
+        assertThat(response.status).isEqualTo(OK.code)
+        val body = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(response.body)
+        assertThat(body.get("status").asText()).isEqualTo("UP")
+        assertThat(body.get("failing").isEmpty).isTrue
+    }
+
+    @Test
+    fun `should answer not ready with the database listed while health stays up`() {
+        // given: the database check fails, which the test replaces for its own duration
+        val restore = useFacade<StatusFacade>().readinessProbe.override("database") { false }
+        try {
+            // when: readiness is requested while the database check fails
+            val ready = get("$base/api/status/ready").asString()
+
+            // then: the instance answers 503 and names the database check
+            assertThat(ready.status).isEqualTo(SERVICE_UNAVAILABLE.code)
+            val body = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(ready.body)
+            assertThat(body.get("status").asText()).isEqualTo("DOWN")
+            assertThat(body.get("failing").map { it.asText() }).containsExactly("database")
+
+            // when: health is requested in the same state
+            val health = get("$base/api/status/health").asObject(HealthResponse::class.java)
+
+            // then: liveness is unchanged and still answers 200
+            assertThat(health.status).isEqualTo(OK.code)
+            assertThat(health.body.status).isEqualTo("UP")
+        } finally {
+            restore()
+        }
     }
 
     @Test
