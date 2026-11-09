@@ -21,6 +21,7 @@ import com.reposilite.statistics.api.ResolvedRequestsInterval.DAILY
 import com.reposilite.statistics.api.ResolvedRequestsInterval.MONTHLY
 import com.reposilite.statistics.api.ResolvedRequestsInterval.WEEKLY
 import com.reposilite.statistics.api.ResolvedRequestsInterval.YEARLY
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -37,19 +38,20 @@ fun createDateIntervalProvider(mode: ResolvedRequestsInterval): DateIntervalProv
 
 sealed interface DateIntervalProvider {
 
-    fun createDate(): LocalDate
+    /** The start of the interval that contains the date of [clock]. The system clock is read only when no clock is given. */
+    fun createDate(clock: Clock = Clock.systemDefaultZone()): LocalDate
 
-    fun createTimeSeries(): List<LocalDate>
+    fun createTimeSeries(clock: Clock = Clock.systemDefaultZone()): List<LocalDate>
 
 }
 
 internal object DailyDateIntervalProvider : DateIntervalProvider {
 
-    override fun createDate(): LocalDate =
-        LocalDate.now()
+    override fun createDate(clock: Clock): LocalDate =
+        LocalDate.now(clock)
 
-    override fun createTimeSeries(): List<LocalDate> =
-        (0..364).map { createDate().minusDays(it.toLong()) }
+    override fun createTimeSeries(clock: Clock): List<LocalDate> =
+        (0..364).map { createDate(clock).minusDays(it.toLong()) }
 
 }
 
@@ -57,31 +59,31 @@ internal object WeeklyDateIntervalProvider : DateIntervalProvider {
 
     private val firstDayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek
 
-    override fun createDate(): LocalDate =
-        LocalDate.now().with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
+    override fun createDate(clock: Clock): LocalDate =
+        LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
 
-    override fun createTimeSeries(): List<LocalDate> =
-        (0..51).map { createDate().minusWeeks(it.toLong()) }
+    override fun createTimeSeries(clock: Clock): List<LocalDate> =
+        (0..51).map { createDate(clock).minusWeeks(it.toLong()) }
 
 }
 
 internal object MonthlyDateIntervalProvider : DateIntervalProvider {
 
-    override fun createDate(): LocalDate =
-        LocalDate.now().with(TemporalAdjusters.firstDayOfMonth())
+    override fun createDate(clock: Clock): LocalDate =
+        LocalDate.now(clock).with(TemporalAdjusters.firstDayOfMonth())
 
-    override fun createTimeSeries(): List<LocalDate> =
-        (0..11).map { createDate().minusMonths(it.toLong()) }
+    override fun createTimeSeries(clock: Clock): List<LocalDate> =
+        (0..11).map { createDate(clock).minusMonths(it.toLong()) }
 
 }
 
 internal object YearlyDateIntervalProvider : DateIntervalProvider {
 
-    override fun createDate(): LocalDate =
-        LocalDate.now().with(TemporalAdjusters.firstDayOfYear())
+    override fun createDate(clock: Clock): LocalDate =
+        LocalDate.now(clock).with(TemporalAdjusters.firstDayOfYear())
 
-    override fun createTimeSeries(): List<LocalDate> =
-        listOf(createDate())
+    override fun createTimeSeries(clock: Clock): List<LocalDate> =
+        listOf(createDate(clock))
 
 }
 

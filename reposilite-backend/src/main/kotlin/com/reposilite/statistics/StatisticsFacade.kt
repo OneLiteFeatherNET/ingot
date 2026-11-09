@@ -35,6 +35,7 @@ import net.onelitefeather.ingot.identity.model.Action
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
+import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 
 const val MAX_PAGE_SIZE = 100
@@ -44,7 +45,8 @@ class StatisticsFacade internal constructor(
     private val statisticsEnabled: Reference<Boolean>,
     private val dateIntervalProvider: Reference<DateIntervalProvider>,
     private val statisticsRepository: StatisticsRepository,
-    private val accessTokenFacade: AccessTokenFacade
+    private val accessTokenFacade: AccessTokenFacade,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : Journalist, Facade {
 
     private val resolvedRequestsBulk: ConcurrentHashMap<Identifier, Long> = ConcurrentHashMap()
@@ -61,7 +63,7 @@ class StatisticsFacade internal constructor(
             .takeIf { it.isNotEmpty() }
             ?.also {
                 resolvedRequestsBulk.clear() // read doesn't lock, so there is a possibility of dropping a few records between toMap and clear. Might be improved in the future
-                statisticsRepository.incrementResolvedRequests(it, dateIntervalProvider.get().createDate())
+                statisticsRepository.incrementResolvedRequests(it, dateIntervalProvider.get().createDate(clock))
                 logger.debug("Statistics | Saved bulk with ${it.size} records")
             }
 
