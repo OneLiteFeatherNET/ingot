@@ -15,7 +15,8 @@
  */
 
 // Sent on every response, including the ones proxied from the server, as the nginx configuration did.
-// The policy is the one the backend sends for the embedded dashboard (DASHBOARD_POLICY in SecurityHeaders.kt),
+// The policy is the one the backend sends for the embedded dashboard (DASHBOARD_POLICY in SecurityHeaders.kt)
+// plus form-action 'self', which the nginx image had;
 // keep both in step. 'unsafe-eval' is there because Ajv, used by the JSON forms, compiles schemas with
 // `Function`; drop it once the validators are precompiled. Images stay open because the organisation logo
 // is a configurable remote URL.
@@ -23,7 +24,7 @@ const SECURITY_HEADERS = Object.freeze({
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
 })
 
 const CACHE_CONTROL = Object.freeze({
