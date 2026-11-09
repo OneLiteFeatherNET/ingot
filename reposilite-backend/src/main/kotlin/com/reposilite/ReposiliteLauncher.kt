@@ -16,6 +16,7 @@
 package com.reposilite
 
 import com.reposilite.configuration.generateRequestedConfiguration
+import com.reposilite.configuration.local.LocalConfigurationFileException
 import net.onelitefeather.ingot.deploy.UnknownDeployTargetException
 import net.onelitefeather.ingot.deploy.toStartupRefusal
 import picocli.CommandLine
@@ -29,6 +30,10 @@ fun main(args: Array<String>) {
         val refusal = exception.toStartupRefusal()
         System.err.println(refusal.line)
         exitProcess(refusal.exitCode)
+    } catch (exception: LocalConfigurationFileException) {
+        // An unreadable secret file is an operator error too: one line naming the variable and the path, and the same exit code.
+        System.err.println("Ingot did not start: ${exception.message}")
+        exitProcess(1)
     }
 }
 

@@ -23,6 +23,7 @@ import panda.std.reactive.Reference
 import panda.std.reactive.ReferenceUtils
 import java.io.PrintStream
 import java.lang.IllegalArgumentException
+import java.nio.file.Path
 import kotlin.reflect.full.declaredMemberProperties
 
 internal object LocalConfigurationFactory {
@@ -36,14 +37,19 @@ internal object LocalConfigurationFactory {
             localConfiguration = LocalConfiguration()
         ).also { provider ->
             provider.initialize()
-            loadCustomPropertiesViaReflections(journalist, provider.localConfiguration)
+            loadCustomPropertiesViaReflections(journalist, parameters.workingDirectory, provider.localConfiguration)
         }.localConfiguration
 
     /**
      * Load custom properties from environment variables and system properties.
      */
-    private fun loadCustomPropertiesViaReflections(journalist: Journalist?, localConfiguration: LocalConfiguration) =
-        applyCustomProperties(journalist, localConfiguration, getEnvironmentVariables() + getProperties())
+    private fun loadCustomPropertiesViaReflections(journalist: Journalist?, workingDirectory: Path, localConfiguration: LocalConfiguration) =
+        applyCustomProperties(
+            journalist,
+            localConfiguration,
+            getEnvironmentVariables(workingDirectory = workingDirectory, journalist = journalist) +
+                getProperties(workingDirectory = workingDirectory, journalist = journalist)
+        )
 
     internal fun applyCustomProperties(
         journalist: Journalist?,
@@ -110,34 +116,58 @@ internal object LocalConfigurationFactory {
 
     /**
      * Get all environment variables that start with INGOT_LOCAL_ or the legacy REPOSILITE_LOCAL_, example:
-     * INGOT_LOCAL_SSLENABLED=false
+     * INGOT_LOCAL_SSLENABLED=false. A variable with the _FILE suffix, such as INGOT_LOCAL_KEYPASSWORD_FILE, gives the value
+     * of its setting from the file it names, see [LocalSettingFiles].
      */
-    internal fun getEnvironmentVariables(environment: Map<String, String> = System.getenv()): Map<String, String> =
-        stripPrefixes(environment.mapKeys { (key) -> key.uppercase() }, ENVIRONMENT_VARIABLE_PREFIXES)
+    internal fun getEnvironmentVariables(
+        environment: Map<String, String> = System.getenv(),
+        workingDirectory: Path = Path.of(""),
+        journalist: Journalist? = null,
+        knownSettings: Set<String> = localSettingNames(),
+    ): Map<String, String> =
+        LocalSettingFiles.resolve(
+            entries = environment,
+            prefixes = ENVIRONMENT_VARIABLE_PREFIXES,
+            fold = { it.uppercase() },
+            fileSuffix = "_FILE",
+            knownSettings = knownSettings,
+            workingDirectory = workingDirectory,
+            journalist = journalist,
+        )
 
     /**
      * Get all system properties that start with ingot.local. or the legacy reposilite.local., example:
-     * ingot.local.sslEnabled=false
+     * ingot.local.sslEnabled=false. A property with the .file suffix, such as ingot.local.keyPassword.file, gives the value
+     * of its setting from the file it names, see [LocalSettingFiles].
      */
-    private fun getProperties(): Map<String, String> =
+    internal fun getProperties(
+        properties: Map<String, String> = systemProperties(),
+        workingDirectory: Path = Path.of(""),
+        journalist: Journalist? = null,
+        knownSettings: Set<String> = localSettingNames(),
+    ): Map<String, String> =
+        LocalSettingFiles.resolve(
+            entries = properties,
+            prefixes = SYSTEM_PROPERTY_PREFIXES,
+            fold = { it.lowercase() },
+            fileSuffix = ".file",
+            knownSettings = knownSettings,
+            workingDirectory = workingDirectory,
+            journalist = journalist,
+        )
+
+    private fun systemProperties(): Map<String, String> =
         System.getProperties()
             .propertyNames()
             .asSequence()
             .map { it.toString() }
-            .associate { it.lowercase() to System.getProperty(it) }
-            .let { stripPrefixes(it, SYSTEM_PROPERTY_PREFIXES) }
+            .mapNotNull { name -> System.getProperty(name)?.let { name to it } }
+            .toMap()
 
     /**
-     * Strips the matching prefix off every key of [source] that carries one. [prefixes] is ordered
-     * most preferred first and applied back to front, so a value found under an earlier prefix
-     * overwrites the one a later prefix contributed for the same property.
+     * The names of all local settings in lower case, the keys that a file variable may refer to.
      */
-    private fun stripPrefixes(source: Map<String, String>, prefixes: List<String>): Map<String, String> =
-        prefixes.foldRight(mutableMapOf<String, String>()) { prefix, accumulator ->
-            source
-                .filterKeys { it.startsWith(prefix) }
-                .forEach { (key, value) -> accumulator[key.substringAfter(prefix)] = value }
-            accumulator
-        }
+    private fun localSettingNames(): Set<String> =
+        LocalConfiguration::class.declaredMemberProperties.map { it.name.lowercase() }.toSet()
 
 }

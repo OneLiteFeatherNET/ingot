@@ -36,7 +36,7 @@ object ReposiliteFactory {
         createReposilite(parameters, PrintStreamLogger(System.out, System.err, Channel.ALL, false))
 
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite {
-        val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
+        val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(rootJournalist, parameters)
         parameters.applyLoadedConfiguration(localConfiguration)
 
         // Resolved before anything binds a port, so an unknown target stops the start here.
