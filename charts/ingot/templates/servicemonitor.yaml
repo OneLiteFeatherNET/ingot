@@ -17,4 +17,15 @@ spec:
     - port: http
       path: {{ .Values.serviceMonitor.path }}
       interval: {{ .Values.serviceMonitor.interval }}
+      {{- with .Values.serviceMonitor.basicAuth }}
+      {{- if .enabled }}
+      basicAuth:
+        username:
+          name: {{ .secretName | quote }}
+          key: {{ .usernameKey | quote }}
+        password:
+          name: {{ .secretName | quote }}
+          key: {{ .passwordKey | quote }}
+      {{- end }}
+      {{- end }}
 {{- end }}

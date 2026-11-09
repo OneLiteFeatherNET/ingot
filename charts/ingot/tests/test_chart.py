@@ -237,6 +237,28 @@ class ChartRenderTest(unittest.TestCase):
     def test_service_monitor_is_absent_by_default(self):
         self.assertEqual([], of_kind(render(), "ServiceMonitor"), "no ServiceMonitor by default")
 
+    def test_service_monitor_has_no_basic_auth_by_default(self):
+        manifests = render({"serviceMonitor": {"enabled": True}})
+        endpoint = named(manifests, "ServiceMonitor", SERVER)["spec"]["endpoints"][0]
+        self.assertNotIn("basicAuth", endpoint, "the scrape must not send credentials unless basicAuth is enabled")
+
+    def test_service_monitor_basic_auth_reads_the_user_secret(self):
+        manifests = render({
+            "serviceMonitor": {
+                "enabled": True,
+                "basicAuth": {"enabled": True, "secretName": "metrics-scrape", "usernameKey": "user", "passwordKey": "pass"},
+            },
+        })
+        basic_auth = named(manifests, "ServiceMonitor", SERVER)["spec"]["endpoints"][0]["basicAuth"]
+        self.assertEqual(
+            {"name": "metrics-scrape", "key": "user"}, basic_auth["username"],
+            "the username must come from the named key of the user Secret",
+        )
+        self.assertEqual(
+            {"name": "metrics-scrape", "key": "pass"}, basic_auth["password"],
+            "the password must come from the named key of the user Secret",
+        )
+
     def test_http_route_is_absent_by_default(self):
         self.assertEqual([], of_kind(render(), "HTTPRoute"), "no HTTPRoute by default")
 
