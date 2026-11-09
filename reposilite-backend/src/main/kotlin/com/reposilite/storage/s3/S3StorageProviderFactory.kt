@@ -24,6 +24,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.auth.signer.AwsS3V4Signer
 import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
@@ -80,7 +81,7 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
 
         client.overrideConfiguration {
             it.retryPolicy { cfg ->
-                cfg.backoffStrategy(ExponentialBackoffStrategy(Duration.ofSeconds(1), Duration.ofMinutes(1)))
+                cfg.backoffStrategy(s3RetryBackoffStrategy())
                 cfg.numRetries(5)
             }
 
@@ -126,3 +127,7 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
         "s3"
 
 }
+
+/** The delay between two S3 retries of a failed request. */
+internal fun s3RetryBackoffStrategy(): BackoffStrategy =
+    ExponentialBackoffStrategy(Duration.ofSeconds(1), Duration.ofMinutes(1))
