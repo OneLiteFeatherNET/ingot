@@ -23,6 +23,7 @@ import useQualifier from "./store/qualifier"
 import usePlaceholders from './store/placeholders'
 import { createErrorToast, errorMessage } from './helpers/toast'
 import MdSnackbar from './components/md/MdSnackbar.vue'
+import SkipLink from './components/layout/SkipLink.vue'
 
 // The footer and the legal line are drawn by the page (see PageFooter), so they sit in the
 // content sheet when the navigation frame shows.
@@ -47,6 +48,7 @@ initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${
 <template>
   <div :class="{ 'dark': theme.isDark }">
     <div class="min-h-screen bg-surface text-on-surface">
+      <SkipLink />
       <router-view
         class="router-view-full"
         :qualifier="qualifier"
