@@ -50,6 +50,19 @@ def render(values=None):
     return [doc for doc in yaml.safe_load_all(stdout) if doc]
 
 
+def notes(values=None):
+    """Returns the NOTES of a client-side dry-run install. `helm template` does not render NOTES.txt."""
+    code, stdout, stderr = helm(
+        ["install", RELEASE, CHART_DIR, "--namespace", NAMESPACE, "--dry-run=client"], values
+    )
+    if code != 0:
+        raise AssertionError(f"helm install --dry-run=client failed with exit code {code}: {stderr}")
+    marker = "\nNOTES:\n"
+    if marker not in stdout:
+        raise AssertionError("the dry-run output has no NOTES section")
+    return stdout.partition(marker)[2]
+
+
 def of_kind(manifests, kind):
     return [doc for doc in manifests if doc.get("kind") == kind]
 
@@ -361,6 +374,24 @@ class ChartRenderTest(unittest.TestCase):
     def test_segment_list_contains_no_duplicates(self):
         names = segments()
         self.assertEqual(len(names), len(set(names)), "the segment list must not repeat a segment")
+
+    def test_notes_warn_about_several_replicas_without_the_cluster_bus(self):
+        self.assertIn("WARNING", notes({"deployment": {"replicas": 2}}),
+                      "two replicas without INGOT_CLUSTER_URL must produce the warning")
+
+    def test_notes_warn_about_autoscaling_without_the_cluster_bus(self):
+        self.assertIn("WARNING", notes({"autoscaling": {"enabled": True}}),
+                      "autoscaling without INGOT_CLUSTER_URL must produce the warning")
+
+    def test_notes_do_not_warn_about_one_replica(self):
+        self.assertNotIn("WARNING", notes(), "a single replica needs no cluster bus, so no warning")
+
+    def test_notes_do_not_warn_when_the_cluster_bus_is_configured(self):
+        values = {
+            "deployment": {"replicas": 2},
+            "env": [{"name": "INGOT_CLUSTER_URL", "value": "nats://broker.example.org:4222"}],
+        }
+        self.assertNotIn("WARNING", notes(values), "a configured INGOT_CLUSTER_URL must silence the warning")
 
     def test_helm_lint_is_clean_in_all_in_one_mode(self):
         code, stdout, stderr = helm(["lint", CHART_DIR, "--strict"], {"mode": "allInOne"})
