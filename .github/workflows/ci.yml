@@ -89,6 +89,35 @@ jobs:
         working-directory: reposilite-frontend
         run: npm run license-check
 
+  # Own job rather than steps in Licenses, so a failing unit test shows as its own check and
+  # does not hide the licence result. ESLint is in its warn phase: findings are printed in the
+  # log and only a broken configuration fails the job.
+  frontend:
+    name: "Frontend"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v6
+
+      - name: "Set up Node"
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: "reposilite-frontend/package-lock.json"
+
+      - name: "Install frontend dependencies"
+        working-directory: reposilite-frontend
+        run: npm ci
+
+      - name: "Lint the frontend"
+        working-directory: reposilite-frontend
+        run: npm run eslint
+
+      - name: "Run the frontend unit tests"
+        working-directory: reposilite-frontend
+        run: npm test
+
   # Nothing checked dependencies for known advisories before this, which is how 67 of them
   # accumulated unnoticed across the JVM and npm trees. Renovate raises versions but says
   # nothing about whether the current ones are exploitable, and the licence gate next to
