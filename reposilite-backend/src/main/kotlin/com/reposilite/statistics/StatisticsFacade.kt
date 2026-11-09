@@ -35,10 +35,19 @@ import net.onelitefeather.ingot.identity.model.Action
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
+import java.sql.SQLException
 import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 
 const val MAX_PAGE_SIZE = 100
+
+/** Retries after the first attempt when a write fails with a deadlock or, on Galera, a certification failure. */
+private const val MAX_DEADLOCK_RETRIES = 3
+private const val DEADLOCK_OR_CERTIFICATION_FAILURE = "40001"
+
+private fun Exception.isDeadlockOrCertificationFailure(): Boolean =
+    generateSequence<Throwable>(this) { current -> current.cause?.takeIf { it !== current } }
+        .any { it is SQLException && it.sqlState == DEADLOCK_OR_CERTIFICATION_FAILURE }
 
 class StatisticsFacade internal constructor(
     private val journalist: Journalist,
@@ -50,6 +59,7 @@ class StatisticsFacade internal constructor(
 ) : Journalist, Facade {
 
     private val resolvedRequestsBulk: ConcurrentHashMap<Identifier, Long> = ConcurrentHashMap()
+    private val flushMonitor = Any()
 
     fun incrementResolvedRequest(incrementResolvedRequest: IncrementResolvedRequest) {
         when {
@@ -58,14 +68,48 @@ class StatisticsFacade internal constructor(
         }
     }
 
-    fun saveRecordsBulk() =
-        resolvedRequestsBulk.toMap()
-            .takeIf { it.isNotEmpty() }
-            ?.also {
-                resolvedRequestsBulk.clear() // read doesn't lock, so there is a possibility of dropping a few records between toMap and clear. Might be improved in the future
-                statisticsRepository.incrementResolvedRequests(it, dateIntervalProvider.get().createDate(clock))
-                logger.debug("Statistics | Saved bulk with ${it.size} records")
+    /**
+     * Writes the buffered counts. Only the amount that was written is subtracted afterwards, so a request counted during the
+     * write stays buffered for the next flush. A failed write leaves its counts in the buffer and is logged instead of thrown,
+     * so a shutdown is not blocked by it. Flushes run one at a time, so a count is never written by two flushes.
+     */
+    fun saveRecordsBulk() {
+        synchronized(flushMonitor) {
+            val snapshot = resolvedRequestsBulk.toMap()
+            if (snapshot.isEmpty()) {
+                return
             }
+
+            try {
+                writeWithDeadlockRetries(snapshot)
+            } catch (exception: Exception) {
+                logger.error("Statistics | Cannot save ${snapshot.size} resolved request counts, they stay buffered for the next flush")
+                logger.exception(exception)
+                return
+            }
+
+            snapshot.forEach { (identifier, written) ->
+                resolvedRequestsBulk.computeIfPresent(identifier) { _, current -> (current - written).takeIf { it > 0 } }
+            }
+            logger.debug("Statistics | Saved bulk with ${snapshot.size} records")
+        }
+    }
+
+    private fun writeWithDeadlockRetries(snapshot: Map<Identifier, Long>) {
+        val date = dateIntervalProvider.get().createDate(clock)
+        var retries = 0
+        while (true) {
+            try {
+                statisticsRepository.incrementResolvedRequests(snapshot, date)
+                return
+            } catch (exception: Exception) {
+                if (!exception.isDeadlockOrCertificationFailure() || retries == MAX_DEADLOCK_RETRIES) {
+                    throw exception
+                }
+                retries++
+            }
+        }
+    }
 
     /**
      * The highest entries of the phrase that the token may read, at most [limit] of them. A null [accessToken] or a manager
