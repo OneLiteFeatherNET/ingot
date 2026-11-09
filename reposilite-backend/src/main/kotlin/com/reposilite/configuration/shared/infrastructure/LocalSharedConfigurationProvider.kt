@@ -48,6 +48,6 @@ class LocalSharedConfigurationProvider(
         false
 
     override fun name(): String =
-        "local file-system"
+        "local file-system: $configurationFile"
 
 }

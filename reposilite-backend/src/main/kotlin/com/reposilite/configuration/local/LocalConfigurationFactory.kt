@@ -21,6 +21,7 @@ import com.reposilite.configuration.local.infrastructure.LocalConfigurationProvi
 import com.reposilite.journalist.Journalist
 import panda.std.reactive.Reference
 import panda.std.reactive.ReferenceUtils
+import java.io.PrintStream
 import java.lang.IllegalArgumentException
 import kotlin.reflect.full.declaredMemberProperties
 
@@ -47,7 +48,8 @@ internal object LocalConfigurationFactory {
     internal fun applyCustomProperties(
         journalist: Journalist?,
         localConfiguration: LocalConfiguration,
-        properties: Map<String, String>
+        properties: Map<String, String>,
+        errorOutput: PrintStream = System.err,
     ) {
         properties.forEach { (key, value) ->
             val property = localConfiguration::class.declaredMemberProperties.find { it.name.equals(key, ignoreCase = true) } ?: run {
@@ -59,9 +61,14 @@ internal object LocalConfigurationFactory {
             val reference = property.getter.call(localConfiguration) as Reference<Any>
 
             when (reference.type.kotlin) {
-                Boolean::class -> ReferenceUtils.setValue(reference, value.toBoolean())
-                Int::class -> ReferenceUtils.setValue(reference, value.toInt())
-                Long::class -> ReferenceUtils.setValue(reference, value.toLong())
+                Boolean::class -> {
+                    if (!value.equals("true", ignoreCase = true) && !value.equals("false", ignoreCase = true)) {
+                        journalist?.logger?.warn("Local configuration | $key expects true or false, any other value is read as false")
+                    }
+                    ReferenceUtils.setValue(reference, value.toBoolean())
+                }
+                Int::class -> ReferenceUtils.setValue(reference, convertOrReport(key, "int", journalist, errorOutput) { value.toInt() })
+                Long::class -> ReferenceUtils.setValue(reference, convertOrReport(key, "long", journalist, errorOutput) { value.toLong() })
                 String::class -> ReferenceUtils.setValue(reference, value)
                 else -> throw IllegalArgumentException("Unsupported local configuration property type: $key (expected: ${reference.type})")
             }
@@ -69,6 +76,29 @@ internal object LocalConfigurationFactory {
             journalist?.logger?.info("Local configuration has been updated by external property: $key=${value.take(1)}***${value.takeLast(1)}")
         }
     }
+
+    /**
+     * Runs a conversion and reports a value that does not convert, then rethrows the exception the conversion threw. The value
+     * itself is left out of the message. Without a journalist, which exists only on the second pass, the report goes to [errorOutput].
+     */
+    private fun <T> convertOrReport(
+        key: String,
+        expectedType: String,
+        journalist: Journalist?,
+        errorOutput: PrintStream,
+        convert: () -> T,
+    ): T =
+        try {
+            convert()
+        } catch (exception: NumberFormatException) {
+            val message = "Local configuration | $key cannot be read as $expectedType, the value is not a valid $expectedType"
+            if (journalist != null) {
+                journalist.logger.error(message)
+            } else {
+                errorOutput.println("ERROR $message")
+            }
+            throw exception
+        }
 
     /**
      * Prefixes recognized for external overrides, most specific first. The legacy REPOSILITE
