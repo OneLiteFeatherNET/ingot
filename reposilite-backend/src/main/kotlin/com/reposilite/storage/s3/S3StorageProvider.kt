@@ -98,6 +98,11 @@ class S3StorageProvider(
         s3.close()
     }
 
+    /** Bounds the HEAD answers of this storage to the cluster, when the storage caches them. */
+    internal fun bindMetadataCacheToClusterBus() {
+        (s3 as? CachableS3Client)?.bindToClusterBus()
+    }
+
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
         inputStream.use { data ->
             // So... S3 API is disabled and requires content-length of every inserted object.
