@@ -1,0 +1,18 @@
+apiVersion: v2
+name: ingot
+description: Lightweight and easy-to-use repository management software for Maven based artifacts, with an optional split deployment of the dashboard
+type: application
+version: 1.1.1
+appVersion: 1.1.1
+keywords:
+- ingot
+- reposilite
+- maven
+- gradle
+- artifact-repository-manager
+- repository-manager
+sources:
+- https://github.com/OneLiteFeatherNET/ingot
+maintainers:
+- name: OneLiteFeather
+  url: https://github.com/OneLiteFeatherNET

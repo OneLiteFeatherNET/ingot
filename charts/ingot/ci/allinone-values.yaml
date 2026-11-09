@@ -1,0 +1,4 @@
+# Installed by chart-testing in the chart job. The images are the ones that job builds and loads into kind.
+image:
+  name: ingot
+  tag: ci

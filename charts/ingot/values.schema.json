@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["allInOne", "split"],
+      "description": "Deploy mode: allInOne renders one workload, split renders the server and the dashboard."
+    },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "replicas": {"type": "integer", "minimum": 0}
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "properties": {
+        "replicas": {"type": "integer", "minimum": 0}
+      }
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"}
+      }
+    },
+    "serviceMonitor": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"}
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"}
+      }
+    },
+    "httpRoute": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"}
+      }
+    }
+  }
+}

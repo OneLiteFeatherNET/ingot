@@ -24,6 +24,7 @@ import com.reposilite.journalist.Channel
 import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.api.CreateAccessTokenRequest
+import net.onelitefeather.ingot.deploy.DeployTarget
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
 import java.nio.file.Path
@@ -105,6 +106,19 @@ class ReposiliteParameters : Runnable {
      * Only the integration test harness lowers it.
      */
     var tokenHashStrength: Int = AccessTokenSecurityProvider.DEFAULT_BCRYPT_STRENGTH
+
+    @Option(names = ["--target"], description = [
+        "Deploy target of this instance. Supported targets:",
+        "all - the dashboard, the API and the repositories (default)",
+        "server - the API and the repositories, without the dashboard"
+    ])
+    var target: String? = null
+
+    /**
+     * The effective deploy target, resolved once at start from the command line, the system property, the environment
+     * and the legacy `defaultFrontend` switch. See [net.onelitefeather.ingot.deploy.DeployTargetResolver].
+     */
+    var deployTarget: DeployTarget = DeployTarget.ALL
 
     @Option(names = ["--disable-interactive-console", "--disable-it"], description = ["Disable interactive console"])
     var disableInteractiveConsole = false

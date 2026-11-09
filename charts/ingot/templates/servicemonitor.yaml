@@ -1,0 +1,31 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "ingot.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ingot.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ingot.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.path }}
+      interval: {{ .Values.serviceMonitor.interval }}
+      {{- with .Values.serviceMonitor.basicAuth }}
+      {{- if .enabled }}
+      basicAuth:
+        username:
+          name: {{ .secretName | quote }}
+          key: {{ .usernameKey | quote }}
+        password:
+          name: {{ .secretName | quote }}
+          key: {{ .passwordKey | quote }}
+      {{- end }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ingot.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+  {{- with .Values.deployment.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+  {{- include "ingot.labels" . | nindent 4 -}}
+  {{- with .Values.deployment.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ default 1 .Values.deployment.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ingot.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    {{- with .Values.rollingUpdate }}
+    rollingUpdate:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+  minReadySeconds: {{ .Values.deployment.minReadySeconds }}
+  template:
+    metadata:
+      annotations:
+      {{- with .Values.deployment.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+      {{- include "ingot.labels" . | nindent 8 }}
+      {{- with .Values.deployment.podLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.deployment.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ingot.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ default 60 .Values.deployment.terminationGracePeriodSeconds }}
+      {{- if .Values.deployment.podSecurityContext.enabled }}
+      securityContext: {{- omit .Values.deployment.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deployment.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ include "ingot.fullname" . }}
+        image: "{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        stdin: true
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: {{ include "ingot.serverProbePath" . }}
+            port: {{ .Values.probes.port }}
+            scheme: {{ .Values.probes.scheme }}
+          {{- toYaml .Values.probes.readiness | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: {{ include "ingot.serverProbePath" . }}
+            port: {{ .Values.probes.port }}
+            scheme: {{ .Values.probes.scheme }}
+          {{- toYaml .Values.probes.liveness | nindent 10 }}
+        {{- if .Values.probes.startup.enabled }}
+        startupProbe:
+          httpGet:
+            path: {{ include "ingot.serverProbePath" . }}
+            port: {{ .Values.probes.port }}
+            scheme: {{ .Values.probes.scheme }}
+          periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+          timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+          failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+        {{- end }}
+        {{- with .Values.deployment.lifecycle }}
+        lifecycle:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        ports:
+        - name: "http"
+          containerPort: {{ .Values.service.port }}
+          protocol: TCP
+        volumeMounts:
+          - name: {{ .Values.persistence.name }}
+            mountPath: {{ .Values.persistence.path }}
+            {{- if .Values.persistence.subPath }}
+            subPath: {{ .Values.persistence.subPath }}
+            {{- end }}
+          {{- if .Values.deployment.additionalVolumeMounts }}
+          {{- toYaml .Values.deployment.additionalVolumeMounts | nindent 10 }}
+          {{- end }}
+        {{- $instanceIdSet := false }}
+        {{- range .Values.env }}
+        {{- if eq .name "INGOT_CLUSTER_INSTANCE_ID" }}
+        {{- $instanceIdSet = true }}
+        {{- end }}
+        {{- end }}
+        {{- if or (eq .Values.mode "split") .Values.env }}
+        env:
+          {{- if eq .Values.mode "split" }}
+          - name: INGOT_TARGET
+            value: "server"
+          {{- if not $instanceIdSet }}
+          - name: INGOT_CLUSTER_INSTANCE_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          {{- end }}
+          {{- end }}
+          {{- with .Values.env }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        {{- end }}
+        {{- with .Values.envFrom }}
+        envFrom:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.deployment.containerSecurityContext.enabled }}
+        securityContext: {{- omit .Values.deployment.containerSecurityContext "enabled" | toYaml | nindent 10 }}
+        {{- end }}
+      {{- if .Values.deployment.additionalContainers }}
+        {{- toYaml .Values.deployment.additionalContainers | nindent 6 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.persistence.name }}
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (include "ingot.fullname" .) .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.deployment.additionalVolumes }}
+          {{- toYaml .Values.deployment.additionalVolumes | nindent 8 }}
+        {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- tpl (toYaml .Values.affinity) . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,94 @@
+{{- if eq .Values.mode "split" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ingot.dashboardFullname" . }}
+  namespace: {{ .Release.Namespace }}
+  {{- with .Values.dashboard.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "ingot.dashboardLabels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+  {{- with .Values.dashboard.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ default 1 .Values.dashboard.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ingot.dashboardSelectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      {{- toYaml .Values.dashboard.rollingUpdate | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.dashboard.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ingot.dashboardLabels" . | nindent 8 }}
+        app.kubernetes.io/component: dashboard
+        {{- with .Values.dashboard.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.dashboard.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ingot.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.dashboard.terminationGracePeriodSeconds }}
+      {{- if .Values.dashboard.podSecurityContext.enabled }}
+      securityContext: {{- omit .Values.dashboard.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: dashboard
+          image: "{{ .Values.dashboard.image.name }}:{{ default .Chart.AppVersion .Values.dashboard.image.tag }}"
+          imagePullPolicy: {{ .Values.dashboard.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.dashboard.service.port }}
+              protocol: TCP
+          env:
+            - name: INGOT_BACKEND
+              value: {{ printf "http://%s:%v" (include "ingot.fullname" .) .Values.service.port | quote }}
+            {{- with .Values.dashboard.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.dashboard.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.dashboard.probes.path }}
+              port: {{ .Values.dashboard.service.port }}
+              scheme: {{ .Values.dashboard.probes.scheme }}
+            {{- toYaml .Values.dashboard.probes.readiness | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.dashboard.probes.path }}
+              port: {{ .Values.dashboard.service.port }}
+              scheme: {{ .Values.dashboard.probes.scheme }}
+            {{- toYaml .Values.dashboard.probes.liveness | nindent 12 }}
+          {{- if .Values.dashboard.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.dashboard.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+      {{- with .Values.dashboard.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dashboard.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dashboard.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

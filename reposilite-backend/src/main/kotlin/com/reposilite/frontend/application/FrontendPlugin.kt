@@ -33,12 +33,14 @@ import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.parameters
 import com.reposilite.status.FailureFacade
 import com.reposilite.web.api.HttpServerInitializationEvent
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.RoutingSetupEvent
 import com.reposilite.web.application.WebSettings
 import io.javalin.http.NotFoundResponse
+import net.onelitefeather.ingot.deploy.DeployTarget
 import java.nio.file.Path
 import kotlin.io.path.createDirectory
 import kotlin.io.path.exists
@@ -91,10 +93,10 @@ internal class FrontendPlugin : ReposilitePlugin() {
                 val routes = mutableSetOf<ReposiliteRoutes>()
 
                 // Registered whether or not this instance serves the dashboard itself: a
-                // detached dashboard needs it precisely when defaultFrontend is off.
+                // detached dashboard needs it precisely when the deploy target is server.
                 routes.add(FrontendSettingsEndpoint(frontendFacade, localConfiguration.hideSettingsSecrets))
 
-                if (localConfiguration.defaultFrontend.get()) {
+                if (parameters().deployTarget == DeployTarget.ALL) {
                     // Resolved here and not in initialize: MavenPlugin depends on this plugin, so its facade exists only
                     // by the time routes are registered. The dashboard routes hand colliding repository requests to Maven.
                     val mavenFacade = facade<MavenFacade>()

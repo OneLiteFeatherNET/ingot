@@ -14,6 +14,7 @@
 * [Install with Docker](how-to/install-with-docker.md)
 * [Run the dashboard in a separate container](how-to/run-split-dashboard-container.md)
 * [Run on Kubernetes](how-to/run-on-kubernetes.md)
+* [Run the dashboard split from the server with Helm](how-to/run-split-with-helm.md)
 * [Run the JAR](how-to/install-jar.md)
 * [Run as a service](how-to/run-as-service.md)
 * [Run behind a reverse proxy](how-to/run-behind-reverse-proxy.md)
@@ -57,6 +58,7 @@
 * [Back up before upgrading](how-to/back-up-before-upgrading.md)
 * [Upgrade from Ingot 1.1.x](how-to/upgrade-ingot.md)
 * [Upgrade from Reposilite 3.x](how-to/upgrade-from-reposilite.md)
+* [Migrate from the upstream Helm chart](how-to/migrate-from-upstream-chart.md)
 * [Upgrade from Reposilite 2.x](how-to/upgrade-from-reposilite-2.md)
 * [Verify an upgrade](how-to/verify-an-upgrade.md)
 * [Roll back an upgrade](how-to/roll-back-an-upgrade.md)
@@ -69,6 +71,7 @@
 
 * [Configuration file and startup parameters](reference/configuration-and-startup.md)
 * [Environment variables](reference/environment-variables.md)
+* [Deploy targets](reference/deploy-targets.md)
 * [Settings domains](reference/settings-domains.md)
 * [Storage providers](reference/storage-providers.md)
 * [Repository settings](reference/repository-settings.md)

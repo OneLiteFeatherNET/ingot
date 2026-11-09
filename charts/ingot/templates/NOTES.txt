@@ -1,0 +1,15 @@
+{{- $busSet := false }}
+{{- range .Values.env }}
+{{- if eq .name "INGOT_CLUSTER_URL" }}
+{{- $busSet = true }}
+{{- end }}
+{{- end }}
+{{- $replicas := int (default 1 .Values.deployment.replicas) }}
+{{- if and (or (gt $replicas 1) .Values.autoscaling.enabled) (not $busSet) }}
+
+WARNING: the server runs more than one replica (deployment.replicas or autoscaling) but INGOT_CLUSTER_URL is not set in env.
+Without the cluster bus the replicas do not exchange cache invalidations and revocations at once. They converge through
+the shared database on the next poll or when the cached entry expires. Set INGOT_CLUSTER_URL (and INGOT_CLUSTER_PASSWORD
+or the credentials file if the broker needs them) to make the replicas share these events immediately.
+Values set through envFrom are not inspected here, so this warning stays if the URL comes from there.
+{{- end }}

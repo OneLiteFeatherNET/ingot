@@ -172,6 +172,7 @@ Run the jar as `java -jar ingot-<version>.jar [parameters]`. The container passe
 | `--hostname` | `-h` | text | value of `hostname` | Overrides `hostname`. |
 | `--port` | `-p` | number | value of `port` | Overrides `port`. |
 | `--database` | | text | value of `database` | Overrides `database`. |
+| `--target` | | `all` or `server` | `all` | Deploy target of the instance. Takes precedence over `ingot.target`, `INGOT_TARGET` and the legacy `defaultFrontend` switch. Any other value stops the start. See [Deploy targets](deploy-targets.md). |
 | `--token` | `-t` | `name:secret` | none | Creates a temporary token with manager permission. The token is created again at every start and the creation is not audited. Repeat the parameter for more tokens. |
 | `--channel` | `--level` | text | `INFO` | Default logging channel. An unknown name falls back to `INFO`. |
 | `--run-migrations` | | `001`, `002`, `003`, `004` | none | Runs the named data migrations. Repeat the parameter for more than one. See below. |

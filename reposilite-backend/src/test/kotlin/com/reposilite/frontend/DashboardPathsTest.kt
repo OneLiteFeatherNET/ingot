@@ -16,10 +16,35 @@
 
 package com.reposilite.frontend
 
+import java.nio.file.Files
+import java.nio.file.Path
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 internal class DashboardPathsTest {
+
+    @Test
+    fun `should cover exactly the segments of the shared dashboard segment list`() {
+        // given: the segment list that the dashboard router, the dashboard server and the chart read
+        val shared = readSharedSegments()
+
+        // when: the first segment of every dashboard route is read
+        val routeSegments = DashboardPaths.APP_ROUTES.map { it.removePrefix("/").substringBefore('/') }.toSet()
+
+        // then: the route table covers the shared list, so a page added without its segment fails here
+        assertThat(routeSegments)
+            .describedAs("dashboard route segments that differ from reposilite-frontend/src/router/dashboard-segments.json")
+            .isEqualTo(shared)
+    }
+
+    private fun readSharedSegments(): Set<String> {
+        // Gradle runs unit tests in the Gradle project directory, one level below the repository root.
+        val file = Path.of("..", "reposilite-frontend", "src", "router", "dashboard-segments.json").toAbsolutePath().normalize()
+        assertThat(Files.exists(file))
+            .describedAs("shared segment list at $file; the test expects the Gradle project to sit one level below the repository root")
+            .isTrue()
+        return SEGMENT.findAll(Files.readString(file)).map { it.groupValues[1] }.toSet()
+    }
 
     @Test
     fun `should reserve the first segment of every dashboard route and the server segments`() {
@@ -181,6 +206,11 @@ internal class DashboardPathsTest {
             .describedAs("warning text for the API segment")
             .contains("'/api/'")
             .contains("renaming the repository avoids this")
+    }
+
+    private companion object {
+        // The list is a JSON array of plain names, so a pattern for quoted strings is enough and needs no parser.
+        val SEGMENT = Regex("\"([a-z]+)\"")
     }
 
 }

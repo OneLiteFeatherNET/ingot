@@ -23,8 +23,12 @@
  * are top level names that a repository could also use. The server reserves them (DashboardPaths in the backend), so a full
  * page load of /<name> returns the dashboard document, and a repository with such a name is
  * reached under /browse/<name> from inside the dashboard.
+ *
+ * The same segments are listed in dashboard-segments.json, which the dashboard server and the backend
+ * read too. A test keeps the list and the routes below in step.
  */
 
+import dashboardSegments from './dashboard-segments.json'
 import { routeMeta } from '../navigation/registry'
 
 const ROUTES = [
@@ -78,4 +82,4 @@ const ROUTES = [
   { name: 'not-found', path: '/:pathMatch(.*)*', meta: { section: null } },
 ]
 
-export { ROUTES }
+export { ROUTES, dashboardSegments as DASHBOARD_SEGMENTS }

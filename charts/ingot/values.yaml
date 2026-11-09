@@ -1,0 +1,334 @@
+## Default values for ingot.
+## The keys under `deployment`, `service`, `autoscaling`, `ingress`, `resources`, `env`, `rollingUpdate`, `probes`,
+## `persistence`, `serviceAccount`, `affinity`, `nodeSelector` and `tolerations` are the keys of the upstream reposilite
+## chart 1.4.5 with the same meaning and defaults, so a values file for that chart renders here as well.
+
+## Deploy mode.
+## allInOne: one workload of the all-in-one image, which serves the dashboard and the API.
+## split: a server workload with INGOT_TARGET=server, and a dashboard workload of the dashboard image in front of it.
+mode: allInOne
+
+image:
+  name: ghcr.io/onelitefeathernet/ingot
+  tag: ""  # defaults to appVersion
+  pullPolicy: IfNotPresent
+
+## Name overrides. Set both to `reposilite` to take over the names of an upstream reposilite release.
+nameOverride: ""
+fullnameOverride: ""
+
+## Deployment configuration of the server
+deployment:
+  # Number of replicas to be deployed.
+  replicas: 1
+  # Time in seconds before Kubernetes sends a SIGKILL signal if Ingot doesn't gracefully shut down.
+  terminationGracePeriodSeconds: 60
+  # The minimum time in seconds Ingot needs to be running before the Deployment controller considers it available.
+  minReadySeconds: 0
+  # Additional annotations to be added to the Deployment
+  annotations: {}
+  # Additional labels to be added to the Deployment
+  labels: {}
+  # Additional annotations to be added to pods
+  podAnnotations: {}
+  # Additional labels to be added to pods
+  podLabels: {}
+  # Init containers
+  initContainers: []
+    # - name: name
+    #   image: alpine
+    #   args: []
+    #   volumeMounts:
+    #     - name: volume-name
+    #       mountPath: /data
+  # Additional containers
+  additionalContainers: []
+    # - name: name
+    #   image: alpine
+    #   args: []
+    #   volumeMounts:
+    #     - name: volume-name
+    #       mountPath: /data
+  # Additional volumes for use with initContainers, additionalContainers and runtime container itself
+  additionalVolumes: []
+    # - name: name
+    #   hostPath:
+    #     path: /tmp
+    # - name: logging
+    #   emptyDir: {}
+  # Additional mount points for the runtime container. Refer to volumes defined in `additionalVolumes`.
+  additionalVolumeMounts: []
+    # - name: logging
+    #   mountPath: /var/log/reposilite/
+  # Image pull secrets
+  imagePullSecrets: []
+  lifecycle: {}
+    # preStop:
+    #   exec:
+    #     command: ["/bin/sh", "-c", "sleep 40"]
+  # Security context for all initContainers and containers in the pod.
+  # Disabled by default: the server starts as root and the entrypoint drops to the service account, so PUID, PGID
+  # and the ownership fix of an existing volume keep working. Set runAsUser and runAsGroup only for a volume that
+  # is already owned by that user.
+  podSecurityContext:
+    enabled: false
+    fsGroup: 999
+  # Security context specific to the runtime container in the pod.
+  containerSecurityContext:
+    enabled: false
+    runAsUser: 999
+    runAsGroup: 999
+
+## Service configuration of the server
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+## HorizontalPodAutoscaler configuration. Applies to the server.
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+
+## If you would like to create an ingress for Ingot, you can enable it here.
+## In split mode the ingress sends the dashboard paths to the dashboard Service and everything else to the server.
+## The per-host `paths` are not used in split mode.
+## Please refer to your ingress provider's documentation for configuration that may be specific
+## to their ingress implementation.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: reposilite.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+## Gateway API route, as an alternative to the ingress. Enabling both is rejected at render time.
+## In split mode the rules match the same paths as the ingress.
+httpRoute:
+  enabled: false
+  # Gateways the route attaches to, for example: [{name: public-gateway, namespace: gateway-system}]
+  parentRefs: []
+  # Host names the route answers for. Empty matches every host.
+  hostnames: []
+
+## PodDisruptionBudget for the server, and for the dashboard in split mode.
+## Enabled budgets set maxUnavailable to 1, because minAvailable 1 on a single replica blocks every node drain.
+podDisruptionBudget:
+  enabled: false
+
+## Prometheus Operator ServiceMonitor for the server. Needs the monitoring.coreos.com CRDs.
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  interval: 30s
+  labels: {}
+  # Basic auth for the scrape. The Prometheus plugin answers 401 without it. The plugin is not part of the image:
+  # build it, add it to the plugins directory, and set REPOSILITE_PROMETHEUS_USER and REPOSILITE_PROMETHEUS_PASSWORD
+  # on the server with the same credentials as the Secret below (env or envFrom).
+  basicAuth:
+    enabled: false
+    # Name of a Secret in the release namespace that holds both credentials.
+    secretName: ""
+    usernameKey: username
+    passwordKey: password
+
+## Resources
+resources:
+  requests:
+    cpu: 1.0
+    memory: 128Mi
+  limits:
+    cpu: 2.0
+    memory: 256Mi
+
+## Environment variables of the server
+env:
+  - name: JAVA_OPTS
+    value: "-Xmx64M"
+#  - name: REPOSILITE_OPTS
+#    value: "--port 8080"
+#  - name: SOME_VAR_FROM_CONFIG_MAP
+#    valueFrom:
+#      configMapRef:
+#        name: config-name
+#        key: config-key
+#  - name: SOME_VAR_FROM_SECRET
+#    valueFrom:
+#      secretKeyRef:
+#        name: secret-name
+#        key: secret-key
+
+## Environment variables from
+envFrom: []
+# - configMapRef:
+#     name: config-map-name
+# - secretRef:
+#     name: secret-name
+
+## Rolling update
+rollingUpdate:
+  maxUnavailable: 0
+  maxSurge: 1
+
+## Readiness and liveness probes of the server.
+## `path` is used in allInOne mode. In split mode the server is probed on `serverPath`, because the server root is not a
+## page of the server there.
+probes:
+  port: 8080  # The port Ingot is running on inside the pod.
+  scheme: "HTTP"  # Scheme to use in GET requests.
+  path: "/"
+  serverPath: "/api/status/health"
+  readiness:
+    initialDelaySeconds: 2
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 1
+  liveness:
+    initialDelaySeconds: 2
+    periodSeconds: 10
+    timeoutSeconds: 2
+    successThreshold: 1
+    failureThreshold: 3
+  # Startup probe of the server, off by default. Enable it when a first start can take longer than the liveness
+  # probe allows: liveness is held back until the startup probe succeeds. The budget is periodSeconds * failureThreshold.
+  startup:
+    enabled: false
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 30
+
+## Persistent Volume Claim of the server
+## Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+## RECOMMENDED: This is required to persist configuration changes and artifacts!
+persistence:
+  enabled: true
+  name: "data"
+  size: 4Gi
+# storageClass: "" # Use this if you wish to define a StorageClass to use.
+  accessMode: ReadWriteOnce
+  annotations: {}
+# existingClaim: "" # Use this if you already have an existing PVC for Ingot.
+  path: /app/data
+# subPath: "" # Only mount a subdirectory of the Volume to the pod.
+
+## Service account, shared by the server and the dashboard
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  automountServiceAccountToken: false
+
+## Pod affinity of the server
+affinity: {}
+
+## Pod node selector of the server
+nodeSelector: {}
+
+## Pod tolerations of the server
+tolerations: []
+
+## The dashboard workload. Rendered in split mode only.
+## The defaults are the hardened ones: UID 65532, a read-only root filesystem, all capabilities dropped and no
+## privilege escalation. The image writes nothing at run time, so it needs no writable volume.
+dashboard:
+  image:
+    name: ghcr.io/onelitefeathernet/ingot-dashboard
+    tag: ""  # defaults to appVersion
+    pullPolicy: IfNotPresent
+  # Number of replicas of the dashboard
+  replicas: 1
+  # Time in seconds before Kubernetes sends a SIGKILL signal
+  terminationGracePeriodSeconds: 30
+  annotations: {}
+  labels: {}
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  # Additional environment variables of the dashboard. INGOT_BACKEND is set by the chart.
+  env: []
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  probes:
+    scheme: "HTTP"
+    path: "/healthz"
+    readiness:
+      initialDelaySeconds: 2
+      periodSeconds: 10
+      timeoutSeconds: 1
+      successThreshold: 1
+      failureThreshold: 3
+    liveness:
+      initialDelaySeconds: 2
+      periodSeconds: 10
+      timeoutSeconds: 2
+      successThreshold: 1
+      failureThreshold: 3
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 128Mi
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
