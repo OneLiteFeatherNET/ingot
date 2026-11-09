@@ -39,7 +39,7 @@ jobs:
       contents: read
       checks: write
       pull-requests: write
-    uses: OneLiteFeatherNET/workflows/.github/workflows/gradle-build-pr.yml@v2.4.0
+    uses: OneLiteFeatherNET/workflows/.github/workflows/gradle-build-pr.yml@6eca5b5d8612ab1aac0f0f25248cd44ff9594886  # v2.4.0
     with:
       java-version: "17"
       java-distribution: "temurin"
@@ -57,13 +57,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       - name: "Validate Gradle wrapper"
         uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Set up Java"
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
         with:
           java-version: "21"
           distribution: "temurin"
@@ -75,7 +75,7 @@ jobs:
         run: ./gradlew :reposilite-backend:checkLicense
 
       - name: "Set up Node"
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
         with:
           node-version: "24"
           cache: "npm"
@@ -97,10 +97,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       - name: "Set up Node"
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
         with:
           node-version: "24"
           cache: "npm"
@@ -127,13 +127,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       - name: "Validate Gradle wrapper"
         uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Set up Java"
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
         with:
           java-version: "21"
           distribution: "temurin"
@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       # For the arm64 leg further down. Only the run stages are emulated; the Gradle and npm
       # builds are pinned to the native platform in the Dockerfiles.
@@ -225,7 +225,7 @@ jobs:
       # It is a suite of its own because it needs an image that already exists, which is why
       # it cannot be part of the normal build.
       - name: "Set up Java"
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
         with:
           java-version: "21"
           distribution: "temurin"
@@ -238,7 +238,7 @@ jobs:
 
       - name: "Publish the container test results"
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: container-test-results
           path: reposilite-backend/build/reports/tests/containerTest
@@ -311,7 +311,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       - name: "Set up Helm"
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
@@ -392,7 +392,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
           # Full history so Codecov can attribute coverage to the right commits. The build
           # itself no longer needs tags: the version is a literal in build.gradle.kts.
@@ -402,7 +402,7 @@ jobs:
         uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Set up Java"
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
         with:
           java-version: "21"
           distribution: "temurin"
