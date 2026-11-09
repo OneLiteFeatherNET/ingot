@@ -90,7 +90,7 @@ The setting names are camelCase (`bucketName`, `accessKey`, `secretKey`). Secret
 | --- | --- |
 | Region | The `region` setting. When empty, the environment variable `AWS_REGION`. When that is not set either, the placeholder region `reposilite`, which suits S3-compatible servers that ignore the region. |
 | Credentials | When both `accessKey` and `secretKey` are set, they are used. Otherwise no credentials are passed to the client, and the AWS SDK applies its own default behavior. |
-| Retries | A failed request is retried up to 5 times with exponential backoff between 1 second and 1 minute. |
+| Retries | A failed request is retried up to 5 times with full jitter. Each wait is a random time up to a ceiling that doubles from 1 second and stops at 1 minute. |
 
 ### System properties
 
