@@ -509,3 +509,29 @@ jobs:
           cache-from: type=gha,scope=release-dashboard
           cache-to: type=gha,mode=max,scope=release-dashboard
 
+      # The job stops at the first push that fails for good, so this step runs only after
+      # every push went through. For each pushed reference it reads the raw index and the
+      # raw platform manifests the index lists, then the check script names any annotation
+      # that is missing or empty.
+      - name: "Check the image annotations on the pushed references"
+        env:
+          SERVER_TAGS: ${{ steps.meta.outputs.tags }}
+          DASHBOARD_TAGS: ${{ steps.meta-dashboard.outputs.tags }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          printf '%s\n%s\n' "$SERVER_TAGS" "$DASHBOARD_TAGS" | sed '/^$/d' > "$work/references.txt"
+          check_reference() {
+            local ref="$1" repository dir digest
+            repository="${ref%:*}"
+            dir="$(mktemp -d "$work/reference.XXXXXX")"
+            mkdir "$dir/manifests"
+            docker buildx imagetools inspect --raw "$ref" > "$dir/index.json"
+            while IFS= read -r digest; do
+              docker buildx imagetools inspect --raw "$repository@$digest" > "$dir/manifests/${digest//:/-}.json"
+            done < <(jq -r '.manifests[].digest' "$dir/index.json")
+            ./.github/scripts/check-image-annotations.sh "$dir/index.json" "$dir/manifests"
+          }
+          while IFS= read -r ref; do
+            check_reference "$ref"
+          done < "$work/references.txt"
