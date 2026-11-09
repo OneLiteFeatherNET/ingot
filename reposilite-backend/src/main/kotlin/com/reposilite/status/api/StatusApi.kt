@@ -84,6 +84,12 @@ data class HealthResponse(
     val status: String
 )
 
+/** The answer of the readiness route: `UP` with no failing check, or `DOWN` with the names of the failing checks. */
+data class ReadinessResponse(
+    val status: String,
+    val failing: List<String>
+)
+
 data class FailuresResponse(
     val failures: List<FailureResponse>
 )

@@ -22,6 +22,7 @@ import com.reposilite.status.api.FailureResponse
 import com.reposilite.status.api.FailuresResponse
 import com.reposilite.status.api.HealthResponse
 import com.reposilite.status.api.InstanceStatusResponse
+import com.reposilite.status.api.ReadinessResponse
 import com.reposilite.status.api.StatusSnapshot
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
@@ -124,6 +125,23 @@ internal class StatusEndpoints(
         }
     }
 
-    override val routes = routes(getInstanceStatus, getStatusSnapshots, listFailures, clearFailures, getHealth)
+    @OpenApi(
+        path = "/api/status/ready",
+        methods = [HttpMethod.GET],
+        summary = "Answers whether this instance can serve requests now. Lists the failing checks when it cannot.",
+        tags = ["Status"],
+        responses = [
+            OpenApiResponse(status = "200", content = [OpenApiContent(from = ReadinessResponse::class)]),
+            OpenApiResponse(status = "503", content = [OpenApiContent(from = ReadinessResponse::class)])
+        ]
+    )
+    private val getReadiness = ReposiliteRoute<ReadinessResponse>("/api/status/ready", GET) {
+        statusFacade.readinessProbe.evaluate().also { readiness ->
+            ctx.status(if (readiness.status == "UP") OK else SERVICE_UNAVAILABLE)
+            response = readiness.asSuccess()
+        }
+    }
+
+    override val routes = routes(getInstanceStatus, getStatusSnapshots, listFailures, clearFailures, getHealth, getReadiness)
 
 }

@@ -18,6 +18,7 @@ package com.reposilite.status.application
 
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.status.FailureFacade
+import com.reposilite.status.ReadinessCheck
 import com.reposilite.status.StatusFacade
 import panda.std.reactive.Reference
 
@@ -26,7 +27,8 @@ class StatusComponents(
     private val failureFacade: FailureFacade,
     private val remoteVersionEndpoint: String,
     private val statusSupplier: () -> Boolean,
-    private val maxThreads: Reference<Int>
+    private val maxThreads: Reference<Int>,
+    private val readinessChecks: List<ReadinessCheck> = emptyList(),
 ) : PluginComponents {
 
     fun statusFacade(): StatusFacade =
@@ -35,7 +37,8 @@ class StatusComponents(
             status = statusSupplier,
             remoteVersionUrl = remoteVersionEndpoint,
             failureFacade = failureFacade,
-            maxThreads = maxThreads
+            maxThreads = maxThreads,
+            readinessChecks = readinessChecks,
         )
 
 }
