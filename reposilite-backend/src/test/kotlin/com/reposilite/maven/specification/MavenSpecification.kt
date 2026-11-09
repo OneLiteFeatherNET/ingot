@@ -194,7 +194,7 @@ internal abstract class MavenSpecification {
             storageFacade = storageFacade(),
             authenticationFacade = authenticationFacade,
             accessTokenFacade = accessTokenFacade,
-            statisticsFacade = StatisticsFacade(logger, Reference.reference(false), DailyDateIntervalProvider.toReference(), InMemoryStatisticsRepository()),
+            statisticsFacade = StatisticsFacade(logger, Reference.reference(false), DailyDateIntervalProvider.toReference(), InMemoryStatisticsRepository(), accessTokenFacade),
             ioService = ioService,
             mavenSettings = mavenSettings,
             frontendSettings = reference(FrontendSettings()),

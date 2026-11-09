@@ -45,6 +45,10 @@ import java.util.*
 
 private val MYSQL_FAMILY_VENDORS = setOf("mysql", "mariadb", "h2")
 
+/** A case-insensitive LIKE pattern matching any value that contains this text, with the text taken literally. */
+private fun String.toContainsPattern(): LikePattern =
+    LikePattern.ofLiteral(lowercase()).let { it.copy(pattern = "%${it.pattern}%") }
+
 @Suppress("RemoveRedundantQualifierName")
 internal class SqlStatisticsRepository(
     private val database: Database,
@@ -207,14 +211,27 @@ internal class SqlStatisticsRepository(
                 ?.let { it[IdentifierTable.id] }
         }
 
-    override fun findResolvedRequestsByPhrase(repository: String, phrase: String, limit: Int): List<ResolvedEntry> =
+    override fun findResolvedRequestsByPhrase(
+        repository: String,
+        phrase: String,
+        limit: Int,
+        accessibleGavPrefixes: Set<String>?
+    ): List<ResolvedEntry> =
         transaction(database) {
+            if (accessibleGavPrefixes?.isEmpty() == true) {
+                return@transaction emptyList()
+            }
+
             val resolvedSum = ResolvedTable.count.sum()
-            val whereCriteria =
-                if (repository.isEmpty())
-                    IdentifierTable.gav like "%$phrase%"
-                else
-                    AndOp(listOf(IdentifierTable.repository eq repository, IdentifierTable.gav like "%$phrase%"))
+            // The prefix predicate sits in the WHERE clause, so ORDER BY and LIMIT only see the entries the caller may read.
+            val restrictedPrefixes = accessibleGavPrefixes?.takeUnless { "" in it }
+            val whereCriteria = listOfNotNull<Op<Boolean>>(
+                repository.takeIf(String::isNotEmpty)?.let { IdentifierTable.repository eq it },
+                phrase.takeIf(String::isNotEmpty)?.let { IdentifierTable.gav.lowerCase() like it.toContainsPattern() },
+                restrictedPrefixes?.let { prefixes ->
+                    OrOp(prefixes.map { IdentifierTable.gav.lowerCase() like (LikePattern.ofLiteral(it.lowercase()) + "%") })
+                }
+            ).let { if (it.isEmpty()) Op.TRUE else AndOp(it) }
 
             IdentifierTable.leftJoin(ResolvedTable, { IdentifierTable.id }, { ResolvedTable.identifierId })
                 .select(IdentifierTable.gav, resolvedSum)
