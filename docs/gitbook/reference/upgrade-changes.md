@@ -75,3 +75,15 @@ No configuration change is needed. To restore the old `public` value for these a
 ### Mirror extensions
 
 The default `allowedExtensions` of a mirrored repository now includes `.sigstore.json`. A stored list is kept on upgrade and is not rewritten. To let a mirror with a stored list serve Sigstore bundles, add `.sigstore.json` to its `allowedExtensions` in the settings.
+
+### Phrase statistics limit
+
+The phrase endpoint `GET /api/statistics/resolved/phrase/{limit}/{repository}/<gav>` answered with one entry whatever `{limit}` was. It now returns up to `{limit}` entries, and its `sum` covers those entries.
+
+| Request | Before | Now |
+| --- | --- | --- |
+| `{limit}` from 1 to 100 | One entry | Up to `{limit}` entries |
+| `{limit}` of 0, above 100, or not a number | Data, one entry, the limit was ignored | `400` with an error response, no lookup |
+| Token that cannot read every matching path | One entry, possibly unreadable | Only the readable entries, then the limit |
+
+Clients that always send `1` see no difference. A client that sends a limit outside 1 to 100 has to send a valid one. No configuration, environment variable or plugin changes.

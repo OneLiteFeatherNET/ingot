@@ -26,6 +26,12 @@ import com.reposilite.statistics.api.IncrementResolvedRequest
 import com.reposilite.statistics.api.IntervalRecord
 import com.reposilite.statistics.api.RepositoryStatistics
 import com.reposilite.statistics.api.ResolvedCountResponse
+import com.reposilite.token.AccessTokenFacade
+import com.reposilite.token.AccessTokenIdentifier
+import com.reposilite.token.AccessTokenPermission.MANAGER
+import com.reposilite.token.Route
+import com.reposilite.token.RoutePermission.READ
+import net.onelitefeather.ingot.identity.model.Action
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
@@ -37,7 +43,8 @@ class StatisticsFacade internal constructor(
     private val journalist: Journalist,
     private val statisticsEnabled: Reference<Boolean>,
     private val dateIntervalProvider: Reference<DateIntervalProvider>,
-    private val statisticsRepository: StatisticsRepository
+    private val statisticsRepository: StatisticsRepository,
+    private val accessTokenFacade: AccessTokenFacade
 ) : Journalist, Facade {
 
     private val resolvedRequestsBulk: ConcurrentHashMap<Identifier, Long> = ConcurrentHashMap()
@@ -58,17 +65,58 @@ class StatisticsFacade internal constructor(
                 logger.debug("Statistics | Saved bulk with ${it.size} records")
             }
 
-    fun findResolvedRequestsByPhrase(repository: String = "", phrase: String, limit: Int = MAX_PAGE_SIZE): Result<ResolvedCountResponse, ErrorResponse> =
-        limit.takeIf { it <= MAX_PAGE_SIZE }
-            ?.let {
-                statisticsRepository.findResolvedRequestsByPhrase(repository, phrase, limit).let {
-                    ResolvedCountResponse(
-                        sum = it.sumOf { resolved -> resolved.count },
-                        requests = it
-                    ).asSuccess()
-                }
+    /**
+     * The highest entries of the phrase that the token may read, at most [limit] of them. A null [accessToken] or a manager
+     * sees every entry. For other tokens the GAV prefixes of their read routes narrow the query before the limit applies,
+     * and every entry is then checked against the permissions of the token, so a route cannot widen what a rule denies.
+     */
+    fun findResolvedRequestsByPhrase(
+        repository: String = "",
+        phrase: String,
+        limit: Int = MAX_PAGE_SIZE,
+        accessToken: AccessTokenIdentifier? = null
+    ): Result<ResolvedCountResponse, ErrorResponse> {
+        if (limit !in 1..MAX_PAGE_SIZE) {
+            return badRequestError("Requested invalid page size ($limit, expected 1..$MAX_PAGE_SIZE)")
+        }
+
+        val requests =
+            if (accessToken == null || accessTokenFacade.hasPermission(accessToken, MANAGER)) {
+                statisticsRepository.findResolvedRequestsByPhrase(repository, phrase, limit)
+            } else {
+                statisticsRepository.findResolvedRequestsByPhrase(repository, phrase, limit, readablePrefixes(accessToken, repository))
+                    .filter { accessTokenFacade.hasAccessTo(accessToken, resolvedPath(repository, it.gav), Action.READ) }
             }
-            ?: badRequestError("Requested too many records ($limit > $MAX_PAGE_SIZE)")
+
+        return ResolvedCountResponse(
+            sum = requests.sumOf { it.count },
+            requests = requests
+        ).asSuccess()
+    }
+
+    /**
+     * The GAV prefixes of the read routes of the token in [repository]. Null when the token has no read route, so the query
+     * is not narrowed by prefix and the permissions decide each entry instead.
+     */
+    private fun readablePrefixes(accessToken: AccessTokenIdentifier, repository: String): Set<String>? {
+        val readRoutes = accessTokenFacade.getRoutes(accessToken).filter { it.permission == READ }
+        if (readRoutes.isEmpty()) {
+            return null
+        }
+        return readRoutes.mapNotNullTo(mutableSetOf()) { it.toGavPrefix(repository) }
+    }
+
+    private fun Route.toGavPrefix(repository: String): String? {
+        val repositoryRoot = "/$repository"
+        return when {
+            repositoryRoot.startsWith(path, ignoreCase = true) -> ""
+            path.startsWith("$repositoryRoot/", ignoreCase = true) -> path.substring(repositoryRoot.length + 1)
+            else -> null
+        }
+    }
+
+    private fun resolvedPath(repository: String, gav: String): String =
+        "/$repository/${gav.trimStart('/')}"
 
     fun getAllResolvedStatistics(): Result<AllResolvedResponse, ErrorResponse> =
         when {

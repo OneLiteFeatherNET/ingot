@@ -31,6 +31,8 @@ import com.reposilite.statistics.infrastructure.SqlStatisticsRepository
 import com.reposilite.statistics.specification.StatisticsIntegrationSpecification
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.RoutePermission.READ
+import io.javalin.http.HttpStatus.BAD_REQUEST
+import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.OK
 import io.javalin.http.HttpStatus.UNAUTHORIZED
 import java.time.LocalDate
@@ -163,6 +165,134 @@ internal abstract class StatisticsIntegrationTest : StatisticsIntegrationSpecifi
                     .sortedBy { it.name }
             )
         )
+    }
+
+    @Test
+    fun `should return as many entries as the phrase limit asks for`() {
+        // given: two entries matching the phrase, with 2 and 3 resolutions
+        useResolvedPhraseEntries()
+        val (name, secret) = useAuth("manager", "secret", listOf(MANAGER))
+
+        // when: two entries are requested
+        val response = get("$base/api/statistics/resolved/phrase/2/releases/com/reposilite")
+            .basicAuth(name, secret)
+            .asObject(ResolvedCountResponse::class.java)
+
+        // then: both entries are returned and the sum covers both
+        assertThat(response.status).isEqualTo(OK.code)
+        assertThat(response.body.requests.map { it.gav })
+            .describedAs("a limit of two must return both matching entries, highest first")
+            .containsExactly("x/com/reposilite/b.jar", "com/reposilite/a.jar")
+        assertThat(response.body.sum).describedAs("the sum must cover the returned entries").isEqualTo(5)
+    }
+
+    @Test
+    fun `should refuse a phrase limit outside of the allowed range`() {
+        // given: a manager token and entries matching the phrase
+        useResolvedPhraseEntries()
+        val (name, secret) = useAuth("manager", "secret", listOf(MANAGER))
+
+        listOf("0", "101").forEach { limit ->
+            // when: a limit outside of 1..100 is requested
+            val response = get("$base/api/statistics/resolved/phrase/$limit/releases/com/reposilite")
+                .basicAuth(name, secret)
+                .asString()
+
+            // then: the request is refused with a bad request
+            assertThat(response.status)
+                .describedAs("the limit $limit is outside of 1..100 and must be refused")
+                .isEqualTo(BAD_REQUEST.code)
+        }
+    }
+
+    @Test
+    fun `should refuse a phrase limit that is not a number`() {
+        // given: a manager token and entries matching the phrase
+        useResolvedPhraseEntries()
+        val (name, secret) = useAuth("manager", "secret", listOf(MANAGER))
+
+        // when: a limit that is not a number is requested
+        val response = get("$base/api/statistics/resolved/phrase/many/releases/com/reposilite")
+            .basicAuth(name, secret)
+            .asString()
+
+        // then: the request is refused with a bad request
+        assertThat(response.status).describedAs("a limit that is not a number must be refused").isEqualTo(BAD_REQUEST.code)
+    }
+
+    @Test
+    fun `should return only entries under paths the token may read`() {
+        // given: entries matching the phrase, and a token that may read com/reposilite only
+        useResolvedPhraseEntries()
+        val (name, secret) = useAuth("reader", "secret", emptyList(), mapOf("/releases/com/reposilite" to READ))
+
+        // when: the phrase is requested with a generous limit
+        val response = get("$base/api/statistics/resolved/phrase/10/releases/com/reposilite")
+            .basicAuth(name, secret)
+            .asObject(ResolvedCountResponse::class.java)
+
+        // then: only the readable entry is returned
+        assertThat(response.status).isEqualTo(OK.code)
+        assertThat(response.body.requests.map { it.gav })
+            .describedAs("an entry outside the readable path must not be returned to the token")
+            .containsExactly("com/reposilite/a.jar")
+        assertThat(response.body.sum).describedAs("the sum must not count unreadable entries").isEqualTo(2)
+    }
+
+    @Test
+    fun `should return the readable entry when the limit is reached by an unreadable one`() {
+        // given: entries matching the phrase, the unreadable one has the highest count
+        useResolvedPhraseEntries()
+        val (name, secret) = useAuth("reader", "secret", emptyList(), mapOf("/releases/com/reposilite" to READ))
+
+        // when: a single entry is requested
+        val response = get("$base/api/statistics/resolved/phrase/1/releases/com/reposilite")
+            .basicAuth(name, secret)
+            .asObject(ResolvedCountResponse::class.java)
+
+        // then: the readable entry fills the limit instead of an empty list
+        assertThat(response.status).isEqualTo(OK.code)
+        assertThat(response.body.requests.map { it.gav })
+            .describedAs("the readable entry must be returned when the limit is one")
+            .containsExactly("com/reposilite/a.jar")
+    }
+
+    @Test
+    fun `should show every matching entry to a manager`() {
+        // given: entries matching the phrase
+        useResolvedPhraseEntries()
+        val (name, secret) = useAuth("manager", "secret", listOf(MANAGER))
+
+        // when: the phrase is requested by a manager
+        val response = get("$base/api/statistics/resolved/phrase/10/releases/com/reposilite")
+            .basicAuth(name, secret)
+            .asObject(ResolvedCountResponse::class.java)
+
+        // then: every matching entry is returned
+        assertThat(response.status).isEqualTo(OK.code)
+        assertThat(response.body.requests.map { it.gav })
+            .describedAs("a manager must see every matching entry")
+            .containsExactly("x/com/reposilite/b.jar", "com/reposilite/a.jar")
+    }
+
+    @Test
+    fun `should refuse the phrase lookup to a token without read access to the phrase path`() {
+        // given: entries matching the phrase, and a token that may read nothing
+        useResolvedPhraseEntries()
+        val (name, secret) = useAuth("stranger", "secret")
+
+        // when: the phrase is requested
+        val response = get("$base/api/statistics/resolved/phrase/10/releases/com/reposilite")
+            .basicAuth(name, secret)
+            .asString()
+
+        // then: the request is refused as forbidden
+        assertThat(response.status).describedAs("a token without read access must be refused").isEqualTo(FORBIDDEN.code)
+    }
+
+    private fun useResolvedPhraseEntries() {
+        repeat(2) { useResolvedRequest("releases", "com/reposilite/a.jar", "content") }
+        repeat(3) { useResolvedRequest("releases", "x/com/reposilite/b.jar", "content") }
     }
 
 }

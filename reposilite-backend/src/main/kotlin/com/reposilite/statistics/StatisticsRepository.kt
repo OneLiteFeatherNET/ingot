@@ -25,7 +25,16 @@ interface StatisticsRepository {
 
     fun incrementResolvedRequests(requests: Map<Identifier, Long>, date: LocalDate)
 
-    fun findResolvedRequestsByPhrase(repository: String, phrase: String, limit: Int = MAX_VALUE): List<ResolvedEntry>
+    /**
+     * The entries of [repository] whose GAV contains [phrase], highest count first, at most [limit] of them. When
+     * [accessibleGavPrefixes] is set, only entries whose GAV starts with one of the prefixes are counted; an empty set matches nothing.
+     */
+    fun findResolvedRequestsByPhrase(
+        repository: String,
+        phrase: String,
+        limit: Int = MAX_VALUE,
+        accessibleGavPrefixes: Set<String>? = null
+    ): List<ResolvedEntry>
 
     fun getAllResolvedRequestsPerRepositoryAsTimeSeries(): Map<String, Map<LocalDate, Long>>
 

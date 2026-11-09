@@ -17,6 +17,7 @@
 package com.reposilite.statistics.infrastructure
 
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.badRequestError
 import com.reposilite.statistics.MAX_PAGE_SIZE
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.statistics.api.AllResolvedResponse
@@ -38,18 +39,23 @@ internal class StatisticsEndpoint(private val statisticsFacade: StatisticsFacade
         path = "/api/statistics/resolved/phrase/{limit}/{repository}/{gav}",
         methods = [HttpMethod.GET],
         pathParams = [
-            OpenApiParam(name = "limit", description = "Amount of records to find (Maximum: $MAX_PAGE_SIZE", required = true),
+            OpenApiParam(name = "limit", description = "Amount of records to find (Maximum: $MAX_PAGE_SIZE)", required = true),
             OpenApiParam(name = "repository", description = "Repository to search in", required = true),
             OpenApiParam(name = "gav", description = "Phrase to search for", required = true, allowEmptyValue = true)
         ],
         responses = [
             OpenApiResponse("200", content = [ OpenApiContent(from = ResolvedCountResponse::class) ], description = "Aggregated sum of resolved requests with list a list of them all"),
-            OpenApiResponse("401", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When invalid token is used")
+            OpenApiResponse("400", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When the limit is not a number between 1 and $MAX_PAGE_SIZE"),
+            OpenApiResponse("401", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When invalid token is used"),
+            OpenApiResponse("403", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When token cannot access the requested path")
         ]
     )
     val findCountByPhrase = ReposiliteRoute<ResolvedCountResponse>("/api/statistics/resolved/phrase/{limit}/{repository}/<gav>", GET) {
         authorized("/${requireParameter("repository")}/${requireParameter("gav")}") {
-            response = statisticsFacade.findResolvedRequestsByPhrase(requireParameter("repository"), requireParameter("gav"), 1)
+            val rawLimit = requireParameter("limit")
+            response = rawLimit.toIntOrNull()
+                ?.let { statisticsFacade.findResolvedRequestsByPhrase(requireParameter("repository"), requireParameter("gav"), it, identifier) }
+                ?: badRequestError("Requested invalid page size ($rawLimit, expected 1..$MAX_PAGE_SIZE)")
         }
     }
 

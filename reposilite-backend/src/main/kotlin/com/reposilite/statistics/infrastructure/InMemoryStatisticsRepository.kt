@@ -39,14 +39,20 @@ internal class InMemoryStatisticsRepository : StatisticsRepository {
                 ?: resolvedRequests.add(ResolvedRequest(identifier, date, count))
         }
 
-    override fun findResolvedRequestsByPhrase(repository: String, phrase: String, limit: Int): List<ResolvedEntry> =
+    override fun findResolvedRequestsByPhrase(
+        repository: String,
+        phrase: String,
+        limit: Int,
+        accessibleGavPrefixes: Set<String>?
+    ): List<ResolvedEntry> =
         resolvedRequests.asSequence()
-            .filter { it.identifier.repository == repository }
-            .filter { (identifier) -> identifier.toString().contains(phrase) }
-            .sortedByDescending { (_, count) -> count }
+            .filter { repository.isEmpty() || it.identifier.repository == repository }
+            .filter { (identifier) -> phrase.isEmpty() || identifier.gav.contains(phrase, ignoreCase = true) }
+            .filter { (identifier) -> accessibleGavPrefixes == null || accessibleGavPrefixes.any { identifier.gav.startsWith(it, ignoreCase = true) } }
+            .groupBy { it.identifier }
+            .map { (identifier, records) -> ResolvedEntry(identifier.gav, records.sumOf { it.count }) }
+            .sortedByDescending { it.count }
             .take(limit)
-            .map { (identifier, _, count) -> ResolvedEntry(identifier.gav, count) }
-            .toList()
 
     override fun getAllResolvedRequestsPerRepositoryAsTimeSeries(): Map<String, Map<LocalDate, Long>> =
         resolvedRequests
