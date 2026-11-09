@@ -127,6 +127,12 @@ The comment for `database` in a generated `configuration.cdn` lists the user and
 {% endtab %}
 {% endtabs %}
 
+## The lock table
+
+On MariaDB and MySQL, Ingot creates one more table on the first start: `ingot_lock`, next to `settings`. It holds a single row, the lease that lets replicas create the schema one at a time when they start together. The statement that creates it is `CREATE TABLE IF NOT EXISTS`, so two replicas that start together both succeed. The account needs the same rights as for the other tables. PostgreSQL keeps its lock in the session and creates no table for it. SQLite and H2 create no lock table.
+
+A replica that waits longer than `INGOT_LOCAL_SCHEMALOCKTIMEOUT` seconds stops its start. The default is `300`, and `REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT` is read when the `INGOT_` name is not set. See [Multi-replica operation](../explanation/multi-replica-operation.md#schema-initialisation).
+
 ## Result
 
 The instance starts, and the dashboard opens. The database contains the `settings` table. With SQLite, the file exists in the working directory. Restart the instance once and check that the users and tokens you created are still there. If they are not, the instance uses a different database than you think. Check the value in the list of places above.

@@ -41,6 +41,18 @@ Scheduled work runs on every replica, but each job should run once. A job claims
 
 Claims are kept for 7 days. A claim older than that is removed the next time a replica makes a claim. A new key for each day means a job runs once per day, even when every replica is up.
 
+## Schema initialisation
+
+Replicas that start together against one database create the schema together. Ingot serialises that work with a schema lock, so one replica creates the tables at a time and the others wait for it.
+
+* On MariaDB and MySQL the lock is a row in the table `ingot_lock`. The holder renews the row every 10 seconds while it initialises. A replica that stops without releasing the lock loses it 60 seconds after its last renewal, and another replica takes over.
+* On PostgreSQL the lock is a session lock on its own connection. It lasts for the start, and the database releases it when the session ends, also when the process dies.
+* SQLite and H2 take no lock, because they have a single writer.
+
+A replica that cannot take the lock within `INGOT_LOCAL_SCHEMALOCKTIMEOUT` seconds (default `300`, or `REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT` when only the legacy name is set) stops its start. Its message names the schema lock. It does not bind its port. Raise the timeout only if the initialisation of your database is slow, and check the replica that holds the lock first.
+
+The lock is released once the schema is ready and before the server starts listening. The dashboard and the API are therefore not reachable while the schema is still being created.
+
 ## The search outbox
 
 Writes to the repositories add rows to an outbox table. Background workers on each replica claim those rows and apply them to the search index.

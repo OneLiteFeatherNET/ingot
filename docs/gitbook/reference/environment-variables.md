@@ -49,6 +49,7 @@ For example, `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` takes the 
 | `hostname` | `INGOT_LOCAL_HOSTNAME` | `REPOSILITE_LOCAL_HOSTNAME` |
 | `port` | `INGOT_LOCAL_PORT` | `REPOSILITE_LOCAL_PORT` |
 | `database` | `INGOT_LOCAL_DATABASE` | `REPOSILITE_LOCAL_DATABASE` |
+| `schemaLockTimeout` | `INGOT_LOCAL_SCHEMALOCKTIMEOUT` | `REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT` |
 | `sslEnabled` | `INGOT_LOCAL_SSLENABLED` | `REPOSILITE_LOCAL_SSLENABLED` |
 | `sslPort` | `INGOT_LOCAL_SSLPORT` | `REPOSILITE_LOCAL_SSLPORT` |
 | `keyPath` | `INGOT_LOCAL_KEYPATH` | `REPOSILITE_LOCAL_KEYPATH` |
@@ -67,6 +68,8 @@ For example, `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` takes the 
 | `searchEnabled` | `INGOT_LOCAL_SEARCHENABLED` | `REPOSILITE_LOCAL_SEARCHENABLED` |
 | `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `REPOSILITE_LOCAL_SEARCHENGINE` |
 | `debugEnabled` | `INGOT_LOCAL_DEBUGENABLED` | `REPOSILITE_LOCAL_DEBUGENABLED` |
+
+`schemaLockTimeout` is the number of seconds a replica waits for the schema lock before its start fails. It defaults to `300`. The `REPOSILITE_LOCAL_` name is read only when the `INGOT_LOCAL_` name is not set. See [Multi-replica operation](../explanation/multi-replica-operation.md#schema-initialisation).
 
 ## Deploy target
 
