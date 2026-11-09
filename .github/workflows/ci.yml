@@ -200,6 +200,11 @@ jobs:
       - name: "Set up Buildx"
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
+      # The annotation check that the release job runs on pushed images. Its tests use
+      # fixture files only, so they need neither a registry nor the Docker daemon.
+      - name: "Run the image annotation check tests"
+        run: python3 -m unittest discover -s .github/scripts/tests -t .github/scripts/tests -v
+
       # Built for the host architecture and loaded, because the checks below run it. The
       # other published architecture is covered by its own step at the end.
       - name: "Build the server image"
