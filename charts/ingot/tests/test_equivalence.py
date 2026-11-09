@@ -120,6 +120,21 @@ class MigrationEquivalenceTest(unittest.TestCase):
             "without nameOverride the chart name ingot replaces reposilite, which is why the migration sets it",
         )
 
+    def test_image_only_render_keeps_the_upstream_claim_name(self):
+        """Upgrade rehearsal: an image-only upgrade from the upstream chart must keep the claim `reposilite`.
+
+        Without the name overrides the chart renders the claim `reposilite-ingot`, a new empty claim, while the
+        upstream claim stays behind under helm.sh/resource-policy: keep. This test is red until the chart keeps the
+        upstream name without the overrides.
+        """
+        manifests = render(self.identity, [])
+        claims = [doc["metadata"]["name"] for doc in manifests if doc.get("kind") == "PersistentVolumeClaim"]
+        self.assertIn(
+            self.identity["persistentVolumeClaimName"],
+            claims,
+            f"an image-only upgrade must keep the upstream claim, the chart without overrides renders {claims}",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
