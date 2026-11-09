@@ -167,6 +167,33 @@ class ChartRenderTest(unittest.TestCase):
             "server", env_value(deployment, "INGOT_TARGET"), "the server workload must set INGOT_TARGET=server"
         )
 
+    def test_split_server_sets_the_cluster_instance_id_from_the_pod_name(self):
+        deployment = named(render(split_values()), "Deployment", SERVER)
+        entries = [entry for entry in container(deployment)["env"] if entry["name"] == "INGOT_CLUSTER_INSTANCE_ID"]
+        self.assertEqual(1, len(entries), "the server must set INGOT_CLUSTER_INSTANCE_ID exactly once")
+        self.assertEqual(
+            {"fieldRef": {"fieldPath": "metadata.name"}},
+            entries[0]["valueFrom"],
+            "the instance id must be the pod name, so each replica identifies itself on the bus",
+        )
+
+    def test_split_server_keeps_a_cluster_instance_id_set_in_env(self):
+        values = split_values()
+        values["env"] = [{"name": "INGOT_CLUSTER_INSTANCE_ID", "value": "fixed-id"}]
+        deployment = named(render(values), "Deployment", SERVER)
+        entries = [entry for entry in container(deployment)["env"] if entry["name"] == "INGOT_CLUSTER_INSTANCE_ID"]
+        self.assertEqual(
+            [{"name": "INGOT_CLUSTER_INSTANCE_ID", "value": "fixed-id"}], entries,
+            "an instance id the operator set must not be overridden or duplicated",
+        )
+
+    def test_all_in_one_does_not_set_the_cluster_instance_id(self):
+        deployment = named(render(), "Deployment", SERVER)
+        self.assertIsNone(
+            env_value(deployment, "INGOT_CLUSTER_INSTANCE_ID"),
+            "the all-in-one workload keeps the server default, the host name",
+        )
+
     def test_split_dashboard_sets_ingot_backend_to_the_server_service(self):
         deployment = named(render(split_values()), "Deployment", DASHBOARD)
         self.assertEqual(

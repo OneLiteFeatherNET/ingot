@@ -99,11 +99,23 @@ spec:
           {{- if .Values.deployment.additionalVolumeMounts }}
           {{- toYaml .Values.deployment.additionalVolumeMounts | nindent 10 }}
           {{- end }}
+        {{- $instanceIdSet := false }}
+        {{- range .Values.env }}
+        {{- if eq .name "INGOT_CLUSTER_INSTANCE_ID" }}
+        {{- $instanceIdSet = true }}
+        {{- end }}
+        {{- end }}
         {{- if or (eq .Values.mode "split") .Values.env }}
         env:
           {{- if eq .Values.mode "split" }}
           - name: INGOT_TARGET
             value: "server"
+          {{- if not $instanceIdSet }}
+          - name: INGOT_CLUSTER_INSTANCE_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          {{- end }}
           {{- end }}
           {{- with .Values.env }}
           {{- toYaml . | nindent 10 }}
