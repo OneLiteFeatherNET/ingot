@@ -17,6 +17,7 @@ This page lists the routes of the Ingot backend that are not part of the JSON AP
 | `GET` | `/javadoc/{repository}/<gav>` | Javadoc viewer | Optional. Depends on the repository visibility. |
 | `GET` | `/javadoc/{repository}/<gav>/raw/<resource>` | Javadoc resource | Optional. Depends on the repository visibility. |
 | `GET` | `/api/status/health` | Health | None. |
+| `GET` | `/api/status/ready` | Readiness | None. |
 | `GET` | `/openapi` | OpenAPI document | None added by Ingot. |
 | `GET` | `/swagger` | Swagger UI | Only with the optional Swagger plugin. |
 | `GET`, `HEAD` | `/`, `/index.html` | Dashboard | None. |
@@ -224,12 +225,22 @@ The `javadoc` shared settings domain holds these keys. Read and write it at `/ap
 | Method and path | Authentication | Response |
 |-----------------|----------------|----------|
 | `GET /api/status/health` | None | `200` with `{"status":"UP"}` when the web server is started. `503` with `{"status":"DOWN"}` when it is not. |
+| `GET /api/status/ready` | None | `200` with `{"status":"UP","failing":[]}` when every readiness check passes. `503` with `{"status":"DOWN","failing":[...]}` naming the checks that failed. |
 | `GET /api/status/instance` | Manager | `version`, `latestVersion`, `uptime`, `usedMemory`, `maxMemory`, `usedThreads`, `maxThreads`, `failuresCount`. |
 | `GET /api/status/snapshots` | Manager | An array of `{at, memory, threads}`. |
 | `GET /api/status/failures` | Manager | `{"failures": [...]}` with `id`, `timestamp`, `source`, `type`, `message`, `stacktrace` and `count` per failure, newest first. |
 | `DELETE /api/status/failures` | Manager | Clears the recorded failures. |
 
-A manager endpoint answers `401` without valid credentials and `403` for a caller who is not a manager. There is no `/api/status/ready` route.
+A manager endpoint answers `401` without valid credentials and `403` for a caller who is not a manager.
+
+`/api/status/ready` answers whether this instance can serve requests now. It runs these checks, in this order:
+
+* `plugins`: the server has started, so every plugin is initialised and the web server is bound.
+* `database`: a connection answers a validation query within two seconds.
+* `storage`: every repository's storage root lists its contents within two seconds. An empty root counts as ready.
+* `cluster`: only when a cluster bus URL is configured. The bus must report `connected`.
+
+A check that answers `false`, raises an error or does not answer within its bound is listed in `failing`. The body never names a repository, a path or an error message. The details of a failing check are written to the log at `WARN`.
 
 ## OpenAPI
 
