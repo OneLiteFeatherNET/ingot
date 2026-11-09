@@ -26,6 +26,7 @@ import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.infrastructure.MavenEndpoints
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.extensions.NO_CACHE_CONTROL
 import com.reposilite.shared.extensions.encoding
 import com.reposilite.shared.notFoundError
 import com.reposilite.status.FailureFacade
@@ -103,7 +104,12 @@ internal class ResourcesFrontendHandler(
     }
 
     private val assetsHandler = ReposiliteRoute<InputStream>("/assets/<path>", GET) {
-        response = respondWithBundledResource(ctx, "assets/${ctx.pathParam("path")}")
+        val uri = "assets/${ctx.pathParam("path")}"
+        // A file that is not in the build is a not found answer, so no cache keeps it as an immutable asset.
+        response = when (bundledResource(uri)) {
+            null -> notFoundError("Resource not found")
+            else -> respondWithBundledResource(ctx, uri)
+        }
     }
 
     // Javalin answers a request with the first endpoint that matches it, and never falls through to the next one.
@@ -155,6 +161,8 @@ internal class ResourcesFrontendHandler(
         }
     }
 
+    private fun bundledResource(uri: String) = FrontendFacade::class.java.getResource("/$resourcesDirectory/$uri")
+
     private fun respondWithBundledResource(ctx: Context, uri: String): Result<InputStream, ErrorResponse> {
         if (uri == "index.html") {
             SecurityHeaders.markDashboard(ctx)
@@ -163,6 +171,18 @@ internal class ResourcesFrontendHandler(
         return respondWithResource(ctx, uri) {
             FrontendFacade::class.java.getResourceAsStream("/$resourcesDirectory/$uri") ?: "".toByteArray().inputStream()
         }
+            // Only a served answer gets the policy: the errors keep the Cache-Control that the error path gives them.
+            .peek { bundledCacheControl(uri)?.let { ctx.header("Cache-Control", it) } }
+    }
+
+    /**
+     * Hashed bundles never change under their name, so they are cached for a year. The document names the bundle
+     * to load, so it is asked again on every load.
+     */
+    private fun bundledCacheControl(uri: String): String? = when {
+        uri == "index.html" -> NO_CACHE_CONTROL
+        uri.startsWith("assets/") -> "public, max-age=31536000, immutable"
+        else -> null
     }
 
     override val routes = routes(defaultHandler, indexHandler, assetsHandler, *appRoutes.toTypedArray())
