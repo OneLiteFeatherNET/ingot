@@ -21,7 +21,6 @@ import com.reposilite.maven.api.Identifier
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequestError
-import com.reposilite.shared.toErrorResult
 import com.reposilite.statistics.api.AllResolvedResponse
 import com.reposilite.statistics.api.IncrementResolvedRequest
 import com.reposilite.statistics.api.IntervalRecord
@@ -32,7 +31,7 @@ import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenPermission.MANAGER
 import com.reposilite.token.Route
 import com.reposilite.token.RoutePermission.READ
-import io.javalin.http.HttpStatus.FORBIDDEN
+import net.onelitefeather.ingot.identity.model.Action
 import panda.std.Result
 import panda.std.asSuccess
 import panda.std.reactive.Reference
@@ -66,6 +65,11 @@ class StatisticsFacade internal constructor(
                 logger.debug("Statistics | Saved bulk with ${it.size} records")
             }
 
+    /**
+     * The highest entries of the phrase that the token may read, at most [limit] of them. A null [accessToken] or a manager
+     * sees every entry. For other tokens the GAV prefixes of their read routes narrow the query before the limit applies,
+     * and every entry is then checked against the permissions of the token, so a route cannot widen what a rule denies.
+     */
     fun findResolvedRequestsByPhrase(
         repository: String = "",
         phrase: String,
@@ -76,39 +80,30 @@ class StatisticsFacade internal constructor(
             return badRequestError("Requested invalid page size ($limit, expected 1..$MAX_PAGE_SIZE)")
         }
 
-        val accessibleGavPrefixes: Result<Set<String>?, ErrorResponse> =
-            accessToken?.let { getAccessibleGavPrefixes(it, repository, phrase) } ?: Result.ok(null)
+        val requests =
+            if (accessToken == null || accessTokenFacade.hasPermission(accessToken, MANAGER)) {
+                statisticsRepository.findResolvedRequestsByPhrase(repository, phrase, limit)
+            } else {
+                statisticsRepository.findResolvedRequestsByPhrase(repository, phrase, limit, readablePrefixes(accessToken, repository))
+                    .filter { accessTokenFacade.hasAccessTo(accessToken, resolvedPath(repository, it.gav), Action.READ) }
+            }
 
-        return accessibleGavPrefixes.map { prefixes ->
-            val requests = statisticsRepository.findResolvedRequestsByPhrase(repository, phrase, limit, prefixes)
-            ResolvedCountResponse(
-                sum = requests.sumOf { it.count },
-                requests = requests
-            )
-        }
+        return ResolvedCountResponse(
+            sum = requests.sumOf { it.count },
+            requests = requests
+        ).asSuccess()
     }
 
-    private fun getAccessibleGavPrefixes(
-        accessToken: AccessTokenIdentifier,
-        repository: String,
-        phrase: String
-    ): Result<Set<String>?, ErrorResponse> {
-        if (accessTokenFacade.hasPermission(accessToken, MANAGER)) {
-            return Result.ok(null)
+    /**
+     * The GAV prefixes of the read routes of the token in [repository]. Null when the token has no read route, so the query
+     * is not narrowed by prefix and the permissions decide each entry instead.
+     */
+    private fun readablePrefixes(accessToken: AccessTokenIdentifier, repository: String): Set<String>? {
+        val readRoutes = accessTokenFacade.getRoutes(accessToken).filter { it.permission == READ }
+        if (readRoutes.isEmpty()) {
+            return null
         }
-
-        val routes = accessTokenFacade.getRoutes(accessToken)
-
-        if (routes.none { it.hasPermissionTo(resolvedPath(repository, phrase), READ) }) {
-            return FORBIDDEN.toErrorResult("This token is not authorized to access this path")
-        }
-
-        val prefixes: Set<String>? = routes.asSequence()
-            .filter { it.permission == READ }
-            .mapNotNull { it.toGavPrefix(repository) }
-            .toSet()
-
-        return Result.ok(prefixes)
+        return readRoutes.mapNotNullTo(mutableSetOf()) { it.toGavPrefix(repository) }
     }
 
     private fun Route.toGavPrefix(repository: String): String? {

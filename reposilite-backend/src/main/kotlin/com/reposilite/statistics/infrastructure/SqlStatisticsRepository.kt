@@ -29,6 +29,7 @@ import com.reposilite.statistics.api.ResolvedEntry
 import org.intellij.lang.annotations.Language
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.core.ReferenceOption.CASCADE
+import org.jetbrains.exposed.v1.core.SortOrder.ASC
 import org.jetbrains.exposed.v1.core.SortOrder.DESC
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 import org.jetbrains.exposed.v1.core.java.javaUUID
@@ -238,7 +239,7 @@ internal class SqlStatisticsRepository(
                 .where(whereCriteria)
                 .groupBy(IdentifierTable.id, IdentifierTable.gav)
                 .having { resolvedSum greater 0L }
-                .orderBy(resolvedSum, DESC)
+                .orderBy(resolvedSum to DESC, IdentifierTable.gav to ASC)
                 .limit(limit)
                 .filter { (it.getOrNull(resolvedSum) ?: 0) > 0 }
                 .map { ResolvedEntry(it[IdentifierTable.gav], it[resolvedSum] ?: 0) }

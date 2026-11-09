@@ -51,13 +51,11 @@ internal class StatisticsEndpoint(private val statisticsFacade: StatisticsFacade
         ]
     )
     val findCountByPhrase = ReposiliteRoute<ResolvedCountResponse>("/api/statistics/resolved/phrase/{limit}/{repository}/<gav>", GET) {
-        val repository = requireParameter("repository")
-        val gav = requireParameter("gav")
-        authenticated {
-            val limit = requireParameter("limit").toIntOrNull()
-            response = limit
-                ?.let { statisticsFacade.findResolvedRequestsByPhrase(repository, gav, it, identifier) }
-                ?: badRequestError("Requested invalid page size (${requireParameter("limit")}, expected 1..$MAX_PAGE_SIZE)")
+        authorized("/${requireParameter("repository")}/${requireParameter("gav")}") {
+            val rawLimit = requireParameter("limit")
+            response = rawLimit.toIntOrNull()
+                ?.let { statisticsFacade.findResolvedRequestsByPhrase(requireParameter("repository"), requireParameter("gav"), it, identifier) }
+                ?: badRequestError("Requested invalid page size ($rawLimit, expected 1..$MAX_PAGE_SIZE)")
         }
     }
 
