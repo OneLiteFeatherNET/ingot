@@ -55,6 +55,8 @@ jobs:
   licenses:
     name: "Licenses"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -101,6 +103,8 @@ jobs:
   frontend:
     name: "Frontend"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -131,6 +135,8 @@ jobs:
   vulnerabilities:
     name: "Vulnerabilities"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -180,6 +186,8 @@ jobs:
   images:
     name: "Container images"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -315,6 +323,8 @@ jobs:
   chart:
     name: "Helm chart"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -396,6 +406,8 @@ jobs:
   coverage:
     name: "Coverage"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0

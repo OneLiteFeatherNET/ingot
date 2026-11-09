@@ -78,6 +78,8 @@ jobs:
     name: "Detect image changes"
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       image: ${{ steps.filter.outputs.image }}
     steps:
@@ -138,6 +140,8 @@ jobs:
     name: "Maven"
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
     uses: OneLiteFeatherNET/workflows/.github/workflows/gradle-publish.yml@6eca5b5d8612ab1aac0f0f25248cd44ff9594886  # v2.4.0
     with:
       java-version: "21"
