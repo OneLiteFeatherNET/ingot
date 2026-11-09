@@ -4,7 +4,7 @@
 
 **Goal:** Make it safe to run more than one Ingot instance against one database and one object store, by serialising schema initialisation and metadata writes across processes and by not losing buffered statistics on shutdown.
 
-**Architecture:** A single `DatabaseLock` abstraction takes a named advisory lock on its own pooled connection. On MariaDB and MySQL that is `GET_LOCK`, on PostgreSQL `pg_advisory_lock`, and on SQLite and H2 it is a no-op because those support one writer anyway. Two call sites use it: the whole plugin initialisation sequence in `ReposiliteFactory`, and the read-modify-write on `maven-metadata.xml` in `MetadataService`. A third, unrelated fix flushes the statistics buffer during shutdown.
+**Architecture:** A single `DatabaseLock` abstraction takes a named advisory lock on its own pooled connection. On MariaDB and MySQL the metadata lock is `GET_LOCK`, on PostgreSQL `pg_advisory_lock`, and on SQLite and H2 it is a no-op because those support one writer anyway. The schema lock does not use `GET_LOCK`, because Galera does not support it: on MariaDB and MySQL it is a lease row in `ingot_lock` with an expiry that the holder renews, and it is held from plugin initialisation until the post-initialise event (see `fix-schema-init-lock`). Two call sites use the database lock: the schema lock around the plugin initialisation sequence in `ReposiliteFactory`, and the read-modify-write on `maven-metadata.xml` in `MetadataService`. A third, unrelated fix flushes the statistics buffer during shutdown.
 
 **Tech Stack:** Kotlin, Exposed (`org.jetbrains.exposed.v1`), HikariCP, JUnit 5, Testcontainers (MariaDB, PostgreSQL), Gradle.
 
@@ -35,7 +35,7 @@
 **Modified:**
 
 - `reposilite-backend/src/main/kotlin/com/reposilite/Reposilite.kt` - hold the `DatabaseLock` so plugins can reach it.
-- `reposilite-backend/src/main/kotlin/com/reposilite/ReposiliteFactory.kt` - build the lock, wrap `pluginLoader.initialize()`.
+- `reposilite-backend/src/main/kotlin/com/reposilite/ReposiliteFactory.kt` - take the schema lock before plugin loading and release it on a failed start. The schema lock is implemented in `net.onelitefeather.ingot.schema`, not in `DatabaseLock`.
 - `reposilite-backend/src/main/kotlin/com/reposilite/maven/MetadataService.kt` - take the lock around the read-modify-write in `generatePom`.
 - `reposilite-backend/src/main/kotlin/com/reposilite/maven/application/MavenComponents.kt` - pass the lock into `MetadataService`.
 - `reposilite-backend/src/main/kotlin/com/reposilite/maven/application/MavenPlugin.kt` - supply the lock from `reposilite()`.

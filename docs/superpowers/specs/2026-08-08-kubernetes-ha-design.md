@@ -28,9 +28,10 @@ Three decisions constrain everything below.
 Schema migration and metadata writes are correctness problems. A lost lock means a lost
 update, not a slow request.
 
-MariaDB Galera is already part of the deployment. `GET_LOCK()` and `SELECT ... FOR UPDATE`
-are transactional, consensus-backed, and release when the connection dies, which covers a
-pod that is killed rather than stopped.
+MariaDB Galera is already part of the deployment. `SELECT ... FOR UPDATE` is transactional,
+consensus-backed, and releases when the connection dies, which covers a pod that is killed
+rather than stopped. The schema lock uses a lease row instead of `GET_LOCK()`, because Galera
+does not support `GET_LOCK()` (see section 1.1).
 
 Redis locks were considered and rejected. Without a fencing token, an expired lock does not
 protect against a paused process that resumes and writes anyway, which is the exact failure
@@ -104,10 +105,16 @@ initial `replicas: 3` both produce, they issue DDL against the same tables concu
 On Galera, DDL runs under total order isolation. Concurrent `CREATE TABLE IF NOT EXISTS` and
 `ALTER TABLE` statements stall the cluster at best and abort a node at worst.
 
-The fix is an advisory lock around the whole initialisation sequence: `GET_LOCK()` on
-MariaDB and MySQL, `pg_advisory_lock` on PostgreSQL, a no-op on SQLite and H2 where a single
-writer is the only supported mode anyway. The lock is acquired once at startup and released
-before the server begins serving.
+The fix is an advisory lock around the whole initialisation sequence: a lease row in the table
+`ingot_lock` on MariaDB and MySQL, `pg_advisory_lock` on PostgreSQL, a no-op on SQLite and H2
+where a single writer is the only supported mode anyway. The lock is acquired once at startup
+and released before the server begins serving.
+
+The lease row replaces `GET_LOCK()`, which Galera lists as unsupported. A row is written by
+a short transaction, so a Galera certification failure (error 1213) is retried. The lease has
+an expiry of 60 seconds: the holder renews it every 10 seconds while it initialises, and a
+replica that dies loses the lease after that, so another replica takes over. A waiter stops
+after `INGOT_LOCAL_SCHEMALOCKTIMEOUT` seconds (default 300) and does not bind its port.
 
 ### 1.2 Serialise metadata writes
 
