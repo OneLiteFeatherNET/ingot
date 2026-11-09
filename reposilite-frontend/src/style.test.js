@@ -15,7 +15,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import stylesheet from './style.css?raw'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+// The source text is read from disk. A ?raw import would be emptied by vitest, which does not process stylesheets
+// for unit tests. The path is relative to the frontend directory, which is where vitest runs.
+const stylesheet = readFileSync(join(process.cwd(), 'src', 'style.css'), 'utf8')
 
 // The text of the block that starts at `start`, from its at-rule to the brace that closes it.
 const blockAt = (css, start) => {
