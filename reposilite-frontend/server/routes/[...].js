@@ -21,7 +21,7 @@
 
 import { dashboardOrNull } from '../lib/state.js'
 import { classify } from '../lib/route-classifier.js'
-import { cacheControlFor, securityHeaders } from '../lib/security-headers.js'
+import { cacheControlFor, documentHeaders, securityHeaders } from '../lib/security-headers.js'
 import { contentTypeFor } from '../lib/mime.js'
 import { forwardedHeaders, upstreamUrl } from '../lib/upstream.js'
 import { outgoingRequestHeaders, proxyRequest } from '../lib/proxy.js'
@@ -69,6 +69,7 @@ export default defineEventHandler({
     }
     if (route.kind === 'document' && (method === 'GET' || method === 'HEAD')) {
       return respond(200, await state.document(), {
+        ...documentHeaders(),
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': cacheControlFor('document'),
       }, method)
