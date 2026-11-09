@@ -24,13 +24,13 @@ Later steps override earlier steps for the same key.
 
 1. Default value of the key.
 2. Value in `configuration.cdn`.
-3. Environment variable `REPOSILITE_LOCAL_<KEY>`.
-4. Environment variable `INGOT_LOCAL_<KEY>`.
-5. System property `reposilite.local.<key>`.
-6. System property `ingot.local.<key>`.
+3. Environment variable `REPOSILITE_LOCAL_<KEY>`, or the file it names with `REPOSILITE_LOCAL_<KEY>_FILE`.
+4. Environment variable `INGOT_LOCAL_<KEY>`, or the file it names with `INGOT_LOCAL_<KEY>_FILE`.
+5. System property `reposilite.local.<key>`, or the file it names with `reposilite.local.<key>.file`.
+6. System property `ingot.local.<key>`, or the file it names with `ingot.local.<key>.file`.
 7. Command line `--hostname`, `--port` and `--database`, when given. These three parameters are the only command line overrides of local keys.
 
-Within one pair, the `INGOT_` spelling wins over the `REPOSILITE_` spelling. A system property wins over an environment variable.
+Within one pair, the `INGOT_` spelling wins over the `REPOSILITE_` spelling. A system property wins over an environment variable. A file spelling takes the place of the plain spelling of the same source, so it sits at the same step: a file read from `INGOT_LOCAL_<KEY>_FILE` is overridden by a system property in step 5 or 6, as a plain variable is. When one source sets both the plain and the file spelling, the plain one is used. See [File values](environment-variables.md#file-values).
 
 Overrides from the environment and from system properties are applied after the file has been loaded and rewritten. They are never written back to `configuration.cdn`.
 
