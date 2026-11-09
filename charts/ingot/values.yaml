@@ -220,6 +220,13 @@ probes:
     timeoutSeconds: 2
     successThreshold: 1
     failureThreshold: 3
+  # Startup probe of the server, off by default. Enable it when a first start can take longer than the liveness
+  # probe allows: liveness is held back until the startup probe succeeds. The budget is periodSeconds * failureThreshold.
+  startup:
+    enabled: false
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 30
 
 ## Persistent Volume Claim of the server
 ## Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/

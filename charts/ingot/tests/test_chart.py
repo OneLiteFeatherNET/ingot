@@ -219,6 +219,27 @@ class ChartRenderTest(unittest.TestCase):
             self.assertEqual("/", container(deployment)[probe]["httpGet"]["path"],
                              f"the all-in-one {probe} must use the root path as upstream does")
 
+    def test_startup_probe_is_absent_by_default(self):
+        for values in (None, split_values()):
+            deployment = named(render(values), "Deployment", SERVER)
+            self.assertNotIn("startupProbe", container(deployment), "no startup probe unless it is enabled")
+
+    def test_enabled_startup_probe_uses_the_root_path_in_all_in_one_mode(self):
+        deployment = named(render({"probes": {"startup": {"enabled": True}}}), "Deployment", SERVER)
+        self.assertEqual(
+            "/", container(deployment)["startupProbe"]["httpGet"]["path"],
+            "the all-in-one startup probe must use the root path, like the other server probes",
+        )
+
+    def test_enabled_startup_probe_uses_the_api_health_endpoint_in_split_mode(self):
+        values = split_values()
+        values["probes"] = {"startup": {"enabled": True}}
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertEqual(
+            "/api/status/health", container(deployment)["startupProbe"]["httpGet"]["path"],
+            "the split server startup probe must avoid the dashboard path",
+        )
+
     def test_dashboard_probes_use_the_healthz_endpoint(self):
         deployment = named(render(split_values()), "Deployment", DASHBOARD)
         for probe in ("readinessProbe", "livenessProbe"):
