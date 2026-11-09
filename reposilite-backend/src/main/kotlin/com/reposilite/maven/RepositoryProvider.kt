@@ -28,6 +28,7 @@ import com.reposilite.shared.notFoundError
 import com.reposilite.statistics.StatisticsFacade
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
+import com.reposilite.storage.s3.S3StorageProvider
 import com.reposilite.storage.s3.S3StorageProviderSettings
 import com.reposilite.storage.s3.findS3SharedBucketConflicts
 import java.nio.file.Path
@@ -97,6 +98,9 @@ internal class RepositoryProvider(
     private fun boundResolutionCaches() {
         val maxAge = resolutionCacheMaxAge(clusterMaxAgeSeconds, clusterBusConfigured)
         repositories.values.forEach { it.resolutionCache?.maxAge = maxAge }
+        if (clusterBusConfigured) {
+            repositories.values.forEach { (it.storageProvider as? S3StorageProvider)?.bindMetadataCacheToClusterBus() }
+        }
     }
 
     /**

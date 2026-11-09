@@ -105,7 +105,7 @@ An upload that would exceed the quota is refused with `507`. A quota of 0 or les
 | `region` | Region | string | empty | Region. Empty uses the `AWS_REGION` environment variable, and then the value `reposilite`. |
 | `prefix` | Key Prefix | string | empty | Prefix for all object keys, for a bucket that other services share. |
 | `sharedBucket` | Shared Bucket | boolean | `false` | Places the objects under the repository id, so several repositories can share one bucket. |
-| `metadataCacheSettings` | Local Metadata Cache | object or absent | absent | Local cache for object metadata. The default is no caching. Each instance has its own cache. |
+| `metadataCacheSettings` | Local Metadata Cache | object or absent | absent | Local cache for object metadata. The default is no caching. Each instance has its own cache. Mutable metadata (`maven-metadata*` and `-SNAPSHOT` directories) is never cached, and with a cluster bus an entry is used for at most 300 seconds. |
 
 Without both keys, Ingot uses the default AWS credential chain. Two JVM system properties change the S3 client: `reposilite.s3.pathStyleAccessEnabled=true` turns on path style access, and `reposilite.s3.use-s3-v4-signer=true` selects the V4 signer.
 

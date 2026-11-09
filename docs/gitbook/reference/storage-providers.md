@@ -77,7 +77,10 @@ Fields of `metadataCacheSettings`:
 | `expireAfterAccessSeconds` | Long | `86400` | Seconds after the last read until an entry expires. |
 | `expireAfterCreationSeconds` | Long | `86400` | Seconds after an entry was created until it expires. |
 
-The cache is local to one instance. Instances do not share it.
+The cache is local to one instance. Instances do not share it, so:
+
+* Mutable metadata is never cached. Every `maven-metadata*` file, with its checksums, and every file inside a `-SNAPSHOT` directory is read from S3 on each request.
+* With a cluster bus configured, a cached answer is used at most 300 seconds after it was stored, whatever `expireAfterAccessSeconds` and `expireAfterCreationSeconds` say. Reads do not extend this bound. Without a bus, the two expiry fields apply unchanged.
 
 The setting names are camelCase (`bucketName`, `accessKey`, `secretKey`). Secret fields are masked in the settings API when `hideSettingsSecrets` is `true`, see [Settings domains](settings-domains.md#settings-api).
 
@@ -87,7 +90,7 @@ The setting names are camelCase (`bucketName`, `accessKey`, `secretKey`). Secret
 | --- | --- |
 | Region | The `region` setting. When empty, the environment variable `AWS_REGION`. When that is not set either, the placeholder region `reposilite`, which suits S3-compatible servers that ignore the region. |
 | Credentials | When both `accessKey` and `secretKey` are set, they are used. Otherwise no credentials are passed to the client, and the AWS SDK applies its own default behavior. |
-| Retries | A failed request is retried up to 5 times with exponential backoff between 1 second and 1 minute. |
+| Retries | A failed request is retried up to 5 times with full jitter. Each wait is a random time up to a ceiling that doubles from 1 second and stops at 1 minute. |
 
 ### System properties
 

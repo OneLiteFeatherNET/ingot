@@ -16,8 +16,6 @@
 
 package com.reposilite.storage.s3
 
-import com.github.benmanes.caffeine.cache.Cache
-import com.github.benmanes.caffeine.cache.Caffeine
 import com.reposilite.journalist.Journalist
 import com.reposilite.shared.maskSecret
 import com.reposilite.status.FailureFacade
@@ -26,10 +24,11 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.auth.signer.AwsS3V4Signer
 import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
+import software.amazon.awssdk.core.retry.backoff.FullJitterBackoffStrategy
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
@@ -83,7 +82,7 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
 
         client.overrideConfiguration {
             it.retryPolicy { cfg ->
-                cfg.backoffStrategy(ExponentialBackoffStrategy(Duration.ofSeconds(1), Duration.ofMinutes(1)))
+                cfg.backoffStrategy(s3RetryBackoffStrategy())
                 cfg.numRetries(5)
             }
 
@@ -94,14 +93,8 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
 
         val s3Client =
             when {
-                settings.metadataCacheSettings?.enabled == true -> {
-                    val cache: Cache<String, HeadObjectResponse> = Caffeine.newBuilder()
-                        .maximumSize(settings.metadataCacheSettings.maximumSize)
-                        .expireAfterWrite(Duration.ofSeconds(settings.metadataCacheSettings.expireAfterCreationSeconds))
-                        .expireAfterAccess(Duration.ofSeconds(settings.metadataCacheSettings.expireAfterAccessSeconds))
-                        .build()
-                    CachableS3Client(client.build(), cache)
-                }
+                settings.metadataCacheSettings?.enabled == true ->
+                    CachableS3Client(client.build(), settings.metadataCacheSettings)
                 else -> client.build()
             }
 
@@ -135,3 +128,13 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
         "s3"
 
 }
+
+/**
+ * The delay between two S3 retries of a failed request: a random delay up to the capped exponential ceiling (full jitter),
+ * so instances that failed together do not retry together.
+ */
+internal fun s3RetryBackoffStrategy(): BackoffStrategy =
+    FullJitterBackoffStrategy.builder()
+        .baseDelay(Duration.ofSeconds(1))
+        .maxBackoffTime(Duration.ofMinutes(1))
+        .build()
