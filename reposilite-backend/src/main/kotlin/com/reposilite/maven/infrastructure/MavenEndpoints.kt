@@ -22,6 +22,7 @@ import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.extensions.NO_STORE_CACHE_CONTROL
 import com.reposilite.shared.extensions.error
 import com.reposilite.shared.extensions.attachmentHeaders
 import com.reposilite.shared.extensions.clearContentLength
@@ -118,6 +119,10 @@ internal class MavenEndpoints(
                 ctx.error(it)
                 return@onError
             }
+            if (it.status == HttpStatus.UNAUTHORIZED.code) {
+                // A refused request is answered as not cacheable, so that a shared cache never keeps the refusal
+                ctx.header(Header.CACHE_CONTROL, NO_STORE_CACHE_CONTROL)
+            }
             ctx.status(it.status).html(
                 frontendFacade.createNotFoundPage(
                     originUri = ctx.uri(),
@@ -149,6 +154,7 @@ internal class MavenEndpoints(
                 lastTimeModified = details.lastModifiedTime,
                 compressionStrategy = compressionStrategy,
                 cache = mavenFacade.acceptsCachingOf(request),
+                cacheScope = mavenFacade.cacheScopeOf(request.repository),
             )
             etag?.let { ctx.header("ETag", it) }
             if (rangesSupported) {

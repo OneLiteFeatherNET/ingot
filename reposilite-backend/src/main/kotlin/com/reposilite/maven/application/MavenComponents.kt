@@ -59,6 +59,7 @@ internal class MavenComponents(
     private val frontendSettings: Reference<FrontendSettings>,
     private val mirrorCacheLedger: MirrorCacheLedger,
     private val artifactIndexSink: ArtifactIndexSink,
+    private val cachePrivateAsPublic: Boolean = false,
 ) : PluginComponents {
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
@@ -121,6 +122,7 @@ internal class MavenComponents(
             storageUsageService = storageUsageService(repositoryProvider),
             mirrorCache = mirrorCache,
             artifactIndexSink = artifactIndexSink,
+            cachePrivateAsPublic = cachePrivateAsPublic,
         )
 
     private fun storageUsageService(repositoryProvider: RepositoryProvider): StorageUsageService =

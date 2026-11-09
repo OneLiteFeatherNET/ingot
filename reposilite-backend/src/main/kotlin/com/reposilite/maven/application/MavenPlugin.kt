@@ -23,6 +23,7 @@ import com.reposilite.frontend.DashboardPaths
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.PreservedBuildsListener
+import com.reposilite.maven.PrivateAsPublicSetting
 import com.reposilite.maven.infrastructure.SqlMirrorCacheLedger
 import com.reposilite.maven.infrastructure.CacheCommand
 import com.reposilite.maven.infrastructure.MavenApiEndpoints
@@ -72,6 +73,7 @@ internal class MavenPlugin : ReposilitePlugin() {
                 frontendSettings = sharedConfigurationFacade.getDomainSettings<FrontendSettings>(),
                 mirrorCacheLedger = SqlMirrorCacheLedger(reposilite().database),
                 artifactIndexSink = artifactIndexSink,
+                cachePrivateAsPublic = PrivateAsPublicSetting.read(),
             ).mavenFacade()
 
         logger.info("")

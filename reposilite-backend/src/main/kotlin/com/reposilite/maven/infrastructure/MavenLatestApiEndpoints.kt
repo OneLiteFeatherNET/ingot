@@ -144,6 +144,7 @@ internal class MavenLatestApiEndpoints(
                                 lastTimeModified = it.document.lastModifiedTime,
                                 compressionStrategy = compressionStrategy,
                                 cache = it.cachable,
+                                cacheScope = mavenFacade.cacheScopeOf(lookupRequest.repository),
                                 data = it.content
                             )
                         }
