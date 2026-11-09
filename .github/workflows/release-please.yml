@@ -311,9 +311,51 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The base image is read from the FROM line of the run stage, the image that ships.
+      # The digest on that line is the one Renovate raises, so the annotation follows the
+      # Dockerfile without a second edit. Both lines must pin the base by digest.
+      - name: "Read the base images from the Dockerfiles"
+        id: base
+        run: |
+          set -euo pipefail
+          # Prints the image reference of the run stage, which must be pinned by digest.
+          run_stage_reference() {
+            local file="$1" ref
+            ref="$(awk 'toupper($1) == "FROM" && tolower($NF) == "run" { for (i = 2; i < NF; i++) if ($i !~ /^--/) { print $i; exit } }' "$file")"
+            if [[ ! "$ref" =~ ^[^@]+@sha256:[0-9a-f]{64}$ ]]; then
+              echo "error: the run stage of $file must pin its base image by digest, found: '$ref'" >&2
+              exit 1
+            fi
+            echo "$ref"
+          }
+          # Fully qualified without a digest. Names without a registry are Docker Hub, and
+          # official images also live under library/.
+          qualify() {
+            local name="$1" first="${1%%/*}"
+            if [[ "$name" != */* ]]; then
+              echo "docker.io/library/$name"
+            elif [[ "$first" != *.* && "$first" != *:* && "$first" != localhost ]]; then
+              echo "docker.io/$name"
+            else
+              echo "$name"
+            fi
+          }
+          server_ref="$(run_stage_reference Dockerfile)"
+          dashboard_ref="$(run_stage_reference reposilite-frontend/Dockerfile)"
+          {
+            echo "server_base_name=$(qualify "${server_ref%@*}")"
+            echo "server_base_digest=${server_ref#*@}"
+            echo "dashboard_base_name=$(qualify "${dashboard_ref%@*}")"
+            echo "dashboard_base_digest=${dashboard_ref#*@}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: "Compute tags and labels"
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
+        env:
+          # The index as well as each platform manifest: registries and scanners read the
+          # index first, and the action only attaches annotations to manifests by default.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           # ghcr.io requires a lowercase path; the organisation name is mixed case.
           images: ghcr.io/onelitefeathernet/ingot
@@ -329,6 +371,14 @@ jobs:
             org.opencontainers.image.vendor=OneLiteFeather
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.version=${{ steps.params.outputs.version }}
+          annotations: |
+            org.opencontainers.image.title=Ingot
+            org.opencontainers.image.description=Repository management software for Maven artifacts in the JVM ecosystem
+            org.opencontainers.image.vendor=OneLiteFeather
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.params.outputs.version }}
+            org.opencontainers.image.base.name=${{ steps.base.outputs.server_base_name }}
+            org.opencontainers.image.base.digest=${{ steps.base.outputs.server_base_digest }}
 
       - name: "Build and push the server image"
         id: server
@@ -341,6 +391,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           # Supply chain evidence, attached to the image rather than published beside it.
           # The SBOM answers "is the thing I am running affected by this advisory" without
           # unpacking the image; provenance in max mode records which workflow, which
@@ -379,6 +430,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           sbom: ${{ steps.params.outputs.released == 'true' }}
           provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
           cache-from: type=gha,scope=release-server
@@ -389,6 +441,10 @@ jobs:
       - name: "Compute dashboard tags and labels"
         id: meta-dashboard
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
+        env:
+          # The index as well as each platform manifest: registries and scanners read the
+          # index first, and the action only attaches annotations to manifests by default.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ghcr.io/onelitefeathernet/ingot-dashboard
           tags: |
@@ -402,6 +458,14 @@ jobs:
             org.opencontainers.image.vendor=OneLiteFeather
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.version=${{ steps.params.outputs.version }}
+          annotations: |
+            org.opencontainers.image.title=Ingot Dashboard
+            org.opencontainers.image.description=Web dashboard for Ingot, served separately from the repository server
+            org.opencontainers.image.vendor=OneLiteFeather
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.params.outputs.version }}
+            org.opencontainers.image.base.name=${{ steps.base.outputs.dashboard_base_name }}
+            org.opencontainers.image.base.digest=${{ steps.base.outputs.dashboard_base_digest }}
 
       - name: "Build and push the dashboard image"
         id: dashboard
@@ -416,6 +480,7 @@ jobs:
           push: true
           tags: ${{ steps.meta-dashboard.outputs.tags }}
           labels: ${{ steps.meta-dashboard.outputs.labels }}
+          annotations: ${{ steps.meta-dashboard.outputs.annotations }}
           sbom: ${{ steps.params.outputs.released == 'true' }}
           provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
           cache-from: type=gha,scope=release-dashboard
@@ -438,7 +503,35 @@ jobs:
           push: true
           tags: ${{ steps.meta-dashboard.outputs.tags }}
           labels: ${{ steps.meta-dashboard.outputs.labels }}
+          annotations: ${{ steps.meta-dashboard.outputs.annotations }}
           sbom: ${{ steps.params.outputs.released == 'true' }}
           provenance: ${{ steps.params.outputs.released == 'true' && 'mode=max' || 'false' }}
           cache-from: type=gha,scope=release-dashboard
           cache-to: type=gha,mode=max,scope=release-dashboard
+
+      # The job stops at the first push that fails for good, so this step runs only after
+      # every push went through. For each pushed reference it reads the raw index and the
+      # raw platform manifests the index lists, then the check script names any annotation
+      # that is missing or empty.
+      - name: "Check the image annotations on the pushed references"
+        env:
+          SERVER_TAGS: ${{ steps.meta.outputs.tags }}
+          DASHBOARD_TAGS: ${{ steps.meta-dashboard.outputs.tags }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          printf '%s\n%s\n' "$SERVER_TAGS" "$DASHBOARD_TAGS" | sed '/^$/d' > "$work/references.txt"
+          check_reference() {
+            local ref="$1" repository dir digest
+            repository="${ref%:*}"
+            dir="$(mktemp -d "$work/reference.XXXXXX")"
+            mkdir "$dir/manifests"
+            docker buildx imagetools inspect --raw "$ref" > "$dir/index.json"
+            while IFS= read -r digest; do
+              docker buildx imagetools inspect --raw "$repository@$digest" > "$dir/manifests/${digest//:/-}.json"
+            done < <(jq -r '.manifests[].digest' "$dir/index.json")
+            ./.github/scripts/check-image-annotations.sh "$dir/index.json" "$dir/manifests"
+          }
+          while IFS= read -r ref; do
+            check_reference "$ref"
+          done < "$work/references.txt"
