@@ -25,6 +25,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.auth.signer.AwsS3V4Signer
 import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
+import software.amazon.awssdk.core.retry.backoff.FullJitterBackoffStrategy
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.S3Configuration
@@ -128,6 +129,12 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
 
 }
 
-/** The delay between two S3 retries of a failed request. */
+/**
+ * The delay between two S3 retries of a failed request: a random delay up to the capped exponential ceiling (full jitter),
+ * so instances that failed together do not retry together.
+ */
 internal fun s3RetryBackoffStrategy(): BackoffStrategy =
-    ExponentialBackoffStrategy(Duration.ofSeconds(1), Duration.ofMinutes(1))
+    FullJitterBackoffStrategy.builder()
+        .baseDelay(Duration.ofSeconds(1))
+        .maxBackoffTime(Duration.ofMinutes(1))
+        .build()
