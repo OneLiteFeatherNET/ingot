@@ -16,6 +16,7 @@
 
 package com.reposilite
 
+import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.local.LocalConfigurationFactory
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.journalist.Channel
@@ -28,6 +29,11 @@ import com.reposilite.shared.extensions.newSingleThreadScheduledExecutor
 import com.reposilite.web.HttpServer
 import net.onelitefeather.ingot.deploy.DeployTargetResolver
 import net.onelitefeather.ingot.deploy.logWarnings
+import net.onelitefeather.ingot.schema.SchemaLock
+import net.onelitefeather.ingot.schema.SchemaLockFactory
+import net.onelitefeather.ingot.schema.SchemaLockRequest
+import java.time.Clock
+import java.time.Duration
 import kotlin.io.path.absolutePathString
 
 object ReposiliteFactory {
@@ -35,7 +41,10 @@ object ReposiliteFactory {
     fun createReposilite(parameters: ReposiliteParameters): Reposilite =
         createReposilite(parameters, PrintStreamLogger(System.out, System.err, Channel.ALL, false))
 
-    fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite {
+    fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite =
+        createReposilite(parameters, rootJournalist, SchemaLockFactory.DEFAULT)
+
+    fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist, schemaLockFactory: SchemaLockFactory): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
         parameters.applyLoadedConfiguration(localConfiguration)
 
@@ -90,15 +99,44 @@ object ReposiliteFactory {
             extensions = Extensions(journalist)
         )
 
+        // Taken before any plugin creates a table. It is held until the post-initialise event in Reposilite.launch.
+        reposilite.schemaLock = acquireSchemaLock(reposilite, localConfiguration, schemaLockFactory)
+
         journalist.logger.info("")
         journalist.logger.info("--- Loading plugins:")
 
-        val pluginLoader = PluginLoader(parameters.pluginDirectory, reposilite.extensions)
-        pluginLoader.extensions.registerFacade(reposilite)
-        pluginLoader.loadPluginsByServiceFiles()
-        pluginLoader.initialize()
+        try {
+            val pluginLoader = PluginLoader(parameters.pluginDirectory, reposilite.extensions)
+            pluginLoader.extensions.registerFacade(reposilite)
+            pluginLoader.loadPluginsByServiceFiles()
+            pluginLoader.initialize()
+        } catch (throwable: Throwable) {
+            reposilite.schemaLock.release()
+            throw throwable
+        }
 
         return reposilite
+    }
+
+    private fun acquireSchemaLock(reposilite: Reposilite, localConfiguration: LocalConfiguration, schemaLockFactory: SchemaLockFactory): SchemaLock {
+        val source = reposilite.databaseConnection.databaseSource
+        return try {
+            schemaLockFactory.acquire(
+                SchemaLockRequest(
+                    database = reposilite.database,
+                    jdbcUrl = source.jdbcUrl,
+                    username = source.username,
+                    password = source.password,
+                    timeout = Duration.ofSeconds(localConfiguration.schemaLockTimeout.get()),
+                    clock = Clock.systemUTC(),
+                    scheduler = reposilite.scheduler,
+                )
+            )
+        } catch (exception: Exception) {
+            // The start stops here, so the database connection is closed and the port is never bound.
+            reposilite.shutdown()
+            throw exception
+        }
     }
 
 }
