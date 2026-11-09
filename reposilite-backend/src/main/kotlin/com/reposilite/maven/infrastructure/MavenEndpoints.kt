@@ -23,6 +23,7 @@ import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extensions.NO_STORE_CACHE_CONTROL
+import com.reposilite.shared.extensions.applyErrorCacheControl
 import com.reposilite.shared.extensions.error
 import com.reposilite.shared.extensions.attachmentHeaders
 import com.reposilite.shared.extensions.clearContentLength
@@ -123,6 +124,8 @@ internal class MavenEndpoints(
                 // A refused request is answered as not cacheable, so that a shared cache never keeps the refusal
                 ctx.header(Header.CACHE_CONTROL, NO_STORE_CACHE_CONTROL)
             }
+            // A missing file is revalidated by a shared cache before it is served again, so a later upload shows at once
+            ctx.applyErrorCacheControl()
             ctx.status(it.status).html(
                 frontendFacade.createNotFoundPage(
                     originUri = ctx.uri(),

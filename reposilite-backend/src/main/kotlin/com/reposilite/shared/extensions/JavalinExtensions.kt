@@ -121,6 +121,9 @@ internal fun Context.resultAttachment(
 /** The Cache-Control value of an answer that no cache may store. */
 internal const val NO_STORE_CACHE_CONTROL = "no-cache, no-store, max-age=0"
 
+/** The Cache-Control value of an answer that a cache may keep only after it has revalidated it. */
+internal const val NO_CACHE_CONTROL = "no-cache"
+
 internal fun Context.attachmentHeaders(
     name: String,
     contentType: ContentType,
@@ -206,6 +209,37 @@ internal fun prefersProblemJson(accept: String?): Boolean {
 fun Context.error(status: HttpStatus, error: Any): Context =
     error(status.code, error)
 
+/**
+ * Builds a Vary value from the earlier values and the names that the answer depends on. The earlier names keep their
+ * order, and each name is appended unless it is already listed in any letter case. A wildcard already covers every
+ * request header, so it is returned unchanged.
+ */
+internal fun mergeVary(existing: Collection<String>, names: Collection<String>): String {
+    val merged = existing.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+    if ("*" in merged) return "*"
+
+    names
+        .filterNot { name -> merged.any { it.equals(name, ignoreCase = true) } }
+        .forEach { merged += it }
+    return merged.joinToString(separator = ", ")
+}
+
+/**
+ * Cache-Control of an error answer, decided by the request path. Answers under `/api` keep the value they have, because
+ * `bypassExternalCache` decides them. Any other error keeps its own value, or gets `no-cache` when it has none, so that a
+ * shared cache revalidates the error instead of keeping it.
+ */
+internal fun errorCacheControl(path: String, existing: String?): String? =
+    when {
+        path == "/api" || path.startsWith("/api/") -> existing
+        else -> existing ?: NO_CACHE_CONTROL
+    }
+
+/** Applies [errorCacheControl] to the answer that this context is about to send. */
+internal fun Context.applyErrorCacheControl() {
+    errorCacheControl(path(), res().getHeader(CACHE_CONTROL))?.let { header(CACHE_CONTROL, it) }
+}
+
 fun Context.error(status: Int, error: Any): Context =
     when (error) {
         is ErrorResponse -> {
@@ -214,6 +248,9 @@ fun Context.error(status: Int, error: Any): Context =
             if (prefersProblemJson(header(Header.ACCEPT))) {
                 contentType(PROBLEM_JSON)
             }
+            // The content type depends on Accept, with or without problem details, so every negotiated answer varies on it
+            header(Header.VARY, mergeVary(res().getHeaders(Header.VARY), listOf(Header.ACCEPT)))
+            applyErrorCacheControl()
             this
         }
         else -> status(status).json(error)

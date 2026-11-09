@@ -16,6 +16,7 @@
 
 package com.reposilite.frontend
 
+import com.reposilite.shared.extensions.mergeVary
 import io.javalin.http.HandlerType
 
 /** Who answers a GET or HEAD request that arrives on a dashboard route. */
@@ -60,16 +61,8 @@ internal object DashboardRouteDecision {
      * are kept in their order, and each fetch metadata header is appended unless it is already listed in any letter
      * case. A wildcard already covers every request header, so it is returned unchanged.
      */
-    fun varyHeader(existing: Collection<String>): String {
-        val names = existing.flatMap { it.split(',') }.map { it.trim() }.filter { it.isNotEmpty() }
-        if ("*" in names) return "*"
-
-        val merged = names.toMutableList()
-        FETCH_METADATA_HEADERS
-            .filterNot { header -> merged.any { it.equals(header, ignoreCase = true) } }
-            .forEach { merged += it }
-        return merged.joinToString(separator = ", ")
-    }
+    fun varyHeader(existing: Collection<String>): String =
+        mergeVary(existing, FETCH_METADATA_HEADERS)
 
     private fun isTopLevelNavigation(secFetchMode: String?, secFetchDest: String?): Boolean =
         secFetchMode.equals("navigate", ignoreCase = true) && secFetchDest.equals("document", ignoreCase = true)
