@@ -81,7 +81,7 @@ For a file, the response carries these headers:
 | `Content-Disposition` | `attachment; filename="<name>"` for content types that are not human readable. |
 | `Content-Length` | Set when `compressionStrategy` is `none` and the length is known. |
 | `Last-Modified` | Set when the modification time is known. |
-| `Cache-Control` | `public, max-age=<seconds>` when the repository does not allow redeployment and the file is not `maven-metadata.xml`. Otherwise `no-cache, no-store, max-age=0`. |
+| `Cache-Control` | `public, max-age=<seconds>` when the repository does not allow redeployment, the file is not `maven-metadata.xml`, and the repository is `PUBLIC` with every local repository it reaches through a loopback reference `PUBLIC`. `private, max-age=<seconds>` for the same cacheable file when a repository it reaches is `HIDDEN` or `PRIVATE`. Otherwise `no-cache, no-store, max-age=0`, which is also the answer of a `401` for a file. Remote references do not count. Groups take the scope of the local repositories they reach. See [Visibility](repository-settings.md#visibility) and [Maven cache control](environment-variables.md#maven-cache-control). |
 | `ETag` | A strong entity tag, set when the length and modification time are known. See [Range and conditional requests](#range-and-conditional-requests). |
 | `Accept-Ranges` | `bytes` when the length is known. |
 

@@ -57,6 +57,8 @@ Visibility decides who can read a repository. Publishing and deleting always nee
 
 "Read access" means the read permission of the repository, or a read node on an artifact inside it. The [artifact permission nodes](artifact-permission-nodes.md) page describes the nodes. A caller "can see" a repository when they can read all of it or a part of it.
 
+Visibility also sets the `Cache-Control` of downloaded files. A file of a `PUBLIC` repository, or of a group whose local members are all `PUBLIC`, may be stored by a shared cache such as a CDN. A file of a `HIDDEN` or `PRIVATE` repository, or of a group that reaches one, is marked `private`, so a shared cache keeps it out. Remote references do not change this. The escape hatch is described in [Maven cache control](environment-variables.md#maven-cache-control).
+
 ## Redeployment
 
 `redeployment` controls what happens when an upload targets a path that already holds a file.

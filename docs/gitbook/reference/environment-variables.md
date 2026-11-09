@@ -167,6 +167,17 @@ Read once at startup, in this order: the system property `ingot.proxy.upstreamSt
 
 The value is compared without regard to case. Any other value stops the startup with a message that names `INGOT_PROXY_UPSTREAM_STATUS`. See [Create proxy repositories](../how-to/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
 
+### Maven cache control
+
+Read once at startup from `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`, or from the legacy `REPOSILITE_MAVEN_CACHE_PRIVATE_AS_PUBLIC` when the `INGOT_` name is not set. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.
+
+| Value | Meaning |
+| --- | --- |
+| `false` (default) | A file of a `HIDDEN` or `PRIVATE` repository, or of a group that reaches one, is answered with `Cache-Control: private`. A shared cache does not store it. |
+| `true` | Those answers are answered with `Cache-Control: public` again, as before. Use it only when the cache in front of Ingot may hold access-controlled files for other clients. |
+
+The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`. See [Visibility](repository-settings.md#visibility).
+
 ### Other system properties
 
 | System property | Default | Meaning |

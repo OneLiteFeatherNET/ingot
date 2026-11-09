@@ -39,6 +39,7 @@ import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
+import com.reposilite.shared.http.CacheScope
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
@@ -61,6 +62,7 @@ class MavenFacade internal constructor(
     private val storageUsageService: StorageUsageService,
     private val mirrorCache: MirrorCacheService,
     private val artifactIndexSink: ArtifactIndexSink,
+    private val cachePrivateAsPublic: Boolean,
 ) : Journalist, Facade {
 
     private val repositoryService = repositoryProvider.repositoryService
@@ -219,6 +221,14 @@ class MavenFacade internal constructor(
 
     fun acceptsCachingOf(request: LookupRequest): Boolean =
         getRepository(request.repository)?.acceptsCachingOf(request.gav) ?: false
+
+    /** The scope of the Cache-Control value of a file answer from [repository], see [resolveCacheScope]. */
+    fun cacheScopeOf(repository: String): CacheScope =
+        resolveCacheScope(
+            repository = repository,
+            nodeOf = { name -> getRepository(name)?.cacheScopeNode() },
+            privateAsPublic = cachePrivateAsPublic,
+        )
 
     fun canAccessResource(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Result<Unit, ErrorResponse> =
         repositorySecurityProvider.canAccessResource(accessToken, repository, gav)

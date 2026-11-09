@@ -33,6 +33,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.URLEncoder
 import net.onelitefeather.ingot.web.SecurityHeaders
+import com.reposilite.shared.http.CacheScope
 import java.nio.charset.Charset
 import kotlin.time.Duration.Companion.hours
 import org.eclipse.jetty.ee10.servlet.HttpOutput
@@ -98,6 +99,7 @@ internal fun Context.resultAttachment(
     lastTimeModified: Instant?,
     compressionStrategy: String,
     cache: Boolean,
+    cacheScope: CacheScope = CacheScope.PUBLIC,
     data: InputStream
 ) {
     attachmentHeaders(
@@ -107,6 +109,7 @@ internal fun Context.resultAttachment(
         lastTimeModified = lastTimeModified,
         compressionStrategy = compressionStrategy,
         cache = cache,
+        cacheScope = cacheScope,
     )
 
     when {
@@ -115,6 +118,9 @@ internal fun Context.resultAttachment(
     }
 }
 
+/** The Cache-Control value of an answer that no cache may store. */
+internal const val NO_STORE_CACHE_CONTROL = "no-cache, no-store, max-age=0"
+
 internal fun Context.attachmentHeaders(
     name: String,
     contentType: ContentType,
@@ -122,6 +128,7 @@ internal fun Context.attachmentHeaders(
     lastTimeModified: Instant?,
     compressionStrategy: String,
     cache: Boolean,
+    cacheScope: CacheScope = CacheScope.PUBLIC,
 ) {
     SecurityHeaders.markRepositoryContent(this)
 
@@ -138,8 +145,9 @@ internal fun Context.attachmentHeaders(
     }
 
     when {
-        cache -> header(CACHE_CONTROL, "public, max-age=$maxAge")
-        else -> header(CACHE_CONTROL, "no-cache, no-store, max-age=0")
+        !cache -> header(CACHE_CONTROL, NO_STORE_CACHE_CONTROL)
+        cacheScope == CacheScope.PRIVATE -> header(CACHE_CONTROL, "private, max-age=$maxAge")
+        else -> header(CACHE_CONTROL, "public, max-age=$maxAge")
     }
 
     contentType(contentType)
