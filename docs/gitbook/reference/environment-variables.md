@@ -66,6 +66,7 @@ The server process reads these variables itself, not the entrypoint.
 | Variable | System property | Default | Meaning |
 | --- | --- | --- | --- |
 | `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). |
+| `INGOT_FETCH_METADATA` | `-Dingot.fetchMetadata` | `on` | `off` lets a request to the API that comes from another site or a sibling subdomain through when it carries the session or refresh cookie. By default such a request is refused with `403`, unless it is a top-level navigation. The value is matched without regard to case, and any other value keeps the refusal on. The variable wins over the property. There is no `REPOSILITE_` spelling because the cookie sessions are Ingot's own. See [Cross-site requests](../explanation/sessions-and-login.md#cross-site-requests). |
 
 ## Container variables
 
