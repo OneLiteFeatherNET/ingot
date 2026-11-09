@@ -48,7 +48,7 @@ Each `proxied` entry accepts the options below. Leave an option out to use its d
 | `store` | `false` | Keep a copy of each fetched file on the local storage of the proxy. |
 | `authorization` | none | Credentials for the remote, see below. |
 | `allowedGroups` | empty, all groups allowed | Group paths that may be fetched, for example `org/apache`. |
-| `allowedExtensions` | `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, the checksum files and `.asc` | File extensions that may be fetched. Use `<none>` to allow files without an extension. |
+| `allowedExtensions` | `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, the checksum files, `.asc` and `.sigstore.json` | File extensions that may be fetched. Use `<none>` to allow files without an extension. |
 | `connectTimeout` | `3` | Seconds to wait for a connection to the remote. |
 | `readTimeout` | `15` | Seconds to wait for data from the remote. |
 | `httpProxy` | empty | An outgoing HTTP or SOCKS proxy, see below. |
