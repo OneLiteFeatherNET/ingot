@@ -85,6 +85,12 @@ jobs:
         working-directory: reposilite-frontend
         run: npm ci
 
+      # Checks the registry signatures and provenance attestations of what npm ci installed.
+      # The lockfile hashes only prove the bytes did not change since the lockfile was written.
+      - name: "Verify frontend package signatures"
+        working-directory: reposilite-frontend
+        run: npm audit signatures
+
       - name: "Check frontend dependency licenses"
         working-directory: reposilite-frontend
         run: npm run license-check
