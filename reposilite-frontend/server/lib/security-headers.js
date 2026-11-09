@@ -15,13 +15,15 @@
  */
 
 // Sent on every response, including the ones proxied from the server, as the nginx configuration did.
-// No unsafe-eval and no third party origins: the dashboard bundles everything it runs. Images stay open
-// because the organisation logo is a configurable remote URL.
+// The policy is the one the backend sends for the embedded dashboard (DASHBOARD_POLICY in SecurityHeaders.kt),
+// keep both in step. 'unsafe-eval' is there because Ajv, used by the JSON forms, compiles schemas with
+// `Function`; drop it once the validators are precompiled. Images stay open because the organisation logo
+// is a configurable remote URL.
 const SECURITY_HEADERS = Object.freeze({
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'same-origin',
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
 })
 
 const CACHE_CONTROL = Object.freeze({

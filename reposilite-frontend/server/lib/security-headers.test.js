@@ -25,6 +25,12 @@ describe('security headers', () => {
     expect(securityHeaders(), 'the headers of the previous configuration').toEqual(fixture)
   })
 
+  it('allows script-src unsafe-eval, which Ajv needs to compile the form schemas', () => {
+    const policy = securityHeaders()['Content-Security-Policy']
+
+    expect(policy, 'the script-src directive').toMatch(/script-src 'self' 'unsafe-eval'(;|$)/)
+  })
+
   it('returns a fresh object, so a caller cannot change the shared values', () => {
     const first = securityHeaders()
     first['X-Frame-Options'] = 'SAMEORIGIN'
