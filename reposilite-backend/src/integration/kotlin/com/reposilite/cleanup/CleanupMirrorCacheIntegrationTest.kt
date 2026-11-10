@@ -18,6 +18,7 @@
 
 package com.reposilite.cleanup
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.cleanup.infrastructure.CleanupPreviewResponse
@@ -37,6 +38,9 @@ internal class LocalCleanupMirrorCacheIntegrationTest : CleanupMirrorCacheIntegr
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteCleanupMirrorCacheIntegrationTest : CleanupMirrorCacheIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresCleanupMirrorCacheIntegrationTest : CleanupMirrorCacheIntegrationTest()
 
 /**
  * The repository `proxied-stored` mirrors an upstream and stores what it fetches, so it is a repository that hosts

@@ -20,6 +20,7 @@ package com.reposilite.statistics
 
 import com.reposilite.ExperimentalLocalSpecificationJunitExtension
 import com.reposilite.ExperimentalRemoteSpecificationJunitExtension
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.maven.api.Identifier
@@ -48,6 +49,9 @@ internal class ExperimentalRemoteStatisticsIntegrationTest : StatisticsIntegrati
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteStatisticsIntegrationTest : StatisticsIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresStatisticsIntegrationTest : StatisticsIntegrationTest()
 
 @ExtendWith(ExperimentalLocalSpecificationJunitExtension::class)
 internal class ExperimentalLocalStatisticsIntegrationTest : StatisticsIntegrationTest()

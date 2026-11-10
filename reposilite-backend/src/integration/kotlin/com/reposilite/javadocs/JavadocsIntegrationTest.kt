@@ -2,6 +2,7 @@
 
 package com.reposilite.javadocs
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.configuration.shared.SharedConfigurationFacade
@@ -19,6 +20,9 @@ internal class LocalJavadocsIntegrationTest : JavadocsIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteJavadocsIntegrationTest : JavadocsIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresJavadocsIntegrationTest : JavadocsIntegrationTest()
 
 internal abstract class JavadocsIntegrationTest : JavadocsIntegrationSpecification() {
 

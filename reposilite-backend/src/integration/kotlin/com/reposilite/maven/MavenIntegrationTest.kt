@@ -18,6 +18,7 @@
 
 package com.reposilite.maven
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.configuration.local.LocalConfiguration
@@ -46,6 +47,9 @@ internal class LocalMavenIntegrationTest : MavenIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenIntegrationTest : MavenIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresMavenIntegrationTest : MavenIntegrationTest()
 
 /** Upper bound for each concurrent upload, so that a stuck request fails the test rather than the build. */
 private const val UPLOAD_TIMEOUT_SECONDS = 60L

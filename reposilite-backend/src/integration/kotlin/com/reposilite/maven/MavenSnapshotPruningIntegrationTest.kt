@@ -19,6 +19,7 @@
 
 package com.reposilite.maven
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.configuration.shared.SharedConfigurationFacade
@@ -45,6 +46,9 @@ internal class LocalMavenSnapshotPruningIntegrationTest : MavenSnapshotPruningIn
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenSnapshotPruningIntegrationTest : MavenSnapshotPruningIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresMavenSnapshotPruningIntegrationTest : MavenSnapshotPruningIntegrationTest()
 
 /**
  * Deploys timestamped builds of 1.0-SNAPSHOT the way Maven does: every artifact file is followed by its checksums,

@@ -20,6 +20,7 @@ package com.reposilite.status
 
 import com.reposilite.ExperimentalLocalSpecificationJunitExtension
 import com.reposilite.ExperimentalRemoteSpecificationJunitExtension
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.ReposiliteObjectMapper
@@ -46,6 +47,9 @@ internal class ExperimentalRemoteStatusIntegrationTest : StatusIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteStatusIntegrationTest : StatusIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresStatusIntegrationTest : StatusIntegrationTest()
 
 @ExtendWith(ExperimentalLocalSpecificationJunitExtension::class)
 internal class ExperimentalLocalStatusIntegrationTest : StatusIntegrationTest()

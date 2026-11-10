@@ -20,6 +20,7 @@ package com.reposilite.configuration
 
 import net.onelitefeather.ingot.search.application.SearchSettings
 import net.onelitefeather.ingot.identity.login.LoginSettings
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.ReposiliteObjectMapper
@@ -50,6 +51,9 @@ internal class LocalSettingsIntegrationTest : SettingsIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteSettingsIntegrationTest : SettingsIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresSettingsIntegrationTest : SettingsIntegrationTest()
 
 internal abstract class SettingsIntegrationTest : SettingsIntegrationSpecification() {
 

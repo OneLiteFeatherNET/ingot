@@ -18,6 +18,7 @@
 
 package com.reposilite.maven
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.maven.specification.MavenIntegrationSpecification
@@ -36,6 +37,9 @@ internal class LocalMavenRangeIntegrationTest : MavenRangeIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenRangeIntegrationTest : MavenRangeIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresMavenRangeIntegrationTest : MavenRangeIntegrationTest()
 
 /**
  * Range requests and conditional downloads of artifacts, run once against the file system and once against S3 (Floci).

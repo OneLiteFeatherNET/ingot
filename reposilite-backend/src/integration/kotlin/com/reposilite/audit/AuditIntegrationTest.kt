@@ -20,6 +20,7 @@ package com.reposilite.audit
 
 import com.reposilite.ExperimentalLocalSpecificationJunitExtension
 import com.reposilite.ExperimentalRemoteSpecificationJunitExtension
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.ReposiliteSpecification
@@ -47,6 +48,9 @@ internal class ExperimentalRemoteAuditIntegrationTest : AuditIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteAuditIntegrationTest : AuditIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresAuditIntegrationTest : AuditIntegrationTest()
 
 @ExtendWith(ExperimentalLocalSpecificationJunitExtension::class)
 internal class ExperimentalLocalAuditIntegrationTest : AuditIntegrationTest()
