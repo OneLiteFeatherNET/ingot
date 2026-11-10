@@ -25,6 +25,7 @@ import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.api.UpdateValidatedSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
@@ -262,6 +263,12 @@ class SharedConfigurationFacade(
                 val transformed = transform(current)
                 if (transformed.isErr) {
                     return transformed.map { it.snapshot() }
+                }
+
+                // Rules of the write only, such as the formats this server has installed. A document read at start skips them.
+                val writeViolations = (transformed.get() as? UpdateValidatedSettings)?.updateViolations().orEmpty()
+                if (writeViolations.isNotEmpty()) {
+                    return badRequest(SettingsViolationException(writeViolations).message).asError()
                 }
 
                 // The message of the exception, never its toString: that would put the class name in front of the rule.

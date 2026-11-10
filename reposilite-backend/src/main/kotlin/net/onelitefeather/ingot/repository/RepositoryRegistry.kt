@@ -22,8 +22,8 @@ import com.reposilite.plugin.api.Facade
 import com.reposilite.storage.StorageProvider
 
 /**
- * Read-only access to the repositories that exist, for the parts of Ingot that only need their names, visibility and storage.
- * Not yet stable for plugins: [RegisteredRepository] gains a `format` once the format SPI ships, which breaks implementors.
+ * Read-only access to the repositories that exist, for the parts of Ingot that only need their names, visibility, format and storage.
+ * Not yet stable for plugins: [RegisteredRepository] may gain members while the format SPI is experimental, which breaks implementors.
  */
 interface RepositoryRegistry : Facade {
 
@@ -41,6 +41,9 @@ interface RegisteredRepository {
     val name: String
 
     val visibility: RepositoryVisibility
+
+    /** The id of the format of this repository, `maven2` unless the repository names another installed format. */
+    val format: String
 
     val effectiveType: EffectiveRepositoryType
 

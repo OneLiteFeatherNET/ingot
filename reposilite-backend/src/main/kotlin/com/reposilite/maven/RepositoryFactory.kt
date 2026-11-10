@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.application.MirroredRepositorySettings
@@ -25,6 +28,7 @@ import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.shared.http.createHttpProxy
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
+import net.onelitefeather.ingot.format.RepositoryFormats
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.UUID
@@ -40,12 +44,22 @@ internal class RepositoryFactory(
     private val repositoriesNames: Collection<String>,
     private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
     private val uploadChecksumDefault: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
+    private val formats: RepositoryFormats = RepositoryFormats.installed(),
 ) {
 
     private val repositoriesDirectory = Paths.get("repositories")
 
-    fun createRepository(repositoryName: String, configuration: RepositorySettings): Repository =
-        Repository(
+    /**
+     * A repository whose format is not installed is refused before any storage is created. The start records the failure and
+     * leaves the repository out, so a stored repository of a later version is never served as Maven.
+     */
+    fun createRepository(repositoryName: String, configuration: RepositorySettings): Repository {
+        val format = configuration.resolvedFormat()
+        require(formats.get(format) != null) {
+            "Unknown format '$format' of repository '$repositoryName', the installed formats are ${formats.ids.sorted().joinToString(", ")}"
+        }
+
+        return Repository(
             name = repositoryName.ifEmpty { UUID.randomUUID().toString() },
             visibility = configuration.visibility,
             description = configuration.description,
@@ -56,6 +70,7 @@ internal class RepositoryFactory(
             uploadChecksumPolicy = configuration.uploadChecksumPolicy ?: uploadChecksumDefault,
             versionPolicy = configuration.versionPolicy ?: VersionPolicy.MIXED,
             readOnly = configuration.readOnly ?: false,
+            format = format,
             mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) },
             storageProvider =
                 storageFacade
@@ -72,6 +87,7 @@ internal class RepositoryFactory(
             resolutionCacheMaxEntries = configuration.resolutionCacheMaxEntries,
             protectedGroupPrefixes = configuration.protectedGroupPrefixes,
         )
+    }
 
     private fun createMirroredHostConfiguration(configurationSource: MirroredRepositorySettings): MirrorHost? {
         val host = configurationSource.referencedHost()

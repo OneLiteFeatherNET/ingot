@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven.application
 
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.Min
 import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.configuration.shared.api.SettingsKey
+import com.reposilite.configuration.shared.api.UpdateValidatedSettings
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.api.ValidatedSettings
 import com.reposilite.maven.ChecksumPolicy
@@ -39,6 +42,8 @@ import com.reposilite.storage.StorageProviderSettings
 import com.reposilite.storage.filesystem.FileSystemStorageProviderSettings
 import com.reposilite.storage.s3.S3StorageProviderSettings
 import io.javalin.openapi.JsonSchema
+import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
+import net.onelitefeather.ingot.format.RepositoryFormats
 import io.javalin.openapi.OneOf
 
 @JsonSchema(requireNonNulls = false)
@@ -58,10 +63,25 @@ data class MavenSettings(
         (Default: 0)
     """)
     val resolutionCacheClusterMaxAgeSeconds: Long = 0L,
-) : ValidatedSettings {
+) : ValidatedSettings, UpdateValidatedSettings {
 
     override fun violations(): List<String> =
         repositories.flatMap { it.violations() } + typeViolations()
+
+    /** The rules of the installed formats, checked when settings are written, see [formatViolations]. */
+    override fun updateViolations(): List<String> =
+        formatViolations(RepositoryFormats.installed())
+
+    /**
+     * The rules that depend on the formats the server has installed: a format id that no installed format provides, the id
+     * `maven`, and a repository that proxies a local repository of another format. They are checked only on a write, not in
+     * [violations], so a document written by a later version still loads and a rollback leaves its unknown repositories out
+     * at start, see the format SPI design.
+     */
+    fun formatViolations(formats: RepositoryFormats): List<String> {
+        val localFormats = repositories.associate { it.id to it.resolvedFormat() }
+        return repositories.flatMap { repository -> repository.formatViolations(formats, localFormats) }
+    }
 
     /** Typed repositories drop their blank proxied references, see [RepositorySettings.normalized]. */
     override fun normalized(): MavenSettings =
@@ -207,7 +227,77 @@ data class RepositorySettings(
         Only for hosted and untyped repositories. Leave it empty or false to accept writes as before.
     """)
     val readOnly: Boolean? = null,
+    @get:Doc(title = "Format", description = "The repository format. Leave it empty for Maven (maven2), which is the only format of this version.")
+    val format: String? = null,
 ) : SharedSettings {
+
+    /**
+     * The parameter list of [RepositorySettings] before the format key existed. Code compiled against it keeps linking, so
+     * the key is only ever passed by name; a null format is written back as no key at all.
+     */
+    constructor(
+        id: String = "",
+        visibility: RepositoryVisibility = PUBLIC,
+        type: RepositoryType? = null,
+        description: String = "",
+        tags: List<String> = emptyList(),
+        redeployment: Boolean = false,
+        preserveSnapshots: Boolean = false,
+        storageProvider: StorageProviderSettings = FileSystemStorageProviderSettings(),
+        storagePolicy: StoragePolicy = StoragePolicy.PRIORITIZE_UPSTREAM_METADATA,
+        metadataMaxAge: Long = 0L,
+        resolutionCacheMaxEntries: Int = 0,
+        proxied: List<MirroredRepositorySettings> = listOf(),
+        protectedGroupPrefixes: List<String> = listOf(),
+        uploadChecksumPolicy: UploadChecksumPolicy? = null,
+        versionPolicy: VersionPolicy? = null,
+        readOnly: Boolean? = null,
+    ) : this(
+        id = id,
+        visibility = visibility,
+        type = type,
+        description = description,
+        tags = tags,
+        redeployment = redeployment,
+        preserveSnapshots = preserveSnapshots,
+        storageProvider = storageProvider,
+        storagePolicy = storagePolicy,
+        metadataMaxAge = metadataMaxAge,
+        resolutionCacheMaxEntries = resolutionCacheMaxEntries,
+        proxied = proxied,
+        protectedGroupPrefixes = protectedGroupPrefixes,
+        uploadChecksumPolicy = uploadChecksumPolicy,
+        versionPolicy = versionPolicy,
+        readOnly = readOnly,
+        format = null,
+    )
+
+    /** The format this repository names, or [RepositoryFormats.DEFAULT_ID] when it names none. The stored settings keep the absent key. */
+    fun resolvedFormat(): String =
+        format ?: RepositoryFormats.DEFAULT_ID
+
+    /**
+     * The format rules of this repository, see [MavenSettings.formatViolations]. [localFormats] maps the id of every local
+     * repository to its resolved format. A reference to a repository of this instance must name one of the same format.
+     */
+    internal fun formatViolations(formats: RepositoryFormats, localFormats: Map<String, String>): List<String> = buildList {
+        val declared = format
+        when {
+            declared == null -> Unit
+            declared == "maven" -> add("repository '$id': format 'maven' is not a format id, use 'maven2' or leave format empty")
+            declared !in formats.ids -> add("repository '$id': format '$declared' is not installed, the installed formats are ${formats.ids.sorted().joinToString(", ")}")
+        }
+
+        val own = resolvedFormat()
+        proxied.map { it.referencedHost() }
+            .filter { it in localFormats && it != id }
+            .forEach { host ->
+                val target = localFormats.getValue(host)
+                if (target != own) {
+                    add("repository '$id' is of format '$own' and proxies '$host' of format '$target', a repository proxies local repositories of its own format")
+                }
+            }
+    }
 
     /**
      * The prefix rules that concern this repository alone: each prefix is a dotted group id and is listed once. The rule

@@ -51,6 +51,8 @@ class Repository internal constructor(
     val versionPolicy: VersionPolicy = VersionPolicy.MIXED,
     /** Whether deploys and deletes are refused with 405. Reads are not affected. */
     val readOnly: Boolean = false,
+    /** The id of the format of this repository, see [net.onelitefeather.ingot.format.RepositoryFormats]. Never absent. */
+    override val format: String,
 ) : RegisteredRepository {
 
     init {

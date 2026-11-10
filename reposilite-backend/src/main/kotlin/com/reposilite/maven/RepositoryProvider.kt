@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
+import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.journalist.Journalist
@@ -31,6 +34,7 @@ import com.reposilite.storage.StorageFacade
 import com.reposilite.storage.s3.S3StorageProvider
 import com.reposilite.storage.s3.S3StorageProviderSettings
 import com.reposilite.storage.s3.findS3SharedBucketConflicts
+import net.onelitefeather.ingot.format.RepositoryFormats
 import java.nio.file.Path
 import panda.std.Result
 import panda.std.asSuccess
@@ -53,6 +57,7 @@ internal class RepositoryProvider(
     artifactIndexSink: ArtifactIndexSink,
     private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
     private val uploadChecksumDefault: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
+    private val repositoryFormats: RepositoryFormats = RepositoryFormats.installed(),
 ) {
 
     val repositoryService = RepositoryService(
@@ -125,6 +130,7 @@ internal class RepositoryProvider(
             repositoriesNames = names,
             mirrorEnvironment = mirrorEnvironment,
             uploadChecksumDefault = uploadChecksumDefault,
+            formats = repositoryFormats,
         )
 
         val sharedBucketConflicts = findS3SharedBucketConflicts(
