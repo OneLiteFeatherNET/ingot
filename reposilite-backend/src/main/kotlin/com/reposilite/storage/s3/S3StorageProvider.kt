@@ -62,6 +62,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.S3Object
 import software.amazon.awssdk.services.s3.model.UploadPartRequest
+import java.io.File
 import java.io.InputStream
 import java.io.PushbackInputStream
 import java.nio.file.attribute.FileTime
@@ -77,6 +78,8 @@ class S3StorageProvider(
     private val s3: S3Client,
     private val bucket: String,
     private val keyPrefix: String = "",
+    /** Restores the temporary file path for every upload, see `INGOT_S3_BUFFER_TO_DISK`. */
+    private val bufferToDisk: Boolean = false,
 ) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix, failureFacade), Journalist {
 
     init {
@@ -114,21 +117,55 @@ class S3StorageProvider(
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
         inputStream.use { data ->
-            // S3 needs the content length of a single put, and the length of this stream is not known here. The first part
-            // decides the request: a stream that ends within it is one put with its exact length, and a longer stream is a
-            // multipart upload. Only one part is held at a time, so the bytes never pass through the temporary directory.
-            val input = PushbackInputStream(data, 1)
-            val first = input.readNBytes(UPLOAD_PART_SIZE)
-            // A full first part is followed by one more byte only when the stream continues past it
-            val next = if (first.size == UPLOAD_PART_SIZE) input.read() else -1
-
-            if (next == -1) {
-                putSingle(location, first)
+            if (bufferToDisk) {
+                putThroughTemporaryFile(location, data)
             } else {
-                input.unread(next)
-                putMultipart(location, first, input)
+                putStreamed(location, data)
             }
         }
+
+    /**
+     * The escape hatch of `INGOT_S3_BUFFER_TO_DISK`: the whole stream is copied to a temporary file first, and that file is sent in one put.
+     */
+    private fun putThroughTemporaryFile(location: Location, data: InputStream): Result<Unit, ErrorResponse> {
+        val temporary = File.createTempFile("reposilite-", "-s3-put")
+
+        temporary.outputStream().use { destination ->
+            data.copyTo(destination)
+        }
+
+        try {
+            val request = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(location.toBucketKey())
+                .contentType(contentTypeOf(location))
+                .contentLength(temporary.length())
+                .build()
+            s3.putObject(request, RequestBody.fromFile(temporary))
+            return ok(Unit)
+        } catch (exception: Exception) {
+            return failed("write $location", exception)
+        } finally {
+            temporary.delete()
+        }
+    }
+
+    private fun putStreamed(location: Location, data: InputStream): Result<Unit, ErrorResponse> {
+        // S3 needs the content length of a single put, and the length of this stream is not known here. The first part
+        // decides the request: a stream that ends within it is one put with its exact length, and a longer stream is a
+        // multipart upload. Only one part is held at a time, so the bytes never pass through the temporary directory.
+        val input = PushbackInputStream(data, 1)
+        val first = input.readNBytes(UPLOAD_PART_SIZE)
+        // A full first part is followed by one more byte only when the stream continues past it
+        val next = if (first.size == UPLOAD_PART_SIZE) input.read() else -1
+
+        return if (next == -1) {
+            putSingle(location, first)
+        } else {
+            input.unread(next)
+            putMultipart(location, first, input)
+        }
+    }
 
     private fun putSingle(location: Location, bytes: ByteArray): Result<Unit, ErrorResponse> =
         try {
