@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.frontend.infrastructure
 
 import com.reposilite.frontend.DashboardPaths
@@ -23,7 +25,8 @@ import com.reposilite.frontend.DashboardRouteTarget.MAVEN
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.frontend.Source
 import net.onelitefeather.ingot.repository.RepositoryRegistry
-import com.reposilite.maven.infrastructure.MavenEndpoints
+import net.onelitefeather.ingot.format.RepositoryRequest
+import net.onelitefeather.ingot.format.RepositoryRouteDispatcher
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extensions.NO_CACHE_CONTROL
@@ -90,7 +93,7 @@ internal class ResourcesFrontendHandler(
     frontendFacade: FrontendFacade,
     private val resourcesDirectory: String,
     private val repositoryRegistry: RepositoryRegistry,
-    private val mavenEndpoints: MavenEndpoints,
+    private val repositoryRouteDispatcher: RepositoryRouteDispatcher,
 ) : FrontendHandler(frontendFacade, failureFacade) {
 
     private val notFoundHandler = NotFoundHandler(frontendFacade)
@@ -136,7 +139,7 @@ internal class ResourcesFrontendHandler(
 
             when (target) {
                 DASHBOARD -> response = respondWithBundledResource(ctx, "index.html")
-                MAVEN -> answerFromMaven(repository)
+                MAVEN -> answerFromRepository(repository)
             }
         }
     }
@@ -147,7 +150,7 @@ internal class ResourcesFrontendHandler(
      * Maven request: it gets the not-found page that any unclaimed path gets. The DSL route wrapper turns a thrown
      * exception into a 500, so that page is written directly rather than thrown as a NotFoundResponse.
      */
-    private fun ContextDsl<InputStream>.answerFromMaven(repository: String) {
+    private fun ContextDsl<InputStream>.answerFromRepository(repository: String) {
         val gav = ctx.pathParamMap().values.singleOrNull()
         if (gav == null) {
             notFoundHandler.handle(ctx)
@@ -156,7 +159,9 @@ internal class ResourcesFrontendHandler(
 
         accessed {
             Location.ofRequest(gav)
-                .peek { mavenEndpoints.findFile(ctx, this?.identifier, repository, it) }
+                .peek {
+                    repositoryRouteDispatcher.dispatch(RepositoryRequest(ctx, this?.identifier, repository, it, getSessionIdentifier()))
+                }
                 .onError { response = it.asError() }
         }
     }

@@ -44,6 +44,12 @@ interface RepositoryFormat {
     /** The rules that tell the kinds of files of this format apart. Shared code asks these instead of naming a layout. */
     val pathRules: PathRules
 
+    /** Where the format is served. Only [FormatMount.RepositoryPath] is served by this version. */
+    val mount: FormatMount
+
+    /** The handler of the requests for the repositories of this format. Built once, when the first request arrives. */
+    fun handler(context: FormatContext): RepositoryRequestHandler
+
 }
 
 /**
@@ -95,6 +101,10 @@ class RepositoryFormats(formats: Collection<RepositoryFormat>) {
     /** The ids of the installed formats, in no particular order. */
     val ids: Set<String>
         get() = byId.keys
+
+    /** The installed formats, in no particular order. */
+    val all: Collection<RepositoryFormat>
+        get() = byId.values
 
     /** The format named [id], or null when no installed format has that id. */
     fun get(id: String): RepositoryFormat? =

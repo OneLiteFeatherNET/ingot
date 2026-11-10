@@ -78,4 +78,17 @@ internal class DependencyRulesTest {
             .check(backendClasses)
     }
 
+    /**
+     * The Maven endpoints are the handlers of the maven2 format. Only the maven package may name them: every other package
+     * reaches Maven requests through the repository dispatcher, see design D4.
+     */
+    @Test
+    fun `only the maven package depends on the maven endpoints`() {
+        noClasses()
+            .that().resideOutsideOfPackage("com.reposilite.maven..")
+            .should().dependOnClassesThat().haveFullyQualifiedName("com.reposilite.maven.infrastructure.MavenEndpoints")
+            .because("repository requests reach the maven handlers through the repository dispatcher, see design D4")
+            .check(backendClasses)
+    }
+
 }

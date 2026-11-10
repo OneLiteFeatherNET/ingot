@@ -16,18 +16,31 @@
 
 package net.onelitefeather.ingot.format
 
+import com.reposilite.shared.ErrorResponse
 import com.reposilite.storage.api.Location
+import panda.std.Result
+import panda.std.asSuccess
 
 /** A format that exists only in tests. Tests build their registries from lists of these, never from a shared global. */
 @OptIn(ExperimentalIngotFormatApi::class)
 internal class FakeRepositoryFormat(override val id: String) : RepositoryFormat {
     override val pathRules: PathRules = NoPathRules
+    override val mount: FormatMount = FormatMount.RepositoryPath
+    override fun handler(context: FormatContext): RepositoryRequestHandler = NoRequestHandler
 }
 
 /** A second implementation with the same id as [FakeRepositoryFormat], to prove that duplicates are refused by name. */
 @OptIn(ExperimentalIngotFormatApi::class)
 internal class DuplicateFakeRepositoryFormat(override val id: String) : RepositoryFormat {
     override val pathRules: PathRules = NoPathRules
+    override val mount: FormatMount = FormatMount.RepositoryPath
+    override fun handler(context: FormatContext): RepositoryRequestHandler = NoRequestHandler
+}
+
+/** A handler that answers every request with success, for the formats that are only registered in a test. */
+@OptIn(ExperimentalIngotFormatApi::class)
+internal object NoRequestHandler : RepositoryRequestHandler {
+    override fun handle(request: RepositoryRequest): Result<Unit, ErrorResponse> = Unit.asSuccess()
 }
 
 /** Path rules that answer every question with the neutral answer, so a fake format never affects a rule of the server. */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven.infrastructure
 
 import com.reposilite.frontend.FrontendFacade
@@ -32,21 +34,17 @@ import com.reposilite.shared.http.ByteRanges
 import com.reposilite.shared.http.ConditionalRequests
 import com.reposilite.shared.http.RangeDecision
 import com.reposilite.shared.extensions.uri
+import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
-import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
-import io.javalin.community.routing.Route.DELETE
-import io.javalin.community.routing.Route.GET
-import io.javalin.community.routing.Route.HEAD
-import io.javalin.community.routing.Route.POST
-import io.javalin.community.routing.Route.PUT
 import io.javalin.http.Context
 import io.javalin.http.Header
 import io.javalin.http.HttpStatus
+import io.javalin.http.HandlerType
 import io.javalin.http.HandlerType.HEAD as HEAD_METHOD
 import io.javalin.openapi.ContentType.FORM_DATA_MULTIPART
 import io.javalin.openapi.HttpMethod
@@ -55,6 +53,8 @@ import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
 import io.javalin.openapi.OpenApiSecurity
+import net.onelitefeather.ingot.format.RepositoryRequest
+import net.onelitefeather.ingot.format.RepositoryRequestHandler
 import net.onelitefeather.ingot.web.SecurityHeaders
 import panda.std.Result
 import panda.std.asSuccess
@@ -66,11 +66,15 @@ const val X_GENERATE_CHECKSUMS = "X-Generate-Checksums"
 /** The methods a proxy or a group still answers. Both take no uploads, so only the reads remain. */
 private const val READ_METHODS = "GET, HEAD"
 
+/**
+ * The Maven handlers of the repository routes. The routes themselves are served by the repository dispatcher, which hands the
+ * requests of the `maven2` format to [MavenRepositoryRequestHandler]. The annotations describe the paths of the OpenAPI document.
+ */
 internal class MavenEndpoints(
-    mavenFacade: MavenFacade,
+    private val mavenFacade: MavenFacade,
     private val frontendFacade: FrontendFacade,
     private val compressionStrategy: String
-) : MavenRoutes(mavenFacade) {
+) {
 
     @OpenApi(
         path = "/{repository}/{gav}",
@@ -87,14 +91,6 @@ internal class MavenEndpoints(
             OpenApiResponse(status = "404", description = "Returns 404 (for Maven) with frontend (for user) as a response if requested resource is not located in the current repository")
         ]
     )
-    private val findFile = ReposiliteRoute<Unit>("/{repository}/<gav>", HEAD, GET) {
-        accessed {
-            requireGav { gav ->
-                findFile(ctx, this?.identifier, requireParameter("repository"), gav)
-            }
-        }
-    }
-
     fun findFile(ctx: Context, identifier: AccessTokenIdentifier?, repository: String, gav: Location): Result<Unit, ErrorResponse> {
         val request = LookupRequest(accessToken = identifier, repository = repository, gav = gav)
         val allDetails = mavenFacade.findDetails(request)
@@ -235,21 +231,15 @@ internal class MavenEndpoints(
             OpenApiResponse(status = "507", description = "Returns 507 if Ingot does not have enough disk space to store the uploaded file")
         ]
     )
-    private val deployFile = ReposiliteRoute<Unit>("/{repository}/<gav>", POST, PUT) {
-        authorized {
-            requireGav { gav ->
-                requireRepository { repository ->
-                    response = mavenFacade.checkAcceptsUploads(repository)
-                        .onError { ctx.header(Header.ALLOW, READ_METHODS) }
-                        .flatMap {
-                            DeployRequest(repository, gav, getSessionIdentifier(), ctx.bodyInputStream(), ctx.header(X_GENERATE_CHECKSUMS) == "true")
-                                .let { request -> mavenFacade.deployFile(request) }
-                        }
-                        .onError { error -> logger.debug("Cannot deploy artifact due to: ${error.message}") }
-                }
+    fun deployFile(ctx: Context, by: String, repositoryName: String, gav: Location): Result<Unit, ErrorResponse> {
+        val repository = mavenFacade.getRepository(repositoryName) ?: return notFoundError("Repository not found")
+        return mavenFacade.checkAcceptsUploads(repository)
+            .onError { ctx.header(Header.ALLOW, READ_METHODS) }
+            .flatMap {
+                DeployRequest(repository, gav, by, ctx.bodyInputStream(), ctx.header(X_GENERATE_CHECKSUMS) == "true")
+                    .let { request -> mavenFacade.deployFile(request) }
             }
-
-        }
+            .onError { error -> mavenFacade.logger.debug("Cannot deploy artifact due to: ${error.message}") }
     }
 
     @OpenApi(
@@ -267,18 +257,27 @@ internal class MavenEndpoints(
             OpenApiResponse(status = "405", description = "Returns 405 if the repository is a proxy or a group, which take no deletions, or if it is read-only")
         ]
     )
-    private val deleteFile = ReposiliteRoute<Unit>("/{repository}/<gav>", DELETE) {
-        authorized {
-            requireGav { gav ->
-                requireRepository { repository ->
-                    response = mavenFacade.checkAcceptsUploads(repository)
-                        .onError { ctx.header(Header.ALLOW, READ_METHODS) }
-                        .flatMap { mavenFacade.deleteFile(DeleteRequest(this.identifier, repository, gav, getSessionIdentifier())) }
-                }
-            }
-        }
+    fun deleteFile(ctx: Context, identifier: AccessTokenIdentifier?, by: String, repositoryName: String, gav: Location): Result<Unit, ErrorResponse> {
+        val repository = mavenFacade.getRepository(repositoryName) ?: return notFoundError("Repository not found")
+        return mavenFacade.checkAcceptsUploads(repository)
+            .onError { ctx.header(Header.ALLOW, READ_METHODS) }
+            .flatMap { mavenFacade.deleteFile(DeleteRequest(requireNotNull(identifier) { "Deletion needs an authenticated token" }, repository, gav, by)) }
     }
 
-    override val routes = routes(findFile, deployFile, deleteFile)
+}
+
+/** Hands the requests of the maven2 format to the Maven handlers, by the method of the request. */
+internal class MavenRepositoryRequestHandler(private val endpoints: MavenEndpoints) : RepositoryRequestHandler {
+
+    override fun handle(request: RepositoryRequest): Result<Unit, ErrorResponse> =
+        when (request.ctx.method()) {
+            HandlerType.HEAD, HandlerType.GET ->
+                endpoints.findFile(request.ctx, request.identifier, request.repository, request.path)
+            HandlerType.POST, HandlerType.PUT ->
+                endpoints.deployFile(request.ctx, request.by, request.repository, request.path)
+            HandlerType.DELETE ->
+                endpoints.deleteFile(request.ctx, request.identifier, request.by, request.repository, request.path)
+            else -> error("The maven format does not answer ${request.ctx.method()}")
+        }
 
 }
