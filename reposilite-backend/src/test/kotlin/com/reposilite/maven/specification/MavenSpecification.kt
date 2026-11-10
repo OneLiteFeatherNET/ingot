@@ -23,6 +23,7 @@ import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.Repository
 import com.reposilite.maven.RepositoryVisibility
+import com.reposilite.maven.UploadChecksumPolicy
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.Metadata
 import com.reposilite.maven.api.SaveMetadataRequest
@@ -136,6 +137,9 @@ internal abstract class MavenSpecification {
     /** The executor the components run their IO tasks on. A test may replace it to control how many tasks run at once. */
     protected open fun createIoService(): ExecutorService = Executors.newCachedThreadPool()
 
+    /** The instance default of the upload checksum policy, used by repositories that do not set one. A test may replace it. */
+    protected open fun uploadChecksumDefault(): UploadChecksumPolicy = UploadChecksumPolicy.IGNORE
+
     /** The client provider the components fetch from upstream with. By default a fake that answers from this specification; a test may replace it with a real one. */
     protected open fun remoteClientProvider(): RemoteClientProvider? = null
 
@@ -200,6 +204,7 @@ internal abstract class MavenSpecification {
             frontendSettings = reference(FrontendSettings()),
             mirrorCacheLedger = InMemoryMirrorCacheLedger(),
             artifactIndexSink = indexSink,
+            uploadChecksumDefault = uploadChecksumDefault(),
         ).mavenFacade()
     }
 
