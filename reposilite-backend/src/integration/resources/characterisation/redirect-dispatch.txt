@@ -1,0 +1,101 @@
+== redirected file, anonymous read
+GET com/example/app/1.0/app-1.0.jar
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-disposition: attachment; filename="app-1.0.jar"; filename*=utf-8''app-1.0.jar
+header: content-length: 11
+header: content-security-policy: sandbox
+header: content-type: application/java-archive
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+jar-content
+
+== redirected file, head
+HEAD com/example/app/1.0/app-1.0.jar
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-disposition: attachment; filename="app-1.0.jar"; filename*=utf-8''app-1.0.jar
+header: content-length: 11
+header: content-security-policy: sandbox
+header: content-type: application/java-archive
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+
+
+== redirected file, authenticated read
+GET com/example/app/1.0/app-1.0.jar (authenticated)
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-disposition: attachment; filename="app-1.0.jar"; filename*=utf-8''app-1.0.jar
+header: content-length: 11
+header: content-security-policy: sandbox
+header: content-type: application/java-archive
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+jar-content
+
+== redirected missing file
+GET com/example/app/1.0/missing.jar
+status: 404
+header: cache-control: no-cache
+header: content-length: 1210
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+<html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Ingot - 404 Not Found</title>
+    </head>
+    <style>
+      body {
+        height: calc(100vh - 170px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+    
+      .error-view {
+        text-align: center;
+        width: 100vh;
+        height: 100px;
+      }
+    
+      .spooky p {
+        margin-top: 0;
+        margin-bottom: 0;
+        font-size: 1.2rem;
+        font-weight: lighter;
+      }
+      
+      a:link, a:visited {
+        color: rebeccapurple;
+      }
+    </style>
+    <body>
+      <div class='error-view'>
+        <h1 style="font-size: 1.5rem">
+          <span style="color: gray;">404︱</span>Resource not found
+        </h1>
+        <p><i>File not found</i></p>
+        <p>Looking for a dashboard?</p>
+        <div class="spooky">
+          <p>{\__/}</p>
+          <p>(●ᴗ●)</p>
+          <p>( >🥕</p>
+        </div>
+        <p>Visit <a href="/browse/com/example/app/1.0/missing.jar" style="color: rebeccapurple; text-decoration: none;">/browse/com/example/app/1.0/missing.jar</a></p>
+      </div>
+    </body>
+</html>

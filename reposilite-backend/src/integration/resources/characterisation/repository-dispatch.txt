@@ -1,0 +1,630 @@
+== hosted file, anonymous read
+GET releases/com/example/app/1.0/app-1.0.jar
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-disposition: attachment; filename="app-1.0.jar"; filename*=utf-8''app-1.0.jar
+header: content-length: 11
+header: content-security-policy: sandbox
+header: content-type: application/java-archive
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+jar-content
+
+== hosted file, head
+HEAD releases/com/example/app/1.0/app-1.0.jar
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-disposition: attachment; filename="app-1.0.jar"; filename*=utf-8''app-1.0.jar
+header: content-length: 11
+header: content-security-policy: sandbox
+header: content-type: application/java-archive
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+
+
+== hosted pom, gradle accept
+GET releases/com/example/app/1.0/app-1.0.pom
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-length: 11
+header: content-security-policy: sandbox
+header: content-type: application/xml
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+pom-content
+
+== settings repository, gradle request
+GET settings/com/example/app/1.0/app-1.0.pom
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-length: 12
+header: content-security-policy: sandbox
+header: content-type: application/xml
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Sec-Fetch-Mode, Sec-Fetch-Dest
+header: x-content-type-options: nosniff
+body:
+settings-pom
+
+== settings repository, browser navigation
+GET settings
+status: 200
+header: cache-control: no-cache
+header: content-length: 1798
+header: content-security-policy: default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+header: content-type: text/html;charset=utf-8
+header: cross-origin-opener-policy: same-origin
+header: permissions-policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Sec-Fetch-Mode, Sec-Fetch-Dest
+header: x-content-type-options: nosniff
+header: x-frame-options: DENY
+body:
+<!--
+  ~ Copyright (c) 2023 dzikoysk
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <base href="/" />
+    <meta charset="UTF-8" />
+    <link rel="icon" href="favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Ingot Description -->
+    <title>Ingot Repository</title>
+    <meta name="description" content="Public Maven repository hosted through Ingot">
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Ingot Repository">
+    <meta name="twitter:description" content="Public Maven repository hosted through Ingot">
+    <!-- OpenGraph -->
+    <meta property="og:title" content="Ingot Repository">
+    <meta property="og:site_name" content="Ingot Repository">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Public Maven repository hosted through Ingot">
+    <script type="module" crossorigin src="/./assets/index-gk5P6qOL.js"></script>
+    <link rel="modulepreload" crossorigin href="/./assets/vue.runtime.esm-bundler-C7M7iduF.js">
+    <link rel="stylesheet" crossorigin href="/./assets/index-DOcj-J5o.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>
+
+
+== directory index
+GET releases/com/example/app/1.0/
+status: 200
+header: content-length: 854
+header: content-security-policy: sandbox
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+<!DOCTYPE html>
+<html lang='en'>
+    <head>
+        <title>Index of /releases/com/example/app/1.0/</title>
+        <meta charset='utf-8'>
+        <base href='/releases/com/example/app/1.0/'>
+        <style>
+        li {
+            padding: 2px 10px;
+        }
+        .back::marker {
+            content: '🔙';
+        }
+        .directory::marker {
+            content: '📁';
+        }
+        .file::marker {
+            content: '📄';
+        }
+        </style>
+    </head>
+    <body>
+        <h1>Index of /releases/com/example/app/1.0/</h1>
+        <ul>
+            <li class='back'>
+                <a href='/releases/com/example/app'>Parent Directory</a>
+            </li>
+            <li class="file"><a href="./app-1.0.jar">app-1.0.jar</a></li><li class="file"><a href="./app-1.0.pom">app-1.0.pom</a></li>
+        </ul>
+    </body>
+</html>
+
+== missing file
+GET releases/com/example/app/1.0/missing.jar
+status: 404
+header: cache-control: no-cache
+header: content-length: 1228
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+<html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Ingot - 404 Not Found</title>
+    </head>
+    <style>
+      body {
+        height: calc(100vh - 170px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+    
+      .error-view {
+        text-align: center;
+        width: 100vh;
+        height: 100px;
+      }
+    
+      .spooky p {
+        margin-top: 0;
+        margin-bottom: 0;
+        font-size: 1.2rem;
+        font-weight: lighter;
+      }
+      
+      a:link, a:visited {
+        color: rebeccapurple;
+      }
+    </style>
+    <body>
+      <div class='error-view'>
+        <h1 style="font-size: 1.5rem">
+          <span style="color: gray;">404︱</span>Resource not found
+        </h1>
+        <p><i>File not found</i></p>
+        <p>Looking for a dashboard?</p>
+        <div class="spooky">
+          <p>{\__/}</p>
+          <p>(●ᴗ●)</p>
+          <p>( >🥕</p>
+        </div>
+        <p>Visit <a href="/browse/releases/com/example/app/1.0/missing.jar" style="color: rebeccapurple; text-decoration: none;">/browse/releases/com/example/app/1.0/missing.jar</a></p>
+      </div>
+    </body>
+</html>
+
+== unknown repository, read
+GET missing/com/example/app/1.0/app-1.0.jar
+status: 404
+header: cache-control: no-cache
+header: content-length: 1240
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+<html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Ingot - 404 Not Found</title>
+    </head>
+    <style>
+      body {
+        height: calc(100vh - 170px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+    
+      .error-view {
+        text-align: center;
+        width: 100vh;
+        height: 100px;
+      }
+    
+      .spooky p {
+        margin-top: 0;
+        margin-bottom: 0;
+        font-size: 1.2rem;
+        font-weight: lighter;
+      }
+      
+      a:link, a:visited {
+        color: rebeccapurple;
+      }
+    </style>
+    <body>
+      <div class='error-view'>
+        <h1 style="font-size: 1.5rem">
+          <span style="color: gray;">404︱</span>Resource not found
+        </h1>
+        <p><i>Repository missing not found</i></p>
+        <p>Looking for a dashboard?</p>
+        <div class="spooky">
+          <p>{\__/}</p>
+          <p>(●ᴗ●)</p>
+          <p>( >🥕</p>
+        </div>
+        <p>Visit <a href="/browse/missing/com/example/app/1.0/app-1.0.jar" style="color: rebeccapurple; text-decoration: none;">/browse/missing/com/example/app/1.0/app-1.0.jar</a></p>
+      </div>
+    </body>
+</html>
+
+== api path without route
+GET api/unknown
+status: 404
+header: cache-control: no-cache, no-store, must-revalidate, max-age=0
+header: content-length: 154
+header: content-security-policy: frame-ancestors 'none'
+header: content-type: application/json
+header: expires: 0
+header: pragma: no-cache
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: x-content-type-options: nosniff
+header: x-frame-options: DENY
+body:
+{"status":404,"message":"Repository api not found","type":"about:blank","instance":"/api/unknown","title":"Not Found","detail":"Repository api not found"}
+
+== private repository, anonymous
+GET private/com/example/app/1.0/app-1.0.jar
+status: 401
+header: cache-control: no-cache, no-store, max-age=0
+header: content-length: 1244
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: www-authenticate: Basic realm="Ingot", charset="UTF-8"
+header: x-content-type-options: nosniff
+body:
+<html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Ingot - 404 Not Found</title>
+    </head>
+    <style>
+      body {
+        height: calc(100vh - 170px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+    
+      .error-view {
+        text-align: center;
+        width: 100vh;
+        height: 100px;
+      }
+    
+      .spooky p {
+        margin-top: 0;
+        margin-bottom: 0;
+        font-size: 1.2rem;
+        font-weight: lighter;
+      }
+      
+      a:link, a:visited {
+        color: rebeccapurple;
+      }
+    </style>
+    <body>
+      <div class='error-view'>
+        <h1 style="font-size: 1.5rem">
+          <span style="color: gray;">404︱</span>Resource not found
+        </h1>
+        <p><i>You need to provide credentials.</i></p>
+        <p>Looking for a dashboard?</p>
+        <div class="spooky">
+          <p>{\__/}</p>
+          <p>(●ᴗ●)</p>
+          <p>( >🥕</p>
+        </div>
+        <p>Visit <a href="/browse/private/com/example/app/1.0/app-1.0.jar" style="color: rebeccapurple; text-decoration: none;">/browse/private/com/example/app/1.0/app-1.0.jar</a></p>
+      </div>
+    </body>
+</html>
+
+== private repository, authenticated
+GET private/com/example/app/1.0/app-1.0.jar (authenticated)
+status: 200
+header: accept-ranges: bytes
+header: cache-control: no-cache, no-store, max-age=0
+header: content-disposition: attachment; filename="app-1.0.jar"; filename*=utf-8''app-1.0.jar
+header: content-length: 11
+header: content-security-policy: sandbox
+header: content-type: application/java-archive
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+private-jar
+
+== proxy, unavailable upstream
+GET proxied/com/example/app/1.0/app-1.0.jar
+status: 404
+header: cache-control: no-cache
+header: content-length: 1226
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+<html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Ingot - 404 Not Found</title>
+    </head>
+    <style>
+      body {
+        height: calc(100vh - 170px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+    
+      .error-view {
+        text-align: center;
+        width: 100vh;
+        height: 100px;
+      }
+    
+      .spooky p {
+        margin-top: 0;
+        margin-bottom: 0;
+        font-size: 1.2rem;
+        font-weight: lighter;
+      }
+      
+      a:link, a:visited {
+        color: rebeccapurple;
+      }
+    </style>
+    <body>
+      <div class='error-view'>
+        <h1 style="font-size: 1.5rem">
+          <span style="color: gray;">404︱</span>Resource not found
+        </h1>
+        <p><i>File not found</i></p>
+        <p>Looking for a dashboard?</p>
+        <div class="spooky">
+          <p>{\__/}</p>
+          <p>(●ᴗ●)</p>
+          <p>( >🥕</p>
+        </div>
+        <p>Visit <a href="/browse/proxied/com/example/app/1.0/app-1.0.jar" style="color: rebeccapurple; text-decoration: none;">/browse/proxied/com/example/app/1.0/app-1.0.jar</a></p>
+      </div>
+    </body>
+</html>
+
+== proxy, head
+HEAD proxied/com/example/app/1.0/app-1.0.jar
+status: 404
+header: cache-control: no-cache
+header: content-length: 1226
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+
+
+== hosted, put anonymous
+PUT releases/com/example/app/1.0/new.jar
+status: 401
+header: cache-control: no-cache
+header: content-length: 200
+header: content-type: application/json
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: www-authenticate: Basic realm="Ingot", charset="UTF-8"
+header: x-content-type-options: nosniff
+body:
+{"status":401,"message":"Missing authorization credentials","type":"about:blank","instance":"/releases/com/example/app/1.0/new.jar","title":"Unauthorized","detail":"Missing authorization credentials"}
+
+== hosted, put authenticated
+PUT releases/com/example/app/1.0/new.jar (authenticated)
+status: 200
+header: content-length: 0
+header: content-type: text/plain
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+
+
+== hosted, post authenticated
+POST releases/com/example/app/1.0/posted.jar (authenticated)
+status: 200
+header: content-length: 0
+header: content-type: text/plain
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+
+
+== hosted, delete anonymous
+DELETE releases/com/example/app/1.0/app-1.0.jar
+status: 401
+header: cache-control: no-cache
+header: content-length: 204
+header: content-type: application/json
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: www-authenticate: Basic realm="Ingot", charset="UTF-8"
+header: x-content-type-options: nosniff
+body:
+{"status":401,"message":"Missing authorization credentials","type":"about:blank","instance":"/releases/com/example/app/1.0/app-1.0.jar","title":"Unauthorized","detail":"Missing authorization credentials"}
+
+== hosted, delete authenticated
+DELETE releases/com/example/app/1.0/new.jar (authenticated)
+status: 200
+header: content-length: 0
+header: content-type: text/plain
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+
+
+== typed hosted, put authenticated
+PUT typed-hosted/com/example/app/1.0/new.jar (authenticated)
+status: 200
+header: content-length: 0
+header: content-type: text/plain
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+
+
+== typed proxy, put authenticated
+PUT typed-proxy/com/example/app/1.0/app-1.0.jar (authenticated)
+status: 405
+header: allow: GET, HEAD
+header: cache-control: no-cache
+header: content-length: 273
+header: content-type: application/json
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: x-content-type-options: nosniff
+body:
+{"status":405,"message":"Repository 'typed-proxy' is a proxy and does not accept uploads","type":"about:blank","instance":"/typed-proxy/com/example/app/1.0/app-1.0.jar","title":"Method Not Allowed","detail":"Repository 'typed-proxy' is a proxy and does not accept uploads"}
+
+== typed proxy, delete authenticated
+DELETE typed-proxy/com/example/app/1.0/app-1.0.jar (authenticated)
+status: 405
+header: allow: GET, HEAD
+header: cache-control: no-cache
+header: content-length: 273
+header: content-type: application/json
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: x-content-type-options: nosniff
+body:
+{"status":405,"message":"Repository 'typed-proxy' is a proxy and does not accept uploads","type":"about:blank","instance":"/typed-proxy/com/example/app/1.0/app-1.0.jar","title":"Method Not Allowed","detail":"Repository 'typed-proxy' is a proxy and does not accept uploads"}
+
+== typed group, read
+GET typed-group/com/example/app/1.0/app-1.0.jar
+status: 200
+header: accept-ranges: bytes
+header: cache-control: public, max-age=3600
+header: content-disposition: attachment; filename="app-1.0.jar"; filename*=utf-8''app-1.0.jar
+header: content-length: 9
+header: content-security-policy: sandbox
+header: content-type: application/java-archive
+header: etag: "<etag>"
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+typed-jar
+
+== typed group, read missing
+GET typed-group/com/example/app/1.0/missing.jar
+status: 404
+header: cache-control: no-cache
+header: content-length: 1234
+header: content-type: text/html
+header: referrer-policy: strict-origin-when-cross-origin
+header: x-content-type-options: nosniff
+body:
+<html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Ingot - 404 Not Found</title>
+    </head>
+    <style>
+      body {
+        height: calc(100vh - 170px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+    
+      .error-view {
+        text-align: center;
+        width: 100vh;
+        height: 100px;
+      }
+    
+      .spooky p {
+        margin-top: 0;
+        margin-bottom: 0;
+        font-size: 1.2rem;
+        font-weight: lighter;
+      }
+      
+      a:link, a:visited {
+        color: rebeccapurple;
+      }
+    </style>
+    <body>
+      <div class='error-view'>
+        <h1 style="font-size: 1.5rem">
+          <span style="color: gray;">404︱</span>Resource not found
+        </h1>
+        <p><i>File not found</i></p>
+        <p>Looking for a dashboard?</p>
+        <div class="spooky">
+          <p>{\__/}</p>
+          <p>(●ᴗ●)</p>
+          <p>( >🥕</p>
+        </div>
+        <p>Visit <a href="/browse/typed-group/com/example/app/1.0/missing.jar" style="color: rebeccapurple; text-decoration: none;">/browse/typed-group/com/example/app/1.0/missing.jar</a></p>
+      </div>
+    </body>
+</html>
+
+== typed group, put authenticated
+PUT typed-group/com/example/app/1.0/new.jar (authenticated)
+status: 405
+header: allow: GET, HEAD
+header: cache-control: no-cache
+header: content-length: 269
+header: content-type: application/json
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: x-content-type-options: nosniff
+body:
+{"status":405,"message":"Repository 'typed-group' is a group and does not accept uploads","type":"about:blank","instance":"/typed-group/com/example/app/1.0/new.jar","title":"Method Not Allowed","detail":"Repository 'typed-group' is a group and does not accept uploads"}
+
+== unknown repository, put authenticated
+PUT missing/com/example/app/1.0/app-1.0.jar (authenticated)
+status: 404
+header: cache-control: no-cache
+header: content-length: 174
+header: content-type: application/json
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: x-content-type-options: nosniff
+body:
+{"status":404,"message":"Repository not found","type":"about:blank","instance":"/missing/com/example/app/1.0/app-1.0.jar","title":"Not Found","detail":"Repository not found"}
+
+== unknown repository, delete authenticated
+DELETE missing/com/example/app/1.0/app-1.0.jar (authenticated)
+status: 404
+header: cache-control: no-cache
+header: content-length: 174
+header: content-type: application/json
+header: referrer-policy: strict-origin-when-cross-origin
+header: vary: Accept
+header: x-content-type-options: nosniff
+body:
+{"status":404,"message":"Repository not found","type":"about:blank","instance":"/missing/com/example/app/1.0/app-1.0.jar","title":"Not Found","detail":"Repository not found"}
