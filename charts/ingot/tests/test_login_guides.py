@@ -51,7 +51,7 @@ SECTION_ORDER = [
 
 SUMMARY_LINK = re.compile(r"\]\(([^)\s]+\.md)\)")
 BACKTICKED = re.compile(r"`([^`]+)`")
-TABLE_ROW = re.compile(r"^\|(.*)\|\s*$")
+TABLE_ROW = re.compile(r"^\s*\|(.*)\|\s*$")
 
 
 def read(path):
