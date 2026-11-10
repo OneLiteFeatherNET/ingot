@@ -22,8 +22,25 @@ Every key of the local configuration can be set from the environment. The keys a
 | Unknown names | A variable with the prefix and no matching key is logged as a warning and ignored. |
 | Persistence | The override is applied in memory. It is not written to `configuration.cdn`. |
 | Logging | The log shows the key, the first character and the last character of the value. |
+| File spelling | `INGOT_LOCAL_<KEY>_FILE` names a file whose content is the value. `REPOSILITE_LOCAL_<KEY>_FILE` is read as well, and `INGOT_` wins when both are set. See [File values](#file-values). |
 
 System properties follow the same rules with the lower-case prefixes `ingot.local.` and `reposilite.local.`, for example `-Dingot.local.sslEnabled=true`. A system property wins over an environment variable. See [Order of precedence](configuration-and-startup.md#order-of-precedence).
+
+### File values
+
+A key can take its value from a file instead of a variable. A container platform mounts a secret as a file, and the variable names its path, so the secret does not have to be written into the manifest.
+
+| Rule | Behavior |
+| --- | --- |
+| Name | `INGOT_LOCAL_<KEY>_FILE`, with `REPOSILITE_LOCAL_<KEY>_FILE` as the fallback. The system property form is `ingot.local.<key>.file`, and `reposilite.local.<key>.file` is its fallback. |
+| Content | The content of the file, read as UTF-8, is the value. The line breaks at its end are removed. Nothing else is changed, so spaces inside the value and at its start are kept. An empty file gives the empty string. |
+| Relative paths | A relative path is resolved against the working directory, as the path of `configuration.cdn` is. An absolute path is used as it is. |
+| Plain variable wins | When one source sets both `INGOT_LOCAL_<KEY>` and `INGOT_LOCAL_<KEY>_FILE`, the plain variable is used, the file is not read, and the log has one warning that names both. The environment and the system properties are two sources, so a system property still wins over a file variable of the environment. |
+| Unknown keys | A `_FILE` variable of a key that is not a local setting is logged as an unknown setting, and its file is not read. |
+| Missing or unreadable file | The start stops before any port is bound. The process prints one line that names the variable and the path, and exits with status 1. The line never contains the content of the file. A file is refused when it does not exist, is a directory, cannot be read, or is not valid UTF-8. |
+| Timing | The file is read once, at start. A change to the file takes effect at the next start, as a changed variable does. |
+
+For example, `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` takes the key password from the file at that path.
 
 ### Variable names
 
