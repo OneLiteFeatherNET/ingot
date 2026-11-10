@@ -73,6 +73,7 @@ spec:
       labels:
         app: mariadb
     spec:
+      enableServiceLinks: false
       containers:
         - name: mariadb
           image: mariadb:11.4@sha256:d1891ede5a559f1086f55053bb8cc1569b0298338c4d72d71725a7f74f6ba620
@@ -116,6 +117,7 @@ spec:
       labels:
         app: floci
     spec:
+      enableServiceLinks: false
       containers:
         - name: floci
           # floci/floci:2.4.0 is the stable release, the tag latest points at the same digest.
@@ -136,6 +138,7 @@ spec:
   backoffLimit: 6
   template:
     spec:
+      enableServiceLinks: false
       restartPolicy: OnFailure
       containers:
         - name: create-bucket
@@ -184,6 +187,7 @@ spec:
       labels:
         app: nats
     spec:
+      enableServiceLinks: false
       containers:
         - name: nats
           image: nats:2.12-alpine@sha256:b270f5e2428354c0335612694d7dd2fb588148e567a5757fdff325ef9c9332e6
