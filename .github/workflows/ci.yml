@@ -424,7 +424,7 @@ jobs:
         run: |
           docker run --detach --name ingot-readonly \
             --read-only --user 977:977 --cap-drop ALL --security-opt no-new-privileges \
-            --tmpfs /tmp --tmpfs /var/log/reposilite --tmpfs /app/data \
+            --tmpfs /tmp:exec,mode=1777 --tmpfs /var/log/reposilite:uid=977,gid=977 --tmpfs /app/data:uid=977,gid=977 \
             --publish 127.0.0.1:8080:8080 ingot:ci
           status=000
           for attempt in $(seq 1 60); do
