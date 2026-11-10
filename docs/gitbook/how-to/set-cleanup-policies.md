@@ -123,7 +123,7 @@ To schedule the policy, set `"enabled": true` and `"schedule": "04:30"` in the s
 | An artifact keeps a version you wanted gone | Ingot always keeps the newest version of an artifact, and keeps snapshots newer than the newest release. See [Rules](../reference/cleanup-policies.md#rules). |
 | A `MIRROR_CACHE` policy finds nothing | Only copies that Ingot recorded are considered. The repository needs a proxied entry with `store` turned on. |
 | The scheduled run did not happen | The policy has to be enabled and have a time, and the instance has to run at that minute. |
-| `Cleanup policy <id> is already running` | Wait until the run on that instance ends. |
+| `Cleanup policy <id> is already running` | Wait until the running cleanup ends. The run can be on any instance that shares the database, not only on the one you called. |
 
 ## Related
 

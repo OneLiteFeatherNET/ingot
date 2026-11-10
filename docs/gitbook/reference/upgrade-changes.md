@@ -30,6 +30,7 @@ The identity schema is created on the first start. The legacy token tables are k
 | `identity_migration` | One row per migration step, so each step runs once. |
 | `identity_legacy_import` | One row per legacy token that has been imported, keyed by the legacy id. Rows are never deleted. |
 | `access_token`, `permission_access_token`, `permission_route` | Legacy token tables. Kept unchanged. Ingot reads them and never writes them. |
+| `scheduled_job_claim` | Claims of the scheduled cleanup and audit purge. The nullable columns `lease_owner`, `lease_until` and `done_at` are added on the first start. Existing rows keep their values and stay valid. |
 
 ### Configuration file
 
@@ -93,3 +94,17 @@ The phrase endpoint `GET /api/statistics/resolved/phrase/{limit}/{repository}/<g
 | Token that cannot read every matching path | One entry, possibly unreadable | Only the readable entries, then the limit |
 
 Clients that always send `1` see no difference. A client that sends a limit outside 1 to 100 has to send a valid one. No configuration, environment variable or plugin changes.
+
+### Cleanup and audit job leases
+
+The scheduled cleanup and the audit retention purge hold their daily run as a lease in the database, and a cleanup run holds a lease for its whole duration.
+
+| Behaviour | Before | Now |
+| --- | --- | --- |
+| Manual run while a run of the same policy is live on another instance | Started, and could delete the same versions at the same time | Answers `409` and deletes nothing |
+| Scheduled run whose instance stopped before the run ended | The day was lost, and no instance ran it | A later check on the same UTC day takes the day over after 60 seconds, and runs it once |
+| Scheduled run that was not started at its minute | Not run | Still not run. Ingot does not catch up later |
+
+No configuration, environment variable, volume or plugin changes. The schedule itself does not move.
+
+**Mixed versions.** A replica on the previous release ignores the leases, so during a rolling upgrade it can still run a cleanup next to a replica on this release. Upgrade one replica first, and enable no scheduled cleanup policy until every replica runs this release.

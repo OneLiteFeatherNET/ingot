@@ -24,6 +24,7 @@ import com.reposilite.scheduling.SqliteTestDatabase
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.scheduling.runAtOnce
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import panda.std.reactive.Reference
 import java.time.Duration
@@ -90,6 +91,42 @@ internal class AuditPurgeClaimTest {
 
             assertThat(repository.purges.get()).`as`("purges without a shared database").isEqualTo(2)
         }
+    }
+
+    @Test
+    fun `runs the retention purge of a day once more when the instance that held it stopped before it deleted`() {
+        SqliteTestDatabase().use { shared ->
+            val counting = CountingRepository(SqlAuditRepository(shared.database))
+            // given: instance A takes the day's purge and stops in the middle of it, before any row is deleted
+            val stopped = facade(
+                FailingRepository(counting),
+                StoppedClaims(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a")),
+            )
+            assertThrows(SimulatedStop::class.java) { stopped.purgeExpired() }
+
+            // when: instance B purges after the lease of A expired, and then again later the same day
+            clock.advance(Duration.ofMinutes(5))
+            val takeover = facade(counting, SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b"))
+            takeover.purgeExpired()
+            clock.advance(Duration.ofMinutes(5))
+            takeover.purgeExpired()
+
+            // then: the purge of the day ran once on B, and no third run happened that day
+            assertThat(counting.purges.get()).`as`("purges of the day after the stopped holder").isEqualTo(1)
+        }
+    }
+
+    /** Stands for an instance that stops in the middle of a purge. */
+    private class SimulatedStop : RuntimeException("instance stopped in the middle of the purge")
+
+    /** The claims of an instance that stops before it completes its purge, so the day is never marked as done. */
+    private class StoppedClaims(private val delegate: ScheduledJobClaims) : ScheduledJobClaims by delegate {
+        override fun complete(key: String, done: Boolean) = Unit
+    }
+
+    /** Stops every purge before it deletes anything. */
+    private class FailingRepository(private val delegate: AuditRepository) : AuditRepository by delegate {
+        override fun deleteBefore(timestampMillis: Long): Long = throw SimulatedStop()
     }
 
     private fun facade(repository: AuditRepository, claims: ScheduledJobClaims) =
