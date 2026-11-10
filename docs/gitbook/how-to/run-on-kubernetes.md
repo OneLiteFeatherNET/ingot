@@ -18,7 +18,7 @@ Several replicas are not fully supported yet. Read [Running more than one replic
 * An S3 bucket for repositories, if you run more than one replica. Filesystem storage needs a volume that several pods can mount.
 * An ingress controller, if you want a host name. Autoscaling needs the Kubernetes metrics server.
 
-The chart version and its `appVersion` are the Ingot release, so the chart and the image of a release always match. The image tag in the values below pins a digest as well.
+The chart version and its `appVersion` are the Ingot release, so the chart and the image of a release always match. The image digest in the values below pins the exact image as well.
 
 ## Read the chart values
 
@@ -30,7 +30,7 @@ Replace `1.1.1` with the release you deploy. The file lists every value of the c
 
 ## Create the database Secret
 
-Ingot reads its database from the local configuration key `database`. The environment variable `INGOT_LOCAL_DATABASE` overrides it. Store the value in a Secret so that the password stays out of the chart values.
+Ingot reads its database from the local configuration key `database`. The environment variable `INGOT_LOCAL_DATABASE` overrides it. Store the value in a Secret so that the password stays out of the chart values. The chart reads the key through `database.existingSecret` and never renders the value. The key defaults to `database` and can be changed with `database.secretKey`.
 
 The value has the form `<engine> <host>:<port> <database> <user> <password>`:
 
@@ -49,25 +49,24 @@ SQLite, MariaDB and PostgreSQL are supported. MySQL and H2 are experimental. The
 
 ## Write the values
 
-Create `ingot-values.yaml`. The tag pins the release and the digest together. Replace the digest with the digest of the release you deploy.
+Create `ingot-values.yaml`. Replace the digest with the digest of the release you deploy. While `image.digest` is set, the chart renders the image as `name@digest` and ignores `image.tag`.
 
 ```yaml
 image:
   name: ghcr.io/onelitefeathernet/ingot
-  # The chart renders name:tag, so the digest goes into the tag field.
-  tag: "1.2.0@sha256:<digest>"
+  digest: "sha256:<digest>"
 
 deployment:
   replicas: 1
 
+database:
+  # Renders INGOT_LOCAL_DATABASE from the key `database` of the Secret ingot-database.
+  existingSecret: ingot-database
+  secretKey: database
+
 env:
   - name: JAVA_OPTS
     value: "-Xmx768M"
-  - name: INGOT_LOCAL_DATABASE
-    valueFrom:
-      secretKeyRef:
-        name: ingot-database
-        key: database
 
 service:
   port: 8080
@@ -215,6 +214,22 @@ env:
 
 Leave `accessKey` and `secretKey` empty to use the AWS default credential chain. That chain reads the environment variables of the pod, for example from a Secret through `envFrom`, and the IAM role of a service account. Ingot reads `AWS_REGION` from the environment too. Using a Secret keeps the credentials out of the database.
 
+On Kubernetes, `objectStorage.existingSecret` gives the pods these variables without an `env` entry. Create a Secret with the keys `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, and the optional key `AWS_REGION`:
+
+```bash
+kubectl -n ingot create secret generic ingot-s3-keys \
+  --from-literal=AWS_ACCESS_KEY_ID='<access-key-id>' \
+  --from-literal=AWS_SECRET_ACCESS_KEY='<secret-access-key>' \
+  --from-literal=AWS_REGION='us-east-1'
+```
+
+```yaml
+objectStorage:
+  existingSecret: ingot-s3-keys
+```
+
+The chart renders each variable as a reference to a key of that Secret, so the values stay in the cluster. The first two keys must exist, or the pod does not start. `AWS_REGION` may be left out.
+
 ## Scale
 
 Set `deployment.replicas` for a fixed count, or turn on autoscaling. With autoscaling enabled, the chart leaves `replicas` out of the Deployment and the autoscaler sets the count:
@@ -237,6 +252,22 @@ autoscaling:
 ```
 
 Apply these only after the requirements in the next section hold.
+
+With more than one replica, spread the pods over failure domains, so that one node or zone failure does not take every replica down. `deployment.topologySpreadConstraints` passes its list to the server pods unchanged. The chart sets no default, because a `DoNotSchedule` constraint keeps a second replica pending on a single-node cluster:
+
+```yaml
+deployment:
+  replicas: 2
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingot
+```
+
+In split mode, `dashboard.topologySpreadConstraints` takes the same kind of list for the dashboard pods.
 
 ## Running more than one replica
 
@@ -270,6 +301,20 @@ deployment:
 ```
 
 Both values default to `0`, which keeps the immediate stop and the 60 second grace period. When either is above `0`, the grace period becomes `preStopSeconds + drainSeconds + 10`, here 55 seconds, so the kubelet does not kill the pod before the budget ends. The values apply to every pod, so a rolling update takes about their sum longer for each replica. If you set `deployment.lifecycle`, your own `preStop` action is kept and `preStopSeconds` renders no sleep. An `INGOT_SHUTDOWN_TIMEOUT` set in `env` is kept as well.
+
+The chart sets the bus with the `clusterBus` values. `clusterBus.url` renders `INGOT_CLUSTER_URL`. `clusterBus.passwordSecret` renders `INGOT_CLUSTER_PASSWORD` from the key `password` of a Secret. `clusterBus.credentialsSecret` mounts a Secret with the key `nats.creds` read-only, and points `INGOT_CLUSTER_CREDENTIALS` at the file. A broker in operator mode needs the credentials file, not a password.
+
+```bash
+kubectl -n ingot create secret generic ingot-bus-password --from-literal=password='<password>'
+```
+
+```yaml
+clusterBus:
+  url: tls://nats.nats.svc.cluster.local:4222
+  passwordSecret: ingot-bus-password
+```
+
+Use `tls` when the credentials cross the network, because the `nats` scheme connects in clear text. The broker must serve TLS for that scheme.
 
 ## Expose the instance with ingress
 
