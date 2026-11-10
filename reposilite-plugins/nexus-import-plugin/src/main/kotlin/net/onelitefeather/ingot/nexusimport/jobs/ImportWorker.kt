@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package net.onelitefeather.ingot.nexusimport.jobs
 
 import net.onelitefeather.ingot.nexusimport.copy.ConflictPolicy
@@ -30,13 +29,25 @@ import java.time.Duration
 data class CopyTarget(val nexusName: String, val targetName: String)
 
 /** How a worker run ended. Only [COMPLETED] means every file of every target was handled. */
-enum class RunOutcome { COMPLETED, PAUSED_READ_ONLY, PAUSED_CREDENTIALS, LEASE_LOST, NOT_ACQUIRED }
+enum class RunOutcome {
+    COMPLETED,
+    PAUSED_READ_ONLY,
+    PAUSED_CREDENTIALS,
+    PAUSED_OPERATOR,
+    CANCELLED,
+    LEASE_LOST,
+    NOT_ACQUIRED,
+    NOT_STARTED_READ_ONLY,
+    NO_PASSWORD_HERE,
+    NOT_RUNNABLE,
+    FAILED,
+}
 
 /**
- * Copies the files of a job for one worker token. Before each file it checks the read-only switch and its own lease deadline,
- * so a worker that lost its lease starts no further file. Each finished file is committed with the job's lease in one
- * transaction; a failed commit ends the run. Files already final in the job are skipped, which is what lets a second worker
- * continue from the first one's rows without a stored listing token.
+ * Copies the files of a job for one worker token. Before each file it checks the read-only switch, its own lease deadline and
+ * the operator's pause and cancel flags, so a worker that lost its lease or was told to stop starts no further file. Each
+ * finished file is committed with the job's lease in one transaction; a failed commit ends the run. Files already final in
+ * the job are skipped, which is what lets a second worker continue from the first one's rows without a stored listing token.
  */
 internal class ImportWorker(
     private val store: JobStore,
@@ -66,6 +77,13 @@ internal class ImportWorker(
                     return RunOutcome.PAUSED_READ_ONLY
                 }
                 if (clock.millis() >= deadline) return RunOutcome.LEASE_LOST
+                val control = store.job(jobId)
+                if (control?.cancelRequested == true) {
+                    return if (store.finish(jobId, token, JobStatus.CANCELLED)) RunOutcome.CANCELLED else RunOutcome.LEASE_LOST
+                }
+                if (control?.pauseRequested == true) {
+                    return if (store.pause(jobId, token, PauseReason.OPERATOR)) RunOutcome.PAUSED_OPERATOR else RunOutcome.LEASE_LOST
+                }
                 if (copyTarget.targetName to asset.path in final) continue
 
                 val result = try {
@@ -78,15 +96,19 @@ internal class ImportWorker(
                     AssetResult.FAILED
                 }
                 val size = asset.fileSize.coerceAtLeast(0)
-                val committed = store.commitAsset(jobId, token, AssetRecord(copyTarget.targetName, asset.path, size, result), asset.path)
+                val detail = if (result == AssetResult.CONFLICT) conflictDetail(asset, copyTarget.targetName) else null
+                val committed = store.commitAsset(jobId, token, AssetRecord(copyTarget.targetName, asset.path, size, result, detail), asset.path)
                 if (!committed) return RunOutcome.LEASE_LOST
                 deadline = clock.millis() + lease.toMillis()
                 if (result == AssetResult.CONFLICT && policy == ConflictPolicy.ABORT) break
             }
         }
-        store.finish(jobId, token, JobStatus.COMPLETED)
-        return RunOutcome.COMPLETED
+        return if (store.finish(jobId, token, JobStatus.COMPLETED)) RunOutcome.COMPLETED else RunOutcome.LEASE_LOST
     }
+
+    /** Both checksums of a conflict, so the operator can see what differs. */
+    private fun conflictDetail(asset: NexusAsset, targetName: String): String =
+        "nexus sha1 ${asset.checksums.sha1 ?: "none"}; target sha1 ${target.existing(targetName, asset.path)?.sha1 ?: "none"}"
 
     private fun listAll(repository: String): List<NexusAsset> = nexus.listAll(repository)
 

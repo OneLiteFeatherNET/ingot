@@ -81,7 +81,7 @@ data class RepositoryRow(
 internal class JobStore(
     private val database: Database,
     private val clock: Clock,
-    private val lease: Duration = DEFAULT_LEASE,
+    val lease: Duration = DEFAULT_LEASE,
 ) {
 
     private val jobs = JobTable
@@ -273,6 +273,16 @@ internal class JobStore(
                 (repositories.jobId eq id) and (repositories.nexusName eq nexusName)
             }, body = { it[repositories.status] = status.name }) == 1
         }
+    }
+
+    /**
+     * Records the final state of a repository once its job is complete. No lease is needed, because a completed job has no
+     * worker left to race with; the caller must not use it while the job still runs.
+     */
+    fun settleRepository(id: Long, nexusName: String, status: RepositoryStatus) = transaction(database) {
+        repositories.update(where = {
+            (repositories.jobId eq id) and (repositories.nexusName eq nexusName)
+        }, body = { it[repositories.status] = status.name })
     }
 
     fun repositories(id: Long): List<RepositoryRow> = transaction(database) {

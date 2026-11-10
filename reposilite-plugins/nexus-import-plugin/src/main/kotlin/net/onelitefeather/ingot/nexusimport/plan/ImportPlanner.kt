@@ -74,7 +74,8 @@ data class ImportPlan(
  */
 class ImportPlanner(private val existingTargets: Set<String>) {
 
-    fun plan(facts: List<RepositoryFacts>, selection: Set<String>?): ImportPlan {
+    /** [targetOverrides] maps a Nexus name to the Ingot name the operator chose; an override is used as given, even when it exists. */
+    fun plan(facts: List<RepositoryFacts>, selection: Set<String>?, targetOverrides: Map<String, String> = emptyMap()): ImportPlan {
         val rows = mutableListOf<LossRow>()
         val planned = mutableListOf<PlannedRepository>()
         val blockers = mutableListOf<String>()
@@ -105,17 +106,17 @@ class ImportPlanner(private val existingTargets: Set<String>) {
         }
 
         mavenChosen.forEach { fact ->
-            val target = targetFor(fact.name)
+            val target = targetFor(fact.name, targetOverrides)
             if (target == null) {
                 blockers += "No free name for ${fact.name}: ${fact.name}-nexus is taken as well"
                 return@forEach
             }
-            val collision = target != fact.name
+            val collision = target != fact.name && fact.name !in targetOverrides
             val collisionNote = if (collision) "The name ${fact.name} is taken, so the proposal is $target. " else ""
             when (fact.type) {
                 "hosted" -> planHosted(fact, target, collisionNote, planned, rows)
                 "proxy" -> planProxy(fact, target, collisionNote, planned, rows)
-                "group" -> planGroup(fact, target, collisionNote, maven, planned, rows)
+                "group" -> planGroup(fact, target, collisionNote, maven, targetOverrides, planned, rows)
                 else -> rows += LossRow("repository", fact.name, target, LossStatus.UNSUPPORTED, "Unknown type ${fact.type}", "Nothing is created", "None")
             }
         }
@@ -127,7 +128,8 @@ class ImportPlanner(private val existingTargets: Set<String>) {
     }
 
     /** The name the definition would get, or null when even the suffixed name is taken. */
-    private fun targetFor(name: String): String? = when {
+    private fun targetFor(name: String, overrides: Map<String, String>): String? = when {
+        overrides[name] != null -> overrides.getValue(name)
         name !in existingTargets -> name
         "$name-nexus" !in existingTargets -> "$name-nexus"
         else -> null
@@ -171,6 +173,7 @@ class ImportPlanner(private val existingTargets: Set<String>) {
         target: String,
         note: String,
         maven: Map<String, RepositoryFacts>,
+        overrides: Map<String, String>,
         planned: MutableList<PlannedRepository>,
         rows: MutableList<LossRow>,
     ) {
@@ -178,7 +181,7 @@ class ImportPlanner(private val existingTargets: Set<String>) {
         val dropped = mutableListOf<String>()
         fact.memberNames.forEach { member ->
             val memberFact = maven[member]
-            if (memberFact == null) dropped += member else kept += (targetFor(member) ?: member)
+            if (memberFact == null) dropped += member else kept += (targetFor(member, overrides) ?: member)
         }
         planned += PlannedRepository(fact.name, target, IngotType.GROUP, false, false, null, kept, false)
         val reason = (note + if (dropped.isEmpty()) "" else "Members of another format were dropped: ${dropped.joinToString(", ")}").trim()
