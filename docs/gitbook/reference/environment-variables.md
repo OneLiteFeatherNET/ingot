@@ -236,6 +236,8 @@ Read once at startup from `INGOT_SHARED_CONFIGURATION_RELOAD`, or from the legac
 
 The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_SHARED_CONFIGURATION_RELOAD`. With the database as the shared source the variable has no effect, and the instance logs one warning at startup. See [Shared settings source](configuration-and-startup.md#shared-settings-source).
 
+The Helm chart sets this variable to `true`, and adds `--shared-configuration` with the mounted file to `INGOT_OPTS`, when its `sharedConfiguration` block is enabled. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#keep-the-shared-settings-in-git).
+
 ### Other system properties
 
 | System property | Default | Meaning |

@@ -257,6 +257,21 @@ The chart sets `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_PROTOCOL`, the trace, me
 
 If your cluster runs the OpenTelemetry Operator, you can leave `opentelemetry.enabled` at `false` and inject the agent with the operator's `instrumentation.opentelemetry.io/inject-java` annotation on the pod instead. Use one of the two, not both.
 
+## Keep the shared settings in Git
+
+The shared settings can live in a file instead of the database. The `sharedConfiguration` block mounts the file read-only at `/app/shared-config` and turns on the reload, so a change to the file reaches the running server. Set one source:
+
+- `content` renders a ConfigMap that the release owns. Put the JSON document in the values file, and the pods restart when the content changes, because the chart writes the checksum into the pod template.
+- `existingConfigMap` names a ConfigMap that you manage, for example one that your GitOps tool or an external secret operator writes. The chart does not restart the pods. Kubernetes updates the mounted file after the kubelet sync, which can take a few minutes, and the server applies the change without a restart.
+
+```yaml
+sharedConfiguration:
+  enabled: true
+  existingConfigMap: ingot-shared-settings   # key: configuration.shared.json
+```
+
+The server answers `409` to a save from the dashboard or the API for a domain that the file holds, and it names the file. Change the file in Git instead. The chart adds `--shared-configuration` to `INGOT_OPTS` for you, and keeps the arguments of an `INGOT_OPTS` or `REPOSILITE_OPTS` value that `env` sets. Arguments that `envFrom` sets cannot be seen by the chart, so move them into `env`.
+
 ## Use S3 for repositories
 
 Storage is set per repository in the maven settings. To store a repository in S3, set its `storageProvider` to `s3`. The endpoint can be an in-cluster service, for example a MinIO service:
