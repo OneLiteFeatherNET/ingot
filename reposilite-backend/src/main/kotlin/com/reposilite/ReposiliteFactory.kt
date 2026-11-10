@@ -29,6 +29,7 @@ import com.reposilite.shared.extensions.newSingleThreadScheduledExecutor
 import com.reposilite.web.HttpServer
 import net.onelitefeather.ingot.deploy.DeployTargetResolver
 import net.onelitefeather.ingot.deploy.logWarnings
+import net.onelitefeather.ingot.readonly.ReadOnlySetting
 import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.schema.SchemaLockFactory
 import net.onelitefeather.ingot.schema.SchemaLockRequest
@@ -54,6 +55,8 @@ object ReposiliteFactory {
         shutdownSettings: ShutdownSettings = ShutdownSettings.read(),
         // Read before anything binds a port, so an invalid value stops the start here
         maxConcurrentRequests: Int? = RequestLimitSettings.read(),
+        // Read before anything binds a port, like the shutdown settings
+        readOnlySetting: ReadOnlySetting = ReadOnlySetting.read(),
         awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
     ): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
@@ -110,6 +113,7 @@ object ReposiliteFactory {
             extensions = Extensions(journalist),
             shutdownSettings = shutdownSettings,
             maxConcurrentRequests = maxConcurrentRequests,
+            readOnlySetting = readOnlySetting,
             awaitDelay = awaitDelay,
         )
 

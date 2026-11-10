@@ -50,6 +50,8 @@ internal class RebuildScheduler(
     startup: RunTrigger?,
     private val execute: (() -> Unit) -> Unit = { it() },
     private val onFailure: (String) -> Unit = {},
+    /** Whether the instance is read-only. Takeover and the startup rebuild wait; a scheduled time that passes is skipped. */
+    private val readOnly: () -> Boolean = { false },
 ) {
 
     private val pendingStartup = AtomicReference(startup)
@@ -58,12 +60,24 @@ internal class RebuildScheduler(
 
     fun tick() {
         if (running.get()) return
+        if (readOnly()) {
+            skipScheduledWhileReadOnly()
+            return
+        }
         rebuild.takeOver()?.let { return dispatch(it) }
         pendingStartup.getAndSet(null)?.let { trigger ->
             rebuild.start(trigger)?.let { dispatch(it) }
             return
         }
         scheduledStart()?.let { dispatch(it) }
+    }
+
+    /** A scheduled time that passes while read-only is on is used up for its date, so the rebuild is not started later. */
+    private fun skipScheduledWhileReadOnly() {
+        val schedule = settings().rebuildSchedule
+        if (!schedule.enabled) return
+        val now = clock.instant().atZone(ZoneOffset.UTC)
+        if (now.toLocalTime() >= LocalTime.parse(schedule.at)) attemptedOn = now.toLocalDate()
     }
 
     private fun scheduledStart(): RunHandle? {

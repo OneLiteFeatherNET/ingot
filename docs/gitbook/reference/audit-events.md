@@ -82,6 +82,12 @@ These events come from `IdentityFacade` unless another source is named. The acto
 | `TEAM_GRANTS_CHANGED` | The grants of a team are replaced and differ from before (`replaceGrants`). | `team`, `added`, `removed` (entries like `repository=<name or *> path=<prefix or *> role=<ROLE>`) |
 | `LAST_ADMIN_REVOKED_BY_PROVIDER` | A group synchronisation leaves no usable instance admin although there was one before (`ExternalGroupSync.reportLastAdminRevoked`). One event per affected admin. The actor is `system:<provider>`. | `provider`, `principal` |
 
+### Maintenance
+
+| Action | Written when | Details keys |
+| --- | --- | --- |
+| `READ_ONLY_CHANGED` | The stored read-only state is changed through `POST` or `DELETE /api/admin/read-only` (`ReadOnlyFacade.set`). A repeated enable or disable changes nothing and writes nothing. A forced state writes nothing either. | `enabled` (the stored value after the change) |
+
 ### Login and sessions
 
 | Action | Written when | Details keys |

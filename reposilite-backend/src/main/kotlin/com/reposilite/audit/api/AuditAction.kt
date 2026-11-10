@@ -49,4 +49,5 @@ enum class AuditAction {
     PASSWORD_RESET,
     NODES_CHANGED,
     LAST_ADMIN_REVOKED_BY_PROVIDER,
+    READ_ONLY_CHANGED,
 }

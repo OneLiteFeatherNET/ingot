@@ -45,7 +45,7 @@ The action `*` covers all four actions.
 | `tokens` | Token endpoints of a principal: list, create, delete |
 | `teams` | Team endpoints: list, create, read, update, delete, grants, members, parents, instance admin role |
 | `settings` | None. Accepted in node text. Its endpoints need the instance admin status. |
-| `maintenance` | None. Accepted in node text. |
+| `maintenance` | The read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh. |
 | `audit` | None. Accepted in node text. The audit endpoints need the instance admin status. |
 | `console` | None. Accepted in node text. The console needs the instance admin status. |
 | `dashboard` | None. Accepted in node text. |
@@ -59,7 +59,7 @@ A denial of an area works against an instance admin. A principal that holds `ing
 {% endhint %}
 
 {% hint style="warning" %}
-The areas `settings`, `maintenance`, `dashboard` and `console` are valid node text, but no endpoint checks them by area. Granting one of them has no effect on any endpoint today.
+The areas `settings`, `dashboard` and `console` are valid node text, but no endpoint checks them by area. Granting one of them has no effect on any endpoint today. The `maintenance` area gates the read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh.
 {% endhint %}
 
 ## Wildcards

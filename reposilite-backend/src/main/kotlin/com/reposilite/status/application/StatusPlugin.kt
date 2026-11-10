@@ -42,6 +42,7 @@ import com.reposilite.storage.api.Location
 import com.reposilite.web.HttpServer
 import com.reposilite.web.api.HttpServerStoppedEvent
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import panda.std.reactive.Completable
 import panda.std.reactive.Reference.Dependencies.dependencies
 import panda.std.reactive.Reference.computed
@@ -50,7 +51,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
-@Plugin(name = "status", dependencies = ["console", "failure", "local-configuration", "maven"])
+@Plugin(name = "status", dependencies = ["console", "failure", "local-configuration", "maven", "read-only"])
 internal class StatusPlugin : ReposilitePlugin() {
 
     /**
@@ -86,11 +87,13 @@ internal class StatusPlugin : ReposilitePlugin() {
             },
         )
 
+        val readOnlyFacade = facade<ReadOnlyFacade>()
         val statusFacade = StatusComponents(
             testEnv = parameters().testEnv,
             failureFacade = failureFacade,
             remoteVersionEndpoint = remoteVersionEndpoint,
             statusSupplier = { if (webServer.isReady) webServer.get().isAlive() else false },
+            readOnly = { readOnlyFacade.state() },
             maxThreads = with (localConfiguration) {
                 computed(dependencies(webThreadPool, ioThreadPool, databaseThreadPool)) {
                     webThreadPool.get() + ioThreadPool.get() + databaseThreadPool.get()

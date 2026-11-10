@@ -32,6 +32,8 @@ import panda.utilities.IOUtils
 import java.time.Clock
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
+import net.onelitefeather.ingot.readonly.ReadOnlySource
+import net.onelitefeather.ingot.readonly.ReadOnlyState
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
@@ -45,6 +47,8 @@ class StatusFacade(
     private val clock: Clock = Clock.systemUTC(),
     /** The checks of the plugins, the database and the storage. The cluster check is added here. */
     private val readinessChecks: List<ReadinessCheck> = emptyList(),
+    /** The read-only state of this instance, reported in the instance status. */
+    private val readOnly: () -> ReadOnlyState = { ReadOnlyState(enabled = false, source = ReadOnlySource.STORED) },
 ) : Facade {
 
     private val cachedStatusSnapshots = EvictingQueue.create<StatusSnapshot>(12)
@@ -140,8 +144,9 @@ class StatusFacade(
         }
     }
 
-    fun fetchInstanceStatus(): InstanceStatusResponse =
-        InstanceStatusResponse(
+    fun fetchInstanceStatus(): InstanceStatusResponse {
+        val readOnlyState = readOnly()
+        return InstanceStatusResponse(
             version = VERSION,
             latestVersion = cachedLatestVersion.get().fold({ it }, { it }),
             uptime = clock.millis() - getUptime(),
@@ -150,8 +155,11 @@ class StatusFacade(
             usedThreads = getUsedThreads(),
             maxThreads = maxThreads.get(),
             failuresCount = failureFacade.getFailures().size,
+            readOnly = readOnlyState.enabled,
+            readOnlySource = readOnlyState.source.name.lowercase(),
             cluster = clusterStatusSource?.let { it.clusterStatus(instanceFigures()) }
         )
+    }
 
     /** The figures of this instance, as the cluster sees them. */
     fun instanceFigures(): InstanceFigures =

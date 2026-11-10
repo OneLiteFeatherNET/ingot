@@ -28,6 +28,9 @@ data class InstanceStatusResponse(
     val usedThreads: Int,
     val maxThreads: Int,
     val failuresCount: Int,
+    /** Whether writes are refused on this instance, and whether the environment or the stored state says so */
+    val readOnly: Boolean = false,
+    val readOnlySource: String = "stored",
     /** Present only when a cluster bus is configured, so that a response without a bus keeps its shape */
     val cluster: ClusterStatusResponse? = null
 )

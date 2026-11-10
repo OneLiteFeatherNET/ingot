@@ -18,3 +18,4 @@ com.reposilite.audit.application.AuditPlugin
 net.onelitefeather.ingot.identity.login.application.LoginPlugin
 net.onelitefeather.ingot.search.application.SearchPlugin
 net.onelitefeather.ingot.cluster.ClusterPlugin
+net.onelitefeather.ingot.readonly.ReadOnlyPlugin

@@ -43,6 +43,7 @@ import io.javalin.plugin.bundled.SslRedirectPlugin
 import kotlin.time.Duration.Companion.minutes
 import net.onelitefeather.ingot.web.RequestLimitHandler
 import net.onelitefeather.ingot.web.RequestLimiter
+import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import net.onelitefeather.ingot.web.TrustedProxies
 import net.onelitefeather.ingot.web.SecurityHeaders
 import net.onelitefeather.ingot.web.SecurityHeadersSettings
@@ -121,6 +122,8 @@ internal object JavalinConfiguration {
     private fun configureRoutingPlugin(config: JavalinConfig, reposilite: Reposilite) {
         val extensionManager = reposilite.extensions
 
+        val readOnlyFacade = extensionManager.facade<ReadOnlyFacade>()
+
         val reposiliteDsl = createReposiliteDsl(
             journalist = reposilite.logger,
             failureFacade = extensionManager.facade(),
@@ -128,6 +131,7 @@ internal object JavalinConfiguration {
             authenticationFacade = extensionManager.facade(),
             loginFacade = extensionManager.facade(),
             basePath = extensionManager.facade<LocalConfiguration>().basePath,
+            readOnly = readOnlyFacade::isReadOnly,
         )
 
         val dslRoutes = extensionManager.emitEvent(RoutingSetupEvent(reposilite))

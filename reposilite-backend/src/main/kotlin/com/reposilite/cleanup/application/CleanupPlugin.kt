@@ -32,6 +32,7 @@ import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
+import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import io.javalin.http.HttpStatus.CONFLICT
 import com.reposilite.shared.ErrorResponse
@@ -42,7 +43,7 @@ import panda.std.Result
 import java.time.Clock
 import java.util.concurrent.TimeUnit.SECONDS
 
-@Plugin(name = "cleanup", dependencies = ["shared-configuration", "maven"], settings = CleanupSettings::class)
+@Plugin(name = "cleanup", dependencies = ["shared-configuration", "maven", "read-only"], settings = CleanupSettings::class)
 internal class CleanupPlugin : ReposilitePlugin() {
 
     override fun initialize(): CleanupService {
@@ -72,6 +73,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
             claims = claims,
         )
 
+        val readOnlyFacade = facade<ReadOnlyFacade>()
         val scheduler = CleanupScheduler(
             clock = clock,
             policies = { cleanupSettings.get().policies },
@@ -83,6 +85,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
             },
             claims = claims,
             journalist = this,
+            readOnly = { readOnlyFacade.isReadOnly() },
         )
         val tick = reposilite().scheduler.scheduleWithFixedDelay({
             reposilite().ioService.execute {

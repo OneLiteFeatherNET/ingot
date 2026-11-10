@@ -76,6 +76,18 @@ The database holds the S3 keys and the session signing key. Store the backups wi
 {% endtab %}
 {% endtabs %}
 
+### Without stopping the instance
+
+Turn on read-only mode, so that no write lands while the copy is taken. Reads keep working, and the instance stays up. Wait at least 10 seconds after the change, then copy the database. Turn the mode off after the copy. This works for MariaDB and PostgreSQL. For SQLite, keep stopping the instance for the file copy, because read-only mode does not make a file that is open for the running instance consistent.
+
+```bash
+curl -u "<token-name>:<token-secret>" -X POST https://ingot.example.com/api/admin/read-only
+# copy the database with your database tool, then
+curl -u "<token-name>:<token-secret>" -X DELETE https://ingot.example.com/api/admin/read-only
+```
+
+The steps and the caveats are in [Freeze writes for maintenance](freeze-writes-for-maintenance.md).
+
 ## Back up the files in the working directory
 
 Archive the files of the working directory. For a filesystem repository, the archive must include `repositories/`.

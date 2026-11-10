@@ -49,6 +49,11 @@ const clientWith = (instance) => ({
     url: (endpoint) => endpoint,
     failures: vi.fn(() => Promise.resolve({ data: { failures: [] } })),
     clearFailures: vi.fn(() => Promise.resolve({}))
+  },
+  // The read-only toggle is part of the panel. These tests are not about maintainers, so the
+  // probe answers as a principal without the maintenance area, and the toggle stays hidden.
+  readOnly: {
+    get: vi.fn(() => Promise.reject(Object.assign(new Error('Forbidden'), { response: { status: 403, data: {} } })))
   }
 })
 
@@ -280,6 +285,52 @@ describe('InstanceStatusPanel cluster view', () => {
     const wrapper = await mountWithStatus({ ...INSTANCE })
 
     expect(wrapper.emitted('cluster').at(-1), 'no bus means no cluster for the trends').toEqual([null])
+    wrapper.unmount()
+  })
+})
+
+describe('InstanceStatusPanel read-only banner', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  const mountWithStatus = async (status) => {
+    session.client = ref(clientWith(() => Promise.resolve({ data: status })))
+    const wrapper = mount(InstanceStatusPanel)
+    await flushPromises()
+    return wrapper
+  }
+
+  it('shows the read-only banner while the instance is read-only', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: true, readOnlySource: 'environment' })
+
+    const banner = wrapper.find('[data-testid="read-only-banner"]')
+    expect(banner.exists(), 'a read-only instance is announced on the status page').toBe(true)
+    expect(banner.text(), 'the banner says writes are refused until read-only mode is turned off').toContain('Writes are refused until read-only mode is turned off')
+    expect(banner.text(), 'an environment setting is named as the source').toContain('INGOT_READ_ONLY')
+    wrapper.unmount()
+  })
+
+  it('names the dashboard or API as the source when read-only was turned on at runtime', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: true, readOnlySource: 'stored' })
+
+    const banner = wrapper.find('[data-testid="read-only-banner"]')
+    expect(banner.text(), 'a stored state is named as set from the dashboard or the API').toContain('dashboard or the API')
+    expect(banner.text(), 'the environment variable is not named for a stored state').not.toContain('INGOT_READ_ONLY')
+    wrapper.unmount()
+  })
+
+  it('does not show the read-only banner while the instance accepts writes', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: false, readOnlySource: 'stored' })
+
+    expect(wrapper.find('[data-testid="read-only-banner"]').exists(), 'a writable instance shows no banner').toBe(false)
+    expect(wrapper.text(), 'the rest of the status is still shown').toContain('Used memory')
     wrapper.unmount()
   })
 })

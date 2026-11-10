@@ -28,6 +28,7 @@ import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.storage.StorageProviderSettings
 import com.reposilite.token.AccessTokenSecurityProvider
 import net.dzikoysk.cdn.KCdnFactory
+import net.onelitefeather.ingot.readonly.ReadOnlySetting
 import net.onelitefeather.ingot.web.ShutdownSettings
 import net.dzikoysk.cdn.source.Source
 import org.junit.jupiter.api.AfterEach
@@ -88,6 +89,10 @@ internal abstract class ReposiliteRunner {
     protected open fun maxConcurrentRequests(): Int? =
         null
 
+    /** The read-only switch of the instance. Tests default to off, so no test depends on the environment of the machine. */
+    protected open fun readOnlySetting(): ReadOnlySetting =
+        ReadOnlySetting(forced = false)
+
     /** Waits out the pre-stop delay. Tests replace it with a recorder, so no test waits on the wall clock. */
     protected open fun awaitDelay(duration: Duration) {
         Thread.sleep(duration.toMillis())
@@ -120,6 +125,7 @@ internal abstract class ReposiliteRunner {
             logger,
             shutdownSettings = shutdownSettings(),
             maxConcurrentRequests = maxConcurrentRequests(),
+            readOnlySetting = readOnlySetting(),
             awaitDelay = ::awaitDelay,
         )
         reposilite.journalist.setVisibleThreshold(Channel.WARN)

@@ -137,6 +137,7 @@ internal class AuthLoginEndpoints(
         ]
     )
     private val setup = ReposiliteRoute<LoginResponse>("/api/auth/setup", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        if (refuseWhileReadOnly()) return@ReposiliteRoute
         val request = runCatching { body<SetupRequest>() }.getOrNull()
         val code = request?.setupCode?.takeIf { it.isNotBlank() }
         val username = request?.username?.takeIf { it.isNotBlank() }
@@ -191,6 +192,7 @@ internal class AuthLoginEndpoints(
         ]
     )
     private val logout = ReposiliteRoute<Unit>("/api/auth/logout", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        if (refuseWhileReadOnly()) return@ReposiliteRoute
         facade.endSession(ctx.cookie(SessionCookies.REFRESH), ctx.ip())
         clearSessionCookies(ctx, basePath.get())
         response = Unit.asSuccess()
