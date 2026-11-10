@@ -54,6 +54,21 @@
 
 @layer base {
   /*
+   * Users who ask for less motion get no animation or transition of the page. The durations are 0.01ms rather
+   * than none, so that a component waiting for a transitionend or animationend event still gets it. The
+   * declarations are important because the components add unlayered rules of their own.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /*
    * The page sits on the surface role in both themes. The dark token set is applied to the
    * document root as well as the app wrapper, so the bare body, and any overscroll beyond
    * the app, follow the theme too.

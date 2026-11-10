@@ -182,8 +182,8 @@ The console, the WebSocket and the event stream accept a token or a browser sess
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET | `/api/frontend/settings` | None | Returns the presentation settings of the dashboard. |
-| GET | `/`, `/index.html` | None | Serves the dashboard page. |
-| GET | `/assets/<path>` | None | Serves the dashboard assets. |
+| GET | `/`, `/index.html` | None | Serves the dashboard page with `Cache-Control: no-cache` and `Cross-Origin-Opener-Policy: same-origin`. |
+| GET | `/assets/<path>` | None | Serves the dashboard assets with `Cache-Control: public, max-age=31536000, immutable`. A missing file answers `404`. |
 | GET | `/javadoc/{repository}/<gav>` | Optional token | Serves the javadoc of an artifact. Answers `404` while javadoc is disabled. |
 | GET | `/javadoc/{repository}/<gav>/raw/<resource>` | Optional token | Serves one raw javadoc resource. Answers `404` while javadoc is disabled. |
 

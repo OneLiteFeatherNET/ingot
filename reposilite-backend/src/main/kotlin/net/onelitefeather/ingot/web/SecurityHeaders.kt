@@ -77,6 +77,9 @@ class SecurityHeaders(private val settings: SecurityHeadersSettings) {
         internal const val PERMISSIONS_POLICY =
             "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
 
+        /** Keeps the dashboard in its own browsing context group, so a popup it opens does not share it. */
+        internal const val OPENER_POLICY = "same-origin"
+
         internal const val REPOSITORY_SANDBOX = "sandbox"
 
         /** The response is the dashboard document. */
@@ -100,6 +103,7 @@ class SecurityHeaders(private val settings: SecurityHeadersSettings) {
                 ctx.header("X-Frame-Options", "DENY")
                 ctx.header("Content-Security-Policy", DASHBOARD_POLICY)
                 ctx.header("Permissions-Policy", PERMISSIONS_POLICY)
+                ctx.header("Cross-Origin-Opener-Policy", OPENER_POLICY)
             }
             path == "/api" || path.startsWith("/api/") -> {
                 ctx.header("X-Frame-Options", "DENY")

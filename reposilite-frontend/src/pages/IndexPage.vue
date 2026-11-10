@@ -268,102 +268,108 @@ const activeLabel = computed(() => pageLabel(section.value))
       class="overflow-x-clip bg-surface"
       :class="hasNavigation ? 'pane-sheet min-[600px]:flex min-[600px]:min-h-[calc(100dvh_-_4rem)] min-[600px]:flex-col min-[600px]:rounded-tl-corner-extra-large min-[1600px]:mr-4 min-[1600px]:rounded-tr-corner-extra-large' : ''"
     >
-      <NotFoundView v-if="route.name === 'not-found'" />
-      <section
-        v-else-if="!sectionAllowed && isLogged"
-        data-test="no-access"
-        class="container mx-auto flex flex-col items-start gap-4 py-12"
-        aria-labelledby="no-access-title"
+      <main
+        id="main"
+        tabindex="-1"
+        :class="hasNavigation ? 'min-[600px]:flex min-[600px]:flex-1 min-[600px]:flex-col' : ''"
       >
-        <h2
-          id="no-access-title"
-          class="md-headline-small text-on-surface"
+        <NotFoundView v-if="route.name === 'not-found'" />
+        <section
+          v-else-if="!sectionAllowed && isLogged"
+          data-test="no-access"
+          class="container mx-auto flex flex-col items-start gap-4 py-12"
+          aria-labelledby="no-access-title"
         >
-          {{ activeLabel }}
-        </h2>
-        <p class="md-body-large text-on-surface-variant">
-          You do not have access to this page.
-        </p>
-        <RouterLink
-          :to="{ name: 'overview' }"
-          class="md-focus-ring md-label-large text-primary"
+          <h2
+            id="no-access-title"
+            class="md-headline-small text-on-surface"
+          >
+            {{ activeLabel }}
+          </h2>
+          <p class="md-body-large text-on-surface-variant">
+            You do not have access to this page.
+          </p>
+          <RouterLink
+            :to="{ name: 'overview' }"
+            class="md-focus-ring md-label-large text-primary"
+          >
+            {{ pageLabel('overview') }}
+          </RouterLink>
+        </section>
+        <section
+          v-else-if="!sectionAllowed"
+          class="container mx-auto flex flex-col items-start gap-4 py-12"
+          aria-labelledby="sign-in-title"
         >
-          {{ pageLabel('overview') }}
-        </RouterLink>
-      </section>
-      <section
-        v-else-if="!sectionAllowed"
-        class="container mx-auto flex flex-col items-start gap-4 py-12"
-        aria-labelledby="sign-in-title"
-      >
-        <h2
-          id="sign-in-title"
-          class="md-headline-small text-on-surface"
-        >
-          Sign in to open {{ activeLabel }}
-        </h2>
-        <p
-          v-if="route.meta.manager"
-          class="md-body-large text-on-surface-variant"
-        >
-          This section needs a sign in with the right permission nodes. Sign in with an account
-          or token that holds them, and you stay on this page.
-        </p>
-        <p
-          v-else
-          class="md-body-large text-on-surface-variant"
-        >
-          Sign in to see your profile, change your password and manage your tokens.
-        </p>
-        <MdButton
-          variant="filled"
-          @click="openLogin"
-        >
-          Sign in
-        </MdButton>
-      </section>
-      <template v-else-if="section === 'overview'">
-        <HeaderHero />
-        <!-- The root lists the repositories; a browsed path keeps the folder listing. -->
-        <RepositoryOverview
-          v-if="browsedPath === ''"
-          :qualifier="qualifier"
+          <h2
+            id="sign-in-title"
+            class="md-headline-small text-on-surface"
+          >
+            Sign in to open {{ activeLabel }}
+          </h2>
+          <p
+            v-if="route.meta.manager"
+            class="md-body-large text-on-surface-variant"
+          >
+            This section needs a sign in with the right permission nodes. Sign in with an account
+            or token that holds them, and you stay on this page.
+          </p>
+          <p
+            v-else
+            class="md-body-large text-on-surface-variant"
+          >
+            Sign in to see your profile, change your password and manage your tokens.
+          </p>
+          <MdButton
+            variant="filled"
+            @click="openLogin"
+          >
+            Sign in
+          </MdButton>
+        </section>
+        <template v-else-if="section === 'overview'">
+          <HeaderHero />
+          <!-- The root lists the repositories; a browsed path keeps the folder listing. -->
+          <RepositoryOverview
+            v-if="browsedPath === ''"
+            :qualifier="qualifier"
+          />
+          <FileBrowserView
+            v-else
+            :qualifier="qualifier"
+          />
+        </template>
+        <SearchView v-else-if="section === 'search'" />
+        <AccountView v-else-if="section === 'account'" />
+        <DashboardView v-else-if="section === 'dashboard'" />
+        <AnalyticsView v-else-if="section === 'analytics'" />
+        <AccessView
+          v-else-if="section === 'access'"
+          :tab="accessTab"
+          :name="accessName"
         />
-        <FileBrowserView
-          v-else
-          :qualifier="qualifier"
+        <ConsoleView
+          v-else-if="section === 'console'"
+          :level="consoleLevel"
+          :search="consoleSearch"
+          @update:level="setConsoleLevel"
+          @update:search="setConsoleSearch"
         />
-      </template>
-      <SearchView v-else-if="section === 'search'" />
-      <AccountView v-else-if="section === 'account'" />
-      <DashboardView v-else-if="section === 'dashboard'" />
-      <AnalyticsView v-else-if="section === 'analytics'" />
-      <AccessView
-        v-else-if="section === 'access'"
-        :tab="accessTab"
-        :name="accessName"
-      />
-      <ConsoleView
-        v-else-if="section === 'console'"
-        :level="consoleLevel"
-        :search="consoleSearch"
-        @update:level="setConsoleLevel"
-        @update:search="setConsoleSearch"
-      />
-      <MaintenanceView v-else-if="section === 'maintenance'" />
-      <AuditView
-        v-else-if="section === 'audit'"
-        :query="route.query"
-        @update:query="setAuditQuery"
-      />
-      <SettingsView
-        v-else-if="section === 'settings'"
-        :selected-tab="activeLabel"
-        :domain="route.params.domain"
-        :collection="route.params.collection"
-        :entry="route.params.entry"
-        @update:domain="setDomain"
-      />
+        <MaintenanceView v-else-if="section === 'maintenance'" />
+        <AuditView
+          v-else-if="section === 'audit'"
+          :query="route.query"
+          @update:query="setAuditQuery"
+        />
+        <SettingsView
+          v-else-if="section === 'settings'"
+          :selected-tab="activeLabel"
+          :domain="route.params.domain"
+          :collection="route.params.collection"
+          :entry="route.params.entry"
+          @update:domain="setDomain"
+        />
+      </main>
       <!-- From 600px the footer closes the sheet; below it, the footer below the page takes over. -->
       <PageFooter
         v-if="hasNavigation"

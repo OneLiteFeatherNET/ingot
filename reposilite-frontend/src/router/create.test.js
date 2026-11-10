@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { nextTick } from 'vue'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from './create'
 import { legacyLocation } from './legacy'
@@ -533,5 +534,69 @@ describe('the /access address forwards or shows the index', () => {
     await router.push('/access')
 
     expect(router.currentRoute.value.name, 'the forward depends on permissions, not on the width').toBe('access-check')
+  })
+})
+
+describe('focus on in-app navigation', () => {
+  // A stand-in for the main element of IndexPage, put in the page for one test and removed after it.
+  let main
+
+  beforeEach(() => {
+    main = document.createElement('main')
+    main.id = 'main'
+    main.tabIndex = -1
+    document.body.appendChild(main)
+  })
+
+  afterEach(() => {
+    main.remove()
+    document.body.blur()
+  })
+
+  it('moves focus to main once a path change has rendered', async () => {
+    const router = makeRouter()
+    await router.push('/dashboard')
+
+    await router.push('/search')
+    await nextTick()
+
+    expect(document.activeElement, 'the new page announces itself').toBe(main)
+  })
+
+  it('does not move focus on the first navigation of a page load', async () => {
+    const router = makeRouter()
+
+    await router.push('/search')
+    await nextTick()
+
+    expect(document.activeElement, 'the page the visitor just opened keeps the focus where it is').not.toBe(main)
+  })
+
+  it('does not move focus when only the query changes, as a filter does', async () => {
+    const router = makeRouter()
+    await router.push('/search')
+    const filter = document.createElement('input')
+    document.body.appendChild(filter)
+    filter.focus()
+
+    await router.push('/search?q=commons')
+    await nextTick()
+
+    expect(document.activeElement, 'the control in use keeps the focus').toBe(filter)
+    filter.remove()
+  })
+
+  it('does not move focus when only the hash changes', async () => {
+    const router = makeRouter()
+    await router.push('/search')
+    const filter = document.createElement('input')
+    document.body.appendChild(filter)
+    filter.focus()
+
+    await router.push('/search#results')
+    await nextTick()
+
+    expect(document.activeElement, 'a fragment inside the page keeps the focus').toBe(filter)
+    filter.remove()
   })
 })

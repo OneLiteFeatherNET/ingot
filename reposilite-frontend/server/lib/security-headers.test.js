@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import fixture from '../test/fixtures/security-headers.json'
-import { securityHeaders, cacheControlFor } from './security-headers.js'
+import { securityHeaders, cacheControlFor, documentHeaders } from './security-headers.js'
 
 // The fixture holds the values of the nginx template this server replaces. A change to any of them
 // is then a visible change in this test.
@@ -50,5 +50,19 @@ describe('cache control', () => {
 
   it('never caches the document, which names the bundle to load', () => {
     expect(cacheControlFor('document')).toBe('no-cache')
+  })
+})
+
+describe('document headers', () => {
+  it('open the dashboard document in its own browsing context group', () => {
+    expect(documentHeaders()['Cross-Origin-Opener-Policy'], 'the opener policy of the document').toBe('same-origin')
+  })
+
+  it('keep every security header of the shared set on the document', () => {
+    expect(documentHeaders(), 'the document headers').toMatchObject(securityHeaders())
+  })
+
+  it('leave the opener policy off the shared set that assets and the api get', () => {
+    expect(securityHeaders(), 'the headers of assets and api answers').not.toHaveProperty('Cross-Origin-Opener-Policy')
   })
 })
