@@ -21,6 +21,7 @@ import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.render.InventoryHtmlReportRenderer
 import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.JsonReportRenderer
+import me.champeau.gradle.japicmp.JapicmpTask
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.jetbrains.kotlin.gradle.tasks.KaptGenerateStubs
 
@@ -31,6 +32,8 @@ plugins {
     id("com.coditory.integration-test") version "2.2.5"
     id("com.gradleup.shadow") version "9.4.2"
     id("com.github.jk1.dependency-license-report") version "3.1.4"
+    // Binary comparison of the plugin API with Reposilite 3.5.28, see pluginApiReport below. Released 2025-02-14.
+    id("me.champeau.gradle.japicmp") version "0.4.6"
 //    id("io.gitlab.arturbosch.detekt").version("1.22.0")
 }
 
@@ -345,10 +348,78 @@ tasks.test {
     finalizedBy("jacocoTestReport")
 }
 
+// Upstream plugin jars, unmodified, for the binary canaries (UpstreamPluginCanaryIntegrationTest). A test never
+// downloads them: Gradle resolves and caches them like any dependency. The migration plugin needs kaml-jvm at runtime,
+// which arrives transitively, so the configuration is transitive as well.
+val pluginCanary by configurations.creating {
+    description = "Upstream Reposilite 3.5.28 plugin jars that the integration tests load unmodified"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = true
+}
+
+dependencies {
+    "pluginCanary"("com.reposilite.plugin:checksum-plugin:3.5.28")
+    "pluginCanary"("com.reposilite.plugin:migration-plugin:3.5.28")
+}
+
 tasks.named<Test>("integration") {
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.
     systemProperty("reposilite.s3.pathStyleAccessEnabled", "true")
+
+    // Resolved at execution time, so the canary jars are only fetched when the integration suite runs.
+    inputs.files(pluginCanary)
+    doFirst {
+        systemProperty("reposilite.canary.plugins", pluginCanary.files.joinToString(File.pathSeparator) { it.absolutePath })
+    }
+}
+
+// The packages that plugins link against: the surface docs/gitbook/reference/plugin-api.md documents and the bundled plugins
+// use. japicmp matches a name together with its subpackages. Widening this list is a reviewed one-line change.
+// com.reposilite.journalist is a separate third-party artifact and never belongs here.
+val pluginApiPackages = listOf(
+    "com.reposilite.plugin",
+    "com.reposilite.plugin.api",
+    "com.reposilite.maven",
+    "com.reposilite.maven.api",
+    "com.reposilite.maven.application",
+    "com.reposilite.storage",
+    "com.reposilite.storage.api",
+    "com.reposilite.token",
+    "com.reposilite.token.api",
+    "com.reposilite.statistics.api",
+    "com.reposilite.shared",
+    "com.reposilite.web.api",
+    "com.reposilite.configuration.shared.api",
+    "com.reposilite.console.api",
+    "com.reposilite.status",
+)
+
+// Compares the jar of this build with the jar Reposilite 3.5.28 published, the release Ingot forked from. The report is
+// written for review and never fails the build: a finding is triaged, not blocked, until the gate is made blocking.
+tasks.register<JapicmpTask>("pluginApiReport") {
+    group = "verification"
+    description = "Compares the plugin API with Reposilite 3.5.28 and writes HTML and Markdown reports under build/reports/plugin-api"
+
+    val baseline = "com.reposilite:reposilite:3.5.28"
+    // The archive is the upstream jar alone. Its transitive dependencies only serve as the classpath, so japicmp can follow supertypes.
+    val baselineArchive = configurations.detachedConfiguration(dependencies.create(baseline))
+        .apply { isTransitive = false }
+    val baselineClasspath = configurations.detachedConfiguration(dependencies.create(baseline))
+
+    oldArchives.from(baselineArchive)
+    oldClasspath.from(baselineClasspath)
+    newArchives.from(tasks.named("jar"))
+    newClasspath.from(configurations.named("runtimeClasspath"))
+
+    packageIncludes.set(pluginApiPackages)
+    onlyBinaryIncompatibleModified.set(true)
+    failOnModification.set(false)
+    // Without it japicmp stops on the first class that one of the two sides references but no classpath provides.
+    ignoreMissingClasses.set(true)
+    htmlOutputFile.set(layout.buildDirectory.file("reports/plugin-api/report.html"))
+    mdOutputFile.set(layout.buildDirectory.file("reports/plugin-api/report.md"))
 }
 
 // Tests that run the published container images rather than the code inside them.

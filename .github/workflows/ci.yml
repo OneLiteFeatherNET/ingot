@@ -564,3 +564,105 @@ jobs:
           # Tokenless uploads are rate limited. Set CODECOV_TOKEN in the repository secrets,
           # or drop this input together with codecov.yml if coverage reporting is not wanted.
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # A plugin written for Reposilite 3.5.28 has to keep running on Ingot, and nothing else checks that. The job compares
+  # the plugin API with 3.5.28, starts a fresh server with the upstream jars of two bundled plugins, and compiles and
+  # tests the bundled plugins, whose sources are the 3.5.28 sources today.
+  #
+  # Report only: a finding in the binary report and a failing canary do not fail this job. The gate becomes blocking in
+  # a later change, once the first report has been triaged. The bundled plugin tests are ordinary tests and still do.
+  plugin-api:
+    name: "Plugin API"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # The base commit has to be present for the diff of the bundled plugin sources further down.
+          fetch-depth: 0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Compare the plugin API with Reposilite 3.5.28"
+        run: ./gradlew :reposilite-backend:pluginApiReport
+
+      - name: "Run the upstream plugin canaries"
+        id: canaries
+        continue-on-error: true
+        run: ./gradlew :reposilite-backend:integration --tests '*UpstreamPluginCanary*'
+
+      - name: "Test the bundled plugins"
+        run: ./gradlew :reposilite-plugins:checksum-plugin:test :reposilite-plugins:migration-plugin:test
+
+      - name: "Write the results to the job summary"
+        if: always()
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CANARY_OUTCOME: ${{ steps.canaries.outcome }}
+        run: |
+          {
+            echo "## Plugin API"
+            echo
+            if [ -f reposilite-backend/build/reports/plugin-api/report.md ]; then
+              cat reposilite-backend/build/reports/plugin-api/report.md
+            else
+              echo "The binary report was not produced. See the job log."
+            fi
+            echo
+            echo "## Upstream plugin canaries"
+            echo
+            echo "Step outcome: \`${CANARY_OUTCOME}\`. Each canary loads the jar that upstream published for 3.5.28 into a fresh server."
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          python3 - >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          rows = []
+          for path in sorted(glob.glob("reposilite-backend/build/test-results/integration/*UpstreamPluginCanary*.xml")):
+              for case in ET.parse(path).getroot().iter("testcase"):
+                  failed = case.find("failure") is not None or case.find("error") is not None
+                  rows.append(f"| {case.get('name')} | {'failed' if failed else 'passed'} |")
+
+          if rows:
+              print("| Test | Result |")
+              print("| --- | --- |")
+              print("\n".join(rows))
+          else:
+              print("No canary results were produced. See the job log.")
+          PY
+
+          changed=$(git diff --name-only "$BASE_SHA" HEAD -- reposilite-plugins/checksum-plugin/src/main reposilite-plugins/migration-plugin/src/main)
+          if [ -n "$changed" ]; then
+            {
+              echo
+              echo "## Bundled plugin sources changed"
+              echo
+              echo "This pull request edits the sources of a bundled plugin. An edit there can hide a break of the plugin API, so read the binary report above closely."
+              echo
+              echo "$changed" | sed 's/^/- `/; s/$/`/'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: "Publish the HTML report"
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: plugin-api-report
+          path: reposilite-backend/build/reports/plugin-api/report.html
+          retention-days: 7
+          if-no-files-found: ignore
