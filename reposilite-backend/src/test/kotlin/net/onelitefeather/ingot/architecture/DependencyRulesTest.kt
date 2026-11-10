@@ -91,4 +91,20 @@ internal class DependencyRulesTest {
             .check(backendClasses)
     }
 
+    /**
+     * The storage layer moves bytes by path and names no Maven behaviour. The one Maven type it may name is the visibility
+     * of a repository, which the public storage API carries and which keeps its package for binary compatibility, see design D6.
+     */
+    @Test
+    fun `storage depends on maven only through the repository visibility`() {
+        val visibility = JavaClass.Predicates.belongToAnyOf(RepositoryVisibility::class.java)
+        noClasses()
+            .that().resideInAPackage("com.reposilite.storage..")
+            .should().dependOnClassesThat(
+                JavaClass.Predicates.resideInAPackage("com.reposilite.maven..").and(DescribedPredicate.not(visibility))
+            )
+            .because("the storage layer must not know the Maven rules; only RepositoryVisibility may come from com.reposilite.maven")
+            .check(backendClasses)
+    }
+
 }
