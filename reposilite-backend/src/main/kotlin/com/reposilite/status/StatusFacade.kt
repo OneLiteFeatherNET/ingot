@@ -31,6 +31,7 @@ import panda.utilities.IOUtils
 import java.time.Clock
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 class StatusFacade(
@@ -52,9 +53,11 @@ class StatusFacade(
 
     private val snapshotListeners = CopyOnWriteArrayList<(InstanceFigures) -> Unit>()
 
+    private val draining = AtomicBoolean(false)
+
     /** Answers whether this instance can serve requests now. Served at /api/status/ready. */
     val readinessProbe: ReadinessProbe = ReadinessProbe(
-        checks = readinessChecks + ReadinessCheck(
+        checks = listOf(ReadinessCheck(name = "draining", check = { !draining.get() })) + readinessChecks + ReadinessCheck(
             name = "cluster",
             applies = { clusterStatusSource != null },
             check = { clusterStatusSource?.clusterStatus(instanceFigures())?.bus?.state == "connected" },
@@ -63,6 +66,17 @@ class StatusFacade(
             failureFacade.logger.warn("Readiness check $name failed: ${cause?.let { "${it::class.simpleName}: ${it.message}" } ?: "the check answered no"}")
         },
     )
+
+    /**
+     * Marks this instance as leaving. The readiness answer lists the `draining` check as failing from then on. The flag
+     * is never cleared again, so the liveness answer does not change and the orchestrator does not restart the instance.
+     */
+    fun startDraining() {
+        draining.set(true)
+    }
+
+    fun isDraining(): Boolean =
+        draining.get()
 
     /** Adds the cluster section to the status response. Called by the cluster bus only, when a bus URL is configured. */
     fun attachClusterStatus(source: ClusterStatusSource) {

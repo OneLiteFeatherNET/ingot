@@ -26,6 +26,7 @@ import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePostInitializeEvent
 import com.reposilite.plugin.api.ReposiliteStartedEvent
 import com.reposilite.shared.extensions.shutdownGracefully
+import com.reposilite.status.StatusFacade
 import com.reposilite.web.HttpServer
 import net.onelitefeather.ingot.schema.SchemaLock
 import panda.std.Result
@@ -82,6 +83,8 @@ class Reposilite(
 
     fun shutdown() =
         alive.peek {
+            // First, so the readiness answer lists the draining check before anything else stops
+            shutdownSafely("draining flag") { extensions.facade<StatusFacade>().startDraining() }
             alive.set(false)
             logger.info("Shutting down ${parameters.hostname}::${parameters.port}...")
             shutdownSafely("scheduler") { scheduler.shutdown() }
