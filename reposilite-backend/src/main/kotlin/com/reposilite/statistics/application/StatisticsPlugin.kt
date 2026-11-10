@@ -19,6 +19,7 @@ package com.reposilite.statistics.application
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.console.ConsoleFacade
 import com.reposilite.plugin.api.Plugin
+import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
@@ -57,6 +58,12 @@ internal class StatisticsPlugin : ReposilitePlugin() {
                     }
                 }
             }, 10, 10, SECONDS)
+        }
+
+        event { _: ReposiliteDisposeEvent ->
+            // The IO executor has stopped by now, so the write runs on the shutdown thread while the database is still open.
+            // The enabled flag is not checked, so counts buffered before statistics was switched off are still written.
+            statisticsFacade.saveRecordsBulk()
         }
 
         event { event: RoutingSetupEvent ->
