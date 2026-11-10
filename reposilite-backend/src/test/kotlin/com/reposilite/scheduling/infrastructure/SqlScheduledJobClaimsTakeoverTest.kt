@@ -25,17 +25,18 @@ import java.time.Duration
 internal class SqlScheduledJobClaimsTakeoverTest {
 
     private val key = "cleanup:nightly:2026-10-15"
+    private val ttl = Duration.ofSeconds(60)
 
     @Test
     fun `takes over a daily key whose claimant stopped before its run ended`() {
         SqliteTestDatabase().use { shared ->
-            // given: instance A claims the day's key and then stops without finishing the run
+            // given: instance A leases the day's key and then stops without finishing the run
             val clock = MutableClock()
-            assertThat(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a").claim(key)).isTrue()
+            assertThat(SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a").lease(key, ttl)).isTrue()
 
             // when: instance B ticks later the same day
             clock.advance(Duration.ofHours(1))
-            val takeover = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b").claim(key)
+            val takeover = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b").lease(key, ttl)
 
             // then: instance B may take the key over, otherwise the day's run is lost until the next day
             assertThat(takeover)

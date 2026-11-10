@@ -17,20 +17,46 @@
 package com.reposilite.scheduling
 
 import java.time.Clock
+import java.time.Duration
 import java.time.ZoneOffset
 
 /**
  * Decides which instance of a cluster runs a scheduled job. Every instance that shares a database runs the same
  * schedule, so each job is claimed under a key before it starts, and only the first claim of a key is granted.
+ *
+ * A lease is a claim that expires. An instance that stops holding a lease without extending it loses the key to the
+ * next instance that asks, so a run that died in the middle is taken over. A key completed as done is never granted
+ * again.
  */
 interface ScheduledJobClaims {
 
     /** Returns true for exactly one caller per [key] among the instances that share the database. Keys are not reused. */
     fun claim(key: String): Boolean
 
-    /** Without a shared database there is no other instance to coordinate with, so every claim is granted. */
+    /**
+     * Grants the lease of [key] for [ttl] when the key is not done and holds no live lease. Returns true for exactly one
+     * caller among the instances that share the database while the lease is live.
+     */
+    fun lease(key: String, ttl: Duration): Boolean =
+        throw UnsupportedOperationException("this claim store does not grant leases")
+
+    /** Moves the expiry of a live lease of [key] forward by [ttl], only when this instance is its owner. */
+    fun extend(key: String, ttl: Duration): Boolean =
+        throw UnsupportedOperationException("this claim store does not extend leases")
+
+    /**
+     * Releases the lease of [key] when this instance is its owner. With [done] the key is also marked as done, so it is
+     * never granted again. A call by an instance that is not the owner changes nothing.
+     */
+    fun complete(key: String, done: Boolean): Unit =
+        throw UnsupportedOperationException("this claim store does not release leases")
+
+    /** Without a shared database there is no other instance to coordinate with, so every claim and lease is granted. */
     object Unshared : ScheduledJobClaims {
         override fun claim(key: String): Boolean = true
+        override fun lease(key: String, ttl: Duration): Boolean = true
+        override fun extend(key: String, ttl: Duration): Boolean = true
+        override fun complete(key: String, done: Boolean) = Unit
     }
 
 }
