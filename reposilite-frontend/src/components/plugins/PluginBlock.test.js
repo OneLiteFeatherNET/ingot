@@ -20,7 +20,12 @@ import axios from 'axios'
 import PluginBlock from './PluginBlock.vue'
 
 vi.mock('axios', () => ({
-  default: { get: vi.fn(), request: vi.fn(), post: vi.fn() },
+  default: {
+    get: vi.fn(),
+    request: vi.fn(),
+    post: vi.fn(),
+    interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
+  },
 }))
 
 const PLUGIN = 'example'
@@ -148,6 +153,7 @@ describe('status block', () => {
 
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
     vi.advanceTimersByTime(20000)
     await flushPromises()
     expect(axios.get, 'requests while the page is hidden').toHaveBeenCalledTimes(2)

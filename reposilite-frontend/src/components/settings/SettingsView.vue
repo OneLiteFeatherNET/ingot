@@ -23,7 +23,7 @@ import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
 import { ADMIN_NODES } from '../../store/nodeAccess'
-import { groupedSettingsDomains, sideNavOf } from '../../navigation/registry'
+import { contributedRailGroups, groupedSettingsDomains, settingsLabelOf, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import SideNavLayout from '../layout/SideNavLayout.vue'
@@ -118,11 +118,20 @@ const narrow = useMediaQuery('(max-width: 599px)')
 // The domains of the side navigation, in the category groups of the registry. With one domain there is
 // nothing to switch between, so no navigation is drawn.
 const sideNav = sideNavOf('settings')
+// The pages a plugin contributed are listed after the domains, in their groups, so they stay reachable where the bar
+// does not hold them. A domain a plugin labelled shows that label.
+const pluginPageGroups = computed(() => contributedRailGroups(session.can).map(group => ({
+  heading: group.heading,
+  links: group.pages.map(page => ({ key: page.key, label: page.title, to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } } }))
+})))
 const domainGroups = computed(() => (tabDomains.value.length > 1
-  ? groupedSettingsDomains(tabDomains.value).map(group => ({
-    heading: group.heading,
-    links: group.domains.map(domain => ({ key: domain, label: store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
-  }))
+  ? [
+    ...groupedSettingsDomains(tabDomains.value).map(group => ({
+      heading: group.heading,
+      links: group.domains.map(domain => ({ key: domain, label: settingsLabelOf(domain) ?? store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
+    })),
+    ...pluginPageGroups.value,
+  ]
   : []))
 
 // With no domain in the address and several to choose from, the page is the hub. With one domain the

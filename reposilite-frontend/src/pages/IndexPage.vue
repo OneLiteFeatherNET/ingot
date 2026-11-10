@@ -44,7 +44,9 @@ import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf } from '../navigation/registry'
+import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, contributedPageByRoute, contributedPageNode, contributedRailGroups } from '../navigation/registry'
+import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
+import PluginPageView from '../components/plugins/PluginPageView.vue'
 import { qualifierOf, browseLocation } from '../router/paths'
 import { textFromParam, textParam, optionalParam } from '../router/url-state'
 
@@ -96,8 +98,21 @@ useLoginErrorNotice()
  * The views report changes back through the router, so the address always says what is shown.
  */
 const section = computed(() => route.meta.section ?? null)
-const sectionAllowed = computed(() =>
-  routeAllowed(route.meta, can, isManager.value) && (!route.meta.signedIn || isLogged.value))
+// A contributed page is judged by the area it names, not by the settings meta of its route. A page the manifest
+// does not name has no node, so it is not allowed and the page below shows it as not found.
+const pluginPageNode = computed(() => (route.name === 'settings-plugin'
+  ? contributedPageNode(route.params.plugin, route.params.page)
+  : undefined))
+const sectionAllowed = computed(() => {
+  if (route.name === 'settings-plugin') return pluginPageNode.value !== undefined && can(pluginPageNode.value)
+  return routeAllowed(route.meta, can, isManager.value) && (!route.meta.signedIn || isLogged.value)
+})
+// The manifest of a plugin page is read once the session is known, so the page waits for it.
+const pluginPageMissing = computed(() => route.name === 'settings-plugin'
+  && isLogged.value
+  && pluginUiReady.value
+  && !contributedPageByRoute(route.params.plugin, route.params.page))
+watch(isLogged, (logged) => (logged ? loadPluginUi() : clearPluginUi()), { immediate: true })
 
 // The server asks for a new password: the router closes every other page at navigation time, and
 // this follows when the flag arrives later, with the session that has just been read or started.
@@ -152,10 +167,23 @@ const destinationOf = (entry) => ({
 })
 
 // The rail draws the destinations in their groups; `group` is the name the rail labels a block with.
-const railItems = computed(() => railGroups(can).flatMap(group =>
-  group.pages.map(entry => ({ ...destinationOf(entry), group: group.heading }))))
+// The contributed pages follow the built-in ones, in the group each names. They are never in the bottom bar.
+const contributedLocationOf = (page) => ({ name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } })
+const railItems = computed(() => [
+  ...railGroups(can).flatMap(group =>
+    group.pages.map(entry => ({ ...destinationOf(entry), group: group.heading }))),
+  ...contributedRailGroups(can).flatMap(group => group.pages.map(page => ({
+    key: page.key,
+    label: page.title,
+    href: router.resolve(contributedLocationOf(page)).href,
+    group: group.heading,
+  }))),
+])
 
-const selectSection = (key) => router.push(locationOf(key))
+const selectSection = (key) => {
+  const page = contributedRailGroups(can).flatMap(group => group.pages).find(entry => entry.key === key)
+  router.push(page ? contributedLocationOf(page) : locationOf(key))
+}
 
 // The bottom bar holds the first four permitted sections. When some are left over they sit under a More
 // item, which opens a small panel above the bar under the group headings, and it stays active while one of
@@ -274,6 +302,8 @@ const activeLabel = computed(() => pageLabel(section.value))
         :class="hasNavigation ? 'min-[600px]:flex min-[600px]:flex-1 min-[600px]:flex-col' : ''"
       >
         <NotFoundView v-if="route.name === 'not-found'" />
+        <ViewLoading v-else-if="route.name === 'settings-plugin' && isLogged && !pluginUiReady" />
+        <NotFoundView v-else-if="pluginPageMissing" />
         <section
           v-else-if="!sectionAllowed && isLogged"
           data-test="no-access"
@@ -339,6 +369,11 @@ const activeLabel = computed(() => pageLabel(section.value))
             :qualifier="qualifier"
           />
         </template>
+        <PluginPageView
+          v-else-if="route.name === 'settings-plugin'"
+          :plugin="route.params.plugin"
+          :page-id="route.params.page"
+        />
         <SearchView v-else-if="section === 'search'" />
         <AccountView v-else-if="section === 'account'" />
         <DashboardView v-else-if="section === 'dashboard'" />
@@ -447,7 +482,7 @@ const activeLabel = computed(() => pageLabel(section.value))
         >
           <template #icon="{ item, active }">
             <component
-              :is="SECTION_ICONS[item.key]"
+              :is="SECTION_ICONS[item.key] ?? SECTION_ICONS.settings"
               :filled="active"
             />
           </template>
