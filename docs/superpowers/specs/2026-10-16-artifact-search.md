@@ -581,7 +581,9 @@ throws breaks the dispatch to later listeners and the caller (the deploy request
 listeners therefore catch `Throwable`, log, count the failure in `dropped_enqueues` and return.
 They never throw.
 
-`ArtifactIndexSink` is the internal interface that call sites use. It has three methods:
+`ArtifactIndexSink` is the internal interface that call sites use. It lives in
+`net.onelitefeather.ingot.repository.index`, not in the search package, so the Maven write paths do
+not depend on search (extract-repository-registry, design D3). It has three methods:
 `changed(repository, path)`, `removed(repository, path)` and `reorigin(repository, directory)`.
 Each inserts one outbox row. When search is disabled the sink is a no-op.
 
@@ -1312,7 +1314,7 @@ interface ArtifactSearchEngine {
     fun status(): IndexStatus
 }
 
-/** The internal call sites use this; it only enqueues and never throws. */
+/** The internal call sites use this; it only enqueues and never throws. Package net.onelitefeather.ingot.repository.index. */
 interface ArtifactIndexSink {
     fun changed(repository: String, path: String)
     fun removed(repository: String, path: String)
@@ -1342,7 +1344,7 @@ net/onelitefeather/ingot/search/
   model/               ArtifactFileRecord, Origin, ArtifactSearchQuery, ArtifactSearchPage, IndexStatus
   parsing/             ArtifactPathParser (pure, section 2.2)
   access/              SearchAccess, SearchAccessCompiler (pure, section 5)
-  outbox/              OutboxStore, OutboxWorker, ArtifactIndexSink implementations
+  outbox/              OutboxStore, OutboxWorker, OutboxArtifactIndexSink (the interface is in repository/index)
   rebuild/             RebuildService, VerifyService, SearchScheduler, StorageEntrySource adapters
   database/            tables, DatabaseArtifactSearchEngine, ComparableVersion ordering
   application/         SearchPlugin (wiring, listeners, routes), local configuration keys

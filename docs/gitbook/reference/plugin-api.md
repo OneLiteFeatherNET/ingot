@@ -96,6 +96,7 @@ Facades are registered by Ingot's built-in plugins. A plugin gets one with `faca
 | --- | --- |
 | `Reposilite` (`com.reposilite`) | The server itself. |
 | `MavenFacade` (`com.reposilite.maven`) | `findFile(LookupRequest)`, `deployFile(DeployRequest)`, `getRepository(name)`, `getRepositories()`. |
+| `RepositoryRegistry` (`net.onelitefeather.ingot.repository`) | `repository(name)` and `repositories()`, read-only, with name, visibility, effective type, storage provider and `storesProxiedFiles` for each repository. Not yet stable for plugins: the format SPI adds a `format` member to `RegisteredRepository`, and an added member breaks implementors. |
 | `LocalConfiguration` (`com.reposilite.configuration.local`) | Values from `configuration.cdn`, such as `defaultFrontend`, `basePath` and `hideSettingsSecrets`. |
 | `SharedConfigurationFacade` (`com.reposilite.configuration.shared`) | Shared settings, through `getDomainSettings<T>()`. |
 | `FrontendFacade` (`com.reposilite.frontend`) | Frontend placeholders, see below. |
