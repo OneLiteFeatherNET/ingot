@@ -129,7 +129,13 @@ The comment for `database` in a generated `configuration.cdn` lists the user and
 
 ## The lock table
 
-On MariaDB and MySQL, Ingot creates one more table on the first start: `ingot_lock`, next to `settings`. It holds a single row, the lease that lets replicas create the schema one at a time when they start together. The statement that creates it is `CREATE TABLE IF NOT EXISTS`, so two replicas that start together both succeed. The account needs the same rights as for the other tables. PostgreSQL keeps its lock in the session and creates no table for it. SQLite and H2 create no lock table.
+On MariaDB, MySQL and PostgreSQL, Ingot creates one more table on the first start: `ingot_lock`, next to `settings`. While the instance starts, the table holds a single row, the lease that lets replicas create the schema one at a time when they start together. The statement that creates it is `CREATE TABLE IF NOT EXISTS`, so two replicas that start together both succeed. The account needs the same rights as for the other tables. PostgreSQL keeps the schema lock in the session, and it uses the same table for the metadata locks described below. SQLite and H2 create no lock table.
+
+### Concurrent writes to maven-metadata.xml
+
+While a deploy or a removal updates the `maven-metadata.xml` of an artifact, the instance writes one more row in `ingot_lock` for that artifact and deletes the row when the update ends. Two instances that update the same artifact at the same time wait for each other, and an update of a different artifact does not wait. A row whose instance has stopped expires after 60 seconds, and the next update takes it over.
+
+An update that cannot get its row within 10 seconds is refused with `503 Service Unavailable` and a `Retry-After` header. Nothing is written, so the client retries the request. Galera reports a conflict on these writes as error 1213 or SQLSTATE 40001, and Ingot retries those, so the client does not see them. A client that uploads its own `maven-metadata.xml` is not serialised by this lock, as before.
 
 A replica that waits longer than `INGOT_LOCAL_SCHEMALOCKTIMEOUT` seconds stops its start. The default is `300`, and `REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT` is read when the `INGOT_` name is not set. See [Multi-replica operation](../explanation/multi-replica-operation.md#schema-initialisation).
 

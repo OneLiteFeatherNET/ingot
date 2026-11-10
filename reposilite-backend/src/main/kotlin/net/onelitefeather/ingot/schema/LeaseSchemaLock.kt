@@ -60,7 +60,8 @@ internal interface LeaseTable {
  * lease once it expires, and the next replica takes over.
  *
  * Time comes from [clock], and waiting between attempts goes through [pause], so a test moves time forward without sleeping.
- * Error 1213 is retried, because Galera reports a certification failure with it. Every other error is raised at once.
+ * A deadlock (1213) and a certification failure (SQLSTATE 40001) are retried, because Galera reports a certification
+ * failure with either of them. Every other error is raised at once.
  */
 internal class LeaseSchemaLock private constructor(
     private val table: LeaseTable,
@@ -104,7 +105,7 @@ internal class LeaseSchemaLock private constructor(
             try {
                 return operation()
             } catch (exception: Exception) {
-                if (!exception.hasSqlErrorCode(DEADLOCK) || !clock.instant().isBefore(until)) {
+                if (!exception.isLeaseConflict() || !clock.instant().isBefore(until)) {
                     throw exception
                 }
                 pause(RETRY_BACKOFF)
@@ -123,6 +124,11 @@ internal class LeaseSchemaLock private constructor(
         private val POLL_INTERVAL: Duration = Duration.ofSeconds(1)
         private val RETRY_BACKOFF: Duration = Duration.ofMillis(200)
         private const val DEADLOCK = 1213
+        private const val CERTIFICATION_FAILURE = "40001"
+
+        /** A deadlock (1213) or a certification failure (SQLSTATE 40001), the two conflicts Galera reports for a lease write. */
+        private fun Throwable.isLeaseConflict(): Boolean =
+            hasSqlErrorCode(DEADLOCK) || hasSqlState(CERTIFICATION_FAILURE)
 
         /**
          * Waits until the lease is taken, or fails with [SchemaLockTimeoutException] once [timeout] has passed on [clock].
@@ -156,8 +162,14 @@ internal class LeaseSchemaLock private constructor(
 
 }
 
-/** The lease table of the instance database, created next to the schema it protects. */
-internal class ExposedLeaseTable(private val database: Database) : LeaseTable {
+/**
+ * The lease table of the instance database, created next to the schema it protects. [rowName] is the row the lease lives
+ * in, so one table holds the schema lease and the leases of the metadata locks.
+ */
+internal class ExposedLeaseTable(
+    private val database: Database,
+    private val rowName: String = SCHEMA_LEASE,
+) : LeaseTable {
 
     override fun createIfAbsent() {
         try {
@@ -171,7 +183,8 @@ internal class ExposedLeaseTable(private val database: Database) : LeaseTable {
             }
         } catch (exception: Exception) {
             // The lock cannot protect its own creation, so the replica that loses the race finds the table already there.
-            if (exception.hasSqlErrorCode(TABLE_EXISTS)) {
+            // PostgreSQL reports that race as a duplicate type (42P07) or a duplicate key in pg_type (23505).
+            if (exception.hasSqlErrorCode(TABLE_EXISTS) || exception.hasSqlState(DUPLICATE_TABLE) || exception.hasSqlState(UNIQUE_VIOLATION)) {
                 return
             }
             throw exception
@@ -181,7 +194,7 @@ internal class ExposedLeaseTable(private val database: Database) : LeaseTable {
     override fun tryAcquire(owner: String, now: Instant, expiresAt: Instant): Boolean =
         transaction(database) {
             val taken = IngotLockTable.update({
-                (IngotLockTable.leaseName eq LEASE_NAME) and
+                (IngotLockTable.leaseName eq rowName) and
                     ((IngotLockTable.owner eq owner) or (IngotLockTable.expiresAt less now.toEpochMilli()))
             }) {
                 it[IngotLockTable.owner] = owner
@@ -191,7 +204,7 @@ internal class ExposedLeaseTable(private val database: Database) : LeaseTable {
                 return@transaction true
             }
             IngotLockTable.insertIgnore {
-                it[IngotLockTable.leaseName] = LEASE_NAME
+                it[IngotLockTable.leaseName] = rowName
                 it[IngotLockTable.owner] = owner
                 it[IngotLockTable.expiresAt] = expiresAt.toEpochMilli()
             }.insertedCount == 1
@@ -200,7 +213,7 @@ internal class ExposedLeaseTable(private val database: Database) : LeaseTable {
     override fun renew(owner: String, expiresAt: Instant): Boolean =
         transaction(database) {
             IngotLockTable.update({
-                (IngotLockTable.leaseName eq LEASE_NAME) and (IngotLockTable.owner eq owner)
+                (IngotLockTable.leaseName eq rowName) and (IngotLockTable.owner eq owner)
             }) {
                 it[IngotLockTable.expiresAt] = expiresAt.toEpochMilli()
             } > 0
@@ -209,13 +222,15 @@ internal class ExposedLeaseTable(private val database: Database) : LeaseTable {
     override fun release(owner: String) {
         transaction(database) {
             IngotLockTable.deleteWhere {
-                (IngotLockTable.leaseName eq LEASE_NAME) and (IngotLockTable.owner eq owner)
+                (IngotLockTable.leaseName eq rowName) and (IngotLockTable.owner eq owner)
             }
         }
     }
 
     private companion object {
-        const val LEASE_NAME = "schema"
+        const val SCHEMA_LEASE = "schema"
+        const val DUPLICATE_TABLE = "42P07"
+        const val UNIQUE_VIOLATION = "23505"
         const val LEASE_NAME_LENGTH = 64
         const val OWNER_LENGTH = 128
         const val TABLE_EXISTS = 1050

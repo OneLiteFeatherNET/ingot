@@ -17,6 +17,7 @@
 package com.reposilite.maven.infrastructure
 
 import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.MetadataLocks
 import com.reposilite.maven.api.GeneratePomRequest
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.VersionLookupRequest
@@ -35,6 +36,7 @@ import com.reposilite.web.api.ReposiliteRoute
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.POST
 import io.javalin.http.HttpStatus.CREATED
+import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
@@ -229,6 +231,8 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
                             )
                         )
                         .peek { ctx.status(CREATED) }
+                        // another write of this artifact holds its metadata lock: the client retries and nothing was written
+                        .onError { error -> if (error.status == SERVICE_UNAVAILABLE.code) ctx.header("Retry-After", MetadataLocks.RETRY_AFTER_SECONDS) }
                 }
             }
         }

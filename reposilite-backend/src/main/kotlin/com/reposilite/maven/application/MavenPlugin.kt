@@ -24,6 +24,7 @@ import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.PreservedBuildsListener
 import com.reposilite.maven.PrivateAsPublicSetting
+import com.reposilite.maven.metadataLocksFor
 import com.reposilite.maven.infrastructure.SqlMirrorCacheLedger
 import com.reposilite.maven.infrastructure.CacheCommand
 import com.reposilite.maven.infrastructure.MavenApiEndpoints
@@ -55,10 +56,11 @@ internal class MavenPlugin : ReposilitePlugin() {
         val sharedConfigurationFacade = facade<SharedConfigurationFacade>()
         val mavenSettings = sharedConfigurationFacade.getDomainSettings<MavenSettings>()
         val artifactIndexSink = SearchFacadeArtifactIndexSink(extensions())
+        val clock = Clock.systemDefaultZone()
 
         val mavenFacade =
             MavenComponents(
-                clock = Clock.systemDefaultZone(),
+                clock = clock,
                 workingDirectory = parameters().workingDirectory,
                 journalist = this,
                 extensions = extensions(),
@@ -74,6 +76,7 @@ internal class MavenPlugin : ReposilitePlugin() {
                 mirrorCacheLedger = SqlMirrorCacheLedger(reposilite().database),
                 artifactIndexSink = artifactIndexSink,
                 cachePrivateAsPublic = PrivateAsPublicSetting.read(),
+                metadataLocks = metadataLocksFor(reposilite().database, clock),
             ).mavenFacade()
 
         logger.info("")
