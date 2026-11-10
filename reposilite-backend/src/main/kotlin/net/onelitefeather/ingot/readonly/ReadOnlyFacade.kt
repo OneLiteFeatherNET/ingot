@@ -16,13 +16,21 @@
 
 package net.onelitefeather.ingot.readonly
 
+import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
+import com.reposilite.audit.api.AuditEvent
+import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
 
 /**
- * The read-only state of this instance, for the request dispatch, the scheduled runs and the status.
+ * The read-only state of this instance, for the request dispatch, the scheduled runs and the status, and the toggle that
+ * stores a change of it.
  */
 class ReadOnlyFacade internal constructor(
     private val cache: ReadOnlyStateCache,
+    private val store: ReadOnlyStore,
+    private val setting: ReadOnlySetting,
+    private val extensions: Extensions,
 ) : Facade {
 
     fun state(): ReadOnlyState =
@@ -35,6 +43,43 @@ class ReadOnlyFacade internal constructor(
     fun refresh() =
         cache.refresh()
 
+    /**
+     * Stores [enabled] as the state. Nothing is stored when the environment forces the state or when the stored state already
+     * has the value. A change is written with a compare-and-save, so a toggle that lost a race answers [ToggleOutcome.Conflict]
+     * and stores nothing. Every stored change writes one audit event with [actor].
+     */
+    fun set(enabled: Boolean, actor: AuditActor): ToggleOutcome {
+        if (setting.forced) return ToggleOutcome.ForcedByEnvironment
+
+        val stored = store.read()
+        if ((stored?.enabled ?: false) == enabled) {
+            return ToggleOutcome.Unchanged(ReadOnlyState(enabled, ReadOnlySource.STORED))
+        }
+        if (!store.compareAndSave(expectedRevision = stored?.revision, enabled = enabled)) {
+            return ToggleOutcome.Conflict
+        }
+
+        cache.refresh()
+        extensions.emitEvent(AuditEvent(action = AuditAction.READ_ONLY_CHANGED, actor = actor, details = mapOf("enabled" to enabled)))
+        return ToggleOutcome.Stored(ReadOnlyState(enabled, ReadOnlySource.STORED))
+    }
+
+}
+
+/** The answer of a toggle. Only [Stored] changed anything. */
+sealed interface ToggleOutcome {
+
+    /** The stored state was changed to the requested value. */
+    data class Stored(val state: ReadOnlyState) : ToggleOutcome
+
+    /** The stored state already had the requested value, so nothing was written. */
+    data class Unchanged(val state: ReadOnlyState) : ToggleOutcome
+
+    /** The environment forces the state, so the stored state cannot be changed from here. */
+    data object ForcedByEnvironment : ToggleOutcome
+
+    /** Another writer changed the stored state while this toggle was handled. */
+    data object Conflict : ToggleOutcome
 }
 
 /**

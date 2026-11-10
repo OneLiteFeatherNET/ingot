@@ -19,8 +19,10 @@ package net.onelitefeather.ingot.readonly
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
+import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
+import com.reposilite.web.api.RoutingSetupEvent
 import java.time.Clock
 
 /**
@@ -30,13 +32,21 @@ import java.time.Clock
 @Plugin(name = "read-only", dependencies = ["configuration"])
 internal class ReadOnlyPlugin : ReposilitePlugin() {
 
-    override fun initialize(): ReadOnlyFacade =
-        ReadOnlyFacade(
-            cache = ReadOnlyStateCache(
-                clock = Clock.systemUTC(),
-                store = ConfigurationReadOnlyStore(facade<ConfigurationFacade>()),
-                setting = reposilite().readOnlySetting,
-            ),
+    override fun initialize(): ReadOnlyFacade {
+        val setting = reposilite().readOnlySetting
+        val store = ConfigurationReadOnlyStore(facade<ConfigurationFacade>())
+        val readOnlyFacade = ReadOnlyFacade(
+            cache = ReadOnlyStateCache(Clock.systemUTC(), store, setting),
+            store = store,
+            setting = setting,
+            extensions = reposilite().extensions,
         )
+
+        event { event: RoutingSetupEvent ->
+            event.registerRoutes(ReadOnlyEndpoints(readOnlyFacade))
+        }
+
+        return readOnlyFacade
+    }
 
 }
