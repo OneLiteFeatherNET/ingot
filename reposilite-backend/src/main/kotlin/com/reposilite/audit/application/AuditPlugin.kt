@@ -27,6 +27,7 @@ import com.reposilite.maven.api.DeleteEvent
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.api.MirrorIntegrityEvent
 import com.reposilite.maven.api.ProxyRefusedEvent
+import com.reposilite.maven.api.UploadChecksumMismatchEvent
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
@@ -96,6 +97,10 @@ internal class AuditPlugin : ReposilitePlugin() {
             recordSafely { auditFacade.record(mirrorIntegrityAuditEvent(event)) }
         }
 
+        event { event: UploadChecksumMismatchEvent ->
+            recordSafely { auditFacade.record(uploadChecksumMismatchAuditEvent(event)) }
+        }
+
         event { _: ReposiliteInitializeEvent ->
             reposilite().scheduler.scheduleWithFixedDelay({ recordSafely { auditFacade.purgeExpired() } }, 1, 24, HOURS)
         }
@@ -157,6 +162,22 @@ internal fun mirrorIntegrityAuditEvent(event: MirrorIntegrityEvent): AuditEvent 
             "outcome" to event.outcome.name.lowercase(),
         ),
         success = false,
+    )
+
+/**
+ * The audit event of a checksum file that did not match its artifact. The details name the algorithm and the outcome, and
+ * never the digests, which would only repeat what the repository already holds.
+ */
+internal fun uploadChecksumMismatchAuditEvent(event: UploadChecksumMismatchEvent): AuditEvent =
+    AuditEvent(
+        action = AuditAction.UPLOAD_CHECKSUM_MISMATCH,
+        actor = AuditActor.fromSessionIdentifier(event.by),
+        repository = event.repository,
+        path = event.gav.toString(),
+        details = mapOf(
+            "algorithm" to event.algorithm.extension,
+            "outcome" to event.outcome.name.lowercase(),
+        ),
     )
 
 /**
