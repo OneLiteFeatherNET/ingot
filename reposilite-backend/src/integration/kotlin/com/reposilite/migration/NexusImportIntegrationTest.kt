@@ -100,6 +100,19 @@ internal class NexusImportIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `should list the repositories of Nexus with their formats and mark the formats Ingot cannot import`() {
+        // when: an admin asks Nexus what it holds
+        val response = admin(Unirest.post("$base/api/migration/nexus/discover").header(JSON, JSON_TYPE).body(connection())).asString()
+
+        // then: the answer counts the Maven repositories and the npm repository, and marks npm as unsupported
+        assertThat(response.status).describedAs(response.body).isEqualTo(200)
+        val discovered = json(response.body)
+        assertThat(discovered["formats"]["maven2"]["repositories"].asInt()).isEqualTo(3)
+        assertThat(discovered["formats"]["npm"]["repositories"].asInt()).isEqualTo(1)
+        assertThat(discovered["repositories"].single { it["name"].asText() == "npm-hosted" }["supported"].asBoolean()).isFalse
+    }
+
+    @Test
     fun `should answer a dry run with the loss report and change nothing in Ingot`() {
         // given: a dry run of the Nexus repositories
         val id = createJob("DRY_RUN")

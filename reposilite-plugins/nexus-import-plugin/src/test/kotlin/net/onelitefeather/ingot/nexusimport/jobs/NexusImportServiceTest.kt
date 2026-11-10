@@ -259,6 +259,23 @@ internal class NexusImportServiceTest {
     }
 
     @Test
+    fun `should pause a reference job for the credentials when its reference cannot be resolved at run time`() {
+        // given: a reference the resolver knows when the job is created, and no longer knows when it runs
+        scenario.references["\${env:NEXUS_PASSWORD}"] = "s3cret-value"
+        val service = scenario.service()
+        val id = create(service, request("IMPORT", password = "\${env:NEXUS_PASSWORD}"))
+        scenario.references.clear()
+
+        // when: the job runs
+        val outcome = service.run(id)
+
+        // then: it waits for the operator, who corrects the reference, and Nexus was not contacted with a guess
+        assertThat(outcome).isEqualTo(RunOutcome.PAUSED_CREDENTIALS)
+        assertThat(service.job(id).orThrow().pauseReason).isEqualTo(PauseReason.CREDENTIALS_NEEDED)
+        assertThat(scenario.nexus.requests()).isEmpty()
+    }
+
+    @Test
     fun `should keep a literal password out of the job row, the report and the run event when the job fails`() {
         // given: Nexus answers every listing with a server error, so the job fails
         scenario.nexus.on(NEXUS_ASSETS) { FakeReply.status(500) }
