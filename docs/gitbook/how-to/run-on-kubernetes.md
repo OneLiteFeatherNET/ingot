@@ -272,6 +272,10 @@ sharedConfiguration:
 
 The server answers `409` to a save from the dashboard or the API for a domain that the file holds, and it names the file. Change the file in Git instead. The chart adds `--shared-configuration` to `INGOT_OPTS` for you, and keeps the arguments of an `INGOT_OPTS` or `REPOSILITE_OPTS` value that `env` sets. Arguments that `envFrom` sets cannot be seen by the chart, so move them into `env`.
 
+## Trust a private certificate authority
+
+Set `extraCaCerts.enabled` to `true` and name one ConfigMap (`configMapName`) or one Secret (`secretName`) that holds the PEM files of your authority. The chart mounts it read-only at `/etc/ingot/extra-ca` and sets `INGOT_EXTRA_CA_CERTS` to that path. The image imports the certificates when the pod starts and keeps the public authorities trusted. How the image reads the directory, and which starts it refuses, is described in [Trust a private certificate authority](install-with-docker.md#trust-a-private-certificate-authority).
+
 ## Use S3 for repositories
 
 Storage is set per repository in the maven settings. To store a repository in S3, set its `storageProvider` to `s3`. The endpoint can be an in-cluster service, for example a MinIO service:

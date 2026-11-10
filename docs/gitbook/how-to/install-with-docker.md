@@ -132,6 +132,38 @@ The image reads these variables.
 
 The entrypoint adds `--working-directory=/app/data` to the server arguments, unless `INGOT_OPTS` already sets a working directory.
 
+## Trust a private certificate authority
+
+Use this when a mirror source, an OIDC issuer, a database or a NATS broker presents a certificate from an internal authority. Mount the PEM files of that authority into a directory and name the directory in `INGOT_EXTRA_CA_CERTS`. For example, with a `docker-compose.yml` beside a directory `extra-ca` that holds `internal-ca.pem`:
+
+```yaml
+services:
+  ingot:
+    image: ghcr.io/onelitefeathernet/ingot:1.2.0
+    environment:
+      INGOT_EXTRA_CA_CERTS: /etc/ingot/extra-ca
+    volumes:
+      - ingot-data:/app/data
+      - ./extra-ca:/etc/ingot/extra-ca:ro
+    ports:
+      - "8080:8080"
+
+volumes:
+  ingot-data:
+```
+
+At start, the entrypoint imports every certificate of every file in the directory into a copy of the Java trust store, and the server trusts the copy. The public authorities stay trusted, so a bundle with one private authority only adds to them. The copy is made under `/tmp` in the container and is created again at every start. Nothing is written to the mounted directory or to `/app/data`. The directory can be read-only, and the image works with `user: "977:977"` and with a read-only root filesystem when `/tmp` is writable.
+
+Files whose name starts with a dot are skipped, which is how a Kubernetes volume lays out its keys. A file that contains no certificate is an error, as is a missing or empty directory. A start with one of these errors stops with exit code 1 and one line that names the variable, for example:
+
+```
+INGOT_EXTRA_CA_CERTS: /etc/ingot/extra-ca is not a directory
+INGOT_EXTRA_CA_CERTS: no certificate found in /etc/ingot/extra-ca/notes.txt
+INGOT_EXTRA_CA_CERTS: JAVA_OPTS already sets javax.net.ssl.trustStore, so the bundle cannot be imported
+```
+
+When the variable is unset or empty, the start is the same as before and no trust store option is added. `REPOSILITE_EXTRA_CA_CERTS` works as a fallback when `INGOT_EXTRA_CA_CERTS` is not set.
+
 ## Change the port
 
 The server listens on port 8080 inside the container. To use another port, set the server port in `INGOT_OPTS` and publish that port. For example, for port 9090:

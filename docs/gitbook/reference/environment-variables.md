@@ -128,6 +128,7 @@ The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
 | `PUID` | none | `977` | User id of the `reposilite` service account. Read only when the container starts as root. |
 | `PGID` | none | `977` | Group id of the service account. Read only when the container starts as root. |
 | `INGOT_FORCE_CHOWN` | `REPOSILITE_FORCE_CHOWN` | unset | `true` changes the owner of `/app` and `/var/log/reposilite` at every start. Any other value does nothing. Read only when the container starts as root. |
+| `INGOT_EXTRA_CA_CERTS` | `REPOSILITE_EXTRA_CA_CERTS` | unset | Directory of PEM files with certificate authorities to trust in addition to the public ones. Every certificate in every file is imported at start into a copy of the JDK trust store under `/tmp`. An invalid value stops the start with exit code 1 and one line that names the variable. See [Trust a private certificate authority](../how-to/install-with-docker.md#trust-a-private-certificate-authority). |
 
 Behavior of the entrypoint:
 
