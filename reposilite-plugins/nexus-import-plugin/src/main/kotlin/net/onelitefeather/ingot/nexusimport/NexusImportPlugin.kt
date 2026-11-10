@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.nexusimport
 
+import com.reposilite.configuration.shared.SettingsSecretReferences
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
@@ -38,6 +39,7 @@ class NexusImportPlugin : ReposilitePlugin() {
             transport = JdkNexusTransport(),
             clock = Clock.systemUTC(),
             sleeper = { duration -> Thread.sleep(duration.toMillis()) },
+            secretReferences = SettingsSecretReferences.read(System.getenv()),
         )
 
         event { event: RoutingSetupEvent ->

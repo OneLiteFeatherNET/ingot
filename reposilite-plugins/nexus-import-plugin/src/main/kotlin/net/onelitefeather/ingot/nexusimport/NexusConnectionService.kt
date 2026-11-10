@@ -16,6 +16,8 @@
 
 package net.onelitefeather.ingot.nexusimport
 
+import com.reposilite.configuration.shared.SecretReferenceException
+import com.reposilite.configuration.shared.SecretReferenceResolver
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.toErrorResponse
 import io.javalin.http.HttpStatus.BAD_REQUEST
@@ -47,6 +49,8 @@ class NexusConnectionService(
     private val transport: NexusTransport,
     private val clock: Clock,
     private val sleeper: (Duration) -> Unit,
+    /** The resolver of `${env:}` and `${file:}` references, null when the operator has switched references off. */
+    private val secretReferences: SecretReferenceResolver? = null,
 ) {
 
     fun test(request: ConnectionRequest): Result<ConnectionReport, ErrorResponse> {
@@ -58,9 +62,35 @@ class NexusConnectionService(
         if (request.user.isBlank() || request.password.isEmpty()) {
             return BAD_REQUEST.toErrorResponse("A user name and a password are required").asError()
         }
+        val password = when (val resolved = resolvePassword(request.password)) {
+            is PasswordResult.Resolved -> resolved.secret
+            is PasswordResult.Refused -> return BAD_REQUEST.toErrorResponse(resolved.reason).asError()
+        }
 
-        val connection = NexusConnection(uri, request.user, Secret(request.password))
+        val connection = NexusConnection(uri, request.user, password)
         val client = NexusClient(connection, transport, clock, sleeper, settings.maxRequestsPerSecond)
         return NexusConnectionProbe(client, connection).run().asSuccess()
+    }
+
+    /**
+     * A password that starts with `${` is a reference and is resolved here; anything else is the literal password. The reason
+     * of a refusal names the reference, never the value it would resolve to.
+     */
+    private fun resolvePassword(raw: String): PasswordResult {
+        if (!raw.startsWith("\${")) {
+            return PasswordResult.Resolved(Secret(raw))
+        }
+        val resolver = secretReferences
+            ?: return PasswordResult.Refused("The password is a reference, but secret references are switched off (INGOT_SETTINGS_SECRET_REFERENCES)")
+        return try {
+            PasswordResult.Resolved(Secret(resolver.resolve(raw)))
+        } catch (exception: SecretReferenceException) {
+            PasswordResult.Refused("The password reference cannot be resolved: ${exception.message}")
+        }
+    }
+
+    private sealed interface PasswordResult {
+        class Resolved(val secret: Secret) : PasswordResult
+        class Refused(val reason: String) : PasswordResult
     }
 }
