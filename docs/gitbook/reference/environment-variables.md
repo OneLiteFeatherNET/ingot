@@ -199,6 +199,17 @@ Read once at startup from `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`, or from the leg
 
 The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`. See [Visibility](repository-settings.md#visibility).
 
+### Shared configuration reload
+
+Read once at startup from `INGOT_SHARED_CONFIGURATION_RELOAD`, or from the legacy `REPOSILITE_SHARED_CONFIGURATION_RELOAD` when the `INGOT_` name is not set or empty. It applies only with `--shared-configuration`. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.
+
+| Value | Meaning |
+| --- | --- |
+| `false` (default) | The file is read at start only. A change needs a restart, and a save on the dashboard or through the API writes the file back. |
+| `true` | The file is checked every 10 seconds and a changed document is applied, including a rewrite that keeps the modification time and a swap of a Kubernetes `..data` link. The API refuses writes to the domains the file holds with `409`, names the file in the message and writes nothing. A document that does not parse keeps the settings in force and logs one error. |
+
+The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_SHARED_CONFIGURATION_RELOAD`. With the database as the shared source the variable has no effect, and the instance logs one warning at startup. See [Shared settings source](configuration-and-startup.md#shared-settings-source).
+
 ### Other system properties
 
 | System property | Default | Meaning |
