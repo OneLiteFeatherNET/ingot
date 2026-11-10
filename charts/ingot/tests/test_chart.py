@@ -112,6 +112,15 @@ def ingress_paths(manifests):
     return [(p["path"], p["pathType"], p["backend"]["service"]["name"]) for p in rules[0]["http"]["paths"]]
 
 
+# Substrings of the replica warnings in templates/NOTES.txt. Each test checks one of them.
+CLUSTER_WARNING = "INGOT_CLUSTER_URL is not set"
+CLAIM_WARNING = "persistence.accessMode is ReadWriteOnce without persistence.existingClaim"
+NO_PERSISTENCE_WARNING = "persistence.enabled is false"
+DATABASE_WARNING = "neither INGOT_LOCAL_DATABASE nor REPOSILITE_LOCAL_DATABASE is set in env"
+MEMORY_WARNING = "the autoscaler scales on the memory metric"
+REPLICA_WARNINGS = (CLAIM_WARNING, NO_PERSISTENCE_WARNING, DATABASE_WARNING, MEMORY_WARNING)
+
+
 def http_route_rules(manifests):
     routes = of_kind(manifests, "HTTPRoute")
     if len(routes) != 1:
@@ -451,7 +460,73 @@ class ChartRenderTest(unittest.TestCase):
             "deployment": {"replicas": 2},
             "env": [{"name": "INGOT_CLUSTER_URL", "value": "nats://broker.example.org:4222"}],
         }
-        self.assertNotIn("WARNING", notes(values), "a configured INGOT_CLUSTER_URL must silence the warning")
+        # Only the cluster bus message is checked: with two replicas the replica warnings of the chart still apply.
+        self.assertNotIn(CLUSTER_WARNING, notes(values), "a configured INGOT_CLUSTER_URL must silence the cluster bus warning")
+
+    def test_notes_warn_about_a_read_write_once_claim_with_several_replicas(self):
+        self.assertIn(CLAIM_WARNING, notes({"deployment": {"replicas": 2}}),
+                      "two replicas on a ReadWriteOnce claim must produce the claim warning")
+
+    def test_notes_do_not_warn_about_the_claim_when_an_existing_claim_is_set(self):
+        values = {"deployment": {"replicas": 2}, "persistence": {"existingClaim": "shared-data"}}
+        self.assertNotIn(CLAIM_WARNING, notes(values), "an existingClaim is the shared volume the operator chose")
+
+    def test_notes_do_not_warn_about_the_claim_with_a_read_write_many_claim(self):
+        values = {"deployment": {"replicas": 2}, "persistence": {"accessMode": "ReadWriteMany"}}
+        self.assertNotIn(CLAIM_WARNING, notes(values), "a ReadWriteMany claim can be shared by several pods")
+
+    def test_notes_warn_about_disabled_persistence_with_several_replicas(self):
+        values = {"deployment": {"replicas": 2}, "persistence": {"enabled": False}}
+        self.assertIn(NO_PERSISTENCE_WARNING, notes(values),
+                      "without persistence each pod keeps its own data, so the warning must appear")
+
+    def test_notes_warn_about_the_database_with_several_replicas(self):
+        self.assertIn(DATABASE_WARNING, notes({"deployment": {"replicas": 2}}),
+                      "several replicas without INGOT_LOCAL_DATABASE must produce the database warning")
+
+    def test_notes_do_not_warn_about_the_database_when_the_local_database_is_set(self):
+        values = {"deployment": {"replicas": 2}, "env": [{"name": "INGOT_LOCAL_DATABASE", "value": "postgresql"}]}
+        self.assertNotIn(DATABASE_WARNING, notes(values), "INGOT_LOCAL_DATABASE in env must silence the database warning")
+
+    def test_notes_accept_the_legacy_local_database_name_in_env(self):
+        values = {"deployment": {"replicas": 2}, "env": [{"name": "REPOSILITE_LOCAL_DATABASE", "value": "postgresql"}]}
+        self.assertNotIn(DATABASE_WARNING, notes(values), "the legacy REPOSILITE_LOCAL_DATABASE must silence the warning")
+
+    def test_notes_warn_about_the_memory_metric_only_with_the_autoscaler_on(self):
+        self.assertIn(MEMORY_WARNING, notes({"autoscaling": {"enabled": True}}),
+                      "the default autoscaler lists the memory metric, so the warning must appear")
+        self.assertNotIn(MEMORY_WARNING, notes({"deployment": {"replicas": 2}}),
+                         "without the autoscaler the memory metric is not in use, so no warning")
+
+    def test_notes_do_not_warn_about_the_memory_metric_when_only_cpu_is_scaled(self):
+        cpu_only = [{"type": "Resource", "resource": {"name": "cpu", "target": {"type": "Utilization", "averageUtilization": 60}}}]
+        values = {"autoscaling": {"enabled": True, "metrics": cpu_only}}
+        self.assertNotIn(MEMORY_WARNING, notes(values), "a CPU-only autoscaler must not produce the memory warning")
+
+    def test_notes_add_no_replica_warning_for_a_single_replica_with_defaults(self):
+        text = notes()
+        for warning in (CLUSTER_WARNING,) + REPLICA_WARNINGS:
+            self.assertNotIn(warning, text, "a single replica with defaults must get no replica warning")
+
+    def test_notes_never_fail_the_install_for_any_replica_combination(self):
+        persistence_variants = (
+            {"enabled": True},
+            {"enabled": True, "existingClaim": "shared-data"},
+            {"enabled": False},
+        )
+        for replicas in (1, 2):
+            for autoscaling in (False, True):
+                for persistence in persistence_variants:
+                    for with_database in (False, True):
+                        values = {
+                            "deployment": {"replicas": replicas},
+                            "autoscaling": {"enabled": autoscaling},
+                            "persistence": persistence,
+                        }
+                        if with_database:
+                            values["env"] = [{"name": "INGOT_LOCAL_DATABASE", "value": "postgresql"}]
+                        with self.subTest(values=values):
+                            notes(values)  # raises when the dry run exits with a failure status
 
     def test_helm_lint_is_clean_in_all_in_one_mode(self):
         code, stdout, stderr = helm(["lint", CHART_DIR, "--strict"], {"mode": "allInOne"})
