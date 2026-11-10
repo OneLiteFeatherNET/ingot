@@ -127,9 +127,21 @@ pods lose one version.
 `PreservedBuildsListener` has the same shape: it deletes snapshot files based on a timestamp
 read from metadata another pod may be rewriting.
 
-The fix is a lock row keyed by repository and path, taken with `SELECT ... FOR UPDATE` for
-the duration of the read-modify-write. This covers both storage providers, because the
-serialisation happens in the database rather than in the storage layer.
+The fix is a lock keyed by repository and artifact directory, held for the whole
+read-modify-write of the artifact-level and version-level `maven-metadata.xml`. Writers of one
+artifact wait for each other, and writers of other artifacts do not. This covers both storage
+providers, because the serialisation happens in the database rather than in the storage layer.
+
+The lock is not `SELECT ... FOR UPDATE`, as first proposed here. Galera certifies a row lock
+only at commit, so the lock would not keep a second writer out while the metadata is read and
+written, and the transaction would stay open across storage I/O. The lock is a lease row in
+`ingot_lock` instead, the same primitive as the schema lock in 1.1: it has an owner and an
+expiry of 60 seconds, a dead holder is taken over after the expiry, and the row is not held
+inside a transaction. Before the write, the holder checks that it still owns the lease, and a
+lease that was taken over is refused. Galera's certification failure (error 1213, SQLSTATE
+40001) is retried. A write that cannot take the lock within 10 seconds answers `503` with
+`Retry-After` and writes nothing. The lock table is described in
+`docs/gitbook/how-to/configure-database.md`.
 
 ### 1.3 Flush statistics on shutdown
 
