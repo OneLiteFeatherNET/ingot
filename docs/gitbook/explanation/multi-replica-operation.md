@@ -83,6 +83,18 @@ Repository content is outside the database. Its location decides what replicas c
 
 An optional cluster bus can tell the other replicas at once when one of them changes a token, a session or a resolution entry, and it can show their log lines. The database remains the source of truth, so the bus only shortens the time until the other replicas catch up. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
 
+## What the Helm chart warns about
+
+With more than one replica, or with the autoscaler on, the install notes of the Helm chart warn about the settings that several replicas need and that are missing. Each warning is printed, and none of them stops the install:
+
+* `INGOT_CLUSTER_URL` is not set in `env`. Without the bus, the replicas converge through the database on the next poll.
+* `persistence` uses a `ReadWriteOnce` claim without `existingClaim`. A pod on another node cannot mount that claim.
+* `persistence.enabled` is `false`, so each pod keeps its own data.
+* Neither `INGOT_LOCAL_DATABASE` nor `REPOSILITE_LOCAL_DATABASE` is set in `env`, so the replicas would use a local database.
+* The autoscaler lists a `memory` metric. The heap is capped, so memory may never trigger a scale-out.
+
+The checks read the values and `env` only. A setting that comes through `envFrom` is not seen, so its warning stays. The settings are described in [Run on Kubernetes](../how-to/run-on-kubernetes.md#running-more-than-one-replica).
+
 ## Rollout sequence
 
 A rolling update stops one replica after another. What happens to a request that is in flight on the replica being stopped depends on the stop sequence. With the default settings the replica stops at once, as in earlier versions, and a client that is halfway through an upload or a download gets a dropped connection. Two optional settings let the replica leave in an orderly way:
@@ -92,7 +104,7 @@ A rolling update stops one replica after another. What happens to a request that
 3. It waits up to `INGOT_SHUTDOWN_TIMEOUT` seconds for the requests in flight to complete. Meanwhile new requests get `503`, except the status answers.
 4. It stops. A request that is still running at that point is cut off, and the log states how many.
 
-The delay and the timeout together must fit into the grace period of your orchestrator, for example `terminationGracePeriodSeconds` in Kubernetes, otherwise the process is killed before the sequence ends. Both settings default to `0`, which keeps the stop sequence of earlier versions. See [Environment variables](../reference/environment-variables.md#shutdown-variables).
+The delay and the timeout together must fit into the grace period of your orchestrator, for example `terminationGracePeriodSeconds` in Kubernetes, otherwise the process is killed before the sequence ends. Both settings default to `0`, which keeps the stop sequence of earlier versions. See [Environment variables](../reference/environment-variables.md#shutdown-variables). The Helm chart sets these from `deployment.shutdown.preStopSeconds` and `drainSeconds`, and the grace period follows from them. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#shutdown-budget). The values apply to each replica in turn during a rolling update.
 
 ## What is not provided yet
 

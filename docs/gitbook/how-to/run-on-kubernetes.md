@@ -152,11 +152,20 @@ The answer is `{"status":"UP"}` with status `200`. A failing instance answers `5
 
 ## Health checks
 
-The chart runs a readiness probe and a liveness probe. Both send `GET /` to port `8080` by default. Set `probes.path` to point them at another path.
+The chart runs a readiness probe and a liveness probe. In the default all-in-one mode both send `GET /` to port `8080`. Set `probes.path` to point them at another path.
+
+Set `probes.readinessPath` to `/api/status/ready` to send only the readiness probe to the readiness endpoint. It reports the database, the storage and, with a cluster bus, the bus. A replica that fails a check leaves the load balancer rotation, and the liveness probe does not restart it, so a database outage does not restart the pod.
+
+```yaml
+probes:
+  readinessPath: /api/status/ready
+```
 
 {% hint style="warning" %}
-The probes check whether `/` answers. The chart does not send them to the readiness endpoint `/api/status/ready` yet, so a replica whose database is down can still pass them. If you turn off the dashboard with `INGOT_LOCAL_DEFAULTFRONTEND=false`, check that `/` still answers with a success status before you rely on the probes. This behaviour was not verified for this page.
+With `probes.readinessPath` empty, the all-in-one readiness probe checks whether `/` answers, so a replica whose database is down can still pass it. If you turn off the dashboard with `INGOT_LOCAL_DEFAULTFRONTEND=false`, check that `/` still answers with a success status before you rely on the probes. This behaviour was not verified for this page.
 {% endhint %}
+
+In split mode the readiness probe uses `/api/status/ready` by default, with a 3 second timeout and two failures. See [Run the dashboard split from the server with Helm](run-split-with-helm.md#probes-and-shutdown).
 
 Kubernetes ignores the `HEALTHCHECK` of the image. Only the probes of the chart apply.
 
@@ -242,12 +251,25 @@ As of this writing, the code does not yet do the following, which the design for
 
 * Schema creation runs in every pod at startup, with no lock across pods.
 * A metadata write, such as a deployment that updates `maven-metadata.xml`, is not locked across pods. Two pods that deploy the same artifact at the same time can lose one version from the metadata.
-* The chart's probes do not use the readiness endpoint `/api/status/ready` yet, and shutdown does not wait for in-flight requests. Statistics are not flushed at shutdown.
+* The all-in-one probes use `/` unless `probes.readinessPath` is set, and shutdown does not wait for in-flight requests unless `deployment.shutdown` is set. Statistics are not flushed at shutdown.
 
 Until these are fixed, run one replica. Several replicas are only safe if you accept these risks. The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.
 {% endhint %}
 
-An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](configure-cluster-bus.md).
+An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](configure-cluster-bus.md). With more than one replica or the autoscaler on, the install notes warn about the settings that are missing, such as a `ReadWriteOnce` claim or no `INGOT_LOCAL_DATABASE`. The warnings do not stop the install. See [Multi-replica operation](../explanation/multi-replica-operation.md#what-the-helm-chart-warns-about).
+
+### Shutdown budget
+
+A rolling update stops one pod after another. Two optional values let a pod leave in an orderly way: a `preStop` sleep keeps the pod in the endpoints while the proxy removes it, and `drainSeconds` sets `INGOT_SHUTDOWN_TIMEOUT`, the time Ingot waits for requests in flight.
+
+```yaml
+deployment:
+  shutdown:
+    preStopSeconds: 15
+    drainSeconds: 30
+```
+
+Both values default to `0`, which keeps the immediate stop and the 60 second grace period. When either is above `0`, the grace period becomes `preStopSeconds + drainSeconds + 10`, here 55 seconds, so the kubelet does not kill the pod before the budget ends. The values apply to every pod, so a rolling update takes about their sum longer for each replica. If you set `deployment.lifecycle`, your own `preStop` action is kept and `preStopSeconds` renders no sleep. An `INGOT_SHUTDOWN_TIMEOUT` set in `env` is kept as well.
 
 ## Expose the instance with ingress
 
