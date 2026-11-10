@@ -559,3 +559,30 @@ Egress rule that allows DNS to any destination. Without it the restricted egress
     - port: 53
       protocol: TCP
 {{- end }}
+
+{{/*
+Mount path of the extra CA bundle. The image reads the PEM files from it through INGOT_EXTRA_CA_CERTS.
+*/}}
+{{- define "ingot.extraCaPath" -}}
+/etc/ingot/extra-ca
+{{- end }}
+
+{{/*
+Fails when extraCaCerts is enabled without exactly one source, or when env sets INGOT_EXTRA_CA_CERTS too. The message
+names extraCaCerts.
+*/}}
+{{- define "ingot.extraCaCheck" -}}
+{{- if .Values.extraCaCerts.enabled -}}
+{{- $sources := 0 -}}
+{{- if .Values.extraCaCerts.configMapName -}}
+{{- $sources = add1 $sources -}}
+{{- end -}}
+{{- if .Values.extraCaCerts.secretName -}}
+{{- $sources = add1 $sources -}}
+{{- end -}}
+{{- if ne (int $sources) 1 -}}
+{{- fail "extraCaCerts.enabled needs exactly one source: set extraCaCerts.configMapName or extraCaCerts.secretName, not both and not neither" -}}
+{{- end -}}
+{{- include "ingot.checkEnvConflict" (dict "root" . "name" "INGOT_EXTRA_CA_CERTS" "owner" "extraCaCerts") -}}
+{{- end -}}
+{{- end }}

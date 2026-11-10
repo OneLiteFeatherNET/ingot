@@ -58,6 +58,16 @@ networkPolicy:
     # Example: [{to: [{ipBlock: {cidr: 10.0.4.0/24}}], ports: [{port: 5432, protocol: TCP}]}]
     extra: []
 
+## Opt-in extra CA certificates of the server, for an internal certificate authority. Off by default. Set exactly one
+## source. The object holds PEM files, which are mounted read-only and added to the trust store next to the public CAs.
+## The chart only mounts the bundle and sets INGOT_EXTRA_CA_CERTS. The server image must read that variable.
+extraCaCerts:
+  enabled: false
+  # Name of a ConfigMap in the release namespace with PEM files.
+  configMapName: ""
+  # Name of a Secret in the release namespace with PEM files.
+  secretName: ""
+
 ## Name overrides. Set both to `reposilite` to take over the names of an upstream reposilite release.
 nameOverride: ""
 fullnameOverride: ""

@@ -55,6 +55,14 @@
         }
       }
     },
+    "extraCaCerts": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Mounts the ConfigMap or Secret with PEM files read-only into the server and sets INGOT_EXTRA_CA_CERTS."},
+        "configMapName": {"type": "string", "description": "ConfigMap with PEM files. Set exactly one of configMapName and secretName when enabled."},
+        "secretName": {"type": "string", "description": "Secret with PEM files. Set exactly one of configMapName and secretName when enabled."}
+      }
+    },
     "deployment": {
       "type": "object",
       "properties": {
