@@ -252,8 +252,20 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      # The previous release is the highest version tag, so the mixed-version case always pairs the current build with the
+      # release an operator upgrades from. This checkout is shallow and fetches no tags, so the tags are read from the remote.
+      - name: "Resolve the latest release"
+        id: previous
+        run: |
+          tag=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's#.*refs/tags/##' | sort -V | tail -n 1)
+          test -n "$tag"
+          echo "Previous release: $tag"
+          echo "image=ghcr.io/onelitefeathernet/ingot:${tag#v}" >> "$GITHUB_OUTPUT"
+
       - name: "Run the container tests"
-        run: ./gradlew :reposilite-backend:containerTest
+        env:
+          PREVIOUS_IMAGE: ${{ steps.previous.outputs.image }}
+        run: ./gradlew :reposilite-backend:containerTest -Dingot.previous.image="$PREVIOUS_IMAGE"
 
       - name: "Publish the container test results"
         if: always()
