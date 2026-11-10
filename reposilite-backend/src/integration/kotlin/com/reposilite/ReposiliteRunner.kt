@@ -28,6 +28,7 @@ import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.storage.StorageProviderSettings
 import com.reposilite.token.AccessTokenSecurityProvider
 import net.dzikoysk.cdn.KCdnFactory
+import net.onelitefeather.ingot.web.ShutdownSettings
 import net.dzikoysk.cdn.source.Source
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -36,6 +37,7 @@ import panda.std.Result
 import panda.std.ResultAssertions.assertOk
 import panda.std.reactive.ReferenceUtils
 import java.io.File
+import java.time.Duration
 
 /**
  * This is a dirty launcher of Reposilite instance for integration tests.
@@ -73,10 +75,25 @@ internal abstract class ReposiliteRunner {
             throw IllegalStateException("Missing Reposilite extension on integration test")
         }
 
-        val logger = PrintStreamLogger(System.out, System.err, Channel.ALL, false)
         // Port 0: the OS picks a free port and the server reports it back, so nothing has to be retried.
-        assertOk(prepareInstance(logger))
+        assertOk(prepareInstance(rootLogger()))
     }
+
+    /** The logger the instance writes to. Tests that assert a log line replace it with an in-memory logger. */
+    protected open fun rootLogger(): Logger =
+        PrintStreamLogger(System.out, System.err, Channel.ALL, false)
+
+    /** The drain settings of the instance. The default is the strict stop of earlier versions. */
+    protected open fun shutdownSettings(): ShutdownSettings =
+        ShutdownSettings()
+
+    /** Waits out the pre-stop delay. Tests replace it with a recorder, so no test waits on the wall clock. */
+    protected open fun awaitDelay(duration: Duration) {
+        Thread.sleep(duration.toMillis())
+    }
+
+    /** Runs once the instance is built and before it launches, for listeners and routes the test adds. */
+    protected open fun beforeLaunch(reposilite: Reposilite) { }
 
     private fun prepareInstance(logger: Logger): Result<Reposilite, Exception> {
         val parameters = ReposiliteParameters()
@@ -97,7 +114,7 @@ internal abstract class ReposiliteRunner {
         overrideLocalConfiguration(localConfiguration)
         KCdnFactory.createStandard().render(localConfiguration, Source.of(reposiliteWorkingDirectory.resolve(LOCAL_CONFIGURATION_FILE)))
 
-        reposilite = ReposiliteFactory.createReposilite(parameters, logger)
+        reposilite = ReposiliteFactory.createReposilite(parameters, logger, shutdownSettings(), ::awaitDelay)
         reposilite.journalist.setVisibleThreshold(Channel.WARN)
 
         val sharedConfigurationFacade = reposilite.extensions.facade<SharedConfigurationFacade>()
@@ -141,6 +158,7 @@ internal abstract class ReposiliteRunner {
         }
 
         overrideSharedConfiguration(sharedConfigurationFacade)
+        beforeLaunch(reposilite)
         return reposilite.launch()
     }
 
