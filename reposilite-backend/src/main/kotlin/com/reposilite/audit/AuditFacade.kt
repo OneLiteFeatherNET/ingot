@@ -27,6 +27,7 @@ import com.reposilite.scheduling.ScheduledJobClaims
 import com.reposilite.scheduling.utcDayKey
 import panda.std.reactive.Reference
 import java.time.Clock
+import java.time.Duration
 
 /** Largest number of rows one export writes. Anything beyond it is cut off and the export says so in its log. */
 const val MAX_EXPORT_ROWS = 100_000
@@ -34,6 +35,9 @@ const val MAX_EXPORT_ROWS = 100_000
 private const val EXPORT_BATCH_SIZE = 500
 private const val MINUTE_MILLIS = 60_000L
 private const val DAY_MILLIS = 86_400_000L
+
+/** A purge that stops renewing its day key for this long lets a later call take the day over. */
+private val PURGE_LEASE: Duration = Duration.ofSeconds(60)
 
 class AuditFacade(
     private val journalist: Journalist,
@@ -155,14 +159,19 @@ class AuditFacade(
             return 0
         }
 
-        if (!claims.claim(utcDayKey("audit-purge", clock))) {
+        val key = utcDayKey("audit-purge", clock)
+        if (!claims.lease(key, PURGE_LEASE)) {
             logger.debug("AUDIT | Retention purge of today is claimed by another instance, skipping")
             return 0
         }
 
-        val cutoff = clock.millis() - retentionDays * DAY_MILLIS
-        return repository.deleteBefore(cutoff)
-            .also { removed -> if (removed > 0) logger.info("AUDIT | Removed $removed event(s) older than $retentionDays day(s)") }
+        try {
+            val cutoff = clock.millis() - retentionDays * DAY_MILLIS
+            return repository.deleteBefore(cutoff)
+                .also { removed -> if (removed > 0) logger.info("AUDIT | Removed $removed event(s) older than $retentionDays day(s)") }
+        } finally {
+            claims.complete(key, done = true)
+        }
     }
 
     fun count(): Long =
