@@ -1,0 +1,61 @@
+{
+  "maven": {
+    "repositories": [
+      {
+        "id": "releases",
+        "visibility": "PUBLIC",
+        "redeployment": false,
+        "preserveSnapshots": false,
+        "storageProvider": {
+          "type": "fs"
+        },
+        "storagePolicy": "PRIORITIZE_UPSTREAM_METADATA",
+        "proxied": []
+      },
+      {
+        "id": "snapshots",
+        "visibility": "PUBLIC",
+        "redeployment": true,
+        "preserveSnapshots": true,
+        "storageProvider": {
+          "type": "fs"
+        },
+        "storagePolicy": "PRIORITIZE_UPSTREAM_METADATA",
+        "proxied": []
+      },
+      {
+        "id": "private",
+        "visibility": "PRIVATE",
+        "redeployment": false,
+        "preserveSnapshots": false,
+        "storageProvider": {
+          "type": "fs"
+        },
+        "storagePolicy": "PRIORITIZE_UPSTREAM_METADATA",
+        "proxied": []
+      },
+      {
+        "id": "central",
+        "visibility": "PUBLIC",
+        "redeployment": false,
+        "preserveSnapshots": false,
+        "storageProvider": {
+          "type": "fs"
+        },
+        "storagePolicy": "PRIORITIZE_UPSTREAM_METADATA",
+        "proxied": [
+          {
+            "reference": "https://repo.example.com/maven2",
+            "store": true,
+            "allowedGroups": [],
+            "allowedExtensions": [".jar", ".pom"],
+            "connectTimeout": 3,
+            "readTimeout": 15,
+            "httpProxy": "",
+            "authenticatedFetchingOnly": false
+          }
+        ]
+      }
+    ]
+  }
+}

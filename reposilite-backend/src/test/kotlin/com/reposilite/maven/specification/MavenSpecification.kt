@@ -113,7 +113,7 @@ internal abstract class MavenSpecification {
     protected val logger = InMemoryLogger()
     protected val extensions = Extensions(logger)
 
-    private val failureFacade = FailureComponents(
+    protected val failureFacade = FailureComponents(
         journalist = logger
     ).failureFacade()
 
