@@ -50,7 +50,7 @@ internal class DefaultSharedSettingsReference<T : SharedSettings>(
     private val setter: (T) -> Unit
 ) : SharedSettingsReference<T> {
 
-    override val name = type.kotlin.findAnnotation<Doc>()!!.title.sanitizeURLParam()
+    override val name = settingsName(type)
 
     override fun get(): T =
         getter()
@@ -64,7 +64,7 @@ internal class DefaultSharedSettingsReference<T : SharedSettings>(
         }
 
         return supplyThrowing { setter(settings) }
-            .mapErr { IllegalStateException("Cannot update settings reference $name", it) }
+            .mapErr { if (it is SecretReferenceException) it else IllegalStateException("Cannot update settings reference $name", it) }
             .map { get() }
     }
 
@@ -72,7 +72,10 @@ internal class DefaultSharedSettingsReference<T : SharedSettings>(
     private fun normalize(value: T): T =
         (value as? ValidatedSettings)?.normalized() as? T ?: value
 
-    private fun String.sanitizeURLParam(): String =
-        lowercase().replace(' ', '_')
-
 }
+
+/**
+ * The name of a settings domain as the API and the document use it, taken from the [Doc] title of its type.
+ */
+internal fun settingsName(type: Class<*>): String =
+    type.kotlin.findAnnotation<Doc>()!!.title.lowercase().replace(' ', '_')

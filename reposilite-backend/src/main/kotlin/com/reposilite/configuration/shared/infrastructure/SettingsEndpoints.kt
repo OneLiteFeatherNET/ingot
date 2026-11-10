@@ -119,7 +119,11 @@ internal class SettingsEndpoints(
                     ctx.header(Header.ETAG, snapshot.etag)
                     val settings = snapshot.settings
                     if (hideSecrets.get()) {
-                        SettingsSecrets.mask(settings.javaClass, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings))
+                        SettingsSecrets.mask(
+                            settings.javaClass,
+                            DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings),
+                            keepReferences = sharedConfigurationFacade.secretReferencesEnabled(),
+                        )
                     } else {
                         settings
                     }

@@ -17,6 +17,7 @@
 package com.reposilite.configuration.shared.application
 
 import com.reposilite.configuration.local.LocalConfiguration
+import com.reposilite.configuration.shared.SettingsSecretReferences
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedConfigurationReload
 import com.reposilite.configuration.shared.api.SharedSettings
@@ -45,6 +46,7 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
             failureFacade = facade(),
             configurationFacade = facade(),
             sharedConfigurationReload = parameters().sharedConfigurationReload ?: SharedConfigurationReload.read(),
+            secretReferences = SettingsSecretReferences.read(parameters().settingsSecretEnvironment ?: System.getenv()),
         ).sharedConfigurationFacade()
 
         logger.info("")

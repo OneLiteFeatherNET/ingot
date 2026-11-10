@@ -256,6 +256,18 @@ The value is compared without regard to case, and an empty value counts as not s
 
 The Helm chart sets this variable to `true`, and adds `--shared-configuration` with the mounted file to `INGOT_OPTS`, when its `sharedConfiguration` block is enabled. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#keep-the-shared-settings-in-git).
 
+### Settings secret references
+
+Read once at startup. They turn on the `${env:NAME}` and `${file:PATH}` references in secret fields of the shared settings, and they name what a reference may read. The stored document keeps the reference, so the secret itself is not in the database. The syntax and the failure rules are in [Settings secret references](configuration-and-startup.md#settings-secret-references).
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `INGOT_SETTINGS_SECRET_REFERENCES` | `false` | `true` resolves references. `false` or unset keeps every value as plain text. Any other value stops the startup. The legacy spelling `REPOSILITE_SETTINGS_SECRET_REFERENCES` is read when the `INGOT_` name is not set or empty. |
+| `INGOT_SETTINGS_SECRET_ENV` | empty | Comma separated names of the variables that `${env:NAME}` may read. Empty refuses every `${env:...}`. The legacy spelling `REPOSILITE_SETTINGS_SECRET_ENV` is the fallback. |
+| `INGOT_SETTINGS_SECRET_FILES` | empty | Comma separated absolute directories that `${file:PATH}` may read from. A file outside them, or reached through `..` or a symbolic link that leaves them, is refused. Empty refuses every `${file:...}`. The legacy spelling `REPOSILITE_SETTINGS_SECRET_FILES` is the fallback. |
+
+The variables are read from the environment only. A value in the shared settings cannot turn them on or widen the lists. The value of the switch is compared without regard to case, and an empty value counts as not set.
+
 ### Other system properties
 
 | System property | Default | Meaning |
