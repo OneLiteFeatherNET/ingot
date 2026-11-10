@@ -9,6 +9,7 @@ Run from the repository root:
 
 import os
 import re
+import textwrap
 import unittest
 
 import yaml
@@ -31,7 +32,7 @@ NEW_GUIDES = [
 CHECKED_PAGES = NEW_GUIDES + ["how-to/use-s3-storage.md", "how-to/run-on-kubernetes.md"]
 
 SUMMARY_LINK = re.compile(r"\]\(([^)\s]+\.md)\)")
-YAML_BLOCK = re.compile(r"^```yaml[^\n]*\n(.*?)^```", re.DOTALL | re.MULTILINE)
+YAML_BLOCK = re.compile(r"^([ \t]*)```yaml[^\n]*\n(.*?)^\1```", re.DOTALL | re.MULTILINE)
 
 
 def read(path):
@@ -50,9 +51,9 @@ def chart_defaults():
 def values_blocks(page_path):
     """Yields the parsed mappings of the yaml blocks that set a top-level key of values.yaml."""
     defaults = chart_defaults()
-    for block in YAML_BLOCK.findall(read(page_path)):
+    for _indent, block in YAML_BLOCK.findall(read(page_path)):
         try:
-            documents = [doc for doc in yaml.safe_load_all(block) if doc is not None]
+            documents = [doc for doc in yaml.safe_load_all(textwrap.dedent(block)) if doc is not None]
         except yaml.YAMLError:
             continue
         for document in documents:
