@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
@@ -70,23 +72,6 @@ internal class RepositoryService(
         publish = { extensions.emitEvent(it) },
     )
 
-    private val ignoredExtensions = listOf(
-        // Checksums
-        ".md5",
-        ".sha1",
-        ".sha256",
-        ".sha512",
-        // Artifact descriptions
-        ".pom",
-        ".xml",
-        ".module",
-        // Artifact extensions
-        "-sources.jar",
-        "-javadoc.jar",
-        // Sign
-        ".asc"
-    )
-
     fun deployFile(deployRequest: DeployRequest): Result<Unit, ErrorResponse> =
         with(deployRequest) {
             when {
@@ -103,7 +88,7 @@ internal class RepositoryService(
                                         .getFile(gav)
                                         .peek { logger.info("DEPLOY | Generating checksums for $gav") }
                                         .flatMap { repository.writeFileChecksums(gav, it) }
-                                        .peek { artifactIndexSink.indexChanged(repository.name, gav) }
+                                        .peek { artifactIndexSink.indexChanged(repository.name, gav, repository.repositoryFormat.pathRules) }
                                 else -> {
                                     logger.debug("DEPLOY | Skipping checksums generation for $gav")
                                     ok()
@@ -257,7 +242,7 @@ internal class RepositoryService(
             tryRemote = { hosts -> mirrorService.findRemoteDetails(repository, gav, accessToken, hosts) },
             isHostedMember = ::isHostedMember,
         ).peek {
-            recordResolvedRequest(Identifier(repository.name, gav.toString()), it)
+            recordResolvedRequest(Identifier(repository.name, gav.toString()), it, repository.repositoryFormat.pathRules.countsAsDownload(gav))
         }
 
     private fun findLocalDetails(accessToken: AccessTokenIdentifier?, repository: Repository, gav: Location): Result<FileDetails, ErrorResponse> =
@@ -295,8 +280,8 @@ internal class RepositoryService(
             EffectiveRepositoryType.PROXY, EffectiveRepositoryType.MIXED -> false
         }
 
-    private fun recordResolvedRequest(identifier: Identifier, fileDetails: FileDetails) {
-        if (fileDetails is DocumentInfo && ignoredExtensions.none { extension -> fileDetails.name.endsWith(extension) }) {
+    private fun recordResolvedRequest(identifier: Identifier, fileDetails: FileDetails, countsAsDownload: Boolean) {
+        if (fileDetails is DocumentInfo && countsAsDownload) {
             statisticsFacade.incrementResolvedRequest(IncrementResolvedRequest(identifier))
         }
     }

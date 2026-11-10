@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
@@ -122,7 +124,7 @@ internal class MetadataService(
                             </project>
                             """.trimIndent().trim().byteInputStream()
                         )
-                        .peek { artifactIndexSink.indexChanged(repository.name, gav) }
+                        .peek { artifactIndexSink.indexChanged(repository.name, gav, repository.repositoryFormat.pathRules) }
                         .map { findMetadata(repository, parentDirectory).orElseGet { Metadata() } }
                         .map {
                             it.copy(

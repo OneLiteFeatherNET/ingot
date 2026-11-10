@@ -54,10 +54,10 @@ internal class RepositoryFactory(
      * leaves the repository out, so a stored repository of a later version is never served as Maven.
      */
     fun createRepository(repositoryName: String, configuration: RepositorySettings): Repository {
-        val format = configuration.resolvedFormat()
-        require(formats.get(format) != null) {
-            "Unknown format '$format' of repository '$repositoryName', the installed formats are ${formats.ids.sorted().joinToString(", ")}"
-        }
+        val format = formats.get(configuration.resolvedFormat())
+            ?: throw IllegalArgumentException(
+                "Unknown format '${configuration.resolvedFormat()}' of repository '$repositoryName', the installed formats are ${formats.ids.sorted().joinToString(", ")}"
+            )
 
         return Repository(
             name = repositoryName.ifEmpty { UUID.randomUUID().toString() },
@@ -70,7 +70,7 @@ internal class RepositoryFactory(
             uploadChecksumPolicy = configuration.uploadChecksumPolicy ?: uploadChecksumDefault,
             versionPolicy = configuration.versionPolicy ?: VersionPolicy.MIXED,
             readOnly = configuration.readOnly ?: false,
-            format = format,
+            repositoryFormat = format,
             mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) },
             storageProvider =
                 storageFacade

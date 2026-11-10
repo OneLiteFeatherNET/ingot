@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.format
 
+import com.reposilite.storage.api.Location
 import java.util.ServiceLoader
 
 /**
@@ -39,6 +40,33 @@ interface RepositoryFormat {
 
     /** The id a repository names in its `format` key, for example `maven2`. Unique among the installed formats. */
     val id: String
+
+    /** The rules that tell the kinds of files of this format apart. Shared code asks these instead of naming a layout. */
+    val pathRules: PathRules
+
+}
+
+/**
+ * The answers about one file path that depend on the layout of a format. Each answer is a question shared code asks
+ * (deployment, caching, resolution, statistics, the search index), so a format that has none of these files answers no.
+ */
+@ExperimentalIngotFormatApi
+interface PathRules {
+
+    /** A file the server generates and owns, such as the Maven `maven-metadata.xml`: a client may overwrite it and a proxy must not freeze it. */
+    fun isGeneratedMetadata(path: Location): Boolean
+
+    /** A metadata or checksum file, which does not make a directory a version and is not checked against its checksum. */
+    fun isMetadataOrChecksum(path: Location): Boolean
+
+    /** A file whose resolution decision may be remembered by the resolution cache. */
+    fun isResolutionMetadata(path: Location): Boolean
+
+    /** Whether a successful read of this path counts as a download in the statistics. */
+    fun countsAsDownload(path: Location): Boolean
+
+    /** The path the artifact index is told about when this path is written, or null when it is not an artifact. */
+    fun indexPath(path: Location): String?
 
 }
 

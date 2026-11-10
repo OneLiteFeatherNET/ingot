@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
-import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.maven.api.ProxyRefusedEvent
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.ResolutionInvalidatedEvent
@@ -56,7 +57,7 @@ internal class ResolutionProvider(
         val cache = repository.resolutionCache
         val authenticated = accessToken != null
         val cached = cache?.lookup(gav, authenticated)
-        val isMetadata = gav.isResolutionMetadata()
+        val isMetadata = repository.repositoryFormat.pathRules.isResolutionMetadata(gav)
         val notFoundMessage = "Cannot find '$gav' in local or remote repositories"
 
         val candidates = (cached as? ResolutionCache.Origin.Remote)
@@ -95,7 +96,7 @@ internal class ResolutionProvider(
     }
 
     fun invalidate(repository: Repository, gav: Location): Boolean {
-        if (gav.isResolutionMetadata()) {
+        if (repository.repositoryFormat.pathRules.isResolutionMetadata(gav)) {
             repository.resolutionCache?.invalidate(gav)
             extensions.emitEvent(ResolutionInvalidatedEvent(repository.name, gav.toString()))
             return true
@@ -178,17 +179,6 @@ internal class ResolutionProvider(
 
         cache.record(prefix, authenticated, origin)
     }
-
-    private fun Location.isResolutionMetadata(): Boolean =
-        getSimpleName().let { name ->
-            when {
-                name.endsWith(".pom") -> true
-                name.endsWith(".module") -> true
-                name == METADATA_FILE -> true
-                name.endsWith(".xml") -> name == "ivy.xml" || name.startsWith("ivy-")
-                else -> false
-            }
-        }
 
     override fun getLogger(): Logger =
         journalist.logger

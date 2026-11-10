@@ -18,6 +18,7 @@ package com.reposilite.maven
 
 import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
 import net.onelitefeather.ingot.format.RepositoryFormat
+import net.onelitefeather.ingot.format.PathRules
 import net.onelitefeather.ingot.format.RepositoryFormats
 
 /**
@@ -28,5 +29,7 @@ import net.onelitefeather.ingot.format.RepositoryFormats
 class Maven2Format : RepositoryFormat {
 
     override val id: String = RepositoryFormats.DEFAULT_ID
+
+    override val pathRules: PathRules = MavenPathRules
 
 }

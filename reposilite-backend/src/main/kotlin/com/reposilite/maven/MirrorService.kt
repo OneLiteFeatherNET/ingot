@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.StoragePolicy.PRIORITIZE_UPSTREAM_METADATA
-import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.maven.api.MirrorIntegrityEvent
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.plugin.Extensions
@@ -83,7 +84,7 @@ internal class MirrorService(
 
     fun shouldPrioritizeMirrorRepository(repository: Repository, gav: Location): Boolean =
         when {
-            repository.storagePolicy == PRIORITIZE_UPSTREAM_METADATA && gav.getSimpleName().contains(METADATA_FILE) ->
+            repository.storagePolicy == PRIORITIZE_UPSTREAM_METADATA && repository.repositoryFormat.pathRules.isGeneratedMetadata(gav) ->
                 repository.metadataMaxAgeInSeconds <= 0 || !isMetadataFileValid(repository, gav)
             else ->
                 false
@@ -190,7 +191,7 @@ internal class MirrorService(
      * not match is refused before the storage commits it.
      */
     private fun fetchAndStoreFromHost(repository: Repository, gav: Location, host: String, config: MirroredRepositorySettings, client: RemoteClient): Result<Unit, ErrorResponse> {
-        val policy = if (gav.getSimpleName().isMetadataOrChecksumFileName()) ChecksumPolicy.IGNORE else config.checksumPolicy
+        val policy = if (repository.repositoryFormat.pathRules.isMetadataOrChecksum(gav)) ChecksumPolicy.IGNORE else config.checksumPolicy
         val response = client.get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
             .mapErr { error -> error.updateMessage { "$host: $it" } }
         return when (policy) {
@@ -294,10 +295,10 @@ internal class MirrorService(
         val sourceHost = upstreamSourceHost(host)
         return repository.storageProvider.putFile(gav, data)
             .peek {
-                if (!gav.getSimpleName().isMetadataOrChecksumFileName()) {
+                if (!repository.repositoryFormat.pathRules.isMetadataOrChecksum(gav)) {
                     mirrorCache.recordStored(repository.name, directory.provenancePath(), holdsHostedArtifacts, sourceHost)
                 }
-                artifactIndexSink.indexChanged(repository.name, gav)
+                artifactIndexSink.indexChanged(repository.name, gav, repository.repositoryFormat.pathRules)
             }
     }
 
@@ -306,7 +307,7 @@ internal class MirrorService(
             return false
         }
         val files = repository.storageProvider.getFiles(directory)
-        return files.isOk && files.get().any { !it.getSimpleName().isMetadataOrChecksumFileName() }
+        return files.isOk && files.get().any { !repository.repositoryFormat.pathRules.isMetadataOrChecksum(it) }
     }
 
     private fun <V> searchInRemoteRepositories(

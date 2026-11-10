@@ -14,37 +14,24 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
 import com.reposilite.maven.api.Checksum
-import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.storage.api.Location
+import net.onelitefeather.ingot.format.PathRules
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 
-/**
- * The path the artifact index is told about when [this] location was written. A checksum sidecar maps to its base file,
- * because the index stores the checksums of the base file. `maven-metadata.xml` and its checksums are not artifacts and
- * map to null (artifact search spec, 3.5).
- */
-internal fun Location.artifactIndexPath(): String? {
-    val baseName = baseFileName()
-    if (baseName.startsWith(METADATA_FILE)) {
-        return null
-    }
-    return resolveSibling(baseName).provenancePath()
-}
+/** The index path of [this] location under the Maven rules, see [MavenPathRules.indexPath]. */
+internal fun Location.artifactIndexPath(): String? =
+    MavenPathRules.indexPath(this)
 
 /** Whether this location is a checksum sidecar such as `app-1.0.0.jar.sha1`. */
 internal fun Location.isChecksumSidecar(): Boolean =
     Checksum.entries.any { getSimpleName().endsWith(".${it.extension}") }
 
-private fun Location.baseFileName(): String {
-    val name = getSimpleName()
-    val checksumSuffix = Checksum.entries.map { ".${it.extension}" }.firstOrNull { name.endsWith(it) }
-    return checksumSuffix?.let { name.removeSuffix(it) } ?: name
-}
-
-/** Tells the index that [location] of [repository] was written, unless the write is not an artifact. */
-internal fun ArtifactIndexSink.indexChanged(repository: String, location: Location) {
-    location.artifactIndexPath()?.let { changed(repository, it) }
+/** Tells the index that [location] of [repository] was written, unless the format says the write is not an artifact. */
+internal fun ArtifactIndexSink.indexChanged(repository: String, location: Location, pathRules: PathRules) {
+    pathRules.indexPath(location)?.let { changed(repository, it) }
 }
