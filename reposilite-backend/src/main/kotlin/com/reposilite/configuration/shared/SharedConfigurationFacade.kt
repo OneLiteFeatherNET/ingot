@@ -56,6 +56,11 @@ data class SharedSettingsSnapshot<S : SharedSettings>(
     val etag: String,
 )
 
+/**
+ * A write refused because the shared settings file owns the domain, see [SharedConfigurationFacade.isExternallyManaged].
+ */
+class SharedSettingsManagedException(message: String) : IllegalStateException(message)
+
 private val canonicalWriter = DEFAULT_OBJECT_MAPPER.writer().with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
 
 class SharedConfigurationFacade(
@@ -179,6 +184,10 @@ class SharedConfigurationFacade(
         synchronized(stateLock) {
             repeat(MAX_WRITE_ATTEMPTS) {
                 val reference = getSettingsReference<S>(name) ?: return null
+                if (isExternallyManaged()) {
+                    return SharedSettingsManagedException(managedMessage(name)).asError()
+                }
+
                 val revision = refreshFromProvider()
                 val before = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
                 val result = reference.update(body)
@@ -230,6 +239,10 @@ class SharedConfigurationFacade(
         synchronized(stateLock) {
             repeat(MAX_WRITE_ATTEMPTS) {
                 val reference = getSettingsReference<S>(name) ?: return null
+                if (isExternallyManaged()) {
+                    return HttpStatus.CONFLICT.toErrorResult(managedMessage(name))
+                }
+
                 val revision = refreshFromProvider()
                 val current = reference.get()
                 if (!EntityTag.matches(ifMatch, current.entityTag())) {
@@ -257,6 +270,13 @@ class SharedConfigurationFacade(
             return HttpStatus.CONFLICT.toErrorResult("Settings domain '$name' kept changing while it was stored, reload it and try again")
         }
     }
+
+    /**
+     * The message of a write refused because the shared settings file owns the domain. It names the file, so an operator knows
+     * where the change belongs.
+     */
+    private fun managedMessage(name: String): String =
+        "Settings domain '$name' is managed by ${sharedConfigurationProvider.name()} and cannot be changed through the API, change the file instead"
 
     /**
      * A mutable provider, the remote database, can be written by another instance. Its stored document is read before a
