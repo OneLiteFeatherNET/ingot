@@ -20,16 +20,20 @@ import com.reposilite.auth.api.SessionDetails
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
+import io.javalin.openapi.OpenApiSecurity
 
 internal class AuthenticationEndpoint(private val authenticationFacade: AuthenticationFacade) : ReposiliteRoutes() {
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/auth/me",
         methods = [HttpMethod.GET],
         summary = "Get token details",

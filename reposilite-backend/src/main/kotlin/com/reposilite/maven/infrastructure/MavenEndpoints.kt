@@ -37,6 +37,8 @@ import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.web.api.ReposiliteRoute
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.DELETE
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.HEAD
@@ -52,6 +54,7 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
+import io.javalin.openapi.OpenApiSecurity
 import net.onelitefeather.ingot.web.SecurityHeaders
 import panda.std.Result
 import panda.std.asSuccess
@@ -211,6 +214,7 @@ internal class MavenEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         tags = [ "Maven" ],
         path = "/{repository}/{gav}",
         methods = [HttpMethod.POST, HttpMethod.PUT],
@@ -248,6 +252,7 @@ internal class MavenEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         tags = ["Maven"],
         path = "/{repository}/{gav}",
         summary = "Delete the given file from repository",

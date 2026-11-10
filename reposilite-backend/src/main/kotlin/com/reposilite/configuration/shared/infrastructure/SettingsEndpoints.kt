@@ -29,6 +29,8 @@ import com.reposilite.shared.badRequestError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.status.FailureFacade
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.PUT
@@ -38,6 +40,7 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
+import io.javalin.openapi.OpenApiSecurity
 import panda.std.Result
 import panda.std.asError
 import panda.std.asSuccess
@@ -56,6 +59,7 @@ internal class SettingsEndpoints(
 ) : ReposiliteRoutes() {
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/settings/domains",
         methods = [HttpMethod.GET],
         tags = ["Settings"],
@@ -72,6 +76,7 @@ internal class SettingsEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/settings/schema/{name}",
         methods = [HttpMethod.GET],
         tags = ["Settings"],
@@ -100,6 +105,7 @@ internal class SettingsEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/settings/domain/{name}",
         methods = [HttpMethod.GET],
         tags = ["Settings"],
@@ -133,6 +139,7 @@ internal class SettingsEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/settings/domain/{name}",
         methods = [HttpMethod.PUT],
         tags = ["Settings"],

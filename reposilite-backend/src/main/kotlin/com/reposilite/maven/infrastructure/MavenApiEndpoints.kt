@@ -33,6 +33,8 @@ import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.web.api.ReposiliteRoute
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.POST
 import io.javalin.http.HttpStatus.CREATED
@@ -43,6 +45,7 @@ import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiResponse
 import io.javalin.openapi.OpenApiRequestBody
+import io.javalin.openapi.OpenApiSecurity
 import panda.std.asSuccess
 
 internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFacade) {
@@ -231,6 +234,7 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         tags = ["Maven"],
         path = "/api/maven/generate/pom/{repository}/{gav}",
         methods = [HttpMethod.POST],

@@ -19,6 +19,8 @@ package net.onelitefeather.ingot.identity.login.api
 import com.reposilite.shared.errorResponse
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route
 import io.javalin.http.HttpStatus.NOT_FOUND
 import io.javalin.openapi.HttpMethod
@@ -27,6 +29,7 @@ import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiRequestBody
 import io.javalin.openapi.OpenApiResponse
+import io.javalin.openapi.OpenApiSecurity
 import net.onelitefeather.ingot.identity.login.LoginSettings
 import net.onelitefeather.ingot.identity.login.ldap.LdapConnectionCheck
 import net.onelitefeather.ingot.identity.login.ldap.LdapConnectionReport
@@ -51,6 +54,7 @@ internal class ProviderTestEndpoints(
 ) : ReposiliteRoutes() {
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/auth/providers/oidc/{id}/test",
         methods = [HttpMethod.POST],
         summary = "Test an OpenID Connect provider",
@@ -70,6 +74,7 @@ internal class ProviderTestEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/auth/providers/ldap/test",
         methods = [HttpMethod.POST],
         summary = "Test the LDAP login",

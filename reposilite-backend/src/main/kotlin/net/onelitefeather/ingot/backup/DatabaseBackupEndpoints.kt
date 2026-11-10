@@ -19,17 +19,21 @@ package net.onelitefeather.ingot.backup
 import com.reposilite.audit.api.auditActor
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.POST
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiResponse
+import io.javalin.openapi.OpenApiSecurity
 import java.time.format.DateTimeFormatter
 
 /** The database API. Only principals with the maintenance area can take a snapshot. */
 internal class DatabaseBackupEndpoints(private val snapshotService: DatabaseSnapshotService) : ReposiliteRoutes() {
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         tags = ["Database"],
         path = "/api/database/snapshots",
         methods = [HttpMethod.POST],
