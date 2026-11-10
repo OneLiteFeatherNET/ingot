@@ -27,12 +27,15 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 
 /**
- * Characterises which proxy a mirror client without `httpProxy` uses. Each probe runs in a child JVM, because the
- * environment of the JVM cannot be changed from inside it. The child makes one https request to a host name under
- * `.invalid`, which never resolves, so no request leaves the machine. A fake proxy on a loopback port records whether the
- * request reached it.
+ * Each probe runs in a child JVM, because the environment of the JVM cannot be changed from inside it. The child makes one
+ * https request to a host name under `.invalid`, which never resolves, so no request leaves the machine. A fake proxy on a
+ * loopback port records whether the request reached it.
+ *
+ * The first tests characterise the JVM: the standard variable is ignored, and the system property is honoured. The
+ * following tests cover the switch `INGOT_HTTP_USE_ENV_PROXY`, which lets a mirror without `httpProxy` take its proxy
+ * from `HTTPS_PROXY`.
  */
-internal class MirrorProxyEnvironmentCharacterisationIntegrationTest {
+internal class MirrorProxyEnvironmentIntegrationTest {
 
     @Test
     fun `should not send a mirror request through HTTPS_PROXY when the mirror has no httpProxy`() {
@@ -43,6 +46,40 @@ internal class MirrorProxyEnvironmentCharacterisationIntegrationTest {
             // then: the probe ran, and the request did not reach the proxy
             assertThat(probe.exitCode).describedAs("exit code of the probe, output: ${probe.output}").isZero()
             assertThat(proxy.requests).describedAs("requests that reached the fake proxy when only HTTPS_PROXY is set").isEmpty()
+        }
+    }
+
+    @Test
+    fun `should send a mirror request through HTTPS_PROXY when the switch is on and the mirror has no httpProxy`() {
+        FakeProxy().use { proxy ->
+            // when: the switch is on and HTTPS_PROXY names the proxy
+            val probe = runProbe(
+                environment = mapOf("HTTPS_PROXY" to proxy.url(), "INGOT_HTTP_USE_ENV_PROXY" to "true"),
+                jvmArguments = emptyList(),
+            )
+
+            // then: the probe ran, and the request reached the proxy
+            assertThat(probe.exitCode).describedAs("exit code of the probe, output: ${probe.output}").isZero()
+            assertThat(proxy.requests).describedAs("requests that reached the fake proxy with the switch on").hasSize(1)
+        }
+    }
+
+    @Test
+    fun `should not send a mirror request through HTTPS_PROXY when the switch is on and NO_PROXY lists the host`() {
+        FakeProxy().use { proxy ->
+            // when: the switch is on, but NO_PROXY lists the mirror host
+            val probe = runProbe(
+                environment = mapOf(
+                    "HTTPS_PROXY" to proxy.url(),
+                    "INGOT_HTTP_USE_ENV_PROXY" to "true",
+                    "NO_PROXY" to "upstream.invalid",
+                ),
+                jvmArguments = emptyList(),
+            )
+
+            // then: the probe ran, and the request went directly
+            assertThat(probe.exitCode).describedAs("exit code of the probe, output: ${probe.output}").isZero()
+            assertThat(proxy.requests).describedAs("requests that reached the fake proxy for a host in NO_PROXY").isEmpty()
         }
     }
 

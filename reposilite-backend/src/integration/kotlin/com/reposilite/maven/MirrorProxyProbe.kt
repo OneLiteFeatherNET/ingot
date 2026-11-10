@@ -21,14 +21,16 @@ import com.reposilite.shared.http.HttpRemoteClient
 import kotlin.system.exitProcess
 
 /**
- * Child process of [MirrorProxyEnvironmentCharacterisationIntegrationTest]. It performs one request through the mirror
- * client exactly as a mirror without `httpProxy` does (proxy `null`), so the JVM and its environment decide the route.
+ * Child process of [MirrorProxyEnvironmentIntegrationTest]. It performs one request for a mirror without `httpProxy`:
+ * the proxy is the one that [selectEnvironmentProxy] picks from the environment of this process, or none.
  */
 object MirrorProxyProbe {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        HttpRemoteClient(InMemoryLogger(), null).get(args[0], null, 2, 2)
+        val proxy = selectEnvironmentProxy(configuredProxy = "", targetUrl = args[0], environment = MirrorEnvironment.read())
+            .fold({ it }, { null })
+        HttpRemoteClient(InMemoryLogger(), proxy).get(args[0], null, 2, 2)
         exitProcess(0)
     }
 
