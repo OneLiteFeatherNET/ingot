@@ -107,6 +107,14 @@ The server reads this variable once at start. It is optional, and unset means no
 
 A slot is held until the response is complete, not until the handler returns. An artifact download or an upload therefore holds its slot for its full duration, so size the limit above the number of streams you expect at the same time. Otherwise a legitimate download is refused. See [HTTP API overview](http-api.md#overload-answers) for the answer.
 
+## Read-only variables
+
+The switch is off by default, so an installation that does not set it writes as before. `INGOT_READ_ONLY` forces this instance read-only whatever the stored state says. Unset or `false` leaves the stored state in charge, and the state is set on the dashboard or with `POST /api/admin/read-only`. The `REPOSILITE_` name is read when the `INGOT_` name is unset or empty, and the system property `-Dingot.readOnly` is read when neither variable is set. A value other than `true` or `false` stops the start, and the message names the variable. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
+
+| Variable | Fallback | Property | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| `INGOT_READ_ONLY` | `REPOSILITE_READ_ONLY` | `-Dingot.readOnly` | unset | `true` refuses writes on this instance with `503` and `Retry-After`, whatever the stored state says, and the toggle answers `409` while it is set. `false` or unset lets the stored state decide, and the stored state is off until someone turns it on. |
+
 ## Container variables
 
 The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
