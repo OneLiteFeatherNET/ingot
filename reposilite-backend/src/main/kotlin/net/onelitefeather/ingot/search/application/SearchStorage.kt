@@ -16,7 +16,7 @@
 
 package net.onelitefeather.ingot.search.application
 
-import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.maven.MirrorCacheLedger
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageEntrySource
@@ -35,12 +35,12 @@ import java.time.Instant
 
 /** Reads the stored files of the repositories through their storage providers, as they are now. */
 internal class MavenIndexStorage(
-    private val maven: MavenFacade,
+    private val repositories: RepositoryRegistry,
     private val clock: Clock,
 ) : IndexStorage {
 
     override fun file(repository: String, path: String): StoredFile? {
-        val provider = maven.getRepository(repository)?.storageProvider ?: return null
+        val provider = repositories.repository(repository)?.storageProvider ?: return null
         val location = location(path) ?: return null
         val details = provider.getFileDetails(location)
         if (details.isErr) return null
@@ -53,13 +53,13 @@ internal class MavenIndexStorage(
     }
 
     override fun exists(repository: String, path: String): Boolean {
-        val provider = maven.getRepository(repository)?.storageProvider ?: return false
+        val provider = repositories.repository(repository)?.storageProvider ?: return false
         val location = location(path) ?: return false
         return provider.exists(location)
     }
 
     override fun head(repository: String, path: String, maxBytes: Int): String? {
-        val provider = maven.getRepository(repository)?.storageProvider ?: return null
+        val provider = repositories.repository(repository)?.storageProvider ?: return null
         val location = location(path) ?: return null
         val stream = provider.getFile(location)
         if (stream.isErr) return null
@@ -82,12 +82,12 @@ internal class LedgerOriginLookup(private val ledger: MirrorCacheLedger) : Origi
 
 /** The flat storage listings of the configured Maven repositories, one entry source per repository (artifact search spec, 3.6). */
 internal class MavenRepositoryEntries(
-    private val maven: MavenFacade,
+    private val repositories: RepositoryRegistry,
     private val failureFacade: FailureFacade,
 ) : RepositoryEntries {
 
-    override fun names(): List<String> = maven.getRepositories().map { it.name }
+    override fun names(): List<String> = repositories.repositories().map { it.name }
 
-    override fun source(repository: String): StorageEntrySource? = maven.getRepository(repository)?.storageProvider?.entrySource(failureFacade)
+    override fun source(repository: String): StorageEntrySource? = repositories.repository(repository)?.storageProvider?.entrySource(failureFacade)
 
 }

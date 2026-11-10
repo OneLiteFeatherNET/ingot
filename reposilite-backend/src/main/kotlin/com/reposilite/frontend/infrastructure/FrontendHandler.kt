@@ -22,7 +22,7 @@ import com.reposilite.frontend.DashboardRouteTarget.DASHBOARD
 import com.reposilite.frontend.DashboardRouteTarget.MAVEN
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.frontend.Source
-import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.maven.infrastructure.MavenEndpoints
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
@@ -89,7 +89,7 @@ internal class ResourcesFrontendHandler(
     failureFacade: FailureFacade,
     frontendFacade: FrontendFacade,
     private val resourcesDirectory: String,
-    private val mavenFacade: MavenFacade,
+    private val repositoryRegistry: RepositoryRegistry,
     private val mavenEndpoints: MavenEndpoints,
 ) : FrontendHandler(frontendFacade, failureFacade) {
 
@@ -120,7 +120,7 @@ internal class ResourcesFrontendHandler(
         val repository = path.removePrefix("/").substringBefore('/')
 
         ReposiliteRoute<InputStream>(path, GET, HEAD) {
-            val repositoryExists = mavenFacade.getRepository(repository) != null
+            val repositoryExists = repositoryRegistry.repository(repository) != null
             // On a shared path the answer depends on the fetch metadata, so caches must keep the answers apart.
             // Other paths never get this header, which keeps their responses exactly as they were.
             if (repositoryExists) {

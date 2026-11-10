@@ -18,17 +18,16 @@ package net.onelitefeather.ingot.cluster
 
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.javadocs.JavadocFacade
-import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryCacheCoordinator
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.facade
 import net.onelitefeather.ingot.readonly.ReadOnlyFacade
-import com.reposilite.storage.api.toLocation
 
 /** Applies the cache hooks through the facades of the running server. Facades are looked up when a hook runs, not earlier. */
 internal class FacadeCacheHooks(private val plugin: ReposilitePlugin) : ClusterCacheHooks {
 
     override fun resolutionInvalidated(repository: String, path: String) {
-        plugin.facade<MavenFacade>().getRepository(repository)?.resolutionCache?.invalidate(path.toLocation())
+        plugin.facade<RepositoryCacheCoordinator>().invalidateResolution(repository, path)
     }
 
     override fun sharedConfigurationChanged(domain: String) {
@@ -47,7 +46,7 @@ internal class FacadeCacheHooks(private val plugin: ReposilitePlugin) : ClusterC
     }
 
     override fun clusterBusOpened() {
-        plugin.facade<MavenFacade>().bindResolutionCacheToClusterBus()
+        plugin.facade<RepositoryCacheCoordinator>().bindToClusterBus()
     }
 
     override fun readOnlyChanged() {

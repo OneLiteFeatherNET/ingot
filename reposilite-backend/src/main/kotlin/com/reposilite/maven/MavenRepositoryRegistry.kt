@@ -16,18 +16,35 @@
 
 package com.reposilite.maven
 
+import com.reposilite.plugin.api.StorageUsageRefreshedEvent
+import com.reposilite.storage.api.toLocation
 import net.onelitefeather.ingot.repository.RegisteredRepository
+import net.onelitefeather.ingot.repository.RepositoryCacheCoordinator
 import net.onelitefeather.ingot.repository.RepositoryRegistry
 
-/** The registry over the live repositories of [repositoryProvider]. Registered by the maven plugin, see [MavenFacade]. */
+/**
+ * The registry over the live repositories of [repositoryProvider], and the cache port of the cluster bus. Registered by the maven
+ * plugin, see [MavenFacade]. The read side is what consumers see; the write side only delegates to the caches of the repositories.
+ */
 internal class MavenRepositoryRegistry(
     private val repositoryProvider: RepositoryProvider,
-) : RepositoryRegistry {
+    private val storageUsageService: StorageUsageService,
+) : RepositoryRegistry, RepositoryCacheCoordinator {
 
     override fun repository(name: String): RegisteredRepository? =
         repositoryProvider.getRepository(name)
 
     override fun repositories(): List<RegisteredRepository> =
         repositoryProvider.getRepositories().toList()
+
+    override fun invalidateResolution(repository: String, path: String) {
+        repositoryProvider.getRepository(repository)?.resolutionCache?.invalidate(path.toLocation())
+    }
+
+    override fun bindToClusterBus() =
+        repositoryProvider.bindToClusterBus()
+
+    override fun applyReceivedStorageUsage(event: StorageUsageRefreshedEvent): Boolean =
+        storageUsageService.applyReceived(event)
 
 }

@@ -3,6 +3,7 @@ package com.reposilite.redirect
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.maven.infrastructure.MavenEndpoints
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -36,7 +37,7 @@ class RedirectPlugin : ReposilitePlugin() {
         logger.info("")
         logger.info("--- Redirect")
 
-        val redirectedRoutes = mavenFacade.getRepository(redirectTo)
+        val redirectedRoutes = facade<RepositoryRegistry>().repository(redirectTo)
             ?.storageProvider
             ?.getFiles(Location.of("/"))
             ?.orNull()

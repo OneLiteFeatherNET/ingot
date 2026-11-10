@@ -22,7 +22,7 @@ import com.reposilite.ReposiliteJournalist
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.journalist.Channel
-import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryCacheCoordinator
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
@@ -257,13 +257,13 @@ class ClusterPlugin(
         }
     }
 
-    /** Hands a received snapshot to the maven plugin, which keeps it in place of its own figures. */
+    /** Hands a received snapshot to the repository caches, which keep it in place of their own figures. */
     private fun applyStorageUsage(event: StorageUsageRefreshedEvent) {
         val receiver = storageUsage
         if (receiver != null) {
             receiver(event)
         } else {
-            facade<MavenFacade>().applyReceivedStorageUsage(event)
+            facade<RepositoryCacheCoordinator>().applyReceivedStorageUsage(event)
         }
     }
 

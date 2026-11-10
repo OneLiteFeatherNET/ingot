@@ -40,7 +40,7 @@ import com.reposilite.token.infrastructure.RegenerateCommand
 import com.reposilite.token.infrastructure.RevokeCommand
 import com.reposilite.token.infrastructure.TokensCommand
 import com.reposilite.web.api.RoutingSetupEvent
-import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import net.onelitefeather.ingot.identity.api.IdentityApiEndpoints
 import net.onelitefeather.ingot.identity.service.IdentityFacade
 import net.onelitefeather.ingot.identity.storage.IdentityStore
@@ -73,8 +73,8 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
                 entityTags = entityTags,
                 extensions = extensions(),
                 // Resolved per request, so that the repository service is only needed once the API is used.
-                visibilityOf = { repository -> facade<MavenFacade>().getRepository(repository)?.visibility?.name },
-                repositoryNames = { facade<MavenFacade>().getRepositories().map { it.name } },
+                visibilityOf = { repository -> facade<RepositoryRegistry>().repository(repository)?.visibility?.name },
+                repositoryNames = { facade<RepositoryRegistry>().repositories().map { it.name } },
             )
         }
 

@@ -36,7 +36,6 @@ import com.reposilite.maven.api.SaveMetadataRequest
 import com.reposilite.maven.api.VersionLookupRequest
 import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.plugin.api.Facade
-import com.reposilite.plugin.api.StorageUsageRefreshedEvent
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import com.reposilite.shared.http.CacheScope
@@ -69,7 +68,7 @@ class MavenFacade internal constructor(
 
     private val repositoryService = repositoryProvider.repositoryService
 
-    private val registry = MavenRepositoryRegistry(repositoryProvider)
+    private val registry = MavenRepositoryRegistry(repositoryProvider, storageUsageService)
 
     /** The read-only view of the repositories that the maven plugin registers as a facade, see [RepositoryRegistry]. */
     internal fun repositoryRegistry(): RepositoryRegistry =
@@ -268,10 +267,6 @@ class MavenFacade internal constructor(
     fun getRepositories(): Collection<Repository> =
         repositoryService.repositoryProvider.getRepositories()
 
-    /** Bounds the lifetime of resolution entries, because a cluster bus is configured for this instance. See [resolutionCacheMaxAge]. */
-    internal fun bindResolutionCacheToClusterBus() =
-        repositoryService.repositoryProvider.bindToClusterBus()
-
     /** Usage figures of every repository as last computed, see [StorageUsageService]. */
     fun storageUsage(): StorageUsage =
         storageUsageService.current()
@@ -279,10 +274,6 @@ class MavenFacade internal constructor(
     /** Starts measuring the storage usage in the background, or joins a measurement that is already running. */
     fun refreshStorageUsage(): CompletableFuture<StorageUsage> =
         storageUsageService.refresh()
-
-    /** Applies usage figures another instance computed, see [StorageUsageService.applyReceived]. */
-    internal fun applyReceivedStorageUsage(event: StorageUsageRefreshedEvent): Boolean =
-        storageUsageService.applyReceived(event)
 
     override fun getLogger(): Logger =
         journalist.logger
