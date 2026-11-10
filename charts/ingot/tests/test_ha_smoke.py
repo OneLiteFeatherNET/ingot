@@ -12,6 +12,7 @@ Run from the repository root:
 import unittest
 
 from ha_smoke import (
+    generate_pom_request,
     BOOTSTRAP_SECRET,
     BOOTSTRAP_USER,
     LEASE_TTL_SECONDS,
@@ -107,6 +108,19 @@ class RollingArtifactTest(unittest.TestCase):
     def test_the_reader_reads_the_path_the_rolling_check_deploys(self):
         self.assertEqual(ROLLING_PATH, artifact_path(ROLLING_GROUP, "rolling", "1.0.0"),
                          "the reader must read the artifact the check deployed, or every read is a 404")
+
+
+class GeneratePomRequestTest(unittest.TestCase):
+
+    def test_the_request_targets_the_pom_whose_parent_holds_the_metadata(self):
+        path, _ = generate_pom_request("net/onelitefeather/smoke/deploy", "deploy", "1.0.1")
+        self.assertEqual("/api/maven/generate/pom/releases/net/onelitefeather/smoke/deploy/deploy/1.0.1/deploy-1.0.1.pom", path,
+                         "the server appends the version to the metadata two levels above the pom it generates")
+
+    def test_the_body_names_the_coordinates_with_a_dotted_group(self):
+        _, body = generate_pom_request("net/onelitefeather/smoke/deploy", "deploy", "1.0.1")
+        self.assertEqual({"groupId": "net.onelitefeather.smoke.deploy", "artifactId": "deploy", "version": "1.0.1"}, body,
+                         "the generated pom and the metadata carry the coordinates from the body")
 
 
 class ReadOutcomesTest(unittest.TestCase):

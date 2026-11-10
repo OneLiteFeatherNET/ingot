@@ -97,6 +97,13 @@ def artifact_path(group, artifact, version):
     return f"{group}/{artifact}/{version}/{artifact}-{version}.pom"
 
 
+def generate_pom_request(group, artifact, version):
+    """The path and body of a pom generation in releases. The server writes the pom and appends [version] to the
+    maven-metadata.xml of the artifact under the metadata lock, which a plain upload of a pom never touches."""
+    path = f"/api/maven/generate/pom/releases/{artifact_path(group, artifact, version)}"
+    return path, {"groupId": group.replace("/", "."), "artifactId": artifact, "version": version}
+
+
 def read_outcomes(lines, limit=5):
     """Names the most frequent "<status> <sha256>" lines with their counts, most frequent first, for a failure message."""
     counts = {}
@@ -364,6 +371,13 @@ class Smoke:
         if not 200 <= status < 300:
             raise SmokeFailure(f"deploying {path} answered {status}: {reply[:200]!r}")
 
+    def generate_pom(self, ip, group, artifact, version):
+        path, body = generate_pom_request(group, artifact, version)
+        headers = [*basic_auth_header(), "-H", "Content-Type: application/json"]
+        status, _, reply = self.http.request("POST", pod_url(ip, path), headers=headers, body=json.dumps(body).encode())
+        if not 200 <= status < 300:
+            raise SmokeFailure(f"generating {path} answered {status}: {reply[:200]!r}")
+
     def get_json(self, url, headers=()):
         status, response_headers, body = self.http.request("GET", url, headers=headers)
         if status != 200:
@@ -501,8 +515,7 @@ class Smoke:
 
         def deploy_both(version_pair):
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-                futures = [pool.submit(self.deploy, ip, DEPLOY_GROUP, "deploy", version,
-                                       f"<project>deploy {version}</project>\n".encode())
+                futures = [pool.submit(self.generate_pom, ip, DEPLOY_GROUP, "deploy", version)
                            for ip, version in zip((first, second), version_pair)]
                 for future in futures:
                     future.result()
