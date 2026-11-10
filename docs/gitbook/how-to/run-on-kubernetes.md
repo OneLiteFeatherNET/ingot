@@ -404,6 +404,55 @@ clusterBus:
 
 Use `tls` when the credentials cross the network, because the `nats` scheme connects in clear text. The broker must serve TLS for that scheme.
 
+## Restrict network traffic
+
+The chart renders no NetworkPolicy by default, so any pod in the cluster can reach the Ingot port, which serves the artifacts, the API and the metrics. To admit only the peers that need it, turn the policy on and list them:
+
+```yaml
+networkPolicy:
+  enabled: true
+  ingress:
+    fromNamespaces:
+      - kubernetes.io/metadata.name: gateway-system
+      - kubernetes.io/metadata.name: monitoring
+    fromPods: []
+```
+
+Each entry of `fromNamespaces` is a set of labels that selects a namespace. Each entry of `fromPods` is a set of pod labels that selects pods in the release namespace. An empty entry is refused, because it would select everything. List the namespace of the gateway that routes to Ingot, and the namespace of Prometheus if it scrapes `/metrics`.
+
+The server accepts the Ingot port only from the listed peers. In split mode the chart renders a second policy for the dashboard, which accepts its port from the same list, and the server accepts the dashboard pods on its own port. Without any listed peer, the server admits only the dashboard pods in split mode, and nothing in allInOne mode.
+
+Enforcement needs a CNI that enforces NetworkPolicy, such as Calico or Cilium. On a CNI without enforcement the policy is accepted and nothing is restricted. The kubelet sends the readiness and liveness probes from the node, and most enforcing CNIs admit that host traffic. If the readiness probe fails after you turn the policy on, check how your CNI treats traffic from the node before you change the allow-list.
+
+Egress restriction is a separate switch and stays off:
+
+```yaml
+networkPolicy:
+  egress:
+    enabled: true
+    allowInternet: true
+    extra:
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: nats
+        ports:
+          - port: 4222
+            protocol: TCP
+```
+
+With egress restricted, the server reaches DNS, the rules of `extra` and, when `allowInternet` is `true`, public addresses. The private ranges `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` and `fc00::/7` stay excluded. Mirror proxying of public repositories needs `allowInternet`. Every service inside the cluster, such as the database, the cluster bus or an in-cluster S3 endpoint, needs its own rule in `extra`. A `podSelector` rule is usually the right form for those, because the policy sees the pod address behind the Service. The dashboard keeps its path to the server under the restriction.
+
+Check the policy after the rollout:
+
+```bash
+kubectl -n ingot get networkpolicy
+kubectl -n default run ingot-probe --rm -i --restart=Never --image=busybox:1.36 -- \
+  wget -qO- -T 3 http://ingot.ingot.svc.cluster.local:8080/api/status/health
+```
+
+Replace `ingot` with your release name and namespace. The request from an unlisted namespace must time out. A request from a listed namespace must answer.
+
 ## Expose the instance with ingress
 
 Turn on the ingress of the chart and set your host name and ingress class:
