@@ -46,12 +46,14 @@ import java.util.concurrent.atomic.AtomicReference
  * @param storesMirrors true when the repository stores copies of mirrored artifacts
  * @param cachedVersions the version directories that hold a recorded mirror copy, with their last access. A version
  *   without a record is never a mirror copy, even in a repository that stores mirror copies.
+ * @param readOnly true when the repository refuses writes; a policy skips it, so none of its versions is planned
  */
 internal data class CleanupTarget(
     val name: String,
     val storage: StorageProvider,
     val storesMirrors: Boolean,
     val cachedVersions: Map<String, Instant>,
+    val readOnly: Boolean = false,
 )
 
 /**
@@ -198,7 +200,7 @@ class CleanupService internal constructor(
     private fun plan(policy: CleanupPolicy): Pair<List<PlannedDeletion>, List<String>> {
         val allTargets = targets()
         val inventory = allTargets
-            .filter { it.name in policy.repositories }
+            .filter { it.name in policy.repositories && !it.readOnly }
             .flatMap { target -> CleanupInventory.versionsOf(target.name, target.storage.walkFiles(), target.cachedVersions) }
         return CleanupPlanner.plan(policy, inventory, clock) to warningsFor(policy, allTargets)
     }
@@ -208,6 +210,7 @@ class CleanupService internal constructor(
             val target = allTargets.firstOrNull { it.name == name }
             when {
                 target == null -> listOf("repository '$name' does not exist")
+                target.readOnly -> listOf("repository '$name' is read-only, so the policy skips it")
                 policy.scope == CleanupScope.MIRROR_CACHE && !target.storesMirrors ->
                     listOf("repository '$name' stores no mirrored artifacts, so the MIRROR_CACHE scope finds nothing there")
                 policy.scope == CleanupScope.MIRROR_CACHE && target.cachedVersions.isEmpty() ->

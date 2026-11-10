@@ -21,6 +21,7 @@ import com.reposilite.cleanup.application.CleanupScope
 import com.reposilite.cleanup.infrastructure.InMemoryCleanupRunRepository
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
+import com.reposilite.shared.ErrorResponse
 import com.reposilite.storage.StorageProvider
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.filesystem.FileSystemStorageProviderFactory
@@ -63,6 +64,9 @@ internal class CleanupReadOnlyTest {
         keepLatest = 1,
     )
 
+    private fun <T> Result<T, ErrorResponse>.orThrow(): T =
+        if (isOk) get() else throw IllegalStateException(error.message)
+
     private fun service(targets: List<CleanupTarget>, deletedPaths: MutableList<String>): CleanupService =
         CleanupService(
             journalist = logger,
@@ -71,7 +75,7 @@ internal class CleanupReadOnlyTest {
             targets = { targets },
             deleter = VersionDeleter { repository, path, _, _ ->
                 deletedPaths += "$repository:$path"
-                Result.ok(Unit)
+                Result.ok<Unit, ErrorResponse>(Unit)
             },
             runs = InMemoryCleanupRunRepository(),
             extensions = Extensions(logger),
