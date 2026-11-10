@@ -38,7 +38,12 @@
       "type": "object",
       "properties": {
         "replicas": {"type": "integer", "minimum": 0},
-        "topologySpreadConstraints": {"type": "array"}
+        "topologySpreadConstraints": {"type": "array"},
+        "securityProfile": {
+          "type": "string",
+          "enum": ["", "restricted", "restricted-openshift"],
+          "description": "Pod Security profile of the server. restricted sets the uid 977, restricted-openshift leaves the uid to the cluster."
+        }
       }
     },
     "dashboard": {

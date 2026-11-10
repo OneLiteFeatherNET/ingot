@@ -147,6 +147,53 @@ Mount path of the cluster bus credentials. The NATS credentials file is read fro
 {{- end }}
 
 {{/*
+Fails when a security profile is set together with a security block of the same workload. Both keys are named.
+*/}}
+{{- define "ingot.securityProfileCheck" -}}
+{{- if .Values.deployment.securityProfile -}}
+{{- if .Values.deployment.podSecurityContext.enabled -}}
+{{- fail "deployment.securityProfile and deployment.podSecurityContext.enabled cannot be set together: unset one of them" -}}
+{{- end -}}
+{{- if .Values.deployment.containerSecurityContext.enabled -}}
+{{- fail "deployment.securityProfile and deployment.containerSecurityContext.enabled cannot be set together: unset one of them" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Pod security context of a security profile. The restricted profile fixes uid, gid and fsGroup to 977, the
+restricted-openshift profile leaves them to the cluster.
+*/}}
+{{- define "ingot.profilePodSecurityContext" -}}
+runAsNonRoot: true
+{{- if eq .Values.deployment.securityProfile "restricted" }}
+runAsUser: 977
+runAsGroup: 977
+fsGroup: 977
+{{- end }}
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{/*
+Container security context of a security profile.
+*/}}
+{{- define "ingot.profileContainerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+runAsNonRoot: true
+{{- if eq .Values.deployment.securityProfile "restricted" }}
+runAsUser: 977
+runAsGroup: 977
+{{- end }}
+capabilities:
+  drop:
+    - ALL
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{/*
 Image of the server. A digest replaces the tag, so the pinned image is name@digest.
 */}}
 {{- define "ingot.serverImage" -}}

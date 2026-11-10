@@ -46,8 +46,12 @@ spec:
       {{- $preStop := int (default 0 .Values.deployment.shutdown.preStopSeconds) }}
       {{- $drain := int (default 0 .Values.deployment.shutdown.drainSeconds) }}
       terminationGracePeriodSeconds: {{ if or (gt $preStop 0) (gt $drain 0) }}{{ add $preStop $drain 10 }}{{ else }}{{ default 60 .Values.deployment.terminationGracePeriodSeconds }}{{ end }}
+      {{- include "ingot.securityProfileCheck" . }}
       {{- if .Values.deployment.podSecurityContext.enabled }}
       securityContext: {{- omit .Values.deployment.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- else if .Values.deployment.securityProfile }}
+      securityContext:
+        {{- include "ingot.profilePodSecurityContext" . | nindent 8 }}
       {{- end }}
       {{- with .Values.deployment.initContainers }}
       initContainers:
@@ -103,6 +107,12 @@ spec:
             {{- if .Values.persistence.subPath }}
             subPath: {{ .Values.persistence.subPath }}
             {{- end }}
+          {{- if .Values.deployment.securityProfile }}
+          - name: ingot-tmp
+            mountPath: /tmp
+          - name: ingot-logs
+            mountPath: /var/log/reposilite
+          {{- end }}
           {{- if .Values.clusterBus.credentialsSecret }}
           - name: ingot-cluster-credentials
             mountPath: {{ include "ingot.clusterCredentialsPath" . }}
@@ -154,6 +164,9 @@ spec:
         {{- end }}
         {{- if .Values.deployment.containerSecurityContext.enabled }}
         securityContext: {{- omit .Values.deployment.containerSecurityContext "enabled" | toYaml | nindent 10 }}
+        {{- else if .Values.deployment.securityProfile }}
+        securityContext:
+          {{- include "ingot.profileContainerSecurityContext" . | nindent 10 }}
         {{- end }}
       {{- if .Values.deployment.additionalContainers }}
         {{- toYaml .Values.deployment.additionalContainers | nindent 6 }}
@@ -166,6 +179,12 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if .Values.deployment.securityProfile }}
+        - name: ingot-tmp
+          emptyDir: {}
+        - name: ingot-logs
+          emptyDir: {}
+        {{- end }}
         {{- if .Values.clusterBus.credentialsSecret }}
         - name: ingot-cluster-credentials
           secret:

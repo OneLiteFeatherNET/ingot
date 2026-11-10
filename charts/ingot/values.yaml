@@ -113,6 +113,11 @@ deployment:
     enabled: false
     runAsUser: 999
     runAsGroup: 999
+  # Pod Security profile of the server, for clusters that enforce the restricted Pod Security level. "" renders no
+  # profile. "restricted" runs the pod as uid and gid 977 and mounts emptyDir volumes at /tmp and /var/log/reposilite.
+  # "restricted-openshift" sets the same fields without the fixed ids, for clusters that assign the uid. Do not combine
+  # a profile with podSecurityContext.enabled or containerSecurityContext.enabled.
+  securityProfile: ""
 
 ## Service configuration of the server
 service:
