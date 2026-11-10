@@ -269,6 +269,14 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Keyless cosign signing and the attestation: the job's OIDC identity is the trust anchor.
+      id-token: write
+      attestations: write
+    env:
+      # The only identity a release signature or attestation is accepted from: this workflow
+      # running on main. A run from another ref produces a different identity and fails below.
+      SIGNER_IDENTITY: https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main
+      OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
@@ -422,6 +430,7 @@ jobs:
           sleep 180
 
       - name: "Retry pushing the server image"
+        id: server-retry
         if: steps.server.outcome == 'failure'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
@@ -494,6 +503,7 @@ jobs:
           sleep 180
 
       - name: "Retry pushing the dashboard image"
+        id: dashboard-retry
         if: steps.dashboard.outcome == 'failure'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
@@ -535,3 +545,75 @@ jobs:
           while IFS= read -r ref; do
             check_reference "$ref"
           done < "$work/references.txt"
+
+      # Releases only. A nightly carries no signature, and the signing steps below stay skipped.
+      #
+      # The signature goes on the digest the registry returned, never on a tag: a tag can be
+      # moved by anyone holding push rights to the package. Keyless, so there is no key to
+      # store or lose; the certificate comes from this job's OIDC token and is recorded in the
+      # public transparency log. Where a push needed its retry, the digest comes from the retry.
+      - name: "Install cosign"
+        if: steps.params.outputs.released == 'true'
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532  # v4.1.3
+
+      - name: "Sign the server image"
+        id: sign-server
+        if: steps.params.outputs.released == 'true'
+        continue-on-error: true
+        env:
+          IMAGE: ghcr.io/onelitefeathernet/ingot
+          DIGEST: ${{ steps.server.outputs.digest || steps.server-retry.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      # Same wait and single retry as the image push. Keep the two `env:` blocks identical.
+      - name: "Wait out the registry before retrying the server signature"
+        if: steps.params.outputs.released == 'true' && steps.sign-server.outcome == 'failure'
+        run: |
+          echo "Signing the server image failed. GHCR asks for a few minutes, so waiting before the retry."
+          sleep 180
+
+      - name: "Retry signing the server image"
+        id: sign-server-retry
+        if: steps.params.outputs.released == 'true' && steps.sign-server.outcome == 'failure'
+        env:
+          IMAGE: ghcr.io/onelitefeathernet/ingot
+          DIGEST: ${{ steps.server.outputs.digest || steps.server-retry.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      - name: "Sign the dashboard image"
+        id: sign-dashboard
+        if: steps.params.outputs.released == 'true'
+        continue-on-error: true
+        env:
+          IMAGE: ghcr.io/onelitefeathernet/ingot-dashboard
+          DIGEST: ${{ steps.dashboard.outputs.digest || steps.dashboard-retry.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      # Same wait and single retry as the image push. Keep the two `env:` blocks identical.
+      - name: "Wait out the registry before retrying the dashboard signature"
+        if: steps.params.outputs.released == 'true' && steps.sign-dashboard.outcome == 'failure'
+        run: |
+          echo "Signing the dashboard image failed. GHCR asks for a few minutes, so waiting before the retry."
+          sleep 180
+
+      - name: "Retry signing the dashboard image"
+        id: sign-dashboard-retry
+        if: steps.params.outputs.released == 'true' && steps.sign-dashboard.outcome == 'failure'
+        env:
+          IMAGE: ghcr.io/onelitefeathernet/ingot-dashboard
+          DIGEST: ${{ steps.dashboard.outputs.digest || steps.dashboard-retry.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      # The job does not succeed unless both signatures verify against the identity above. A
+      # failure here leaves a visibly failed release rather than a quietly unsigned one.
+      - name: "Verify the signatures of the server and dashboard images"
+        if: steps.params.outputs.released == 'true'
+        env:
+          SERVER_DIGEST: ${{ steps.server.outputs.digest || steps.server-retry.outputs.digest }}
+          DASHBOARD_DIGEST: ${{ steps.dashboard.outputs.digest || steps.dashboard-retry.outputs.digest }}
+        run: |
+          set -euo pipefail
+          cosign verify --certificate-identity "$SIGNER_IDENTITY" --certificate-oidc-issuer "$OIDC_ISSUER" \
+            "ghcr.io/onelitefeathernet/ingot@$SERVER_DIGEST"
+          cosign verify --certificate-identity "$SIGNER_IDENTITY" --certificate-oidc-issuer "$OIDC_ISSUER" \
+            "ghcr.io/onelitefeathernet/ingot-dashboard@$DASHBOARD_DIGEST"
