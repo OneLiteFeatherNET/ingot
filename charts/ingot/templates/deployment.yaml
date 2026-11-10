@@ -46,8 +46,12 @@ spec:
       {{- $preStop := int (default 0 .Values.deployment.shutdown.preStopSeconds) }}
       {{- $drain := int (default 0 .Values.deployment.shutdown.drainSeconds) }}
       terminationGracePeriodSeconds: {{ if or (gt $preStop 0) (gt $drain 0) }}{{ add $preStop $drain 10 }}{{ else }}{{ default 60 .Values.deployment.terminationGracePeriodSeconds }}{{ end }}
+      {{- include "ingot.securityProfileCheck" . }}
       {{- if .Values.deployment.podSecurityContext.enabled }}
       securityContext: {{- omit .Values.deployment.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- else if .Values.deployment.securityProfile }}
+      securityContext:
+        {{- include "ingot.profilePodSecurityContext" . | nindent 8 }}
       {{- end }}
       {{- with .Values.deployment.initContainers }}
       initContainers:
@@ -55,7 +59,7 @@ spec:
       {{- end }}
       containers:
       - name: {{ include "ingot.fullname" . }}
-        image: "{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+        image: {{ include "ingot.serverImage" . | quote }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         stdin: true
         {{- with .Values.resources }}
@@ -103,9 +107,21 @@ spec:
             {{- if .Values.persistence.subPath }}
             subPath: {{ .Values.persistence.subPath }}
             {{- end }}
+          {{- if .Values.deployment.securityProfile }}
+          - name: ingot-tmp
+            mountPath: /tmp
+          - name: ingot-logs
+            mountPath: /var/log/reposilite
+          {{- end }}
+          {{- if .Values.clusterBus.credentialsSecret }}
+          - name: ingot-cluster-credentials
+            mountPath: {{ include "ingot.clusterCredentialsPath" . }}
+            readOnly: true
+          {{- end }}
           {{- if .Values.deployment.additionalVolumeMounts }}
           {{- toYaml .Values.deployment.additionalVolumeMounts | nindent 10 }}
           {{- end }}
+        {{- $generatedEnv := include "ingot.generatedEnv" . | trim }}
         {{- $instanceIdSet := false }}
         {{- range .Values.env }}
         {{- if eq .name "INGOT_CLUSTER_INSTANCE_ID" }}
@@ -119,7 +135,7 @@ spec:
         {{- end }}
         {{- end }}
         {{- $renderShutdownTimeout := and (gt $drain 0) (not $shutdownTimeoutSet) }}
-        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout }}
+        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout $generatedEnv }}
         env:
           {{- if eq .Values.mode "split" }}
           - name: INGOT_TARGET
@@ -135,6 +151,9 @@ spec:
           - name: INGOT_SHUTDOWN_TIMEOUT
             value: {{ $drain | quote }}
           {{- end }}
+          {{- with $generatedEnv }}
+          {{- . | nindent 10 }}
+          {{- end }}
           {{- with .Values.env }}
           {{- toYaml . | nindent 10 }}
           {{- end }}
@@ -145,6 +164,9 @@ spec:
         {{- end }}
         {{- if .Values.deployment.containerSecurityContext.enabled }}
         securityContext: {{- omit .Values.deployment.containerSecurityContext "enabled" | toYaml | nindent 10 }}
+        {{- else if .Values.deployment.securityProfile }}
+        securityContext:
+          {{- include "ingot.profileContainerSecurityContext" . | nindent 10 }}
         {{- end }}
       {{- if .Values.deployment.additionalContainers }}
         {{- toYaml .Values.deployment.additionalContainers | nindent 6 }}
@@ -157,6 +179,17 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if .Values.deployment.securityProfile }}
+        - name: ingot-tmp
+          emptyDir: {}
+        - name: ingot-logs
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.clusterBus.credentialsSecret }}
+        - name: ingot-cluster-credentials
+          secret:
+            secretName: {{ .Values.clusterBus.credentialsSecret | quote }}
+        {{- end }}
         {{- if .Values.deployment.additionalVolumes }}
           {{- toYaml .Values.deployment.additionalVolumes | nindent 8 }}
         {{- end }}
@@ -170,5 +203,9 @@ spec:
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deployment.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}

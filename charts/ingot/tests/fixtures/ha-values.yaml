@@ -1,0 +1,24 @@
+# HA values of a release with two server replicas. The database, the object storage keys and the NATS credentials come
+# from Secrets that the operator creates; the chart references them by name and key and renders no value.
+# The digest is a placeholder: replace it with the digest of the image you run.
+# Used by the unit tests only. It stays out of ci/, because the kind job does not run the services it names.
+mode: allInOne
+image:
+  digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+deployment:
+  replicas: 2
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingot
+database:
+  existingSecret: ingot-database
+  secretKey: database
+objectStorage:
+  existingSecret: ingot-s3-keys
+clusterBus:
+  url: nats://nats.nats.svc.cluster.local:4222
+  credentialsSecret: ingot-nats-creds

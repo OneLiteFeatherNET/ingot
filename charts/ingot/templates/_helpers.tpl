@@ -138,3 +138,137 @@ One ingress path entry. Expects the dictionary keys path, pathType, service and 
       port:
         number: {{ .port }}
 {{- end }}
+
+{{/*
+Mount path of the cluster bus credentials. The NATS credentials file is read from nats.creds inside it.
+*/}}
+{{- define "ingot.clusterCredentialsPath" -}}
+/etc/ingot/cluster
+{{- end }}
+
+{{/*
+Fails when a security profile is set together with a security block of the same workload. Both keys are named.
+*/}}
+{{- define "ingot.securityProfileCheck" -}}
+{{- if .Values.deployment.securityProfile -}}
+{{- if .Values.deployment.podSecurityContext.enabled -}}
+{{- fail "deployment.securityProfile and deployment.podSecurityContext.enabled cannot be set together: unset one of them" -}}
+{{- end -}}
+{{- if .Values.deployment.containerSecurityContext.enabled -}}
+{{- fail "deployment.securityProfile and deployment.containerSecurityContext.enabled cannot be set together: unset one of them" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Pod security context of a security profile. The restricted profile fixes uid, gid and fsGroup to 977, the
+restricted-openshift profile leaves them to the cluster.
+*/}}
+{{- define "ingot.profilePodSecurityContext" -}}
+runAsNonRoot: true
+{{- if eq .Values.deployment.securityProfile "restricted" }}
+runAsUser: 977
+runAsGroup: 977
+fsGroup: 977
+{{- end }}
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{/*
+Container security context of a security profile.
+*/}}
+{{- define "ingot.profileContainerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+runAsNonRoot: true
+{{- if eq .Values.deployment.securityProfile "restricted" }}
+runAsUser: 977
+runAsGroup: 977
+{{- end }}
+capabilities:
+  drop:
+    - ALL
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{/*
+Image of the server. A digest replaces the tag, so the pinned image is name@digest.
+*/}}
+{{- define "ingot.serverImage" -}}
+{{- if .Values.image.digest -}}
+{{ .Values.image.name }}@{{ .Values.image.digest }}
+{{- else -}}
+{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}
+{{- end -}}
+{{- end }}
+
+{{/*
+Fails when env sets a variable that a typed value also sets. The message names the typed key and the variable.
+Expects the dictionary keys root, name and owner.
+*/}}
+{{- define "ingot.checkEnvConflict" -}}
+{{- $name := .name -}}
+{{- $owner := .owner -}}
+{{- range .root.Values.env -}}
+{{- if eq (toString .name) $name -}}
+{{- fail (printf "%s sets %s, so env must not set it too: remove %s from env or unset %s" $owner $name $name $owner) -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Server environment entries that the typed HA values set, one YAML list item per variable. Nothing renders unless a
+value is set. Expects the root context.
+*/}}
+{{- define "ingot.generatedEnv" -}}
+{{- $root := . -}}
+{{- with .Values.database.existingSecret }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "INGOT_LOCAL_DATABASE" "owner" "database.existingSecret") }}
+- name: INGOT_LOCAL_DATABASE
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: {{ default "database" $root.Values.database.secretKey | quote }}
+{{- end }}
+{{- with .Values.objectStorage.existingSecret }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "AWS_ACCESS_KEY_ID" "owner" "objectStorage.existingSecret") }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "AWS_SECRET_ACCESS_KEY" "owner" "objectStorage.existingSecret") }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "AWS_REGION" "owner" "objectStorage.existingSecret") }}
+- name: AWS_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: AWS_ACCESS_KEY_ID
+- name: AWS_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: AWS_SECRET_ACCESS_KEY
+- name: AWS_REGION
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: AWS_REGION
+      optional: true
+{{- end }}
+{{- with .Values.clusterBus.url }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "INGOT_CLUSTER_URL" "owner" "clusterBus.url") }}
+- name: INGOT_CLUSTER_URL
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.clusterBus.passwordSecret }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "INGOT_CLUSTER_PASSWORD" "owner" "clusterBus.passwordSecret") }}
+- name: INGOT_CLUSTER_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ . | quote }}
+      key: password
+{{- end }}
+{{- with .Values.clusterBus.credentialsSecret }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "INGOT_CLUSTER_CREDENTIALS" "owner" "clusterBus.credentialsSecret") }}
+- name: INGOT_CLUSTER_CREDENTIALS
+  value: {{ printf "%s/nats.creds" (include "ingot.clusterCredentialsPath" $root) | quote }}
+{{- end }}
+{{- end }}

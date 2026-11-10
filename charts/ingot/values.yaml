@@ -11,7 +11,29 @@ mode: allInOne
 image:
   name: ghcr.io/onelitefeathernet/ingot
   tag: ""  # defaults to appVersion
+  # Pins the server image by digest, for example sha256:... When set, the image is name@digest and the tag is not used.
+  digest: ""
   pullPolicy: IfNotPresent
+
+## Typed HA values. Each one renders nothing while it is unset, so a release that sets none of them keeps its manifests.
+## Secrets are referenced by name and key. The chart never renders their values.
+database:
+  # Name of a Secret in the release namespace. Sets INGOT_LOCAL_DATABASE from the key secretKey of that Secret.
+  existingSecret: ""
+  secretKey: database
+
+objectStorage:
+  # Name of a Secret in the release namespace with the keys AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, and the
+  # optional key AWS_REGION. Empty repository keys fall back to the AWS default credential chain.
+  existingSecret: ""
+
+clusterBus:
+  # URL of the NATS broker. Sets INGOT_CLUSTER_URL.
+  url: ""
+  # Name of a Secret with the key password. Sets INGOT_CLUSTER_PASSWORD from it.
+  passwordSecret: ""
+  # Name of a Secret with the key nats.creds. Mounts it read-only and sets INGOT_CLUSTER_CREDENTIALS to the file.
+  credentialsSecret: ""
 
 ## Name overrides. Set both to `reposilite` to take over the names of an upstream reposilite release.
 nameOverride: ""
@@ -33,6 +55,9 @@ deployment:
   podAnnotations: {}
   # Additional labels to be added to pods
   podLabels: {}
+  # Topology spread constraints of the server pods, passed through unchanged. Empty renders no field.
+  # Example: spread the replicas over zones with a constraint on topology.kubernetes.io/zone.
+  topologySpreadConstraints: []
   # Init containers
   initContainers: []
     # - name: name
@@ -88,6 +113,11 @@ deployment:
     enabled: false
     runAsUser: 999
     runAsGroup: 999
+  # Pod Security profile of the server, for clusters that enforce the restricted Pod Security level. "" renders no
+  # profile. "restricted" runs the pod as uid and gid 977 and mounts emptyDir volumes at /tmp and /var/log/reposilite.
+  # "restricted-openshift" sets the same fields without the fixed ids, for clusters that assign the uid. Do not combine
+  # a profile with podSecurityContext.enabled or containerSecurityContext.enabled.
+  securityProfile: ""
 
 ## Service configuration of the server
 service:
@@ -354,3 +384,5 @@ dashboard:
   affinity: {}
   nodeSelector: {}
   tolerations: []
+  # Topology spread constraints of the dashboard pods, passed through unchanged. Empty renders no field.
+  topologySpreadConstraints: []

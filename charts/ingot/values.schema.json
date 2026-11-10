@@ -7,16 +7,50 @@
       "enum": ["allInOne", "split"],
       "description": "Deploy mode: allInOne renders one workload, split renders the server and the dashboard."
     },
+    "image": {
+      "type": "object",
+      "properties": {
+        "digest": {"type": "string", "description": "Digest of the server image, for example sha256:... . Replaces the tag when set."}
+      }
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "existingSecret": {"type": "string", "description": "Secret that holds INGOT_LOCAL_DATABASE."},
+        "secretKey": {"type": "string", "description": "Key of the database Secret. Defaults to database."}
+      }
+    },
+    "objectStorage": {
+      "type": "object",
+      "properties": {
+        "existingSecret": {"type": "string", "description": "Secret with AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and optional AWS_REGION."}
+      }
+    },
+    "clusterBus": {
+      "type": "object",
+      "properties": {
+        "url": {"type": "string", "description": "NATS URL, rendered as INGOT_CLUSTER_URL."},
+        "passwordSecret": {"type": "string", "description": "Secret with the key password, rendered as INGOT_CLUSTER_PASSWORD."},
+        "credentialsSecret": {"type": "string", "description": "Secret with the key nats.creds, mounted read-only."}
+      }
+    },
     "deployment": {
       "type": "object",
       "properties": {
-        "replicas": {"type": "integer", "minimum": 0}
+        "replicas": {"type": "integer", "minimum": 0},
+        "topologySpreadConstraints": {"type": "array"},
+        "securityProfile": {
+          "type": "string",
+          "enum": ["", "restricted", "restricted-openshift"],
+          "description": "Pod Security profile of the server. restricted sets the uid 977, restricted-openshift leaves the uid to the cluster."
+        }
       }
     },
     "dashboard": {
       "type": "object",
       "properties": {
-        "replicas": {"type": "integer", "minimum": 0}
+        "replicas": {"type": "integer", "minimum": 0},
+        "topologySpreadConstraints": {"type": "array"}
       }
     },
     "podDisruptionBudget": {

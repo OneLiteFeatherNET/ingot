@@ -405,6 +405,45 @@ jobs:
       - name: "Install the chart in both deploy modes"
         run: ct install --config ct.yaml --all
 
+      # The restricted profile is installed into a namespace that enforces the Pod Security
+      # restricted level, so the API server rejects the pod unless the render meets that level.
+      # The Deployment is available only when its pod is ready, and the pod wait checks it again.
+      - name: "Install the restricted profile into a restricted namespace"
+        run: |
+          kubectl create namespace ingot-restricted
+          kubectl label namespace ingot-restricted pod-security.kubernetes.io/enforce=restricted
+          helm install ingot-restricted charts/ingot --namespace ingot-restricted \
+            -f charts/ingot/ci/allinone-values.yaml --set deployment.securityProfile=restricted
+          kubectl -n ingot-restricted wait --for=condition=available deployment/ingot-restricted --timeout=300s
+          kubectl -n ingot-restricted wait --for=condition=Ready pod -l app.kubernetes.io/instance=ingot-restricted --timeout=300s
+
+      # Runs the server image the way the restricted pod runs it, outside Kubernetes: a read-only
+      # root filesystem, uid 977, every capability dropped and no privilege escalation. The three
+      # writable paths are tmpfs mounts, as the emptyDir volumes and the data claim are in the pod.
+      - name: "Check the server answers health as uid 977 on a read-only root"
+        run: |
+          docker run --detach --name ingot-readonly \
+            --read-only --user 977:977 --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:exec,mode=1777 --tmpfs /var/log/reposilite:uid=977,gid=977 --tmpfs /app/data:uid=977,gid=977 \
+            --publish 127.0.0.1:8080:8080 ingot:ci
+          status=000
+          for attempt in $(seq 1 60); do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/api/status/health || true)
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ "$status" != "200" ]; then
+            echo "The health endpoint answered $status, expected 200"
+            docker logs ingot-readonly
+            exit 1
+          fi
+
+      - name: "Remove the read-only container"
+        if: always()
+        run: docker rm --force ingot-readonly
+
   # Second JDK leg, combined with the JaCoCo report so the test suite is not run three times.
   # This job is intentionally repo-specific: the shared gradle-build-pr workflow has no
   # coverage upload, and the Codecov integration is a Reposilite-only mechanic.
