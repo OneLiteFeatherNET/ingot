@@ -84,8 +84,9 @@ internal class SettingsSecretReferenceWriteTest {
     private fun SharedConfigurationFacade.write(secret: String) =
         updateDomain<ProbeSettings>("probe", ifMatch = null) { ProbeSettings(secret = secret).asSuccess() }
 
+    /** The stored view, which is what the settings API returns: a reference stays as it was written. */
     private fun SharedConfigurationFacade.storedSecret(): String =
-        getDomainSettings<ProbeSettings>().get().secret
+        getDomainSnapshot<ProbeSettings>("probe")!!.settings.secret
 
     @Test
     fun `a write that names a variable outside the allowlist is refused with a bad request that names the field and the variable`() {
