@@ -205,6 +205,26 @@ internal class SqlScheduledJobLeasesTest {
         }
     }
 
+    @Test
+    fun `adds the lease columns to a table of the previous release and keeps its rows`() {
+        SqliteTestDatabase().use { shared ->
+            // given: a table as the previous release wrote it, with a claim of today's day key
+            val clock = MutableClock()
+            val dayKey = "cleanup:nightly:2026-10-15"
+            transaction(shared.database) {
+                exec("CREATE TABLE scheduled_job_claim (job_key VARCHAR(255) NOT NULL PRIMARY KEY, claimed_by VARCHAR(64) NOT NULL, claimed_at BIGINT NOT NULL)")
+                exec("INSERT INTO scheduled_job_claim (job_key, claimed_by, claimed_at) VALUES ('$dayKey', 'old-release', ${clock.instant().toEpochMilli()})")
+            }
+
+            // when: the new release opens the database and asks for the day key and for a new key
+            val claims = SqlScheduledJobClaims(shared.database, clock, instanceId = "new-release")
+
+            // then: the day claimed by the previous release is still refused, and a new key is granted
+            assertThat(claims.lease(dayKey, ttl)).`as`("lease of the day claimed before the upgrade").isFalse()
+            assertThat(claims.lease("cleanup:nightly:active", ttl)).`as`("lease of a new key after the upgrade").isTrue()
+        }
+    }
+
     private fun keysInTable(shared: SqliteTestDatabase): List<String> =
         transaction(shared.database) {
             ScheduledJobClaimTable.selectAll().map { it[ScheduledJobClaimTable.jobKey] }
