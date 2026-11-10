@@ -48,6 +48,7 @@ class NexusClient(
     private val objectMapper = ObjectMapper()
     private val spacing = Duration.ofMillis(1000L / requestsPerSecond.coerceIn(1, 100))
     private var nextRequestAt: Instant = Instant.EPOCH
+    private val pacing = Any()
 
     /** Reachability and the credential check: a GET of the status endpoint, which needs no credential. */
     fun status(): NexusReply = send(connection.baseUri.resolve(STATUS_PATH), authenticated = false)
@@ -154,12 +155,16 @@ class NexusClient(
 
     /** Reserves the next request slot and waits until it, so the rate holds across the listing and the downloads. */
     private fun pace() {
-        val now = clock.instant()
-        val slot = maxOf(nextRequestAt, now)
+        // The slot is reserved under the lock, the wait happens outside it, so concurrent downloads keep the rate.
+        val (now, slot) = synchronized(pacing) {
+            val current = clock.instant()
+            val reserved = maxOf(nextRequestAt, current)
+            nextRequestAt = reserved.plus(spacing)
+            current to reserved
+        }
         if (slot.isAfter(now)) {
             sleeper(Duration.between(now, slot))
         }
-        nextRequestAt = slot.plus(spacing)
     }
 
     private fun backoff(attempt: Int, retryAfter: String?): Duration {

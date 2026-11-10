@@ -24,6 +24,11 @@ import net.onelitefeather.ingot.nexusimport.nexus.NexusHttpException
 import java.nio.file.Path
 import java.time.Clock
 import java.time.Duration
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 /** One Nexus repository and the Ingot repository its files go to. */
 data class CopyTarget(val nexusName: String, val targetName: String)
@@ -58,53 +63,109 @@ internal class ImportWorker(
     private val tempDir: Path,
     private val readOnly: () -> Boolean,
     private val token: String,
+    /** Files of one repository in flight at once. A value of one copies them in order on the calling thread. */
+    private val concurrency: Int = 1,
 ) {
 
     private val copier = FileCopier(open = { asset -> nexus.download(asset) }, target = target, tempDir = tempDir)
 
+    /** The store is not used from two threads at once, so the transactions of concurrent copies never overlap. */
+    private val storeLock = Any()
+
+    /** What one run shares between its copies: the lease deadline, the first reason to stop and the files already final. */
+    private class Run(val jobId: Long, val policy: ConflictPolicy, val final: Set<Pair<String, String>>) {
+        val deadline = AtomicLong()
+        val stop = AtomicReference<RunOutcome?>(null)
+
+        fun halt(outcome: RunOutcome) {
+            stop.compareAndSet(null, outcome)
+        }
+    }
+
     fun copy(jobId: Long, targets: List<CopyTarget>, policy: ConflictPolicy): RunOutcome {
-        if (!store.acquire(jobId, token)) return RunOutcome.NOT_ACQUIRED
-        var deadline = clock.millis() + lease.toMillis()
-        val final = store.assets(jobId)
+        if (!locked { store.acquire(jobId, token) }) return RunOutcome.NOT_ACQUIRED
+        val final = locked { store.assets(jobId) }
             .filter { it.result in FINAL }
             .map { it.repository to it.path }
             .toSet()
-
-        for (copyTarget in targets) {
-            for (asset in listAll(copyTarget.nexusName).sortedWith(ORDER)) {
-                if (readOnly()) {
-                    store.pause(jobId, token, PauseReason.READ_ONLY)
-                    return RunOutcome.PAUSED_READ_ONLY
-                }
-                if (clock.millis() >= deadline) return RunOutcome.LEASE_LOST
-                val control = store.job(jobId)
-                if (control?.cancelRequested == true) {
-                    return if (store.finish(jobId, token, JobStatus.CANCELLED)) RunOutcome.CANCELLED else RunOutcome.LEASE_LOST
-                }
-                if (control?.pauseRequested == true) {
-                    return if (store.pause(jobId, token, PauseReason.OPERATOR)) RunOutcome.PAUSED_OPERATOR else RunOutcome.LEASE_LOST
-                }
-                if (copyTarget.targetName to asset.path in final) continue
-
-                val result = try {
-                    copier.copy(asset, policy, copyTarget.targetName)
-                } catch (exception: NexusHttpException) {
-                    if (exception.status == 401 || exception.status == 403) {
-                        store.pause(jobId, token, PauseReason.CREDENTIALS_NEEDED)
-                        return RunOutcome.PAUSED_CREDENTIALS
-                    }
-                    AssetResult.FAILED
-                }
-                val size = asset.fileSize.coerceAtLeast(0)
-                val detail = if (result == AssetResult.CONFLICT) conflictDetail(asset, copyTarget.targetName) else null
-                val committed = store.commitAsset(jobId, token, AssetRecord(copyTarget.targetName, asset.path, size, result, detail), asset.path)
-                if (!committed) return RunOutcome.LEASE_LOST
-                deadline = clock.millis() + lease.toMillis()
-                if (result == AssetResult.CONFLICT && policy == ConflictPolicy.ABORT) break
+        val run = Run(jobId, policy, final)
+        run.deadline.set(clock.millis() + lease.toMillis())
+        val pool = if (concurrency > 1) Executors.newFixedThreadPool(concurrency) { Thread(it, "nexus-import-copy").apply { isDaemon = true } } else null
+        try {
+            for (copyTarget in targets) {
+                val listing = listAll(copyTarget.nexusName).sortedWith(ORDER)
+                val abort = AtomicBoolean(false)
+                // The artifacts of the repository all finish before its metadata and sidecars start, so a metadata deploy
+                // never sees a half copied version.
+                val (artifacts, metadata) = listing.partition { !isMetadata(it.path) }
+                runPhase(pool, artifacts, copyTarget, run, abort)
+                run.stop.get()?.let { return it }
+                runPhase(pool, metadata, copyTarget, run, abort)
+                run.stop.get()?.let { return it }
             }
+        } finally {
+            pool?.shutdownNow()
         }
-        return if (store.finish(jobId, token, JobStatus.COMPLETED)) RunOutcome.COMPLETED else RunOutcome.LEASE_LOST
+        return if (locked { store.finish(jobId, token, JobStatus.COMPLETED) }) RunOutcome.COMPLETED else RunOutcome.LEASE_LOST
     }
+
+    /** Copies one group of files, in order or [concurrency] at a time, and returns once every file of the group has finished. */
+    private fun runPhase(pool: ExecutorService?, assets: List<NexusAsset>, copyTarget: CopyTarget, run: Run, abort: AtomicBoolean) {
+        if (pool == null) {
+            for (asset in assets) {
+                copyOne(asset, copyTarget, run, abort)
+                if (run.stop.get() != null) return
+            }
+            return
+        }
+        // Every file is submitted before the first result is awaited, so one failing file cannot keep the others from finishing.
+        val pending = assets.map { asset -> pool.submit { copyOne(asset, copyTarget, run, abort) } }
+        pending.forEach { it.get() }
+    }
+
+    /** Checks the stop conditions, copies one file and commits its result under the lease. A stop sets the run's reason and returns. */
+    private fun copyOne(asset: NexusAsset, copyTarget: CopyTarget, run: Run, abort: AtomicBoolean) {
+        if (run.stop.get() != null || abort.get()) return
+        if (readOnly()) {
+            run.halt(if (locked { store.pause(run.jobId, token, PauseReason.READ_ONLY) }) RunOutcome.PAUSED_READ_ONLY else RunOutcome.LEASE_LOST)
+            return
+        }
+        if (clock.millis() >= run.deadline.get()) {
+            run.halt(RunOutcome.LEASE_LOST)
+            return
+        }
+        val control = locked { store.job(run.jobId) }
+        if (control?.cancelRequested == true) {
+            run.halt(if (locked { store.finish(run.jobId, token, JobStatus.CANCELLED) }) RunOutcome.CANCELLED else RunOutcome.LEASE_LOST)
+            return
+        }
+        if (control?.pauseRequested == true) {
+            run.halt(if (locked { store.pause(run.jobId, token, PauseReason.OPERATOR) }) RunOutcome.PAUSED_OPERATOR else RunOutcome.LEASE_LOST)
+            return
+        }
+        if (copyTarget.targetName to asset.path in run.final) return
+
+        val result = try {
+            copier.copy(asset, run.policy, copyTarget.targetName)
+        } catch (exception: NexusHttpException) {
+            if (exception.status == 401 || exception.status == 403) {
+                run.halt(if (locked { store.pause(run.jobId, token, PauseReason.CREDENTIALS_NEEDED) }) RunOutcome.PAUSED_CREDENTIALS else RunOutcome.LEASE_LOST)
+                return
+            }
+            AssetResult.FAILED
+        }
+        val size = asset.fileSize.coerceAtLeast(0)
+        val detail = if (result == AssetResult.CONFLICT) conflictDetail(asset, copyTarget.targetName) else null
+        val committed = locked { store.commitAsset(run.jobId, token, AssetRecord(copyTarget.targetName, asset.path, size, result, detail), asset.path) }
+        if (!committed) {
+            run.halt(RunOutcome.LEASE_LOST)
+            return
+        }
+        run.deadline.set(clock.millis() + lease.toMillis())
+        if (result == AssetResult.CONFLICT && run.policy == ConflictPolicy.ABORT) abort.set(true)
+    }
+
+    private fun <T> locked(block: () -> T): T = synchronized(storeLock, block)
 
     /** Both checksums of a conflict, so the operator can see what differs. */
     private fun conflictDetail(asset: NexusAsset, targetName: String): String =

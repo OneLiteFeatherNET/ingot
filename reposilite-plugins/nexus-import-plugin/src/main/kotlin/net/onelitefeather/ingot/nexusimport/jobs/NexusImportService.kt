@@ -309,7 +309,7 @@ internal class NexusImportService(
 
         val hosted = plan.repositories.filter { it.type == IngotType.HOSTED }.map { CopyTarget(it.nexusName, it.targetName) }
         val policy = ConflictPolicy.valueOf(stored.conflictPolicy.uppercase())
-        val worker = ImportWorker(store, clock, store.lease, client, ports.writer(id), tempDir, readOnly, token)
+        val worker = ImportWorker(store, clock, store.lease, client, ports.writer(id), tempDir, readOnly, token, settings.concurrency)
         val outcome = worker.copy(id, hosted, policy)
         if (outcome == RunOutcome.COMPLETED) {
             settle(id, hosted)
