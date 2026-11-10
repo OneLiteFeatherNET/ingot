@@ -233,8 +233,9 @@ LEASE_GROUP = "net/onelitefeather/smoke/lease"
 LEASE_VERSIONS = 80
 """Versions seeded for the lease check. A run that keeps all but the newest one deletes this many less one."""
 LEASE_ATTEMPTS = 3
-"""Attempts at the lease check. A cleanup run on the first replica can finish between the 409 the probe sees and the
-kill, which loses the race: the check then starts over with fresh versions under a new artifact name."""
+"""Attempts at the lease check. A cleanup run on the first replica can finish, or delete every version, between the
+409 the probe sees and the kill, which loses the race: the check then starts over with fresh versions under a new
+artifact name."""
 DEPLOY_GROUP = "net/onelitefeather/smoke/deploy"
 DEPLOY_VERSIONS = ("1.0.0", "1.0.1")
 ADMIN = ("smoke-admin", "smoke-ci-only-password")
@@ -513,9 +514,9 @@ class Smoke:
             if self.lease_takeover_attempt(attempt):
                 self.pods()
                 return
-            self.out(f"check 2: attempt {attempt} of {LEASE_ATTEMPTS} lost the race, the run finished before the kill")
-        raise SmokeFailure(f"check 2: the cleanup run finished before the kill in all {LEASE_ATTEMPTS} attempts, "
-                           "so the lease takeover was never exercised (lost race)")
+            self.out(f"check 2: attempt {attempt} of {LEASE_ATTEMPTS} lost the race, the run had done its work before the kill")
+        raise SmokeFailure(f"check 2: in all {LEASE_ATTEMPTS} attempts the cleanup run had done its work before the kill, "
+                           "or the taken-over run deleted nothing, so the lease takeover was never shown to do work")
 
     def lease_takeover_attempt(self, attempt):
         """One pass of check 2. Returns False when the race was lost, True when the takeover was checked."""
@@ -550,7 +551,9 @@ class Smoke:
             raise SmokeFailure(f"the takeover started {started - window_end:.1f}s after the window of "
                                f"{LEASE_TTL_SECONDS}s time-to-live plus {POLL_SECONDS}s poll ended")
         if recorded["deletedCount"] <= 0:
-            raise SmokeFailure("the taken-over run deleted nothing, so the takeover did no work")
+            # The killed run had deleted every version but was killed before it recorded itself, because a run is only
+            # written once it finishes. The takeover then finds nothing left: the race was lost, not the takeover.
+            return False
         return True
 
     def check_concurrent_deploys(self):
