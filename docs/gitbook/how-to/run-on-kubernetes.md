@@ -210,6 +210,33 @@ On clusters that assign the uid, such as OpenShift, set `deployment.securityProf
 
 Do not set `podSecurityContext.enabled` or `containerSecurityContext.enabled` together with a profile. The render fails and names both keys.
 
+## Size the heap from the memory limit
+
+The chart does not change the heap unless you ask it to. The `jvm` block sets JVM flags in `JDK_JAVA_OPTIONS`, which the JVM reads before `JAVA_OPTS`. Each key renders its flag only when it is set:
+
+```yaml
+jvm:
+  maxRAMPercentage: 70       # -XX:MaxRAMPercentage=70, the heap follows the memory limit
+  initialRAMPercentage: 20   # -XX:InitialRAMPercentage=20
+  gc: UseG1GC                # -XX:+UseG1GC
+  activeProcessorCount: 2    # -XX:ActiveProcessorCount=2
+  extraOptions:              # appended unchanged
+    - -XX:+ExitOnOutOfMemoryError
+```
+
+The chart keeps the text of a `JDK_JAVA_OPTIONS` entry that you set in `env` and appends its flags after it. If that entry sets the same option as a `jvm` key, the render fails and names the option. Remove one of them.
+
+An explicit `-Xmx` wins over a percentage. The chart default `JAVA_OPTS=-Xmx64M` sets one, so `maxRAMPercentage` has no effect until you remove the `-Xmx` from `JAVA_OPTS`. `helm install` prints a warning when both are set. Set `env` without `JAVA_OPTS`, or with a `JAVA_OPTS` that has no `-Xmx`:
+
+```yaml
+jvm:
+  maxRAMPercentage: 70
+
+env: []
+```
+
+The percentage applies to the container memory limit, so set `resources.limits.memory` as well. The chart does not provide measured sizes; choose the percentages for your own load.
+
 ## Use S3 for repositories
 
 Storage is set per repository in the maven settings. To store a repository in S3, set its `storageProvider` to `s3`. The endpoint can be an in-cluster service, for example a MinIO service:
