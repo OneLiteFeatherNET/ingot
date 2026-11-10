@@ -104,6 +104,35 @@ helm upgrade --install ingot oci://ghcr.io/onelitefeathernet/charts/ingot \
 
 The release is named `ingot` and the chart is named `ingot`, so the Deployment and the Service are both named `ingot`.
 
+## Verify the chart and the image (optional)
+
+The Helm chart and the image of each release are signed by the release workflow of this repository. Checking the signature before the first install is optional, and the install above does not depend on it. You need [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) installed.
+
+```bash
+cosign verify \
+  --certificate-identity https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/onelitefeathernet/charts/ingot:1.1.1
+
+cosign verify \
+  --certificate-identity https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/onelitefeathernet/ingot:1.2.0
+```
+
+A signature from this repository exits with `0`. A failure means that the artifact was not signed by the release workflow on `main`. Nightly images carry no signature, so this check fails for them by design. The identity and the checks for the dashboard image and the standalone jar are in [Verify a release](https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/RELEASE.md#verify-a-release).
+
+If Flux reconciles the chart from an `OCIRepository`, Flux can verify the same signature before it installs anything. Set `verify.provider` to `cosign` and match the identity of the release workflow:
+
+```yaml
+spec:
+  verify:
+    provider: cosign
+    matchOIDCIdentity:
+      issuer: "^https://token\\.actions\\.githubusercontent\\.com$"
+      subject: "^https://github\\.com/OneLiteFeatherNET/ingot/\\.github/workflows/release-please\\.yml@refs/heads/main$"
+```
+
 ## Check the rollout and the health
 
 Wait for the Deployment, then ask the instance for its health through a port forward:

@@ -26,6 +26,19 @@ The image is `ghcr.io/onelitefeathernet/ingot`. Every release publishes these ta
 
 Use the full version in production. A moving tag gives a different version when you pull the image again.
 
+## Verify the image (optional)
+
+Every release image is signed by the release workflow of this repository. The check is optional, the default install below does not depend on it, and it changes nothing on the host. You need [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) installed.
+
+```bash
+cosign verify \
+  --certificate-identity https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/onelitefeathernet/ingot:1.2.0
+```
+
+A signature from this repository exits with `0` and prints the signature details. A failure means that the image was not signed by the release workflow on `main`. Nightly tags carry no signature, so the same check fails for `nightly` by design. The identity is explained in [Verify a release](https://github.com/OneLiteFeatherNET/ingot/blob/main/.github/RELEASE.md#verify-a-release), which also lists the checks for the dashboard image, the Helm chart and the standalone jar.
+
 ## Run with docker run
 
 1. Start the container. The data lives in the volume `ingot-data`, which Docker creates on first use.
