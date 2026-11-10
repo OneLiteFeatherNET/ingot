@@ -38,8 +38,13 @@ describe('pageTitle', () => {
     expect(pageTitle({ name: 'access-machine', params: { name: 'ci' }, meta: { section: 'access' } }, SITE)).toBe('Access · Ingot Repository')
   })
 
-  it('names the settings section for an entry of the settings', () => {
-    expect(pageTitle({ name: 'settings-entry', params: {}, meta: { section: 'settings' } }, SITE)).toBe('Settings · Ingot Repository')
+  it('names the Administration section for an entry of the settings', () => {
+    expect(pageTitle({ name: 'settings-entry', params: {}, meta: { section: 'settings' } }, SITE)).toBe('Administration · Ingot Repository')
+  })
+
+  it('names the repositories pages Repositories, in the list and in the detail', () => {
+    expect(pageTitle({ name: 'settings-repositories', params: {}, meta: { section: 'settings' } }, SITE)).toBe('Repositories · Ingot Repository')
+    expect(pageTitle({ name: 'settings-repository', params: { id: 'releases' }, meta: { section: 'settings' } }, SITE)).toBe('Repositories · Ingot Repository')
   })
 
   it('names the audit page Audit log', () => {

@@ -22,23 +22,15 @@ import {
   firstAccessRoute,
   accessTabOf,
   pageLabel,
-  routeMeta,
-  groupedChildren,
-  sideNavOf,
-  settingsGroupOf,
-  groupedSettingsDomains,
-  railGroups,
-  barLayout
+  routeMeta
 } from './registry'
 import { ROUTES } from '../router/routes'
 import { ACCESS_NODES, canUse } from '../store/nodeAccess'
 
 // A session answers for a node from its node list, as the session store does.
 const canWith = (nodes) => (node) => canUse(nodes, node)
-const labelsFor = (nodes) => visiblePages(canWith(nodes)).map(page => page.label)
 const keysOf = (items) => items.map(item => item.key)
 
-const ADMIN_PAGE_LABELS = ['Repositories', 'Search', 'Dashboard', 'Analytics', 'Audit log', 'Access', 'Settings', 'Console', 'Maintenance']
 
 describe('registry entries', () => {
   it('gives every entry a key, a route name and a label', () => {
@@ -48,10 +40,10 @@ describe('registry entries', () => {
   })
 
   it('places every entry in a known area', () => {
-    const areas = ['work', 'monitor', 'administration', 'troubleshoot', 'none']
+    const areas = ['rail', 'none']
     const unknown = PAGES.filter(page => !areas.includes(page.area)).map(page => page.key)
 
-    expect(unknown, 'entries whose area is not one of the four groups or none').toEqual([])
+    expect(unknown, 'entries whose area is neither the rail nor none').toEqual([])
   })
 
   it('gives every entry a permission', () => {
@@ -102,32 +94,6 @@ describe('registry entries', () => {
 
     expect(route?.path).toBe('/maintenance')
     expect(route?.meta).toEqual({ section: 'maintenance', manager: true, node: 'ingot.admin.maintenance' })
-  })
-})
-
-describe('visiblePages', () => {
-  it('offers only overview and search to a visitor who may use no admin node', () => {
-    expect(keysOf(visiblePages(canWith([])))).toEqual(['overview', 'search'])
-  })
-
-  it('offers Access, and no other admin page, to a visitor who holds only the users node', () => {
-    expect(labelsFor(['ingot.admin.users'])).toEqual(['Repositories', 'Search', 'Access'])
-  })
-
-  it('offers the audit log, and no other admin page, to a visitor who holds only the audit node', () => {
-    expect(labelsFor(['ingot.admin.audit'])).toEqual(['Repositories', 'Search', 'Audit log'])
-  })
-
-  it('offers every admin page to a full administrator, in the rail order', () => {
-    expect(labelsFor(['ingot.admin.*'])).toEqual(ADMIN_PAGE_LABELS)
-  })
-
-  it('offers every page to an instance administrator with the lone wildcard', () => {
-    expect(labelsFor(['*'])).toEqual(ADMIN_PAGE_LABELS)
-  })
-
-  it('offers only overview and search to a user with repository nodes but no admin node', () => {
-    expect(labelsFor(['ingot.repository.releases.read'])).toEqual(['Repositories', 'Search'])
   })
 })
 
@@ -182,31 +148,6 @@ describe('visibleChildren of access', () => {
   })
 })
 
-describe('bar order and overflow', () => {
-  it('orders the bar as the design lists it', () => {
-    const ordered = PAGES
-      .filter(page => page.barOrder !== undefined)
-      .sort((a, b) => a.barOrder - b.barOrder)
-      .map(page => page.key)
-
-    expect(ordered).toEqual(['overview', 'search', 'dashboard', 'access', 'settings', 'analytics', 'audit', 'console', 'maintenance'])
-  })
-
-  it('gives no bar order to the account page, which is never in the bar', () => {
-    expect(PAGES.find(page => page.key === 'account')?.barOrder).toBeUndefined()
-  })
-
-  it('carries no static overflow flag, the bar rule decides what sits under More', () => {
-    expect(PAGES.filter(page => 'overflow' in page).map(page => page.key)).toEqual([])
-  })
-
-  it('lists the rail pages by group: Work, Monitor, Administration, Troubleshoot', () => {
-    expect(keysOf(visiblePages(() => true))).toEqual([
-      'overview', 'search', 'dashboard', 'analytics', 'audit', 'access', 'settings', 'console', 'maintenance'
-    ])
-  })
-})
-
 describe('pageLabel', () => {
   it('returns the label of an entry', () => {
     expect(pageLabel('search')).toBe('Search')
@@ -241,127 +182,5 @@ describe('routeMeta', () => {
 
   it('gives the account page the signed in flag', () => {
     expect(routeMeta('account')).toEqual({ section: 'account', signedIn: true })
-  })
-})
-
-describe('groupedChildren', () => {
-  it('groups the Access pages of a full administrator under their headings, in order', () => {
-    const groups = groupedChildren('access', canWith(['ingot.admin.*']))
-
-    expect(groups.map(group => [group.heading, group.links.map(link => link.label)])).toEqual([
-      ['People', ['Users', 'Machine accounts', 'Teams']],
-      ['Sign in', ['SSO', 'LDAP', 'Security']],
-      ['Tools', ['Check']]
-    ])
-  })
-
-  it('gives each link its key and the router location of its route', () => {
-    const [people] = groupedChildren('access', canWith(['ingot.admin.*']))
-
-    expect(people.links[2]).toEqual({ key: 'teams', label: 'Teams', to: { name: 'access-teams' } })
-  })
-
-  it('leaves out a group without a page the visitor may open', () => {
-    const groups = groupedChildren('access', canWith(['ingot.admin.teams']))
-
-    expect(groups.map(group => group.heading), 'a teams-only visitor has no sign in pages').toEqual(['People', 'Tools'])
-  })
-
-  it('returns no group for a visitor without a permission', () => {
-    expect(groupedChildren('access', canWith([]))).toEqual([])
-  })
-})
-
-describe('sideNavOf', () => {
-  it('names the navigation, the first crumb and the index location from the entry', () => {
-    expect(sideNavOf('access')).toEqual({ label: 'Access sections', sectionLabel: 'Access', indexTo: { name: 'access' } })
-    expect(sideNavOf('settings')).toEqual({ label: 'Settings sections', sectionLabel: 'Settings', indexTo: { name: 'settings' } })
-  })
-})
-
-describe('settings domain groups', () => {
-  it.each([
-    ['maven', 'Repository'],
-    ['javadoc', 'Repository'],
-    ['cleanup', 'Repository'],
-    ['web', 'Instance'],
-    ['frontend', 'Instance'],
-    ['statistics', 'Data'],
-    ['audit', 'Data'],
-    ['search', 'Data']
-  ])('places the domain %s in %s', (domain, heading) => {
-    expect(settingsGroupOf(domain)).toBe(heading)
-  })
-
-  it('places a domain the mapping does not name in Plugins', () => {
-    expect(settingsGroupOf('my-plugin')).toBe('Plugins')
-  })
-
-  it('groups a domain list in the order Repository, Instance, Data, Plugins and keeps the server order inside', () => {
-    const groups = groupedSettingsDomains(['search', 'extra', 'cleanup', 'maven', 'web'])
-
-    expect(groups).toEqual([
-      { heading: 'Repository', domains: ['cleanup', 'maven'] },
-      { heading: 'Instance', domains: ['web'] },
-      { heading: 'Data', domains: ['search'] },
-      { heading: 'Plugins', domains: ['extra'] }
-    ])
-  })
-
-  it('leaves out a group that holds no domain', () => {
-    expect(groupedSettingsDomains(['maven']).map(group => group.heading)).toEqual(['Repository'])
-  })
-})
-
-const GROUP_HEADINGS = (groups) => groups.map(group => group.heading)
-const labelsOf = (groups) => groups.map(group => group.pages.map(page => page.label))
-
-describe('railGroups', () => {
-  it('groups a full administrator into Work, Monitor, Administration and Troubleshoot, in that order', () => {
-    const groups = railGroups(canWith(['ingot.admin.*']))
-
-    expect(GROUP_HEADINGS(groups)).toEqual(['Work', 'Monitor', 'Administration', 'Troubleshoot'])
-    expect(labelsOf(groups)).toEqual([
-      ['Repositories', 'Search'],
-      ['Dashboard', 'Analytics', 'Audit log'],
-      ['Access', 'Settings'],
-      ['Console', 'Maintenance']
-    ])
-  })
-
-  it('labels the overview route Repositories and the audit route Audit log', () => {
-    expect(pageLabel('overview')).toBe('Repositories')
-    expect(pageLabel('audit')).toBe('Audit log')
-  })
-
-  it('leaves out a group that has no permitted page', () => {
-    const groups = railGroups(canWith(['ingot.admin.audit']))
-
-    expect(GROUP_HEADINGS(groups), 'Administration and Troubleshoot are empty').toEqual(['Work', 'Monitor'])
-    expect(labelsOf(groups)[1]).toEqual(['Audit log'])
-  })
-
-  it('gives an anonymous visitor the Work group alone', () => {
-    expect(GROUP_HEADINGS(railGroups(canWith([])))).toEqual(['Work'])
-  })
-})
-
-describe('barLayout', () => {
-  const barLabels = (nodes) => barLayout(canWith(nodes)).bar.map(page => page.label)
-  const moreOf = (nodes) => barLayout(canWith(nodes)).more
-
-  it.each([
-    ['a full administrator', ['ingot.admin.*'], ['Repositories', 'Search', 'Dashboard', 'Access'], [
-      { heading: 'Monitor', labels: ['Analytics', 'Audit log'] },
-      { heading: 'Administration', labels: ['Settings'] },
-      { heading: 'Troubleshoot', labels: ['Console', 'Maintenance'] }
-    ]],
-    ['a visitor with the audit node only', ['ingot.admin.audit'], ['Repositories', 'Search', 'Audit log'], []],
-    ['an anonymous visitor', [], ['Repositories', 'Search'], []],
-    ['a visitor with exactly four permitted entries', ['ingot.admin.console', 'ingot.admin.audit'], ['Repositories', 'Search', 'Audit log', 'Console'], []]
-  ])('puts %s in the bar and the rest under More', (_who, nodes, bar, more) => {
-    expect(barLabels(nodes), 'the first four permitted entries in bar order').toEqual(bar)
-    expect(moreOf(nodes).map(group => ({ heading: group.heading, labels: group.pages.map(page => page.label) })),
-      'the leftovers under their group headings').toEqual(more)
   })
 })
