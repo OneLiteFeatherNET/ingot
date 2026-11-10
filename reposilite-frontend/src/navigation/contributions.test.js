@@ -22,6 +22,7 @@ import {
   contributedRailGroups,
   railGroups,
   barLayout,
+  pluginPageRedirect,
   settingsGroupOf,
   unlistedRoutes,
 } from './registry'
@@ -123,6 +124,29 @@ describe('contributed settings sections', () => {
 
     expect(settingsGroupOf('web')).toBe('Instance')
     expect(settingsGroupOf('unknown-plugin-domain')).toBe('Plugins')
+  })
+})
+
+describe('plugin page without a page id', () => {
+  it('redirects to the first page of the plugin', () => {
+    setContributions(manifest())
+
+    expect(pluginPageRedirect('example', undefined)).toEqual({
+      name: 'settings-plugin',
+      params: { plugin: 'example', page: 'status' },
+    })
+  })
+
+  it('does not redirect an address that already names a page', () => {
+    setContributions(manifest())
+
+    expect(pluginPageRedirect('example', 'audit')).toBeNull()
+  })
+
+  it('does not redirect a plugin that contributes no page', () => {
+    setContributions(manifest())
+
+    expect(pluginPageRedirect('unknown', undefined)).toBeNull()
   })
 })
 
