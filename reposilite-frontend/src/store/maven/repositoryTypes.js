@@ -193,6 +193,36 @@ export const switchedEntry = (entry, to) => {
 }
 
 /*
+ * The type a repository without a declared type gets, derived the way the server derives it (RepositoryType.kt):
+ * no references is hosted, only local references is a group, only remote addresses is a proxy, and both is mixed.
+ * A reference that is not an http or https address names a local repository, and a blank reference is ignored.
+ * The draft has not been through the server, so the page derives it again; the table test keeps the two in step.
+ */
+const DECLARED_TYPES = ['HOSTED', 'PROXY', 'GROUP']
+
+export const derivedTypeOf = (entry = {}) => {
+  const references = Array.isArray(entry?.proxied)
+    ? entry.proxied.filter(item => !isBlankEntry(item)).map(item => String(item?.reference ?? '').trim())
+    : []
+  const external = references.filter(isRemoteUrl).length
+  const local = references.length - external
+  if (external === 0 && local === 0) return 'HOSTED'
+  if (external === 0) return 'GROUP'
+  if (local === 0) return 'PROXY'
+  return 'MIXED'
+}
+
+/*
+ * The effective type of an entry: the declared type when it is one of the three, otherwise the derived one.
+ * `declared` tells the two apart, so the page can say "derived" next to the badge.
+ */
+export const effectiveTypeOf = (entry = {}) => {
+  const declared = typeof entry?.type === 'string' ? entry.type.toUpperCase() : ''
+  if (DECLARED_TYPES.includes(declared)) return { type: declared, declared: true }
+  return { type: derivedTypeOf(entry), declared: false }
+}
+
+/*
  * The rules the server enforces, checked before the settings are saved, so the problem is shown next to the type.
  * `otherIds` are the ids of the other repositories; a group may list only those.
  */
