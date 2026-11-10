@@ -22,6 +22,7 @@ import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.configuration.shared.api.SettingsKey
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.api.ValidatedSettings
+import com.reposilite.maven.ChecksumPolicy
 import com.reposilite.maven.EffectiveRepositoryType
 import com.reposilite.maven.RepositoryType
 import com.reposilite.maven.StoragePolicy
@@ -197,6 +198,10 @@ data class RepositorySettings(
             violations += "repository '$id': tag '$tag' is listed more than once"
         }
 
+        proxied.filter { it.checksumPolicy != ChecksumPolicy.IGNORE && !it.store }.forEach { mirror ->
+            violations += "repository '$id': mirror '${mirror.referencedHost()}' sets checksumPolicy to ${mirror.checksumPolicy.name.lowercase()}, which needs store to be enabled"
+        }
+
         return violations
     }
 
@@ -298,7 +303,15 @@ data class MirroredRepositorySettings(
         _This should only ever be turned on in conjunction with the store option or with a secondary mirror host that has this option turned off.<br/>
         If you are looking to hide this mirror from unauthenticated connections, please use repository visibility options instead._
     """)
-    val authenticatedFetchingOnly: Boolean = false
+    val authenticatedFetchingOnly: Boolean = false,
+    @get:Doc(title = "Checksum policy", description = """
+        How Ingot checks the artifacts stored from this mirror against the checksum files of the same host.<br/>
+        ignore - stores the copy without a check (Default)<br/>
+        warn - stores the copy, and logs a mismatch or a missing checksum file<br/>
+        fail - stores and serves a copy only when it matches the sha256 file of the host, or the sha1 file when the host has no sha256 file; otherwise the host is refused and the next host is tried<br/>
+        Needs Store to be enabled. Metadata and checksum files are not checked.
+    """)
+    val checksumPolicy: ChecksumPolicy = ChecksumPolicy.IGNORE,
 ) : SharedSettings
 
 @Doc(title = "Mirror Credentials", description = "The authorization credentials used to access mirrored repository.")
