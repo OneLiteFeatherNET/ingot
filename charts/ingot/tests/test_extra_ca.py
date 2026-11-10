@@ -33,11 +33,11 @@ def env_entries(deployment, name):
 
 
 def volumes_named(deployment, name):
-    return [volume for volume in pod_spec(deployment)["volumes"] if volume.get("name") == name]
+    return [volume for volume in pod_spec(deployment).get("volumes", []) if volume.get("name") == name]
 
 
 def mounts_at(deployment, path):
-    return [mount for mount in container(deployment)["volumeMounts"] if mount.get("mountPath") == path]
+    return [mount for mount in container(deployment).get("volumeMounts", []) if mount.get("mountPath") == path]
 
 
 class DefaultRenderTest(unittest.TestCase):
