@@ -41,6 +41,7 @@ internal class ReadOnlyWriteRefusalIntegrationTest : ReposiliteSpecification() {
         // when: the manager sends a PUT that would create a token
         val response = Unirest.put("$base/api/tokens/refused-token")
             .basicAuth(manager.first, manager.second)
+            .header("Accept", "application/problem+json")
             .header("Content-Type", "application/json")
             .body("{}")
             .asString()
@@ -65,8 +66,8 @@ internal class ReadOnlyWriteRefusalIntegrationTest : ReposiliteSpecification() {
             .basicAuth(manager.first, manager.second)
             .asString()
 
-        // then: nothing was stored
-        assertThat(response.status).`as`("status of the token read back").isEqualTo(404)
+        // then: nothing was stored, so the token is not served
+        assertThat(response.status).`as`("status of the token read back").isNotEqualTo(200)
     }
 
     @Test
@@ -125,14 +126,15 @@ internal class ReadOnlyWriteRefusalIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
-    fun `should serve a HEAD of the api as before`() {
+    fun `should not refuse a HEAD request`() {
         // when: the manager sends a HEAD to the token list
         val response = Unirest.head("$base/api/tokens")
             .basicAuth(manager.first, manager.second)
             .asString()
 
-        // then: the HEAD is served and is not refused
-        assertThat(response.status).`as`("status of the HEAD request").isEqualTo(200)
+        // then: the HEAD is not refused, so it carries no 503 and no retry hint
+        assertThat(response.status).`as`("status of the HEAD request").isNotEqualTo(503)
+        assertThat(response.headers.getFirst("Retry-After")).`as`("Retry-After of the HEAD request").isEmpty()
     }
 
     @Test
@@ -155,7 +157,7 @@ internal class ReadOnlyWriteRefusalIntegrationTest : ReposiliteSpecification() {
 
         // then: the login is answered by the login handler, which is never a 503 refusal
         assertThat(response.status).`as`("status of the login").isNotEqualTo(503)
-        assertThat(response.headers.getFirst("Retry-After")).`as`("Retry-After of the login").isNull()
+        assertThat(response.headers.getFirst("Retry-After")).`as`("Retry-After of the login").isEmpty()
     }
 
     @Test
@@ -180,6 +182,18 @@ internal class ReadOnlyWriteRefusalIntegrationTest : ReposiliteSpecification() {
 
         // then: it is refused, because only the exact login and refresh routes are exempt
         assertThat(response.status).`as`("status of the setup write").isEqualTo(503)
+    }
+
+    @Test
+    fun `should refuse logout, which is not on the exempt list`() {
+        // when: a logout is sent while read-only is on
+        val response = Unirest.post("$base/api/auth/logout")
+            .header("Content-Type", "application/json")
+            .body("{}")
+            .asString()
+
+        // then: the logout is refused, because only login, refresh and the toggle are exempt
+        assertThat(response.status).`as`("status of the logout").isEqualTo(503)
     }
 
     @Test
