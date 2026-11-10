@@ -256,6 +256,62 @@ objectStorage:
 
 The chart renders each variable as a reference to a key of that Secret, so the values stay in the cluster. The first two keys must exist, or the pod does not start. `AWS_REGION` may be left out.
 
+## Route mirror traffic through an egress proxy
+
+When the cluster reaches external repositories only through an egress proxy, set the proxy variables on the pod and turn on the switch. Mirror clients then use the proxy, and a mirror with its own `httpProxy` keeps that value:
+
+```yaml
+env:
+  - name: INGOT_HTTP_USE_ENV_PROXY
+    value: "true"
+  - name: HTTPS_PROXY
+    value: "http://egress-proxy.platform.svc.cluster.local:3128"
+  - name: NO_PROXY
+    value: "localhost,127.0.0.1,.svc,.cluster.local"
+```
+
+The switch is off by default, so an existing installation keeps its routes until you set it. Put no user name or password into `HTTPS_PROXY` or `HTTP_PROXY`, because Ingot refuses such a value. Keep the credentials of the proxy on the mirror with `httpProxy` instead. The variables are described in [Environment variables](../reference/environment-variables.md#mirror-environment-proxy).
+
+A NetworkPolicy that limits egress has to allow the same route. Without it the pod cannot reach the proxy, and the mirror requests fail with the upstream error. Allow the pods of this release to reach the proxy and DNS, and nothing else that the mirrors need:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingot-egress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ingot
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: platform
+          podSelector:
+            matchLabels:
+              app: egress-proxy
+      ports:
+        - protocol: TCP
+          port: 3128
+```
+
+Replace the labels with the labels of your release and of your proxy. `kubectl get pods --show-labels` lists them. A host that `NO_PROXY` lists is reached directly, so it needs its own egress rule as well.
+
 ## Scale
 
 Set `deployment.replicas` for a fixed count, or turn on autoscaling. With autoscaling enabled, the chart leaves `replicas` out of the Deployment and the autoscaler sets the count:
