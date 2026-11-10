@@ -14,11 +14,15 @@
 * [Install with Docker](how-to/install-with-docker.md)
 * [Run the dashboard in a separate container](how-to/run-split-dashboard-container.md)
 * [Run on Kubernetes](how-to/run-on-kubernetes.md)
+* [Manage secrets with GitOps](how-to/manage-secrets-with-gitops.md)
+* [Size the deployment](how-to/size-the-deployment.md)
 * [Run the dashboard split from the server with Helm](how-to/run-split-with-helm.md)
 * [Run the JAR](how-to/install-jar.md)
 * [Run as a service](how-to/run-as-service.md)
 * [Run behind a reverse proxy](how-to/run-behind-reverse-proxy.md)
+* [Configure the edge for large uploads](how-to/configure-the-edge-for-large-uploads.md)
 * [Enable TLS](how-to/enable-tls.md)
+* [Terminate TLS at the gateway](how-to/terminate-tls-at-the-gateway.md)
 * [Configure a database](how-to/configure-database.md)
 * [Configure the cluster bus](how-to/configure-cluster-bus.md)
 * [Use S3 storage](how-to/use-s3-storage.md)
@@ -106,6 +110,7 @@
 ### Architecture and compatibility
 
 * [Drop-in compatibility with Reposilite](explanation/drop-in-compatibility.md)
+* [Deployment options compared](explanation/deployment-options-compared.md)
 * [Multi-replica operation](explanation/multi-replica-operation.md)
 * [Storage and mirror caching](explanation/storage-and-mirror-caching.md)
 
