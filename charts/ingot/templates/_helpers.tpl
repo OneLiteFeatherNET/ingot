@@ -508,3 +508,81 @@ file fails the render, because the chart cannot choose between two.
 {{- end -}}
 {{- join " " (compact (list $opts "--shared-configuration /app/shared-config/configuration.shared.json")) -}}
 {{- end }}
+
+{{/*
+Fails when a namespace or pod selector of networkPolicy.ingress is empty. An empty selector matches every namespace or
+every pod, which would open the policy to all sources.
+*/}}
+{{- define "ingot.networkPolicyCheck" -}}
+{{- range .Values.networkPolicy.ingress.fromNamespaces -}}
+{{- if not . -}}
+{{- fail "networkPolicy.ingress.fromNamespaces must not contain an empty selector: an empty selector matches every namespace" -}}
+{{- end -}}
+{{- end -}}
+{{- range .Values.networkPolicy.ingress.fromPods -}}
+{{- if not . -}}
+{{- fail "networkPolicy.ingress.fromPods must not contain an empty selector: an empty selector matches every pod" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Ingress peers of a NetworkPolicy, one YAML list item per peer, without a leading newline. The listed namespaces and pods
+come first. With the dictionary key dashboard set to true, the dashboard pods are added as well. Expects the keys root
+and dashboard.
+*/}}
+{{- define "ingot.networkPolicyPeers" -}}
+{{- range .root.Values.networkPolicy.ingress.fromNamespaces }}
+- namespaceSelector:
+    matchLabels:
+{{ toYaml . | indent 6 }}
+{{- end }}
+{{- range .root.Values.networkPolicy.ingress.fromPods }}
+- podSelector:
+    matchLabels:
+{{ toYaml . | indent 6 }}
+{{- end }}
+{{- if .dashboard }}
+- podSelector:
+    matchLabels:
+{{ include "ingot.dashboardSelectorLabels" .root | indent 6 }}
+{{- end }}
+{{- end }}
+
+{{/*
+Egress rule that allows DNS to any destination. Without it the restricted egress breaks every name lookup.
+*/}}
+{{- define "ingot.networkPolicyDns" -}}
+- ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+{{- end }}
+
+{{/*
+Mount path of the extra CA bundle. The image reads the PEM files from it through INGOT_EXTRA_CA_CERTS.
+*/}}
+{{- define "ingot.extraCaPath" -}}
+/etc/ingot/extra-ca
+{{- end }}
+
+{{/*
+Fails when extraCaCerts is enabled without exactly one source, or when env sets INGOT_EXTRA_CA_CERTS too. The message
+names extraCaCerts.
+*/}}
+{{- define "ingot.extraCaCheck" -}}
+{{- if .Values.extraCaCerts.enabled -}}
+{{- $sources := 0 -}}
+{{- if .Values.extraCaCerts.configMapName -}}
+{{- $sources = add1 $sources -}}
+{{- end -}}
+{{- if .Values.extraCaCerts.secretName -}}
+{{- $sources = add1 $sources -}}
+{{- end -}}
+{{- if ne (int $sources) 1 -}}
+{{- fail "extraCaCerts.enabled needs exactly one source: set extraCaCerts.configMapName or extraCaCerts.secretName, not both and not neither" -}}
+{{- end -}}
+{{- include "ingot.checkEnvConflict" (dict "root" . "name" "INGOT_EXTRA_CA_CERTS" "owner" "extraCaCerts") -}}
+{{- end -}}
+{{- end }}

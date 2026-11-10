@@ -51,6 +51,7 @@ spec:
       terminationGracePeriodSeconds: {{ if or (gt $preStop 0) (gt $drain 0) }}{{ add $preStop $drain 10 }}{{ else }}{{ default 60 .Values.deployment.terminationGracePeriodSeconds }}{{ end }}
       {{- include "ingot.securityProfileCheck" . }}
       {{- include "ingot.sharedConfigurationCheck" . }}
+      {{- include "ingot.extraCaCheck" . }}
       {{- if .Values.deployment.podSecurityContext.enabled }}
       securityContext: {{- omit .Values.deployment.podSecurityContext "enabled" | toYaml | nindent 8 }}
       {{- else if .Values.deployment.securityProfile }}
@@ -117,11 +118,18 @@ spec:
             {{- if .Values.persistence.subPath }}
             subPath: {{ .Values.persistence.subPath }}
             {{- end }}
-          {{- if .Values.deployment.securityProfile }}
+          {{- if or .Values.deployment.securityProfile .Values.extraCaCerts.enabled }}
           - name: ingot-tmp
             mountPath: /tmp
+          {{- end }}
+          {{- if .Values.deployment.securityProfile }}
           - name: ingot-logs
             mountPath: /var/log/reposilite
+          {{- end }}
+          {{- if .Values.extraCaCerts.enabled }}
+          - name: ingot-extra-ca
+            mountPath: {{ include "ingot.extraCaPath" . }}
+            readOnly: true
           {{- end }}
           {{- if .Values.clusterBus.credentialsSecret }}
           - name: ingot-cluster-credentials
@@ -155,7 +163,7 @@ spec:
         {{- end }}
         {{- end }}
         {{- $renderShutdownTimeout := and (gt $drain 0) (not $shutdownTimeoutSet) }}
-        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout $generatedEnv }}
+        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout $generatedEnv .Values.extraCaCerts.enabled }}
         env:
           {{- if eq .Values.mode "split" }}
           - name: INGOT_TARGET
@@ -170,6 +178,10 @@ spec:
           {{- if $renderShutdownTimeout }}
           - name: INGOT_SHUTDOWN_TIMEOUT
             value: {{ $drain | quote }}
+          {{- end }}
+          {{- if .Values.extraCaCerts.enabled }}
+          - name: INGOT_EXTRA_CA_CERTS
+            value: {{ include "ingot.extraCaPath" . | quote }}
           {{- end }}
           {{- with $generatedEnv }}
           {{- . | nindent 10 }}
@@ -202,9 +214,11 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
-        {{- if .Values.deployment.securityProfile }}
+        {{- if or .Values.deployment.securityProfile .Values.extraCaCerts.enabled }}
         - name: ingot-tmp
           emptyDir: {}
+        {{- end }}
+        {{- if .Values.deployment.securityProfile }}
         - name: ingot-logs
           emptyDir: {}
         {{- end }}
@@ -221,6 +235,16 @@ spec:
         - name: ingot-shared-configuration
           configMap:
             name: {{ include "ingot.sharedConfigurationSource" . | quote }}
+        {{- end }}
+        {{- if .Values.extraCaCerts.enabled }}
+        - name: ingot-extra-ca
+          {{- if .Values.extraCaCerts.configMapName }}
+          configMap:
+            name: {{ .Values.extraCaCerts.configMapName | quote }}
+          {{- else }}
+          secret:
+            secretName: {{ .Values.extraCaCerts.secretName | quote }}
+          {{- end }}
         {{- end }}
         {{- if .Values.deployment.additionalVolumes }}
           {{- toYaml .Values.deployment.additionalVolumes | nindent 8 }}
