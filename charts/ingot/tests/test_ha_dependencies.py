@@ -10,6 +10,7 @@ Run from the repository root:
 """
 
 import os
+import re
 import unittest
 
 import yaml
@@ -95,6 +96,17 @@ class ValuesFileTest(unittest.TestCase):
                       "without a preStop sleep the Service still routes reads to a replica that is stopping")
         variables = {item["name"]: item.get("value") for item in container.get("env", [])}
         self.assertIn("INGOT_SHUTDOWN_TIMEOUT", variables, "without a drain the requests in flight are cut at the stop")
+
+    def test_the_heap_fits_into_the_memory_limit_of_the_container(self):
+        deployment = named(render(self.values), "Deployment", SERVER)
+        container = deployment["spec"]["template"]["spec"]["containers"][0]
+        variables = {item["name"]: item.get("value") for item in container.get("env", [])}
+        heap = re.search(r"-Xmx(\d+)M", variables.get("JAVA_OPTS", ""))
+        limit = re.fullmatch(r"(\d+)Mi", container["resources"]["limits"]["memory"])
+        self.assertIsNotNone(heap, "the smoke replicas set their heap in JAVA_OPTS")
+        self.assertIsNotNone(limit, "the memory limit of the smoke replicas is given in Mi")
+        self.assertGreaterEqual(int(limit.group(1)), int(heap.group(1)) + 256,
+                                "a heap above the limit lets the kernel kill a replica in the middle of a request")
 
     def test_the_image_is_the_one_the_job_loads_into_kind_by_tag(self):
         self.assertEqual({"name": "ingot", "tag": "ci"}, {"name": self.values["image"]["name"], "tag": self.values["image"]["tag"]},

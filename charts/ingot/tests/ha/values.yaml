@@ -15,6 +15,15 @@ deployment:
   shutdown:
     preStopSeconds: 15
     drainSeconds: 30
+# The heap of JAVA_OPTS below plus room for the JVM itself. The chart default of 256Mi is smaller than that heap, and the
+# kernel then kills a replica in the middle of a request once the heap grows, for example while it hashes a password.
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: 2.0
+    memory: 1024Mi
 database:
   existingSecret: ingot-database
   secretKey: database
