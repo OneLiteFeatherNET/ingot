@@ -229,11 +229,14 @@ READER_SCRIPT = (
 without an answer prints "000 curl-<exit code>" in place of the status, so 28 (timeout) and 7 (refused) stay apart."""
 
 CURL_SCRIPT = (
-    'm="$1"; u="$2"; shift 2; cat > /tmp/in\n'
-    'if [ -s /tmp/in ]; then set -- --data-binary @/tmp/in "$@"; fi\n'
-    'code=$(curl -sS -X "$m" --max-time 240 -o /tmp/out -D /tmp/hdr -w "%{http_code}" "$@" "$u") || code=000\n'
-    'echo "$code"; cat /tmp/hdr 2>/dev/null | tr -d "\\r"; echo "---"; base64 /tmp/out 2>/dev/null | tr -d "\\n"; echo\n'
+    'm="$1"; u="$2"; shift 2; d=$(mktemp -d); cat > "$d/in"\n'
+    'if [ -s "$d/in" ]; then set -- --data-binary @"$d/in" "$@"; fi\n'
+    'code=$(curl -sS -X "$m" --max-time 240 -o "$d/out" -D "$d/hdr" -w "%{http_code}" "$@" "$u") || code=000\n'
+    'echo "$code"; cat "$d/hdr" 2>/dev/null | tr -d "\\r"; echo "---"; base64 "$d/out" 2>/dev/null | tr -d "\\n"; echo\n'
+    'rm -rf "$d"\n'
 )
+"""One request from the client pod. Every call keeps its files in a directory of its own, because the concurrent deploys
+check runs two calls in the pod at the same moment."""
 """Runs one request from the client pod and prints the status, the headers and the base64 body."""
 
 
@@ -612,12 +615,33 @@ class Smoke:
     def run_all(self):
         self.install()
         self.configure()
-        self.check_rolling_restart()
-        self.check_lease_takeover()
-        self.check_concurrent_deploys()
-        self.check_sessions()
-        self.check_cluster_view()
+        failures = run_checks([
+            ("check 1", self.check_rolling_restart),
+            ("check 2", self.check_lease_takeover),
+            ("check 3", self.check_concurrent_deploys),
+            ("check 4", self.check_sessions),
+            ("check 5", self.check_cluster_view),
+        ], out=self.out)
+        if failures:
+            raise SmokeFailure(f"{len(failures)} of 5 checks failed: " + "; ".join(failures))
         self.out("all five checks passed")
+
+
+def run_checks(checks, out=lambda line: None):
+    """Runs every named check, also after one failed, so a single run shows every failure. Returns the failures, each
+    as "<name>: <cause>"."""
+    failures = []
+    for name, check in checks:
+        try:
+            check()
+        except SmokeFailure as failure:
+            failures.append(f"{name}: {failure}")
+        except Exception as error:  # an unexpected error fails its check, and the checks after it still run
+            failures.append(f"{name}: {type(error).__name__}: {error}")
+        else:
+            continue
+        out(f"{failures[-1]}")
+    return failures
 
 
 def diagnostics(kubectl, out=print):

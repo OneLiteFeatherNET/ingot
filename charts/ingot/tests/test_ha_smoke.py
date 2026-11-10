@@ -12,6 +12,8 @@ Run from the repository root:
 import unittest
 
 from ha_smoke import (
+    CURL_SCRIPT,
+    run_checks,
     READER_SCRIPT,
     READ_TIMEOUT_SECONDS,
     generate_pom_request,
@@ -269,6 +271,38 @@ class SingleRunTest(unittest.TestCase):
     def test_no_recorded_run_of_the_policy_fails(self):
         with self.assertRaises(SmokeFailure):
             single_completed_run([{"policyId": "other", "id": "r2"}], "smoke")
+
+
+class CurlScriptTest(unittest.TestCase):
+
+    def test_each_request_keeps_its_files_in_a_directory_of_its_own(self):
+        self.assertIn("mktemp -d", CURL_SCRIPT, "two requests at the same moment run in one client pod")
+        for shared in ("/tmp/in", "/tmp/out", "/tmp/hdr"):
+            self.assertNotIn(shared, CURL_SCRIPT, f"{shared} is shared, so a concurrent request empties the body of another")
+
+
+class RunChecksTest(unittest.TestCase):
+
+    def test_a_failed_check_does_not_stop_the_checks_after_it(self):
+        ran = []
+
+        def failing():
+            ran.append("first")
+            raise SmokeFailure("no answer")
+
+        failures = run_checks([("check 1", failing), ("check 2", lambda: ran.append("second"))])
+        self.assertEqual(["first", "second"], ran, "every check runs, so one run shows every failure")
+        self.assertEqual(["check 1: no answer"], failures, "the failure names its check and its cause")
+
+    def test_an_unexpected_error_counts_as_a_failure_of_its_check(self):
+        def broken():
+            raise ValueError("not JSON")
+
+        self.assertEqual(["check 4: ValueError: not JSON"], run_checks([("check 4", broken)]),
+                         "an error outside the expected failures still fails its check")
+
+    def test_passing_checks_report_no_failure(self):
+        self.assertEqual([], run_checks([("check 5", lambda: None)]), "no failure when every check passes")
 
 
 class CurlOutputTest(unittest.TestCase):
