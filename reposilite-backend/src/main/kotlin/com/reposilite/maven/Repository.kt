@@ -43,6 +43,8 @@ class Repository internal constructor(
     resolutionCacheMaxEntries: Int,
     /** The declared type, null for an untyped repository, which keeps the behaviour it always had. */
     val declaredType: RepositoryType? = null,
+    /** Group id prefixes this group serves from hosted members only, see [NamespaceProtection]. Empty disables the rule. */
+    val protectedGroupPrefixes: List<String> = emptyList(),
 ) : RegisteredRepository {
 
     init {

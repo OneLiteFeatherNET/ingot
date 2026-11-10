@@ -66,6 +66,7 @@ internal class RepositoryFactory(
             storagePolicy = configuration.storagePolicy,
             metadataMaxAgeInSeconds = configuration.metadataMaxAge,
             resolutionCacheMaxEntries = configuration.resolutionCacheMaxEntries,
+            protectedGroupPrefixes = configuration.protectedGroupPrefixes,
         )
 
     private fun createMirroredHostConfiguration(configurationSource: MirroredRepositorySettings): MirrorHost? {

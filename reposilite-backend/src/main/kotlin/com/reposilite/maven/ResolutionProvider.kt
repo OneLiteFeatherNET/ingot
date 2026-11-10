@@ -38,6 +38,10 @@ internal class ResolutionProvider(
         val remote: MirrorResolution<T>?,
     )
 
+    /**
+     * Resolves [gav] from the local storage and then from the mirrored hosts. For a coordinate under a protected prefix of
+     * the [repository], only the hosts that [isHostedMember] accepts are asked; the others are never contacted.
+     */
     fun <T : Any> resolve(
         repository: Repository,
         gav: Location,
@@ -45,6 +49,7 @@ internal class ResolutionProvider(
         mirrorFirst: Boolean,
         tryLocal: () -> Result<T, ErrorResponse>,
         tryRemote: (hosts: List<MirrorHost>) -> MirrorResolution<T>,
+        isHostedMember: (MirrorHost) -> Boolean,
     ): Result<T, ErrorResponse> {
         val cache = repository.resolutionCache
         val authenticated = accessToken != null
@@ -56,13 +61,21 @@ internal class ResolutionProvider(
             return notFoundError(notFoundMessage)
         }
 
-        val hosts = (cached as? ResolutionCache.Origin.Remote)
+        val candidates = (cached as? ResolutionCache.Origin.Remote)
             ?.let { decision -> repository.mirrorHosts.filter { it.host == decision.host }.ifEmpty { repository.mirrorHosts } }
             ?: repository.mirrorHosts
 
+        val protected = NamespaceProtection.isProtected(repository.protectedGroupPrefixes, gav)
+        val hosts = if (protected) candidates.filter(isHostedMember) else candidates
+        val skipped = if (protected) candidates.filterNot(isHostedMember) else emptyList()
+
+        // Without a hosted member left, the proxy is not asked at all, and the answer is the miss of an unresolved coordinate
+        val lookup: (List<MirrorHost>) -> MirrorResolution<T> =
+            if (skipped.isNotEmpty() && hosts.isEmpty()) { _ -> MirrorResolution.NotFound } else tryRemote
+
         val attempt = when {
-            cached is ResolutionCache.Origin.Remote || mirrorFirst -> tryRemoteFirst(tryLocal, tryRemote, hosts, notFoundMessage)
-            else -> tryLocalFirst(tryLocal, tryRemote, hosts, notFoundMessage)
+            cached is ResolutionCache.Origin.Remote || mirrorFirst -> tryRemoteFirst(tryLocal, lookup, hosts, notFoundMessage)
+            else -> tryLocalFirst(tryLocal, lookup, hosts, notFoundMessage)
         }
 
         if (cache != null && isMetadata) {
