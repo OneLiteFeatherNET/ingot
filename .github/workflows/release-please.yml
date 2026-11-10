@@ -203,6 +203,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Keyless cosign signing of the chart. No attestation: the chart is signed, not attested.
+      id-token: write
+    env:
+      # The only identity a release signature is accepted from: this workflow running on main.
+      SIGNER_IDENTITY: https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main
+      OIDC_ISSUER: https://token.actions.githubusercontent.com
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -225,10 +231,64 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: echo "$GITHUB_TOKEN" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
+      # The digest comes from the line `helm push` prints, never from a guessed reference. When
+      # that line is missing the step fails, and nothing below signs anything.
       - name: "Push the chart"
+        id: push
         env:
           VERSION: ${{ needs.release-please.outputs.version }}
-        run: helm push "$RUNNER_TEMP/chart/ingot-${VERSION}.tgz" oci://ghcr.io/onelitefeathernet/charts
+        run: |
+          set -euo pipefail
+          helm push "$RUNNER_TEMP/chart/ingot-${VERSION}.tgz" oci://ghcr.io/onelitefeathernet/charts | tee "$RUNNER_TEMP/push.log"
+          digest="$(sed -n 's/^Digest: //p' "$RUNNER_TEMP/push.log")"
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "error: helm push printed no usable Digest line, found: '$digest'" >&2
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: "Install cosign"
+        if: needs.release-please.outputs.release_created == 'true'
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532  # v4.1.3
+
+      # cosign reads the docker credentials, not the helm ones written by the login above.
+      - name: "Log in to the registry for cosign"
+        if: needs.release-please.outputs.release_created == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | cosign login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      # Signed by digest, then verified against the release workflow identity before the job can
+      # succeed. Same wait and single retry as the images. Keep the two `env:` blocks identical.
+      - name: "Sign the chart"
+        id: sign-chart
+        if: needs.release-please.outputs.release_created == 'true'
+        continue-on-error: true
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "ghcr.io/onelitefeathernet/charts/ingot@$DIGEST"
+
+      - name: "Wait out the registry before retrying the chart signature"
+        if: needs.release-please.outputs.release_created == 'true' && steps.sign-chart.outcome == 'failure'
+        run: |
+          echo "Signing the chart failed. GHCR asks for a few minutes, so waiting before the retry."
+          sleep 180
+
+      - name: "Retry signing the chart"
+        id: sign-chart-retry
+        if: needs.release-please.outputs.release_created == 'true' && steps.sign-chart.outcome == 'failure'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "ghcr.io/onelitefeathernet/charts/ingot@$DIGEST"
+
+      - name: "Verify the signature of the chart"
+        if: needs.release-please.outputs.release_created == 'true'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          cosign verify --certificate-identity "$SIGNER_IDENTITY" --certificate-oidc-issuer "$OIDC_ISSUER" \
+            "ghcr.io/onelitefeathernet/charts/ingot@$DIGEST"
 
   # Container images go to the GitHub Container Registry. The OneLiteFeather
   # docker-publish reusable targets Harbor and exposes no platforms input, so this is a
