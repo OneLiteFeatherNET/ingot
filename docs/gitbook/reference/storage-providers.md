@@ -27,6 +27,10 @@ Provider settings are part of the repository settings. By default these are shar
 
 The directory is created when the repository is loaded.
 
+### Atomic commit
+
+An upload is written to a temporary file named `.ingot-<random>.part` in the directory of its target. The file is moved onto the target with one atomic move that replaces the previous file, so a reader receives either the old file or the complete new one, and never a file that is still growing. Where the file system does not support atomic moves, Ingot replaces the file with a plain move and logs one warning. Names of the form `.ingot-*.part` are reserved: they are left out of listings, the usage and direct reads, and an upload to such a name is refused with `400`. When the storage starts, partial files of an upload that crashed are removed once they are older than 24 hours.
+
 ### Quota
 
 The quota is enforced by the file system provider only.
