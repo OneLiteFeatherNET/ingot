@@ -46,13 +46,13 @@ afterEach(() => {
 })
 
 // The page is mounted at the address the router holds, with the route params the app passes in.
-const mountSettings = async ({ address, props = {} }) => {
+const mountSettings = async ({ address, props = {}, server }) => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: stubRoutes()
   })
   await router.push(address)
-  const store = await loadedStore({ schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
+  const store = await loadedStore({ server, schema: repositorySchema({ versionPolicy: true, readOnly: true }) })
   wrapper = mount(SettingsView, {
     props: { selectedTab: 'Settings', ...props },
     global: {
@@ -85,6 +85,23 @@ describe('the Repositories page inside Settings', () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
     expect(wrapper.find('h1').text(), 'the detail heading is the id').toBe('releases')
+  })
+
+  it('lists a repository without an id as Unnamed repository, and its Edit action opens its detail', async () => {
+    const server = {
+      maven: {
+        repositories: [
+          { visibility: 'PUBLIC', storageProvider: { type: 'fs' } },
+          { id: 'releases', visibility: 'PUBLIC', storageProvider: { type: 'fs' } }
+        ]
+      }
+    }
+    const { router } = await mountSettings({ address: '/settings/repositories', server })
+
+    expect(wrapper.text(), 'the unnamed repository is listed').toContain('Unnamed repository')
+    await wrapper.find('[aria-label="Edit Unnamed repository"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name, 'the Edit action opens the repository detail').toBe('settings-repository')
   })
 
   it('links the maven page to the Repositories page instead of listing the repositories there', async () => {
