@@ -155,7 +155,11 @@ abstract class FileSystemStorageProvider protected constructor(
         inputStream.use { data ->
             canHold(0)
                 .mapErr { INSUFFICIENT_STORAGE.toErrorResponse("Not enough storage space available: ${it.message}") }
-                .flatMap { limit -> location.resolveWithRootDirectory().map { limit to it } }
+                .flatMap { limit ->
+                    location.resolveWithRootDirectory()
+                        .filter({ !it.isHidden() }, { badRequest("Names reserved for uploads in progress cannot be stored") })
+                        .map { limit to it }
+                }
                 .peek { (_, file) -> file.createParentDirectories() }
                 .flatMap { (limit, file) ->
                     // TO-FIX: FS locks are not truly respected, there might be a need to enhanced it with .lock file to be sure if it's respected.
@@ -298,7 +302,9 @@ abstract class FileSystemStorageProvider protected constructor(
             name = directory.name,
             files =
             directory.useDirectoryEntries { directoryStream ->
-                directoryStream.map { toSimpleFileDetails(it).orThrow { error -> IOException(error.message) } }
+                directoryStream
+                    .filter { !isPartialUploadName(it.name) }
+                    .map { toSimpleFileDetails(it).orThrow { error -> IOException(error.message) } }
                     .sortedWith(FilesComparator({ VersionComparator.asVersion(it.name) }, { it.type == DIRECTORY }))
                     .toList()
             }
@@ -317,6 +323,8 @@ abstract class FileSystemStorageProvider protected constructor(
             .resolveWithRootDirectory()
             .filter({ !it.normalize().equals(rootDirectory.normalize()) }, { badRequest("Cannot remove repository root") })
             .map { rootPath ->
+                // A partial file belongs to the replica that is writing it, so a delete leaves it alone.
+                if (rootPath.isHidden()) return@map
                 val removed = sizeOf(rootPath)
                 try {
                     when {
@@ -337,7 +345,7 @@ abstract class FileSystemStorageProvider protected constructor(
             .exists()
             .map {
                 it.useDirectoryEntries { directoryStream ->
-                    directoryStream.filter { path -> path != it }
+                    directoryStream.filter { path -> path != it && !isPartialUploadName(path.name) }
                         .map { path -> Location.of(rootDirectory, path) }
                         .toList()
                 }
@@ -384,18 +392,28 @@ abstract class FileSystemStorageProvider protected constructor(
             INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage")
         }
 
-    /** Bytes of the regular files at or below the given path. Symbolic links are neither followed nor counted. */
+    /**
+     * Bytes of the regular files at or below the given path, without the partial files of uploads in progress.
+     * Symbolic links are neither followed nor counted.
+     */
     private fun sizeOf(path: Path): Long =
         when {
             Files.isDirectory(path, NOFOLLOW_LINKS) -> Files.walk(path).use { entries ->
-                entries.filter { Files.isRegularFile(it, NOFOLLOW_LINKS) }.mapToLong { Files.size(it) }.sum()
+                entries
+                    .filter { Files.isRegularFile(it, NOFOLLOW_LINKS) && !path.relativize(it).any { segment -> isPartialUploadName(segment.name) } }
+                    .mapToLong { Files.size(it) }
+                    .sum()
             }
             Files.isRegularFile(path, NOFOLLOW_LINKS) -> Files.size(path)
             else -> 0
         }
 
+    /** True when the path, or a name between the root directory and the path, is reserved for an upload in progress. */
+    private fun Path.isHidden(): Boolean =
+        rootDirectory.relativize(this).any { isPartialUploadName(it.name) }
+
     private fun Result<Path, ErrorResponse>.exists(): Result<Path, ErrorResponse> =
-        filter({ it.exists() }) { notFound("File not found") }
+        filter({ it.exists() && !it.isHidden() }) { notFound("File not found") }
 
     private fun Location.resolveWithRootDirectory(): Result<Path, ErrorResponse> =
         rootDirectory.resolve(toPath()).asSuccess()
