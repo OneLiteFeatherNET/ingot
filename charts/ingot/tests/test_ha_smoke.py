@@ -12,6 +12,8 @@ Run from the repository root:
 import unittest
 
 from ha_smoke import (
+    READER_SCRIPT,
+    READ_TIMEOUT_SECONDS,
     generate_pom_request,
     BOOTSTRAP_SECRET,
     BOOTSTRAP_USER,
@@ -121,6 +123,17 @@ class GeneratePomRequestTest(unittest.TestCase):
         _, body = generate_pom_request("net/onelitefeather/smoke/deploy", "deploy", "1.0.1")
         self.assertEqual({"groupId": "net.onelitefeather.smoke.deploy", "artifactId": "deploy", "version": "1.0.1"}, body,
                          "the generated pom and the metadata carry the coordinates from the body")
+
+
+class ReaderScriptTest(unittest.TestCase):
+
+    def test_a_read_without_an_answer_names_the_curl_exit_code(self):
+        self.assertIn('code="000 curl-$?"', READER_SCRIPT,
+                      "a read that got no answer must tell a timeout from a refused connection in the failure message")
+
+    def test_a_slow_answer_is_not_counted_as_unavailable(self):
+        self.assertIn(f"--max-time {READ_TIMEOUT_SECONDS}", READER_SCRIPT, "the reader waits as long as the timeout says")
+        self.assertGreaterEqual(READ_TIMEOUT_SECONDS, 30, "the first read on a fresh replica may take seconds")
 
 
 class ReadOutcomesTest(unittest.TestCase):

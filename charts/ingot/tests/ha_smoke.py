@@ -217,12 +217,16 @@ DEPLOY_VERSIONS = ("1.0.0", "1.0.1")
 ADMIN = ("smoke-admin", "smoke-ci-only-password")
 """The first administrator of the smoke instance. Throwaway CI value."""
 
+READ_TIMEOUT_SECONDS = 30
+"""How long one read may take. The check measures availability, and the first read on a fresh replica can be slow."""
+
 READER_SCRIPT = (
     'i=0; while [ ! -e /tmp/stop ] && [ "$i" -lt 20000 ]; do rm -f /tmp/b; '
-    'code=$(curl -s -o /tmp/b -w "%{http_code}" --max-time 5 "$1") || code=000; '
+    f'code=$(curl -s -o /tmp/b -w "%{{http_code}}" --max-time {READ_TIMEOUT_SECONDS} "$1") || code="000 curl-$?"; '
     'sha=$(sha256sum /tmp/b 2>/dev/null | cut -d" " -f1); echo "$code ${sha:-none}"; i=$((i+1)); done'
 )
-"""Reads the artifact through the Service until /tmp/stop exists, printing "<status> <sha256>" for every read."""
+"""Reads the artifact through the Service until /tmp/stop exists, printing "<status> <sha256>" for every read. A read
+without an answer prints "000 curl-<exit code>" in place of the status, so 28 (timeout) and 7 (refused) stay apart."""
 
 CURL_SCRIPT = (
     'm="$1"; u="$2"; shift 2; cat > /tmp/in\n'
