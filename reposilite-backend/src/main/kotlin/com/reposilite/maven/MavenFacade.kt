@@ -45,6 +45,7 @@ import com.reposilite.storage.api.DocumentInfo
 import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import io.javalin.http.HttpStatus.METHOD_NOT_ALLOWED
 import panda.std.Result
 import com.reposilite.shared.http.ConditionalRequests
@@ -67,6 +68,12 @@ class MavenFacade internal constructor(
 ) : Journalist, Facade {
 
     private val repositoryService = repositoryProvider.repositoryService
+
+    private val registry = MavenRepositoryRegistry(repositoryProvider)
+
+    /** The read-only view of the repositories that the maven plugin registers as a facade, see [RepositoryRegistry]. */
+    internal fun repositoryRegistry(): RepositoryRegistry =
+        registry
 
     /** The deploy and upstream counts of this instance, read by the metrics at scrape time. */
     fun operationTotals(): MavenOperationTotals = operationCounters.snapshot()

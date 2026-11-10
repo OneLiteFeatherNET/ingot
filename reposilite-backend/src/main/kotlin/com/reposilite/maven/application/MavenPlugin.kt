@@ -81,6 +81,9 @@ internal class MavenPlugin : ReposilitePlugin() {
                 mirrorEnvironment = MirrorEnvironment.read(),
             ).mavenFacade()
 
+        // Consumers that start before this plugin look the registry up lazily, so it only has to exist by then.
+        extensions().registerFacade(mavenFacade.repositoryRegistry())
+
         logger.info("")
         logger.info("--- Repositories")
         mavenFacade.getRepositories().forEach { logger.info("+ ${it.name} (${it.visibility.toString().lowercase()})") }
