@@ -210,6 +210,68 @@ On clusters that assign the uid, such as OpenShift, set `deployment.securityProf
 
 Do not set `podSecurityContext.enabled` or `containerSecurityContext.enabled` together with a profile. The render fails and names both keys.
 
+## Size the heap from the memory limit
+
+The chart does not change the heap unless you ask it to. The `jvm` block sets JVM flags in `JDK_JAVA_OPTIONS`, which the JVM reads before `JAVA_OPTS`. Each key renders its flag only when it is set:
+
+```yaml
+jvm:
+  maxRAMPercentage: 70       # -XX:MaxRAMPercentage=70, the heap follows the memory limit
+  initialRAMPercentage: 20   # -XX:InitialRAMPercentage=20
+  gc: UseG1GC                # -XX:+UseG1GC
+  activeProcessorCount: 2    # -XX:ActiveProcessorCount=2
+  extraOptions:              # appended unchanged
+    - -XX:+ExitOnOutOfMemoryError
+```
+
+The chart keeps the text of a `JDK_JAVA_OPTIONS` entry that you set in `env` and appends its flags after it. If that entry sets the same option as a `jvm` key, the render fails and names the option. Remove one of them.
+
+An explicit `-Xmx` wins over a percentage. The chart default `JAVA_OPTS=-Xmx64M` sets one, so `maxRAMPercentage` has no effect until you remove the `-Xmx` from `JAVA_OPTS`. `helm install` prints a warning when both are set. Set `env` without `JAVA_OPTS`, or with a `JAVA_OPTS` that has no `-Xmx`:
+
+```yaml
+jvm:
+  maxRAMPercentage: 70
+
+env: []
+```
+
+The percentage applies to the container memory limit, so set `resources.limits.memory` as well. The chart does not provide measured sizes; choose the percentages for your own load.
+
+## Trace with the OpenTelemetry Java agent
+
+The `opentelemetry` block adds the OpenTelemetry Java agent to the server. An init container copies the agent jar into an emptyDir, the server mounts it read-only at `/otel`, and the agent flag is added to `JDK_JAVA_OPTIONS`. The dashboard gets no agent.
+
+```yaml
+opentelemetry:
+  enabled: true
+  agentImage: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.30.0
+  serviceName: ingot
+  endpoint: http://otel-collector.observability.svc.cluster.local:4317
+  protocol: grpc
+  tracesExporter: otlp
+  metricsExporter: otlp
+  logsExporter: none   # the console output is usually shipped already
+```
+
+The chart sets `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_PROTOCOL`, the trace, metric and log exporters, and `OTEL_EXPORTER_OTLP_ENDPOINT` when `endpoint` is set. Set these in the block, not in `env`: a variable that both `env` and the block set fails the render. The agent image must carry the agent jar at `/javaagent.jar` and a shell with `cp`, and it is pinned by tag, which Renovate updates as it does for the other images. With the restricted Pod Security profile the init container runs under the same security context as the server.
+
+If your cluster runs the OpenTelemetry Operator, you can leave `opentelemetry.enabled` at `false` and inject the agent with the operator's `instrumentation.opentelemetry.io/inject-java` annotation on the pod instead. Use one of the two, not both.
+
+## Keep the shared settings in Git
+
+The shared settings can live in a file instead of the database. The `sharedConfiguration` block mounts the file read-only at `/app/shared-config` and turns on the reload, so a change to the file reaches the running server. Set one source:
+
+- `content` renders a ConfigMap that the release owns. Put the JSON document in the values file, and the pods restart when the content changes, because the chart writes the checksum into the pod template.
+- `existingConfigMap` names a ConfigMap that you manage, for example one that your GitOps tool or an external secret operator writes. The chart does not restart the pods. Kubernetes updates the mounted file after the kubelet sync, which can take a few minutes, and the server applies the change without a restart.
+
+```yaml
+sharedConfiguration:
+  enabled: true
+  existingConfigMap: ingot-shared-settings   # key: configuration.shared.json
+```
+
+The server answers `409` to a save from the dashboard or the API for a domain that the file holds, and it names the file. Change the file in Git instead. The chart adds `--shared-configuration` to `INGOT_OPTS` for you, and keeps the arguments of an `INGOT_OPTS` or `REPOSILITE_OPTS` value that `env` sets. Arguments that `envFrom` sets cannot be seen by the chart, so move them into `env`.
+
 ## Use S3 for repositories
 
 Storage is set per repository in the maven settings. To store a repository in S3, set its `storageProvider` to `s3`. The endpoint can be an in-cluster service, for example a MinIO service:

@@ -1,0 +1,84 @@
+{{- if .Values.prometheusRule.enabled }}
+{{- $ns := .Release.Namespace }}
+{{- $service := include "ingot.fullname" . }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $service }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "ingot.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: ingot.availability
+      rules:
+        - alert: IngotDown
+          expr: |-
+            up{namespace="{{ $ns }}", service="{{ $service }}"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Ingot is not reachable"
+            description: "Prometheus has not scraped {{ $service }} in namespace {{ $ns }} for 5 minutes."
+    - name: ingot.requests
+      rules:
+        - alert: IngotHighErrorRatio
+          expr: |-
+            sum(rate(ingot_http_server_requests_total{namespace="{{ $ns }}", service="{{ $service }}", code=~"5.."}[10m]))
+              /
+            sum(rate(ingot_http_server_requests_total{namespace="{{ $ns }}", service="{{ $service }}"}[10m]))
+              > 0.05
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "More than 5% of the HTTP responses of Ingot are server errors"
+            description: "The share of 5xx responses of {{ $service }} stayed above 5% for 10 minutes. Check the server log and the route labels of the request metrics."
+    - name: ingot.operations
+      rules:
+        - alert: IngotUpstreamUnreachable
+          expr: |-
+            sum(rate(ingot_upstream_requests_total{namespace="{{ $ns }}", service="{{ $service }}", outcome=~"failure|timeout"}[15m]))
+              /
+            sum(rate(ingot_upstream_requests_total{namespace="{{ $ns }}", service="{{ $service }}"}[15m]))
+              > 0.5
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Most fetches from the upstream hosts of the proxy repositories fail"
+            description: "More than half of the upstream fetches of {{ $service }} failed or timed out for 15 minutes. Check the upstream hosts and the network path from the pods."
+        - alert: IngotDeployRejections
+          expr: |-
+            sum(rate(ingot_deploy_results_total{namespace="{{ $ns }}", service="{{ $service }}", result="rejected"}[30m])) > 0.1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deploys are rejected by the repository rules"
+            description: "Deploy requests to {{ $service }} are rejected at a sustained rate. Check the repository rules and the clients that deploy."
+    - name: ingot.runtime
+      rules:
+        - alert: IngotHeapPressure
+          expr: |-
+            max(jvm_memory_used_bytes{namespace="{{ $ns }}", service="{{ $service }}", area="heap"} / jvm_memory_max_bytes{namespace="{{ $ns }}", service="{{ $service }}", area="heap"}) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The heap of Ingot is above 90% of its maximum"
+            description: "The heap of {{ $service }} stayed above 90% of its maximum for 10 minutes. Raise the heap or the memory limit, see the JVM options of the chart."
+        - alert: IngotClusterBusDisconnected
+          expr: |-
+            min(ingot_cluster_connected{namespace="{{ $ns }}", service="{{ $service }}"}) == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "A replica of Ingot is not connected to the cluster bus"
+            description: "A replica of {{ $service }} reports no connection to the cluster bus for 5 minutes. The replicas do not share cache invalidations until it reconnects."
+{{- end }}

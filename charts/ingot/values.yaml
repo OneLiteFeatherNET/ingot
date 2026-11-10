@@ -202,6 +202,19 @@ serviceMonitor:
     usernameKey: username
     passwordKey: password
 
+## Opt-in PrometheusRule with the base alerts of the server: availability, error ratio, unreachable upstreams, rejected
+## deploys, heap pressure and the cluster bus. Needs the monitoring.coreos.com CRDs. The alerts read the metrics of the
+## bundled Prometheus plugin, so the server must run with INGOT_METRICS_ENABLED=true and the plugin credentials.
+prometheusRule:
+  enabled: false
+  # Extra labels on the PrometheusRule, for example the label that your Prometheus instance selects its rules with.
+  labels: {}
+
+## Opt-in Grafana dashboards for the server: overview, mirroring and JVM. Each one is a ConfigMap labelled
+## grafana_dashboard: "1" for the Grafana sidecar. The same JSON files are in files/dashboards of the chart.
+grafanaDashboards:
+  enabled: false
+
 ## Resources
 resources:
   requests:
@@ -234,6 +247,62 @@ envFrom: []
 #     name: config-map-name
 # - secretRef:
 #     name: secret-name
+
+## Opt-in JVM options of the server. Nothing is rendered unless a key is set. The flags go into JDK_JAVA_OPTIONS, which the
+## JVM reads before JAVA_OPTS. An explicit -Xmx in JAVA_OPTS overrides maxRAMPercentage, and the chart does not remove it.
+## An option that env already sets in JDK_JAVA_OPTIONS fails the render, so the chart never guesses which value wins.
+jvm:
+  # Maximum heap as a percentage of the container memory limit, as -XX:MaxRAMPercentage. Empty renders nothing.
+  maxRAMPercentage: ""
+  # Initial heap as a percentage of the container memory limit, as -XX:InitialRAMPercentage. Empty renders nothing.
+  initialRAMPercentage: ""
+  # Garbage collector as a HotSpot name without the prefix, for example UseG1GC or UseSerialGC. Rendered as -XX:+<name>.
+  gc: ""
+  # Processors the JVM assumes, as -XX:ActiveProcessorCount. Empty renders nothing.
+  activeProcessorCount: ""
+  # Further JVM options, appended unchanged to JDK_JAVA_OPTIONS.
+  extraOptions: []
+
+## Opt-in OpenTelemetry Java agent of the server. The init container copies the agent jar into an emptyDir, which the server
+## mounts read-only at /otel, and the agent flag goes into JDK_JAVA_OPTIONS. The dashboard gets no agent. The image must
+## carry the agent at /javaagent.jar and a shell with cp. Set the exporter variables here, not in env, because env values
+## that the chart also sets fail the render.
+opentelemetry:
+  enabled: false
+  # Image of the init container. Pinned by tag, which Renovate updates as it does for the other images.
+  agentImage: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.30.0
+  # Sets OTEL_SERVICE_NAME. Empty uses the release fullname.
+  serviceName: ""
+  # Sets OTEL_EXPORTER_OTLP_ENDPOINT. Empty leaves the endpoint of the agent unchanged.
+  endpoint: ""
+  # Sets OTEL_EXPORTER_OTLP_PROTOCOL.
+  protocol: grpc
+  # Sets OTEL_TRACES_EXPORTER and OTEL_METRICS_EXPORTER.
+  tracesExporter: otlp
+  metricsExporter: otlp
+  # Sets OTEL_LOGS_EXPORTER. Logs stay off by default, because the console output is usually shipped already.
+  logsExporter: none
+  # Resources of the init container.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+## Opt-in shared settings file of the server. The file is mounted read-only as a directory at /app/shared-config, and the
+## server reads it with --shared-configuration and reloads it (INGOT_SHARED_CONFIGURATION_RELOAD=true). Set exactly one
+## source. `content` renders a ConfigMap owned by the release, and a change to it restarts the pods. `existingConfigMap`
+## names a ConfigMap you manage: the chart does not restart the pods, and the reload applies a change. Both need the key
+## configuration.shared.json. The mount is read-only, and the reload makes the server answer 409 to a save of a domain that
+## the file holds, so the dashboard never writes into it.
+sharedConfiguration:
+  enabled: false
+  # The JSON document of the shared settings, as text. Rendered as a ConfigMap named <release fullname>-shared-configuration.
+  content: ""
+  # Name of a ConfigMap in the release namespace with the key configuration.shared.json.
+  existingConfigMap: ""
 
 ## Rolling update
 rollingUpdate:

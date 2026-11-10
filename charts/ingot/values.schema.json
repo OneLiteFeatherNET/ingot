@@ -53,6 +53,50 @@
         "topologySpreadConstraints": {"type": "array"}
       }
     },
+    "jvm": {
+      "type": "object",
+      "properties": {
+        "maxRAMPercentage": {"anyOf": [{"type": "string", "maxLength": 0}, {"type": "number", "exclusiveMinimum": 0, "maximum": 100}], "description": "Maximum heap as a percentage of the memory limit, as -XX:MaxRAMPercentage. Empty renders nothing."},
+        "initialRAMPercentage": {"anyOf": [{"type": "string", "maxLength": 0}, {"type": "number", "exclusiveMinimum": 0, "maximum": 100}], "description": "Initial heap as a percentage of the memory limit, as -XX:InitialRAMPercentage. Empty renders nothing."},
+        "gc": {"type": "string", "pattern": "^(|Use[A-Za-z0-9]+GC)$", "description": "Collector flag name without the prefix, for example UseG1GC. Rendered as -XX:+<name>."},
+        "activeProcessorCount": {"anyOf": [{"type": "string", "maxLength": 0}, {"type": "integer", "minimum": 1}], "description": "Processors the JVM assumes, as -XX:ActiveProcessorCount."},
+        "extraOptions": {"type": "array", "items": {"type": "string"}, "description": "JVM options appended unchanged to JDK_JAVA_OPTIONS."}
+      }
+    },
+    "opentelemetry": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Adds the OpenTelemetry Java agent to the server."},
+        "agentImage": {"type": "string", "minLength": 1, "description": "Image of the init container that carries the agent jar at /javaagent.jar."},
+        "serviceName": {"type": "string", "description": "Sets OTEL_SERVICE_NAME. Empty uses the release fullname."},
+        "endpoint": {"type": "string", "description": "Sets OTEL_EXPORTER_OTLP_ENDPOINT. Empty leaves it unset."},
+        "protocol": {"type": "string", "enum": ["grpc", "http/protobuf"], "description": "Sets OTEL_EXPORTER_OTLP_PROTOCOL."},
+        "tracesExporter": {"type": "string", "description": "Sets OTEL_TRACES_EXPORTER."},
+        "metricsExporter": {"type": "string", "description": "Sets OTEL_METRICS_EXPORTER."},
+        "logsExporter": {"type": "string", "description": "Sets OTEL_LOGS_EXPORTER. none keeps logs off."}
+      }
+    },
+    "sharedConfiguration": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Mounts the shared settings file read-only and turns on its reload."},
+        "content": {"type": "string", "description": "The shared settings document. Rendered as a ConfigMap owned by the release."},
+        "existingConfigMap": {"type": "string", "description": "Name of a ConfigMap with the key configuration.shared.json. Used instead of content."}
+      }
+    },
+    "prometheusRule": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Renders the PrometheusRule with the base alerts."},
+        "labels": {"type": "object", "description": "Extra labels on the PrometheusRule."}
+      }
+    },
+    "grafanaDashboards": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Renders the overview, mirroring and JVM dashboards as ConfigMaps."}
+      }
+    },
     "podDisruptionBudget": {
       "type": "object",
       "properties": {

@@ -105,6 +105,7 @@ The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
 | --- | --- | --- | --- |
 | `INGOT_OPTS` | `REPOSILITE_OPTS` | empty | Command line parameters for the server, see [Command line parameters](configuration-and-startup.md#command-line-parameters). The value is split at white space. When `INGOT_OPTS` is empty or unset, `REPOSILITE_OPTS` is used. The two are not combined. |
 | `JAVA_OPTS` | none | empty | Options for the JVM, for example `-Xmx1g` or `-Dingot.local.port=9090`. There is no `INGOT_` spelling. |
+| `JDK_JAVA_OPTIONS` | none | empty | Options that the JVM reads before `JAVA_OPTS`. The Helm chart writes one entry of it when its `jvm` or `opentelemetry` values are set, and keeps the text that `env` sets. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#size-the-heap-from-the-memory-limit). |
 | `PUID` | none | `977` | User id of the `reposilite` service account. Read only when the container starts as root. |
 | `PGID` | none | `977` | Group id of the service account. Read only when the container starts as root. |
 | `INGOT_FORCE_CHOWN` | `REPOSILITE_FORCE_CHOWN` | unset | `true` changes the owner of `/app` and `/var/log/reposilite` at every start. Any other value does nothing. Read only when the container starts as root. |
@@ -234,6 +235,8 @@ Read once at startup from `INGOT_SHARED_CONFIGURATION_RELOAD`, or from the legac
 | `true` | The file is checked every 10 seconds and a changed document is applied, including a rewrite that keeps the modification time and a swap of a Kubernetes `..data` link. The API refuses writes to the domains the file holds with `409`, names the file in the message and writes nothing. A document that does not parse keeps the settings in force and logs one error. |
 
 The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_SHARED_CONFIGURATION_RELOAD`. With the database as the shared source the variable has no effect, and the instance logs one warning at startup. See [Shared settings source](configuration-and-startup.md#shared-settings-source).
+
+The Helm chart sets this variable to `true`, and adds `--shared-configuration` with the mounted file to `INGOT_OPTS`, when its `sharedConfiguration` block is enabled. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#keep-the-shared-settings-in-git).
 
 ### Other system properties
 

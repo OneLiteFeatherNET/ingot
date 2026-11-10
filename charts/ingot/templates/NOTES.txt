@@ -55,3 +55,20 @@ memory of a pod stays near that cap and a memory target may never trigger a scal
 This warning does not stop the install.
 {{- end }}
 {{- end }}
+{{- $javaOptsXmx := false }}
+{{- range .Values.env }}
+{{- if and (eq .name "JAVA_OPTS") (contains "-Xmx" (toString (default "" .value))) }}
+{{- $javaOptsXmx = true }}
+{{- end }}
+{{- end }}
+{{- if and .Values.jvm.maxRAMPercentage $javaOptsXmx }}
+
+WARNING: jvm.maxRAMPercentage is set, but JAVA_OPTS sets -Xmx. An explicit -Xmx overrides -XX:MaxRAMPercentage, so the heap
+does not follow the memory limit. Remove -Xmx from JAVA_OPTS, or unset jvm.maxRAMPercentage. This warning does not stop the install.
+{{- end }}
+{{- if and .Values.sharedConfiguration.enabled .Values.envFrom }}
+
+NOTE: sharedConfiguration sets INGOT_OPTS, with the --shared-configuration argument added to it. Values set through envFrom are
+not inspected here. If envFrom sets INGOT_OPTS or REPOSILITE_OPTS, move those arguments into env, where the chart keeps them
+next to the shared file argument. This note does not stop the install.
+{{- end }}
