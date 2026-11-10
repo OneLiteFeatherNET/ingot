@@ -62,7 +62,7 @@ The container image has its own health check. It reads the address that Ingot wr
 
 The console command `status` prints the same values, plus whether the instance is active.
 
-`latestVersion` comes from the GitHub releases API. Ingot asks at most once an hour. To stop these outbound requests, for example on a network without internet access, start the instance with `-Dingot.status.remote-version-check=false` in `JAVA_OPTS`. To ask another endpoint, set `-Dingot.status.remote-version-url=<url>`. That endpoint can answer with a plain version string or with a GitHub release document.
+`latestVersion` comes from the GitHub releases API. Ingot asks at most once an hour. To stop these outbound requests, for example on a network without internet access, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment of the instance. The older system property `-Dingot.status.remote-version-check=false` in `JAVA_OPTS` does the same and wins when both are set. To ask another endpoint, set `-Dingot.status.remote-version-url=<url>`. That endpoint can answer with a plain version string or with a GitHub release document. Every other connection that Ingot can open is listed in [Outbound connections](../reference/outbound-connections.md).
 
 ## Look at memory and threads over time
 
