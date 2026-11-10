@@ -23,6 +23,7 @@ import com.reposilite.audit.api.AuditEvent
 import com.reposilite.cleanup.application.CleanupScope
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
+import com.reposilite.scheduling.ScheduledJobClaims
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
@@ -33,6 +34,7 @@ import io.javalin.http.HttpStatus.CONFLICT
 import panda.std.Result
 import panda.std.asSuccess
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -69,6 +71,7 @@ class CleanupService internal constructor(
     private val deleter: VersionDeleter,
     private val runs: CleanupRunRepository,
     private val extensions: Extensions = Extensions(journalist),
+    private val claims: ScheduledJobClaims = ScheduledJobClaims.Unshared,
 ) : Facade {
 
     private val running = ConcurrentHashMap.newKeySet<String>()
@@ -94,16 +97,37 @@ class CleanupService internal constructor(
             return errorResponse(CONFLICT, "Cleanup policy $policyId is already running")
         }
 
+        val activeKey = activeLeaseKey(policyId)
+        var leased = false
         try {
+            // The lease covers the whole run on every instance that shares the database, so a manual run cannot overlap a scheduled one.
+            if (!claims.lease(activeKey, LEASE_DURATION)) {
+                return errorResponse(CONFLICT, "Cleanup policy $policyId is already running")
+            }
+            leased = true
+            var renewedAt = clock.instant()
+
             val startedAt = clock.instant()
             val runId = UUID.randomUUID().toString()
             val (deletions, _) = plan(policy)
-            val outcomes = deletions.map { deletion -> deletion to deleter.delete(deletion.repository, deletion.path, actor, runId) }
+            val outcomes = mutableListOf<Pair<PlannedDeletion, Result<Unit, ErrorResponse>>>()
+            var leaseLost = false
+            for (deletion in deletions) {
+                if (Duration.between(renewedAt, clock.instant()) >= LEASE_RENEWAL) {
+                    if (!claims.extend(activeKey, LEASE_DURATION)) {
+                        leaseLost = true
+                        break
+                    }
+                    renewedAt = clock.instant()
+                }
+                outcomes += deletion to deleter.delete(deletion.repository, deletion.path, actor, runId)
+            }
 
             val succeeded = outcomes.filter { (_, result) -> result.isOk }.map { (deletion, _) -> deletion }
             val failures = outcomes
                 .filter { (_, result) -> result.isErr }
                 .map { (deletion, result) -> "${deletion.repository}/${deletion.path}: ${result.error.message}" }
+                .let { if (leaseLost) it + "lease lost: another instance took over $activeKey, the run stopped before its next deletion" else it }
             val status = when {
                 failures.isEmpty() -> CleanupRunStatus.SUCCEEDED
                 succeeded.isEmpty() -> CleanupRunStatus.FAILED
@@ -143,6 +167,7 @@ class CleanupService internal constructor(
             )
             return run.asSuccess()
         } finally {
+            if (leased) claims.complete(activeKey, done = false)
             running.remove(policyId)
         }
     }
@@ -184,8 +209,16 @@ class CleanupService internal constructor(
             }
         }
 
+    private fun activeLeaseKey(policyId: String): String = "cleanup:$policyId:active"
+
     companion object {
         const val SCHEDULER_ACTOR = "cleanup-scheduler"
+
+        /** A run that stops renewing its lease for this long loses it to the next instance that asks. */
+        val LEASE_DURATION: Duration = Duration.ofSeconds(60)
+
+        /** A run renews its lease from the deletion loop at most this often. */
+        val LEASE_RENEWAL: Duration = Duration.ofSeconds(20)
     }
 
 }

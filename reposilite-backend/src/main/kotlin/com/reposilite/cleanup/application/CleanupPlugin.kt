@@ -66,6 +66,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
             deleter = VersionDeleter { repository, path, actor, runId -> deleteVersion(mavenFacade, repository, path, actor, runId) },
             runs = SqlCleanupRunRepository(reposilite().database),
             extensions = extensions(),
+            claims = SqlScheduledJobClaims(reposilite().database, clock),
         )
 
         val scheduler = CleanupScheduler(
