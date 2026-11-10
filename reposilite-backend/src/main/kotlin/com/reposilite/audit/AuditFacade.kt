@@ -29,6 +29,7 @@ import panda.std.reactive.Reference
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
 /** Largest number of rows one export writes. Anything beyond it is cut off and the export says so in its log. */
@@ -50,6 +51,20 @@ class AuditFacade(
 ) : Facade, Journalist {
 
     private data class FailureKey(val name: String, val address: String?)
+
+    /** Session identifiers whose deploy events are summarised, not audited per file. Registered by the Nexus import in summary mode. */
+    private val bulkSessions: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    fun registerBulkSession(session: String) {
+        bulkSessions.add(session)
+    }
+
+    fun unregisterBulkSession(session: String) {
+        bulkSessions.remove(session)
+    }
+
+    /** True when deploys made under exactly this session identifier are summarised and not audited per file. */
+    fun isBulkSession(session: String): Boolean = session in bulkSessions
 
     /** When this instance last completed the retention purge. Empty until the first purge of this instance. */
     private val lastPurge = AtomicReference<Instant?>(null)

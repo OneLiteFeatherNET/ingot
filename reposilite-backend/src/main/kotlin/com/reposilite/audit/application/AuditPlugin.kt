@@ -60,6 +60,7 @@ internal class AuditPlugin : ReposilitePlugin() {
         }
 
         event { event: DeployEvent ->
+            if (!deployAuditRecorded(event.by, auditFacade)) return@event
             recordSafely {
                 auditFacade.record(
                     AuditEvent(
@@ -169,3 +170,9 @@ internal fun artifactDeletedEvent(repository: String, path: String, by: String, 
             path = path,
         )
     }
+
+/**
+ * Whether a deploy made under the session identifier [by] is audited per file. A session registered as bulk by the Nexus import
+ * is summarised by its run event instead. The match is exact, so a token that only shares the name is still audited.
+ */
+fun deployAuditRecorded(by: String, auditFacade: AuditFacade): Boolean = !auditFacade.isBulkSession(by)
