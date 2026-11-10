@@ -66,6 +66,16 @@ deployment:
     # preStop:
     #   exec:
     #     command: ["/bin/sh", "-c", "sleep 40"]
+  # Opt-in shutdown budget. Both values at 0 keep the stop of earlier versions: SIGTERM at once and the grace period
+  # above. When either value is above 0, terminationGracePeriodSeconds becomes preStopSeconds + drainSeconds + 10.
+  # The values apply to each pod, so a rolling update takes longer by about their sum for every replica.
+  shutdown:
+    # Seconds of a preStop sleep, so the pod stays in the endpoints while the proxy removes it. Not rendered when
+    # `lifecycle` is set, because the operator's own preStop action is kept.
+    preStopSeconds: 0
+    # Seconds Ingot waits for the requests in flight, as INGOT_SHUTDOWN_TIMEOUT. Not rendered when env sets
+    # INGOT_SHUTDOWN_TIMEOUT, because the operator's value is kept.
+    drainSeconds: 0
   # Security context for all initContainers and containers in the pod.
   # Disabled by default: the server starts as root and the entrypoint drops to the service account, so PUID, PGID
   # and the ownership fix of an existing volume keep working. Set runAsUser and runAsGroup only for a volume that
@@ -208,22 +218,34 @@ probes:
   scheme: "HTTP"  # Scheme to use in GET requests.
   path: "/"
   serverPath: "/api/status/health"
+  # Path of the readiness probe. Empty uses `path` in allInOne mode and /api/status/ready in split mode. Liveness is not
+  # affected. Split readiness needs an image that ships /api/status/ready, see the split how-to.
+  readinessPath: ""
   readiness:
     initialDelaySeconds: 2
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 1
+  # Readiness of the split server. Used instead of `readiness` in split mode. The readiness check of Ingot runs a database
+  # query and a storage listing, so one slow answer must not take the pod out of rotation.
+  split:
+    readiness:
+      initialDelaySeconds: 2
+      periodSeconds: 10
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 2
   liveness:
     initialDelaySeconds: 2
     periodSeconds: 10
     timeoutSeconds: 2
     successThreshold: 1
     failureThreshold: 3
-  # Startup probe of the server, off by default. Enable it when a first start can take longer than the liveness
-  # probe allows: liveness is held back until the startup probe succeeds. The budget is periodSeconds * failureThreshold.
+  # Startup probe of the server. `enabled` is unset by default, which means on in split mode and off in allInOne mode.
+  # Set it to true or false to choose. Liveness is held back until the startup probe succeeds, so a first start that takes
+  # longer than the liveness budget is not restarted. The budget is periodSeconds * failureThreshold.
   startup:
-    enabled: false
     periodSeconds: 5
     timeoutSeconds: 2
     failureThreshold: 30

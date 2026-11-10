@@ -101,6 +101,32 @@ Probe path of the server workload: the server root in allInOne mode, the health 
 {{- end }}
 
 {{/*
+Path of the readiness probe of the server: probes.readinessPath when it is set, the readiness endpoint in split mode and
+the root path in allInOne mode. Liveness is not affected.
+*/}}
+{{- define "ingot.readinessProbePath" -}}
+{{- if .Values.probes.readinessPath }}
+{{- .Values.probes.readinessPath }}
+{{- else if eq .Values.mode "split" }}
+{{- "/api/status/ready" }}
+{{- else }}
+{{- .Values.probes.path }}
+{{- end }}
+{{- end }}
+
+{{/*
+Whether the startup probe of the server is rendered, as "true" or "false". probes.startup.enabled wins when it is set.
+Otherwise the probe is on in split mode and off in allInOne mode.
+*/}}
+{{- define "ingot.startupProbeEnabled" -}}
+{{- if hasKey .Values.probes.startup "enabled" }}
+{{- .Values.probes.startup.enabled }}
+{{- else }}
+{{- eq .Values.mode "split" }}
+{{- end }}
+{{- end }}
+
+{{/*
 One ingress path entry. Expects the dictionary keys path, pathType, service and port.
 */}}
 {{- define "ingot.ingressPath" -}}

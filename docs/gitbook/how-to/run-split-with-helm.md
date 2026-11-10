@@ -49,7 +49,7 @@ Replace `1.1.1` with the release you deploy. The chart version is the release ve
 
 | Workload | Name | Image | Set by the chart |
 |----------|------|-------|------------------|
-| Server | Deployment and Service `ingot` | `ghcr.io/onelitefeathernet/ingot` | `INGOT_TARGET=server`, probes on `GET /api/status/health` |
+| Server | Deployment and Service `ingot` | `ghcr.io/onelitefeathernet/ingot` | `INGOT_TARGET=server`, readiness on `GET /api/status/ready`, liveness and startup on `GET /api/status/health` |
 | Dashboard | Deployment and Service `ingot-dashboard` | `ghcr.io/onelitefeathernet/ingot-dashboard` | `INGOT_BACKEND=http://ingot:8080`, probes on `GET /healthz` |
 
 The server keeps its own Service and selector, so an existing release keeps its names. The dashboard has its own selector, so the server Service never sends traffic to a dashboard pod.
@@ -102,6 +102,18 @@ curl -sS http://localhost:8081/browse | head -c 200
 ```
 
 The health endpoint answers `200`. The `/browse` request must not return the dashboard document, because the server runs without its dashboard.
+
+## Probes and shutdown
+
+The server's readiness probe sends `GET /api/status/ready`, which fails while the database or the storage is unavailable. It uses a 3 second timeout and two failures, from `probes.split.readiness`. The liveness probe stays on `GET /api/status/health`, so a database outage takes the pod out of the load balancer without restarting it.
+
+The split server also has a startup probe on `GET /api/status/health`, with a budget of 150 seconds (`periodSeconds` 5 times `failureThreshold` 30). Liveness waits for it, so a first start that takes longer is not restarted. Set `probes.startup.enabled: false` to turn it off.
+
+Split readiness needs an image that ships `/api/status/ready`. The image tags default to the chart's app version, so use a chart release whose app version ships that endpoint. If you pin `image.tag` or `dashboard.image.tag` to an older release, the readiness probe answers `404` and the pod never becomes ready. To keep such an image, set `probes.readinessPath: /api/status/health`. That path does not check the database.
+
+Because the probes change, an upgrade restarts each server pod once. The dashboard is not affected.
+
+For a slower stop, set `deployment.shutdown` as described in [Run on Kubernetes](run-on-kubernetes.md#shutdown-budget).
 
 ## Hardening
 

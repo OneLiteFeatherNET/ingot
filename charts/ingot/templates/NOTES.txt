@@ -1,15 +1,57 @@
 {{- $busSet := false }}
+{{- $dbSet := false }}
 {{- range .Values.env }}
 {{- if eq .name "INGOT_CLUSTER_URL" }}
 {{- $busSet = true }}
 {{- end }}
+{{- if or (eq .name "INGOT_LOCAL_DATABASE") (eq .name "REPOSILITE_LOCAL_DATABASE") }}
+{{- $dbSet = true }}
+{{- end }}
+{{- end }}
+{{- $memoryMetric := false }}
+{{- if .Values.autoscaling.enabled }}
+{{- range .Values.autoscaling.metrics }}
+{{- if and (eq .type "Resource") .resource }}
+{{- if eq .resource.name "memory" }}
+{{- $memoryMetric = true }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- $replicas := int (default 1 .Values.deployment.replicas) }}
-{{- if and (or (gt $replicas 1) .Values.autoscaling.enabled) (not $busSet) }}
+{{- $scaled := or (gt $replicas 1) .Values.autoscaling.enabled }}
+{{- if and $scaled (not $busSet) }}
 
 WARNING: the server runs more than one replica (deployment.replicas or autoscaling) but INGOT_CLUSTER_URL is not set in env.
 Without the cluster bus the replicas do not exchange cache invalidations and revocations at once. They converge through
 the shared database on the next poll or when the cached entry expires. Set INGOT_CLUSTER_URL (and INGOT_CLUSTER_PASSWORD
 or the credentials file if the broker needs them) to make the replicas share these events immediately.
 Values set through envFrom are not inspected here, so this warning stays if the URL comes from there.
+{{- end }}
+{{- if $scaled }}
+{{- if and .Values.persistence.enabled (eq .Values.persistence.accessMode "ReadWriteOnce") (not .Values.persistence.existingClaim) }}
+
+WARNING: the server runs more than one replica (deployment.replicas or autoscaling) and persistence.accessMode is ReadWriteOnce without persistence.existingClaim.
+A ReadWriteOnce claim can be mounted by one node only, so a replica scheduled on another node cannot mount it. Use a
+ReadWriteMany claim, or set persistence.existingClaim to a volume that every replica can reach. This warning does not stop the install.
+{{- end }}
+{{- if not .Values.persistence.enabled }}
+
+WARNING: the server runs more than one replica (deployment.replicas or autoscaling) and persistence.enabled is false.
+Each pod then keeps its own data in an emptyDir, so the replicas do not share repository content or configuration. Enable
+persistence with a volume that every replica can reach. This warning does not stop the install.
+{{- end }}
+{{- if not $dbSet }}
+
+WARNING: the server runs more than one replica (deployment.replicas or autoscaling) and neither INGOT_LOCAL_DATABASE nor REPOSILITE_LOCAL_DATABASE is set in env.
+Several replicas need one shared database, such as MariaDB or PostgreSQL. The default SQLite file is local to one pod. Set
+INGOT_LOCAL_DATABASE and the connection settings in env. Values set through envFrom are not inspected here, so this warning
+stays if the database comes from there. This warning does not stop the install.
+{{- end }}
+{{- if $memoryMetric }}
+
+WARNING: the autoscaler scales on the memory metric. The heap is capped by JAVA_OPTS (the chart default is -Xmx64M), so the
+memory of a pod stays near that cap and a memory target may never trigger a scale-out. Prefer the CPU metric.
+This warning does not stop the install.
+{{- end }}
 {{- end }}

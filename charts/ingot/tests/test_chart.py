@@ -112,6 +112,15 @@ def ingress_paths(manifests):
     return [(p["path"], p["pathType"], p["backend"]["service"]["name"]) for p in rules[0]["http"]["paths"]]
 
 
+# Substrings of the replica warnings in templates/NOTES.txt. Each test checks one of them.
+CLUSTER_WARNING = "INGOT_CLUSTER_URL is not set"
+CLAIM_WARNING = "persistence.accessMode is ReadWriteOnce without persistence.existingClaim"
+NO_PERSISTENCE_WARNING = "persistence.enabled is false"
+DATABASE_WARNING = "neither INGOT_LOCAL_DATABASE nor REPOSILITE_LOCAL_DATABASE is set in env"
+MEMORY_WARNING = "the autoscaler scales on the memory metric"
+REPLICA_WARNINGS = (CLAIM_WARNING, NO_PERSISTENCE_WARNING, DATABASE_WARNING, MEMORY_WARNING)
+
+
 def http_route_rules(manifests):
     routes = of_kind(manifests, "HTTPRoute")
     if len(routes) != 1:
@@ -259,10 +268,25 @@ class ChartRenderTest(unittest.TestCase):
             self.assertEqual("/", container(deployment)[probe]["httpGet"]["path"],
                              f"the all-in-one {probe} must use the root path as upstream does")
 
-    def test_startup_probe_is_absent_by_default(self):
-        for values in (None, split_values()):
-            deployment = named(render(values), "Deployment", SERVER)
-            self.assertNotIn("startupProbe", container(deployment), "no startup probe unless it is enabled")
+    # Replaces test_startup_probe_is_absent_by_default for split: the startup probe is on by default in split, so a
+    # first start that takes longer than the liveness budget is not restarted. All-in-one keeps it off.
+    def test_startup_probe_is_absent_by_default_in_all_in_one(self):
+        deployment = named(render(), "Deployment", SERVER)
+        self.assertNotIn("startupProbe", container(deployment), "no startup probe in all-in-one unless it is enabled")
+
+    def test_startup_probe_is_rendered_by_default_in_split(self):
+        startup = container(named(render(split_values()), "Deployment", SERVER))["startupProbe"]
+        self.assertEqual(5, startup["periodSeconds"], "the split startup probe period must be 5 seconds")
+        self.assertEqual(30, startup["failureThreshold"], "the split startup budget must be 30 failures of 5 seconds")
+        self.assertEqual(
+            "/api/status/health", startup["httpGet"]["path"], "the split startup probe must use the health endpoint",
+        )
+
+    def test_startup_probe_can_be_turned_off_in_split(self):
+        values = split_values()
+        values["probes"] = {"startup": {"enabled": False}}
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertNotIn("startupProbe", container(deployment), "an explicit enabled: false must win over the split default")
 
     def test_enabled_startup_probe_uses_the_root_path_in_all_in_one_mode(self):
         deployment = named(render({"probes": {"startup": {"enabled": True}}}), "Deployment", SERVER)
@@ -286,11 +310,56 @@ class ChartRenderTest(unittest.TestCase):
             self.assertEqual("/healthz", container(deployment)[probe]["httpGet"]["path"],
                              f"the dashboard {probe} must use GET /healthz")
 
-    def test_split_server_probes_use_the_api_health_endpoint(self):
+    # Replaces test_split_server_probes_use_the_api_health_endpoint. Readiness moved to /api/status/ready, because the
+    # health endpoint answers UP while the database is down. Liveness stays on the health endpoint, so an outage never
+    # restarts a pod.
+    def test_split_server_liveness_uses_the_api_health_endpoint(self):
         deployment = named(render(split_values()), "Deployment", SERVER)
-        for probe in ("readinessProbe", "livenessProbe"):
-            self.assertEqual("/api/status/health", container(deployment)[probe]["httpGet"]["path"],
-                             f"the split server {probe} must avoid the dashboard path")
+        self.assertEqual(
+            "/api/status/health", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "the split server liveness must stay on the health endpoint, so a database outage never restarts a pod",
+        )
+
+    def test_split_server_readiness_uses_the_readiness_endpoint(self):
+        deployment = named(render(split_values()), "Deployment", SERVER)
+        self.assertEqual(
+            "/api/status/ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "the split server readiness must use /api/status/ready, which fails while the database or storage is down",
+        )
+
+    def test_split_server_readiness_tolerates_one_slow_answer(self):
+        readiness = container(named(render(split_values()), "Deployment", SERVER))["readinessProbe"]
+        self.assertEqual(3, readiness["timeoutSeconds"], "the split readiness check runs two bounded checks, so it needs 3 seconds")
+        self.assertEqual(2, readiness["failureThreshold"], "one slow answer must not take the split pod out of rotation")
+
+    def test_all_in_one_readiness_keeps_its_budget(self):
+        readiness = container(named(render(), "Deployment", SERVER))["readinessProbe"]
+        self.assertEqual(1, readiness["timeoutSeconds"], "the all-in-one readiness timeout must stay at the upstream 1 second")
+        self.assertEqual(1, readiness["failureThreshold"], "the all-in-one readiness threshold must stay at the upstream 1")
+
+    def test_explicit_readiness_path_wins_in_all_in_one_mode(self):
+        deployment = named(render({"probes": {"readinessPath": "/api/status/ready"}}), "Deployment", SERVER)
+        self.assertEqual(
+            "/api/status/ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "an explicit probes.readinessPath must win over the all-in-one default",
+        )
+        self.assertEqual(
+            "/", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "probes.readinessPath must not change the liveness probe",
+        )
+
+    def test_explicit_readiness_path_wins_in_split_mode(self):
+        values = split_values()
+        values["probes"] = {"readinessPath": "/custom-ready"}
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertEqual(
+            "/custom-ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "an explicit probes.readinessPath must win over the split default",
+        )
+        self.assertEqual(
+            "/api/status/health", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "probes.readinessPath must not change the split liveness probe",
+        )
 
     def test_pod_disruption_budget_is_absent_by_default(self):
         self.assertEqual([], of_kind(render(), "PodDisruptionBudget"), "no PodDisruptionBudget by default")
@@ -391,7 +460,73 @@ class ChartRenderTest(unittest.TestCase):
             "deployment": {"replicas": 2},
             "env": [{"name": "INGOT_CLUSTER_URL", "value": "nats://broker.example.org:4222"}],
         }
-        self.assertNotIn("WARNING", notes(values), "a configured INGOT_CLUSTER_URL must silence the warning")
+        # Only the cluster bus message is checked: with two replicas the replica warnings of the chart still apply.
+        self.assertNotIn(CLUSTER_WARNING, notes(values), "a configured INGOT_CLUSTER_URL must silence the cluster bus warning")
+
+    def test_notes_warn_about_a_read_write_once_claim_with_several_replicas(self):
+        self.assertIn(CLAIM_WARNING, notes({"deployment": {"replicas": 2}}),
+                      "two replicas on a ReadWriteOnce claim must produce the claim warning")
+
+    def test_notes_do_not_warn_about_the_claim_when_an_existing_claim_is_set(self):
+        values = {"deployment": {"replicas": 2}, "persistence": {"existingClaim": "shared-data"}}
+        self.assertNotIn(CLAIM_WARNING, notes(values), "an existingClaim is the shared volume the operator chose")
+
+    def test_notes_do_not_warn_about_the_claim_with_a_read_write_many_claim(self):
+        values = {"deployment": {"replicas": 2}, "persistence": {"accessMode": "ReadWriteMany"}}
+        self.assertNotIn(CLAIM_WARNING, notes(values), "a ReadWriteMany claim can be shared by several pods")
+
+    def test_notes_warn_about_disabled_persistence_with_several_replicas(self):
+        values = {"deployment": {"replicas": 2}, "persistence": {"enabled": False}}
+        self.assertIn(NO_PERSISTENCE_WARNING, notes(values),
+                      "without persistence each pod keeps its own data, so the warning must appear")
+
+    def test_notes_warn_about_the_database_with_several_replicas(self):
+        self.assertIn(DATABASE_WARNING, notes({"deployment": {"replicas": 2}}),
+                      "several replicas without INGOT_LOCAL_DATABASE must produce the database warning")
+
+    def test_notes_do_not_warn_about_the_database_when_the_local_database_is_set(self):
+        values = {"deployment": {"replicas": 2}, "env": [{"name": "INGOT_LOCAL_DATABASE", "value": "postgresql"}]}
+        self.assertNotIn(DATABASE_WARNING, notes(values), "INGOT_LOCAL_DATABASE in env must silence the database warning")
+
+    def test_notes_accept_the_legacy_local_database_name_in_env(self):
+        values = {"deployment": {"replicas": 2}, "env": [{"name": "REPOSILITE_LOCAL_DATABASE", "value": "postgresql"}]}
+        self.assertNotIn(DATABASE_WARNING, notes(values), "the legacy REPOSILITE_LOCAL_DATABASE must silence the warning")
+
+    def test_notes_warn_about_the_memory_metric_only_with_the_autoscaler_on(self):
+        self.assertIn(MEMORY_WARNING, notes({"autoscaling": {"enabled": True}}),
+                      "the default autoscaler lists the memory metric, so the warning must appear")
+        self.assertNotIn(MEMORY_WARNING, notes({"deployment": {"replicas": 2}}),
+                         "without the autoscaler the memory metric is not in use, so no warning")
+
+    def test_notes_do_not_warn_about_the_memory_metric_when_only_cpu_is_scaled(self):
+        cpu_only = [{"type": "Resource", "resource": {"name": "cpu", "target": {"type": "Utilization", "averageUtilization": 60}}}]
+        values = {"autoscaling": {"enabled": True, "metrics": cpu_only}}
+        self.assertNotIn(MEMORY_WARNING, notes(values), "a CPU-only autoscaler must not produce the memory warning")
+
+    def test_notes_add_no_replica_warning_for_a_single_replica_with_defaults(self):
+        text = notes()
+        for warning in (CLUSTER_WARNING,) + REPLICA_WARNINGS:
+            self.assertNotIn(warning, text, "a single replica with defaults must get no replica warning")
+
+    def test_notes_never_fail_the_install_for_any_replica_combination(self):
+        persistence_variants = (
+            {"enabled": True},
+            {"enabled": True, "existingClaim": "shared-data"},
+            {"enabled": False},
+        )
+        for replicas in (1, 2):
+            for autoscaling in (False, True):
+                for persistence in persistence_variants:
+                    for with_database in (False, True):
+                        values = {
+                            "deployment": {"replicas": replicas},
+                            "autoscaling": {"enabled": autoscaling},
+                            "persistence": persistence,
+                        }
+                        if with_database:
+                            values["env"] = [{"name": "INGOT_LOCAL_DATABASE", "value": "postgresql"}]
+                        with self.subTest(values=values):
+                            notes(values)  # raises when the dry run exits with a failure status
 
     def test_helm_lint_is_clean_in_all_in_one_mode(self):
         code, stdout, stderr = helm(["lint", CHART_DIR, "--strict"], {"mode": "allInOne"})
@@ -400,6 +535,78 @@ class ChartRenderTest(unittest.TestCase):
     def test_helm_lint_is_clean_in_split_mode(self):
         code, stdout, stderr = helm(["lint", CHART_DIR, "--strict"], split_values())
         self.assertEqual(0, code, f"helm lint must pass in split mode: {stdout}{stderr}")
+
+
+def shutdown_values(**shutdown):
+    return {"deployment": {"shutdown": shutdown}}
+
+
+def timeout_entries(deployment):
+    return [entry for entry in container(deployment).get("env", []) if entry.get("name") == "INGOT_SHUTDOWN_TIMEOUT"]
+
+
+class ShutdownBudgetTest(unittest.TestCase):
+    """The opt-in shutdown budget: a preStop sleep, a drain timeout and the grace period that holds both."""
+
+    def test_no_shutdown_value_keeps_the_sixty_second_grace_period(self):
+        deployment = named(render(), "Deployment", SERVER)
+        self.assertEqual(60, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "without a shutdown value the grace period must stay at 60 seconds")
+        self.assertNotIn("lifecycle", container(deployment), "without a shutdown value there is no preStop action")
+        self.assertEqual([], timeout_entries(deployment), "without a shutdown value INGOT_SHUTDOWN_TIMEOUT is not set")
+
+    def test_pre_stop_seconds_render_a_sleep_in_the_pre_stop_hook(self):
+        deployment = named(render(shutdown_values(preStopSeconds=15)), "Deployment", SERVER)
+        self.assertEqual(
+            {"preStop": {"exec": {"command": ["sleep", "15"]}}},
+            container(deployment).get("lifecycle"),
+            "preStopSeconds 15 must render an exec preStop action that sleeps 15 seconds",
+        )
+
+    def test_pre_stop_seconds_alone_derive_the_grace_period(self):
+        deployment = named(render(shutdown_values(preStopSeconds=15)), "Deployment", SERVER)
+        self.assertEqual(25, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "the grace period must be preStopSeconds + drainSeconds + 10, which is 25 here")
+
+    def test_drain_seconds_render_the_shutdown_timeout_variable(self):
+        deployment = named(render(shutdown_values(drainSeconds=30)), "Deployment", SERVER)
+        self.assertEqual(
+            [{"name": "INGOT_SHUTDOWN_TIMEOUT", "value": "30"}],
+            timeout_entries(deployment),
+            "drainSeconds 30 must render INGOT_SHUTDOWN_TIMEOUT with the value 30",
+        )
+        self.assertEqual(40, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "drainSeconds alone must derive the grace period as drainSeconds + 10")
+
+    def test_both_values_derive_the_grace_period_of_their_sum_plus_ten(self):
+        deployment = named(render(shutdown_values(preStopSeconds=15, drainSeconds=30)), "Deployment", SERVER)
+        self.assertEqual(55, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "the grace period must be 15 + 30 + 10 = 55 seconds")
+        self.assertEqual(
+            {"preStop": {"exec": {"command": ["sleep", "15"]}}}, container(deployment).get("lifecycle"),
+            "both values together must still render the preStop sleep",
+        )
+        self.assertEqual(1, len(timeout_entries(deployment)), "INGOT_SHUTDOWN_TIMEOUT must be named exactly once")
+
+    def test_shutdown_timeout_set_in_env_is_kept_once_with_its_own_value(self):
+        values = shutdown_values(drainSeconds=30)
+        values["env"] = [{"name": "INGOT_SHUTDOWN_TIMEOUT", "value": "10"}]
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertEqual(
+            [{"name": "INGOT_SHUTDOWN_TIMEOUT", "value": "10"}],
+            timeout_entries(deployment),
+            "an INGOT_SHUTDOWN_TIMEOUT the operator set in env must win and must not be duplicated",
+        )
+
+    def test_operator_lifecycle_wins_over_pre_stop_seconds(self):
+        operator_hook = {"preStop": {"exec": {"command": ["/bin/sh", "-c", "sleep 40"]}}}
+        values = shutdown_values(preStopSeconds=15)
+        values["deployment"]["lifecycle"] = operator_hook
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertEqual(
+            operator_hook, container(deployment).get("lifecycle"),
+            "a deployment.lifecycle set by the operator must be kept, and no sleep of the chart must replace it",
+        )
 
 
 if __name__ == "__main__":
