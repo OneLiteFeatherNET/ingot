@@ -6,6 +6,7 @@ import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.prometheus.metrics.HttpRequestMetrics
 import com.reposilite.plugin.prometheus.metrics.JettyMetrics
 import com.reposilite.plugin.prometheus.metrics.QueuedThreadPoolMetrics
 import com.reposilite.plugin.prometheus.metrics.ReposiliteMetrics
@@ -16,10 +17,10 @@ import com.reposilite.web.api.HttpServerConfigurationEvent
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import io.prometheus.metrics.instrumentation.jvm.JvmMetrics
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.eclipse.jetty.server.handler.StatisticsHandler
 import org.eclipse.jetty.util.thread.QueuedThreadPool
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.DurationUnit
+import java.util.function.LongSupplier
 
 
 @Plugin(name = "prometheus", dependencies = ["failure", "statistics", "status"])
@@ -67,23 +68,11 @@ class PrometheusPlugin : ReposilitePlugin() {
 
 
         event { event: HttpServerConfigurationEvent ->
-            event.config.routes.before { ctx ->
-                ctx.attribute("timestamp", System.currentTimeMillis())
-            }
-
-            event.config.routes.after { ctx ->
-                if (ctx.path().toLocation() == prometheusPath)
-                    return@after
-
-                ReposiliteMetrics.responseCounter.labelValues(ctx.statusCode().toString()).inc()
-
-                val currentTime = System.currentTimeMillis()
-                val timestamp = ctx.attribute<Long>("timestamp")
-
-                if (timestamp != null)
-                    JettyMetrics.responseTimeSummary.labelValues(ctx.statusCode().toString())
-                        .observe((currentTime - timestamp).milliseconds.toDouble(DurationUnit.SECONDS))
-            }
+            HttpRequestMetrics(PrometheusRegistry.defaultRegistry, LongSupplier { System.nanoTime() })
+                .install(event.config.routes, metricsPath = prometheusPath.toString()) { code, seconds ->
+                    ReposiliteMetrics.responseCounter.labelValues(code.toString()).inc()
+                    JettyMetrics.responseTimeSummary.labelValues(code.toString()).observe(seconds)
+                }
 
             event.config.jetty.modifyServer { server ->
                 val handler = StatisticsHandler()
