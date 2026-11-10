@@ -88,6 +88,14 @@ class ValuesFileTest(unittest.TestCase):
         deployment = named(render(self.values), "Deployment", SERVER)
         self.assertEqual(2, deployment["spec"]["replicas"], "the smoke test runs two replicas")
 
+    def test_a_stopping_replica_leaves_the_service_before_it_stops(self):
+        deployment = named(render(self.values), "Deployment", SERVER)
+        container = deployment["spec"]["template"]["spec"]["containers"][0]
+        self.assertIn("preStop", container.get("lifecycle", {}),
+                      "without a preStop sleep the Service still routes reads to a replica that is stopping")
+        variables = {item["name"]: item.get("value") for item in container.get("env", [])}
+        self.assertIn("INGOT_SHUTDOWN_TIMEOUT", variables, "without a drain the requests in flight are cut at the stop")
+
     def test_the_image_is_the_one_the_job_loads_into_kind_by_tag(self):
         self.assertEqual({"name": "ingot", "tag": "ci"}, {"name": self.values["image"]["name"], "tag": self.values["image"]["tag"]},
                          "kind has the image under this tag, so no digest may be set")

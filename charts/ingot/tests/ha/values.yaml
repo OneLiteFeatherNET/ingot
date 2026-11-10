@@ -10,6 +10,11 @@ image:
   tag: ci
 deployment:
   replicas: 2
+  # The shutdown budget of the Kubernetes guide: the pod stays in the endpoints while the Service drops it, then the
+  # requests in flight finish. Without it the rolling restart check sees refused connections.
+  shutdown:
+    preStopSeconds: 15
+    drainSeconds: 30
 database:
   existingSecret: ingot-database
   secretKey: database
