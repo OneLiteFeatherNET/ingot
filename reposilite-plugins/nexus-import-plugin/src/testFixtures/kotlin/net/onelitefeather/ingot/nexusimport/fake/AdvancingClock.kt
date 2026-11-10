@@ -26,7 +26,7 @@ import java.time.ZoneOffset
  * A clock that only moves when a test moves it. A test passes [advance] as the sleeper, so a backoff or a throttle wait
  * costs no wall-clock time.
  */
-class AdvancingClock(private var now: Instant = Instant.parse("2026-01-01T00:00:00Z")) : Clock() {
+class AdvancingClock(@Volatile private var now: Instant = Instant.parse("2026-01-01T00:00:00Z")) : Clock() {
 
     override fun getZone(): ZoneId = ZoneOffset.UTC
 
@@ -34,6 +34,7 @@ class AdvancingClock(private var now: Instant = Instant.parse("2026-01-01T00:00:
 
     override fun instant(): Instant = now
 
+    @Synchronized
     fun advance(duration: Duration) {
         now = now.plus(duration)
     }
