@@ -140,7 +140,8 @@ class NexusClient(
                 }
 
                 reply.status in 200..299 -> {
-                    return if (stream) NexusReply(reply.status, reply.body) else NexusReply(reply.status, reply.body.use { it.readBytes() }.inputStream())
+                    val body = if (stream) reply.body else reply.body.use { it.readBytes() }.inputStream()
+                    return NexusReply(reply.status, reply.headers, body)
                 }
 
                 else -> {
@@ -183,7 +184,12 @@ class NexusClient(
 }
 
 /** A successful answer whose body the caller reads and closes. */
-class NexusReply(val status: Int, val body: java.io.InputStream)
+class NexusReply(
+    val status: Int,
+    /** Header names in lower case. */
+    val headers: Map<String, String>,
+    val body: java.io.InputStream,
+)
 
 /** The connection the importer was given. The password is a [Secret] and never part of a message. */
 class NexusConnection(
