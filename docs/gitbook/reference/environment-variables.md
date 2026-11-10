@@ -88,6 +88,15 @@ The server process reads these variables itself, not the entrypoint.
 | `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). |
 | `INGOT_FETCH_METADATA` | `-Dingot.fetchMetadata` | `on` | `off` lets a request to the API that comes from another site or a sibling subdomain through when it carries the session or refresh cookie. By default such a request is refused with `403`, unless it is a top-level navigation. The value is matched without regard to case, and any other value keeps the refusal on. The variable wins over the property. There is no `REPOSILITE_` spelling because the cookie sessions are Ingot's own. See [Cross-site requests](../explanation/sessions-and-login.md#cross-site-requests). |
 
+## Shutdown variables
+
+The server reads these variables once at start. Both are optional, and with their default the stop sequence is the same as in earlier versions. Each has a `REPOSILITE_` fallback that is read when the `INGOT_` name is unset or empty. A value that is not a whole number of seconds from `0` upwards stops the start, and the message names the variable.
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_SHUTDOWN_TIMEOUT` | `REPOSILITE_SHUTDOWN_TIMEOUT` | `0` | Seconds the server waits for requests in flight after it has begun to drain. While it waits, new requests get `503`, except the health and readiness answers under `/api/status/`. `0` keeps the strict stop: the server stops at once, as before. Above `0`, the stop waits up to this many seconds and then stops whatever is still running. |
+| `INGOT_SHUTDOWN_DELAY` | `REPOSILITE_SHUTDOWN_DELAY` | `0` | Seconds the instance keeps serving after it has begun to drain and before the drain wait starts. During this time `/api/status/ready` answers `503` with `draining`, so a load balancer can take the instance out of the rotation first. `0` starts the drain wait at once. |
+
 ## Container variables
 
 The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
