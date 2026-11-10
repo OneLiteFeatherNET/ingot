@@ -347,10 +347,27 @@ jobs:
       - name: "Install the chart test dependencies"
         run: python3 -m pip install "pyyaml==6.0.3"
 
+      - name: "Install promtool"
+        # Prometheus 3.5.0 release archive, verified against the sha256 published with the release.
+        run: |
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/prometheus.tar.gz" \
+            https://github.com/prometheus/prometheus/releases/download/v3.5.0/prometheus-3.5.0.linux-amd64.tar.gz
+          echo "e811827af26d822afb09a4f28314f61b618b12cff5369835a67f674d8b46f39a  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum --check --strict -
+          tar --extract --gzip --file "$RUNNER_TEMP/prometheus.tar.gz" --directory "$RUNNER_TEMP" prometheus-3.5.0.linux-amd64/promtool
+          echo "PROMTOOL=$RUNNER_TEMP/prometheus-3.5.0.linux-amd64/promtool" >> "$GITHUB_ENV"
+
       - name: "Lint the chart in both deploy modes"
         run: |
           helm lint charts/ingot --strict -f charts/ingot/ci/allinone-values.yaml
           helm lint charts/ingot --strict -f charts/ingot/ci/split-values.yaml
+
+      - name: "Check the alert rules with promtool"
+        run: |
+          helm template ingot charts/ingot --namespace reposilite-staging --set prometheusRule.enabled=true \
+            --show-only templates/prometheusrule.yaml > "$RUNNER_TEMP/prometheusrule.yaml"
+          python3 -c 'import sys, yaml; print(yaml.safe_dump(yaml.safe_load(open(sys.argv[1]))["spec"]))' \
+            "$RUNNER_TEMP/prometheusrule.yaml" > "$RUNNER_TEMP/rules.yaml"
+          "$PROMTOOL" check rules "$RUNNER_TEMP/rules.yaml"
 
       - name: "Run the chart tests"
         run: python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -v
