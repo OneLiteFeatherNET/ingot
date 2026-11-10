@@ -27,6 +27,7 @@ import com.reposilite.plugin.api.ReposilitePostInitializeEvent
 import com.reposilite.plugin.api.ReposiliteStartedEvent
 import com.reposilite.shared.extensions.shutdownGracefully
 import com.reposilite.web.HttpServer
+import net.onelitefeather.ingot.schema.SchemaLock
 import panda.std.Result
 import panda.std.Result.ok
 import panda.std.asError
@@ -49,6 +50,9 @@ class Reposilite(
 
     val database = databaseConnection.database
 
+    /** Held from the start of plugin initialisation until the post-initialise event, so replicas create the schema one at a time. */
+    internal var schemaLock: SchemaLock = SchemaLock.NONE
+
     private val alive = AtomicBoolean(true)
 
     private val shutdownHook = Thread {
@@ -59,6 +63,8 @@ class Reposilite(
         try {
             extensions.emitEvent(ReposiliteInitializeEvent(this))
             extensions.emitEvent(ReposilitePostInitializeEvent(this))
+            // The schema is ready, so other replicas may start. The lock is released before the port is bound.
+            schemaLock.release()
             alive.set(true)
             Thread.currentThread().name = "Ingot | Main Thread"
             logger.info("")
@@ -86,6 +92,7 @@ class Reposilite(
                 }
             }
             shutdownSafely("extensions") { extensions.emitEvent(ReposiliteDisposeEvent(this)) }
+            shutdownSafely("schema lock") { schemaLock.release() }
             shutdownSafely("database") { databaseConnection.close() }
             shutdownSafely("journalist") { journalist.shutdown() }
         }

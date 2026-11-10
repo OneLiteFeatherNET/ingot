@@ -117,6 +117,65 @@ internal class LocalConfigurationFactoryTest {
         assertThat(properties).isEmpty()
     }
 
+    @Test
+    fun `should default the schema lock timeout to 300 seconds`() {
+        // given: a default local configuration
+
+        // when: no external property is applied
+
+        // then: a replica waits up to five minutes for the schema lock
+        assertThat(LocalConfiguration().schemaLockTimeout.get()).isEqualTo(300L)
+    }
+
+    @Test
+    fun `should apply the schema lock timeout external property`() {
+        // given: a default local configuration
+        val localConfiguration = LocalConfiguration()
+
+        // when: the timeout is set through its external property name
+        applyProperty(localConfiguration, "SCHEMALOCKTIMEOUT", "90")
+
+        // then: the property is updated
+        assertThat(localConfiguration.schemaLockTimeout.get()).isEqualTo(90L)
+    }
+
+    @Test
+    fun `should read the schema lock timeout from the legacy reposilite prefix`() {
+        // given: a default local configuration
+        val localConfiguration = LocalConfiguration()
+
+        // when: only the legacy environment variable is set
+        LocalConfigurationFactory.applyCustomProperties(
+            journalist = null,
+            localConfiguration = localConfiguration,
+            properties = LocalConfigurationFactory.getEnvironmentVariables(mapOf("REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT" to "60")),
+        )
+
+        // then: the legacy value is honoured
+        assertThat(localConfiguration.schemaLockTimeout.get()).isEqualTo(60L)
+    }
+
+    @Test
+    fun `should prefer the ingot schema lock timeout over the legacy one`() {
+        // given: a default local configuration
+        val localConfiguration = LocalConfiguration()
+
+        // when: both environment variables are set
+        LocalConfigurationFactory.applyCustomProperties(
+            journalist = null,
+            localConfiguration = localConfiguration,
+            properties = LocalConfigurationFactory.getEnvironmentVariables(
+                mapOf(
+                    "INGOT_LOCAL_SCHEMALOCKTIMEOUT" to "90",
+                    "REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT" to "60",
+                )
+            ),
+        )
+
+        // then: the ingot value wins
+        assertThat(localConfiguration.schemaLockTimeout.get()).isEqualTo(90L)
+    }
+
     private fun applyProperty(localConfiguration: LocalConfiguration, key: String, value: String) {
         LocalConfigurationFactory.applyCustomProperties(
             journalist = null,

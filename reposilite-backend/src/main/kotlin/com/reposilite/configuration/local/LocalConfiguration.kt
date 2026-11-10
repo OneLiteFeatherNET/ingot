@@ -58,6 +58,12 @@ class LocalConfiguration : Facade {
     @Description("# - jdbc:mariadb://localhost:3306/db?sslMode=verify-full user password")
     val database = reference("sqlite reposilite.db")
 
+    @Description("")
+    @Description("# Seconds a replica waits for the schema lock before its start fails. The lock serialises the schema")
+    @Description("# initialisation of replicas that share one database. It is taken on MariaDB, MySQL and PostgreSQL only.")
+    @Description("# A replica that waits longer does not bind its port, so check the instance that holds the lock first.")
+    val schemaLockTimeout = reference(300L)
+
     @Command(name = "embedded")
     internal class EmbeddedSQLDatabaseSettings : Validator() {
         @Parameters(index = "0", paramLabel = "<file-name>", defaultValue = "")
