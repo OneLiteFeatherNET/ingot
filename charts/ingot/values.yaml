@@ -235,6 +235,21 @@ envFrom: []
 # - secretRef:
 #     name: secret-name
 
+## Opt-in JVM options of the server. Nothing is rendered unless a key is set. The flags go into JDK_JAVA_OPTIONS, which the
+## JVM reads before JAVA_OPTS. An explicit -Xmx in JAVA_OPTS overrides maxRAMPercentage, and the chart does not remove it.
+## An option that env already sets in JDK_JAVA_OPTIONS fails the render, so the chart never guesses which value wins.
+jvm:
+  # Maximum heap as a percentage of the container memory limit, as -XX:MaxRAMPercentage. Empty renders nothing.
+  maxRAMPercentage: ""
+  # Initial heap as a percentage of the container memory limit, as -XX:InitialRAMPercentage. Empty renders nothing.
+  initialRAMPercentage: ""
+  # Garbage collector as a HotSpot name without the prefix, for example UseG1GC or UseSerialGC. Rendered as -XX:+<name>.
+  gc: ""
+  # Processors the JVM assumes, as -XX:ActiveProcessorCount. Empty renders nothing.
+  activeProcessorCount: ""
+  # Further JVM options, appended unchanged to JDK_JAVA_OPTIONS.
+  extraOptions: []
+
 ## Rolling update
 rollingUpdate:
   maxUnavailable: 0

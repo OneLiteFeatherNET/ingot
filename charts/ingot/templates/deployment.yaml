@@ -154,8 +154,11 @@ spec:
           {{- with $generatedEnv }}
           {{- . | nindent 10 }}
           {{- end }}
-          {{- with .Values.env }}
-          {{- toYaml . | nindent 10 }}
+          {{- $chartOwnedEnv := include "ingot.chartOwnedEnv" . | trim }}
+          {{- range .Values.env }}
+          {{- if not (has .name (splitList "," $chartOwnedEnv)) }}
+          {{- toYaml (list .) | nindent 10 }}
+          {{- end }}
           {{- end }}
         {{- end }}
         {{- with .Values.envFrom }}

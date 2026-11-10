@@ -53,6 +53,16 @@
         "topologySpreadConstraints": {"type": "array"}
       }
     },
+    "jvm": {
+      "type": "object",
+      "properties": {
+        "maxRAMPercentage": {"anyOf": [{"type": "string", "maxLength": 0}, {"type": "number", "exclusiveMinimum": 0, "maximum": 100}], "description": "Maximum heap as a percentage of the memory limit, as -XX:MaxRAMPercentage. Empty renders nothing."},
+        "initialRAMPercentage": {"anyOf": [{"type": "string", "maxLength": 0}, {"type": "number", "exclusiveMinimum": 0, "maximum": 100}], "description": "Initial heap as a percentage of the memory limit, as -XX:InitialRAMPercentage. Empty renders nothing."},
+        "gc": {"type": "string", "pattern": "^(|Use[A-Za-z0-9]+GC)$", "description": "Collector flag name without the prefix, for example UseG1GC. Rendered as -XX:+<name>."},
+        "activeProcessorCount": {"anyOf": [{"type": "string", "maxLength": 0}, {"type": "integer", "minimum": 1}], "description": "Processors the JVM assumes, as -XX:ActiveProcessorCount."},
+        "extraOptions": {"type": "array", "items": {"type": "string"}, "description": "JVM options appended unchanged to JDK_JAVA_OPTIONS."}
+      }
+    },
     "podDisruptionBudget": {
       "type": "object",
       "properties": {

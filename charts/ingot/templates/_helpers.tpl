@@ -271,4 +271,116 @@ value is set. Expects the root context.
 - name: INGOT_CLUSTER_CREDENTIALS
   value: {{ printf "%s/nats.creds" (include "ingot.clusterCredentialsPath" $root) | quote }}
 {{- end }}
+{{- $jdkJavaOptions := include "ingot.jdkJavaOptions" $root | trim }}
+{{- with $jdkJavaOptions }}
+- name: JDK_JAVA_OPTIONS
+  value: {{ . | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+Value of the server environment variable named by .name, as the last entry of env sets it. Empty when env does not set it.
+Fails when that entry takes its value from a reference, because the chart cannot merge its flags into a reference.
+Expects the dictionary keys root and name.
+*/}}
+{{- define "ingot.envEntryValue" -}}
+{{- $name := .name -}}
+{{- $value := "" -}}
+{{- range .root.Values.env -}}
+{{- if eq (toString .name) $name -}}
+{{- if .valueFrom -}}
+{{- fail (printf "env sets %s from a reference, so the chart cannot merge its flags into it: set %s to a plain value" $name $name) -}}
+{{- end -}}
+{{- $value = default "" .value -}}
+{{- end -}}
+{{- end -}}
+{{- $value -}}
+{{- end }}
+
+{{/*
+The JVM flags of the jvm block as one space separated string. A key renders a flag only when it is set.
+*/}}
+{{- define "ingot.jvmFlags" -}}
+{{- $flags := list -}}
+{{- with .Values.jvm.maxRAMPercentage -}}
+{{- $flags = append $flags (printf "-XX:MaxRAMPercentage=%v" .) -}}
+{{- end -}}
+{{- with .Values.jvm.initialRAMPercentage -}}
+{{- $flags = append $flags (printf "-XX:InitialRAMPercentage=%v" .) -}}
+{{- end -}}
+{{- with .Values.jvm.gc -}}
+{{- $flags = append $flags (printf "-XX:+%s" .) -}}
+{{- end -}}
+{{- with .Values.jvm.activeProcessorCount -}}
+{{- $flags = append $flags (printf "-XX:ActiveProcessorCount=%v" .) -}}
+{{- end -}}
+{{- range .Values.jvm.extraOptions -}}
+{{- $flags = append $flags . -}}
+{{- end -}}
+{{- join " " $flags -}}
+{{- end }}
+
+{{/*
+The flags that the chart adds to JDK_JAVA_OPTIONS of the server, as one space separated string.
+*/}}
+{{- define "ingot.chartJdkFlags" -}}
+{{- include "ingot.jvmFlags" . -}}
+{{- end }}
+
+{{/*
+The option that a JVM flag sets. -XX:Name=value keys by Name. Every -XX:+UseXxxGC selects the collector, so all of them
+share one key and two collectors conflict.
+*/}}
+{{- define "ingot.jvmFlagKey" -}}
+{{- if and (hasPrefix "-XX:+Use" .) (hasSuffix "GC" .) -}}
+collector
+{{- else if contains "=" . -}}
+{{- index (splitList "=" .) 0 -}}
+{{- else -}}
+{{- . -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Fails when the operator's JDK_JAVA_OPTIONS and the chart flags set the same option. Two values for one option in one
+variable depend on the order of the JVM, so the chart refuses to guess. Expects the keys flags and operator.
+*/}}
+{{- define "ingot.checkJvmConflicts" -}}
+{{- range $chart := splitList " " .flags -}}
+{{- if $chart -}}
+{{- $chartKey := include "ingot.jvmFlagKey" $chart -}}
+{{- range $own := splitList " " $.operator -}}
+{{- if $own -}}
+{{- if eq (include "ingot.jvmFlagKey" $own) $chartKey -}}
+{{- fail (printf "JDK_JAVA_OPTIONS sets %s and the chart sets %s too: remove one of them" $own $chart) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+The merged JDK_JAVA_OPTIONS value: the operator's text first and unchanged, then the chart flags. Empty when the chart sets
+no flag, so the operator's entry is left alone.
+*/}}
+{{- define "ingot.jdkJavaOptions" -}}
+{{- $chart := include "ingot.chartJdkFlags" . | trim -}}
+{{- if $chart -}}
+{{- $own := include "ingot.envEntryValue" (dict "root" . "name" "JDK_JAVA_OPTIONS") | trim -}}
+{{- include "ingot.checkJvmConflicts" (dict "flags" $chart "operator" $own) -}}
+{{- join " " (compact (list $own $chart)) -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Comma separated names of the server variables that the chart writes itself with the operator's value merged in. The
+operator's entries with these names are not rendered again, so no name appears twice.
+*/}}
+{{- define "ingot.chartOwnedEnv" -}}
+{{- $names := list -}}
+{{- if include "ingot.chartJdkFlags" . | trim -}}
+{{- $names = append $names "JDK_JAVA_OPTIONS" -}}
+{{- end -}}
+{{- join "," $names -}}
 {{- end }}
