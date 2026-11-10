@@ -1,0 +1,27 @@
+# Values of the two-replica smoke test, installed by the ha-smoke job of .github/workflows/ci.yml into the namespace
+# ingot-ha. This file is CI only: it stays out of charts/ingot/ci/, so chart-testing never installs it, and the
+# dependencies of charts/ingot/tests/ha/dependencies.yaml must exist first.
+#
+# The image is the one the job builds and loads into kind by its tag, so it has no digest.
+# The passwords and keys are the throwaway CI values of dependencies.yaml.
+mode: allInOne
+image:
+  name: ingot
+  tag: ci
+deployment:
+  replicas: 2
+database:
+  existingSecret: ingot-database
+  secretKey: database
+objectStorage:
+  existingSecret: ingot-s3-keys
+clusterBus:
+  # Plain NATS without credentials, because the CI broker has no authentication.
+  url: nats://nats.ingot-ha.svc.cluster.local:4222
+env:
+  # The bootstrap token with every permission, used by the driver for Basic authentication. Throwaway CI value.
+  - name: REPOSILITE_OPTS
+    value: "--token smoke:smoke-ci-only-secret"
+  # The Floci endpoint is path style, which the S3 client needs for a host name without a bucket subdomain.
+  - name: JAVA_OPTS
+    value: "-Xmx512M -Dreposilite.s3.pathStyleAccessEnabled=true"

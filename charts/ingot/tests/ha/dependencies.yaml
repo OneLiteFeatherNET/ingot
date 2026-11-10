@@ -1,0 +1,195 @@
+# Dependencies of the two-replica smoke test, applied by the ha-smoke job of .github/workflows/ci.yml into the
+# namespace ingot-ha before the chart is installed. The chart itself creates none of them.
+#
+# Every Secret holds THROWAWAY CI VALUES, generated for one kind cluster and never used anywhere else. They are not
+# secrets and must not be copied into a real installation.
+#
+# Images are pinned by tag and digest. The digests were resolved from the registries on 2026-11-10.
+#   mariadb:11.4                     docker.io/library/mariadb, digest d1891ede5a55...
+#   nats:2.12-alpine                 docker.io/library/nats, digest b270f5e24283...
+#   floci/floci:2.4.0                docker.io/floci/floci, the stable release, digest 5ee85db604c4...
+#                                    (the tag latest points at the same digest)
+#   amazon/aws-cli:2.39.7            docker.io/amazon/aws-cli, digest bba262340b0b...
+# MinIO is not used: its images are not anonymously pullable from Docker Hub or Quay.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mariadb-credentials
+  namespace: ingot-ha
+type: Opaque
+stringData:
+  MARIADB_ROOT_PASSWORD: ingot-ci-root-password
+  MARIADB_DATABASE: ingot
+  MARIADB_USER: ingot
+  MARIADB_PASSWORD: ingot-ci-password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ingot-database
+  namespace: ingot-ha
+type: Opaque
+stringData:
+  # The connection string of the server: "mariadb <host:port> <database> <user> <password>".
+  database: "mariadb mariadb.ingot-ha.svc.cluster.local:3306 ingot ingot-ci-password"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ingot-s3-keys
+  namespace: ingot-ha
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: ingot-ha
+spec:
+  selector:
+    app: mariadb
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: ingot-ha
+  labels:
+    app: mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:11.4@sha256:d1891ede5a559f1086f55053bb8cc1569b0298338c4d72d71725a7f74f6ba620
+          envFrom:
+            - secretRef:
+                name: mariadb-credentials
+          ports:
+            - containerPort: 3306
+          readinessProbe:
+            tcpSocket:
+              port: 3306
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: floci
+  namespace: ingot-ha
+spec:
+  selector:
+    app: floci
+  ports:
+    - name: s3
+      port: 4566
+      targetPort: 4566
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: floci
+  namespace: ingot-ha
+  labels:
+    app: floci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: floci
+  template:
+    metadata:
+      labels:
+        app: floci
+    spec:
+      containers:
+        - name: floci
+          # floci/floci:2.4.0 is the stable release, the tag latest points at the same digest.
+          image: floci/floci:2.4.0@sha256:5ee85db604c4aa74ac76e07ea5cc83086f37bb472bf3dbb97e34019e48efae9c
+          ports:
+            - containerPort: 4566
+          readinessProbe:
+            tcpSocket:
+              port: 4566
+            periodSeconds: 2
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingot-smoke-bucket
+  namespace: ingot-ha
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-bucket
+          image: amazon/aws-cli:2.39.7@sha256:bba262340b0bc7cbf3a8a48612531263b56f4b280c4f036a07816af1b271bda0
+          args:
+            - --endpoint-url
+            - http://floci.ingot-ha.svc.cluster.local:4566
+            - s3
+            - mb
+            - s3://ingot-smoke
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: test
+            - name: AWS_SECRET_ACCESS_KEY
+              value: test
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: ingot-ha
+spec:
+  selector:
+    app: nats
+  ports:
+    - name: client
+      port: 4222
+      targetPort: 4222
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+  namespace: ingot-ha
+  labels:
+    app: nats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      containers:
+        - name: nats
+          image: nats:2.12-alpine@sha256:b270f5e2428354c0335612694d7dd2fb588148e567a5757fdff325ef9c9332e6
+          ports:
+            - containerPort: 4222
+          readinessProbe:
+            tcpSocket:
+              port: 4222
+            periodSeconds: 2

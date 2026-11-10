@@ -20,6 +20,14 @@ POLL_SECONDS = 5
 
 SESSION_COOKIES = ("ingot_session", "ingot_refresh", "ingot_csrf")
 
+NAMESPACE = "ingot-ha"
+RELEASE = "ingot-ha"
+S3_ENDPOINT = f"http://floci.{NAMESPACE}.svc.cluster.local:4566"
+S3_BUCKET = "ingot-smoke"
+S3_REGION = "us-east-1"
+CURL_IMAGE = "curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93"
+"""The curl image of the in-cluster client and reader pods, pinned by tag and digest."""
+
 
 class SmokeFailure(Exception):
     """A check that did not hold. The message names what was expected."""
