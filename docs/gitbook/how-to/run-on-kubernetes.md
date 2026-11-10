@@ -184,6 +184,32 @@ The chart's default access mode is `ReadWriteOnce`. A volume with that mode can 
 The image starts as root and lets its entrypoint switch to the service user. The `PUID`, `PGID` and `REPOSILITE_FORCE_CHOWN` variables apply to that path. Leave `deployment.containerSecurityContext.enabled` at `false` unless the volume is already writable for the UID you set.
 {% endhint %}
 
+## Run under the restricted Pod Security level
+
+A namespace that enforces the Pod Security `restricted` level rejects the default pod, because the image starts as root. Set `deployment.securityProfile` to run the server without root:
+
+```yaml
+deployment:
+  securityProfile: restricted
+```
+
+The `restricted` profile runs the pod and the container as uid and gid `977`, sets `fsGroup` to `977`, uses the `RuntimeDefault` seccomp profile, drops every capability and disallows privilege escalation. The root filesystem is read-only. The chart mounts two `emptyDir` volumes for the paths that the server writes, `ingot-tmp` at `/tmp` and `ingot-logs` at `/var/log/reposilite`. The data volume stays as it is.
+
+The profile does not change who owns existing files. The entrypoint does not change ownership either, because it runs only as root. The data volume must therefore belong to uid `977`. A volume that a deployment wrote under another uid, for example uid `999` from `containerSecurityContext.runAsUser`, cannot be written by the server. Change its owner once, with the Deployment scaled to zero and in a namespace that does not enforce the restricted level:
+
+```bash
+kubectl -n ingot scale deployment/ingot --replicas=0
+
+kubectl -n ingot run ingot-chown --rm -i --restart=Never --image=busybox:1.36 \
+  --overrides='{"spec":{"containers":[{"name":"ingot-chown","image":"busybox:1.36","command":["chown","-R","977:977","/app/data"],"volumeMounts":[{"name":"data","mountPath":"/app/data"}]}],"volumes":[{"name":"data","persistentVolumeClaim":{"claimName":"ingot"}}]}}'
+```
+
+Replace `ingot` with your release name and claim name, and scale the Deployment back up afterwards. The chart does not run this step for you, because an init container that runs `chown` would run as root, which the restricted level forbids.
+
+On clusters that assign the uid, such as OpenShift, set `deployment.securityProfile` to `restricted-openshift`. The chart then sets the same fields without `runAsUser`, `runAsGroup` and `fsGroup`, so the cluster's assigned values apply. The chart checks this variant with render tests only, not on an OpenShift cluster.
+
+Do not set `podSecurityContext.enabled` or `containerSecurityContext.enabled` together with a profile. The render fails and names both keys.
+
 ## Use S3 for repositories
 
 Storage is set per repository in the maven settings. To store a repository in S3, set its `storageProvider` to `s3`. The endpoint can be an in-cluster service, for example a MinIO service:
