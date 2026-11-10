@@ -50,11 +50,15 @@ import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.UncheckedIOException
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
+import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -69,7 +73,6 @@ import kotlin.io.path.extension
 import kotlin.io.path.fileSize
 import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.isDirectory
-import kotlin.io.path.moveTo
 import kotlin.io.path.name
 import kotlin.io.path.outputStream
 import kotlin.io.path.readAttributes
@@ -82,6 +85,7 @@ abstract class FileSystemStorageProvider protected constructor(
     val journalist: Journalist,
     val rootDirectory: Path,
     private val failureFacade: FailureFacade,
+    private val clock: Clock,
 ) : StorageProvider, StorageEntrySource by FileSystemEntrySource(rootDirectory, failureFacade) {
 
     private enum class LockMode {
@@ -107,6 +111,9 @@ abstract class FileSystemStorageProvider protected constructor(
      */
     private val usageLock = Any()
     private var storedBytes: Long? = null
+
+    /** Set once the file system has refused an atomic move, so that the warning is logged once per provider. */
+    private val atomicMoveWarned = AtomicBoolean(false)
 
     private fun acquireFileAccessLock(location: Location, lockMode: LockMode): Closeable {
         val accessor = lockedLocations.compute(location) { _, existing ->
@@ -156,7 +163,7 @@ abstract class FileSystemStorageProvider protected constructor(
                     // Let's try with temporary files.
                     // ~ https://github.com/dzikoysk/reposilite/issues/264
 
-                    useTempFile { temporaryFile ->
+                    useTempFile(file.parent) { temporaryFile ->
                         copyBounded(source = data, destination = temporaryFile, maxBytes = limit)
                             // Re-check post-write: InputStream.available() is just a hint and returns 0 for HTTP request bodies.
                             .flatMap { canHold(temporaryFile.fileSize()).mapErr { INSUFFICIENT_STORAGE.toErrorResponse("Not enough storage space available: ${it.message}") } }
@@ -171,21 +178,47 @@ abstract class FileSystemStorageProvider protected constructor(
         }
 
     /**
-     * Moves the written file into place and adjusts the usage by the difference to the file it replaces. The move runs
-     * outside [usageLock] (the temporary file may live on another filesystem, so the move is a copy); writes to the same
-     * location are already serialised by the caller's WRITE lock, which keeps the measured replaced size valid.
+     * Moves the written file into place and adjusts the usage by the difference to the file it replaces. The temporary
+     * file lies in the same directory as the target, so the move is a rename and readers see either the old or the new
+     * bytes. Writes to the same location are already serialised by the caller's WRITE lock, which keeps the measured
+     * replaced size valid.
      */
     private fun commitFile(temporaryFile: Path, file: Path) {
         val replaced = sizeOf(file)
         val written = temporaryFile.fileSize()
-        temporaryFile.moveTo(file, overwrite = true)
+        commitMove(temporaryFile, file)
         synchronized(usageLock) {
             storedBytes = storedBytes?.let { it - replaced + written }
         }
     }
 
-    private inline fun <T> useTempFile(block: (Path) -> T): T {
-        val temporaryFile = createTempFile("reposilite-", "-fs-put")
+    /**
+     * Commits with an atomic move. Only a file system that refuses atomic moves gets the plain replacing move, and the
+     * refusal is logged once.
+     */
+    private fun commitMove(temporaryFile: Path, file: Path) {
+        try {
+            moveIntoPlace(temporaryFile, file, atomic = true)
+        } catch (unsupported: AtomicMoveNotSupportedException) {
+            if (atomicMoveWarned.compareAndSet(false, true)) {
+                journalist.logger.warn("Storage | $rootDirectory does not support atomic moves, uploads are replaced with a plain move")
+            }
+            moveIntoPlace(temporaryFile, file, atomic = false)
+        }
+    }
+
+    /** Moves [source] onto [target], replacing it. [atomic] asks for a move that the file system completes in one step. */
+    internal open fun moveIntoPlace(source: Path, target: Path, atomic: Boolean) {
+        if (atomic) {
+            Files.move(source, target, ATOMIC_MOVE, REPLACE_EXISTING)
+        } else {
+            Files.move(source, target, REPLACE_EXISTING)
+        }
+    }
+
+    /** Creates the temporary file of an upload in [directory], which is the directory of its target. */
+    private inline fun <T> useTempFile(directory: Path, block: (Path) -> T): T {
+        val temporaryFile = createTempFile(directory, PARTIAL_UPLOAD_PREFIX, PARTIAL_UPLOAD_SUFFIX)
         return try {
             block(temporaryFile)
         } finally {
