@@ -1,0 +1,126 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.reposilite.image
+
+import java.nio.file.Path
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+
+/**
+ * The previous release and the current build beside each other on one MariaDB database and one repository directory,
+ * which is the state of a rolling upgrade while the replicas are replaced one after the other.
+ *
+ * The order is the one a rolling upgrade produces: the previous release is already running when the current build joins
+ * the database, and the previous release is the one that was started first. Every case gets its own database, its own
+ * directory and its own replicas, so no case can see what another one wrote.
+ *
+ * Requests authenticate with the bootstrap token that both releases accept from `--token`, so no case depends on a
+ * persistent token that only one release could have written.
+ */
+class MixedVersionClusterTest {
+
+    @Test
+    @DisplayName("deploys cross between the releases")
+    fun `deploys cross between the releases`(@TempDir directory: Path) {
+        withSharedState(directory) { state ->
+            sharedRepositoryReplica(ImageUnderTest.previous, state).use { previous ->
+                previous.startOrExplain()
+                sharedRepositoryReplica(ImageUnderTest.server, state).use { current ->
+                    current.startOrExplain()
+                    val oldUrl = previous.baseUrl()
+                    val newUrl = current.baseUrl()
+
+                    // One artifact in each direction, one after the other.
+                    deploy(oldUrl, FROM_OLD_TO_NEW, FROM_OLD_TO_NEW)
+                    assertServes(newUrl, FROM_OLD_TO_NEW, reason = "the current build reads what the previous release deployed")
+
+                    deploy(newUrl, FROM_NEW_TO_OLD, FROM_NEW_TO_OLD)
+                    assertServes(oldUrl, FROM_NEW_TO_OLD, reason = "the previous release reads what the current build deployed")
+
+                    // Two different artifacts at the same moment, one through each replica.
+                    deployConcurrently(
+                        oldUrl to CONCURRENT_FROM_OLD,
+                        newUrl to CONCURRENT_FROM_NEW,
+                    )
+                    listOf(CONCURRENT_FROM_OLD, CONCURRENT_FROM_NEW).forEach { path ->
+                        assertServes(oldUrl, path, reason = "the previous release reads a concurrent deploy")
+                        assertServes(newUrl, path, reason = "the current build reads a concurrent deploy")
+                    }
+                }
+            }
+        }
+    }
+
+    /** Puts [content] at [path] through the replica at [url]. The content is the path, so every artifact is distinct. */
+    private fun deploy(url: String, path: String, content: String) {
+        val response = Http.put("$url/$path", content, MIXED_BOOTSTRAP)
+        assertThat(response.isSuccessful)
+            .describedAs("deploy %s: status %s, body %s", path, response.status, response.body)
+            .isTrue()
+    }
+
+    /** Reads [path] through the replica at [url] and expects the bytes that were deployed for it. */
+    private fun assertServes(url: String, path: String, reason: String) {
+        val response = Http.get("$url/$path", MIXED_BOOTSTRAP)
+        assertThat(response.status).describedAs("%s: status of %s", reason, path).isEqualTo(200)
+        assertThat(response.body).describedAs("%s: content of %s", reason, path).isEqualTo(path)
+    }
+
+    /**
+     * Starts both deploys behind one latch, so they reach their replicas at the same moment, and waits for both within
+     * [WAIT_BOUND]. A latch instead of a sleep: the test does not depend on how long a request takes.
+     */
+    private fun deployConcurrently(vararg deploys: Pair<String, String>) {
+        val start = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(deploys.size)
+        try {
+            val responses = deploys.map { (url, path) ->
+                pool.submit(
+                    Callable {
+                        start.await()
+                        Http.put("$url/$path", path, MIXED_BOOTSTRAP)
+                    }
+                )
+            }
+            start.countDown()
+            responses.forEachIndexed { index, future ->
+                val (_, path) = deploys[index]
+                val response = future.get(WAIT_BOUND.toSeconds(), TimeUnit.SECONDS)
+                assertThat(response.isSuccessful)
+                    .describedAs("concurrent deploy %s: status %s, body %s", path, response.status, response.body)
+                    .isTrue()
+            }
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
+    private companion object {
+        val WAIT_BOUND: java.time.Duration = java.time.Duration.ofSeconds(60)
+
+        const val FROM_OLD_TO_NEW = "releases/com/example/mixed/1.0.0/mixed-1.0.0.jar"
+        const val FROM_NEW_TO_OLD = "releases/com/example/mixed/2.0.0/mixed-2.0.0.jar"
+        const val CONCURRENT_FROM_OLD = "releases/com/example/mixed/3.0.0/mixed-3.0.0.jar"
+        const val CONCURRENT_FROM_NEW = "releases/com/example/mixed/4.0.0/mixed-4.0.0.jar"
+    }
+}
