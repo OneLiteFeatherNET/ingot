@@ -79,7 +79,9 @@ class FileSystemEntrySource(
             return@sequence
         }
 
-        val children = path.useDirectoryEntries { entries -> entries.sortedBy { it.fileName.toString() }.toList() }
+        val children = path.useDirectoryEntries { entries ->
+            entries.filter { !isPartialUploadName(it.fileName.toString()) }.sortedBy { it.fileName.toString() }.toList()
+        }
 
         for (child in children) {
             val segments = directory + child.fileName.toString()

@@ -108,3 +108,13 @@ The scheduled cleanup and the audit retention purge hold their daily run as a le
 No configuration, environment variable, volume or plugin changes. The schedule itself does not move.
 
 **Mixed versions.** A replica on the previous release ignores the leases, so during a rolling upgrade it can still run a cleanup next to a replica on this release. Upgrade one replica first, and enable no scheduled cleanup policy until every replica runs this release.
+
+### Uploads are written beside their target
+
+An upload is written to a temporary file in the directory of its target, named `.ingot-<random>.part`, and moved into place with one atomic move. Before, the temporary file lived in the system temporary directory. Three points are visible to an operator:
+
+* An upload needs free space on the repository volume while it is written. It no longer needs space in the temporary directory of the container.
+* A request that stores a file under a name of the form `.ingot-*.part` is refused with `400`. No Maven artifact has such a name.
+* A partial file left by a crash is removed when the storage starts, once it has not been modified for 24 hours. Newer partial files stay, because another replica on the same volume may still be receiving them.
+
+Partial files are never listed, counted in the storage usage or served. After a rollback to an earlier release on the same volume, that release lists a partial file until the upload completes or the file is removed. Status codes and bodies of uploads and downloads do not change, apart from the `400` above. No configuration, environment variable, manifest or plugin changes, and a data directory is adopted as before.

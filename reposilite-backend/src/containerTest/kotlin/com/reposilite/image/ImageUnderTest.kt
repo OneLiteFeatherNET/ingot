@@ -137,6 +137,13 @@ class DataDirectory(val path: Path, private val image: DockerImageName) : AutoCl
     /** Reads a file the server wrote, which belongs to the service account and not here. */
     fun read(relativePath: String): String = inspect("cat", "$MOUNT_POINT/$relativePath")
 
+    /**
+     * The names in a directory the server wrote into, dot files included. The directory must exist, because a one-shot
+     * container that cannot list it exits non-zero, which fails the start.
+     */
+    fun list(relativeDirectory: String): List<String> =
+        inspect("ls", "-A", "$MOUNT_POINT/$relativeDirectory").lines().map { it.trim() }.filter { it.isNotEmpty() }
+
     override fun close() {
         runAsRoot("chown", "-R", "$ownUid:$ownGid", MOUNT_POINT)
     }

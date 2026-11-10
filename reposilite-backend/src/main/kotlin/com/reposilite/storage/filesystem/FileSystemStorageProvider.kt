@@ -50,11 +50,15 @@ import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.UncheckedIOException
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.FileTime
+import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -69,7 +73,6 @@ import kotlin.io.path.extension
 import kotlin.io.path.fileSize
 import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.isDirectory
-import kotlin.io.path.moveTo
 import kotlin.io.path.name
 import kotlin.io.path.outputStream
 import kotlin.io.path.readAttributes
@@ -82,6 +85,7 @@ abstract class FileSystemStorageProvider protected constructor(
     val journalist: Journalist,
     val rootDirectory: Path,
     private val failureFacade: FailureFacade,
+    private val clock: Clock,
 ) : StorageProvider, StorageEntrySource by FileSystemEntrySource(rootDirectory, failureFacade) {
 
     private enum class LockMode {
@@ -107,6 +111,13 @@ abstract class FileSystemStorageProvider protected constructor(
      */
     private val usageLock = Any()
     private var storedBytes: Long? = null
+
+    /** Set once the file system has refused an atomic move, so that the warning is logged once per provider. */
+    private val atomicMoveWarned = AtomicBoolean(false)
+
+    init {
+        removeStalePartialUploads()
+    }
 
     private fun acquireFileAccessLock(location: Location, lockMode: LockMode): Closeable {
         val accessor = lockedLocations.compute(location) { _, existing ->
@@ -148,7 +159,11 @@ abstract class FileSystemStorageProvider protected constructor(
         inputStream.use { data ->
             canHold(0)
                 .mapErr { INSUFFICIENT_STORAGE.toErrorResponse("Not enough storage space available: ${it.message}") }
-                .flatMap { limit -> location.resolveWithRootDirectory().map { limit to it } }
+                .flatMap { limit ->
+                    location.resolveWithRootDirectory()
+                        .filter({ !it.isHidden() }, { badRequest("Names reserved for uploads in progress cannot be stored") })
+                        .map { limit to it }
+                }
                 .peek { (_, file) -> file.createParentDirectories() }
                 .flatMap { (limit, file) ->
                     // TO-FIX: FS locks are not truly respected, there might be a need to enhanced it with .lock file to be sure if it's respected.
@@ -156,7 +171,7 @@ abstract class FileSystemStorageProvider protected constructor(
                     // Let's try with temporary files.
                     // ~ https://github.com/dzikoysk/reposilite/issues/264
 
-                    useTempFile { temporaryFile ->
+                    useTempFile(file.parent) { temporaryFile ->
                         copyBounded(source = data, destination = temporaryFile, maxBytes = limit)
                             // Re-check post-write: InputStream.available() is just a hint and returns 0 for HTTP request bodies.
                             .flatMap { canHold(temporaryFile.fileSize()).mapErr { INSUFFICIENT_STORAGE.toErrorResponse("Not enough storage space available: ${it.message}") } }
@@ -171,21 +186,75 @@ abstract class FileSystemStorageProvider protected constructor(
         }
 
     /**
-     * Moves the written file into place and adjusts the usage by the difference to the file it replaces. The move runs
-     * outside [usageLock] (the temporary file may live on another filesystem, so the move is a copy); writes to the same
-     * location are already serialised by the caller's WRITE lock, which keeps the measured replaced size valid.
+     * Moves the written file into place and adjusts the usage by the difference to the file it replaces. The temporary
+     * file lies in the same directory as the target, so the move is a rename and readers see either the old or the new
+     * bytes. Writes to the same location are already serialised by the caller's WRITE lock, which keeps the measured
+     * replaced size valid.
      */
     private fun commitFile(temporaryFile: Path, file: Path) {
         val replaced = sizeOf(file)
         val written = temporaryFile.fileSize()
-        temporaryFile.moveTo(file, overwrite = true)
+        commitMove(temporaryFile, file)
         synchronized(usageLock) {
             storedBytes = storedBytes?.let { it - replaced + written }
         }
     }
 
-    private inline fun <T> useTempFile(block: (Path) -> T): T {
-        val temporaryFile = createTempFile("reposilite-", "-fs-put")
+    /**
+     * Deletes the partial files of uploads that crashed. Runs once when the provider starts and never fails the start:
+     * a tree that cannot be walked is reported and left as it is. Partial files modified within the threshold stay,
+     * because another replica on the same volume may still be writing them.
+     */
+    private fun removeStalePartialUploads() {
+        try {
+            if (!rootDirectory.exists()) {
+                return
+            }
+            val threshold = clock.instant().minus(STALE_PARTIAL_UPLOAD_AGE)
+            val stale = Files.walk(rootDirectory).use { entries ->
+                entries
+                    .filter { isPartialUploadName(it.name) && Files.isRegularFile(it, NOFOLLOW_LINKS) }
+                    .filter { Files.getLastModifiedTime(it, NOFOLLOW_LINKS).toInstant().isBefore(threshold) }
+                    .toList()
+            }
+            stale.forEach { Files.deleteIfExists(it) }
+            if (stale.isNotEmpty()) {
+                journalist.logger.info("Storage | removed ${stale.size} partial uploads older than ${STALE_PARTIAL_UPLOAD_AGE.toHours()} hours from $rootDirectory")
+            }
+        } catch (exception: IOException) {
+            journalist.logger.warn("Storage | cannot remove stale partial uploads from $rootDirectory: ${exception.message}")
+        } catch (exception: UncheckedIOException) {
+            journalist.logger.warn("Storage | cannot remove stale partial uploads from $rootDirectory: ${exception.message}")
+        }
+    }
+
+    /**
+     * Commits with an atomic move. Only a file system that refuses atomic moves gets the plain replacing move, and the
+     * refusal is logged once.
+     */
+    private fun commitMove(temporaryFile: Path, file: Path) {
+        try {
+            moveIntoPlace(temporaryFile, file, atomic = true)
+        } catch (unsupported: AtomicMoveNotSupportedException) {
+            if (atomicMoveWarned.compareAndSet(false, true)) {
+                journalist.logger.warn("Storage | $rootDirectory does not support atomic moves, uploads are replaced with a plain move")
+            }
+            moveIntoPlace(temporaryFile, file, atomic = false)
+        }
+    }
+
+    /** Moves [source] onto [target], replacing it. [atomic] asks for a move that the file system completes in one step. */
+    internal open fun moveIntoPlace(source: Path, target: Path, atomic: Boolean) {
+        if (atomic) {
+            Files.move(source, target, ATOMIC_MOVE, REPLACE_EXISTING)
+        } else {
+            Files.move(source, target, REPLACE_EXISTING)
+        }
+    }
+
+    /** Creates the temporary file of an upload in [directory], which is the directory of its target. */
+    private inline fun <T> useTempFile(directory: Path, block: (Path) -> T): T {
+        val temporaryFile = createTempFile(directory, PARTIAL_UPLOAD_PREFIX, PARTIAL_UPLOAD_SUFFIX)
         return try {
             block(temporaryFile)
         } finally {
@@ -265,7 +334,9 @@ abstract class FileSystemStorageProvider protected constructor(
             name = directory.name,
             files =
             directory.useDirectoryEntries { directoryStream ->
-                directoryStream.map { toSimpleFileDetails(it).orThrow { error -> IOException(error.message) } }
+                directoryStream
+                    .filter { !isPartialUploadName(it.name) }
+                    .map { toSimpleFileDetails(it).orThrow { error -> IOException(error.message) } }
                     .sortedWith(FilesComparator({ VersionComparator.asVersion(it.name) }, { it.type == DIRECTORY }))
                     .toList()
             }
@@ -284,6 +355,8 @@ abstract class FileSystemStorageProvider protected constructor(
             .resolveWithRootDirectory()
             .filter({ !it.normalize().equals(rootDirectory.normalize()) }, { badRequest("Cannot remove repository root") })
             .map { rootPath ->
+                // A partial file belongs to the replica that is writing it, so a delete leaves it alone.
+                if (rootPath.isHidden()) return@map
                 val removed = sizeOf(rootPath)
                 try {
                     when {
@@ -304,7 +377,7 @@ abstract class FileSystemStorageProvider protected constructor(
             .exists()
             .map {
                 it.useDirectoryEntries { directoryStream ->
-                    directoryStream.filter { path -> path != it }
+                    directoryStream.filter { path -> path != it && !isPartialUploadName(path.name) }
                         .map { path -> Location.of(rootDirectory, path) }
                         .toList()
                 }
@@ -351,18 +424,28 @@ abstract class FileSystemStorageProvider protected constructor(
             INTERNAL_SERVER_ERROR.toErrorResult("Cannot measure the storage usage")
         }
 
-    /** Bytes of the regular files at or below the given path. Symbolic links are neither followed nor counted. */
+    /**
+     * Bytes of the regular files at or below the given path, without the partial files of uploads in progress.
+     * Symbolic links are neither followed nor counted.
+     */
     private fun sizeOf(path: Path): Long =
         when {
             Files.isDirectory(path, NOFOLLOW_LINKS) -> Files.walk(path).use { entries ->
-                entries.filter { Files.isRegularFile(it, NOFOLLOW_LINKS) }.mapToLong { Files.size(it) }.sum()
+                entries
+                    .filter { Files.isRegularFile(it, NOFOLLOW_LINKS) && !path.relativize(it).any { segment -> isPartialUploadName(segment.name) } }
+                    .mapToLong { Files.size(it) }
+                    .sum()
             }
             Files.isRegularFile(path, NOFOLLOW_LINKS) -> Files.size(path)
             else -> 0
         }
 
+    /** True when the path, or a name between the root directory and the path, is reserved for an upload in progress. */
+    private fun Path.isHidden(): Boolean =
+        rootDirectory.relativize(this).any { isPartialUploadName(it.name) }
+
     private fun Result<Path, ErrorResponse>.exists(): Result<Path, ErrorResponse> =
-        filter({ it.exists() }) { notFound("File not found") }
+        filter({ it.exists() && !it.isHidden() }) { notFound("File not found") }
 
     private fun Location.resolveWithRootDirectory(): Result<Path, ErrorResponse> =
         rootDirectory.resolve(toPath()).asSuccess()

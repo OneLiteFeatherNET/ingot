@@ -23,6 +23,7 @@ import com.reposilite.status.FailureFacade
 import io.javalin.http.HttpStatus.INSUFFICIENT_STORAGE
 import panda.std.Result
 import java.nio.file.Path
+import java.time.Clock
 import kotlin.io.path.fileStore
 
 /**
@@ -34,10 +35,12 @@ internal class FixedQuota(
     rootDirectory: Path,
     private val maxSize: Long,
     failureFacade: FailureFacade,
+    clock: Clock,
 ) : FileSystemStorageProvider(
     journalist = journalist,
     rootDirectory = rootDirectory,
     failureFacade = failureFacade,
+    clock = clock,
 ) {
 
     init {
@@ -62,10 +65,12 @@ internal class PercentageQuota(
     rootDirectory: Path,
     private val maxPercentage: Double,
     failureFacade: FailureFacade,
+    clock: Clock,
 ) : FileSystemStorageProvider(
     journalist = journalist,
     rootDirectory = rootDirectory,
     failureFacade = failureFacade,
+    clock = clock,
 ) {
 
     init {

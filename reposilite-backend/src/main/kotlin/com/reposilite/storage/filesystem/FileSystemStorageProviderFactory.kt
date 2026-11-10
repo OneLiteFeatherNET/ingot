@@ -20,6 +20,7 @@ import com.reposilite.journalist.Journalist
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageProviderFactory
 import java.nio.file.Path
+import java.time.Clock
 import java.util.regex.Pattern
 import kotlin.io.path.createDirectories
 
@@ -40,6 +41,7 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
             rootDirectory: Path,
             quota: String,
             failureFacade: FailureFacade = FailureFacade(journalist),
+            clock: Clock = Clock.systemUTC(),
         ): FileSystemStorageProvider =
             if (quota.endsWith("%")) {
                 of(
@@ -47,6 +49,7 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
                     failureFacade = failureFacade,
                     rootDirectory = rootDirectory,
                     maxPercentage = quota.substring(0, quota.length - 1).toInt() / 100.0,
+                    clock = clock,
                 )
             } else {
                 of(
@@ -54,6 +57,7 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
                     failureFacade = failureFacade,
                     rootDirectory = rootDirectory,
                     maxSize = displaySizeToBytesCount(quota),
+                    clock = clock,
                 )
             }
 
@@ -66,12 +70,14 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
             rootDirectory: Path,
             maxSize: Long,
             failureFacade: FailureFacade = FailureFacade(journalist),
+            clock: Clock = Clock.systemUTC(),
         ): FileSystemStorageProvider =
             FixedQuota(
                 journalist = journalist,
                 failureFacade = failureFacade,
                 rootDirectory = rootDirectory,
                 maxSize = maxSize,
+                clock = clock,
             )
 
         /**
@@ -83,12 +89,14 @@ class FileSystemStorageProviderFactory : StorageProviderFactory<FileSystemStorag
             rootDirectory: Path,
             maxPercentage: Double,
             failureFacade: FailureFacade = FailureFacade(journalist),
+            clock: Clock = Clock.systemUTC(),
         ): FileSystemStorageProvider =
             PercentageQuota(
                 journalist = journalist,
                 failureFacade = failureFacade,
                 rootDirectory = rootDirectory,
                 maxPercentage = maxPercentage,
+                clock = clock,
             )
 
         /** Reads a size such as "500MB" or "10GB" (or a plain byte count) as a number of bytes. */
