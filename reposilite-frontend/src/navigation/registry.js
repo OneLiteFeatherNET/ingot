@@ -109,6 +109,14 @@ const contributedRailGroups = (can) => [...CONTRIBUTED_GROUPS, PLUGINS_HEADING]
   .map(heading => ({ heading, pages: contributedPages(can).filter(page => page.heading === heading) }))
   .filter(group => group.pages.length > 0)
 
+// The location an address without a page id is replaced with: the first page the manifest names for the plugin.
+// Null when the address already names a page, or the plugin contributes none.
+const pluginPageRedirect = (plugin, page) => {
+  if (page !== undefined) return null
+  const first = contributions.value.pages.find(entry => entry.plugin === plugin)
+  return first ? { name: 'settings-plugin', params: { plugin, page: first.id } } : null
+}
+
 const sectionOf = (domain) => contributions.value.sections.find(section => section.domain === domain)
 
 const settingsLabelOf = (domain) => sectionOf(domain)?.label
@@ -276,6 +284,7 @@ export {
   contributedPageByRoute,
   contributedPageNode,
   contributedRailGroups,
+  pluginPageRedirect,
   settingsLabelOf,
   enabledPlugins,
   pageByKey,

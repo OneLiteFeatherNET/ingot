@@ -44,7 +44,7 @@ import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, contributedPageByRoute, contributedPageNode, contributedRailGroups } from '../navigation/registry'
+import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
 import { qualifierOf, browseLocation } from '../router/paths'
@@ -111,7 +111,14 @@ const sectionAllowed = computed(() => {
 const pluginPageMissing = computed(() => route.name === 'settings-plugin'
   && isLogged.value
   && pluginUiReady.value
+  && !pluginPageRedirect(route.params.plugin, route.params.page)
   && !contributedPageByRoute(route.params.plugin, route.params.page))
+// An address without a page id opens the first page of its plugin, once the manifest says which that is.
+watch([pluginUiReady, () => route.fullPath], () => {
+  if (route.name !== 'settings-plugin' || !pluginUiReady.value) return
+  const target = pluginPageRedirect(route.params.plugin, route.params.page)
+  if (target) router.replace(target)
+}, { immediate: true })
 watch(isLogged, (logged) => (logged ? loadPluginUi() : clearPluginUi()), { immediate: true })
 
 // The server asks for a new password: the router closes every other page at navigation time, and
