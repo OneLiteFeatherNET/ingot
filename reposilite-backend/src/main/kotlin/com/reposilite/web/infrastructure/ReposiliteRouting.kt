@@ -90,6 +90,7 @@ fun createReposiliteDsl(
     loginFacade: LoginFacade,
     basePath: Reference<String>,
     fetchMetadata: FetchMetadataSettings = FetchMetadataSettings.resolve(),
+    readOnly: () -> Boolean = { false },
 ): ReposiliteRouting {
     /**
      * A request with an Authorization header is authenticated by it, as before. Without one, a browser session cookie
@@ -121,7 +122,8 @@ fun createReposiliteDsl(
             logger = journalist.logger,
             ctx = this,
             accessTokenFacade = accessTokenFacade,
-            authenticationResult = javalinLazy { authenticate() }
+            authenticationResult = javalinLazy { authenticate() },
+            readOnly = readOnly,
         )
 
     fun ContextDsl<Any>.consumeResponse() {

@@ -20,10 +20,12 @@ import com.reposilite.journalist.Logger
 import com.reposilite.shared.extensions.uri
 import com.reposilite.token.AccessTokenFacade
 import net.onelitefeather.ingot.identity.model.Action
+import net.onelitefeather.ingot.readonly.ReadOnlyRoutes
 import com.reposilite.token.api.AccessTokenDto
 import io.javalin.http.Context
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus.FORBIDDEN
+import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
 import panda.std.Result
 import panda.std.asError
 import panda.std.mapToUnit
@@ -32,7 +34,9 @@ class ContextDsl<R>(
     val logger: Logger,
     val ctx: Context,
     private val accessTokenFacade: AccessTokenFacade,
-    private val authenticationResult: Lazy<Result<out AccessTokenDto, ErrorResponse>>
+    private val authenticationResult: Lazy<Result<out AccessTokenDto, ErrorResponse>>,
+    /** Whether the instance is read-only. Writes are refused with 503 once the caller is authenticated and authorized. */
+    private val readOnly: () -> Boolean = { false },
 ) {
 
     private companion object {
@@ -43,6 +47,11 @@ class ContextDsl<R>(
             HandlerType.POST to Action.WRITE,
             HandlerType.DELETE to Action.DELETE
         )
+
+        private val WRITE_METHODS = setOf(HandlerType.PUT, HandlerType.POST, HandlerType.PATCH, HandlerType.DELETE)
+
+        /** Seconds a client is told to wait before it retries a refused write. */
+        private const val RETRY_AFTER_SECONDS = "30"
     }
 
     val uri = ctx.uri()
@@ -56,6 +65,7 @@ class ContextDsl<R>(
      * Request was created by either anonymous user or through authenticated token
      */
     fun accessed(init: AccessTokenDto?.() -> Unit) {
+        if (refuseWhileReadOnly()) return
         init(authenticationResult.value.orNull())
     }
 
@@ -63,18 +73,19 @@ class ContextDsl<R>(
      * Request was created by valid access token
      */
     fun authenticated(init: AccessTokenDto.() -> Unit) {
-        authenticationResult.value
-            .peek { init(it) }
-            .onError { response = it.asError() }
+        authenticatedBeforeRefusal {
+            if (!refuseWhileReadOnly()) init()
+        }
     }
 
     /**
      * Request was created by valid access token and the token has access to the requested path
      */
     fun authorized(to: String = ctx.uri(), init: AccessTokenDto.() -> Unit) {
-        authenticated {
+        // The read-only check runs after the authorization, so a caller without access still gets 401 or 403
+        authenticatedBeforeRefusal {
             isAuthorized(to)
-                .peek { init(this) }
+                .peek { if (!refuseWhileReadOnly()) init(this) }
                 .onError { response = it.asError() }
         }
     }
@@ -84,11 +95,29 @@ class ContextDsl<R>(
      * area the instance admin is required. Every admin endpoint names its area through [requireArea].
      */
     fun managerOnly(area: String? = null, block: AccessTokenDto.() -> Unit) {
-        authenticated {
+        authenticatedBeforeRefusal {
             requireArea(area)
-                .peek { block(this) }
+                .peek { if (!refuseWhileReadOnly()) block(this) }
                 .onError { response = it.asError() }
         }
+    }
+
+    private fun authenticatedBeforeRefusal(init: AccessTokenDto.() -> Unit) {
+        authenticationResult.value
+            .peek { init(it) }
+            .onError { response = it.asError() }
+    }
+
+    /**
+     * Answers a write with 503 and Retry-After while the instance is read-only. Reads and the exempt routes pass. The check
+     * is only called after the identity and the permission of the caller are known.
+     */
+    fun refuseWhileReadOnly(): Boolean {
+        if (ctx.method() !in WRITE_METHODS || !readOnly()) return false
+        if (ReadOnlyRoutes.isExempt(ctx.method().name, ctx.endpoint().path)) return false
+        ctx.header("Retry-After", RETRY_AFTER_SECONDS)
+        response = SERVICE_UNAVAILABLE.toErrorResponse("The instance is read-only, writes are refused until read-only mode is turned off").asError()
+        return true
     }
 
     fun requireParameter(name: String): String =
