@@ -19,6 +19,7 @@
 
 package com.reposilite.maven
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.maven.api.Metadata
@@ -41,6 +42,9 @@ internal class LocalMavenMetadataDeleteIntegrationTest : MavenMetadataDeleteInte
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenMetadataDeleteIntegrationTest : MavenMetadataDeleteIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresMavenMetadataDeleteIntegrationTest : MavenMetadataDeleteIntegrationTest()
 
 internal abstract class MavenMetadataDeleteIntegrationTest : MavenIntegrationSpecification() {
 

@@ -18,6 +18,7 @@
 
 package com.reposilite.maven
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.maven.specification.MavenIntegrationSpecification
@@ -35,6 +36,9 @@ internal class LocalMavenApiIntegrationTest : MavenApiIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenApiIntegrationTest : MavenApiIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresMavenApiIntegrationTest : MavenApiIntegrationTest()
 
 internal abstract class MavenApiIntegrationTest : MavenIntegrationSpecification() {
 

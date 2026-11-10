@@ -18,6 +18,7 @@
 
 package com.reposilite.token
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.shared.ErrorResponse
@@ -47,6 +48,9 @@ internal class LocalAccessTokenIntegrationTest : AccessTokenIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteAccessTokenIntegrationTest : AccessTokenIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresAccessTokenIntegrationTest : AccessTokenIntegrationTest()
 
 internal abstract class AccessTokenIntegrationTest : AccessTokenIntegrationSpecification() {
 

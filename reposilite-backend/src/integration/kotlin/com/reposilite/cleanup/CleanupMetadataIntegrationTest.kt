@@ -19,6 +19,7 @@
 
 package com.reposilite.cleanup
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.audit.api.AuditAction.ARTIFACT_DELETED
@@ -41,6 +42,9 @@ internal class LocalCleanupMetadataIntegrationTest : CleanupMetadataIntegrationT
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteCleanupMetadataIntegrationTest : CleanupMetadataIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresCleanupMetadataIntegrationTest : CleanupMetadataIntegrationTest()
 
 internal abstract class CleanupMetadataIntegrationTest : MavenIntegrationSpecification() {
 

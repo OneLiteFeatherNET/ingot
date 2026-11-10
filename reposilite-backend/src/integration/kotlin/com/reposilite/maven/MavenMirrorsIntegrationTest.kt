@@ -2,6 +2,7 @@
 
 package com.reposilite.maven
 
+import com.reposilite.PostgresSpecificationJunitExtension
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.RecommendedRemoteSpecificationJunitExtension
 import com.reposilite.maven.api.LookupRequest
@@ -28,6 +29,9 @@ internal class LocalMavenMirrorsIntegrationTest : MavenMirrorsIntegrationTest()
 
 @ExtendWith(RecommendedRemoteSpecificationJunitExtension::class)
 internal class RemoteMavenMirrorsIntegrationTest : MavenMirrorsIntegrationTest()
+
+@ExtendWith(PostgresSpecificationJunitExtension::class)
+internal class PostgresMavenMirrorsIntegrationTest : MavenMirrorsIntegrationTest()
 
 /** How long the upstream waits for the clients to be in flight, and how long a client waits for its answer. */
 private const val GATE_TIMEOUT_SECONDS = 10L
