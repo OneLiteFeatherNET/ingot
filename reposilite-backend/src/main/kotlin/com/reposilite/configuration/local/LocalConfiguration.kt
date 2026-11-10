@@ -146,6 +146,10 @@ class LocalConfiguration : Facade {
     @Description("# Enable default frontend with dashboard")
     val defaultFrontend = mutableReference(true)
 
+    @Description("# Let server plugins contribute dashboard pages, menu entries and settings sections as data.")
+    @Description("# false shows only what Ingot ships: the plugin manifest is empty and contributed pages are not served.")
+    val pluginUi = mutableReference(true)
+
     @Description("# Set custom base path for Ingot instance.")
     @Description("# It's not recommended to mount Ingot under custom base path")
     @Description("# and you should always prioritize subdomain over this option.")

@@ -57,9 +57,71 @@
  * item that opens the overflow pages; no page has that key.
  */
 
+import { shallowRef } from 'vue'
 import { ADMIN_NODES, ACCESS_NODES, INSTANCE_ADMIN_NODE, requiredNodes } from '../store/nodeAccess'
 
 const MORE_KEY = 'more'
+
+/*
+ * The pages and settings sections that server plugins contribute, from GET /api/frontend/plugin-ui. The
+ * manifest is read after the session is known (src/store/pluginUi.js) and replaces the previous one. The
+ * static PAGES list above is never changed by it.
+ */
+const NO_CONTRIBUTIONS = { pages: [], sections: [], enabledPlugins: [] }
+const contributions = shallowRef(NO_CONTRIBUTIONS)
+
+// The groups a contributed page may name, in rail order. A page whose group is not one of these sits in Plugins.
+const CONTRIBUTED_GROUPS = ['Repository', 'Security', 'System', 'Support']
+const PLUGINS_HEADING = 'Plugins'
+
+// The Settings category a contributed section is placed in. System has no Settings category of its own.
+const SECTION_SETTINGS_GROUPS = { Repository: 'Repository', System: 'Instance' }
+
+const setContributions = (manifest) => {
+  contributions.value = manifest
+    ? { pages: manifest.pages ?? [], sections: manifest.sections ?? [], enabledPlugins: manifest.enabledPlugins ?? [] }
+    : NO_CONTRIBUTIONS
+}
+
+// The permission node that opens a contributed page: the node of its admin area, or the instance admin node for `*`.
+const pageNodeOf = (area) => (area === '*' ? INSTANCE_ADMIN_NODE : `ingot.admin.${area}`)
+
+const contributedKey = (page) => `${page.plugin}/${page.id}`
+
+const contributedHeading = (page) => (CONTRIBUTED_GROUPS.includes(page.group) ? page.group : PLUGINS_HEADING)
+
+// The contributed pages the visitor may open, each with its key and the heading of its group.
+const contributedPages = (can) => contributions.value.pages
+  .filter(page => can(pageNodeOf(page.area)))
+  .map(page => ({ ...page, key: contributedKey(page), heading: contributedHeading(page) }))
+
+const contributedPageByRoute = (plugin, id) =>
+  contributions.value.pages.find(page => page.plugin === plugin && page.id === id)
+
+// The node a contributed page needs, for the route guard. Undefined for a page the manifest does not name.
+const contributedPageNode = (plugin, id) => {
+  const page = contributedPageByRoute(plugin, id)
+  return page ? pageNodeOf(page.area) : undefined
+}
+
+// The rail groups of the contributed pages: [{ heading, pages }] in the order of CONTRIBUTED_GROUPS, Plugins last.
+const contributedRailGroups = (can) => [...CONTRIBUTED_GROUPS, PLUGINS_HEADING]
+  .map(heading => ({ heading, pages: contributedPages(can).filter(page => page.heading === heading) }))
+  .filter(group => group.pages.length > 0)
+
+// The location an address without a page id is replaced with: the first page the manifest names for the plugin.
+// Null when the address already names a page, or the plugin contributes none.
+const pluginPageRedirect = (plugin, page) => {
+  if (page !== undefined) return null
+  const first = contributions.value.pages.find(entry => entry.plugin === plugin)
+  return first ? { name: 'settings-plugin', params: { plugin, page: first.id } } : null
+}
+
+const sectionOf = (domain) => contributions.value.sections.find(section => section.domain === domain)
+
+const settingsLabelOf = (domain) => sectionOf(domain)?.label
+
+const enabledPlugins = () => contributions.value.enabledPlugins
 
 // The groups of the rail, in order, and the number of pages the bottom bar keeps before More.
 const AREAS = [
@@ -102,7 +164,7 @@ const PAGES = [
 // Routes that have no page of their own: the browser of a repository path (the overview page), the
 // legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
 // the not found page. The detail routes of Access are not listed here: each one is the `detail` of its child.
-const EXEMPT_ROUTES = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'not-found']
+const EXEMPT_ROUTES = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'not-found']
 
 const pageByKey = (key) => PAGES.find(page => page.key === key)
 
@@ -151,8 +213,12 @@ const SETTINGS_GROUPS = [
 
 const SETTINGS_FALLBACK_GROUP = 'Plugins'
 
-const settingsGroupOf = (domain) =>
-  SETTINGS_GROUPS.find(group => group.domains.includes(domain))?.heading ?? SETTINGS_FALLBACK_GROUP
+// A domain a plugin placed with a section takes that section's category; the other domains keep the mapping above.
+const settingsGroupOf = (domain) => {
+  const section = sectionOf(domain)
+  if (section) return SECTION_SETTINGS_GROUPS[section.group] ?? SETTINGS_FALLBACK_GROUP
+  return SETTINGS_GROUPS.find(group => group.domains.includes(domain))?.heading ?? SETTINGS_FALLBACK_GROUP
+}
 
 // A domain list in groups: [{ heading, domains }], in the order of SETTINGS_GROUPS, the domains in the order
 // they were given. A group without a domain is left out.
@@ -213,6 +279,14 @@ const unlistedRoutes = (names) => {
 export {
   PAGES,
   MORE_KEY,
+  setContributions,
+  contributedPages,
+  contributedPageByRoute,
+  contributedPageNode,
+  contributedRailGroups,
+  pluginPageRedirect,
+  settingsLabelOf,
+  enabledPlugins,
   pageByKey,
   visiblePages,
   visibleChildren,

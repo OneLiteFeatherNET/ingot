@@ -74,6 +74,14 @@ describe('route classifier', () => {
     expect(classify('/api/console/socket', root).kind).toBe('proxy')
   })
 
+  it('answers a plugin page address with the dashboard document', () => {
+    expect(classify('/settings/plugins/example/status', root)).toEqual({ kind: 'document', path: '/settings/plugins/example/status' })
+  })
+
+  it('proxies the plugin manifest to the server', () => {
+    expect(classify('/api/frontend/plugin-ui', root)).toEqual({ kind: 'proxy', path: '/api/frontend/plugin-ui' })
+  })
+
   describe('below a base path', () => {
     const sub = { segments, basePath: '/ingot/' }
 

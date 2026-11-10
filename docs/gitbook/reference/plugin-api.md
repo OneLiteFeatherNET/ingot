@@ -234,3 +234,122 @@ Where the results are:
 - On a pull request, the **Plugin API** job writes the Markdown report and the canary results to its job summary, and uploads the HTML report as the `plugin-api-report` artifact.
 
 The gate becomes blocking in a later change, once the first report has been reviewed and each accepted difference is recorded with a reason.
+
+## Dashboard pages
+
+A plugin can add pages to the dashboard without shipping JavaScript. It declares each page as data through the `plugin-ui` facade, and the dashboard draws the page with its own components. No plugin code, script, stylesheet, frame or HTML runs in the browser. The administrator's session therefore never runs plugin code, and the browser policy of the dashboard stays as it is. The reasons are in [Security headers](../explanation/security-headers.md#plugin-pages).
+
+### Register a page
+
+Add `plugin-ui` to `dependencies`, get the registrar of your own plugin with `forPlugin(this)`, and register the page:
+
+```kotlin
+@Plugin(name = "example", dependencies = ["plugin-ui"])
+class ExamplePlugin : ReposilitePlugin() {
+
+    override fun initialize(): Facade? {
+        facade<PluginUiFacade>().forPlugin(this).registerPage(
+            PluginUiPage(
+                id = "status",
+                title = "Example status",
+                group = "System",
+                area = "maintenance",
+                blocks = listOf(
+                    PluginUiBlock.Text("The job runs every hour."),
+                    PluginUiBlock.Status(source = "/api/plugins/example/status", refreshSeconds = 10),
+                    PluginUiBlock.Action(
+                        label = "Run now",
+                        method = "POST",
+                        path = "/api/plugins/example/run",
+                        confirm = "Run the job now?",
+                    ),
+                ),
+            )
+        )
+        return null
+    }
+
+}
+```
+
+The same from Java:
+
+```java
+@Plugin(name = "example", dependencies = {"plugin-ui"})
+public class ExamplePlugin extends ReposilitePlugin {
+
+    @Override
+    public @Nullable Facade initialize() {
+        PluginUiFacade pluginUi = extensions().facade(PluginUiFacade.class);
+        pluginUi.forPlugin(this).registerPage(new PluginUiPage(
+            "status",
+            "Example status",
+            null,
+            "System",
+            "maintenance",
+            List.of(
+                new PluginUiBlock.Text("The job runs every hour."),
+                new PluginUiBlock.Status("/api/plugins/example/status", 10)
+            )
+        ));
+        return null;
+    }
+
+}
+```
+
+The page opens at `/settings/plugins/<plugin>/<page>` and is listed in the menu group it names. A page the caller may not open does not appear in the menu, and its address shows the no access state. Registration returns `true` when the page was accepted.
+
+### Page fields
+
+| Field | Rule |
+| --- | --- |
+| `id` | Lower case letters, digits and hyphens, 1 to 32 characters. Unique within the plugin. |
+| `title` | 1 to 60 characters. |
+| `description` | Optional, at most 200 characters. |
+| `group` | `Repository`, `Security`, `System` or `Support`. Default `System`. |
+| `area` | The admin area that opens the page: `settings`, `users`, `teams`, `tokens`, `maintenance`, `audit`, `console` or `dashboard`, or `*` for the full instance administrator. |
+| `blocks` | 1 to 30 blocks, drawn in order. |
+
+A plugin has at most 20 pages, and the serialised pages of one plugin take at most 64 KiB.
+
+### Blocks
+
+The `type` of a block selects its shape. There is no block that carries HTML, a script, a style or a link.
+
+| Block | Fields | What the dashboard does |
+| --- | --- | --- |
+| `Text` | `text`, 1 to 2000 characters | Shows the text as plain characters. |
+| `KeyValue` | `source` | Reads the object `source` returns with GET and shows one row per key. |
+| `Table` | `source`, `columns` (1 to 12 of `key` and `label`) | Reads the array `source` returns with GET. Shows at most 500 rows and says how many it cut. |
+| `Form` | `source`, `target`, `method` (`PUT` or `POST`), `schema`, `uiSchema` | Reads the object `source` returns, draws a form from the JSON schema and sends the result to `target`. A schema may refer only into its own document (`#...`). |
+| `Action` | `label`, `method` (`POST`, `PUT` or `DELETE`), `path`, `confirm`, `danger` | Shows a button. With `confirm` it asks for that text first. The request carries the CSRF header. |
+| `Status` | `source`, `refreshSeconds` (5 to 300) | Reads the object `source` returns with GET. The object has `state`, `message` and `progress` (0 to 1). Polls at the interval, and only while the page is visible. |
+
+A block shows a value that is not of the expected shape as text, and a block type this version of the dashboard does not know as an unsupported note.
+
+### Settings sections
+
+A plugin can give one of its own settings domains a label and a menu group:
+
+```kotlin
+facade<PluginUiFacade>().forPlugin(this).registerSettingsSection(
+    PluginUiSection(domain = "example", label = "Mirror checks", group = "Repository")
+)
+```
+
+The domain must be the settings domain of the plugin (its `@Plugin` `settings` class). Any other domain is refused. The group is `Repository` or `System`.
+
+### Routes of a page
+
+Every path of a block starts with `/api/plugins/<plugin>/`, where `<plugin>` is the name the plugin is registered under. Paths may use the characters `A-Z a-z 0-9 . _ ~ -` and `/`, and may not contain empty, `.` or `..` segments. A path outside the prefix refuses the whole page, and the warning names the path.
+
+For a plugin with pages, the server requires one of the areas of its pages for every request below `/api/plugins/<plugin>/`, before the route runs. An anonymous caller gets `401`, and a caller without any of the areas gets `403`. The check is a floor: a route that needs more still checks it. A plugin without pages is not affected, and neither is a plugin whose name only starts with the name of another.
+
+### Refused registrations
+
+A page or section that breaks a rule is dropped with a warning in the log that names the plugin and the problem. The server starts and the other pages are served. The warning is the place to look when a page does not appear.
+
+### Switch
+
+`INGOT_LOCAL_PLUGINUI=false` turns the contributions off for the whole instance. The manifest is then empty and the contributed pages are not served. The plugins themselves keep running. The variable defaults to `true`, and a plugin that never registers a page is not affected by it.
