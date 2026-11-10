@@ -278,6 +278,19 @@ opentelemetry:
       cpu: 100m
       memory: 64Mi
 
+## Opt-in shared settings file of the server. The file is mounted read-only as a directory at /app/shared-config, and the
+## server reads it with --shared-configuration and reloads it (INGOT_SHARED_CONFIGURATION_RELOAD=true). Set exactly one
+## source. `content` renders a ConfigMap owned by the release, and a change to it restarts the pods. `existingConfigMap`
+## names a ConfigMap you manage: the chart does not restart the pods, and the reload applies a change. Both need the key
+## configuration.shared.json. The mount is read-only, and the reload makes the server answer 409 to a save of a domain that
+## the file holds, so the dashboard never writes into it.
+sharedConfiguration:
+  enabled: false
+  # The JSON document of the shared settings, as text. Rendered as a ConfigMap named <release fullname>-shared-configuration.
+  content: ""
+  # Name of a ConfigMap in the release namespace with the key configuration.shared.json.
+  existingConfigMap: ""
+
 ## Rolling update
 rollingUpdate:
   maxUnavailable: 0

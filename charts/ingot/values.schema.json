@@ -76,6 +76,14 @@
         "logsExporter": {"type": "string", "description": "Sets OTEL_LOGS_EXPORTER. none keeps logs off."}
       }
     },
+    "sharedConfiguration": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Mounts the shared settings file read-only and turns on its reload."},
+        "content": {"type": "string", "description": "The shared settings document. Rendered as a ConfigMap owned by the release."},
+        "existingConfigMap": {"type": "string", "description": "Name of a ConfigMap with the key configuration.shared.json. Used instead of content."}
+      }
+    },
     "podDisruptionBudget": {
       "type": "object",
       "properties": {

@@ -1,0 +1,12 @@
+{{- if and .Values.sharedConfiguration.enabled .Values.sharedConfiguration.content (not .Values.sharedConfiguration.existingConfigMap) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ingot.sharedConfigurationName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ingot.labels" . | nindent 4 }}
+data:
+  configuration.shared.json: |
+{{ .Values.sharedConfiguration.content | indent 4 }}
+{{- end }}

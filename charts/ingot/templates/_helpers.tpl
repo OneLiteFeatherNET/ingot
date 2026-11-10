@@ -276,6 +276,13 @@ value is set. Expects the root context.
 - name: JDK_JAVA_OPTIONS
   value: {{ . | quote }}
 {{- end }}
+{{- if .Values.sharedConfiguration.enabled }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "INGOT_SHARED_CONFIGURATION_RELOAD" "owner" "sharedConfiguration") }}
+- name: INGOT_SHARED_CONFIGURATION_RELOAD
+  value: "true"
+- name: INGOT_OPTS
+  value: {{ include "ingot.sharedConfigurationOpts" $root | quote }}
+{{- end }}
 {{- if .Values.opentelemetry.enabled }}
 {{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_SERVICE_NAME" "owner" "opentelemetry") }}
 {{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_TRACES_EXPORTER" "owner" "opentelemetry") }}
@@ -436,5 +443,68 @@ operator's entries with these names are not rendered again, so no name appears t
 {{- if include "ingot.chartJdkFlags" . | trim -}}
 {{- $names = append $names "JDK_JAVA_OPTIONS" -}}
 {{- end -}}
+{{- if .Values.sharedConfiguration.enabled -}}
+{{- $names = append $names "INGOT_OPTS" -}}
+{{- end -}}
 {{- join "," $names -}}
+{{- end }}
+
+{{/*
+Name of the ConfigMap that the chart renders for sharedConfiguration.content.
+*/}}
+{{- define "ingot.sharedConfigurationName" -}}
+{{- printf "%s-shared-configuration" (include "ingot.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Name of the ConfigMap that the shared file volume reads: the existing one, or the one the chart renders.
+*/}}
+{{- define "ingot.sharedConfigurationSource" -}}
+{{- if .Values.sharedConfiguration.existingConfigMap -}}
+{{- .Values.sharedConfiguration.existingConfigMap -}}
+{{- else -}}
+{{- include "ingot.sharedConfigurationName" . -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Fails when sharedConfiguration is enabled without exactly one source. Both keys are named in the message.
+*/}}
+{{- define "ingot.sharedConfigurationCheck" -}}
+{{- if .Values.sharedConfiguration.enabled -}}
+{{- if and (not .Values.sharedConfiguration.content) (not .Values.sharedConfiguration.existingConfigMap) -}}
+{{- fail "sharedConfiguration.enabled needs a source: set sharedConfiguration.content or sharedConfiguration.existingConfigMap" -}}
+{{- end -}}
+{{- if and .Values.sharedConfiguration.content .Values.sharedConfiguration.existingConfigMap -}}
+{{- fail "sharedConfiguration.content and sharedConfiguration.existingConfigMap cannot be set together: unset one of them" -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Checksum of the content that the chart renders. Empty for an existing ConfigMap, because the reload applies a change to it
+without a restart.
+*/}}
+{{- define "ingot.sharedConfigurationChecksum" -}}
+{{- if and .Values.sharedConfiguration.enabled .Values.sharedConfiguration.content (not .Values.sharedConfiguration.existingConfigMap) -}}
+{{- sha256sum .Values.sharedConfiguration.content -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+The INGOT_OPTS value with the --shared-configuration argument added. The entrypoint reads INGOT_OPTS, and REPOSILITE_OPTS only
+when INGOT_OPTS is empty, so the value starts from the text the entrypoint would read. An argument that already names a shared
+file fails the render, because the chart cannot choose between two.
+*/}}
+{{- define "ingot.sharedConfigurationOpts" -}}
+{{- $opts := include "ingot.envEntryValue" (dict "root" . "name" "INGOT_OPTS") | trim -}}
+{{- if not $opts -}}
+{{- $opts = include "ingot.envEntryValue" (dict "root" . "name" "REPOSILITE_OPTS") | trim -}}
+{{- end -}}
+{{- range splitList " " $opts -}}
+{{- if or (eq . "--shared-configuration") (eq . "--shared-config") (eq . "-sc") -}}
+{{- fail (printf "env sets %s, and sharedConfiguration sets the shared file argument too: remove %s from env or disable sharedConfiguration" . .) -}}
+{{- end -}}
+{{- end -}}
+{{- join " " (compact (list $opts "--shared-configuration /app/shared-config/configuration.shared.json")) -}}
 {{- end }}
