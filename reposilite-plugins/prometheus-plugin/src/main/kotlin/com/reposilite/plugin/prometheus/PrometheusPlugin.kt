@@ -31,22 +31,13 @@ class PrometheusPlugin : ReposilitePlugin() {
         logger.info("")
         logger.info("--- Prometheus")
 
-        val prometheusPath = (System.getProperty("reposilite.prometheus.path")
-            ?: System.getenv("REPOSILITE_PROMETHEUS_PATH")
-            ?: "/metrics").toLocation()
-
-        val prometheusUser = System.getProperty("reposilite.prometheus.user")
-            ?: System.getenv("REPOSILITE_PROMETHEUS_USER")
-            ?: throw IllegalStateException("Prometheus user is not defined")
-
-        val prometheusPassword = System.getProperty("reposilite.prometheus.password")
-            ?: System.getenv("REPOSILITE_PROMETHEUS_PASSWORD")
-            ?: throw IllegalStateException("Prometheus password is not defined")
+        val settings = PrometheusSettings.read(environment = System.getenv(), property = { System.getProperty(it) })
+        val prometheusPath = settings.path.toLocation()
 
         val prometheusFacade = PrometheusFacade(
             failureFacade = facade<FailureFacade>(),
-            prometheusUser = prometheusUser,
-            prometheusPassword = prometheusPassword
+            prometheusUser = settings.user,
+            prometheusPassword = settings.password
         )
 
         JvmMetrics.builder().register()
