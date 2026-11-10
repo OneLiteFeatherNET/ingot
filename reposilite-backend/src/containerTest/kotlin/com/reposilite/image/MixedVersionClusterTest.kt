@@ -291,6 +291,62 @@ class MixedVersionClusterTest {
             }
     }
 
+    @Test
+    @DisplayName("a settings change saved by the current build is served by the previous release")
+    fun `a settings change of the current build is served by the previous release`(@TempDir directory: Path) {
+        withSharedState(directory) { state ->
+            sharedRepositoryReplica(ImageUnderTest.previous, state).use { previous ->
+                previous.startOrExplain()
+                sharedRepositoryReplica(ImageUnderTest.server, state).use { current ->
+                    current.startOrExplain()
+
+                    // Only the forward direction is asserted. The reverse one is observed and reported in the message of the
+                    // forward assertion, so a failure shows what the other direction did, and its behaviour is documented elsewhere.
+                    saveTitle(previous.baseUrl(), PREVIOUS_TITLE)
+                    val reverse = savedTitle(current.baseUrl())
+
+                    saveTitle(current.baseUrl(), CURRENT_TITLE)
+                    assertThat(savedTitle(current.baseUrl()))
+                        .describedAs("the current build reads back its own save")
+                        .isEqualTo(CURRENT_TITLE)
+                    // The previous release applies a setting another replica saved on its own poll, which runs every ten
+                    // seconds. The forward direction is asserted after that propagation, within SETTINGS_BOUND.
+                    assertThat(awaitSavedTitle(previous.baseUrl(), CURRENT_TITLE))
+                        .describedAs(
+                            "the previous release serves the title the current build saved within %s (observed in the other direction, previous to current: %s)",
+                            SETTINGS_BOUND,
+                            reverse,
+                        )
+                        .isEqualTo(CURRENT_TITLE)
+                }
+            }
+        }
+    }
+
+    private fun saveTitle(url: String, title: String) {
+        val response = Http.putJson("$url/api/settings/domain/frontend", """{"title":"$title"}""", MIXED_BOOTSTRAP)
+        assertThat(response.isSuccessful).describedAs("save the frontend title through %s: %s", url, response.body).isTrue()
+    }
+
+    private fun savedTitle(url: String): String? {
+        val body = Http.get("$url/api/settings/domain/frontend", MIXED_BOOTSTRAP).body
+        return Regex("\"title\":\"([^\"]*)\"").find(body)?.groupValues?.get(1)
+    }
+
+    /**
+     * Polls [url] until it serves [expected], for at most [SETTINGS_BOUND], and returns the last title it served. A latch
+     * between the polls, not a sleep.
+     */
+    private fun awaitSavedTitle(url: String, expected: String): String? {
+        val deadline = System.nanoTime() + SETTINGS_BOUND.toNanos()
+        var served = savedTitle(url)
+        while (served != expected && System.nanoTime() < deadline) {
+            CountDownLatch(1).await(2, TimeUnit.SECONDS)
+            served = savedTitle(url)
+        }
+        return served
+    }
+
     /** Puts [content] at [path] through the replica at [url]. The content is the path, so every artifact is distinct. */
     private fun deploy(url: String, path: String, content: String) {
         val response = Http.put("$url/$path", content, MIXED_BOOTSTRAP)
@@ -343,6 +399,12 @@ class MixedVersionClusterTest {
 
         const val NATS_IMAGE = "nats:2.12-alpine"
         const val NATS_PORT = 4222
+
+        /** Six times the ten-second poll of the previous release, so a missed poll does not fail the case. */
+        val SETTINGS_BOUND: Duration = Duration.ofSeconds(60)
+
+        const val PREVIOUS_TITLE = "title saved by the previous release"
+        const val CURRENT_TITLE = "title saved by the current build"
 
         /** The origins of the three messages of the bus case. Each is the instance id that the status would list. */
         const val IGNORED_VERSION = "probe-version-2"
