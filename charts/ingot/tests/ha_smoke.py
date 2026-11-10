@@ -170,12 +170,32 @@ def parse_set_cookies(headers):
     return cookies
 
 
-def single_completed_run(runs, policy_id):
-    """The one recorded run of [policy_id]. Any other count fails, naming it."""
-    recorded = [run for run in runs if run.get("policyId") == policy_id]
-    if len(recorded) != 1:
-        raise SmokeFailure(f"expected exactly one recorded run of policy {policy_id}, found {len(recorded)}")
-    return recorded[0]
+def takeover_run(runs, policy_id, killed_at):
+    """The one recorded run of [policy_id] that started at or after [killed_at], the takeover of the killed run.
+
+    Runs are listed by the cleanup endpoint only once they have finished (CleanupRun.finishedAt, see
+    CleanupService), and startedAt is the start in ISO 8601. Runs that started before the kill are not the takeover.
+    """
+    started_after = [run for run in runs
+                     if run.get("policyId") == policy_id and iso_to_epoch(run["startedAt"]) >= killed_at]
+    if len(started_after) != 1:
+        raise SmokeFailure(f"expected exactly one recorded run of policy {policy_id} after the kill, "
+                           f"found {len(started_after)}")
+    return started_after[0]
+
+
+def finished_before_kill(runs, policy_id, killed_at, since=float("-inf")):
+    """Whether a run of [policy_id] started in [since, killed_at) and finished at or before the kill
+    (CleanupRun.finishedAt).
+
+    Such a run ended on its own before the kill, so the kill found no lease to take over: the race was lost. Runs that
+    started before [since] belong to an earlier attempt and are ignored.
+    """
+    return any(run.get("policyId") == policy_id
+               and since <= iso_to_epoch(run["startedAt"]) < killed_at
+               and run.get("finishedAt") is not None
+               and iso_to_epoch(run["finishedAt"]) <= killed_at
+               for run in runs)
 
 
 def parse_curl_output(output):
@@ -212,6 +232,9 @@ ROLLING_PATH = "net/onelitefeather/smoke/rolling/1.0.0/rolling-1.0.0.pom"
 LEASE_GROUP = "net/onelitefeather/smoke/lease"
 LEASE_VERSIONS = 80
 """Versions seeded for the lease check. A run that keeps all but the newest one deletes this many less one."""
+LEASE_ATTEMPTS = 3
+"""Attempts at the lease check. A cleanup run on the first replica can finish between the 409 the probe sees and the
+kill, which loses the race: the check then starts over with fresh versions under a new artifact name."""
 DEPLOY_GROUP = "net/onelitefeather/smoke/deploy"
 DEPLOY_VERSIONS = ("1.0.0", "1.0.1")
 ADMIN = ("smoke-admin", "smoke-ci-only-password")
@@ -486,11 +509,23 @@ class Smoke:
 
     def check_lease_takeover(self):
         self.out("check 2: takeover of a cleanup run whose holder is killed")
+        for attempt in range(1, LEASE_ATTEMPTS + 1):
+            if self.lease_takeover_attempt(attempt):
+                self.pods()
+                return
+            self.out(f"check 2: attempt {attempt} of {LEASE_ATTEMPTS} lost the race, the run finished before the kill")
+        raise SmokeFailure(f"check 2: the cleanup run finished before the kill in all {LEASE_ATTEMPTS} attempts, "
+                           "so the lease takeover was never exercised (lost race)")
+
+    def lease_takeover_attempt(self, attempt):
+        """One pass of check 2. Returns False when the race was lost, True when the takeover was checked."""
         ready = self.pods()
         first, second = list(ready)
         first_ip, second_ip = ready[first], ready[second]
+        artifact = f"lease-{attempt}"
+        attempt_started = self.clock.wall()
         for index in range(LEASE_VERSIONS):
-            self.deploy(first_ip, LEASE_GROUP, "lease", f"1.0.{index}", f"<project>lease {index}</project>\n".encode())
+            self.deploy(first_ip, LEASE_GROUP, artifact, f"1.0.{index}", f"<project>lease {index}</project>\n".encode())
         held = self.http.start("POST", pod_url(first_ip, f"/api/cleanup/policies/{POLICY}/run"),
                                headers=basic_auth_header())
         try:
@@ -506,14 +541,17 @@ class Smoke:
         wait_until(lambda: self.probe_run(second_ip) == "ran", clock=self.clock,
                    timeout=LEASE_TTL_SECONDS + POLL_SECONDS + 120, interval=1,
                    describe="the other replica to take over the killed run")
-        recorded = single_completed_run(self.runs(second_ip), POLICY)
+        runs = self.runs(second_ip)
+        if finished_before_kill(runs, POLICY, killed_at, since=attempt_started):
+            return False
+        recorded = takeover_run(runs, POLICY, killed_at)
         started = iso_to_epoch(recorded["startedAt"])
         if started > window_end:
             raise SmokeFailure(f"the takeover started {started - window_end:.1f}s after the window of "
                                f"{LEASE_TTL_SECONDS}s time-to-live plus {POLL_SECONDS}s poll ended")
         if recorded["deletedCount"] <= 0:
             raise SmokeFailure("the taken-over run deleted nothing, so the takeover did no work")
-        self.pods()
+        return True
 
     def check_concurrent_deploys(self):
         self.out("check 3: two deploys of one artifact at the same moment")

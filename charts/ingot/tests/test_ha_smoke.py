@@ -28,14 +28,16 @@ from ha_smoke import (
     artifact_path,
     failed_reads,
     read_outcomes,
+    finished_before_kill,
+    iso_to_epoch,
     missing_versions,
     parse_curl_output,
     parse_instance_ids,
     parse_set_cookies,
     parse_setup_code,
-    single_completed_run,
     takeover_deadline,
     takeover_in_window,
+    takeover_run,
     wait_until,
 )
 
@@ -256,21 +258,79 @@ class BootstrapTokenTest(unittest.TestCase):
                       "the bootstrap token in the values must be the one the driver sends")
 
 
-class SingleRunTest(unittest.TestCase):
+KILLED_AT = iso_to_epoch("2026-11-10T10:00:30Z")
 
-    def test_exactly_one_recorded_run_of_the_policy_is_accepted(self):
-        runs = [{"policyId": "smoke", "id": "r1"}, {"policyId": "other", "id": "r2"}]
-        self.assertEqual("r1", single_completed_run(runs, "smoke")["id"], "one run of the policy is recorded")
 
-    def test_two_recorded_runs_of_the_policy_fail(self):
-        runs = [{"policyId": "smoke", "id": "r1"}, {"policyId": "smoke", "id": "r2"}]
+def run(run_id, started, finished=None, policy="smoke"):
+    """A run as the cleanup endpoint lists it. Runs are recorded only once they have finished."""
+    record = {"policyId": policy, "id": run_id, "startedAt": started}
+    if finished is not None:
+        record["finishedAt"] = finished
+    return record
+
+
+class TakeoverRunTest(unittest.TestCase):
+
+    def test_the_run_started_after_the_kill_is_the_takeover(self):
+        runs = [run("r1", "2026-11-10T10:00:10Z", "2026-11-10T10:00:12Z"),
+                run("r2", "2026-11-10T10:00:40Z", "2026-11-10T10:00:41Z")]
+        self.assertEqual("r2", takeover_run(runs, "smoke", KILLED_AT)["id"],
+                         "the run that started after the kill is the takeover")
+
+    def test_a_run_started_before_the_kill_is_ignored(self):
+        runs = [run("r1", "2026-11-10T10:00:10Z", "2026-11-10T10:00:12Z")]
         with self.assertRaises(SmokeFailure) as caught:
-            single_completed_run(runs, "smoke")
-        self.assertIn("2", str(caught.exception), "the failure must name the count of recorded runs")
+            takeover_run(runs, "smoke", KILLED_AT)
+        self.assertIn("found 0", str(caught.exception), "a run from before the kill is not the takeover")
 
-    def test_no_recorded_run_of_the_policy_fails(self):
+    def test_a_run_started_at_the_kill_instant_counts_as_after_it(self):
+        runs = [run("r2", "2026-11-10T10:00:30Z", "2026-11-10T10:00:31Z")]
+        self.assertEqual("r2", takeover_run(runs, "smoke", KILLED_AT)["id"], "the bound is inclusive")
+
+    def test_runs_of_other_policies_are_ignored(self):
+        runs = [run("r2", "2026-11-10T10:00:40Z", policy="other")]
         with self.assertRaises(SmokeFailure):
-            single_completed_run([{"policyId": "other", "id": "r2"}], "smoke")
+            takeover_run(runs, "smoke", KILLED_AT)
+
+    def test_no_run_after_the_kill_fails_naming_the_count(self):
+        with self.assertRaises(SmokeFailure) as caught:
+            takeover_run([], "smoke", KILLED_AT)
+        self.assertIn("exactly one recorded run of policy smoke after the kill, found 0", str(caught.exception),
+                      "the failure must name the policy, the kill and the count")
+
+    def test_two_runs_after_the_kill_fail_naming_the_count(self):
+        runs = [run("r2", "2026-11-10T10:00:40Z"), run("r3", "2026-11-10T10:00:50Z")]
+        with self.assertRaises(SmokeFailure) as caught:
+            takeover_run(runs, "smoke", KILLED_AT)
+        self.assertIn("found 2", str(caught.exception), "the failure must name the count of runs after the kill")
+
+
+class FinishedBeforeKillTest(unittest.TestCase):
+
+    def test_a_run_finished_before_the_kill_is_detected(self):
+        runs = [run("r1", "2026-11-10T10:00:10Z", "2026-11-10T10:00:12Z")]
+        self.assertTrue(finished_before_kill(runs, "smoke", KILLED_AT),
+                        "a run that ended before the kill means the race was lost, the kill found no lease to take over")
+
+    def test_a_run_started_before_and_finished_after_the_kill_is_not_detected(self):
+        runs = [run("r1", "2026-11-10T10:00:10Z", "2026-11-10T10:00:45Z")]
+        self.assertFalse(finished_before_kill(runs, "smoke", KILLED_AT),
+                         "a run that was still going at the kill is the run the takeover exercises")
+
+    def test_only_a_run_started_after_the_kill_is_not_detected(self):
+        runs = [run("r2", "2026-11-10T10:00:40Z", "2026-11-10T10:00:41Z")]
+        self.assertFalse(finished_before_kill(runs, "smoke", KILLED_AT),
+                         "the takeover run itself is not a run that finished before the kill")
+
+    def test_a_finished_run_of_another_policy_is_not_detected(self):
+        runs = [run("r1", "2026-11-10T10:00:10Z", "2026-11-10T10:00:12Z", policy="other")]
+        self.assertFalse(finished_before_kill(runs, "smoke", KILLED_AT), "only runs of the policy count")
+
+    def test_a_run_of_an_earlier_attempt_is_not_detected(self):
+        runs = [run("r1", "2026-11-10T10:00:10Z", "2026-11-10T10:00:12Z")]
+        since = iso_to_epoch("2026-11-10T10:00:20Z")
+        self.assertFalse(finished_before_kill(runs, "smoke", KILLED_AT, since=since),
+                         "a run that started before the current attempt belongs to an earlier attempt")
 
 
 class CurlScriptTest(unittest.TestCase):
