@@ -29,6 +29,8 @@ import com.reposilite.shared.extensions.shutdownGracefully
 import com.reposilite.status.StatusFacade
 import com.reposilite.web.HttpServer
 import net.onelitefeather.ingot.schema.SchemaLock
+import net.onelitefeather.ingot.web.ShutdownSettings
+import java.time.Duration
 import panda.std.Result
 import panda.std.Result.ok
 import panda.std.asError
@@ -46,7 +48,11 @@ class Reposilite(
     val ioService: ExecutorService,
     val scheduler: ScheduledExecutorService,
     val webServer: HttpServer,
-    val extensions: Extensions
+    val extensions: Extensions,
+    /** How the instance leaves the rotation on shutdown. The defaults keep the stop of earlier versions. */
+    val shutdownSettings: ShutdownSettings = ShutdownSettings(),
+    /** Waits out the pre-stop delay. Tests inject a recorder, so no test waits on the wall clock. */
+    private val awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
 ) : Facade, Journalist {
 
     val database = databaseConnection.database
@@ -87,6 +93,10 @@ class Reposilite(
             shutdownSafely("draining flag") { extensions.facade<StatusFacade>().startDraining() }
             alive.set(false)
             logger.info("Shutting down ${parameters.hostname}::${parameters.port}...")
+            // The instance keeps serving through the delay, so load balancers see the draining readiness answer first
+            if (shutdownSettings.delay > Duration.ZERO) {
+                shutdownSafely("pre-stop delay") { awaitDelay(shutdownSettings.delay) }
+            }
             shutdownSafely("scheduler") { scheduler.shutdown() }
             shutdownSafely("web server") { webServer.stop() }
             shutdownSafely("IO executor") {

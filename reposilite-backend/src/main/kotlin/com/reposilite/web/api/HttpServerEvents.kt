@@ -27,3 +27,6 @@ class HttpServerInitializationEvent(val reposilite: Reposilite, val config: Java
 object HttpServerStartedEvent : Event
 
 object HttpServerStoppedEvent : Event
+
+/** Emitted when the drain wait of a shutdown begins. From then on new requests are refused, except the status answers. */
+object HttpServerDrainingEvent : Event

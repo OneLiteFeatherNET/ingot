@@ -21,6 +21,7 @@ import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.extensions.error
 import com.reposilite.storage.api.UnsupportedLocationException
+import com.reposilite.web.api.HttpServerDrainingEvent
 import com.reposilite.web.api.HttpServerInitializationEvent
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.HttpServerStoppedEvent
@@ -29,11 +30,20 @@ import com.reposilite.web.infrastructure.HttpResponseExceptionHandler
 import io.javalin.Javalin
 import io.javalin.http.HttpResponseException
 import io.javalin.util.ConcurrencyUtil
+import java.time.Duration
+import java.util.concurrent.TimeUnit
+import net.onelitefeather.ingot.web.GracefulDrainHandler
 import org.eclipse.jetty.io.EofException
+import org.eclipse.jetty.server.Handler
 
 class HttpServer {
 
     private var javalin: Javalin? = null
+
+    /** The handler that refuses new requests during a drain. Installed only when the drain timeout is above zero. */
+    private var drainHandler: GracefulDrainHandler? = null
+
+    private var reposilite: Reposilite? = null
 
     fun start(reposilite: Reposilite) {
         val extensionsManagement = reposilite.extensions
@@ -46,9 +56,16 @@ class HttpServer {
             useLoom = false
         )
 
+        val drainHandler = GracefulDrainHandler().takeIf { reposilite.shutdownSettings.timeout > Duration.ZERO }
+        this.drainHandler = drainHandler
+        this.reposilite = reposilite
+
         val javalin = Javalin.start { config ->
             config.jetty.host = reposilite.parameters.hostname
             config.jetty.port = reposilite.parameters.port
+
+            // The drain handler wraps the chain Javalin attaches to, so with the default timeout the chain is unchanged
+            config.jetty.modifyServer { server -> drainHandler?.let { server.handler = it } }
 
             JavalinConfiguration.configure(reposilite, webThreadPool, config)
 
@@ -77,8 +94,27 @@ class HttpServer {
     }
 
     fun stop() {
+        val drainHandler = drainHandler
+        val reposilite = reposilite
+        if (drainHandler == null || reposilite == null) {
+            javalin?.stop()
+            return
+        }
+
+        // From here on the drain handler refuses new requests with 503, except the status answers
+        val drained = drainHandler.shutdown()
+        reposilite.extensions.emitEvent(HttpServerDrainingEvent)
+
+        // Bounded by the timeout on its own. Jetty's stop timeout is not used, because its graceful wait would add a
+        // second wait of the same length after this one. The requests still in flight when it ends are cut off below.
+        runCatching { drained.get(reposilite.shutdownSettings.timeout.toMillis(), TimeUnit.MILLISECONDS) }
+
         javalin?.stop()
     }
+
+    /** The handler the server dispatches to. With a drain timeout it is the drain handler, otherwise the Javalin chain. */
+    fun rootHandler(): Handler? =
+        javalin?.jettyServer()?.server()?.handler
 
     fun isAlive(): Boolean =
         javalin?.jettyServer()?.server()?.isStarted ?: false
