@@ -59,6 +59,7 @@
 * [Search for artifacts](how-to/search-for-artifacts.md)
 * [Rebuild the search index](how-to/rebuild-search-index.md)
 * [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
+* [Separate releases and snapshots](how-to/separate-releases-and-snapshots.md)
 * [Set cleanup policies](how-to/set-cleanup-policies.md)
 * [Import from other repository managers](how-to/import-from-other-repository-managers.md)
 * [Import from Nexus](how-to/import-from-nexus.md)
