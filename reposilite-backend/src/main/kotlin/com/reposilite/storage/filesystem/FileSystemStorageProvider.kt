@@ -115,6 +115,10 @@ abstract class FileSystemStorageProvider protected constructor(
     /** Set once the file system has refused an atomic move, so that the warning is logged once per provider. */
     private val atomicMoveWarned = AtomicBoolean(false)
 
+    init {
+        removeStalePartialUploads()
+    }
+
     private fun acquireFileAccessLock(location: Location, lockMode: LockMode): Closeable {
         val accessor = lockedLocations.compute(location) { _, existing ->
             (existing ?: FileAccessor()).also { it.holders.incrementAndGet() }
@@ -193,6 +197,34 @@ abstract class FileSystemStorageProvider protected constructor(
         commitMove(temporaryFile, file)
         synchronized(usageLock) {
             storedBytes = storedBytes?.let { it - replaced + written }
+        }
+    }
+
+    /**
+     * Deletes the partial files of uploads that crashed. Runs once when the provider starts and never fails the start:
+     * a tree that cannot be walked is reported and left as it is. Partial files modified within the threshold stay,
+     * because another replica on the same volume may still be writing them.
+     */
+    private fun removeStalePartialUploads() {
+        try {
+            if (!rootDirectory.exists()) {
+                return
+            }
+            val threshold = clock.instant().minus(STALE_PARTIAL_UPLOAD_AGE)
+            val stale = Files.walk(rootDirectory).use { entries ->
+                entries
+                    .filter { isPartialUploadName(it.name) && Files.isRegularFile(it, NOFOLLOW_LINKS) }
+                    .filter { Files.getLastModifiedTime(it, NOFOLLOW_LINKS).toInstant().isBefore(threshold) }
+                    .toList()
+            }
+            stale.forEach { Files.deleteIfExists(it) }
+            if (stale.isNotEmpty()) {
+                journalist.logger.info("Storage | removed ${stale.size} partial uploads older than ${STALE_PARTIAL_UPLOAD_AGE.toHours()} hours from $rootDirectory")
+            }
+        } catch (exception: IOException) {
+            journalist.logger.warn("Storage | cannot remove stale partial uploads from $rootDirectory: ${exception.message}")
+        } catch (exception: UncheckedIOException) {
+            journalist.logger.warn("Storage | cannot remove stale partial uploads from $rootDirectory: ${exception.message}")
         }
     }
 
