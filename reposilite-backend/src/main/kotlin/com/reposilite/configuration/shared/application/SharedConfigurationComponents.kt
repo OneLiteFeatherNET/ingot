@@ -25,6 +25,7 @@ import com.reposilite.configuration.shared.SCHEMA_OPTION_PRESET
 import com.reposilite.configuration.shared.SettingsModule
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedConfigurationProvider
+import com.reposilite.configuration.shared.SharedConfigurationReload
 import com.reposilite.configuration.shared.SharedSettingsProvider
 import com.reposilite.configuration.shared.SubtypeResolver
 import com.reposilite.configuration.shared.api.SharedSettings
@@ -45,6 +46,7 @@ class SharedConfigurationComponents(
     private val sharedConfigurationPath: Path?,
     private val failureFacade: FailureFacade,
     private val configurationFacade: ConfigurationFacade,
+    private val sharedConfigurationReload: Boolean = false,
 ) : PluginComponents {
 
     private fun sharedSettingsProvider(): SharedSettingsProvider =
@@ -55,15 +57,20 @@ class SharedConfigurationComponents(
 
     private fun sharedConfigurationProvider(): SharedConfigurationProvider =
         when (val sharedConfigurationFile = sharedConfigurationPath) {
-            null ->
+            null -> {
+                if (sharedConfigurationReload) {
+                    journalist.logger.warn("Shared configuration | ${SharedConfigurationReload.SETTING} has no effect without --shared-configuration, the database source is used")
+                }
                 RemoteSharedConfigurationProvider(
                     configurationFacade = configurationFacade,
                 )
+            }
             else ->
                 LocalSharedConfigurationProvider(
                     journalist = journalist,
                     workingDirectory = workingDirectory,
                     configurationFile = sharedConfigurationFile,
+                    reloadEnabled = sharedConfigurationReload,
                 )
         }
 

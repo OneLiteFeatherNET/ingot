@@ -18,6 +18,7 @@ package com.reposilite.configuration.shared.application
 
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.configuration.shared.SharedConfigurationReload
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.infrastructure.SettingsEndpoints
 import com.reposilite.plugin.api.Plugin
@@ -42,7 +43,8 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
             extensions = extensions(),
             sharedConfigurationPath = parameters().sharedConfigurationPath,
             failureFacade = facade(),
-            configurationFacade = facade()
+            configurationFacade = facade(),
+            sharedConfigurationReload = parameters().sharedConfigurationReload ?: SharedConfigurationReload.read(),
         ).sharedConfigurationFacade()
 
         logger.info("")

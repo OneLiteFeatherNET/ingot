@@ -29,6 +29,7 @@ class LocalSharedConfigurationProvider(
     val journalist: Journalist,
     val workingDirectory: Path,
     val configurationFile: Path,
+    val reloadEnabled: Boolean = false,
 ) : SharedConfigurationProvider {
 
     override fun updateConfiguration(content: String) {

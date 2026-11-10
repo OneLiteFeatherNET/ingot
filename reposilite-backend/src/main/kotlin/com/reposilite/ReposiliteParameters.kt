@@ -69,6 +69,12 @@ class ReposiliteParameters : Runnable {
     var sharedConfigurationFile: String? = null
     var sharedConfigurationPath: Path? = null
 
+    /**
+     * Overrides `INGOT_SHARED_CONFIGURATION_RELOAD` when set. Not a command-line option: only the integration test harness
+     * sets it, because a test cannot change the environment of its own process. Null means the environment decides.
+     */
+    var sharedConfigurationReload: Boolean? = null
+
     @Option(names = ["--ignore-shared-configuration-errors"], description = ["Ignore errors while loading shared configuration file"])
     var ignoreSharedConfigurationErrors = false
 
