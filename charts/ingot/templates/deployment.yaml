@@ -62,17 +62,17 @@ spec:
         {{- end }}
         readinessProbe:
           httpGet:
-            path: {{ include "ingot.serverProbePath" . }}
+            path: {{ include "ingot.readinessProbePath" . }}
             port: {{ .Values.probes.port }}
             scheme: {{ .Values.probes.scheme }}
-          {{- toYaml .Values.probes.readiness | nindent 10 }}
+          {{- toYaml (ternary .Values.probes.split.readiness .Values.probes.readiness (eq .Values.mode "split")) | nindent 10 }}
         livenessProbe:
           httpGet:
             path: {{ include "ingot.serverProbePath" . }}
             port: {{ .Values.probes.port }}
             scheme: {{ .Values.probes.scheme }}
           {{- toYaml .Values.probes.liveness | nindent 10 }}
-        {{- if .Values.probes.startup.enabled }}
+        {{- if eq (include "ingot.startupProbeEnabled" .) "true" }}
         startupProbe:
           httpGet:
             path: {{ include "ingot.serverProbePath" . }}

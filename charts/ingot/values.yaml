@@ -208,22 +208,34 @@ probes:
   scheme: "HTTP"  # Scheme to use in GET requests.
   path: "/"
   serverPath: "/api/status/health"
+  # Path of the readiness probe. Empty uses `path` in allInOne mode and /api/status/ready in split mode. Liveness is not
+  # affected. Split readiness needs an image that ships /api/status/ready, see the split how-to.
+  readinessPath: ""
   readiness:
     initialDelaySeconds: 2
     periodSeconds: 10
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 1
+  # Readiness of the split server. Used instead of `readiness` in split mode. The readiness check of Ingot runs a database
+  # query and a storage listing, so one slow answer must not take the pod out of rotation.
+  split:
+    readiness:
+      initialDelaySeconds: 2
+      periodSeconds: 10
+      timeoutSeconds: 3
+      successThreshold: 1
+      failureThreshold: 2
   liveness:
     initialDelaySeconds: 2
     periodSeconds: 10
     timeoutSeconds: 2
     successThreshold: 1
     failureThreshold: 3
-  # Startup probe of the server, off by default. Enable it when a first start can take longer than the liveness
-  # probe allows: liveness is held back until the startup probe succeeds. The budget is periodSeconds * failureThreshold.
+  # Startup probe of the server. `enabled` is unset by default, which means on in split mode and off in allInOne mode.
+  # Set it to true or false to choose. Liveness is held back until the startup probe succeeds, so a first start that takes
+  # longer than the liveness budget is not restarted. The budget is periodSeconds * failureThreshold.
   startup:
-    enabled: false
     periodSeconds: 5
     timeoutSeconds: 2
     failureThreshold: 30
