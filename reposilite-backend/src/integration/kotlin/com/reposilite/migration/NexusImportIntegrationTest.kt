@@ -120,15 +120,18 @@ internal class NexusImportIntegrationTest : ReposiliteSpecification() {
         // given: an import of the hosted repository under its own name
         val id = createJob("IMPORT")
 
-        // when: the import runs, and then a verify job checks it against Nexus
+        // when: the import runs, and then a verify job checks what it copied, against Nexus
         tick()
-        val verify = createJob("VERIFY", mapOf("repositories" to listOf("releases"), "verifyImportJob" to id))
+        val verify = createJob("VERIFY", mapOf("verifyImportJob" to id))
         tick()
 
-        // then: the import completed, the verify pass verified the repository and the file is served with its bytes
+        // then: the repository took the name releases-nexus, because the instance already holds releases; the verify pass
+        // verified it, and the file is served from it with its bytes
         assertThat(status(id)).isEqualTo("COMPLETED")
+        assertThat(json(admin(Unirest.get("$base$JOBS/$id")).asString().body)["repositories"].single()["targetName"].asText())
+            .isEqualTo("releases-nexus")
         assertThat(repositoryStatus(verify, "releases")).isEqualTo("VERIFIED")
-        val served = get("/releases/com/example/app/1.0/app-1.0.jar")
+        val served = get("/releases-nexus/com/example/app/1.0/app-1.0.jar")
         assertThat(served.status).isEqualTo(200)
         assertThat(served.body).isEqualTo("jar-bytes")
         nexus.assertOnlyReadMethods()
@@ -148,7 +151,7 @@ internal class NexusImportIntegrationTest : ReposiliteSpecification() {
         val conflicts = json(Unirest.get("$base$JOBS/$id/conflicts").let { admin(it) }.asString().body)
         assertThat(conflicts.single()["path"].asText()).isEqualTo("com/example/app/1.0/app-1.0.pom")
         assertThat(conflicts.single()["detail"].asText()).contains("nexus sha1").contains("target sha1")
-        assertThat(repositoryStatus(id, "imported")).isEqualTo("CONFLICTED")
+        assertThat(repositoryStatus(id, "releases")).isEqualTo("CONFLICTED")
     }
 
     @Test
