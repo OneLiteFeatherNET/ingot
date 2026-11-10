@@ -462,5 +462,77 @@ class ChartRenderTest(unittest.TestCase):
         self.assertEqual(0, code, f"helm lint must pass in split mode: {stdout}{stderr}")
 
 
+def shutdown_values(**shutdown):
+    return {"deployment": {"shutdown": shutdown}}
+
+
+def timeout_entries(deployment):
+    return [entry for entry in container(deployment).get("env", []) if entry.get("name") == "INGOT_SHUTDOWN_TIMEOUT"]
+
+
+class ShutdownBudgetTest(unittest.TestCase):
+    """The opt-in shutdown budget: a preStop sleep, a drain timeout and the grace period that holds both."""
+
+    def test_no_shutdown_value_keeps_the_sixty_second_grace_period(self):
+        deployment = named(render(), "Deployment", SERVER)
+        self.assertEqual(60, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "without a shutdown value the grace period must stay at 60 seconds")
+        self.assertNotIn("lifecycle", container(deployment), "without a shutdown value there is no preStop action")
+        self.assertEqual([], timeout_entries(deployment), "without a shutdown value INGOT_SHUTDOWN_TIMEOUT is not set")
+
+    def test_pre_stop_seconds_render_a_sleep_in_the_pre_stop_hook(self):
+        deployment = named(render(shutdown_values(preStopSeconds=15)), "Deployment", SERVER)
+        self.assertEqual(
+            {"preStop": {"exec": {"command": ["sleep", "15"]}}},
+            container(deployment).get("lifecycle"),
+            "preStopSeconds 15 must render an exec preStop action that sleeps 15 seconds",
+        )
+
+    def test_pre_stop_seconds_alone_derive_the_grace_period(self):
+        deployment = named(render(shutdown_values(preStopSeconds=15)), "Deployment", SERVER)
+        self.assertEqual(25, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "the grace period must be preStopSeconds + drainSeconds + 10, which is 25 here")
+
+    def test_drain_seconds_render_the_shutdown_timeout_variable(self):
+        deployment = named(render(shutdown_values(drainSeconds=30)), "Deployment", SERVER)
+        self.assertEqual(
+            [{"name": "INGOT_SHUTDOWN_TIMEOUT", "value": "30"}],
+            timeout_entries(deployment),
+            "drainSeconds 30 must render INGOT_SHUTDOWN_TIMEOUT with the value 30",
+        )
+        self.assertEqual(40, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "drainSeconds alone must derive the grace period as drainSeconds + 10")
+
+    def test_both_values_derive_the_grace_period_of_their_sum_plus_ten(self):
+        deployment = named(render(shutdown_values(preStopSeconds=15, drainSeconds=30)), "Deployment", SERVER)
+        self.assertEqual(55, pod_spec(deployment)["terminationGracePeriodSeconds"],
+                         "the grace period must be 15 + 30 + 10 = 55 seconds")
+        self.assertEqual(
+            {"preStop": {"exec": {"command": ["sleep", "15"]}}}, container(deployment).get("lifecycle"),
+            "both values together must still render the preStop sleep",
+        )
+        self.assertEqual(1, len(timeout_entries(deployment)), "INGOT_SHUTDOWN_TIMEOUT must be named exactly once")
+
+    def test_shutdown_timeout_set_in_env_is_kept_once_with_its_own_value(self):
+        values = shutdown_values(drainSeconds=30)
+        values["env"] = [{"name": "INGOT_SHUTDOWN_TIMEOUT", "value": "10"}]
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertEqual(
+            [{"name": "INGOT_SHUTDOWN_TIMEOUT", "value": "10"}],
+            timeout_entries(deployment),
+            "an INGOT_SHUTDOWN_TIMEOUT the operator set in env must win and must not be duplicated",
+        )
+
+    def test_operator_lifecycle_wins_over_pre_stop_seconds(self):
+        operator_hook = {"preStop": {"exec": {"command": ["/bin/sh", "-c", "sleep 40"]}}}
+        values = shutdown_values(preStopSeconds=15)
+        values["deployment"]["lifecycle"] = operator_hook
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertEqual(
+            operator_hook, container(deployment).get("lifecycle"),
+            "a deployment.lifecycle set by the operator must be kept, and no sleep of the chart must replace it",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
