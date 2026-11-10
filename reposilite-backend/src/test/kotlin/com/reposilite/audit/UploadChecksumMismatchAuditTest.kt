@@ -73,8 +73,8 @@ internal class UploadChecksumMismatchAuditTest {
         // when: the actions are listed in their stored order
         val actions = AuditAction.entries
 
-        // then: the new action comes last, so the ordinals of the existing actions do not move
-        assertThat(actions.last()).describedAs("last action").isEqualTo(UPLOAD_CHECKSUM_MISMATCH)
-        assertThat(actions[actions.size - 2]).describedAs("action before the new one").isEqualTo(AuditAction.REPOSITORY_DELETED)
+        // then: the new action comes after every action that existed before it, so the ordinals of those do not move
+        val position = actions.indexOf(UPLOAD_CHECKSUM_MISMATCH)
+        assertThat(actions[position - 1]).describedAs("action before the new one").isEqualTo(AuditAction.REPOSITORY_DELETED)
     }
 }
