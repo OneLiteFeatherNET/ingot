@@ -809,3 +809,29 @@ describe('type step', () => {
     })
   })
 })
+
+describe('RepositoryWizard accessibility', () => {
+  it('marks the invalid id aria-invalid and describes it with its message', async () => {
+    await mountWizard()
+
+    await next()
+
+    const field = $('#wizard-repository-id')
+    expect(field.getAttribute('aria-invalid'), 'the field is marked invalid').toBe('true')
+    const described = (field.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+      .map(id => document.getElementById(id)?.textContent ?? '')
+      .join(' ')
+    expect(described, 'the description names the message of the field').toContain('Enter an id.')
+  })
+
+  it('moves the focus to an error summary when a step is refused', async () => {
+    await mountWizard()
+
+    await next()
+
+    const focused = document.activeElement
+    const isSummary = focused?.getAttribute('role') === 'alert' || focused?.getAttribute('tabindex') === '-1'
+    expect(isSummary, 'the focus is on the error summary, not on the next button').toBe(true)
+    expect(focused?.textContent ?? '', 'the summary lists the refused field').toContain('Enter an id.')
+  })
+})
