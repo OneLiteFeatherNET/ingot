@@ -214,6 +214,11 @@ class MetricNameParserTest(unittest.TestCase):
     def test_range_durations_are_not_metrics(self):
         self.assertEqual({"ingot_cluster_connected"}, metric_names("max_over_time(ingot_cluster_connected[5m]) == 0"))
 
+    def test_a_name_missing_from_the_exported_list_is_reported(self):
+        unknown = metric_names("ingot_made_up_total > 0") - exported_metrics()
+        self.assertEqual({"ingot_made_up_total"}, unknown,
+                         "the check must report a metric name that the image does not export")
+
 
 if __name__ == "__main__":
     unittest.main()
