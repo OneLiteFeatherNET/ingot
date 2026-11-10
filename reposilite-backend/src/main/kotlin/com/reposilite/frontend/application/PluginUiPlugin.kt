@@ -17,9 +17,13 @@ package com.reposilite.frontend.application
 
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.frontend.api.PluginUiFacade
+import com.reposilite.frontend.infrastructure.PluginUiDataGuard
+import com.reposilite.frontend.infrastructure.PluginUiEndpoint
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
+import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.web.api.RoutingSetupEvent
 
 /**
  * The `plugin-ui` facade: the extension point through which server plugins contribute dashboard pages as data.
@@ -30,7 +34,22 @@ internal class PluginUiPlugin : ReposilitePlugin() {
 
     override fun initialize(): PluginUiFacade {
         val pluginUi = facade<LocalConfiguration>().pluginUi
-        return PluginUiFacade(logger = logger, enabled = { pluginUi.get() })
+        val facade = PluginUiFacade(logger = logger, enabled = { pluginUi.get() })
+
+        event { event: RoutingSetupEvent ->
+            // The manifest is served whatever the switch says, so the dashboard learns the enabled plugins either way.
+            event.registerRoutes(
+                PluginUiEndpoint(
+                    facade = facade,
+                    enabledPlugins = { event.reposilite.extensions.getPlugins().keys.sorted() },
+                )
+            )
+            if (pluginUi.get()) {
+                event.registerRoutes(PluginUiDataGuard(facade))
+            }
+        }
+
+        return facade
     }
 
 }
