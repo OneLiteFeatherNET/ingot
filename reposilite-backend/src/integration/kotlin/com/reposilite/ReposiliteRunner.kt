@@ -111,7 +111,7 @@ internal abstract class ReposiliteRunner {
         overrideLocalConfiguration(localConfiguration)
         KCdnFactory.createStandard().render(localConfiguration, Source.of(reposiliteWorkingDirectory.resolve(LOCAL_CONFIGURATION_FILE)))
 
-        reposilite = ReposiliteFactory.createReposilite(parameters, logger, shutdownSettings(), ::awaitDelay)
+        reposilite = ReposiliteFactory.createReposilite(parameters, logger, shutdownSettings = shutdownSettings(), awaitDelay = ::awaitDelay)
         reposilite.journalist.setVisibleThreshold(Channel.WARN)
 
         val sharedConfigurationFacade = reposilite.extensions.facade<SharedConfigurationFacade>()

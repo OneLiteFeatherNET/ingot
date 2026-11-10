@@ -45,10 +45,10 @@ object ReposiliteFactory {
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite =
         createReposilite(parameters, rootJournalist, SchemaLockFactory.DEFAULT)
 
-    fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist, schemaLockFactory: SchemaLockFactory): Reposilite {
     fun createReposilite(
         parameters: ReposiliteParameters,
         rootJournalist: Journalist,
+        schemaLockFactory: SchemaLockFactory = SchemaLockFactory.DEFAULT,
         // Read before anything binds a port, so an invalid value stops the start here
         shutdownSettings: ShutdownSettings = ShutdownSettings.read(),
         awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
