@@ -188,6 +188,10 @@ class MavenFacade internal constructor(
     internal fun reconcileSnapshotVersion(repository: Repository, versionDirectory: Location) =
         metadataService.reconcileSnapshotVersion(repository, versionDirectory)
 
+    /** Runs [operation] under the metadata lock of the artifact directory, see [MetadataService.withMetadataLock]. */
+    internal fun <T> withMetadataLock(repository: Repository, artifactDirectory: Location, operation: (MetadataLockScope) -> Result<T, ErrorResponse>): Result<T, ErrorResponse> =
+        metadataService.withMetadataLock(repository, artifactDirectory, operation)
+
     fun findVersions(lookupRequest: VersionLookupRequest): Result<VersionsResponse, ErrorResponse> =
         repositorySecurityProvider.canAccessResource(lookupRequest.accessToken, lookupRequest.repository, lookupRequest.gav)
             .flatMap { metadataService.findVersions(lookupRequest.repository, lookupRequest.gav, lookupRequest.filter, lookupRequest.sorted) }

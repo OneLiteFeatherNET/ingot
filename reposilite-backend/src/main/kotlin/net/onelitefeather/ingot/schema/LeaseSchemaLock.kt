@@ -60,7 +60,8 @@ internal interface LeaseTable {
  * lease once it expires, and the next replica takes over.
  *
  * Time comes from [clock], and waiting between attempts goes through [pause], so a test moves time forward without sleeping.
- * Error 1213 is retried, because Galera reports a certification failure with it. Every other error is raised at once.
+ * A deadlock (1213) and a certification failure (SQLSTATE 40001) are retried, because Galera reports a certification
+ * failure with either of them. Every other error is raised at once.
  */
 internal class LeaseSchemaLock private constructor(
     private val table: LeaseTable,
@@ -104,7 +105,7 @@ internal class LeaseSchemaLock private constructor(
             try {
                 return operation()
             } catch (exception: Exception) {
-                if (!exception.hasSqlErrorCode(DEADLOCK) || !clock.instant().isBefore(until)) {
+                if (!exception.isLeaseConflict() || !clock.instant().isBefore(until)) {
                     throw exception
                 }
                 pause(RETRY_BACKOFF)
@@ -123,6 +124,11 @@ internal class LeaseSchemaLock private constructor(
         private val POLL_INTERVAL: Duration = Duration.ofSeconds(1)
         private val RETRY_BACKOFF: Duration = Duration.ofMillis(200)
         private const val DEADLOCK = 1213
+        private const val CERTIFICATION_FAILURE = "40001"
+
+        /** A deadlock (1213) or a certification failure (SQLSTATE 40001), the two conflicts Galera reports for a lease write. */
+        private fun Throwable.isLeaseConflict(): Boolean =
+            hasSqlErrorCode(DEADLOCK) || hasSqlState(CERTIFICATION_FAILURE)
 
         /**
          * Waits until the lease is taken, or fails with [SchemaLockTimeoutException] once [timeout] has passed on [clock].

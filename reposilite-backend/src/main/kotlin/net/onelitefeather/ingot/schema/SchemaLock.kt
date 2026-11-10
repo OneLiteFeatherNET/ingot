@@ -89,3 +89,7 @@ fun interface SchemaLockFactory {
 /** Whether this error, or one of its causes, is the database error with the given code. */
 internal fun Throwable.hasSqlErrorCode(code: Int): Boolean =
     generateSequence(this) { it.cause }.any { it is SQLException && it.errorCode == code }
+
+/** Whether this error, or one of its causes, is the database error with the given SQLSTATE. */
+internal fun Throwable.hasSqlState(state: String): Boolean =
+    generateSequence(this) { it.cause }.any { it is SQLException && it.sqlState == state }

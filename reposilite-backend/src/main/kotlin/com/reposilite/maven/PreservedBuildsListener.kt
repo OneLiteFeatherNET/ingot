@@ -20,6 +20,8 @@ import net.onelitefeather.ingot.search.ArtifactIndexSink
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.plugin.api.EventListener
+import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
+import panda.std.mapToUnit
 
 /**
  * Removes the files of older builds from SNAPSHOT directories of repositories that do not preserve snapshots, and
@@ -52,25 +54,35 @@ internal class PreservedBuildsListener(
             return
         }
 
-        mavenFacade.findMetadata(repository, versionDirectory)
-            .merge(repository.storageProvider.getFiles(versionDirectory)) { metadata, files -> metadata to files }
-            .peek { (metadata, files) ->
-                val snapshotToPreserve = metadata.versioning?.snapshot?.timestamp ?: return@peek
+        // the metadata that picks the builds to keep and the removal of the other builds form one unit, under the artifact lock
+        mavenFacade.withMetadataLock(repository, versionDirectory.getParent()) {
+            mavenFacade.findMetadata(repository, versionDirectory)
+                .merge(repository.storageProvider.getFiles(versionDirectory)) { metadata, files -> metadata to files }
+                .peek { (metadata, files) ->
+                    val snapshotToPreserve = metadata.versioning?.snapshot?.timestamp ?: return@peek
 
-                files
-                    .filter { it.locationAfterLast("/").toString().startsWith(metadata.artifactId!!) }
-                    .filterNot { it.toString().contains(snapshotToPreserve) }
-                    .map { file ->
-                        repository.storageProvider.removeFile(file)
-                            // queued right after the removal, so the index hears of it even when the reconcile below fails
-                            .peek { artifactIndexSink.removed(repository.name, file.provenancePath()) }
-                    }
-                    .count()
-                    .also { mavenFacade.logger.info("DEPLOY | Preserved Builds Listener | $it deprecated file(s) have been removed") }
+                    files
+                        .filter { it.locationAfterLast("/").toString().startsWith(metadata.artifactId!!) }
+                        .filterNot { it.toString().contains(snapshotToPreserve) }
+                        .map { file ->
+                            repository.storageProvider.removeFile(file)
+                                // queued right after the removal, so the index hears of it even when the reconcile below fails
+                                .peek { artifactIndexSink.removed(repository.name, file.provenancePath()) }
+                        }
+                        .count()
+                        .also { mavenFacade.logger.info("DEPLOY | Preserved Builds Listener | $it deprecated file(s) have been removed") }
 
-                mavenFacade.reconcileSnapshotVersion(repository, versionDirectory)
+                    mavenFacade.reconcileSnapshotVersion(repository, versionDirectory)
+                }
+                .mapToUnit()
+        }.onError { error ->
+            // another write of this artifact holds its lock, so the older builds stay until the next deploy reconciles them
+            if (error.status == SERVICE_UNAVAILABLE.code) {
+                mavenFacade.logger.warn("DEPLOY | Preserved Builds Listener | ${error.message}")
+            } else {
+                throw RuntimeException(error.toString()) // not sure how to handle failures of events yet
             }
-            .onError { throw RuntimeException(it.toString()) } // not sure how to handle failures of events yet
+        }
     }
 
 }

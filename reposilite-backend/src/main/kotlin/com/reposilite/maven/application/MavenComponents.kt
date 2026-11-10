@@ -24,6 +24,8 @@ import com.reposilite.maven.LatestService
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.StorageUsageService
 import com.reposilite.maven.storageTargets
+import com.reposilite.maven.LockingMetadataLocks
+import com.reposilite.maven.MetadataLocks
 import com.reposilite.maven.MetadataService
 import com.reposilite.maven.MirrorCacheLedger
 import com.reposilite.maven.MirrorCacheService
@@ -60,6 +62,7 @@ internal class MavenComponents(
     private val mirrorCacheLedger: MirrorCacheLedger,
     private val artifactIndexSink: ArtifactIndexSink,
     private val cachePrivateAsPublic: Boolean = false,
+    private val metadataLocks: MetadataLocks = LockingMetadataLocks(clock),
 ) : PluginComponents {
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
@@ -68,7 +71,7 @@ internal class MavenComponents(
         RepositorySecurityProvider(accessTokenFacade)
 
     private fun metadataService(): MetadataService =
-        MetadataService(securityProvider(), clock, journalist, artifactIndexSink, extensions)
+        MetadataService(securityProvider(), clock, journalist, artifactIndexSink, extensions, metadataLocks)
 
     private fun mirrorService(): MirrorService =
         MirrorService(
