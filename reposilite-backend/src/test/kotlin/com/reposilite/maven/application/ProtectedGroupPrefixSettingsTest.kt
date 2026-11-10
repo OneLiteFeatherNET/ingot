@@ -50,7 +50,8 @@ internal class ProtectedGroupPrefixSettingsTest {
     fun `should accept a group with protected prefixes`() {
         val violations = settings(
             RepositorySettings(id = "releases", type = RepositoryType.HOSTED),
-            RepositorySettings(id = "all", type = RepositoryType.GROUP, proxied = listOf(local("releases"), external()), protectedGroupPrefixes = listOf("net.onelitefeather")),
+            RepositorySettings(id = "snapshots", type = RepositoryType.HOSTED),
+            RepositorySettings(id = "all", type = RepositoryType.GROUP, proxied = listOf(local("releases"), local("snapshots")), protectedGroupPrefixes = listOf("net.onelitefeather")),
         ).violations()
 
         assertThat(violations).describedAs("violations of a group with a prefix").isEmpty()
