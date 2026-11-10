@@ -33,5 +33,6 @@ The content type is `application/json`, as before. A client that asks for `appli
 * Errors that Javalin raises itself, such as a request it refuses.
 * A request to a path under `/api` that no route handles. It answers 404 with this body instead of the HTML page. Paths outside `/api`, including dashboard routes, keep the HTML page.
 * An unhandled server error. It answers 500 with a generic message. The exception text and the stack trace are never part of the body; they are kept in the failure list of the console.
+* A write refused because the instance is read-only. It answers `503` with a `Retry-After` header of 30 seconds. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
 
 Status codes are not changed by this format.

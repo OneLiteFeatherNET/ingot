@@ -221,3 +221,7 @@ The OpenAPI document at `/openapi` is produced by the OpenAPI plugin that the se
 {% endhint %}
 
 For the shape of error answers, see [API errors](api-errors.md).
+
+### Read-only refusals
+
+While the instance is read-only, `PUT`, `POST`, `PATCH` and `DELETE` on the API and on the repository protocol answer `503` with a `Retry-After` header, and nothing is written. Authentication and authorization are checked first, so a caller without access still gets `401` or `403`. The exceptions are login, session refresh and the read-only toggle. `GET` and `HEAD` are served as before. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
