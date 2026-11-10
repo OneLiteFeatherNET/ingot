@@ -1,5 +1,5 @@
 ---
-description: Reference for every field of a repository in the maven settings of Ingot, including visibility, redeployment, preserved snapshots, storage providers, storage policy and proxied entries.
+description: Reference for every field of a repository in the maven settings of Ingot, including visibility, redeployment, upload checksum policy, preserved snapshots, storage providers, storage policy and proxied entries.
 ---
 
 # Repository settings
@@ -103,6 +103,7 @@ A new instance starts with three repositories. Their other fields have the defau
 | `resolutionCacheMaxEntries` | Resolution cache size | integer, at least 0 | `0` | Size of the cache for routing decisions. `0` turns the cache off. See [Resolution cache](#resolution-cache). |
 | `proxied` | Mirrored repositories | list of [proxied entries](#proxied-entries) | empty | Repositories this repository can fetch files from. |
 | `protectedGroupPrefixes` | Protected group prefixes | list of dotted group ids, such as `net.onelitefeather` | empty | Group ids that a group serves from hosted members only, so that a proxy member never answers for them. Accepted only on a `GROUP`. See [Protect your own namespace](../how-to/create-a-group-repository.md#protect-your-own-namespace). |
+| `uploadChecksumPolicy` | Upload checksum policy | `ignore`, `warn`, `reject`, or absent | absent, which means the instance default | What happens to an uploaded checksum file that does not match its stored artifact. Absent uses `INGOT_UPLOAD_CHECKSUM_POLICY`, which is `ignore` when unset. See [Upload checksum policy](#upload-checksum-policy). |
 
 The id of a repository should not equal a reserved path segment of the dashboard or the API, such as `api`, `search` or `settings`. Ingot does not reject such an id, it logs a warning at startup and on every settings change. The dashboard creates ids from letters, digits, dots, underscores and hyphens, and compares them without regard to case.
 
@@ -120,6 +121,18 @@ Visibility decides who can read a repository. Publishing and deleting always nee
 "Read access" means the read permission of the repository, or a read node on an artifact inside it. The [artifact permission nodes](artifact-permission-nodes.md) page describes the nodes. A caller "can see" a repository when they can read all of it or a part of it.
 
 Visibility also sets the `Cache-Control` of downloaded files. A file of a `PUBLIC` repository, or of a group whose local members are all `PUBLIC`, may be stored by a shared cache such as a CDN. A file of a `HIDDEN` or `PRIVATE` repository, or of a group that reaches one, is marked `private`, so a shared cache keeps it out. Remote references do not change this. The escape hatch is described in [Maven cache control](environment-variables.md#maven-cache-control).
+
+## Upload checksum policy
+
+`uploadChecksumPolicy` controls a checksum file (`.md5`, `.sha1`, `.sha256` or `.sha512`) that is uploaded after its artifact. Ingot digests the stored artifact with the algorithm of the suffix and compares the digest in the upload with it. The upload may hold the bare digest or the `sha1sum` form, a digest followed by two spaces and a file name.
+
+| Value | Matching file | Mismatching file |
+| --- | --- | --- |
+| `ignore` | Stored | Stored, no check |
+| `warn` | Stored | Stored, the mismatch is audited with outcome `accepted` |
+| `reject` | Stored | Refused with `400` and the algorithm in the message. Nothing is stored, the artifact stays as it is, and the refusal is audited with outcome `rejected` |
+
+A checksum file that arrives before its artifact is stored without a check under every value. See [Verify uploaded checksums](../how-to/verify-uploaded-checksums.md).
 
 ## Redeployment
 
