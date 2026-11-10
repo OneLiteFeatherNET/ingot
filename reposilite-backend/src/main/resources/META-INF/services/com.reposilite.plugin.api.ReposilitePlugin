@@ -21,3 +21,4 @@ net.onelitefeather.ingot.search.application.SearchPlugin
 net.onelitefeather.ingot.cluster.ClusterPlugin
 net.onelitefeather.ingot.readonly.ReadOnlyPlugin
 net.onelitefeather.ingot.backup.DatabaseBackupPlugin
+net.onelitefeather.ingot.support.SupportPlugin
