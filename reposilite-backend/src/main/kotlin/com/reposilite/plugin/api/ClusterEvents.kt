@@ -30,6 +30,9 @@ data class ResolutionInvalidatedEvent(val repository: String, val path: String) 
 /** A session family was revoked by logout, reuse detection or a revocation of all sessions of a principal. */
 data class SessionFamilyRevokedEvent(val familyId: String) : Event
 
+/** A javadoc jar was deployed, so the unpacked javadoc cache of the artifact at [path] is dropped on every instance. */
+data class JavadocInvalidatedEvent(val repository: String, val path: String) : Event
+
 /** Shared configuration of one settings domain was stored. */
 data class SharedConfigurationChangedEvent(val domain: String) : Event
 
