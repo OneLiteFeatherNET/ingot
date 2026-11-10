@@ -363,6 +363,20 @@ dependencies {
     "pluginCanary"("com.reposilite.plugin:migration-plugin:3.5.28")
 }
 
+// The Nexus import jar, loaded into a fresh instance by NexusImportIntegrationTest, and the fake Nexus that test serves from
+// the plugin's test fixtures. The jar is the plugin's own shadow jar, so the test runs the shipped artefact.
+val nexusImportPlugin by configurations.creating {
+    description = "The Nexus import plugin jar that the migration integration tests load into a fresh instance"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+dependencies {
+    "nexusImportPlugin"(project(path = ":reposilite-plugins:nexus-import-plugin", configuration = "shadow"))
+    "integrationImplementation"(testFixtures(project(":reposilite-plugins:nexus-import-plugin")))
+}
+
 tasks.named<Test>("integration") {
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.
@@ -370,8 +384,10 @@ tasks.named<Test>("integration") {
 
     // Resolved at execution time, so the canary jars are only fetched when the integration suite runs.
     inputs.files(pluginCanary)
+    inputs.files(nexusImportPlugin)
     doFirst {
         systemProperty("reposilite.canary.plugins", pluginCanary.files.joinToString(File.pathSeparator) { it.absolutePath })
+        systemProperty("reposilite.nexusImport.plugin", nexusImportPlugin.singleFile.absolutePath)
     }
 }
 

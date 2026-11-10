@@ -19,12 +19,15 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     kotlin("jvm")
     id("com.gradleup.shadow") version "9.4.2"
+    `java-test-fixtures`
 }
 
 dependencies {
     compileOnly(project(":reposilite-backend"))
 
     testImplementation(project(":reposilite-backend"))
+
+    testFixturesImplementation(kotlin("stdlib"))
 }
 
 tasks.withType<ShadowJar> {
