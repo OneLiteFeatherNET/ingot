@@ -16,7 +16,7 @@
 
 package com.reposilite.maven
 
-import net.onelitefeather.ingot.search.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.plugin.api.EventListener

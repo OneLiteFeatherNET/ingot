@@ -22,7 +22,7 @@ import com.reposilite.maven.indexChanged
 import com.reposilite.maven.isChecksumSidecar
 import com.reposilite.maven.provenancePath
 import com.reposilite.plugin.api.EventListener
-import net.onelitefeather.ingot.search.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 
 /**
  * Queues the file of a deployment. The event bus has no exception isolation, so a listener that throws would break the

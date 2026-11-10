@@ -16,7 +16,7 @@
 
 package net.onelitefeather.ingot.search.outbox
 
-import net.onelitefeather.ingot.search.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
 

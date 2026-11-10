@@ -17,7 +17,8 @@
 package net.onelitefeather.ingot.search.application
 
 import com.reposilite.plugin.api.Facade
-import net.onelitefeather.ingot.search.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSinkProvider
 import net.onelitefeather.ingot.search.ArtifactSearchEngine
 import net.onelitefeather.ingot.search.runs.IndexRunStatus
 
@@ -27,12 +28,12 @@ import net.onelitefeather.ingot.search.runs.IndexRunStatus
  * while search is disabled.
  */
 class SearchFacade internal constructor(
-    val sink: ArtifactIndexSink,
+    override val sink: ArtifactIndexSink,
     private val runStatus: () -> IndexRunStatus = { IndexRunStatus.EMPTY },
     val engine: ArtifactSearchEngine? = null,
     /** The index administration of the Maintenance panel and the REST layer; null while search is disabled. */
     internal val admin: SearchIndexAdmin? = null,
-) : Facade {
+) : Facade, ArtifactIndexSinkProvider {
 
     /** The live run with its cursor, counters and lease holder, the last 20 runs, and the last full rebuild. */
     fun indexRuns(): IndexRunStatus = runStatus()

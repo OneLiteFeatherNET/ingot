@@ -32,7 +32,7 @@ import com.reposilite.status.FailureFacade
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
-import net.onelitefeather.ingot.search.NoOpArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.NoOpArtifactIndexSink
 import net.onelitefeather.ingot.search.api.SearchApiEndpoints
 import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
 import net.onelitefeather.ingot.search.database.DatabaseArtifactSearchEngine

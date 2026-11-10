@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package net.onelitefeather.ingot.search.application
+package net.onelitefeather.ingot.repository.index
 
 import com.reposilite.plugin.Extensions
-import net.onelitefeather.ingot.search.ArtifactIndexSink
-import net.onelitefeather.ingot.search.NoOpArtifactIndexSink
 
 /**
- * The sink the maven plugin writes through. The search plugin depends on maven, so maven initializes first and cannot
- * look up the search facade at its own start; the facade is looked up on every call instead. While no search facade is
- * registered, or search is disabled and registers the no-op sink, the calls do nothing.
+ * The sink the maven plugin writes through. Search initializes after maven, so maven cannot look up the sink provider at its
+ * own start; the provider is looked up on every call instead. While no provider is registered, or search is disabled and
+ * provides the no-op sink, the calls do nothing.
  */
 internal class SearchFacadeArtifactIndexSink(private val extensions: Extensions) : ArtifactIndexSink {
 
     private fun sink(): ArtifactIndexSink =
-        extensions.getFacades().filterIsInstance<SearchFacade>().firstOrNull()?.sink ?: NoOpArtifactIndexSink
+        extensions.getFacades().filterIsInstance<ArtifactIndexSinkProvider>().firstOrNull()?.sink ?: NoOpArtifactIndexSink
 
     override fun changed(repository: String, path: String) = sink().changed(repository, path)
 
