@@ -237,6 +237,7 @@ A manager endpoint answers `401` without valid credentials and `403` for a calle
 
 `/api/status/ready` answers whether this instance can serve requests now. It runs these checks, in this order:
 
+* `draining`: the instance has begun to shut down. It fails from the moment the shutdown starts until the process exits, and it is listed first. See [Graceful shutdown](../explanation/multi-replica-operation.md#rollout-sequence).
 * `plugins`: the server has started, so every plugin is initialised and the web server is bound.
 * `database`: a connection answers a validation query within two seconds.
 * `storage`: every repository's storage root lists its contents within two seconds. An empty root counts as ready.

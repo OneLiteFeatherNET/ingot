@@ -31,9 +31,11 @@ Ingot offers four ways to see what an instance is doing: a health endpoint for p
    ```
 
    * `200` with `{"status":"UP","failing":[]}` means that every readiness check passes.
-   * `503` with `{"status":"DOWN","failing":["database"]}` means that at least one check fails. The `failing` list names the checks, in this order: `plugins`, `database`, `storage` and `cluster`. The `cluster` check counts only when a cluster bus URL is configured.
+   * `503` with `{"status":"DOWN","failing":["database"]}` means that at least one check fails. The `failing` list names the checks, in this order: `draining`, `plugins`, `database`, `storage` and `cluster`. The `cluster` check counts only when a cluster bus URL is configured.
 
 Each check has two seconds to answer, and a check that does not answer counts as failing. The body names no repository, path or error message. The details of a failing check are written to the log at `WARN`. While the database check fails, `/api/status/health` still answers `200` and `/api/status/ready` answers `503`.
+
+While an instance shuts down, `/api/status/ready` answers `503` with `draining` first in `failing`, and `/api/status/health` stays `200`. The health answer does not change during a drain on purpose: an orchestrator that saw it fail would restart the instance while it still finishes its requests. Use the readiness probe to take an instance out of rotation.
 
 The container image has its own health check. It reads the address that Ingot writes to `/app/data/.local/reposilite.address` when it starts, and requests the root of the instance.
 

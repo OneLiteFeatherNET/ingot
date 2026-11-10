@@ -33,6 +33,7 @@ import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.schema.SchemaLockFactory
 import net.onelitefeather.ingot.schema.SchemaLockRequest
 import java.time.Clock
+import net.onelitefeather.ingot.web.ShutdownSettings
 import java.time.Duration
 import kotlin.io.path.absolutePathString
 
@@ -44,7 +45,14 @@ object ReposiliteFactory {
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite =
         createReposilite(parameters, rootJournalist, SchemaLockFactory.DEFAULT)
 
-    fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist, schemaLockFactory: SchemaLockFactory): Reposilite {
+    fun createReposilite(
+        parameters: ReposiliteParameters,
+        rootJournalist: Journalist,
+        schemaLockFactory: SchemaLockFactory = SchemaLockFactory.DEFAULT,
+        // Read before anything binds a port, so an invalid value stops the start here
+        shutdownSettings: ShutdownSettings = ShutdownSettings.read(),
+        awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
+    ): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
         parameters.applyLoadedConfiguration(localConfiguration)
 
@@ -96,7 +104,9 @@ object ReposiliteFactory {
                 prefix = "Ingot | IO"
             ),
             scheduler = newSingleThreadScheduledExecutor("Ingot | Scheduler"),
-            extensions = Extensions(journalist)
+            extensions = Extensions(journalist),
+            shutdownSettings = shutdownSettings,
+            awaitDelay = awaitDelay,
         )
 
         // Taken before any plugin creates a table. It is held until the post-initialise event in Reposilite.launch.
