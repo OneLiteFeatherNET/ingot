@@ -42,9 +42,14 @@ import panda.std.asSuccess
 import panda.std.letIf
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest
 import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException
 import software.amazon.awssdk.services.s3.model.CommonPrefix
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest
+import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload
+import software.amazon.awssdk.services.s3.model.CompletedPart
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest
@@ -56,12 +61,16 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.S3Object
-import java.io.File
+import software.amazon.awssdk.services.s3.model.UploadPartRequest
 import java.io.InputStream
+import java.io.PushbackInputStream
 import java.nio.file.attribute.FileTime
 import java.time.Instant
 
 private val skipBucketCreation = System.getProperty("reposilite.s3.skip-bucket-creation", "false") == "true"
+
+/** The size of every part of a multipart upload but the last. S3 accepts parts from 5 MiB, so this is the size used for the probe too. */
+private const val UPLOAD_PART_SIZE = 8 * 1024 * 1024
 
 class S3StorageProvider(
     private val failureFacade: FailureFacade,
@@ -105,32 +114,111 @@ class S3StorageProvider(
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
         inputStream.use { data ->
-            // So... S3 API is disabled and requires content-length of every inserted object.
-            // It means we're pretty doomed if we'd like to re-stream large artifacts that size is unknown.
-            // To avoid 'Out of Memory' scenario of in-memory rewrite by S3 client, it's just safer to redistribute content from temp file.
-            // Few unresolved issues addressing this case:
-            // ~ https://github.com/aws/aws-sdk-java/issues/474
-            // ~ https://github.com/aws/aws-sdk-java-v2/issues/37
-            val temporary = File.createTempFile("reposilite-", "-s3-put")
+            // S3 needs the content length of a single put, and the length of this stream is not known here. The first part
+            // decides the request: a stream that ends within it is one put with its exact length, and a longer stream is a
+            // multipart upload. Only one part is held at a time, so the bytes never pass through the temporary directory.
+            val input = PushbackInputStream(data, 1)
+            val first = input.readNBytes(UPLOAD_PART_SIZE)
+            // A full first part is followed by one more byte only when the stream continues past it
+            val next = if (first.size == UPLOAD_PART_SIZE) input.read() else -1
 
-            temporary.outputStream().use { destination ->
-                data.copyTo(destination)
-            }
-
-            try {
-                val builder = PutObjectRequest.builder()
-                builder.bucket(bucket)
-                builder.key(location.toBucketKey())
-                builder.contentType(ContentType.mimeTypeByExtension(location.getExtension()) ?: OCTET_STREAM)
-                builder.contentLength(temporary.length())
-                s3.putObject(builder.build(), RequestBody.fromFile(temporary))
-                ok(Unit)
-            } catch (exception: Exception) {
-                failed("write $location", exception)
-            } finally {
-                temporary.delete()
+            if (next == -1) {
+                putSingle(location, first)
+            } else {
+                input.unread(next)
+                putMultipart(location, first, input)
             }
         }
+
+    private fun putSingle(location: Location, bytes: ByteArray): Result<Unit, ErrorResponse> =
+        try {
+            val request = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(location.toBucketKey())
+                .contentType(contentTypeOf(location))
+                .contentLength(bytes.size.toLong())
+                .build()
+            s3.putObject(request, RequestBody.fromBytes(bytes))
+            ok(Unit)
+        } catch (exception: Exception) {
+            failed("write $location", exception)
+        }
+
+    /**
+     * Sends a stream longer than one part as a multipart upload. The first part is already read, and [input] yields the rest.
+     * A failed part or completion aborts the upload, so that no incomplete upload is left behind by a failure seen here.
+     */
+    private fun putMultipart(location: Location, first: ByteArray, input: InputStream): Result<Unit, ErrorResponse> {
+        val key = location.toBucketKey()
+        var uploadId: String? = null
+        return try {
+            val upload = s3.createMultipartUpload(
+                CreateMultipartUploadRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .contentType(contentTypeOf(location))
+                    .build()
+            )
+            val id = upload.uploadId()
+            uploadId = id
+
+            val parts = uploadParts(key, id, first, input)
+            s3.completeMultipartUpload(
+                CompleteMultipartUploadRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .uploadId(id)
+                    .multipartUpload(CompletedMultipartUpload.builder().parts(parts).build())
+                    .build()
+            )
+            ok(Unit)
+        } catch (exception: Exception) {
+            uploadId?.let { abortMultipartUpload(key, it) }
+            failed("write $location", exception)
+        }
+    }
+
+    /** Sends the parts in order. A part shorter than [UPLOAD_PART_SIZE] is the last one, and an empty read ends the upload. */
+    private fun uploadParts(key: String, uploadId: String, first: ByteArray, input: InputStream): List<CompletedPart> {
+        val parts = mutableListOf<CompletedPart>()
+        var part = first
+        while (part.isNotEmpty()) {
+            val partNumber = parts.size + 1
+            val request = UploadPartRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .uploadId(uploadId)
+                .partNumber(partNumber)
+                .contentLength(part.size.toLong())
+                .build()
+            val response = s3.uploadPart(request, RequestBody.fromBytes(part))
+            parts += CompletedPart.builder().partNumber(partNumber).eTag(response.eTag()).build()
+
+            if (part.size < UPLOAD_PART_SIZE) {
+                break
+            }
+            part = input.readNBytes(UPLOAD_PART_SIZE)
+        }
+        return parts
+    }
+
+    /** An abort that fails is logged with its exception. The upload then stays until the bucket lifecycle removes it. */
+    private fun abortMultipartUpload(key: String, uploadId: String) {
+        try {
+            s3.abortMultipartUpload(
+                AbortMultipartUploadRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .uploadId(uploadId)
+                    .build()
+            )
+        } catch (exception: Exception) {
+            failureFacade.throwException("S3 Storage Provider failed to abort the multipart upload of $key", exception)
+        }
+    }
+
+    private fun contentTypeOf(location: Location): String =
+        ContentType.mimeTypeByExtension(location.getExtension()) ?: OCTET_STREAM
 
     override fun getFile(location: Location): Result<InputStream, ErrorResponse> =
         try {
