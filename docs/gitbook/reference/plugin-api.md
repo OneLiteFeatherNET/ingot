@@ -209,3 +209,27 @@ public final class ExamplePlugin extends ReposilitePlugin {
 ```
 
 The service file is the same: `META-INF/services/com.reposilite.plugin.api.ReposilitePlugin` with the class name.
+
+## Compatibility checks
+
+A plugin built for Reposilite 3.5.28 is expected to keep running on Ingot. The build checks that in two ways. Both are report-only for now: a finding does not fail the build or the pull request check.
+
+| Item | Value |
+| --- | --- |
+| Baseline | `com.reposilite:reposilite:3.5.28`, the release Ingot forked from. |
+| Packages compared | `com.reposilite.plugin`, `com.reposilite.maven`, `com.reposilite.storage`, `com.reposilite.token`, `com.reposilite.shared`, `com.reposilite.web.api`, `com.reposilite.status` and their `api` and `application` subpackages, as listed in `reposilite-backend/build.gradle.kts`. |
+| Not compared | Ingot's own packages (`net.onelitefeather.ingot.*`) and `com.reposilite.journalist`. |
+
+The two checks:
+
+- **Binary report.** `./gradlew :reposilite-backend:pluginApiReport` compares the 3.5.28 jar with the jar of the current build, at bytecode level, and lists every incompatible change in the packages above.
+- **Binary canaries.** The `checksum-plugin` and `migration-plugin` jars that upstream published for 3.5.28 are loaded unchanged into a fresh server. Run them with `./gradlew :reposilite-backend:integration --tests '*UpstreamPluginCanary*'`.
+
+The bundled plugins in `reposilite-plugins/checksum-plugin` and `reposilite-plugins/migration-plugin` are compiled and tested against the current backend as well. A pull request that edits their `src/main` is flagged in the job summary, because such an edit can hide a break of the plugin API.
+
+Where the results are:
+
+- Locally, the report is written to `reposilite-backend/build/reports/plugin-api/report.html` and `report.md`.
+- On a pull request, the **Plugin API** job writes the Markdown report and the canary results to its job summary, and uploads the HTML report as the `plugin-api-report` artifact.
+
+The gate becomes blocking in a later change, once the first report has been reviewed and each accepted difference is recorded with a reason.
