@@ -75,7 +75,7 @@ class NexusImportPlugin : ReposilitePlugin() {
         }
 
         val connections = NexusConnectionService(settings, JdkNexusTransport(), clock, sleeper, secretReferences)
-        event { event: RoutingSetupEvent -> event.registerRoutes(NexusImportEndpoints(connections)) }
+        event { event: RoutingSetupEvent -> event.registerRoutes(NexusImportEndpoints(connections, service)) }
         event { _: ReposiliteDisposeEvent -> scheduler.close() }
 
         logger.info("NEXUS IMPORT | Enabled with ${settings.concurrency} files in flight and ${settings.maxRequestsPerSecond} requests per second")

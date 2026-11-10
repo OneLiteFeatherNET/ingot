@@ -67,7 +67,7 @@ data class JobRequest(
     val targets: Map<String, String> = emptyMap(),
     val conflictPolicy: String = "refuse",
     val audit: String? = null,
-    /** A verify job may name the import job whose conflicts it must respect. */
+    /** A verify job checks the repositories of this import job, and respects the conflicts it recorded. */
     val verifyImportJob: Long? = null,
 ) {
     override fun toString(): String =
@@ -320,7 +320,12 @@ internal class NexusImportService(
     }
 
     private fun verify(id: Long, token: String, stored: StoredParameters, client: NexusClient): RunOutcome {
-        val pairs = stored.repositories.orEmpty().map { CopyTarget(it, stored.targets[it] ?: it) }
+        // Without a list of repositories, a verify job checks what the named import job copied, under the same names.
+        val pairs = if (stored.repositories.isNullOrEmpty()) {
+            store.repositories(stored.verifyImportJob ?: 0L).map { CopyTarget(it.nexusName, it.targetName) }
+        } else {
+            stored.repositories.map { CopyTarget(it, stored.targets[it] ?: it) }
+        }
         store.planRepositories(id, pairs.map { RepositoryRow(it.nexusName, it.targetName, TYPE_HOSTED, RepositoryStatus.PLANNED) })
         val importedConflicts = stored.verifyImportJob?.let { importId ->
             store.repositories(importId).filter { it.status == RepositoryStatus.CONFLICTED }.map { it.targetName }
@@ -451,7 +456,9 @@ internal class NexusImportService(
 
         val names = request.repositories.orEmpty() + request.targets.keys + request.targets.values
         if (names.any { !NAME.matches(it) }) return bad("Repository names may use letters, digits, dots, dashes and underscores")
-        if (kind == KIND_VERIFY && request.repositories.isNullOrEmpty()) return bad("A verify job names the repositories to verify")
+        if (kind == KIND_VERIFY && request.repositories.isNullOrEmpty() && request.verifyImportJob == null) {
+            return bad("A verify job names the repositories to verify, or the import job it checks")
+        }
         if (kind != KIND_VERIFY && request.verifyImportJob != null) return bad("Only a verify job takes an import job")
 
         return Result.ok(
