@@ -181,6 +181,49 @@ internal class CleanupServiceLeaseTest {
         }
     }
 
+    @Test
+    fun `logs a skip and deletes nothing when a scheduled run finds a manual run holding the lease`() {
+        SqliteTestDatabase().use { shared ->
+            // given: a manual run that is still deleting, and a scheduled run of the same policy on another instance
+            val clock = MutableClock()
+            val storage = storage()
+            storage.writeVersion("net/example/app", "1.0")
+            storage.writeVersion("net/example/app", "2.0")
+            val calls = mutableListOf<String>()
+            var scheduled: Result<CleanupRun, ErrorResponse>? = null
+            lateinit var scheduler: CleanupService
+
+            val manual = service(
+                clock = clock,
+                claims = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-a"),
+                storage = storage,
+                deleter = VersionDeleter { _, path, _, _ ->
+                    calls += "manual:$path"
+                    if (scheduled == null) {
+                        // when: the scheduled run becomes due while the manual run holds the lease
+                        scheduled = scheduler.runScheduled("keep-one")
+                    }
+                    Result.ok(Unit)
+                },
+            )
+            scheduler = service(
+                clock = clock,
+                claims = SqlScheduledJobClaims(shared.database, clock, instanceId = "instance-b"),
+                storage = storage,
+                deleter = VersionDeleter { _, path, _, _ -> calls += "scheduled:$path"; Result.ok(Unit) },
+            )
+
+            manual.run("keep-one", actor, CleanupTrigger.MANUAL).orThrow()
+
+            // then: the scheduled run is refused, deletes nothing, and the log says that it was skipped
+            assertThat(scheduled!!.isErr).`as`("scheduled run while the manual run holds the lease").isTrue()
+            assertThat(calls).`as`("deletions of both runs").containsExactly("manual:net/example/app/1.0")
+            assertThat(logger.messages.map { it.value })
+                .`as`("log lines of the skipped scheduled run")
+                .anyMatch { it.contains("Scheduled run of keep-one skipped") }
+        }
+    }
+
     /** Records the calls to the claim store of a run. The lease is always granted, the extension as configured. */
     private class RecordingClaims(
         private val clock: MutableClock,
