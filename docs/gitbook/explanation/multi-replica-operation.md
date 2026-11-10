@@ -83,6 +83,17 @@ Repository content is outside the database. Its location decides what replicas c
 
 An optional cluster bus can tell the other replicas at once when one of them changes a token, a session or a resolution entry, and it can show their log lines. The database remains the source of truth, so the bus only shortens the time until the other replicas catch up. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
 
+## Rollout sequence
+
+A rolling update stops one replica after another. What happens to a request that is in flight on the replica being stopped depends on the stop sequence. With the default settings the replica stops at once, as in earlier versions, and a client that is halfway through an upload or a download gets a dropped connection. Two optional settings let the replica leave in an orderly way:
+
+1. The replica starts draining. Its readiness answer `/api/status/ready` lists `draining` first and answers `503`, so the load balancer stops sending it new requests. Its health answer `/api/status/health` stays `200`, so the orchestrator does not restart a replica that is still finishing work.
+2. It keeps serving for `INGOT_SHUTDOWN_DELAY` seconds. This gives the load balancer time to see the `503` before anything else changes.
+3. It waits up to `INGOT_SHUTDOWN_TIMEOUT` seconds for the requests in flight to complete. Meanwhile new requests get `503`, except the status answers.
+4. It stops. A request that is still running at that point is cut off, and the log states how many.
+
+The delay and the timeout together must fit into the grace period of your orchestrator, for example `terminationGracePeriodSeconds` in Kubernetes, otherwise the process is killed before the sequence ends. Both settings default to `0`, which keeps the stop sequence of earlier versions. See [Environment variables](../reference/environment-variables.md#shutdown-variables).
+
 ## What is not provided yet
 
 * **Readiness is per replica.** `/api/status/ready` answers whether this replica can serve traffic now. It answers `503` while the database, a storage root or, with a cluster bus, the bus is unavailable. The start-up steps, such as the database migrations, are covered by the `plugins` check, which passes only once the server has started. The health endpoint `/api/status/health` reports only that the server is alive, so a load balancer should probe `/api/status/ready`.
