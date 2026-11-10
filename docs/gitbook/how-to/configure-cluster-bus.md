@@ -6,7 +6,7 @@ description: Configure the optional cluster bus that lets several Ingot replicas
 
 The cluster bus is an optional message channel between the replicas of one Ingot database. A replica publishes an event when it changes state that other replicas keep in memory, such as a disabled token or a revoked session. The other replicas drop their copy of that state at once instead of waiting for it to expire.
 
-The bus is a speed-up, not a source of truth. The database stays the only place where sessions, tokens, configuration and counters are held. A replica that misses an event still converges on the next poll or when its cache entry expires. See [Multi-replica operation](../explanation/multi-replica-operation.md).
+The bus is a speed-up, not a source of truth. The database stays the only place where sessions, tokens, configuration and counters are held. A replica that misses an event still converges on the next poll or when its cache entry expires, except for javadoc caches, see [Javadoc caches](#javadoc-caches). See [Multi-replica operation](../explanation/multi-replica-operation.md).
 
 ## Before you begin
 
@@ -133,6 +133,12 @@ With `INGOT_CLUSTER_FAILURES` set to `true` and a bus URL, each replica publishe
 * The message of a failure crosses the bus, so anyone who can read the bus can read it. Limit the broker access rules to the replicas.
 * Clearing the failures on one replica does not clear the failures of the others.
 * The failure count in the status of a replica counts only the failures that replica recorded itself. The console command `failures` lists only the failures of the replica it runs on.
+
+## Javadoc caches
+
+When a javadoc jar is deployed, the replica that accepted the upload drops its unpacked copy of the artifact and publishes a `javadoc.invalidated` event. The other replicas drop their copy of the same artifact when the event arrives. Without a bus URL, only the accepting replica drops its copy.
+
+Javadoc caches are the one kind of state on the bus without a poll or a time bound. A replica that misses the event keeps serving its unpacked copy of the old build until that copy is removed. The copy survives a restart as long as the working directory of the replica keeps it. It is removed when the same artifact is deployed again and that replica receives the event, or when the working directory is emptied. Plan a restart with an empty working directory when a replica may have missed a deploy, for example after a network outage to the broker.
 
 ## Cluster view in the status
 
