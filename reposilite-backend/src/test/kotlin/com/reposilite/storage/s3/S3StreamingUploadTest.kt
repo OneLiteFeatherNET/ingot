@@ -21,6 +21,7 @@ import com.reposilite.status.application.FailureComponents
 import com.reposilite.storage.api.toLocation
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import panda.std.ResultAssertions.assertError
 import panda.std.ResultAssertions.assertOk
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
@@ -34,9 +35,12 @@ import software.amazon.awssdk.services.s3.model.HeadBucketRequest
 import software.amazon.awssdk.services.s3.model.HeadBucketResponse
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectResponse
+import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.UploadPartRequest
 import software.amazon.awssdk.services.s3.model.UploadPartResponse
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.FilterInputStream
 
 internal class S3StreamingUploadTest {
 
@@ -59,6 +63,11 @@ internal class S3StreamingUploadTest {
         val completions = mutableListOf<CompleteMultipartUploadRequest>()
         val aborts = mutableListOf<AbortMultipartUploadRequest>()
 
+        /** The number of the part S3 rejects with a server error, if any. */
+        var rejectedPart: Int? = null
+        var rejectCompletion = false
+        var rejectAbort = false
+
         override fun serviceName(): String =
             S3Client.SERVICE_NAME
 
@@ -78,17 +87,26 @@ internal class S3StreamingUploadTest {
         }
 
         override fun uploadPart(request: UploadPartRequest, body: RequestBody): UploadPartResponse {
+            if (request.partNumber() == rejectedPart) {
+                throw S3Exception.builder().statusCode(500).message("internal-detail-42").build()
+            }
             uploadedParts += request.partNumber() to body.contentStreamProvider().newStream().readAllBytes()
             return UploadPartResponse.builder().eTag("etag-${request.partNumber()}").build()
         }
 
         override fun completeMultipartUpload(request: CompleteMultipartUploadRequest): CompleteMultipartUploadResponse {
+            if (rejectCompletion) {
+                throw S3Exception.builder().statusCode(500).message("internal-detail-42").build()
+            }
             completions += request
             return CompleteMultipartUploadResponse.builder().build()
         }
 
         override fun abortMultipartUpload(request: AbortMultipartUploadRequest): AbortMultipartUploadResponse {
             aborts += request
+            if (rejectAbort) {
+                throw S3Exception.builder().statusCode(500).message("abort-detail-9").build()
+            }
             return AbortMultipartUploadResponse.builder().build()
         }
 
@@ -163,6 +181,127 @@ internal class S3StreamingUploadTest {
         // and: the parts, joined in order, are the bytes of the stream
         val assembled = ByteArrayOutputStream().apply { s3.uploadedParts.forEach { write(it.second) } }.toByteArray()
         assertThat(assembled.contentEquals(data)).describedAs("bytes of the multipart upload, joined in order").isTrue()
+    }
+
+    @Test
+    fun `should end a multipart upload at a full part without sending an empty part`() {
+        // given: a stream of exactly two parts, so the stream ends right after a full part
+        val s3 = RecordingS3Client()
+
+        // when: the stream is uploaded
+        assertOk(upload(s3, content(16 * mebibyte)))
+
+        // then: exactly two parts are sent, and no third part of zero bytes follows them
+        assertThat(s3.uploadedParts.map { it.second.size })
+            .describedAs("part sizes of a 16 MiB upload")
+            .containsExactly(8 * mebibyte, 8 * mebibyte)
+        assertThat(s3.completions).describedAs("multipart uploads completed for a 16 MiB stream").hasSize(1)
+    }
+
+    @Test
+    fun `should set the content type of the jar on the multipart upload`() {
+        // given: a 20 MiB jar, which goes out as a multipart upload
+        val s3 = RecordingS3Client()
+
+        // when: the jar is uploaded
+        assertOk(upload(s3, content(20 * mebibyte), location = "com/example/lib/1.0.0/lib-1.0.0.jar"))
+
+        // then: the multipart upload carries the same content type as a single put of the jar
+        assertThat(s3.createdUploads.single().contentType())
+            .describedAs("content type of the multipart upload")
+            .isEqualTo("application/java-archive")
+    }
+
+    @Test
+    fun `should abort the multipart upload when a part is rejected`() {
+        // given: S3 rejects the third part of a 20 MiB upload
+        val s3 = RecordingS3Client().apply { rejectedPart = 3 }
+
+        // when: the stream is uploaded
+        upload(s3, content(20 * mebibyte))
+
+        // then: the multipart upload is aborted with the upload identifier it was created with
+        assertThat(s3.aborts.map { it.uploadId() })
+            .describedAs("aborted multipart uploads after a rejected part")
+            .containsExactly(RecordingS3Client.UPLOAD_ID)
+        assertThat(s3.completions).describedAs("completed multipart uploads after a rejected part").isEmpty()
+    }
+
+    @Test
+    fun `should answer a server error without the S3 message when a part is rejected`() {
+        // given: S3 rejects the third part with a message that names an internal detail
+        val s3 = RecordingS3Client().apply { rejectedPart = 3 }
+
+        // when: the stream is uploaded
+        val error = assertError(upload(s3, content(20 * mebibyte)))
+
+        // then: the status is a server error, as for a failed write today
+        assertThat(error.status).describedAs("status of a rejected part").isEqualTo(500)
+
+        // and: neither the S3 message nor the exception class reach the response
+        assertThat(error.message)
+            .describedAs("message of a rejected part")
+            .doesNotContain("internal-detail-42", "S3Exception")
+    }
+
+    @Test
+    fun `should abort the multipart upload when completing it fails`() {
+        // given: S3 rejects the completion of a 20 MiB upload
+        val s3 = RecordingS3Client().apply { rejectCompletion = true }
+
+        // when: the stream is uploaded
+        val error = assertError(upload(s3, content(20 * mebibyte)))
+
+        // then: the multipart upload is aborted, and the client gets a server error
+        assertThat(s3.aborts.map { it.uploadId() })
+            .describedAs("aborted multipart uploads after a failed completion")
+            .containsExactly(RecordingS3Client.UPLOAD_ID)
+        assertThat(error.status).describedAs("status of a failed completion").isEqualTo(500)
+    }
+
+    @Test
+    fun `should log a failed abort and still answer a server error`() {
+        // given: a part is rejected, and the abort that follows is rejected as well
+        val logger = InMemoryLogger()
+        val failureFacade = FailureComponents(journalist = logger).failureFacade()
+        val s3 = RecordingS3Client().apply {
+            rejectedPart = 2
+            rejectAbort = true
+        }
+        val provider = S3StorageProvider(failureFacade = failureFacade, s3 = s3, bucket = "test")
+
+        // when: the stream is uploaded
+        val error = assertError(provider.putFile(file.toLocation(), content(20 * mebibyte).inputStream()))
+
+        // then: the failed abort is logged with its exception
+        assertThat(logger.messages.map { it.value }.joinToString("\n"))
+            .describedAs("logged output of a failed abort")
+            .contains("abort-detail-9")
+
+        // and: the client still gets the generic server error of a failed write
+        assertThat(error.status).describedAs("status after a failed abort").isEqualTo(500)
+    }
+
+    @Test
+    fun `should close the stream when a multipart upload fails`() {
+        // given: a 20 MiB stream whose close is observed, and a part that S3 rejects
+        val s3 = RecordingS3Client().apply { rejectedPart = 2 }
+        val stream = ClosingObserver(content(20 * mebibyte))
+
+        // when: the stream is uploaded
+        provider(s3).putFile(file.toLocation(), stream)
+
+        // then: the stream is closed even though the upload failed
+        assertThat(stream.closed).describedAs("stream closed after a failed multipart upload").isTrue()
+    }
+
+    private class ClosingObserver(source: ByteArray) : FilterInputStream(ByteArrayInputStream(source)) {
+        var closed = false
+
+        override fun close() {
+            closed = true
+            super.close()
+        }
     }
 
 }
