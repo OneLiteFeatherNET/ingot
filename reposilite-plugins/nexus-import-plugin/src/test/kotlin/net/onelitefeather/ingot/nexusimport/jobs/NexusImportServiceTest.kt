@@ -285,7 +285,7 @@ internal class NexusImportServiceTest {
 
         // when / then: both are refused with 400 and no job is created
         val withUser = service.create(request("IMPORT").copy(url = "http://importer:secret@nexus.internal:8081"))
-        assertThat(withUser.isError).isTrue
+        assertThat(withUser.isOk).isFalse
         assertThat(withUser.error.status).isEqualTo(HttpStatus.BAD_REQUEST.code)
         val unknown = service.create(request("MIGRATE"))
         assertThat(unknown.error.status).isEqualTo(HttpStatus.BAD_REQUEST.code)
@@ -333,7 +333,7 @@ internal class NexusImportServiceTest {
         // when / then: the paused job is refused with 409, the finished one is removed
         assertThat(service.delete(paused).error.status).isEqualTo(HttpStatus.CONFLICT.code)
         service.delete(finished).orThrow()
-        assertThat(service.job(finished).isError).isTrue
+        assertThat(service.job(finished).isOk).isFalse
     }
 
     @Test
