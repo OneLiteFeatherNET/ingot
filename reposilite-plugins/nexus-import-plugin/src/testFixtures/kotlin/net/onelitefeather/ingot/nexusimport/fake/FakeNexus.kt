@@ -24,6 +24,8 @@ import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -44,7 +46,11 @@ class FakeNexus : AutoCloseable {
     /** The base URL of this server, for example `http://127.0.0.1:41234`. */
     val baseUri: URI = URI.create("http://127.0.0.1:${server.address.port}")
 
+    /** Requests are answered on a pool, so two downloads can be in flight at once, as they are with a real Nexus. */
+    private val pool: ExecutorService = Executors.newFixedThreadPool(FAKE_THREADS)
+
     init {
+        server.executor = pool
         server.createContext("/") { exchange -> dispatch(exchange) }
         server.start()
     }
@@ -102,6 +108,7 @@ class FakeNexus : AutoCloseable {
 
     override fun close() {
         server.stop(0)
+        pool.shutdownNow()
     }
 
     private fun parseQuery(raw: String?): Map<String, String> =
@@ -136,3 +143,5 @@ class FakeReply(
         fun redirect(location: String): FakeReply = FakeReply(302, headers = mapOf("Location" to location))
     }
 }
+
+private const val FAKE_THREADS = 16
