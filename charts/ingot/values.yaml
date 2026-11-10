@@ -66,6 +66,16 @@ deployment:
     # preStop:
     #   exec:
     #     command: ["/bin/sh", "-c", "sleep 40"]
+  # Opt-in shutdown budget. Both values at 0 keep the stop of earlier versions: SIGTERM at once and the grace period
+  # above. When either value is above 0, terminationGracePeriodSeconds becomes preStopSeconds + drainSeconds + 10.
+  # The values apply to each pod, so a rolling update takes longer by about their sum for every replica.
+  shutdown:
+    # Seconds of a preStop sleep, so the pod stays in the endpoints while the proxy removes it. Not rendered when
+    # `lifecycle` is set, because the operator's own preStop action is kept.
+    preStopSeconds: 0
+    # Seconds Ingot waits for the requests in flight, as INGOT_SHUTDOWN_TIMEOUT. Not rendered when env sets
+    # INGOT_SHUTDOWN_TIMEOUT, because the operator's value is kept.
+    drainSeconds: 0
   # Security context for all initContainers and containers in the pod.
   # Disabled by default: the server starts as root and the entrypoint drops to the service account, so PUID, PGID
   # and the ownership fix of an existing volume keep working. Set runAsUser and runAsGroup only for a volume that

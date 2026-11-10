@@ -43,7 +43,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "ingot.serviceAccountName" . }}
-      terminationGracePeriodSeconds: {{ default 60 .Values.deployment.terminationGracePeriodSeconds }}
+      {{- $preStop := int (default 0 .Values.deployment.shutdown.preStopSeconds) }}
+      {{- $drain := int (default 0 .Values.deployment.shutdown.drainSeconds) }}
+      terminationGracePeriodSeconds: {{ if or (gt $preStop 0) (gt $drain 0) }}{{ add $preStop $drain 10 }}{{ else }}{{ default 60 .Values.deployment.terminationGracePeriodSeconds }}{{ end }}
       {{- if .Values.deployment.podSecurityContext.enabled }}
       securityContext: {{- omit .Values.deployment.podSecurityContext "enabled" | toYaml | nindent 8 }}
       {{- end }}
@@ -82,9 +84,14 @@ spec:
           timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
           failureThreshold: {{ .Values.probes.startup.failureThreshold }}
         {{- end }}
-        {{- with .Values.deployment.lifecycle }}
+        {{- if .Values.deployment.lifecycle }}
         lifecycle:
-          {{- toYaml . | nindent 10 }}
+          {{- toYaml .Values.deployment.lifecycle | nindent 10 }}
+        {{- else if gt $preStop 0 }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sleep", "{{ $preStop }}"]
         {{- end }}
         ports:
         - name: "http"
@@ -105,7 +112,14 @@ spec:
         {{- $instanceIdSet = true }}
         {{- end }}
         {{- end }}
-        {{- if or (eq .Values.mode "split") .Values.env }}
+        {{- $shutdownTimeoutSet := false }}
+        {{- range .Values.env }}
+        {{- if eq .name "INGOT_SHUTDOWN_TIMEOUT" }}
+        {{- $shutdownTimeoutSet = true }}
+        {{- end }}
+        {{- end }}
+        {{- $renderShutdownTimeout := and (gt $drain 0) (not $shutdownTimeoutSet) }}
+        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout }}
         env:
           {{- if eq .Values.mode "split" }}
           - name: INGOT_TARGET
@@ -116,6 +130,10 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
           {{- end }}
+          {{- end }}
+          {{- if $renderShutdownTimeout }}
+          - name: INGOT_SHUTDOWN_TIMEOUT
+            value: {{ $drain | quote }}
           {{- end }}
           {{- with .Values.env }}
           {{- toYaml . | nindent 10 }}
