@@ -295,6 +295,23 @@ internal class S3StreamingUploadTest {
         assertThat(stream.closed).describedAs("stream closed after a failed multipart upload").isTrue()
     }
 
+    @Test
+    fun `should send a 20 MiB stream in one put when the temporary file path is selected`() {
+        // given: a provider with the escape hatch, and a 20 MiB stream
+        val s3 = RecordingS3Client()
+        val provider = S3StorageProvider(failureFacade = failureFacade, s3 = s3, bucket = "test", bufferToDisk = true)
+        val data = content(20 * mebibyte)
+
+        // when: the stream is uploaded
+        assertOk(provider.putFile(file.toLocation(), data.inputStream()))
+
+        // then: the bytes are sent in one put with their exact length, as before streaming
+        assertThat(s3.createdUploads).describedAs("multipart uploads with the temporary file path").isEmpty()
+        assertThat(s3.puts).describedAs("put requests with the temporary file path").hasSize(1)
+        assertThat(s3.puts.single().first.contentLength()).describedAs("content length of the put").isEqualTo(20L * mebibyte)
+        assertThat(s3.puts.single().second.contentEquals(data)).describedAs("bytes of the put").isTrue()
+    }
+
     private class ClosingObserver(source: ByteArray) : FilterInputStream(ByteArrayInputStream(source)) {
         var closed = false
 
