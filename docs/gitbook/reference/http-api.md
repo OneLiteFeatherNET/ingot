@@ -139,6 +139,16 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 | POST | `/api/cleanup/policies/{id}/dry-run` | Instance admin | Previews what a cleanup policy would remove. |
 | POST | `/api/cleanup/policies/{id}/run` | Instance admin | Runs a cleanup policy. |
 
+## Maintenance: read-only
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/admin/read-only` | Maintenance area | Reports whether the instance is read-only, and the source of the state: `environment` when `INGOT_READ_ONLY` forces it, `stored` otherwise. |
+| POST | `/api/admin/read-only` | Maintenance area | Turns read-only on. Writes are refused with `503` on every replica that reads the state. Answers `409` while `INGOT_READ_ONLY` forces the state. |
+| DELETE | `/api/admin/read-only` | Maintenance area | Turns read-only off again. Answers `409` while `INGOT_READ_ONLY` forces the state. |
+
+A change is written to the [audit log](audit-events.md) and announced on the cluster bus when one is configured. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
+
 ## Audit
 
 | Method | Path | Auth | Purpose |
