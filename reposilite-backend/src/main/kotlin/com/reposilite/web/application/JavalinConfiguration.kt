@@ -41,6 +41,8 @@ import io.javalin.json.JavalinJackson
 import io.javalin.openapi.plugin.OpenApiPlugin
 import io.javalin.plugin.bundled.SslRedirectPlugin
 import kotlin.time.Duration.Companion.minutes
+import net.onelitefeather.ingot.web.RequestLimitHandler
+import net.onelitefeather.ingot.web.RequestLimiter
 import net.onelitefeather.ingot.web.TrustedProxies
 import net.onelitefeather.ingot.web.SecurityHeaders
 import net.onelitefeather.ingot.web.SecurityHeadersSettings
@@ -81,6 +83,20 @@ internal object JavalinConfiguration {
         configureOpenApi(config, frontendSettings.get())
         configureDebug(reposilite, localConfiguration, config)
         configureRoutingPlugin(config, reposilite)
+        configureRequestLimit(reposilite, localConfiguration, config)
+    }
+
+    /**
+     * Installs the request limit only when it is set. It wraps the handler that is already on the server, so the drain
+     * handler stays in the chain, and it sits outside the Javalin chain so that a refusal costs no routing.
+     */
+    private fun configureRequestLimit(reposilite: Reposilite, localConfiguration: LocalConfiguration, config: JavalinConfig) {
+        val limit = reposilite.maxConcurrentRequests ?: return
+        val limitHandler = RequestLimitHandler(RequestLimiter(limit, localConfiguration.basePath.get()))
+        config.jetty.modifyServer { server ->
+            limitHandler.handler = server.handler
+            server.handler = limitHandler
+        }
     }
 
     private fun configureJavalin(reposilite: Reposilite, config: JavalinConfig, localConfiguration: LocalConfiguration, webSettings: Reference<WebSettings>) {

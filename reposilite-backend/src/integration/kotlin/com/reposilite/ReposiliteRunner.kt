@@ -84,6 +84,10 @@ internal abstract class ReposiliteRunner {
     protected open fun shutdownSettings(): ShutdownSettings =
         ShutdownSettings()
 
+    /** The concurrent request limit of the instance. The default is no limit, as in earlier versions. */
+    protected open fun maxConcurrentRequests(): Int? =
+        null
+
     /** Waits out the pre-stop delay. Tests replace it with a recorder, so no test waits on the wall clock. */
     protected open fun awaitDelay(duration: Duration) {
         Thread.sleep(duration.toMillis())
@@ -111,7 +115,13 @@ internal abstract class ReposiliteRunner {
         overrideLocalConfiguration(localConfiguration)
         KCdnFactory.createStandard().render(localConfiguration, Source.of(reposiliteWorkingDirectory.resolve(LOCAL_CONFIGURATION_FILE)))
 
-        reposilite = ReposiliteFactory.createReposilite(parameters, logger, shutdownSettings = shutdownSettings(), awaitDelay = ::awaitDelay)
+        reposilite = ReposiliteFactory.createReposilite(
+            parameters,
+            logger,
+            shutdownSettings = shutdownSettings(),
+            maxConcurrentRequests = maxConcurrentRequests(),
+            awaitDelay = ::awaitDelay,
+        )
         reposilite.journalist.setVisibleThreshold(Channel.WARN)
 
         val sharedConfigurationFacade = reposilite.extensions.facade<SharedConfigurationFacade>()

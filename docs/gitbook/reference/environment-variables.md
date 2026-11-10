@@ -97,6 +97,16 @@ The server reads these variables once at start. Both are optional, and with thei
 | `INGOT_SHUTDOWN_TIMEOUT` | `REPOSILITE_SHUTDOWN_TIMEOUT` | `0` | Seconds the server waits for requests in flight after it has begun to drain. While it waits, new requests get `503`, except the health and readiness answers under `/api/status/`. `0` keeps the strict stop: the server stops at once, as before. Above `0`, the stop waits up to this many seconds and then stops whatever is still running. |
 | `INGOT_SHUTDOWN_DELAY` | `REPOSILITE_SHUTDOWN_DELAY` | `0` | Seconds the instance keeps serving after it has begun to drain and before the drain wait starts. During this time `/api/status/ready` answers `503` with `draining`, so a load balancer can take the instance out of the rotation first. `0` starts the drain wait at once. |
 
+## Request limit variables
+
+The server reads this variable once at start. It is optional, and unset means no limit: every request is answered as in earlier versions.
+
+| Variable | System property | Fallback | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| `INGOT_HTTP_MAXCONCURRENT` | `-Dingot.http.maxConcurrent` | `REPOSILITE_HTTP_MAXCONCURRENT` | unset | The most requests the server works on at the same time. A request that arrives while this many are in progress is answered at once with `503` and `Retry-After: 1`, without waiting for a free slot. `/api/status/health` and `/api/status/ready` are never refused and do not take a slot. The property wins over the variable, and the `INGOT_` name wins over the fallback. A value that is not a positive whole number, such as `0`, `-1` or `many`, stops the start, and the message names the variable. |
+
+A slot is held until the response is complete, not until the handler returns. An artifact download or an upload therefore holds its slot for its full duration, so size the limit above the number of streams you expect at the same time. Otherwise a legitimate download is refused. See [HTTP API overview](http-api.md#overload-answers) for the answer.
+
 ## Container variables
 
 The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
