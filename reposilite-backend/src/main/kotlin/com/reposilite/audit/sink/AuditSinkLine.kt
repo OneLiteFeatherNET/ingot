@@ -19,6 +19,7 @@ package com.reposilite.audit.sink
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.reposilite.audit.api.AuditAction
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -70,8 +71,11 @@ data class AuditSinkLine(
 
         private const val OCCURRENCES = 1
 
-        /** Its own mapper: the shared one leaves out null values, and every field of a line is always present. */
-        private val MAPPER = JsonMapper.builder().build()
+        /**
+         * Its own mapper: the shared one leaves out null values, and every field of a line is always present. The time
+         * module matches the shared mapper, so a detail value is written the same way in a line and in the table.
+         */
+        private val MAPPER = JsonMapper.builder().addModule(JavaTimeModule()).build()
 
     }
 
