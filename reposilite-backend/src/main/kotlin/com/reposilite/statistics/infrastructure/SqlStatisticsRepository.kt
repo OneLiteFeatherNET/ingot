@@ -54,7 +54,9 @@ private fun String.toContainsPattern(): LikePattern =
 internal class SqlStatisticsRepository(
     private val database: Database,
     private val journalist: Journalist,
-    private val runMigrations: Array<String>
+    private val runMigrations: Array<String>,
+    /** Replaces the identifier lookup of a write, so a test can simulate a row that another writer created after the lookup. */
+    private val identifierLookup: ((Identifier) -> UUID?)? = null
 ) : StatisticsRepository {
 
     object IdentifierTable : Table("statistics_identifier") {
@@ -191,17 +193,25 @@ internal class SqlStatisticsRepository(
             }
         }
 
-    private fun findOrCreateIdentifierId(identifier: Identifier): UUID =
-        findIdentifier(identifier) ?: createIdentifier(identifier)
-
-    private fun createIdentifier(identifier: Identifier): UUID =
-        identifier.toUUID().also { id ->
-            IdentifierTable.insert {
-                it[IdentifierTable.id] = id
-                it[IdentifierTable.repository] = identifier.repository
-                it[IdentifierTable.gav] = identifier.gav
-            }
+    private fun findOrCreateIdentifierId(identifier: Identifier): UUID {
+        val existing = when (identifierLookup) {
+            null -> findIdentifier(identifier)
+            else -> identifierLookup.invoke(identifier)
         }
+        return existing ?: createIdentifier(identifier)
+    }
+
+    private fun createIdentifier(identifier: Identifier): UUID {
+        val id = identifier.toUUID()
+        // Another writer may have created the same row after the lookup. The id is derived from the identifier, so that row is
+        // the one this writer needs, and the insert is ignored instead of failing the batch.
+        IdentifierTable.insertIgnore {
+            it[IdentifierTable.id] = id
+            it[IdentifierTable.repository] = identifier.repository
+            it[IdentifierTable.gav] = identifier.gav
+        }
+        return findIdentifier(identifier) ?: id
+    }
 
     private fun findIdentifier(identifier: Identifier): UUID? =
         with(identifier.toUUID()) {
