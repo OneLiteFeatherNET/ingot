@@ -35,6 +35,29 @@ clusterBus:
   # Name of a Secret with the key nats.creds. Mounts it read-only and sets INGOT_CLUSTER_CREDENTIALS to the file.
   credentialsSecret: ""
 
+## Opt-in NetworkPolicy. Off by default, so the chart renders no policy and the namespace keeps its networking.
+## The server accepts the Ingot port only from the peers listed under ingress, and in split mode the dashboard accepts
+## its port from the same list. DNS and the kubelet probes are not listed here. Enforcement needs a CNI that enforces
+## NetworkPolicy, such as Calico or Cilium.
+networkPolicy:
+  enabled: false
+  ingress:
+    # Namespaces that may reach the Ingot port. Each entry is a map of labels that select the namespace, for example
+    # kubernetes.io/metadata.name: gateway-system. An empty entry is refused, because it selects every namespace.
+    fromNamespaces: []
+    # Pods of the release namespace that may reach the Ingot port. Each entry is a map of pod labels, for example
+    # app.kubernetes.io/name: prometheus. An empty entry is refused.
+    fromPods: []
+  egress:
+    # Restricts the egress of the server, and of the dashboard in split mode, to DNS and the rules below.
+    enabled: false
+    # Allows public addresses on every port. 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 and fc00::/7 stay excluded, so
+    # services inside the cluster need an extra rule. The dashboard keeps its path to the server in any case.
+    allowInternet: true
+    # Extra egress rules, rendered unchanged, for example the database, the cluster bus or an in-cluster S3 endpoint.
+    # Example: [{to: [{ipBlock: {cidr: 10.0.4.0/24}}], ports: [{port: 5432, protocol: TCP}]}]
+    extra: []
+
 ## Name overrides. Set both to `reposilite` to take over the names of an upstream reposilite release.
 nameOverride: ""
 fullnameOverride: ""

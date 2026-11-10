@@ -34,6 +34,27 @@
         "credentialsSecret": {"type": "string", "description": "Secret with the key nats.creds, mounted read-only."}
       }
     },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Renders the NetworkPolicy of the server, and of the dashboard in split mode."},
+        "ingress": {
+          "type": "object",
+          "properties": {
+            "fromNamespaces": {"type": "array", "items": {"type": "object"}, "description": "Label maps of the namespaces that may reach Ingot."},
+            "fromPods": {"type": "array", "items": {"type": "object"}, "description": "Label maps of the pods of the release namespace that may reach Ingot."}
+          }
+        },
+        "egress": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean", "description": "Restricts egress to DNS, public addresses when allowInternet is set, and extra."},
+            "allowInternet": {"type": "boolean", "description": "Allows public addresses and excludes the private ranges."},
+            "extra": {"type": "array", "items": {"type": "object"}, "description": "Egress rules rendered unchanged."}
+          }
+        }
+      }
+    },
     "deployment": {
       "type": "object",
       "properties": {
