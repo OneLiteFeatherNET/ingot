@@ -237,6 +237,26 @@ env: []
 
 The percentage applies to the container memory limit, so set `resources.limits.memory` as well. The chart does not provide measured sizes; choose the percentages for your own load.
 
+## Trace with the OpenTelemetry Java agent
+
+The `opentelemetry` block adds the OpenTelemetry Java agent to the server. An init container copies the agent jar into an emptyDir, the server mounts it read-only at `/otel`, and the agent flag is added to `JDK_JAVA_OPTIONS`. The dashboard gets no agent.
+
+```yaml
+opentelemetry:
+  enabled: true
+  agentImage: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.30.0
+  serviceName: ingot
+  endpoint: http://otel-collector.observability.svc.cluster.local:4317
+  protocol: grpc
+  tracesExporter: otlp
+  metricsExporter: otlp
+  logsExporter: none   # the console output is usually shipped already
+```
+
+The chart sets `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_PROTOCOL`, the trace, metric and log exporters, and `OTEL_EXPORTER_OTLP_ENDPOINT` when `endpoint` is set. Set these in the block, not in `env`: a variable that both `env` and the block set fails the render. The agent image must carry the agent jar at `/javaagent.jar` and a shell with `cp`, and it is pinned by tag, which Renovate updates as it does for the other images. With the restricted Pod Security profile the init container runs under the same security context as the server.
+
+If your cluster runs the OpenTelemetry Operator, you can leave `opentelemetry.enabled` at `false` and inject the agent with the operator's `instrumentation.opentelemetry.io/inject-java` annotation on the pod instead. Use one of the two, not both.
+
 ## Use S3 for repositories
 
 Storage is set per repository in the maven settings. To store a repository in S3, set its `storageProvider` to `s3`. The endpoint can be an in-cluster service, for example a MinIO service:
