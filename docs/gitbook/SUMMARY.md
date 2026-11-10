@@ -16,6 +16,7 @@
 * [Run on Kubernetes](how-to/run-on-kubernetes.md)
 * [Manage secrets with GitOps](how-to/manage-secrets-with-gitops.md)
 * [Size the deployment](how-to/size-the-deployment.md)
+* [Collect a support bundle](how-to/collect-a-support-bundle.md)
 * [Run the dashboard split from the server with Helm](how-to/run-split-with-helm.md)
 * [Run the JAR](how-to/install-jar.md)
 * [Run as a service](how-to/run-as-service.md)
