@@ -73,7 +73,7 @@ An optional cluster bus can tell the other replicas at once when one of them cha
 
 ## What is not provided yet
 
-* **No readiness endpoint.** The health endpoint `/api/status/health` reports that the server is alive. Ingot has no separate endpoint that reports that a replica is ready to serve traffic. A load balancer cannot wait for a replica to finish its start-up steps, such as the database migrations.
+* **Readiness is per replica.** `/api/status/ready` answers whether this replica can serve traffic now. It answers `503` while the database, a storage root or, with a cluster bus, the bus is unavailable. The start-up steps, such as the database migrations, are covered by the `plugins` check, which passes only once the server has started. The health endpoint `/api/status/health` reports only that the server is alive, so a load balancer should probe `/api/status/ready`.
 * **No leader election.** Work is divided by claims and leases, not by a leader.
 * **No shared console, cache or counters.** The items in the table above stay per replica.
 

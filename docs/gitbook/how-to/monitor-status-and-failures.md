@@ -24,7 +24,16 @@ Ingot offers four ways to see what an instance is doing: a health endpoint for p
    * `200` with `{"status":"UP"}` means that the web server is running and answers.
    * `503` with `{"status":"DOWN"}` means that the web server is not ready or not alive.
 
-There is no separate readiness endpoint. `/api/status/health` is the only health check that Ingot provides.
+`/api/status/health` answers only whether the web server is running. A load balancer that must not send traffic to a replica that cannot serve it should probe the readiness endpoint instead:
+
+   ```
+   curl -i https://repo.example.org/api/status/ready
+   ```
+
+   * `200` with `{"status":"UP","failing":[]}` means that every readiness check passes.
+   * `503` with `{"status":"DOWN","failing":["database"]}` means that at least one check fails. The `failing` list names the checks, in this order: `plugins`, `database`, `storage` and `cluster`. The `cluster` check counts only when a cluster bus URL is configured.
+
+Each check has two seconds to answer, and a check that does not answer counts as failing. The body names no repository, path or error message. The details of a failing check are written to the log at `WARN`. While the database check fails, `/api/status/health` still answers `200` and `/api/status/ready` answers `503`.
 
 The container image has its own health check. It reads the address that Ingot writes to `/app/data/.local/reposilite.address` when it starts, and requests the root of the instance.
 
@@ -130,7 +139,6 @@ The plugin also exports the JVM metrics.
 
 ## What Ingot does not offer
 
-* A readiness probe. Use `/api/status/health` for both checks.
 * Alerting. Ingot records and exposes the values, and an external system such as Prometheus with Alertmanager decides when to alert.
 * A history of failures or snapshots across restarts. Use the log files or an external scrape for that.
 

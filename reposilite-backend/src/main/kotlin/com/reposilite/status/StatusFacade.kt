@@ -41,6 +41,8 @@ class StatusFacade(
     private val remoteVersionUrl: String,
     private val failureFacade: FailureFacade,
     private val clock: Clock = Clock.systemUTC(),
+    /** The checks of the plugins, the database and the storage. The cluster check is added here. */
+    private val readinessChecks: List<ReadinessCheck> = emptyList(),
 ) : Facade {
 
     private val cachedStatusSnapshots = EvictingQueue.create<StatusSnapshot>(12)
@@ -49,6 +51,18 @@ class StatusFacade(
     private var clusterStatusSource: ClusterStatusSource? = null
 
     private val snapshotListeners = CopyOnWriteArrayList<(InstanceFigures) -> Unit>()
+
+    /** Answers whether this instance can serve requests now. Served at /api/status/ready. */
+    val readinessProbe: ReadinessProbe = ReadinessProbe(
+        checks = readinessChecks + ReadinessCheck(
+            name = "cluster",
+            applies = { clusterStatusSource != null },
+            check = { clusterStatusSource?.clusterStatus(instanceFigures())?.bus?.state == "connected" },
+        ),
+        onFailure = { name, cause ->
+            failureFacade.logger.warn("Readiness check $name failed: ${cause?.let { "${it::class.simpleName}: ${it.message}" } ?: "the check answered no"}")
+        },
+    )
 
     /** Adds the cluster section to the status response. Called by the cluster bus only, when a bus URL is configured. */
     fun attachClusterStatus(source: ClusterStatusSource) {

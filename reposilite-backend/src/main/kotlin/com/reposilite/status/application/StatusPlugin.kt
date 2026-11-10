@@ -19,6 +19,7 @@ package com.reposilite.status.application
 import com.reposilite.VERSION
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.console.ConsoleFacade
+import com.reposilite.maven.MavenFacade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
@@ -31,10 +32,13 @@ import com.reposilite.plugin.reposilite
 import com.reposilite.shared.extensions.TimeUtils
 import com.reposilite.status.FailureFacade
 import com.reposilite.status.FailuresCommand
+import com.reposilite.status.ReadinessCheck
 import com.reposilite.status.StatusCommand
 import com.reposilite.status.StatusFacade
 import com.reposilite.status.StatusSnapshotScheduler
+import com.reposilite.status.answersListing
 import com.reposilite.status.infrastructure.StatusEndpoints
+import com.reposilite.storage.api.Location
 import com.reposilite.web.HttpServer
 import com.reposilite.web.api.HttpServerStoppedEvent
 import com.reposilite.web.api.RoutingSetupEvent
@@ -42,10 +46,11 @@ import panda.std.reactive.Completable
 import panda.std.reactive.Reference.Dependencies.dependencies
 import panda.std.reactive.Reference.computed
 import java.nio.file.StandardOpenOption
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
-@Plugin(name = "status", dependencies = ["console", "failure", "local-configuration"])
+@Plugin(name = "status", dependencies = ["console", "failure", "local-configuration", "maven"])
 internal class StatusPlugin : ReposilitePlugin() {
 
     /**
@@ -66,6 +71,21 @@ internal class StatusPlugin : ReposilitePlugin() {
         val localConfiguration = facade<LocalConfiguration>()
         val consoleFacade = facade<ConsoleFacade>()
 
+        // Set when the server has started, so every plugin has initialised and the web server is bound.
+        val started = AtomicBoolean(false)
+        val readinessChecks = listOf(
+            ReadinessCheck("plugins") { started.get() },
+            ReadinessCheck("database") {
+                // isValid takes seconds: a connection that does not answer the validation query fails the check
+                reposilite().databaseConnection.databaseSource.connection.use { it.isValid(2) }
+            },
+            ReadinessCheck("storage") {
+                facade<MavenFacade>().getRepositories().all { repository ->
+                    repository.storageProvider.getFiles(Location.empty()).answersListing()
+                }
+            },
+        )
+
         val statusFacade = StatusComponents(
             testEnv = parameters().testEnv,
             failureFacade = failureFacade,
@@ -75,14 +95,20 @@ internal class StatusPlugin : ReposilitePlugin() {
                 computed(dependencies(webThreadPool, ioThreadPool, databaseThreadPool)) {
                     webThreadPool.get() + ioThreadPool.get() + databaseThreadPool.get()
                 }
-            }
+            },
+            readinessChecks = readinessChecks,
         ).statusFacade()
 
         val statusSnapshotScheduler = StatusSnapshotScheduler(reposilite().scheduler, statusFacade)
         statusSnapshotScheduler.start()
 
         event { _: ReposiliteDisposeEvent ->
+            started.set(false)
             statusSnapshotScheduler.stop()
+        }
+
+        event { _: ReposiliteStartedEvent ->
+            started.set(true)
         }
 
         event { _: ReposiliteInitializeEvent ->

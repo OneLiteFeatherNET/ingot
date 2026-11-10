@@ -126,7 +126,7 @@ The answer is `{"status":"UP"}` with status `200`. A failing instance answers `5
 The chart runs a readiness probe and a liveness probe. Both send `GET /` to port `8080` by default. Set `probes.path` to point them at another path.
 
 {% hint style="warning" %}
-The probes check whether `/` answers. Ingot has no separate readiness endpoint. If you turn off the dashboard with `INGOT_LOCAL_DEFAULTFRONTEND=false`, check that `/` still answers with a success status before you rely on the probes. This behaviour was not verified for this page.
+The probes check whether `/` answers. The chart does not send them to the readiness endpoint `/api/status/ready` yet, so a replica whose database is down can still pass them. If you turn off the dashboard with `INGOT_LOCAL_DEFAULTFRONTEND=false`, check that `/` still answers with a success status before you rely on the probes. This behaviour was not verified for this page.
 {% endhint %}
 
 Kubernetes ignores the `HEALTHCHECK` of the image. Only the probes of the chart apply.
@@ -213,7 +213,7 @@ As of this writing, the code does not yet do the following, which the design for
 
 * Schema creation runs in every pod at startup, with no lock across pods.
 * A metadata write, such as a deployment that updates `maven-metadata.xml`, is not locked across pods. Two pods that deploy the same artifact at the same time can lose one version from the metadata.
-* There is no readiness endpoint, and shutdown does not wait for in-flight requests. Statistics are not flushed at shutdown.
+* The chart's probes do not use the readiness endpoint `/api/status/ready` yet, and shutdown does not wait for in-flight requests. Statistics are not flushed at shutdown.
 
 Until these are fixed, run one replica. Several replicas are only safe if you accept these risks. The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.
 {% endhint %}
