@@ -45,6 +45,10 @@ class HttpServer {
 
     private var reposilite: Reposilite? = null
 
+    /** The requests still in flight when the drain timeout ended in the last stop. Zero when the drain finished in time. */
+    @Volatile
+    private var requestsCutOff: Long = 0
+
     fun start(reposilite: Reposilite) {
         val extensionsManagement = reposilite.extensions
         val localConfiguration = extensionsManagement.facade<LocalConfiguration>()
@@ -106,11 +110,22 @@ class HttpServer {
         reposilite.extensions.emitEvent(HttpServerDrainingEvent)
 
         // Bounded by the timeout on its own. Jetty's stop timeout is not used, because its graceful wait would add a
-        // second wait of the same length after this one. The requests still in flight when it ends are cut off below.
-        runCatching { drained.get(reposilite.shutdownSettings.timeout.toMillis(), TimeUnit.MILLISECONDS) }
+        // second wait of the same length after this one.
+        val timeout = reposilite.shutdownSettings.timeout
+        val drainedInTime = runCatching { drained.get(timeout.toMillis(), TimeUnit.MILLISECONDS) }.isSuccess
+        if (!drainedInTime) {
+            requestsCutOff = drainHandler.currentRequestCount
+            reposilite.logger.warn(
+                "Drain timeout of ${timeout.seconds}s ended with $requestsCutOff request(s) still in flight, they are cut off"
+            )
+        }
 
         javalin?.stop()
     }
+
+    /** Requests that the last stop cut off because the drain timeout ended first. */
+    fun cutOffRequests(): Long =
+        requestsCutOff
 
     /** The handler the server dispatches to. With a drain timeout it is the drain handler, otherwise the Javalin chain. */
     fun rootHandler(): Handler? =

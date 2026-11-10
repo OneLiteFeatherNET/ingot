@@ -19,8 +19,6 @@ package com.reposilite.web
 import com.reposilite.Reposilite
 import com.reposilite.ReposiliteRunner
 import com.reposilite.ReposiliteSpecification
-import com.reposilite.journalist.Logger
-import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.status.api.ReadinessResponse
 import com.reposilite.web.api.HttpServerDrainingEvent
 import com.reposilite.web.api.ReposiliteRoute
@@ -48,8 +46,6 @@ internal abstract class GracefulDrainSpecification(
     private val settings: ShutdownSettings,
 ) : ReposiliteSpecification() {
 
-    protected val inMemoryLog = InMemoryLogger()
-
     /** Calls the shutdown made, in order: the delay with its duration, and the drain beginning. */
     protected val events: Queue<String> = ConcurrentLinkedQueue()
 
@@ -68,9 +64,6 @@ internal abstract class GracefulDrainSpecification(
         release.await(30, TimeUnit.SECONDS)
         ctx.result("released")
     }
-
-    override fun rootLogger(): Logger =
-        inMemoryLog
 
     override fun shutdownSettings(): ShutdownSettings =
         settings

@@ -48,17 +48,17 @@ internal class GracefulDrainTimeoutIntegrationTest : GracefulDrainSpecification(
 
     @Test
     @Timeout(60)
-    fun `should log the requests cut off when the timeout ends`() {
+    fun `should count the requests cut off when the timeout ends`() {
         // given: a request held in its handler, which the test does not release before the stop
         startHeldRequest()
 
         // when: the shutdown runs on this thread and the timeout ends
         reposilite.shutdown()
 
-        // then: the log names the one request that was still in flight and was cut off
-        assertThat(inMemoryLog.contains("1 request(s) still in flight"))
-            .`as`("the cut-off requests are logged")
-            .isTrue
+        // then: the one request that was still in flight is counted as cut off, the same count the warning reports
+        assertThat(reposilite.webServer.cutOffRequests())
+            .`as`("requests cut off by the timeout")
+            .isEqualTo(1L)
     }
 
 }
