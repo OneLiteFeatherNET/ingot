@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.onelitefeather.ingot.search
+package net.onelitefeather.ingot.repository.index
 
 /**
  * The write side that call sites use (artifact search spec, 7.1). An implementation only records that a path needs
@@ -38,4 +38,14 @@ object NoOpArtifactIndexSink : ArtifactIndexSink {
     override fun changed(repository: String, path: String) = Unit
     override fun removed(repository: String, path: String) = Unit
     override fun reorigin(repository: String, directory: String) = Unit
+}
+
+/**
+ * A facade that hands its sink to the write paths. The lazy sink finds the first registered provider at call time, so the
+ * writer does not need to know which facade provides the sink.
+ */
+interface ArtifactIndexSinkProvider {
+
+    val sink: ArtifactIndexSink
+
 }

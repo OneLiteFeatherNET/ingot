@@ -211,6 +211,10 @@ dependencies {
 
     val ldap = "7.0.4"
     testImplementation("com.unboundid:unboundid-ldapsdk:$ldap")
+
+    // Architecture rules over the compiled backend classes, see net.onelitefeather.ingot.architecture. Apache-2.0.
+    val archUnit = "1.5.1"
+    testImplementation("com.tngtech.archunit:archunit-junit5:$archUnit")
 }
 
 tasks.withType<ShadowJar> {

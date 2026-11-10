@@ -20,6 +20,7 @@ import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.maven.specification.RecordingArtifactIndexSink
 import com.reposilite.maven.specification.RecordingArtifactIndexSink.IndexCall
 import com.reposilite.plugin.Extensions
+import net.onelitefeather.ingot.repository.index.SearchFacadeArtifactIndexSink
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatCode
 import org.junit.jupiter.api.Test

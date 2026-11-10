@@ -26,6 +26,7 @@ import com.reposilite.cleanup.infrastructure.SqlCleanupRunRepository
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.api.DeleteRequest
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
@@ -50,6 +51,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
         val clock = Clock.systemDefaultZone()
         val cleanupSettings = facade<SharedConfigurationFacade>().getDomainSettings<CleanupSettings>()
         val mavenFacade = facade<MavenFacade>()
+        val repositoryRegistry = facade<RepositoryRegistry>()
         // One claim store for the service and the scheduler, so that the day lease and the run lease have the same owner.
         val claims = SqlScheduledJobClaims(reposilite().database, clock)
 
@@ -58,11 +60,11 @@ internal class CleanupPlugin : ReposilitePlugin() {
             clock = clock,
             policies = { cleanupSettings.get().policies },
             targets = {
-                mavenFacade.getRepositories().map { repository ->
+                repositoryRegistry.repositories().map { repository ->
                     CleanupTarget(
                         name = repository.name,
                         storage = repository.storageProvider,
-                        storesMirrors = repository.mirrorHosts.any { it.configuration.store },
+                        storesMirrors = repository.storesProxiedFiles,
                         cachedVersions = mavenFacade.mirrorCacheEntries(repository.name),
                     )
                 }

@@ -42,7 +42,7 @@ import com.reposilite.plugin.reposilite
 import com.reposilite.shared.http.ConfiguredHttpRemoteClientProvider
 import com.reposilite.shared.http.UpstreamStatusMode
 import com.reposilite.web.api.RoutingSetupEvent
-import net.onelitefeather.ingot.search.application.SearchFacadeArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.SearchFacadeArtifactIndexSink
 import java.time.Clock
 import panda.std.reactive.computed
 
@@ -80,6 +80,9 @@ internal class MavenPlugin : ReposilitePlugin() {
                 metadataLocks = metadataLocksFor(reposilite().database, clock),
                 mirrorEnvironment = MirrorEnvironment.read(),
             ).mavenFacade()
+
+        // Consumers that start before this plugin look the registry up lazily, so it only has to exist by then.
+        extensions().registerFacade(mavenFacade.repositoryRegistry())
 
         logger.info("")
         logger.info("--- Repositories")

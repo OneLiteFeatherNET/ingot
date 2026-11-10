@@ -18,7 +18,7 @@ package net.onelitefeather.ingot.search.api
 
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.reposilite.ReposiliteObjectMapper
-import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.maven.RepositoryVisibility
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
@@ -83,7 +83,7 @@ import java.time.Instant
 internal class SearchApiEndpoints(
     private val search: SearchFacade,
     private val accessTokens: AccessTokenFacade,
-    private val maven: MavenFacade,
+    private val repositories: RepositoryRegistry,
 ) : ReposiliteRoutes() {
 
     @OpenApi(
@@ -320,7 +320,7 @@ internal class SearchApiEndpoints(
     /** The rows the subject may see: anonymous without a token, and the token's own rights otherwise. */
     private fun accessOf(token: AccessTokenDto?): SearchAccess {
         val subject = token?.let { accessTokens.subjectOf(it.identifier) }
-        val visibilities: Map<String, RepositoryVisibility> = maven.getRepositories().associate { it.name to it.visibility }
+        val visibilities: Map<String, RepositoryVisibility> = repositories.repositories().associate { it.name to it.visibility }
         return SearchAccessCompiler.compile(subject, visibilities)
     }
 
@@ -359,7 +359,7 @@ internal class SearchApiEndpoints(
         if (names.isEmpty()) {
             throw InvalidSearchQueryException("repositories", "Name at least one repository, or leave the list out to rebuild all of them")
         }
-        val configured = maven.getRepositories().map { it.name }.toSet()
+        val configured = repositories.repositories().map { it.name }.toSet()
         names.firstOrNull { it !in configured }?.let { throw InvalidSearchQueryException("repositories", "Unknown repository $it") }
         return names
     }

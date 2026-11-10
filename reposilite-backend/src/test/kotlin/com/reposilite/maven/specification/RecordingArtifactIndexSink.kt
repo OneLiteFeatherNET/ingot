@@ -16,7 +16,7 @@
 
 package com.reposilite.maven.specification
 
-import net.onelitefeather.ingot.search.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**

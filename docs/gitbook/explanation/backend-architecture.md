@@ -42,14 +42,15 @@ flowchart TB
   end
   subgraph APP["Application"]
     A1["Plugins: application/ *Plugin classes, 19 in total"]
-    A2["Facades: MavenFacade, IdentityFacade, SearchFacade, AccessTokenFacade, LoginFacade"]
+    A2["Facades: MavenFacade, RepositoryRegistry, RepositoryCacheCoordinator, IdentityFacade, SearchFacade, AccessTokenFacade, LoginFacade"]
     A3["Services: RepositoryService, MirrorService, SessionService, RebuildService, VerifyService"]
     A4["Settings: *Settings classes bound through @Plugin(settings)"]
   end
   subgraph DOM["Domain"]
     D1["identity/model and identity/evaluation: PermissionEvaluator"]
     D2["maven: Repository, Location, Checksum, DeployRequest"]
-    D3["search: ArtifactPathParser, IndexModel, ArtifactIndexSink, ArtifactSearchEngine"]
+    D3["search: ArtifactPathParser, IndexModel, ArtifactSearchEngine"]
+    D4["repository (format-neutral): RepositoryRegistry, RegisteredRepository, RepositoryCacheCoordinator, index/ArtifactIndexSink"]
   end
   subgraph INF["Infrastructure"]
     I1["Exposed SQL: *Table objects, Sql* repositories, IdentityStore, LoginStore, OutboxStore"]
@@ -190,10 +191,9 @@ flowchart TB
   search --> local-configuration
   search --> shared-configuration
   search --> maven
-  frontend -.->|"MavenFacade, undeclared"| maven
-  access-token -.->|"MavenFacade, undeclared"| maven
+  frontend -.->|"MavenFacade, RepositoryRegistry, undeclared"| maven
+  access-token -.->|"RepositoryRegistry, undeclared"| maven
   search -.->|"AccessTokenFacade, undeclared"| access-token
-  maven -.->|"SearchFacade per call, undeclared"| search
   classDef plugin fill:#eef3fb,stroke:#3a5a8c
   classDef stub fill:#f7f7f7,stroke:#999,stroke-dasharray: 4 3
   class storage,frontend,maven,redirect,javadoc,cleanup,search plugin
@@ -204,11 +204,13 @@ The `web` plugin has no declared dependencies and no dependents. It only holds `
 
 Three of the undeclared lookups are deliberate, or at least documented in the code:
 
-- `FrontendPlugin` resolves `MavenFacade` inside a route lambda. Its comment says this avoids a cycle, because `MavenPlugin` depends on the frontend.
-- `AccessTokenPlugin` resolves `MavenFacade` inside lazy lambdas that run per request.
+- `FrontendPlugin` resolves `MavenFacade` inside a route lambda. Its comment says this avoids a cycle, because `MavenPlugin` depends on the frontend. The dashboard handler itself reads only `RepositoryRegistry`.
+- `AccessTokenPlugin` resolves `RepositoryRegistry` inside lazy lambdas that run per request.
 - `SearchPlugin` resolves `AccessTokenFacade` inside the `RoutingSetupEvent` listener.
 
-The fourth, `maven -.-> search`, is a runtime link that no declaration covers. Maven hands artifact changes to an `ArtifactIndexSink`. The sink it receives is `SearchFacadeArtifactIndexSink`, which looks up `SearchFacade` on every call and falls back to a no-op sink when search is absent or disabled.
+The former `maven -.-> search` link is gone. Maven no longer imports search. Artifact changes go to an `ArtifactIndexSink` in `net.onelitefeather.ingot.repository.index`, and `SearchFacadeArtifactIndexSink` in the same package finds the first registered `ArtifactIndexSinkProvider` on every call. `SearchFacade` is that provider. Without one, the calls fall back to a no-op sink, so an absent or disabled search changes nothing for writers. The dependency is now one way: search depends on Maven types, and Maven depends on nothing in search. An architecture test (`DependencyRulesTest`) fails the build if either direction of the rule breaks.
+
+Consumers that only need repository names, visibility or storage read them through `RepositoryRegistry`, which the maven plugin registers as a facade. The registry hands out the live repository instances, so a settings change is visible at the next lookup. The cluster bus reaches the resolution cache and the storage usage figures through `RepositoryCacheCoordinator`, which the same registry implements, because those calls change state and do not belong on a read-only port. Both interfaces are public but not yet stable for plugins: the format SPI adds a `format` member to `RegisteredRepository`, which breaks external implementors.
 
 ## UML class view: identity and permissions
 
@@ -388,6 +390,10 @@ classDiagram
     +removed(repository, path)
     +reorigin(repository, directory)
   }
+  class ArtifactIndexSinkProvider {
+    <<interface>>
+    +sink ArtifactIndexSink
+  }
   class SearchFacadeArtifactIndexSink {
     +sink() ArtifactIndexSink
   }
@@ -425,6 +431,8 @@ classDiagram
   FileSystemStorageProvider ..|> StorageEntrySource
   ArtifactIndexSink <|.. SearchFacadeArtifactIndexSink
   ArtifactIndexSink <|.. OutboxArtifactIndexSink
+  ArtifactIndexSinkProvider <|.. SearchFacade
+  SearchFacadeArtifactIndexSink ..> ArtifactIndexSinkProvider : finds first provider on each call
   SearchFacadeArtifactIndexSink ..> OutboxArtifactIndexSink : delegates to current sink
   OutboxArtifactIndexSink --> OutboxStore : enqueue
   OutboxWorker --> OutboxStore : claim, complete, fail

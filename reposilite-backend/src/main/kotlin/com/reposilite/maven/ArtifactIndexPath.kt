@@ -19,7 +19,7 @@ package com.reposilite.maven
 import com.reposilite.maven.api.Checksum
 import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.storage.api.Location
-import net.onelitefeather.ingot.search.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 
 /**
  * The path the artifact index is told about when [this] location was written. A checksum sidecar maps to its base file,

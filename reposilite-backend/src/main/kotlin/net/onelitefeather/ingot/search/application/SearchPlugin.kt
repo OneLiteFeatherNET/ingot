@@ -18,7 +18,7 @@ package net.onelitefeather.ingot.search.application
 
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
-import com.reposilite.maven.MavenFacade
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.maven.infrastructure.SqlMirrorCacheLedger
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -32,7 +32,7 @@ import com.reposilite.status.FailureFacade
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
-import net.onelitefeather.ingot.search.NoOpArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.NoOpArtifactIndexSink
 import net.onelitefeather.ingot.search.api.SearchApiEndpoints
 import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
 import net.onelitefeather.ingot.search.database.DatabaseArtifactSearchEngine
@@ -77,7 +77,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         val search = wire(database, clock)
         // Registered in both states: a disabled instance answers 404 on every route instead of having none.
         event { event: RoutingSetupEvent ->
-            event.registerRoutes(SearchApiEndpoints(search, facade<AccessTokenFacade>(), facade<MavenFacade>()))
+            event.registerRoutes(SearchApiEndpoints(search, facade<AccessTokenFacade>(), facade<RepositoryRegistry>()))
         }
         return search
     }
@@ -97,7 +97,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         val state = SearchStateStore(database, clock)
         val outbox = OutboxStore(database, clock)
         val instanceId = UUID.randomUUID().toString()
-        val maven = facade<MavenFacade>()
+        val repositoryRegistry = facade<RepositoryRegistry>()
         val readOnlyFacade = facade<ReadOnlyFacade>()
         val ledger = SqlMirrorCacheLedger(database)
         val index = DatabaseArtifactIndex(database)
@@ -105,7 +105,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             owner = instanceId,
             outbox = outbox,
             index = index,
-            storage = MavenIndexStorage(maven, clock),
+            storage = MavenIndexStorage(repositoryRegistry, clock),
             origins = LedgerOriginLookup(ledger),
             state = state,
             clock = clock,
@@ -113,7 +113,7 @@ internal class SearchPlugin : ReposilitePlugin() {
 
         val runs = RunStore(database, clock)
         val rows = IndexRowStore(database)
-        val repositories = MavenRepositoryEntries(maven, facade<FailureFacade>())
+        val repositories = MavenRepositoryEntries(repositoryRegistry, facade<FailureFacade>())
         val claims = SqlScheduledJobClaims(database, clock, instanceId)
         val settings = facade<SharedConfigurationFacade>().getDomainSettings<SearchSettings>()
         val rebuild = RebuildService(

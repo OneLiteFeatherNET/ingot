@@ -25,24 +25,25 @@ import com.reposilite.storage.api.Location
 import java.io.File
 import java.io.InputStream
 import java.nio.file.attribute.FileTime
+import net.onelitefeather.ingot.repository.RegisteredRepository
 import panda.std.Result
 
 @Suppress("DeprecatedCallableAddReplaceWith")
 class Repository internal constructor(
-    val name: String,
-    val visibility: RepositoryVisibility,
+    override val name: String,
+    override val visibility: RepositoryVisibility,
     val description: String,
     val tags: List<String>,
     val redeployment: Boolean,
     val preserveSnapshots: Boolean,
     val mirrorHosts: List<MirrorHost>,
-    val storageProvider: StorageProvider,
+    override val storageProvider: StorageProvider,
     val storagePolicy: StoragePolicy,
     val metadataMaxAgeInSeconds: Long,
     resolutionCacheMaxEntries: Int,
     /** The declared type, null for an untyped repository, which keeps the behaviour it always had. */
     val declaredType: RepositoryType? = null,
-) {
+) : RegisteredRepository {
 
     init {
         check(name.length < REPOSITORY_NAME_MAX_LENGTH) { "Repository name cannot exceed $REPOSITORY_NAME_MAX_LENGTH characters" }
@@ -52,8 +53,12 @@ class Repository internal constructor(
     val typeExplicit: Boolean
         get() = declaredType != null
 
+    /** Whether a mirror of this repository stores the files it proxies. Reads of such files keep a local copy. */
+    override val storesProxiedFiles: Boolean
+        get() = mirrorHosts.any { it.configuration.store }
+
     /** The effective type, see [effectiveRepositoryType]: the declared type, or the one derived from the mirrored repositories. */
-    val effectiveType: EffectiveRepositoryType
+    override val effectiveType: EffectiveRepositoryType
         get() {
             val loopback = mirrorHosts.count { it.client is RepositoryLoopbackClient }
             return effectiveRepositoryType(declaredType, loopbackReferences = loopback, externalReferences = mirrorHosts.size - loopback)

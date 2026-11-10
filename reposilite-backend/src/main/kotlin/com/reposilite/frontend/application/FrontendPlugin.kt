@@ -26,6 +26,7 @@ import com.reposilite.frontend.infrastructure.NotFoundHandler
 import com.reposilite.frontend.infrastructure.ResourcesFrontendHandler
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.infrastructure.MavenEndpoints
+import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.plugin.api.EventListener
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.Priorities
@@ -106,7 +107,7 @@ internal class FrontendPlugin : ReposilitePlugin() {
                             failureFacade = failureFacade,
                             frontendFacade = frontendFacade,
                             resourcesDirectory = FRONTEND_DIRECTORY,
-                            mavenFacade = mavenFacade,
+                            repositoryRegistry = facade<RepositoryRegistry>(),
                             mavenEndpoints = MavenEndpoints(
                                 mavenFacade = mavenFacade,
                                 frontendFacade = frontendFacade,

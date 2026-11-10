@@ -16,7 +16,7 @@
 
 package com.reposilite.maven
 
-import net.onelitefeather.ingot.search.ArtifactIndexSink
+import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.StoragePolicy.PRIORITIZE_UPSTREAM_METADATA
