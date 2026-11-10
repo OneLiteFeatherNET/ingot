@@ -31,6 +31,7 @@ import com.reposilite.maven.api.RepositorySummary
 import com.reposilite.maven.api.ResolvedDocument
 import com.reposilite.maven.api.ResolvedFileDataEvent
 import com.reposilite.maven.api.ResolvedFileEvent
+import com.reposilite.maven.api.UploadChecksumMismatchEvent
 import com.reposilite.plugin.Extensions
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
@@ -64,6 +65,11 @@ internal class RepositoryService(
     private val artifactIndexSink: ArtifactIndexSink,
 ) : Journalist {
 
+    private val uploadChecksumVerifier = UploadChecksumVerifier(
+        journalist = journalist,
+        publish = { extensions.emitEvent(it) },
+    )
+
     private val ignoredExtensions = listOf(
         // Checksums
         ".md5",
@@ -85,8 +91,8 @@ internal class RepositoryService(
         with(deployRequest) {
             when {
                 repository.acceptsDeploymentOf(gav) ->
-                    repository.storageProvider
-                        .putFile(gav, deployRequest.content)
+                    verifyUpload(repository, this)
+                        .flatMap { content -> repository.storageProvider.putFile(gav, content) }
                         .peek { logger.info("DEPLOY | Artifact $gav successfully deployed to ${repository.name} by ${deployRequest.by}") }
                         .peek { resolutionProvider.invalidate(repository, gav) }
                         .peek { extensions.emitEvent(DeployEvent(repository, gav, deployRequest.by)) }
@@ -106,6 +112,24 @@ internal class RepositoryService(
                         }
                 else -> errorResponse(CONFLICT, "Redeployment is not allowed")
             }
+        }
+
+    /**
+     * Checks a checksum file against the artifact stored before it, under the policy of the repository. Runs after the
+     * redeployment check, so a conflict is still answered first, and before anything is written.
+     */
+    private fun verifyUpload(repository: Repository, deployRequest: DeployRequest): Result<InputStream, ErrorResponse> =
+        with(deployRequest) {
+            uploadChecksumVerifier.verify(
+                repository = repository.name,
+                policy = repository.uploadChecksumPolicy,
+                gav = gav,
+                by = by,
+                content = content,
+                storedFile = StoredFileReader { location ->
+                    repository.storageProvider.takeIf { it.exists(location) }?.getFile(location)?.orNull()
+                },
+            )
         }
 
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
