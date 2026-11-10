@@ -298,9 +298,10 @@ internal class ClusterStatusAggregationTest {
         // when: the status is read as json
         val json = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(status.fetchInstanceStatus())
 
-        // then: the response has exactly the fields it had before the cluster bus existed
+        // then: the response has no cluster field, only the fields it had before the bus plus the read-only state
         assertThat(json.fieldNames().asSequence().toSet()).containsExactlyInAnyOrder(
             "version", "latestVersion", "uptime", "usedMemory", "maxMemory", "usedThreads", "maxThreads", "failuresCount",
+            "readOnly", "readOnlySource",
         )
     }
 }
