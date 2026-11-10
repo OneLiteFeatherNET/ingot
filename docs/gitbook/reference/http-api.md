@@ -157,6 +157,19 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 
 While `INGOT_SHARED_CONFIGURATION_RELOAD=true` and the shared settings come from a file, a `PUT` to a domain that the file holds answers `409`. The message names the file, nothing is written and no audit event is recorded. Change the file instead and let the instance pick it up. See [Shared settings reload](environment-variables.md#shared-configuration-reload).
 
+## Overload answers
+
+When the operator sets [`INGOT_HTTP_MAXCONCURRENT`](environment-variables.md#request-limit-variables), a request that arrives while that many requests are already in progress is answered at once with `503 Service Unavailable`. The answer carries `Retry-After: 1`, so a client can wait one second and send the request again. The body is the usual error object with `status` and `message`. A client that names `application/problem+json` with a higher quality than `application/json` gets the same body as problem details.
+
+The refusal does not wait for a free slot, does not read the request body and does not touch the database. The liveness and readiness answers are never refused and do not count against the limit:
+
+| Method | Path | Refused at the limit |
+| --- | --- | --- |
+| GET | `/api/status/health` | No |
+| GET | `/api/status/ready` | No |
+
+Downloads and uploads hold their slot until the last byte is transferred. Without the setting, no request is refused for concurrency.
+
 ## Status and statistics
 
 | Method | Path | Auth | Purpose |
