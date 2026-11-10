@@ -134,8 +134,11 @@ class SplitPolicyTest(unittest.TestCase):
                          "the dashboard pods must reach the server port only")
 
     def test_server_policy_does_not_open_the_dashboard_port(self):
-        values = dict(split_values(), **enabled(ingress={"fromNamespaces": [GATEWAY]}))
+        values = dict(split_values(), dashboard={"service": {"port": 9090}},
+                      **enabled(ingress={"fromNamespaces": [GATEWAY]}))
         dashboard_port = service_port(render(values), DASHBOARD)
+        self.assertNotEqual(service_port(render(values), SERVER), dashboard_port,
+                            "the ports must differ, or the test cannot tell the two policies apart")
         for rule in policy(values)["spec"]["ingress"]:
             self.assertNotIn({"port": dashboard_port, "protocol": "TCP"}, rule["ports"],
                              "the server policy must not open the dashboard port")
