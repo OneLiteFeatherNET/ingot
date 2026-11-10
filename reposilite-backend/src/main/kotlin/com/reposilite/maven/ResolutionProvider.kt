@@ -59,10 +59,6 @@ internal class ResolutionProvider(
         val isMetadata = gav.isResolutionMetadata()
         val notFoundMessage = "Cannot find '$gav' in local or remote repositories"
 
-        if (isMetadata && cached == ResolutionCache.Origin.MissingMetadata) {
-            return notFoundError(notFoundMessage)
-        }
-
         val candidates = (cached as? ResolutionCache.Origin.Remote)
             ?.let { decision -> repository.mirrorHosts.filter { it.host == decision.host }.ifEmpty { repository.mirrorHosts } }
             ?: repository.mirrorHosts
@@ -70,6 +66,12 @@ internal class ResolutionProvider(
         val protectedPrefix = NamespaceProtection.firstCovering(repository.protectedGroupPrefixes, gav)
         val hosts = if (protectedPrefix != null) candidates.filter(isHostedMember) else candidates
         val skipped = if (protectedPrefix != null) candidates.filterNot(isHostedMember) else emptyList()
+
+        // A cached miss of a coordinate with a skipped proxy is a refusal again, so every refused request is counted
+        if (isMetadata && cached == ResolutionCache.Origin.MissingMetadata) {
+            recordRefusal(repository, gav, accessToken, protectedPrefix, skipped)
+            return notFoundError(notFoundMessage)
+        }
 
         // Without a hosted member left, the proxy is not asked at all, and the answer is the miss of an unresolved coordinate
         val lookup: (List<MirrorHost>) -> MirrorResolution<T> =
@@ -81,9 +83,8 @@ internal class ResolutionProvider(
         }
 
         // A refusal changed the outcome only when a proxy was skipped and the hosted members came back empty
-        if (protectedPrefix != null && skipped.isNotEmpty() && attempt.isRefusal()) {
-            operationCounters.recordNamespaceRefusal(repository.name)
-            extensions.emitEvent(ProxyRefusedEvent(repository.name, gav, accessToken, protectedPrefix, skipped.map { it.host }))
+        if (attempt.isRefusal()) {
+            recordRefusal(repository, gav, accessToken, protectedPrefix, skipped)
         }
 
         if (cache != null && isMetadata) {
@@ -106,6 +107,15 @@ internal class ResolutionProvider(
     /** The request failed and the remote side answered with a miss, not with a failure of an upstream. */
     private fun <T> ResolveAttempt<T>.isRefusal(): Boolean =
         !result.isOk && (remote is MirrorResolution.NotFound || remote is MirrorResolution.NoEligibleHosts)
+
+    /** Counts and raises one refusal, when the coordinate is protected and at least one proxy member was skipped for it. */
+    private fun recordRefusal(repository: Repository, gav: Location, accessToken: AccessTokenIdentifier?, protectedPrefix: String?, skipped: List<MirrorHost>) {
+        if (protectedPrefix == null || skipped.isEmpty()) {
+            return
+        }
+        operationCounters.recordNamespaceRefusal(repository.name)
+        extensions.emitEvent(ProxyRefusedEvent(repository.name, gav, accessToken, protectedPrefix, skipped.map { it.host }))
+    }
 
     private fun <T : Any> tryLocalFirst(
         tryLocal: () -> Result<T, ErrorResponse>,
