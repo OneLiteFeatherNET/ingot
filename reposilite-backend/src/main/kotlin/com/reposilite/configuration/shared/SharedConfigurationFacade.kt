@@ -44,6 +44,7 @@ import panda.std.asError
 import panda.std.asSuccess
 import panda.std.ok
 import panda.std.reactive.MutableReference
+import java.util.concurrent.atomic.AtomicReference
 import java.util.ConcurrentModificationException
 import java.util.function.Supplier
 import kotlin.reflect.KClass
@@ -99,6 +100,9 @@ class SharedConfigurationFacade(
         val knownSchemes = jsonSchemaLoader.loadGeneratedSchemes().associateBy { it.name }
 
         sharedSettingsProvider.domains.forEach { (type, settings) ->
+            // Holds the document as it was written when references are on. Consumers read [settings], which then holds the
+            // resolved view. Without references the document and the consumer view are the same object, as they always were.
+            val written = AtomicReference<SharedSettings?>(null)
             registerSettingsWatcher(
                 DefaultSharedSettingsReference(
                     type = type,
@@ -109,8 +113,13 @@ class SharedConfigurationFacade(
                             val scheme = schemaGenerator.value.generateSchema(type).also { cleanupScheme(it) }.toPrettyString()
                             Supplier { scheme.byteInputStream() }
                         },
-                    getter = { settings.get() },
-                    setter = { settings.update(it) }
+                    getter = { written.get() ?: settings.get() },
+                    setter = { value ->
+                        // Resolved before anything is stored, so a failing reference leaves the previous document and view in place.
+                        val effective = resolveEffective(type, value)
+                        settings.update(effective)
+                        written.set(value.takeIf { secretReferences != null })
+                    }
                 )
             )
         }
@@ -191,7 +200,6 @@ class SharedConfigurationFacade(
 
                 val revision = refreshFromProvider()
                 val before = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
-                validateSecretReferences(name, reference.type, body)?.let { return SecretReferenceException(it).asError() }
                 val result = reference.update(body)
                 if (result.isErr) {
                     return result
@@ -256,8 +264,6 @@ class SharedConfigurationFacade(
                     return transformed.map { it.snapshot() }
                 }
 
-                validateSecretReferences(name, reference.type, transformed.get())?.let { return HttpStatus.BAD_REQUEST.toErrorResult(it) }
-
                 // The message of the exception, never its toString: that would put the class name in front of the rule.
                 val applied = reference.update(transformed.get()).mapErr { badRequest(it.message ?: "Settings domain '$name' cannot be stored") }
                 if (applied.isErr) {
@@ -282,22 +288,22 @@ class SharedConfigurationFacade(
         secretReferences != null
 
     /**
-     * Checks that every reference of [settings] can be resolved now. Nothing is stored by this check.
+     * The settings a consumer reads: [settings] with every reference of its [Sensitive] values replaced by the value it names. The
+     * document keeps the references as written, this view is only handed to the consumers of the domain.
      *
-     * @return the message of the first reference that cannot be resolved, null when all of them can
+     * @throws SecretReferenceException when a reference cannot be resolved, the message names the domain, the property and the reference
      */
-    private fun validateSecretReferences(name: String, type: Class<*>, settings: SharedSettings): String? {
-        val resolver = secretReferences ?: return null
-        return runCatching {
-            SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings)) { path, value ->
-                try {
-                    resolver.resolve(value)
-                } catch (exception: SecretReferenceException) {
-                    throw SecretReferenceException("Settings domain '$name', property '$path': ${exception.message}")
-                }
+    private fun resolveEffective(type: SharedSettingsClass, settings: SharedSettings): SharedSettings {
+        val resolver = secretReferences ?: return settings
+        val name = settingsName(type)
+        val resolved = SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings)) { path, value ->
+            try {
+                resolver.resolve(value)
+            } catch (exception: SecretReferenceException) {
+                throw SecretReferenceException("Settings domain '$name', property '$path': ${exception.message}")
             }
-            null
-        }.getOrElse { (it as? SecretReferenceException)?.message ?: "Settings domain '$name' has a reference that cannot be resolved" }
+        }
+        return DEFAULT_OBJECT_MAPPER.treeToValue(resolved, type)
     }
 
     /**
@@ -324,14 +330,18 @@ class SharedConfigurationFacade(
             getDomainNames().forEach { name ->
                 val node = document.get(name) ?: return@forEach
                 val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
+                // An unchanged document is not applied again, so its references are not read again on every request.
                 runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(node, reference.type) }
-                    .onSuccess { reference.update(it) }
+                    .onSuccess { stored -> if (!sameDocument(stored, reference.get())) reference.update(stored) }
                     .onFailure { journalist.logger.warn("Shared configuration | Cannot refresh '$name' from ${sharedConfigurationProvider.name()}: ${it.message}") }
             }
         }
 
         return stored.revision
     }
+
+    private fun sameDocument(left: SharedSettings, right: SharedSettings): Boolean =
+        DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(left) == DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(right)
 
     /**
      * Stores the rendered configuration if the stored document still has [expectedRevision], see [refreshFromProvider].
