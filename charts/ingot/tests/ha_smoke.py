@@ -25,6 +25,9 @@ RELEASE = "ingot-ha"
 S3_ENDPOINT = f"http://floci.{NAMESPACE}.svc.cluster.local:4566"
 S3_BUCKET = "ingot-smoke"
 S3_REGION = "us-east-1"
+BOOTSTRAP_USER = "smoke"
+BOOTSTRAP_SECRET = "smoke-ci-only-secret"
+"""The bootstrap token of the values file, sent as Basic authentication. Throwaway CI value."""
 CURL_IMAGE = "curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93"
 """The curl image of the in-cluster client and reader pods, pinned by tag and digest."""
 
@@ -38,6 +41,9 @@ class SystemClock:
 
     def now(self):
         return time.monotonic()
+
+    def wall(self):
+        return time.time()
 
     def sleep(self, seconds):
         time.sleep(seconds)
@@ -122,9 +128,11 @@ def parse_setup_code(log_text):
 
 
 def parse_set_cookies(headers):
-    """The values of the session cookies among the Set-Cookie headers, by cookie name."""
+    """The values of the session cookies among the Set-Cookie header lines, by cookie name."""
     cookies = {}
     for header in headers:
+        if header.lower().startswith("set-cookie:"):
+            header = header.split(":", 1)[1]
         pair = header.split(";", 1)[0].strip()
         name, sep, value = pair.partition("=")
         if sep and name in SESSION_COOKIES:

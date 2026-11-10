@@ -12,6 +12,8 @@ Run from the repository root:
 import unittest
 
 from ha_smoke import (
+    BOOTSTRAP_SECRET,
+    BOOTSTRAP_USER,
     LEASE_TTL_SECONDS,
     POLL_SECONDS,
     SmokeFailure,
@@ -182,6 +184,24 @@ class SetCookieTest(unittest.TestCase):
         ]
         self.assertEqual({"ingot_session": "s1", "ingot_refresh": "r1", "ingot_csrf": "c1"}, parse_set_cookies(headers),
                          "the attributes after the first segment are not part of the value")
+
+
+class RawSetCookieTest(unittest.TestCase):
+
+    def test_set_cookie_header_lines_are_read_with_their_prefix(self):
+        headers = ["HTTP/1.1 200 OK", "Set-Cookie: ingot_refresh=r9; Path=/api/auth; HttpOnly"]
+        self.assertEqual({"ingot_refresh": "r9"}, parse_set_cookies(headers),
+                         "the header lines of a curl response carry the Set-Cookie prefix")
+
+
+class BootstrapTokenTest(unittest.TestCase):
+
+    def test_the_driver_authenticates_with_the_token_the_values_file_creates(self):
+        import test_ha_dependencies
+        options = next(entry["value"] for entry in test_ha_dependencies.load_values()["env"]
+                       if entry["name"] == "REPOSILITE_OPTS")
+        self.assertIn(f"--token {BOOTSTRAP_USER}:{BOOTSTRAP_SECRET}", options,
+                      "the bootstrap token in the values must be the one the driver sends")
 
 
 class SingleRunTest(unittest.TestCase):
