@@ -38,6 +38,16 @@ The list is the enum `AuditAction` in `reposilite-backend/src/main/kotlin/com/re
 | `CLEANUP_RUN` | A cleanup policy run finishes, started manually or by the schedule (`CleanupService.run`). `success` is `true` only when the run status is `SUCCEEDED`. The actor is `system` for scheduled runs. `repository` is set when the policy names exactly one repository. | `runId`, `policy`, `scope`, `trigger`, `status`, `deletedCount`, `deletedBytes` |
 | `DATABASE_SNAPSHOT_CREATED` | A snapshot of the SQLite database is written, from `POST /api/database/snapshots` or from `--snapshot-database`. The actor is the principal of the request, or `command-line` for the flag. Only successful snapshots are recorded. | `file` (the file name in `backups/`) |
 
+### Mirrors and protected groups
+
+| Action | Written when | Details keys |
+| --- | --- | --- |
+| `NAMESPACE_PROXY_REFUSED` | A request under a protected group prefix was refused: a proxy member was skipped and no hosted member holds the coordinate. `AuditPlugin` listens to `ProxyRefusedEvent`. The actor is the token of the request, or `anonymous`. Sets `repository` and `path`, and `success` is `false`. The client address is not recorded. | `prefix` (the protected prefix that covers the coordinate), `skippedMembers` (names of the proxy members that were not asked) |
+| `MIRROR_CHECKSUM_MISMATCH` | A copy stored by a mirror with `checksumPolicy` `warn` or `fail` does not match the checksum file of the same host. `AuditPlugin` listens to `MirrorIntegrityEvent`. The actor is `system`, and `success` is `false`. Sets `repository` and `path`. | `host`, `policy` (`warn` or `fail`), `algorithm` (`sha256` or `sha1`), `outcome` (`stored` under `warn`, `refused` under `fail`) |
+| `MIRROR_CHECKSUM_MISSING` | A host of a mirror with `checksumPolicy` `warn` or `fail` publishes no checksum file for the artifact. The actor, `success` and the fields are those of `MIRROR_CHECKSUM_MISMATCH`, with `algorithm` set to `none`. | `host`, `policy`, `algorithm` (always `none`), `outcome` (`stored` under `warn`, `refused` under `fail`) |
+
+Nothing is written for a mirror with `checksumPolicy` `ignore`, or for metadata and checksum files. See [Check checksums](../how-to/create-proxy-repositories.md#check-checksums).
+
 ### Settings
 
 | Action | Written when | Details keys |

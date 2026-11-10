@@ -146,6 +146,8 @@ The plugin exports these metric families:
 | `ingot_http_server_requests_total` | Counter of requests, labelled `method`, `route` and `code`. |
 | `ingot_deploy_results_total{result}` | Counter of deploys, `result` is `accepted` or `rejected`. |
 | `ingot_upstream_requests_total{outcome}` | Counter of fetches from upstream hosts of proxy repositories, `outcome` is `success`, `not_found`, `failure` or `timeout`. |
+| `ingot_namespace_refusals_total{repository}` | Counter of requests that a protected group refused, by group id. A group with no refusal has no sample. Alert on an increase for a group whose builds should never be refused. See [Protect your own namespace](create-a-group-repository.md#protect-your-own-namespace). |
+| `ingot_mirror_checksum_results_total{policy,result}` | Counter of checks of mirror copies, `policy` is `warn` or `fail`, `result` is `verified`, `mismatch` or `missing`. All six series exist from the start. Alert on increases of `mismatch` and `missing` to notice a poisoned or misconfigured upstream. Mirrors with `ignore` count nothing. |
 | `ingot_mirror_cache_entries` | Gauge of the rows in the mirror cache, across all proxy repositories. |
 | `ingot_cluster_connected` | Gauge, `1` when the cluster bus is connected and `0` when it is not. Present only when a cluster bus is configured. |
 | `ingot_cluster_dropped_events_total` | Counter of cluster bus messages dropped because they exceeded the transport limits. Present only when a cluster bus is configured and its transport reports drops. |
