@@ -40,6 +40,13 @@ interface ScheduledJobClaims {
     fun lease(key: String, ttl: Duration): Boolean =
         throw UnsupportedOperationException("this claim store does not grant leases")
 
+    /**
+     * Grants the lease of [key] only when a run of the key was already started and not completed, and its lease has
+     * expired. Unlike [lease], it never creates the row, so a key that no instance started is not granted.
+     */
+    fun takeover(key: String, ttl: Duration): Boolean =
+        throw UnsupportedOperationException("this claim store does not take over leases")
+
     /** Moves the expiry of a live lease of [key] forward by [ttl], only when this instance is its owner. */
     fun extend(key: String, ttl: Duration): Boolean =
         throw UnsupportedOperationException("this claim store does not extend leases")
@@ -55,6 +62,7 @@ interface ScheduledJobClaims {
     object Unshared : ScheduledJobClaims {
         override fun claim(key: String): Boolean = true
         override fun lease(key: String, ttl: Duration): Boolean = true
+        override fun takeover(key: String, ttl: Duration): Boolean = false
         override fun extend(key: String, ttl: Duration): Boolean = true
         override fun complete(key: String, done: Boolean) = Unit
     }

@@ -33,6 +33,7 @@ import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
+import io.javalin.http.HttpStatus.CONFLICT
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.Location
@@ -48,6 +49,8 @@ internal class CleanupPlugin : ReposilitePlugin() {
         val clock = Clock.systemDefaultZone()
         val cleanupSettings = facade<SharedConfigurationFacade>().getDomainSettings<CleanupSettings>()
         val mavenFacade = facade<MavenFacade>()
+        // One claim store for the service and the scheduler, so that the day lease and the run lease have the same owner.
+        val claims = SqlScheduledJobClaims(reposilite().database, clock)
 
         val service = CleanupService(
             journalist = this,
@@ -66,22 +69,25 @@ internal class CleanupPlugin : ReposilitePlugin() {
             deleter = VersionDeleter { repository, path, actor, runId -> deleteVersion(mavenFacade, repository, path, actor, runId) },
             runs = SqlCleanupRunRepository(reposilite().database),
             extensions = extensions(),
-            claims = SqlScheduledJobClaims(reposilite().database, clock),
+            claims = claims,
         )
 
         val scheduler = CleanupScheduler(
             clock = clock,
             policies = { cleanupSettings.get().policies },
+            // The run is synchronous, so the scheduler can mark the day done once it has ended. The tick runs on the
+            // IO pool for the same reason: a run must not hold the scheduler thread.
             start = { policy ->
-                reposilite().ioService.execute {
-                    service.runScheduled(policy.id).onError { logger.warn("CLEANUP | Scheduled run of ${policy.id} failed: ${it.message}") }
-                }
+                service.runScheduled(policy.id, CleanupScheduler.dayKey(policy.id, clock))
+                    .onError { if (it.status != CONFLICT.code) logger.warn("CLEANUP | Scheduled run of ${policy.id} failed: ${it.message}") }
             },
-            claims = SqlScheduledJobClaims(reposilite().database, clock),
+            claims = claims,
             journalist = this,
         )
         val tick = reposilite().scheduler.scheduleWithFixedDelay({
-            runCatching { scheduler.tick() }.onFailure { logger.warn("CLEANUP | Scheduler tick failed: ${it.message}") }
+            reposilite().ioService.execute {
+                runCatching { scheduler.tick() }.onFailure { logger.warn("CLEANUP | Scheduler tick failed: ${it.message}") }
+            }
         }, 30, 30, SECONDS)
 
         event { _: ReposiliteDisposeEvent ->

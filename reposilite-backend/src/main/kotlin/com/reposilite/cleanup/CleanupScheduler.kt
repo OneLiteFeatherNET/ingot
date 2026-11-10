@@ -21,6 +21,7 @@ import com.reposilite.journalist.Journalist
 import com.reposilite.scheduling.ScheduledJobClaims
 import com.reposilite.scheduling.utcDayKey
 import java.time.Clock
+import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.util.concurrent.ConcurrentHashMap
@@ -28,13 +29,15 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Starts enabled policies at their daily time.
  *
- * [tick] is called periodically. A policy starts when the current minute is its scheduled minute in the zone of the
- * clock, and it starts at most once per day. A tick that comes after the scheduled minute does not catch up, so a
- * server that is down at the scheduled time skips that day's run.
+ * [tick] is called periodically. A policy starts at its scheduled minute in the zone of the clock, and it starts at most
+ * once per day. A tick after the scheduled minute does not start a run that was never started, so a server that is down
+ * at the scheduled time skips that day's run.
  *
- * Every instance that shares a database runs this scheduler. Before a policy starts, the instance claims the day's run
- * under `cleanup:<policy>:<UTC date>`, and only the instance whose claim is granted starts it. A claim is taken before
- * the run, so an instance that dies after claiming skips that day's run as well.
+ * Every instance that shares a database runs this scheduler. A run of a day holds the lease `cleanup:<policy>:<UTC date>`
+ * until [start] returns, and the day is then marked as done, so no instance runs it twice. A run that was started but
+ * not completed, because its instance stopped, is taken over by a later tick once that lease expired.
+ *
+ * [start] runs the policy and returns when the run has ended.
  */
 internal class CleanupScheduler(
     private val clock: Clock,
@@ -53,15 +56,31 @@ internal class CleanupScheduler(
         policies().forEach { policy ->
             if (!policy.enabled) return@forEach
             val due = policy.scheduledTime() ?: return@forEach
-            if (due.hour != now.hour || due.minute != now.minute) return@forEach
-            if (startedOn.put(policy.id, today) == today) return@forEach
-            val key = utcDayKey("cleanup:${policy.id}", clock)
-            if (!claims.claim(key)) {
-                journalist.logger.debug("CLEANUP | Scheduled run of ${policy.id} is claimed by another instance, skipping ($key)")
+            if (startedOn[policy.id] == today) return@forEach
+            val atScheduledMinute = due.hour == now.hour && due.minute == now.minute
+            val key = dayKey(policy.id, clock)
+            val granted = if (atScheduledMinute) claims.lease(key, DAY_LEASE) else claims.takeover(key, DAY_LEASE)
+            if (!granted) {
+                if (atScheduledMinute) journalist.logger.debug("CLEANUP | Scheduled run of ${policy.id} is claimed by another instance, skipping ($key)")
                 return@forEach
             }
-            start(policy)
+            startedOn[policy.id] = today
+            try {
+                start(policy)
+            } finally {
+                claims.complete(key, done = true)
+            }
         }
+    }
+
+    companion object {
+
+        /** A run that stops renewing its day key for this long lets a later tick take the day over. */
+        val DAY_LEASE: Duration = Duration.ofSeconds(60)
+
+        /** The key of the day's run of a policy, shared with the run so that the run can hold it while it deletes. */
+        fun dayKey(policyId: String, clock: Clock): String = utcDayKey("cleanup:$policyId", clock)
+
     }
 
 }

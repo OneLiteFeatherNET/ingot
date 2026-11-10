@@ -97,7 +97,6 @@ internal class SqlScheduledJobClaims(
         checkKey(key)
         require(!ttl.isNegative && !ttl.isZero) { "lease duration must be positive" }
         val now = clock.instant().toEpochMilli()
-        val expiry = clock.instant().plus(ttl).toEpochMilli()
         return transaction(database) {
             deleteExpiredRows(now)
 
@@ -107,17 +106,32 @@ internal class SqlScheduledJobClaims(
                 it[claimedAt] = now
                 it[leaseUntil] = ScheduledJobClaimTable.RELEASED
             }
-            val granted = ScheduledJobClaimTable.update({
-                (ScheduledJobClaimTable.jobKey eq key) and
-                    ScheduledJobClaimTable.doneAt.isNull() and
-                    ScheduledJobClaimTable.leaseUntil.isNotNull() and
-                    (ScheduledJobClaimTable.leaseUntil lessEq now)
-            }) {
-                it[leaseOwner] = owner
-                it[leaseUntil] = expiry
-            }
-            granted == 1
+            grantExpired(key, ttl, now)
         }
+    }
+
+    override fun takeover(key: String, ttl: Duration): Boolean {
+        checkKey(key)
+        require(!ttl.isNegative && !ttl.isZero) { "lease duration must be positive" }
+        val now = clock.instant().toEpochMilli()
+        return transaction(database) {
+            deleteExpiredRows(now)
+            grantExpired(key, ttl, now)
+        }
+    }
+
+    /** Grants the lease of a row that is not done and whose lease has expired or was released, in the current transaction. */
+    private fun grantExpired(key: String, ttl: Duration, now: Long): Boolean {
+        val expiry = clock.instant().plus(ttl).toEpochMilli()
+        return ScheduledJobClaimTable.update({
+            (ScheduledJobClaimTable.jobKey eq key) and
+                ScheduledJobClaimTable.doneAt.isNull() and
+                ScheduledJobClaimTable.leaseUntil.isNotNull() and
+                (ScheduledJobClaimTable.leaseUntil lessEq now)
+        }) {
+            it[leaseOwner] = owner
+            it[leaseUntil] = expiry
+        } == 1
     }
 
     override fun extend(key: String, ttl: Duration): Boolean {
