@@ -107,23 +107,29 @@ To change the level of the messages that the console shows while the instance ru
 
 ## Scrape Prometheus metrics (optional)
 
-The Prometheus plugin is not part of the Ingot image. Build it from this repository and add it to the instance.
+The container image ships the Prometheus plugin as `/app/bundled-plugins/prometheus-plugin.jar`, outside the data volume. It stays off until you set the switch. The steps below are for the image. An installation that does not use the image has to build the plugin first, see [Installations without the image](#installations-without-the-image).
 
-1. Build the plugin jar. The Gradle module is `reposilite-plugins:prometheus-plugin`, and the shadow jar is `prometheus-plugin.jar`.
+1. Set `INGOT_METRICS_ENABLED=true`, and set the credentials for the metrics endpoint with `INGOT_PROMETHEUS_USER` and `INGOT_PROMETHEUS_PASSWORD`. The older `REPOSILITE_PROMETHEUS_USER` and `REPOSILITE_PROMETHEUS_PASSWORD` names, and the JVM properties `reposilite.prometheus.user` and `reposilite.prometheus.password`, still work. The plugin throws at start when a value is missing.
 
-2. Copy `prometheus-plugin.jar` into the plugins directory. By default that is `plugins` in the working directory. In the container image that is `/app/data/plugins`. The directory is created if it does not exist. The option `-pd` (`--plugin-directory`) changes it.
+   The path defaults to `/metrics`. Change it with `INGOT_PROMETHEUS_PATH`, or with the older `REPOSILITE_PROMETHEUS_PATH` or `reposilite.prometheus.path`.
 
-3. Set the credentials for the metrics endpoint. Use either the environment variables `REPOSILITE_PROMETHEUS_USER` and `REPOSILITE_PROMETHEUS_PASSWORD`, or the JVM properties `reposilite.prometheus.user` and `reposilite.prometheus.password`. The plugin does not read the `INGOT_` spelling of these names. It throws at start when either value is missing.
-
-   The path defaults to `/metrics`. Change it with `REPOSILITE_PROMETHEUS_PATH` or `reposilite.prometheus.path`.
-
-4. Restart the instance, then scrape the endpoint with the credentials:
+2. Restart the instance, then scrape the endpoint with the credentials:
 
    ```
    curl -u "$PROMETHEUS_USER:$PROMETHEUS_PASSWORD" https://repo.example.org/metrics
    ```
 
    A request with other credentials is refused. To read only some metrics, add `?name[]=<name>` for each one.
+
+### Installations without the image
+
+1. Build the plugin jar. The Gradle module is `reposilite-plugins:prometheus-plugin`, and the shadow jar is `prometheus-plugin.jar`.
+
+2. Copy `prometheus-plugin.jar` into the plugins directory. By default that is `plugins` in the working directory. In the container image that is `/app/data/plugins`. The directory is created if it does not exist. The option `-pd` (`--plugin-directory`) changes it.
+
+3. Set the credentials as in step 1 above. A plugin in the plugins directory is always loaded, so `INGOT_METRICS_ENABLED` is not needed for this copy.
+
+4. Restart the instance, then scrape the endpoint as in step 2 above.
 
 The plugin exports these metric families:
 
