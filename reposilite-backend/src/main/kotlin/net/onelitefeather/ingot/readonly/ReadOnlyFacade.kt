@@ -21,6 +21,7 @@ import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.Facade
+import com.reposilite.plugin.api.ReadOnlyChangedEvent
 
 /**
  * The read-only state of this instance, for the request dispatch, the scheduled runs and the status, and the toggle that
@@ -61,6 +62,7 @@ class ReadOnlyFacade internal constructor(
 
         cache.refresh()
         extensions.emitEvent(AuditEvent(action = AuditAction.READ_ONLY_CHANGED, actor = actor, details = mapOf("enabled" to enabled)))
+        extensions.emitEvent(ReadOnlyChangedEvent(enabled))
         return ToggleOutcome.Stored(ReadOnlyState(enabled, ReadOnlySource.STORED))
     }
 

@@ -20,6 +20,7 @@ import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.maven.MavenFacade
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.facade
+import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import com.reposilite.storage.api.toLocation
 
 /** Applies the cache hooks through the facades of the running server. Facades are looked up when a hook runs, not earlier. */
@@ -35,5 +36,9 @@ internal class FacadeCacheHooks(private val plugin: ReposilitePlugin) : ClusterC
 
     override fun clusterBusOpened() {
         plugin.facade<MavenFacade>().bindResolutionCacheToClusterBus()
+    }
+
+    override fun readOnlyChanged() {
+        plugin.facade<ReadOnlyFacade>().refresh()
     }
 }

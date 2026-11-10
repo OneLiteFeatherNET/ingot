@@ -33,6 +33,9 @@ data class SessionFamilyRevokedEvent(val familyId: String) : Event
 /** Shared configuration of one settings domain was stored. */
 data class SharedConfigurationChangedEvent(val domain: String) : Event
 
+/** The read-only state was stored on this instance, with the flag that was stored. */
+data class ReadOnlyChangedEvent(val enabled: Boolean) : Event
+
 /** Repository storage usage was measured again. */
 data class StorageUsageRefreshedEvent(val computedAt: Instant, val repositories: List<StorageUsageFigure>) : Event
 

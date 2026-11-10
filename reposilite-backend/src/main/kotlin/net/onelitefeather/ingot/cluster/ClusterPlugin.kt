@@ -57,6 +57,7 @@ import java.util.concurrent.CopyOnWriteArrayList
         "access-token",
         "authentication",
         "configuration",
+        "read-only",
         "shared-configuration",
         "maven",
         "console",

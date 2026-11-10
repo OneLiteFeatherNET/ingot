@@ -30,4 +30,7 @@ interface ClusterCacheHooks {
 
     /** The server has started with a bus configured, so resolution entries are bounded from now on. */
     fun clusterBusOpened()
+
+    /** The read-only state was stored on another instance, so it is read again at once instead of after its five-second limit. */
+    fun readOnlyChanged() {}
 }

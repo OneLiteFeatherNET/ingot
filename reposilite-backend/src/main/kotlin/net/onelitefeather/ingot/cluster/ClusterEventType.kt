@@ -32,7 +32,9 @@ enum class ClusterEventType(val wireName: String, val payloadFields: Set<String>
     STATUS_SNAPSHOT(
         "status.snapshot",
         setOf("version", "uptimeStart", "usedMemory", "maxMemory", "usedThreads", "maxThreads", "failuresCount", "health", "interval", "sample"),
-    );
+    ),
+    READ_ONLY_CHANGED("read-only.changed", setOf("enabled")),
+    ;
 
     companion object {
 
