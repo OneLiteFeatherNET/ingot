@@ -81,7 +81,7 @@ internal class MetadataLeaseIntegrationTest {
             // then: it is refused with 503 and writes nothing, and the holder finishes its own write
             finish.countDown()
             holderThread.join(GUARD_SECONDS * 1000)
-            assertThat(other.isError).`as`("write of the other instance is refused").isTrue
+            assertThat(other.isErr).`as`("write of the other instance is refused").isTrue
             assertThat(other.error.status).`as`("status of the refused write").isEqualTo(SERVICE_UNAVAILABLE)
             assertThat(ranOther).`as`("write of the other instance ran under the lease of another instance").isFalse
             assertThat(held.get().isOk).`as`("write of the holder finished").isTrue

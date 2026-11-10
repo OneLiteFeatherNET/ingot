@@ -74,7 +74,7 @@ internal class MetadataLocksTest {
         // then: the second writer is refused after the wait bound, and its operation does not run
         finish.countDown()
         holder.join(GUARD_SECONDS * 1000)
-        assertThat(second.isError).`as`("second writer is refused").isTrue
+        assertThat(second.isErr).`as`("second writer is refused").isTrue
         assertThat(second.error.status).`as`("status of the refused second writer").isEqualTo(SERVICE_UNAVAILABLE)
         assertThat(ranSecond).`as`("second writer ran while the first one held the lock").isFalse
         assertThat(first.get().isOk).`as`("first writer finished").isTrue
@@ -124,10 +124,13 @@ internal class MetadataLocksTest {
     fun `releases the lock when the operation throws`() {
         // given: an update of the artifact fails inside its lock
         val locks = replica("replica-a", shared = false)
-        val failed = runCatching {
-            locks.withLock(key) { throw IllegalStateException("storage failed") }
+        var raised = false
+        try {
+            locks.withLock<Unit>(key) { throw IllegalStateException("storage failed") }
+        } catch (exception: IllegalStateException) {
+            raised = true
         }
-        assertThat(failed.isFailure).`as`("the failing update raised its exception").isTrue
+        assertThat(raised).`as`("the failing update raised its exception").isTrue
 
         // when: another writer of the artifact asks for the lock from another thread
         val later = AtomicReference<Result<Unit, ErrorResponse>>()
@@ -165,7 +168,7 @@ internal class MetadataLocksTest {
         }
 
         // then: the write is refused with 503, nothing is written, and the other instance keeps its lease
-        assertThat(result.isError).`as`("write is refused").isTrue
+        assertThat(result.isErr).`as`("write is refused").isTrue
         assertThat(result.error.status).`as`("status of the refused write").isEqualTo(SERVICE_UNAVAILABLE)
         assertThat(ran).`as`("operation ran while another instance held the lease").isFalse
         assertThat(leases.table(key).renew("replica-b", clock.instant().plus(LEASE)))
@@ -209,7 +212,7 @@ internal class MetadataLocksTest {
         }
 
         // then: the commit is refused with 503 and the metadata is not written
-        assertThat(result.isError).`as`("commit after the takeover is refused").isTrue
+        assertThat(result.isErr).`as`("commit after the takeover is refused").isTrue
         assertThat(result.error.status).`as`("status of the refused commit").isEqualTo(SERVICE_UNAVAILABLE)
         assertThat(writes).`as`("writes after the lease was taken over").isZero
     }
@@ -254,7 +257,7 @@ internal class MetadataLocksTest {
         }
 
         // then: the write is refused with 503 and nothing runs
-        assertThat(result.isError).`as`("write is refused").isTrue
+        assertThat(result.isErr).`as`("write is refused").isTrue
         assertThat(result.error.status).`as`("status of the refused write").isEqualTo(SERVICE_UNAVAILABLE)
         assertThat(ran).`as`("operation ran without the lease").isFalse
     }
