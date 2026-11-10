@@ -183,5 +183,6 @@ The startup log lists your plugin. The route answers `hello`. Deploying a file w
 ## Next steps
 
 * `load()`, lifecycle order, and the list of events: [Plugin API](../reference/plugin-api.md).
+* Dashboard pages without frontend code: [Plugin API, Dashboard pages](../reference/plugin-api.md#dashboard-pages). A plugin declares pages and settings sections as data, and the dashboard draws them.
 * Serving your own dashboard files or placeholders: [Serve a custom frontend](serve-custom-frontend.md).
 * Plugin dependencies: set `dependencies = ["maven"]` (or another plugin name) in `@Plugin`. Ingot initializes dependencies first and sorts the rest by name. A dependency name that matches no loaded plugin stops startup with `Unknown dependency`.

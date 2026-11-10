@@ -46,3 +46,15 @@ Repository files and the generated directory index are served with `Content-Secu
 
 * [Environment variables](../reference/environment-variables.md#security-header-variables)
 * [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md)
+
+## Plugin pages
+
+A plugin that adds a dashboard page does not add a source to this policy, and the dashboard does not load plugin JavaScript, stylesheets or frames. A page is declared as data and drawn with the dashboard's own components, see [Plugin API, Dashboard pages](../reference/plugin-api.md#dashboard-pages).
+
+The policy is kept for three reasons:
+
+- **The dashboard origin is the administrator.** The session cookies are HttpOnly, but the CSRF cookie is readable on purpose, and the dashboard calls every administrative endpoint with it. A script that runs in that origin can do what the administrator can do, so a plugin script in it would hold that power.
+- **The policy cannot tell a plugin script from the dashboard.** A script served for a plugin comes from the same host, so `script-src 'self'` allows it. Allowing plugin script would cost no policy change and gain no protection.
+- **The split image stays small.** The dashboard image serves the build and proxies the rest. Plugin script served from it would make the image as trusted as the plugin.
+
+A later version that loads plugin code would need a separate origin, a stated policy for it, an operator switch that is off by default and a signed or pinned bundle. That is not part of the current design.

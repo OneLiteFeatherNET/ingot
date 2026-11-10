@@ -103,6 +103,7 @@ Each key is a property of the local configuration. Types are `Boolean`, `Int`, `
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `defaultFrontend` | Boolean | `true` | Serves the dashboard from this instance. Set `false` when the dashboard runs in its own container. |
+| `pluginUi` | Boolean | `true` | Lets server plugins contribute dashboard pages, menu entries and settings sections as data. `false` shows only what Ingot ships: the plugin manifest is empty and contributed pages are not served. The routes of the plugins are not changed. See [Plugin API](plugin-api.md#dashboard-pages). |
 | `basePath` | String | `/` | Base path of the instance. A subdomain is preferred over a custom base path. |
 
 ### Shared settings and search
