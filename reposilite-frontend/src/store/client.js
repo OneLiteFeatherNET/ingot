@@ -404,6 +404,21 @@ const createClient = (defaultName, defaultSecret) => {
         )
       }
     },
+    // The support pages. The bundle is a zip, so it is read as a blob; the other two answer JSON.
+    support: {
+      availability() {
+        return get("/api/admin/support/availability")
+      },
+      systemInfo() {
+        return get("/api/admin/support/system-info")
+      },
+      bundle() {
+        return axios.get(createURL("/api/admin/support/bundle"), {
+          ...defaultAuthorization(),
+          responseType: "blob",
+        })
+      }
+    },
     status: {
       instance() {
         return get("/api/status/instance")

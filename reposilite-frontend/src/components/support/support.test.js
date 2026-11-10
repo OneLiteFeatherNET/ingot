@@ -14,37 +14,53 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
 import { ROUTES } from '../../router/routes'
-import { visibleChildren, groupedChildren } from '../../navigation/registry'
+import { PAGES, adminGroups, railGroups, setSupportBundleOffered } from '../../navigation/registry'
 import { canUse } from '../../store/nodeAccess'
-import { supportLinks } from './support'
 
 const CONSOLE = 'ingot.admin.console'
 const canWith = (nodes) => (node) => canUse(nodes, node)
-const keysOf = (items) => items.map(item => item.key)
+const linksOf = (groups, heading) => groups.find(group => group.heading === heading)?.links ?? []
+const keysOf = (links) => links.map(link => link.key)
 
-describe('support pages in the navigation registry', () => {
-  it('lists both support pages under Settings for a principal with the console area', () => {
-    expect(keysOf(visibleChildren('settings', canWith([CONSOLE])))).toEqual(['system-info', 'support'])
+// The offer of the instance is shared state of the registry, so every test starts without it.
+afterEach(() => setSupportBundleOffered(false))
+
+describe('support pages in the Administration tree', () => {
+  it('lists both support pages in the Support group for a principal with the console area', () => {
+    setSupportBundleOffered(true)
+
+    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['console', 'system-info', 'support'])
   })
 
-  it('places both support pages in the Support group of Settings', () => {
-    const groups = groupedChildren('settings', canWith([CONSOLE]))
+  it('names each page with its label and its route', () => {
+    setSupportBundleOffered(true)
 
-    expect(groups.map(group => group.heading)).toEqual(['Support'])
-    expect(groups[0].links.map(link => link.to)).toEqual([{ name: 'system-info' }, { name: 'support' }])
+    expect(linksOf(adminGroups(canWith([CONSOLE])), 'Support').slice(1)).toEqual([
+      { key: 'system-info', label: 'System information', to: { name: 'system-info' } },
+      { key: 'support', label: 'Support bundle', to: { name: 'support' } },
+    ])
+  })
+
+  it('hides both support pages while the instance does not offer them, whatever the nodes', () => {
+    setSupportBundleOffered(false)
+
+    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['console'])
   })
 
   it('hides both support pages from a principal without the console area', () => {
-    expect(keysOf(visibleChildren('settings', canWith(['ingot.admin.users'])))).toEqual([])
+    setSupportBundleOffered(true)
+
+    expect(linksOf(adminGroups(canWith(['ingot.admin.users'])), 'Support')).toEqual([])
   })
 
   it('adds no top level page to the rail, so the rail pages stay as they were', () => {
-    const railKeys = ['overview', 'search', 'dashboard', 'analytics', 'audit', 'access', 'settings', 'console', 'maintenance', 'account']
+    const pageKeys = PAGES.map(page => page.key)
 
-    expect(railKeys).not.toContain('system-info')
-    expect(railKeys).not.toContain('support')
+    expect(pageKeys).not.toContain('system-info')
+    expect(pageKeys).not.toContain('support')
+    expect(railGroups(canWith([CONSOLE])).flatMap(group => group.pages.map(page => page.key))).not.toContain('support')
   })
 })
 
@@ -69,26 +85,5 @@ describe('support routes', () => {
 
     expect(indexOf('system-info')).toBeLessThan(indexOf('settings'))
     expect(indexOf('support')).toBeLessThan(indexOf('settings'))
-  })
-})
-
-describe('supportLinks', () => {
-  it('offers both pages to a principal with the console area when the feature is on', () => {
-    expect(supportLinks(canWith([CONSOLE]), true).map(link => link.key)).toEqual(['system-info', 'support'])
-  })
-
-  it('offers no page when the feature is off, whatever the nodes', () => {
-    expect(supportLinks(canWith([CONSOLE, '*']), false)).toEqual([])
-  })
-
-  it('offers no page without the console area', () => {
-    expect(supportLinks(canWith(['ingot.admin.maintenance']), true)).toEqual([])
-  })
-
-  it('names each page with its label and route', () => {
-    expect(supportLinks(canWith([CONSOLE]), true)).toEqual([
-      { key: 'system-info', label: 'System information', to: { name: 'system-info' } },
-      { key: 'support', label: 'Support bundle', to: { name: 'support' } },
-    ])
   })
 })
