@@ -154,6 +154,41 @@ The comment in a generated `configuration.cdn` still lists `postgresql` under th
 | Template | `--generate-configuration shared` writes a template for the plugins that declare settings. |
 | Load errors | A document that cannot be loaded stops the start. `--ignore-shared-configuration-errors` starts with default values instead. |
 
+## Settings secret references
+
+A secret field of the shared settings can name the secret instead of holding it. That keeps the secret out of the database, out of a shared configuration file in Git and out of the settings API. Secret fields are the S3 endpoint, access key and secret key, the mirror password and HTTP proxy, the LDAP bind password, the OIDC client secret and the search user password. Other fields are never resolved.
+
+References are off by default. Turn them on with `INGOT_SETTINGS_SECRET_REFERENCES=true`, and list what they may read, see [Environment variables](environment-variables.md#settings-secret-references).
+
+| Text in a secret field | Meaning |
+| --- | --- |
+| `${env:NAME}` | The value of the variable `NAME`. The variable must be listed in `INGOT_SETTINGS_SECRET_ENV` and must be set. |
+| `${file:/absolute/path}` | The content of the file, without the line breaks at its end. The file must lie in a directory listed in `INGOT_SETTINGS_SECRET_FILES`, must hold UTF-8 text and must exist. |
+| `$${` | A literal `${`. Write `$${env:NAME}` to store the text `${env:NAME}` as a value. |
+| any other `${` | Plain text, unchanged. |
+
+Several references can appear in one value, for example an endpoint that embeds its credentials:
+
+```
+https://${env:S3_USER}:${file:/run/secrets/s3-password}@s3.example.test
+```
+
+Rules that apply to every reference:
+
+* The document keeps the reference as written. The settings API returns it as written, even when `hideSettingsSecrets` is on, because a reference is not a secret. A literal secret is still shown as `********`. A value that mixes a literal with a reference is treated as a literal secret.
+* A reference is resolved when the document is loaded: at start, on a reload of the shared configuration and when a newer document is read from the database. Ingot does not read a file again for each request, so a rotated file takes effect at the next load. Changing the file alone does not start a load. Restart the instance, or save the shared settings, after you rotate a secret.
+* Every instance that shares a document must be able to resolve its references, because each one reads its own environment and its own mounted files. An instance that cannot resolve a reference stops its own start, unless `--ignore-shared-configuration-errors` is set, and says so in its log.
+* A write through the settings API that names a reference which cannot be resolved on that instance is answered with `400`. The message names the field and the reference, and nothing is stored.
+* The message of a failing reference names the domain, the property and the reference. It never contains a resolved value.
+
+| Moment | A reference cannot be resolved | Effect |
+| --- | --- | --- |
+| Start | The start stops, as it does for any broken shared configuration | `--ignore-shared-configuration-errors` starts with default settings instead |
+| Reload or a newer document from the database | The new document is not applied | The previous settings stay in place and one error is logged |
+| Write through the API | The write is refused | `400`, nothing is stored |
+
+Setting `INGOT_SETTINGS_SECRET_REFERENCES` to `false` again returns every value to plain text. A stored reference is then used as the text it is, so check the secret fields before you switch it off.
+
 ## Command line parameters
 
 Run the jar as `java -jar ingot-<version>.jar [parameters]`. The container passes the value of `INGOT_OPTS` or `REPOSILITE_OPTS` to the same command, see [Environment variables](environment-variables.md#container-variables).

@@ -13,7 +13,9 @@ Each repository has its own storage provider. A repository can keep its files on
 * The endpoint URL if the service is not Amazon S3. It must include the scheme, for example `http://minio.storage.svc:9000`.
 
 {% hint style="warning" %}
-The S3 keys are stored with the repository settings in the database. Anyone who can read the database can read them. The settings API hides them only when `hideSettingsSecrets` is enabled.
+Without references, the S3 keys are stored as plain text with the repository settings in the database. Anyone who can read the database can read them. The settings API hides them only when `hideSettingsSecrets` is enabled.
+
+To keep a key out of the database, turn on settings secret references with `INGOT_SETTINGS_SECRET_REFERENCES=true`, list the file directory in `INGOT_SETTINGS_SECRET_FILES`, and set the secret key to a reference such as `${file:/run/secrets/s3-secret-key}`. The database then stores the reference and not the key. See [Settings secret references](../reference/configuration-and-startup.md#settings-secret-references).
 {% endhint %}
 
 ## Steps
