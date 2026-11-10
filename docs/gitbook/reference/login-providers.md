@@ -75,6 +75,10 @@ A GitHub provider is an entry with `icon` set to `GITHUB`. GitHub has no ID toke
 - Groups are `<org>` for each organisation and `<org>/<team-slug>` for each team of the user. Use these names in `adminGroups`.
 - The teams are read 100 per page, for at most 50 pages. A user with more teams fails the login, so that no membership is dropped silently. The login then fails with `provider_unavailable`.
 
+### Provider guides
+
+Step-by-step guides for Keycloak, Authentik, Okta, Google Workspace, Microsoft Entra ID and GitHub are linked from [Configure generic OIDC login](../how-to/configure-oidc-login.md). The rules for groups are in [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md), and the messages behind the codes below are in [Troubleshoot external login](../how-to/troubleshoot-external-login.md).
+
 ### Microsoft Entra ID
 
 There is no Entra specific code. Entra ID is configured as a generic OIDC provider.

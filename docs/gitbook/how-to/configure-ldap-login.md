@@ -50,11 +50,11 @@ The test is for instance administrators. It stores nothing, and it does not show
 
 ## Map groups to teams and admin groups
 
-Each Ingot team that should follow a directory group needs the external reference `ldap:<group>`, where `<group>` is the value of the group name attribute, for example `ldap:developers`. Set it in **Access**, then **Teams**, under **External reference**.
+Each Ingot team that should follow a directory group needs the external reference `ldap:<group>`, where `<group>` is the value of the group name attribute, for example `ldap:developers`. Set it in **Access**, then **Teams**, under **External reference**. The rules are in [Map provider groups to teams](map-provider-groups-to-teams.md).
 
 At each login, the sync adds the user to the teams whose group the user is in, and removes it from the teams whose group it is no longer in. Memberships that were added by hand are not changed.
 
-To make a directory group an instance admin group, add its name under **Admin groups** in the LDAP settings. Ingot then creates the team `ldap:<group>` and gives it the instance admin right, which follows the list at each login. Keep at least one local instance admin, see [Configure generic OIDC login](configure-oidc-login.md#map-groups-to-teams-and-admin-groups).
+To make a directory group an instance admin group, add its name under **Admin groups** in the LDAP settings. Ingot then creates the team `ldap:<group>` and gives it the instance admin right, which follows the list at each login. Keep at least one local instance admin. The rules of the sync are in [Map provider groups to teams](map-provider-groups-to-teams.md).
 
 ## Enable the login
 
