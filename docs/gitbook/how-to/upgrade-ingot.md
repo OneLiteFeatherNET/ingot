@@ -22,7 +22,7 @@ Ingot 1.2.0 is the first release with the identity model and artifact search. In
 * The image `ghcr.io/onelitefeathernet/ingot:1.2.0`.
 
 {% hint style="warning" %}
-A rolling upgrade, with replicas of the old and the new release on one database, is not tested. Choose one of these instead: keep a single replica running for a short window, or freeze token changes (creating, rotating and revoking tokens) until every replica runs 1.2.0.
+A rolling upgrade, with replicas of the old and the new release on one database, is covered only for the order and the limits in [High availability support](../explanation/high-availability-support.md#rolling-upgrade-rule). Start one replica of 1.2.0 first and replace the others after it. Until every replica runs 1.2.0, enable no scheduled cleanup policy and freeze token changes (creating, rotating and revoking tokens), because token changes are not tested. Alternatively, keep a single replica running for a short window.
 {% endhint %}
 
 ## Steps

@@ -107,7 +107,7 @@ The scheduled cleanup and the audit retention purge hold their daily run as a le
 
 No configuration, environment variable, volume or plugin changes. The schedule itself does not move.
 
-**Mixed versions.** A replica on the previous release ignores the leases, so during a rolling upgrade it can still run a cleanup next to a replica on this release. Upgrade one replica first, and enable no scheduled cleanup policy until every replica runs this release.
+**Mixed versions.** A replica on the previous release ignores the leases, so during a rolling upgrade it can still run a cleanup next to a replica on this release. Upgrade one replica first, and enable no scheduled cleanup policy until every replica runs this release. The rule for the pair of releases and the tests behind it are in [High availability support](../explanation/high-availability-support.md#rolling-upgrade-rule).
 
 ### Uploads are written beside their target
 

@@ -112,6 +112,7 @@
 
 * [Drop-in compatibility with Reposilite](explanation/drop-in-compatibility.md)
 * [Deployment options compared](explanation/deployment-options-compared.md)
+* [High availability support](explanation/high-availability-support.md)
 * [Multi-replica operation](explanation/multi-replica-operation.md)
 * [Storage and mirror caching](explanation/storage-and-mirror-caching.md)
 

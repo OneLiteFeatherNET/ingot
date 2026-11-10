@@ -6,8 +6,8 @@ description: Run Ingot on Kubernetes with the Ingot Helm chart, with a database 
 
 This page installs Ingot with the Ingot Helm chart, which is published as an OCI chart with each release. The chart sets the Deployment, Service, probes, persistence, autoscaling and ingress. You pass the Ingot settings through environment variables. Its values keep the keys of the upstream Reposilite chart, so [migrating an existing release](migrate-from-upstream-chart.md) is a values diff. To run the dashboard as its own workload, see [Run the dashboard split from the server with Helm](run-split-with-helm.md).
 
-{% hint style="warning" %}
-Several replicas are not fully supported yet. Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
+{% hint style="info" %}
+Which setups are supported with more than one replica, which are not, and the test behind each statement are listed in [High availability support](../explanation/high-availability-support.md). Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
 {% endhint %}
 
 ## Before you begin
@@ -424,7 +424,7 @@ Several replicas need all of the following:
 * A `ReadWriteMany` volume, or `persistence.enabled: false`, so that pods on other nodes can start.
 
 {% hint style="warning" %}
-Two points of the high availability design are covered by the code now. Schema creation takes a lock that is shared by all pods, with the timeout `schemaLockTimeout`. A metadata write is locked across the pods that share one database, which the tests cover for MariaDB. Statistics are flushed at shutdown.
+The schema lock and the metadata lock are shared by all pods of one database. The tests for these locks run on MariaDB, and the page [High availability support](../explanation/high-availability-support.md) names them and marks PostgreSQL with several replicas as not tested.
 
 These limits still apply:
 
