@@ -157,9 +157,28 @@ Counters and histograms count the work of one instance, so sum them across repli
 
 The plugin also exports the JVM metrics.
 
+## Alert rules and dashboards
+
+The Helm chart can render alert rules and Grafana dashboards for these metrics. Both read the metrics of the bundled plugin, so turn on the plugin first (step 1 above) and the ServiceMonitor of the chart, which provides the `up` series that the availability alert reads.
+
+* `prometheusRule.enabled: true` renders a PrometheusRule. It needs the Prometheus Operator CRDs, and it has six alerts:
+
+  | Alert | Fires when |
+  |-------|------------|
+  | `IngotDown` | Prometheus cannot scrape the server for 5 minutes. |
+  | `IngotHighErrorRatio` | More than 5% of the responses are server errors for 10 minutes. |
+  | `IngotUpstreamUnreachable` | More than half of the upstream fetches fail or time out for 15 minutes. |
+  | `IngotDeployRejections` | Deploys are rejected by the repository rules at a sustained rate for 30 minutes. |
+  | `IngotHeapPressure` | The heap stays above 90% of its maximum for 10 minutes. |
+  | `IngotClusterBusDisconnected` | A replica reports no cluster bus connection for 5 minutes. |
+
+* `grafanaDashboards.enabled: true` renders three ConfigMaps for the Grafana sidecar, each labelled `grafana_dashboard: "1"`: an overview, a mirroring and deploys dashboard, and a JVM dashboard. The sidecar loads them into Grafana.
+
+Compose users, or anyone who runs Grafana without the sidecar, can import the same dashboard JSON files by hand. They are in the repository under [charts/ingot/files/dashboards](https://github.com/OneLiteFeatherNET/ingot/tree/main/charts/ingot/files/dashboards): `overview.json`, `mirroring.json` and `jvm.json`. Each one has a `datasource` and a `namespace` and `service` variable, so pick the Prometheus data source and the scraped instance when you import it. For the alert rules outside the chart, copy the expressions from [the rule template](https://github.com/OneLiteFeatherNET/ingot/blob/main/charts/ingot/templates/prometheusrule.yaml) and replace the namespace and service selectors with yours.
+
 ## What Ingot does not offer
 
-* Alerting. Ingot records and exposes the values, and an external system such as Prometheus with Alertmanager decides when to alert.
+* Alerting in the server. Ingot records and exposes the values. The chart can render alert rules for Prometheus, see [Alert rules and dashboards](#alert-rules-and-dashboards), and Alertmanager decides where they go.
 * A history of failures or snapshots across restarts. Use the log files or an external scrape for that.
 
 ## Related
