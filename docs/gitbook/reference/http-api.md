@@ -112,7 +112,7 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/maven/repositories` | Optional token | Lists the repositories that the caller may see, sorted by id, with visibility, description and tags. |
+| GET | `/api/maven/repositories` | Optional token | Lists the repositories that the caller may see, sorted by id, with visibility, description and tags. Each entry also carries `versionPolicy` (`RELEASE`, `SNAPSHOT` or `MIXED`), `readOnly` (boolean) and `writePolicy` (`ALLOW`, `ALLOW_ONCE` or `READ_ONLY`, absent for a declared proxy or group). Older clients ignore the new fields. See [Repository settings](repository-settings.md#version-policy-and-read-only). |
 | GET | `/api/maven/repositories/{repository}/members` | Optional token | Lists the repositories that a group references. |
 | GET | `/api/maven/versions/{repository}/<gav>` | Optional token | Lists the versions of an artifact from its metadata. `filter` is a version prefix. `sorted` (default `true`) set to `false` keeps the raw order. |
 | GET | `/api/maven/latest/version/{repository}/<gav>` | Optional token | Returns the latest version of an artifact. `filter` is a version prefix, and `sorted` works as for the versions. |
