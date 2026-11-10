@@ -67,9 +67,8 @@ You should see your name in the header after the word **Welcome**. The account i
 
 The repository wizard creates three things in one run: the repository, a team that can deploy to it, and a machine account with a token that belongs to that team.
 
-1. Select **Settings**. On a narrow screen, **Settings** is under **More**.
-2. Open the **Maven** domain.
-3. Select the **Repositories** collection, then select **New repository**. The wizard opens.
+1. Select **Administration**, then **Repository**, then **Repositories**.
+2. Select **New repository**. The wizard opens.
 
 Work through the wizard steps:
 

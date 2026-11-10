@@ -6,7 +6,7 @@ description: Reference for every field of a repository in the maven settings of 
 
 Repositories are configured in the `maven` settings domain, in its `repositories` list. Each entry is one repository. This page lists every field of an entry, its type and default, and what the field does.
 
-Ingot loads the domain from the shared settings, so the dashboard (**Settings**, tab **Maven**) and the settings API edit the same data. Saved changes apply without a restart: Ingot recreates all repositories when the domain changes.
+Ingot loads the domain from the shared settings, so the dashboard (**Administration**, **Repository**, **Repositories**) and the settings API edit the same data. Saved changes apply without a restart: Ingot recreates all repositories when the domain changes.
 
 ```text
 GET /api/settings/domain/maven
@@ -14,6 +14,67 @@ PUT /api/settings/domain/maven
 ```
 
 Both endpoints need an instance admin. A `PUT` replaces the whole domain, so read it first and send it back with your change. A rejected update is not stored and answers `400` with a message that starts with `Invalid maven settings: `, followed by every rule that is broken, separated by `; `.
+
+## Repositories page
+
+The **Repositories** page of the dashboard, at `/settings/repositories`, lists the repositories of the `maven` domain in one table. Select a name to open that repository at `/settings/repositories/<id>`. A visitor needs the same permission as for **Settings**. Without it the page shows a no access message and loads no repository data.
+
+The page edits the same draft as the rest of **Settings**. A change made on the page waits in the save bar with every other unsaved change, and **Save** writes the `maven` domain. The page adds no endpoint of its own.
+
+### Columns
+
+The table lists every repository of the draft. A repository that is not saved yet has the text **Unsaved** in its row.
+
+| Column | Shows |
+| --- | --- |
+| Name | The id. Links to the repository's page. |
+| Type | The type in words: Hosted, Proxy, Group or Mixed. See [Derived type](#derived-type). |
+| Visibility | Public, Hidden or Private. |
+| Version policy | The version policy of the repository. Shown only when the settings schema of the server declares `versionPolicy`. A group shows a dash. |
+| Write policy | Allow, Allow once or Read only, for a hosted repository. See [Write policy](#write-policy). A group or proxy shows a dash. Without `readOnly` in the settings schema, the column shows Allow or Allow once from `redeployment` alone. |
+| Storage | File system or S3. A group shows a dash. |
+| Address | The address of the repository, with a button that copies it. |
+
+### Derived type
+
+A repository without a `type` key is untyped. The page works out its type from its references in the draft, with the same rule the server uses:
+
+| References | Type |
+| --- | --- |
+| None | Hosted |
+| Only names of repositories on this instance | Group |
+| Only `http://` or `https://` addresses | Proxy |
+| Both | Mixed |
+
+Blank references are ignored. The badge of an untyped repository says **derived** next to the type.
+
+**Declare type** writes the derived type to the `type` key, and nothing else. The change waits in the draft until you select **Save**. Declaring a type also drops the empty mirrored entries of the repository. When that would drop some, a dialog states how many entries are removed. Nothing changes until you confirm it.
+
+A repository with both local and remote references has the type **Mixed**. It has no **Declare type** action, because no single declared type gives the same result. The page shows this warning next to the badge and in the detail: "References local and remote repositories. Split it into a group and a proxy."
+
+### Write policy
+
+The write policy of a hosted repository is a choice of three values. It is stored in two existing fields. No key is added for the choice itself.
+
+| Choice | Stored result |
+| --- | --- |
+| Allow | `redeployment: true`, and `readOnly` removed or `false` |
+| Allow once | `redeployment: false`, and `readOnly` removed or `false`. An upload to a file that already exists is refused, as described under [Redeployment](#redeployment). |
+| Read only | `readOnly: true`. `redeployment` keeps its value. |
+
+Choosing Read only does not change `redeployment`, so choosing Allow or Allow once later returns the repository to the state it had before. A key is written only when the choice changes it. Saving a repository without touching the control leaves its stored JSON as it was.
+
+The response to a deploy to a Read only repository is not described on this page yet.
+
+### Delete
+
+To delete a repository, open its page and select **Delete**. The dialog asks you to type the id of the repository. The confirm button stays unavailable until the typed name matches. The dialog also names each group of the draft that lists the repository as a member. Focus starts on **Cancel**.
+
+Confirming removes the repository from the draft. The change takes effect when you select **Save**, like any other change of the `maven` domain.
+
+### Create
+
+**New repository** opens the repository wizard. The address `/settings/repositories?new=repository` opens it once and then removes the query from the address. The wizard steps are described in [Create hosted repositories](../how-to/create-hosted-repositories.md).
 
 ## Default repositories
 

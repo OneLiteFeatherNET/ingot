@@ -16,7 +16,7 @@ A hosted repository stores the artifacts that you upload to it. This guide creat
 
 ## Create the repository with the wizard
 
-1. Open **Settings** in the navigation and select the **Maven** tab. Select **New repository** in the list of repositories.
+1. Open **Administration** in the navigation, then **Repository**, then **Repositories**. Select **New repository** in the list of repositories.
 2. On **Basics**, enter the **Id**, choose **Who can read it** (**Public**, **Hidden** or **Private**), and optionally add a **Description** and **Tags**. Separate tags with commas. Tags use lowercase letters, digits and hyphens.
 3. Select **Next**. On **Storage**, choose **Filesystem** and set the **Quota**, or choose **S3 bucket** and fill in **Bucket** and, if needed, **Region**, **Endpoint**, **Access key** and **Secret key**.
     * The quota is a size such as `10GB` or `500MB`, or a percentage of the usable disk space such as `90%`. The default is `100%`.
@@ -38,7 +38,7 @@ If other settings have unsaved changes when you select **Create**, the wizard sa
 
 ## Change other settings
 
-The wizard does not set `redeployment`, `preserveSnapshots` or the optional `type`. To set them, open the repository from the list in **Settings**, **Maven**, change the field and save.
+The wizard does not set `redeployment`, `preserveSnapshots` or the optional `type`. To set them, open the repository from the list in **Administration**, **Repository**, **Repositories**, change the field and save.
 
 * **Redeployment** allows an upload to replace a file that already exists. It is off by default, so a second upload of the same file is refused.
 * **Preserved snapshots** keeps all older builds of a snapshot. It is off by default.

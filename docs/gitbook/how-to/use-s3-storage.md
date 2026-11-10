@@ -38,7 +38,7 @@ To keep a key out of the database, turn on settings secret references with `INGO
 
    Path style puts the bucket name in the URL path, for example `http://minio:9000/my-bucket/com/example/lib.jar`. The default is virtual-host style, which needs a DNS name per bucket.
 
-4. Open the repository in the dashboard at `Settings`, then `Maven`, then the repository. Select the S3 option of the storage provider and fill in the fields. The table below lists them.
+4. Open the repository in the dashboard at `Administration`, then `Repository`, then `Repositories`, and select the repository. Select the S3 option of the storage provider and fill in the fields. The table below lists them.
 
 5. Save. Ingot rebuilds its repositories when the settings change.
 
