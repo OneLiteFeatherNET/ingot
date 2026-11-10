@@ -20,6 +20,8 @@ import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.audit.application.AuditSettings
+import com.reposilite.audit.sink.AuditLineSink
+import com.reposilite.audit.sink.AuditSinkLine
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.plugin.api.Facade
@@ -39,6 +41,9 @@ private const val EXPORT_BATCH_SIZE = 500
 private const val MINUTE_MILLIS = 60_000L
 private const val DAY_MILLIS = 86_400_000L
 
+/** The node name of lines written by an instance that was not given one, such as in tests. */
+const val DEFAULT_NODE = "ingot"
+
 /** A purge that stops renewing its day key for this long lets a later call take the day over. */
 private val PURGE_LEASE: Duration = Duration.ofSeconds(60)
 
@@ -48,6 +53,8 @@ class AuditFacade(
     private val settings: Reference<AuditSettings>,
     private val clock: Clock,
     private val claims: ScheduledJobClaims = ScheduledJobClaims.Unshared,
+    private val lineSink: AuditLineSink = AuditLineSink.Disabled,
+    private val node: String = DEFAULT_NODE,
 ) : Facade, Journalist {
 
     private data class FailureKey(val name: String, val address: String?)
@@ -80,6 +87,7 @@ class AuditFacade(
     fun record(event: AuditEvent) {
         val now = clock.millis()
         val address = event.actor.address?.takeIf { settings.get().recordActorAddress }
+        offerLine(event, address)
 
         if (event.action == AuditAction.LOGIN_FAILED) {
             recordFailedLogin(event, address, now)
@@ -100,6 +108,30 @@ class AuditFacade(
                 occurrences = 1,
             )
         )
+    }
+
+    /**
+     * The JSON lines sink is offered the event before the row is written, so the line exists even when the database
+     * is down. The sink is best effort: a failure there is logged and never stops the row or the caller.
+     */
+    private fun offerLine(event: AuditEvent, address: String?) {
+        try {
+            lineSink.offer(
+                AuditSinkLine(
+                    time = clock.instant(),
+                    node = node,
+                    action = event.action,
+                    actor = event.actor.name,
+                    actorAddress = address,
+                    repository = event.repository,
+                    path = event.path,
+                    details = event.details.takeIf { it.isNotEmpty() }?.toMap(),
+                    success = event.success,
+                )
+            )
+        } catch (exception: Exception) {
+            logger.debug("AUDIT | JSON lines sink did not accept an event: ${exception.message}")
+        }
     }
 
     /**

@@ -70,6 +70,16 @@ data class ClusterSettings(
         const val DEFAULT_POLL_INTERVAL_MILLIS = 1000L
         const val MINIMUM_POLL_INTERVAL_MILLIS = 200L
 
+        /**
+         * The name of this instance on the bus and in the audit log: the system property `ingot.cluster.instance`, then
+         * `INGOT_CLUSTER_INSTANCE_ID`, then the host name. It does not depend on the bus being configured.
+         */
+        fun instanceIdOf(sources: ClusterSources): String =
+            firstDefined(
+                { sources.property("ingot.cluster.instance") },
+                { sources.variable("INGOT_CLUSTER_INSTANCE_ID") },
+            ) ?: sources.hostName()
+
         private val REDIS_FAMILY = setOf("redis", "rediss", "valkey", "valkeys")
         private val NATS_FAMILY = setOf("nats", "tls")
 
@@ -121,10 +131,7 @@ data class ClusterSettings(
             return ClusterSettings(
                 url = resolvedUrl,
                 credentialsFile = credentialsFile,
-                instanceId = firstDefined(
-                    { sources.property("ingot.cluster.instance") },
-                    { sources.variable("INGOT_CLUSTER_INSTANCE_ID") },
-                ) ?: sources.hostName(),
+                instanceId = instanceIdOf(sources),
                 console = booleanOf(
                     "INGOT_CLUSTER_CONSOLE",
                     sources.variable("INGOT_CLUSTER_CONSOLE"),
