@@ -149,6 +149,16 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 
 A change is written to the [audit log](audit-events.md) and announced on the cluster bus when one is configured. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
 
+## Migration: Nexus import
+
+Available only when `INGOT_NEXUS_IMPORT_ENABLED` is `true`. Without it these paths answer `404`. Every route needs instance admin.
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| POST | `/api/migration/nexus/connection/test` | Instance admin | Probes a Nexus with a URL, a user and a password in the body. Answers the reachability, the version from the `Server` header, whether the credential is accepted and which areas it can read. A URL with user information answers `400`. The password is never returned. |
+
+The remaining importer routes (discover, jobs, report, credentials) are listed here as they are added.
+
 ## Database
 
 | Method | Path | Auth | Purpose |

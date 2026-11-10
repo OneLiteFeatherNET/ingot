@@ -205,6 +205,20 @@ The image ships the plugin as `prometheus-plugin.jar` in `/app/bundled-plugins/`
 
 With the switch on and no user or password, start-up fails with the message above, as it does for an installed plugin without credentials. A `prometheus-plugin.jar` in the plugins directory with the same plugin id takes precedence: the bundled copy is then not loaded. The directory can be changed with the JVM property `ingot.bundledPlugins`, which is meant for tests and unusual images.
 
+### Nexus import variables
+
+The image also ships `nexus-import-plugin.jar`, the Nexus Repository 3 importer, in `/app/bundled-plugins/`. It is off until `INGOT_NEXUS_IMPORT_ENABLED` is `true`. Each variable below falls back to its `REPOSILITE_NEXUS_IMPORT_` spelling when the `INGOT_` name is unset, and the `INGOT_` name wins when it is set. An invalid value stops the plugin at start and the message names the variable.
+
+| Environment variable | Legacy environment variable | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_NEXUS_IMPORT_ENABLED` | `REPOSILITE_NEXUS_IMPORT_ENABLED` | unset (off) | `true` loads the importer. Off, no route exists and no table is created. |
+| `INGOT_NEXUS_IMPORT_CONCURRENCY` | `REPOSILITE_NEXUS_IMPORT_CONCURRENCY` | `4` (1 to 16) | Files in flight per job. |
+| `INGOT_NEXUS_IMPORT_MAX_REQUESTS_PER_SECOND` | `REPOSILITE_NEXUS_IMPORT_MAX_REQUESTS_PER_SECOND` | `5` (1 to 100) | Requests to Nexus per second per job, listing and downloads together. |
+| `INGOT_NEXUS_IMPORT_AUDIT` | `REPOSILITE_NEXUS_IMPORT_AUDIT` | `per-file` | `per-file` writes one deploy event per file with the actor `migration`. `summary` writes only the run event. |
+| `INGOT_NEXUS_IMPORT_ALLOWED_HOSTS` | `REPOSILITE_NEXUS_IMPORT_ALLOWED_HOSTS` | unset (any host) | Comma-separated host names a Nexus connection may point at. |
+
+There is no variable that turns off certificate verification. Nexus certificates are checked against the JVM trust store, and private certificate authorities belong there, see [Import from Nexus](../how-to/import-from-nexus.md).
+
 ### S3 upload variable
 
 | Variable | Fallback | Default | Meaning |
