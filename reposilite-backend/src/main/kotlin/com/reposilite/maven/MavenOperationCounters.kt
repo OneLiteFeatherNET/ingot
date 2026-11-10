@@ -18,6 +18,7 @@ package com.reposilite.maven
 
 import com.reposilite.shared.ErrorResponse
 import java.util.EnumMap
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 /** The result of one deploy request, as the metrics label it. */
@@ -48,6 +49,8 @@ enum class UpstreamOutcome {
 data class MavenOperationTotals(
     val deploys: Map<DeployOutcome, Long>,
     val upstream: Map<UpstreamOutcome, Long>,
+    /** Refusals of protected groups by repository. Only repositories that refused a request appear. */
+    val namespaceRefusals: Map<String, Long> = emptyMap(),
 )
 
 /**
@@ -58,6 +61,7 @@ class MavenOperationCounters {
 
     private val deploys = EnumMap<DeployOutcome, AtomicLong>(DeployOutcome::class.java)
     private val upstream = EnumMap<UpstreamOutcome, AtomicLong>(UpstreamOutcome::class.java)
+    private val namespaceRefusals = ConcurrentHashMap<String, AtomicLong>()
 
     init {
         DeployOutcome.entries.forEach { deploys[it] = AtomicLong() }
@@ -72,9 +76,15 @@ class MavenOperationCounters {
         upstream.getValue(outcome).incrementAndGet()
     }
 
+    /** Counts one request that the protected group [repository] refused. */
+    fun recordNamespaceRefusal(repository: String) {
+        namespaceRefusals.computeIfAbsent(repository) { AtomicLong() }.incrementAndGet()
+    }
+
     fun snapshot(): MavenOperationTotals = MavenOperationTotals(
         deploys = deploys.mapValues { it.value.get() },
         upstream = upstream.mapValues { it.value.get() },
+        namespaceRefusals = namespaceRefusals.mapValues { it.value.get() },
     )
 
 }

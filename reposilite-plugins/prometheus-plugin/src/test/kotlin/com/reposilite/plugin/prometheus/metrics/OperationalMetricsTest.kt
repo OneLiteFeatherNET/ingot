@@ -63,10 +63,16 @@ internal class OperationalMetricsTest {
     private fun io.prometheus.metrics.model.snapshots.Labels.toMap(): Map<String, String> =
         (0 until size()).associate { getName(it) to getValue(it) }
 
-    private fun maven(deployAccepted: Long = 0, deployRejected: Long = 0, upstream: Map<UpstreamOutcome, Long> = emptyMap()) =
+    private fun maven(
+        deployAccepted: Long = 0,
+        deployRejected: Long = 0,
+        upstream: Map<UpstreamOutcome, Long> = emptyMap(),
+        namespaceRefusals: Map<String, Long> = emptyMap(),
+    ) =
         MavenOperationTotals(
             deploys = mapOf(DeployOutcome.ACCEPTED to deployAccepted, DeployOutcome.REJECTED to deployRejected),
             upstream = UpstreamOutcome.entries.associateWith { upstream[it] ?: 0L },
+            namespaceRefusals = namespaceRefusals,
         )
 
     @Test
@@ -85,6 +91,7 @@ internal class OperationalMetricsTest {
         assertThat(names).containsExactlyInAnyOrder(
             "ingot_deploy_results",
             "ingot_upstream_requests",
+            "ingot_namespace_refusals",
             "ingot_mirror_cache_entries",
             "ingot_cluster_connected",
             "ingot_cluster_dropped_events",
@@ -92,6 +99,23 @@ internal class OperationalMetricsTest {
             "ingot_search_outbox_pending",
             "ingot_search_outbox_oldest_age_seconds",
         )
+    }
+
+    @Test
+    fun `should expose namespace refusals per protected group under the repository label`() {
+        // given: two refusals of one group and one of another
+        source.maven = maven(namespaceRefusals = mapOf("guarded" to 2L, "partners" to 1L))
+
+        // when: the series are scraped
+        register()
+
+        // then: each group carries its own count under the repository label
+        assertThat(samples("ingot_namespace_refusals"))
+            .describedAs("refusals must be counted per protected group")
+            .containsExactlyInAnyOrder(
+                mapOf("repository" to "guarded") to 2.0,
+                mapOf("repository" to "partners") to 1.0,
+            )
     }
 
     @Test

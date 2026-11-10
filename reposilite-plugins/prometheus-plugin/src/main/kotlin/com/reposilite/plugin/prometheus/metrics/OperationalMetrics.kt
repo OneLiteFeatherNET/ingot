@@ -51,7 +51,8 @@ internal interface OperationalSource {
 /**
  * The operational series of a replica. Each value is a callback that reads [source] when the registry is scraped, so no thread
  * is started and no value can go stale. Every label value comes from a fixed set: the deploy result, the upstream outcome and
- * the job name. No series carries a repository, path, user or token name.
+ * the job name. No series carries a path, user or token name. The namespace refusals carry the id of the configured group,
+ * which is bounded by the configuration and never by a request.
  */
 internal class OperationalMetrics(
     registry: PrometheusRegistry,
@@ -74,6 +75,15 @@ internal class OperationalMetrics(
             .labelNames("outcome")
             .callback { callback ->
                 source.maven()?.upstream?.forEach { (outcome, count) -> callback.call(count.toDouble(), outcome.name.lowercase()) }
+            }
+            .register(registry)
+
+        CounterWithCallback.builder()
+            .name("ingot_namespace_refusals_total")
+            .help("Requests a protected group refused because only a proxy member held the coordinate, by group")
+            .labelNames("repository")
+            .callback { callback ->
+                source.maven()?.namespaceRefusals?.forEach { (repository, count) -> callback.call(count.toDouble(), repository) }
             }
             .register(registry)
 

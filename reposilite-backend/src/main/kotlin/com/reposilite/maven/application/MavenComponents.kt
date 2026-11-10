@@ -90,7 +90,7 @@ internal class MavenComponents(
         )
 
     private fun resolutionProvider(): ResolutionProvider =
-        ResolutionProvider(journalist, extensions)
+        ResolutionProvider(journalist, extensions, operationCounters)
 
     private fun repositoryProvider(
         mirrorService: MirrorService = mirrorService(),

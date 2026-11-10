@@ -33,7 +33,11 @@ internal object NamespaceProtection {
 
     /** Whether any of [prefixes] covers the coordinate at [gav]. */
     fun isProtected(prefixes: Collection<String>, gav: Location): Boolean =
-        prefixes.any { covers(it, gav) }
+        firstCovering(prefixes, gav) != null
+
+    /** The first of [prefixes] that covers the coordinate at [gav], or null when none does. */
+    fun firstCovering(prefixes: Collection<String>, gav: Location): String? =
+        prefixes.firstOrNull { covers(it, gav) }
 
     /**
      * Whether [gav] lies below [prefix]: its leading path segments are the segments of the prefix. A location with fewer

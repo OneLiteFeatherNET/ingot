@@ -24,12 +24,14 @@ import com.reposilite.audit.infrastructure.AuditEndpoints
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.maven.api.DeleteEvent
 import com.reposilite.maven.api.DeployEvent
+import com.reposilite.maven.api.ProxyRefusedEvent
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
+import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
 import java.time.Clock
 import java.util.concurrent.TimeUnit.HOURS
@@ -38,7 +40,7 @@ import java.util.concurrent.TimeUnit.HOURS
  * Keeps the audit log. Administrative events arrive as [AuditEvent] from the services that changed
  * something, artifact events are read from the repository events, and a daily job applies the retention.
  */
-@Plugin(name = "audit", dependencies = ["shared-configuration"], settings = AuditSettings::class)
+@Plugin(name = "audit", dependencies = ["shared-configuration", "access-token"], settings = AuditSettings::class)
 internal class AuditPlugin : ReposilitePlugin() {
 
     override fun initialize(): AuditFacade {
@@ -75,6 +77,14 @@ internal class AuditPlugin : ReposilitePlugin() {
             }
         }
 
+        val accessTokenFacade = facade<AccessTokenFacade>()
+        event { event: ProxyRefusedEvent ->
+            recordSafely {
+                val tokenName = event.accessToken?.let { accessTokenFacade.getAccessTokenById(it)?.name }
+                auditFacade.record(proxyRefusedAuditEvent(event, tokenName))
+            }
+        }
+
         event { _: ReposiliteInitializeEvent ->
             reposilite().scheduler.scheduleWithFixedDelay({ recordSafely { auditFacade.purgeExpired() } }, 1, 24, HOURS)
         }
@@ -99,6 +109,21 @@ internal class AuditPlugin : ReposilitePlugin() {
     }
 
 }
+
+/**
+ * The audit event of a request that a protected group refused. The actor is the token that made the request, or the
+ * anonymous actor when the token is unknown. The details name the matched prefix and the proxy members that were not asked,
+ * and the address of the client is not known at this layer, so it is left out.
+ */
+internal fun proxyRefusedAuditEvent(event: ProxyRefusedEvent, tokenName: String?): AuditEvent =
+    AuditEvent(
+        action = AuditAction.NAMESPACE_PROXY_REFUSED,
+        actor = tokenName?.let { AuditActor.named(name = it, address = null) } ?: AuditActor.anonymous(address = null),
+        repository = event.repository,
+        path = event.gav.toString(),
+        details = mapOf("prefix" to event.prefix, "skippedMembers" to event.skippedMembers),
+        success = false,
+    )
 
 /**
  * The audit event of a removed file. A file removed by a cleanup run gets none: the run records one

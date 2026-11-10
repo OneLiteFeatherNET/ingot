@@ -19,6 +19,7 @@ package com.reposilite.maven
 import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.api.METADATA_FILE
+import com.reposilite.maven.api.ProxyRefusedEvent
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.ResolutionInvalidatedEvent
 import com.reposilite.shared.ErrorResponse
@@ -31,6 +32,7 @@ import panda.std.Result
 internal class ResolutionProvider(
     private val journalist: Journalist,
     private val extensions: Extensions,
+    private val operationCounters: MavenOperationCounters,
 ) : Journalist {
 
     private data class ResolveAttempt<T>(
@@ -65,9 +67,9 @@ internal class ResolutionProvider(
             ?.let { decision -> repository.mirrorHosts.filter { it.host == decision.host }.ifEmpty { repository.mirrorHosts } }
             ?: repository.mirrorHosts
 
-        val protected = NamespaceProtection.isProtected(repository.protectedGroupPrefixes, gav)
-        val hosts = if (protected) candidates.filter(isHostedMember) else candidates
-        val skipped = if (protected) candidates.filterNot(isHostedMember) else emptyList()
+        val protectedPrefix = NamespaceProtection.firstCovering(repository.protectedGroupPrefixes, gav)
+        val hosts = if (protectedPrefix != null) candidates.filter(isHostedMember) else candidates
+        val skipped = if (protectedPrefix != null) candidates.filterNot(isHostedMember) else emptyList()
 
         // Without a hosted member left, the proxy is not asked at all, and the answer is the miss of an unresolved coordinate
         val lookup: (List<MirrorHost>) -> MirrorResolution<T> =
@@ -76,6 +78,12 @@ internal class ResolutionProvider(
         val attempt = when {
             cached is ResolutionCache.Origin.Remote || mirrorFirst -> tryRemoteFirst(tryLocal, lookup, hosts, notFoundMessage)
             else -> tryLocalFirst(tryLocal, lookup, hosts, notFoundMessage)
+        }
+
+        // A refusal changed the outcome only when a proxy was skipped and the hosted members came back empty
+        if (protectedPrefix != null && skipped.isNotEmpty() && attempt.isRefusal()) {
+            operationCounters.recordNamespaceRefusal(repository.name)
+            extensions.emitEvent(ProxyRefusedEvent(repository.name, gav, accessToken, protectedPrefix, skipped.map { it.host }))
         }
 
         if (cache != null && isMetadata) {
@@ -94,6 +102,10 @@ internal class ResolutionProvider(
 
         return false
     }
+
+    /** The request failed and the remote side answered with a miss, not with a failure of an upstream. */
+    private fun <T> ResolveAttempt<T>.isRefusal(): Boolean =
+        !result.isOk && (remote is MirrorResolution.NotFound || remote is MirrorResolution.NoEligibleHosts)
 
     private fun <T : Any> tryLocalFirst(
         tryLocal: () -> Result<T, ErrorResponse>,
