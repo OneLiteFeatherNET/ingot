@@ -69,6 +69,34 @@ To keep a key out of the database, turn on settings secret references with `INGO
 
 For AWS, set the region of your bucket.
 
+## Credentials from the workload identity
+
+Ingot passes credentials to the S3 client only when both `accessKey` and `secretKey` are set. When either one is empty, Ingot passes no static credentials, and the default credential chain of the AWS SDK applies. A key that is set alone is not used. To run without static keys, leave both empty and give the pod an identity that the chain reads.
+
+### IAM roles for service accounts (IRSA)
+
+Annotate the service account of Ingot with the ARN of the IAM role. The chart renders the annotation from `serviceAccount.annotations`, and only when the chart creates the service account (`serviceAccount.create: true`, the default):
+
+```yaml
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::<account-id>:role/<role-name>
+```
+
+The role must allow the S3 actions on the bucket, and its trust policy must name the service account of the release. Keep `accessKey` and `secretKey` empty in the repository settings.
+
+If you point `serviceAccount.name` at a service account that already exists, add the annotation to that service account yourself. The chart does not change it.
+
+### EKS Pod Identity
+
+Pod Identity needs no annotation on the service account. Create the association between the role and the service account of the release in AWS. Keep `accessKey` and `secretKey` empty, as above.
+
+### Region
+
+The region of the repository is used first. When it is empty, Ingot reads `AWS_REGION` from the environment of the pod. The chart can supply it with `objectStorage.existingSecret`, see [Run on Kubernetes](run-on-kubernetes.md#use-s3-for-repositories).
+
+For the fields of a repository, see [Storage providers](../reference/storage-providers.md).
+
 ## Large uploads
 
 Ingot does not copy an upload to its temporary directory first. It sends the bytes to the bucket as they arrive:
