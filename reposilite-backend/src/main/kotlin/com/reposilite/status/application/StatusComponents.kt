@@ -20,6 +20,8 @@ import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.status.FailureFacade
 import com.reposilite.status.ReadinessCheck
 import com.reposilite.status.StatusFacade
+import net.onelitefeather.ingot.readonly.ReadOnlySource
+import net.onelitefeather.ingot.readonly.ReadOnlyState
 import panda.std.reactive.Reference
 
 class StatusComponents(
@@ -29,6 +31,7 @@ class StatusComponents(
     private val statusSupplier: () -> Boolean,
     private val maxThreads: Reference<Int>,
     private val readinessChecks: List<ReadinessCheck> = emptyList(),
+    private val readOnly: () -> ReadOnlyState = { ReadOnlyState(enabled = false, source = ReadOnlySource.STORED) },
 ) : PluginComponents {
 
     fun statusFacade(): StatusFacade =
@@ -39,6 +42,7 @@ class StatusComponents(
             failureFacade = failureFacade,
             maxThreads = maxThreads,
             readinessChecks = readinessChecks,
+            readOnly = readOnly,
         )
 
 }

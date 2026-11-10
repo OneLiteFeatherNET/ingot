@@ -34,6 +34,12 @@ object ReposiliteMetrics {
             .callback { callback -> callback.call(statusFacade.fetchInstanceStatus().uptime.milliseconds.toDouble(DurationUnit.SECONDS)) }
             .register(registry)
 
+        GaugeWithCallback.builder()
+            .name("ingot_read_only")
+            .help("1 while this instance refuses writes because it is read-only, 0 otherwise")
+            .callback { callback -> callback.call(if (statusFacade.fetchInstanceStatus().readOnly) 1.0 else 0.0) }
+            .register(registry)
+
         CounterWithCallback.builder()
             .name("reposilite_failures_total")
             .help("Number of failures reposilite has encountered")
