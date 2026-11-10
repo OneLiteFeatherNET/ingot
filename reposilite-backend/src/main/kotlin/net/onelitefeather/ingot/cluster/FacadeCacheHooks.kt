@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.cluster
 
 import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.javadocs.JavadocFacade
 import com.reposilite.maven.MavenFacade
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.facade
@@ -32,6 +33,17 @@ internal class FacadeCacheHooks(private val plugin: ReposilitePlugin) : ClusterC
 
     override fun sharedConfigurationChanged(domain: String) {
         plugin.facade<SharedConfigurationFacade>().reloadIfChanged()
+    }
+
+    override fun javadocInvalidated(repository: String, path: String) {
+        val javadoc = plugin.extensions().getFacades().filterIsInstance<JavadocFacade>().firstOrNull()
+        if (javadoc == null) {
+            plugin.logger.debug("Cluster | javadoc invalidation of $repository/$path not applied, no javadoc facade")
+            return
+        }
+        javadoc.evictReceived(repository, path).onError {
+            plugin.logger.error("Cluster | javadoc invalidation of $repository/$path refused: ${it.message}")
+        }
     }
 
     override fun clusterBusOpened() {

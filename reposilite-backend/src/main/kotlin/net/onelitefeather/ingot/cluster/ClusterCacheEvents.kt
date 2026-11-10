@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.cluster
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.reposilite.plugin.api.JavadocInvalidatedEvent
 import com.reposilite.plugin.api.ReadOnlyChangedEvent
 import com.reposilite.plugin.api.ResolutionInvalidatedEvent
 import com.reposilite.plugin.api.SharedConfigurationChangedEvent
@@ -46,9 +47,17 @@ internal object ClusterCacheEvents {
         plugin.onReceived(ClusterEventType.READ_ONLY_CHANGED) { _ ->
             hooks.readOnlyChanged()
         }
+        plugin.onReceived(ClusterEventType.JAVADOC_INVALIDATED) { envelope ->
+            val repository = envelope.payload.text("repository") ?: return@onReceived
+            val path = envelope.payload.text("path") ?: return@onReceived
+            hooks.javadocInvalidated(repository, path)
+        }
 
         plugin.event { event: ResolutionInvalidatedEvent ->
             publish(ClusterEventType.RESOLUTION_INVALIDATED, mapOf("repository" to event.repository, "path" to event.path))
+        }
+        plugin.event { event: JavadocInvalidatedEvent ->
+            publish(ClusterEventType.JAVADOC_INVALIDATED, mapOf("repository" to event.repository, "path" to event.path))
         }
         plugin.event { event: SharedConfigurationChangedEvent ->
             publish(ClusterEventType.CONFIG_CHANGED, mapOf("domain" to event.domain))

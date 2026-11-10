@@ -28,6 +28,9 @@ interface ClusterCacheHooks {
     /** Shared configuration of [domain] was stored on another instance, so it is loaded before the next scheduled poll. */
     fun sharedConfigurationChanged(domain: String)
 
+    /** A javadoc jar of the artifact at [path] of [repository] was deployed on another instance, so its unpacked cache is dropped here. */
+    fun javadocInvalidated(repository: String, path: String)
+
     /** The server has started with a bus configured, so resolution entries are bounded from now on. */
     fun clusterBusOpened()
 
