@@ -94,10 +94,14 @@ allprojects {
         // is served only from the upstream maintainer's own infrastructure, which is a
         // single point of failure for our builds. Narrowing the repository does not remove
         // that dependency, it only stops the host from reaching any further.
+        //
+        // com.reposilite.plugin holds the upstream plugin jars that the binary canaries load unmodified
+        // (see reposilite-backend). It is a separate group, so it is listed on its own.
         maven("https://maven.reposilite.com/releases") {
             mavenContent {
                 releasesOnly()
                 includeGroup("com.reposilite")
+                includeGroup("com.reposilite.plugin")
             }
         }
     }

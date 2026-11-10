@@ -341,10 +341,31 @@ tasks.test {
     finalizedBy("jacocoTestReport")
 }
 
+// Upstream plugin jars, unmodified, for the binary canaries (UpstreamPluginCanaryIntegrationTest). A test never
+// downloads them: Gradle resolves and caches them like any dependency. The migration plugin needs kaml-jvm at runtime,
+// which arrives transitively, so the configuration is transitive as well.
+val pluginCanary by configurations.creating {
+    description = "Upstream Reposilite 3.5.28 plugin jars that the integration tests load unmodified"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = true
+}
+
+dependencies {
+    "pluginCanary"("com.reposilite.plugin:checksum-plugin:3.5.28")
+    "pluginCanary"("com.reposilite.plugin:migration-plugin:3.5.28")
+}
+
 tasks.named<Test>("integration") {
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.
     systemProperty("reposilite.s3.pathStyleAccessEnabled", "true")
+
+    // Resolved at execution time, so the canary jars are only fetched when the integration suite runs.
+    inputs.files(pluginCanary)
+    doFirst {
+        systemProperty("reposilite.canary.plugins", pluginCanary.files.joinToString(File.pathSeparator) { it.absolutePath })
+    }
 }
 
 // Tests that run the published container images rather than the code inside them.
