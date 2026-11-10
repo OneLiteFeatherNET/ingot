@@ -83,8 +83,19 @@ internal class ItemShape(
  */
 internal object SettingsSecrets {
 
-    fun mask(type: Class<*>, settings: JsonNode): JsonNode =
-        maskNode(settings.deepCopy(), shapeOf(type))
+    /**
+     * Masks the secrets of [settings]. With [keepReferences] set, a value that holds nothing but settings secret references is left as
+     * written, because a reference names a secret without containing one. Every other secret is masked.
+     */
+    fun mask(type: Class<*>, settings: JsonNode, keepReferences: Boolean = false): JsonNode =
+        maskNode(settings.deepCopy(), shapeOf(type), keepReferences)
+
+    /**
+     * Replaces every non-null [Sensitive] text value of [settings] with the result of [transform], which receives the property path of
+     * the value. The input is not changed.
+     */
+    fun transformSensitive(type: Class<*>, settings: JsonNode, transform: (path: String, value: String) -> String): JsonNode =
+        transformNode(settings.deepCopy(), shapeOf(type), path = "", transform)
 
     /**
      * Restores the secrets of [incoming] from [stored]. A placeholder is replaced only when [placeholders] is set, which is the case
@@ -108,18 +119,44 @@ internal object SettingsSecrets {
         return DEFAULT_OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root)
     }
 
-    private fun maskNode(node: JsonNode, shape: SecretShape): JsonNode {
+    private fun maskNode(node: JsonNode, shape: SecretShape, keepReferences: Boolean): JsonNode {
         if (shape.sensitive) {
-            return if (node.isTextual && node.textValue().isNotEmpty()) TextNode(HIDDEN_SECRET) else node
+            if (!node.isTextual || node.textValue().isEmpty()) return node
+            if (keepReferences && SecretReferenceResolver.isReferenceOnly(node.textValue())) return node
+            return TextNode(HIDDEN_SECRET)
         }
 
         when (node) {
             is ObjectNode -> shape.fields.forEach { (name, child) ->
-                node.get(name)?.let { node.set<JsonNode>(name, maskNode(it, child)) }
+                node.get(name)?.let { node.set<JsonNode>(name, maskNode(it, child, keepReferences)) }
             }
             is ArrayNode -> shape.items?.let { items ->
                 for (index in 0 until node.size()) {
-                    node.set(index, maskNode(node[index], items.element))
+                    node.set(index, maskNode(node[index], items.element, keepReferences))
+                }
+            }
+        }
+
+        return node
+    }
+
+    /**
+     * Rewrites the [Sensitive] text values of [node] in place. A list entry is named by its key in the path, as a placeholder is matched.
+     */
+    private fun transformNode(node: JsonNode, shape: SecretShape, path: String, transform: (String, String) -> String): JsonNode {
+        if (shape.sensitive) {
+            return if (node.isTextual) TextNode(transform(path, node.textValue())) else node
+        }
+
+        when (node) {
+            is ObjectNode -> shape.fields.forEach { (name, child) ->
+                node.get(name)?.let { node.set<JsonNode>(name, transformNode(it, child, if (path.isEmpty()) name else "$path.$name", transform)) }
+            }
+            is ArrayNode -> shape.items?.let { items ->
+                for (index in 0 until node.size()) {
+                    val entry = node[index]
+                    val key = entry.get(items.key)?.asText() ?: index
+                    node.set(index, transformNode(entry, items.element, "$path[$key]", transform))
                 }
             }
         }

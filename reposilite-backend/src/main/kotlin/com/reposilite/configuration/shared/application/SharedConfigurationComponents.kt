@@ -25,6 +25,7 @@ import com.reposilite.configuration.shared.SCHEMA_OPTION_PRESET
 import com.reposilite.configuration.shared.SettingsModule
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedConfigurationProvider
+import com.reposilite.configuration.shared.SecretReferenceResolver
 import com.reposilite.configuration.shared.SharedConfigurationReload
 import com.reposilite.configuration.shared.SharedSettingsProvider
 import com.reposilite.configuration.shared.SubtypeResolver
@@ -47,6 +48,7 @@ class SharedConfigurationComponents(
     private val failureFacade: FailureFacade,
     private val configurationFacade: ConfigurationFacade,
     private val sharedConfigurationReload: Boolean = false,
+    private val secretReferences: SecretReferenceResolver? = null,
 ) : PluginComponents {
 
     private fun sharedSettingsProvider(): SharedSettingsProvider =
@@ -102,6 +104,7 @@ class SharedConfigurationComponents(
             sharedConfigurationProvider = sharedConfigurationProvider,
             extensions = extensions,
             entityTags = entityTags,
+            secretReferences = secretReferences,
         )
 
 }

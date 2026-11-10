@@ -71,6 +71,7 @@ class SharedConfigurationFacade(
     private val sharedConfigurationProvider: SharedConfigurationProvider,
     private val extensions: Extensions = Extensions(journalist),
     private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
+    private val secretReferences: SecretReferenceResolver? = null,
 ) : Facade {
 
     private companion object {
@@ -190,6 +191,7 @@ class SharedConfigurationFacade(
 
                 val revision = refreshFromProvider()
                 val before = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
+                validateSecretReferences(name, reference.type, body)?.let { return SecretReferenceException(it).asError() }
                 val result = reference.update(body)
                 if (result.isErr) {
                     return result
@@ -254,6 +256,8 @@ class SharedConfigurationFacade(
                     return transformed.map { it.snapshot() }
                 }
 
+                validateSecretReferences(name, reference.type, transformed.get())?.let { return HttpStatus.BAD_REQUEST.toErrorResult(it) }
+
                 // The message of the exception, never its toString: that would put the class name in front of the rule.
                 val applied = reference.update(transformed.get()).mapErr { badRequest(it.message ?: "Settings domain '$name' cannot be stored") }
                 if (applied.isErr) {
@@ -269,6 +273,31 @@ class SharedConfigurationFacade(
 
             return HttpStatus.CONFLICT.toErrorResult("Settings domain '$name' kept changing while it was stored, reload it and try again")
         }
+    }
+
+    /**
+     * True when settings secret references are switched on, so a stored reference is resolved when the document is loaded.
+     */
+    fun secretReferencesEnabled(): Boolean =
+        secretReferences != null
+
+    /**
+     * Checks that every reference of [settings] can be resolved now. Nothing is stored by this check.
+     *
+     * @return the message of the first reference that cannot be resolved, null when all of them can
+     */
+    private fun validateSecretReferences(name: String, type: Class<*>, settings: SharedSettings): String? {
+        val resolver = secretReferences ?: return null
+        return runCatching {
+            SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings)) { path, value ->
+                try {
+                    resolver.resolve(value)
+                } catch (exception: SecretReferenceException) {
+                    throw SecretReferenceException("Settings domain '$name', property '$path': ${exception.message}")
+                }
+            }
+            null
+        }.getOrElse { (it as? SecretReferenceException)?.message ?: "Settings domain '$name' has a reference that cannot be resolved" }
     }
 
     /**
