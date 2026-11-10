@@ -44,6 +44,10 @@ Ingot checks the rules when settings are saved. A rejected update is not stored,
 | `GROUP` | No reference names the group itself. | `repository '<id>': type GROUP cannot proxy itself` |
 | `GROUP` | No member sets `store`, since a group stores nothing. | `repository '<id>': type GROUP stores nothing` |
 | `GROUP` | No loop of references leads back to the group. | `repository '<id>': type GROUP is part of a cycle of proxied repositories` |
+| `PROXY` | `versionPolicy` and `readOnly` are absent. | `repository '<id>': versionPolicy is not supported on type PROXY` or `readOnly is not supported on type PROXY` |
+| `GROUP` | `versionPolicy` and `readOnly` are absent. | `repository '<id>': versionPolicy is not supported on type GROUP` or `readOnly is not supported on type GROUP` |
+
+A `PROXY` and a `GROUP` also reject the `versionPolicy` and `readOnly` keys, because they take no uploads. The keys are described in [Version policy and read-only](repository-settings.md#version-policy-and-read-only).
 
 A loop can run through untyped repositories as well. A loop made of untyped repositories alone is not reported, because it is not a typed repository.
 
@@ -81,7 +85,9 @@ A typed `PROXY` or `GROUP` does not accept an upload. The check comes after auth
 | Delete (`DELETE` of a file) | `405` | Unchanged |
 | Generate a POM (`POST /api/maven/generate/pom/...`) | `405` | Unchanged |
 
-The `405` response names the repository and its type:
+A hosted or untyped repository with `readOnly` set answers `405` to the same requests, and the message names the repository and says it is read-only. The write policy shown in the dashboard is described in [Write policy](repository-settings.md#write-policy).
+
+The `405` response of a typed `PROXY` or `GROUP` names the repository and its type:
 
 ```text
 Repository 'central' is a proxy and does not accept uploads
@@ -100,7 +106,7 @@ The storage usage figures report a `group` without a quota, since a group holds 
 | --- | --- |
 | `400` | A settings update breaks a rule. The message is `Invalid maven settings: ` followed by the rules that are broken, separated by `; `. |
 | `401` | A request for a write or a delete has no valid credentials. |
-| `405` | An upload, a deletion or a POM generation targets a `PROXY` or a `GROUP`. |
+| `405` | An upload, a deletion or a POM generation targets a `PROXY` or a `GROUP`, or a repository with `readOnly` set. |
 
 ## Related
 
