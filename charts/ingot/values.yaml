@@ -202,6 +202,19 @@ serviceMonitor:
     usernameKey: username
     passwordKey: password
 
+## Opt-in PrometheusRule with the base alerts of the server: availability, error ratio, unreachable upstreams, rejected
+## deploys, heap pressure and the cluster bus. Needs the monitoring.coreos.com CRDs. The alerts read the metrics of the
+## bundled Prometheus plugin, so the server must run with INGOT_METRICS_ENABLED=true and the plugin credentials.
+prometheusRule:
+  enabled: false
+  # Extra labels on the PrometheusRule, for example the label that your Prometheus instance selects its rules with.
+  labels: {}
+
+## Opt-in Grafana dashboards for the server: overview, mirroring and JVM. Each one is a ConfigMap labelled
+## grafana_dashboard: "1" for the Grafana sidecar. The same JSON files are in files/dashboards of the chart.
+grafanaDashboards:
+  enabled: false
+
 ## Resources
 resources:
   requests:

@@ -84,6 +84,19 @@
         "existingConfigMap": {"type": "string", "description": "Name of a ConfigMap with the key configuration.shared.json. Used instead of content."}
       }
     },
+    "prometheusRule": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Renders the PrometheusRule with the base alerts."},
+        "labels": {"type": "object", "description": "Extra labels on the PrometheusRule."}
+      }
+    },
+    "grafanaDashboards": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "description": "Renders the overview, mirroring and JVM dashboards as ConfigMaps."}
+      }
+    },
     "podDisruptionBudget": {
       "type": "object",
       "properties": {

@@ -1,0 +1,16 @@
+{{- if .Values.grafanaDashboards.enabled }}
+{{- range $name := list "overview" "mirroring" "jvm" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-grafana-%s" (include "ingot.fullname" $) $name | trunc 63 | trimSuffix "-" }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "ingot.labels" $ | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  {{ $name }}.json: |
+{{ $.Files.Get (printf "files/dashboards/%s.json" $name) | indent 4 }}
+{{- end }}
+{{- end }}
