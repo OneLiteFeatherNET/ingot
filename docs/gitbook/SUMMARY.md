@@ -76,6 +76,7 @@
 
 * [Configuration file and startup parameters](reference/configuration-and-startup.md)
 * [Environment variables](reference/environment-variables.md)
+* [Outbound connections](reference/outbound-connections.md)
 * [Deploy targets](reference/deploy-targets.md)
 * [Settings domains](reference/settings-domains.md)
 * [Storage providers](reference/storage-providers.md)

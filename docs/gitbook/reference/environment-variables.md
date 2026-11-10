@@ -281,11 +281,22 @@ Read once at startup. They turn on the `${env:NAME}` and `${file:PATH}` referenc
 
 The variables are read from the environment only. A value in the shared settings cannot turn them on or widen the lists. The value of the switch is compared without regard to case, and an empty value counts as not set.
 
+### Remote version check
+
+Read each time Ingot refreshes its latest-version answer, which happens at most once an hour. The first of these that is set wins: the system property `ingot.status.remote-version-check`, the environment variable `INGOT_STATUS_REMOTE_VERSION_CHECK`, the system property `reposilite.status.remote-version-check`, the environment variable `REPOSILITE_STATUS_REMOTE_VERSION_CHECK`. Nothing set means on.
+
+| Value | Meaning |
+| --- | --- |
+| `true` (default) | Ingot asks the release endpoint for the newest version at most once an hour. |
+| `false` | Ingot makes no request, and reports the running version as the latest. |
+
+The variables compare the value without regard to case, and an empty value counts as not set. Any other value is ignored, one warning names the variable, and the next source decides. The property keeps its older meaning: `true` turns the check on and every other value turns it off. See [Outbound connections](outbound-connections.md) for every other connection Ingot can open.
+
 ### Other system properties
 
 | System property | Default | Meaning |
 | --- | --- | --- |
-| `ingot.status.remote-version-check` | `true` | `false` turns off the hourly check for a newer Ingot version. The older name `reposilite.status.remote-version-check` is read when the `ingot.` property is not set. |
+| `ingot.status.remote-version-check` | `true` | `false` turns off the hourly check for a newer Ingot version. The environment variable `INGOT_STATUS_REMOTE_VERSION_CHECK` is the same switch without a JVM option, and the property wins over it. The older name `reposilite.status.remote-version-check` is read when the `ingot.` property is not set. See [Remote version check](#remote-version-check). |
 | `ingot.status.remote-version-url` | `https://api.github.com/repos/OneLiteFeatherNET/ingot/releases/latest` | Address that the version check asks for the latest release. There is no `reposilite.` fallback. |
 | `ingot.javadocs.max-entry-bytes` | `10485760` (10 MiB) | Largest size in bytes of one file inside a javadoc jar that Ingot unpacks for the javadoc viewer. Files above it are rejected. The default was 2 MiB before. The older name `reposilite.javadocs.max-entry-bytes` is read when the `ingot.` property is not set. |
 | `reposilite.maven.maxAge` | `3600` | Seconds used in `Cache-Control: public, max-age=<value>` of file responses that are cacheable. |
