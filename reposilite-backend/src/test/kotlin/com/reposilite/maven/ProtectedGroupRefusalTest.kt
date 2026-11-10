@@ -62,6 +62,13 @@ internal class ProtectedGroupRefusalTest : MavenSpecification() {
             proxied = listOf(MirroredRepositorySettings(reference = "releases"), MirroredRepositorySettings(reference = "central")),
             protectedGroupPrefixes = listOf("net.onelitefeather"),
         ),
+        RepositorySettings(
+            id = "guarded-cached",
+            type = RepositoryType.GROUP,
+            proxied = listOf(MirroredRepositorySettings(reference = "releases"), MirroredRepositorySettings(reference = "central")),
+            protectedGroupPrefixes = listOf("net.onelitefeather"),
+            resolutionCacheMaxEntries = 128,
+        ),
     )
 
     override fun remoteClientProvider(): RemoteClientProvider = FakeRemoteClientProvider(
@@ -129,6 +136,25 @@ internal class ProtectedGroupRefusalTest : MavenSpecification() {
         assertThat(mavenFacade.operationTotals().namespaceRefusals)
             .describedAs("refusals by repository after one refused request")
             .containsExactly(entry("guarded", 1L))
+    }
+
+    @Test
+    fun `should count every refused metadata request, also one answered from the miss cache`() {
+        // given: the proxy holds the protected metadata, and the group caches its routing decisions
+        val metadata = "net/onelitefeather/maven-metadata.xml".toLocation()
+        upstream["$CENTRAL/net/onelitefeather/maven-metadata.xml"] = "<metadata/>"
+        val refusals = mutableListOf<ProxyRefusedEvent>()
+        extensions.registerEvent<ProxyRefusedEvent> { refusals += it }
+
+        // when: the same metadata is requested twice, the second time from the cached miss
+        assertError(mavenFacade.findFile(LookupRequest(UNAUTHORIZED, "guarded-cached", metadata)))
+        assertError(mavenFacade.findFile(LookupRequest(UNAUTHORIZED, "guarded-cached", metadata)))
+
+        // then: each request is a refusal, so each one is counted and audited
+        assertThat(refusals).describedAs("refusal events of two refused requests").hasSize(2)
+        assertThat(mavenFacade.operationTotals().namespaceRefusals)
+            .describedAs("refusals by repository after two refused metadata requests")
+            .containsExactly(entry("guarded-cached", 2L))
     }
 
     @Test
