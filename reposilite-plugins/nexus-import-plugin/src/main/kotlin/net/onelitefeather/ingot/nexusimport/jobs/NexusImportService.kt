@@ -261,7 +261,7 @@ internal class NexusImportService(
         val bulk = stored.audit == AuditMode.SUMMARY.wire()
         if (bulk) ports.bulkSessionStarted(session)
         return try {
-            val password = passwordFor(id, stored) ?: return failRun(id, token, "The password reference cannot be resolved")
+            val password = passwordFor(id, stored) ?: return pauseForCredentials(id, token)
             val client = NexusClient(NexusConnection(java.net.URI.create(stored.url), stored.user, password), transport, clock, sleeper, settings.maxRequestsPerSecond)
             val outcome = when (stored.kind) {
                 KIND_DRY_RUN -> dryRun(id, token, stored, client)
@@ -273,9 +273,7 @@ internal class NexusImportService(
             outcome
         } catch (exception: NexusHttpException) {
             if (exception.status == 401 || exception.status == 403) {
-                store.pause(id, token, PauseReason.CREDENTIALS_NEEDED)
-                passwords.remove(id)?.wipe()
-                RunOutcome.PAUSED_CREDENTIALS
+                pauseForCredentials(id, token)
             } else {
                 failRun(id, token, "Nexus answered HTTP ${exception.status}")
             }
@@ -416,6 +414,13 @@ internal class NexusImportService(
             put("files", store.assets(job.id).size)
             AssetResult.entries.forEach { put(it.name.lowercase(), counts[it.name] ?: 0) }
         }
+    }
+
+    /** Waits for the operator to supply the password again or to correct the reference. The literal password is wiped. */
+    private fun pauseForCredentials(id: Long, token: String): RunOutcome {
+        if (!store.pause(id, token, PauseReason.CREDENTIALS_NEEDED)) return RunOutcome.LEASE_LOST
+        passwords.remove(id)?.wipe()
+        return RunOutcome.PAUSED_CREDENTIALS
     }
 
     private fun failRun(id: Long, token: String, reason: String): RunOutcome {
