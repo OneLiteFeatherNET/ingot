@@ -4,7 +4,9 @@ description: Overview of the REST endpoints of Ingot grouped by area, with the m
 
 # HTTP API overview
 
-This page lists the HTTP endpoints of Ingot by area. For the request and response schemas, use the OpenAPI document that the server publishes at `/openapi`. The document is generated from the same route definitions as this list. Some endpoints have no OpenAPI annotation, so this page is the complete list.
+This page lists the HTTP endpoints of Ingot by area. For the request and response schemas, use the OpenAPI document that the server publishes at `/openapi`. Every REST endpoint of this list is in that document. The routes left out on purpose, such as the javadoc viewer pages, the dashboard and the request filters, are named with their reason in the exclusion list of the completeness test, `reposilite-backend/src/test/kotlin/com/reposilite/web/api/OpenApiCompletenessTest.kt`.
+
+The document declares two security schemes. `tokenBasic` is HTTP Basic with an access token name and secret. `sessionBearer` is the bearer session that a login returns. A route that needs a login refers to either one, so a generated client knows which credentials to send.
 
 Paths in braces are path parameters. `<gav>` stands for the rest of a Maven path, such as `net/onelitefeather/mycelium/1.0.0/`.
 
@@ -233,9 +235,7 @@ These paths serve the Maven repository layout. Clients use them directly.
 
 A file can be deployed with any HTTP client that supports Basic authentication, with a token name and secret. Use the token that holds the deploy right on that path, see [Artifact permission nodes](artifact-permission-nodes.md).
 
-{% hint style="warning" %}
-The OpenAPI document at `/openapi` is produced by the OpenAPI plugin that the server registers. Whether that document needs a token was not checked against a running instance. Check it there before you publish the path to a client.
-{% endhint %}
+The OpenAPI document at `/openapi` does not need a token. Checked against a running server, it answers `200` without credentials and with an access token. Ingot does not restrict it. To keep the document away from callers outside your network, block the path in the reverse proxy or gateway in front of Ingot.
 
 For the shape of error answers, see [API errors](api-errors.md).
 

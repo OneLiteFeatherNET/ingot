@@ -18,7 +18,7 @@ This page lists the routes of the Ingot backend that are not part of the JSON AP
 | `GET` | `/javadoc/{repository}/<gav>/raw/<resource>` | Javadoc resource | Optional. Depends on the repository visibility. |
 | `GET` | `/api/status/health` | Health | None. |
 | `GET` | `/api/status/ready` | Readiness | None. |
-| `GET` | `/openapi` | OpenAPI document | None added by Ingot. |
+| `GET` | `/openapi` | OpenAPI document | None. Answered without a token. |
 | `GET` | `/swagger` | Swagger UI | Only with the optional Swagger plugin. |
 | `GET`, `HEAD` | `/`, `/index.html` | Dashboard | None. |
 | `GET` | `/assets/<path>` | Dashboard assets | None. |
@@ -254,10 +254,12 @@ A check that answers `false`, raises an error or does not answer within its boun
 
 The title and description of the document come from the `title` and `description` of the frontend settings. The version is the Ingot version.
 
-Ingot adds no authentication to these paths.
+Ingot adds no authentication to these paths. Checked against a running server, `/openapi` answers `200` without a token and with an access token. The document is public. An operator who wants it kept inside the network blocks the path in the reverse proxy or gateway.
+
+The document declares the schemes `tokenBasic` and `sessionBearer`, and the routes that need a login refer to them. See [HTTP API overview](http-api.md) for the credentials each scheme takes.
 
 {% hint style="warning" %}
-Not verified: the two paths are the defaults of the Javalin OpenAPI and Swagger plugins. The backend code sets neither. Also not verified: whether the container image contains the Swagger plugin. It is a separate jar and the server jar does not include it.
+The path `/swagger` is the default of the Swagger plugin, and the backend code does not set it. The server jar does not include the Swagger plugin, so the path exists only where an operator installs that plugin. Whether the container image contains it was not checked.
 {% endhint %}
 
 ## Dashboard routes
