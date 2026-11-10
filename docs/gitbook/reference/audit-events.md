@@ -98,6 +98,7 @@ These events come from `IdentityFacade` unless another source is named. The acto
 | Action | Written when | Details keys |
 | --- | --- | --- |
 | `READ_ONLY_CHANGED` | The stored read-only state is changed through `POST` or `DELETE /api/admin/read-only` (`ReadOnlyFacade.set`). A repeated enable or disable changes nothing and writes nothing. A forced state writes nothing either. | `enabled` (the stored value after the change) |
+| `NEXUS_IMPORT_RUN` | A Nexus import job ends, or pauses for a reason that needs the operator. The actor is `migration`. In `summary` mode (`INGOT_NEXUS_IMPORT_AUDIT=summary`) this is the only event of the copy. In `per-file` mode each copied file also has its own `ARTIFACT_DEPLOYED` event with the actor `migration`. | `copied`, `skipped`, `conflicts`, `failed` (counts) and `status` |
 
 ### Login and sessions
 

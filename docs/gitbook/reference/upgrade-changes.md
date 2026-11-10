@@ -125,3 +125,13 @@ An S3 upload is sent to the bucket as it arrives. An upload above 8 MiB is a mul
 
 * A failed upload is aborted, so the bucket keeps no incomplete upload from it. An upload that is interrupted by a killed process leaves parts in the bucket. Add the `AbortIncompleteMultipartUpload` lifecycle rule from [Large uploads](../how-to/use-s3-storage.md#large-uploads) to remove them.
 * `INGOT_S3_BUFFER_TO_DISK=true` restores the temporary file path for every upload. Use it only when the storage service rejects multipart uploads.
+
+### Nexus import is bundled and off by default
+
+The image ships `nexus-import-plugin.jar` in `/app/bundled-plugins/`. It is loaded only when `INGOT_NEXUS_IMPORT_ENABLED=true` (or `REPOSILITE_NEXUS_IMPORT_ENABLED=true` when the `INGOT_` name is unset). With the switch off, no route exists and no table is created, so an existing installation behaves as before. No configuration, environment variable, manifest or plugin changes for existing deployments.
+
+* When the switch is on, the importer creates two tables, `nexus_import_job` and `nexus_import_asset`, in the database that Ingot already uses. Their names do not collide with existing tables.
+* The loader now switches each bundled jar on its own variable. A jar that the loader does not know still follows the metrics switch, as before.
+* The audit action `NEXUS_IMPORT_RUN` is new. Its name is stored, so it is never renamed.
+
+See [Import from Nexus](../how-to/import-from-nexus.md) for the flow.

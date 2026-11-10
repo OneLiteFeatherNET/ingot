@@ -60,6 +60,7 @@
 * [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
 * [Set cleanup policies](how-to/set-cleanup-policies.md)
 * [Import from other repository managers](how-to/import-from-other-repository-managers.md)
+* [Import from Nexus](how-to/import-from-nexus.md)
 * [Install a plugin](how-to/install-a-plugin.md)
 * [Write a plugin](how-to/write-a-plugin.md)
 

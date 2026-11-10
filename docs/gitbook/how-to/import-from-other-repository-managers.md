@@ -98,3 +98,7 @@ The export and import steps for each source are the responsibility of the source
 * [Rebuild and verify the search index](rebuild-search-index.md) after a copy.
 * [Create hosted repositories](create-hosted-repositories.md) for the target repository.
 * [Create proxy repositories](create-proxy-repositories.md) if you want to keep the upstream instead of importing its files.
+
+## Sonatype Nexus
+
+Nexus Repository 3 has its own importer, which reports what will not carry over and verifies every file against the checksums Nexus reports. See [Import from Nexus](import-from-nexus.md).
