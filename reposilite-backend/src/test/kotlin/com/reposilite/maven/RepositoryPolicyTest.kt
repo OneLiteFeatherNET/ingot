@@ -17,10 +17,13 @@
 package com.reposilite.maven
 
 import com.reposilite.maven.RepositoryVisibility.PUBLIC
+import com.reposilite.ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 import com.reposilite.maven.api.DeleteRequest
 import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.GeneratePomRequest
 import com.reposilite.maven.api.PomDetails
+import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.maven.api.RepositorySummary
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.maven.specification.MavenSpecification
@@ -38,6 +41,7 @@ internal class RepositoryPolicyTest : MavenSpecification() {
         RepositorySettings("release-only", visibility = PUBLIC, versionPolicy = VersionPolicy.RELEASE),
         RepositorySettings("snapshot-only", visibility = PUBLIC, versionPolicy = VersionPolicy.SNAPSHOT),
         RepositorySettings("frozen", visibility = PUBLIC, readOnly = true),
+        RepositorySettings("open", visibility = PUBLIC, redeployment = true),
         RepositorySettings("typed-proxy", visibility = PUBLIC, type = RepositoryType.PROXY, proxied = mutableListOf(
             MirroredRepositorySettings(reference = REMOTE_REPOSITORY),
         )),
@@ -242,6 +246,61 @@ internal class RepositoryPolicyTest : MavenSpecification() {
             generateChecksums = false,
         )
 
+    }
+
+    @Nested
+    inner class Listing {
+
+        private fun summaries() =
+            mavenFacade.listRepositories(UNAUTHORIZED, RepositoryListQuery()).repositories.associateBy { it.id }
+
+        @Test
+        fun `should list the version policy and the read-only flag of every repository`() {
+            // when: the repositories are listed
+            val summaries = summaries()
+
+            // then: the effective values are listed, the absent ones as MIXED and false
+            assertThat(summaries.getValue("plain").versionPolicy).describedAs("version policy of a repository that sets none").isEqualTo("MIXED")
+            assertThat(summaries.getValue("plain").readOnly).describedAs("read-only flag of a repository that sets none").isFalse
+            assertThat(summaries.getValue("release-only").versionPolicy).isEqualTo("RELEASE")
+            assertThat(summaries.getValue("frozen").readOnly).isTrue
+        }
+
+        @Test
+        fun `should derive the write policy of hosted and untyped repositories from redeployment and read-only`() {
+            // when: the repositories are listed
+            val writePolicies = summaries().mapValues { it.value.writePolicy }
+
+            // then: a redeploying repository allows, a plain one allows once, and a frozen one is read-only
+            assertThat(writePolicies["open"]).describedAs("write policy with redeployment").isEqualTo("ALLOW")
+            assertThat(writePolicies["plain"]).describedAs("write policy without redeployment").isEqualTo("ALLOW_ONCE")
+            assertThat(writePolicies["frozen"]).describedAs("write policy of a read-only repository").isEqualTo("READ_ONLY")
+        }
+
+        @Test
+        fun `should report no write policy for a declared proxy and a declared group`() {
+            // when: the repositories are listed
+            val summaries = summaries()
+
+            // then: neither takes uploads, so neither has a write policy
+            assertThat(summaries.getValue("typed-proxy").writePolicy).describedAs("write policy of a proxy").isNull()
+            assertThat(summaries.getValue("typed-group").writePolicy).describedAs("write policy of a group").isNull()
+        }
+
+        @Test
+        fun `should read a summary written before the new fields existed`() {
+            // given: a repository summary as the previous release listed it
+            val document = """{ "id": "legacy", "visibility": "PUBLIC", "description": "", "tags": [], "type": "hosted", "typeExplicit": false }"""
+
+            // when: the summary is read
+            val summary = DEFAULT_OBJECT_MAPPER.readValue(document, RepositorySummary::class.java)
+
+            // then: the new fields are absent, and the rest is read as before
+            assertThat(summary.id).isEqualTo("legacy")
+            assertThat(summary.versionPolicy).isNull()
+            assertThat(summary.readOnly).isNull()
+            assertThat(summary.writePolicy).isNull()
+        }
     }
 
     private fun repo(name: String) =
