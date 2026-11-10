@@ -214,6 +214,7 @@ Run the jar as `java -jar ingot-<version>.jar [parameters]`. The container passe
 | `--test-env` | `--debug`, `-d` | none | off | Test mode. The interactive console and the status output at start are skipped, and log output goes to a temporary file. |
 | `--disable-interactive-console` | `--disable-it` | none | off | Does not read commands from standard input. |
 | `--no-color` | | none | off | Disables ANSI colors in the console output. |
+| `--snapshot-database` | | none | off | Writes one online snapshot of the SQLite database into `backups/` in the working directory, then exits without starting the server. Exits with status `0` on success. See [Back up and restore](../how-to/back-up-and-restore.md). |
 
 ### Data migrations
 

@@ -34,6 +34,42 @@ The database holds the S3 keys and the session signing key. Store the backups wi
 
 {% tabs %}
 {% tab title="SQLite" %}
+You can take the copy while the instance runs. Use an online snapshot. Do not copy `reposilite.db` directly while the instance runs: SQLite keeps writing to the file, so the copy can be half-written.
+
+**Online snapshot.** A snapshot writes a consistent copy of the database into the `backups/` directory of the working directory. The instance keeps serving requests while it runs. Each snapshot is a complete SQLite file. It gets a new name with the UTC time, so an existing snapshot is never replaced.
+
+Call the endpoint with a token that has the maintenance area (`ingot.admin.maintenance`):
+
+```bash
+curl -u "<token>:<secret>" -X POST https://<your-host>/api/database/snapshots
+```
+
+The answer names the file, its size and the creation time. It does not show the path:
+
+```json
+{"fileName":"ingot-snapshot-20261109-120000.db","sizeBytes":1048576,"createdAt":"2026-11-09T12:00:00Z"}
+```
+
+In the Docker image the file is `/app/data/backups/ingot-snapshot-<date>-<time>.db`. Copy it out of the volume with `docker cp`, or read it from the host directory that backs `/app/data`.
+
+You can also take a snapshot from the command line. The command writes the snapshot and exits. It does not start the web server, so it works while another instance uses the same database. Run it as the service user of the instance, so that the file belongs to the user that runs Ingot:
+
+```bash
+docker exec --user reposilite <container> java -jar /app/ingot.jar --working-directory=/app/data --snapshot-database
+```
+
+The command exits with status `0` when the snapshot is written. On failure it removes the partial file and exits with a non-zero status.
+
+Online snapshots work for SQLite only. For MariaDB, MySQL, PostgreSQL and custom JDBC URLs the endpoint answers with status `409` and the command exits with a non-zero status. Use the dump tools of those databases, as described in the tabs above.
+
+{% hint style="warning" %}
+A snapshot holds the same secrets as the database: the S3 keys and the session signing key. Ingot creates the file readable only by its owner where the file system supports it. Store the file with the same care as the database. Ingot does not delete old snapshots. Remove them yourself when you no longer need them.
+{% endhint %}
+
+A snapshot contains the writes committed before it started. Writes that arrive during the snapshot may be missing from it. For the cleanest result, stop the instance and copy the file.
+
+**Copy the file with the instance stopped.** This is the other option. Use it when the copy must match the working directory archive exactly.
+
 1. Stop the instance so that the file is closed.
 
    ```bash
@@ -122,7 +158,7 @@ Restore in this order. The database defines which storage each repository uses, 
 
 2. Restore the database.
 
-   * SQLite: copy the backup file to the working directory under the name of your `database` setting.
+   * SQLite: copy the backup file to the working directory under the name of your `database` setting. A snapshot from `backups/` is restored the same way. Copy it over the database file. The instance must be stopped while you do this.
    * MariaDB or PostgreSQL: create an empty database and load the dump into it. For MariaDB, use `mariadb -h <host> -u <user> -p ingot < ingot-<date>.sql`. For PostgreSQL, use `pg_restore --clean --if-exists -h <host> -U <user> -d ingot ingot-<date>.dump`.
 
 3. Restore the files in the working directory: `configuration.cdn`, `configuration.shared.json` if you use one, `repositories/` and `plugins/`. Check that the database value in `configuration.cdn` points at the database you restored.

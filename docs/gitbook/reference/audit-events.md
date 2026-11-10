@@ -36,6 +36,7 @@ The list is the enum `AuditAction` in `reposilite-backend/src/main/kotlin/com/re
 | `ARTIFACT_DEPLOYED` | A file is deployed. `AuditPlugin` listens to `DeployEvent`. The actor comes from the session identifier of the request. Sets `repository` and `path`. | None. |
 | `ARTIFACT_DELETED` | A file is deleted. `AuditPlugin` listens to `DeleteEvent`. Sets `repository` and `path`. Files removed by a cleanup run are not recorded one by one (see `CLEANUP_RUN`). | None. |
 | `CLEANUP_RUN` | A cleanup policy run finishes, started manually or by the schedule (`CleanupService.run`). `success` is `true` only when the run status is `SUCCEEDED`. The actor is `system` for scheduled runs. `repository` is set when the policy names exactly one repository. | `runId`, `policy`, `scope`, `trigger`, `status`, `deletedCount`, `deletedBytes` |
+| `DATABASE_SNAPSHOT_CREATED` | A snapshot of the SQLite database is written, from `POST /api/database/snapshots` or from `--snapshot-database`. The actor is the principal of the request, or `command-line` for the flag. Only successful snapshots are recorded. | `file` (the file name in `backups/`) |
 
 ### Settings
 
