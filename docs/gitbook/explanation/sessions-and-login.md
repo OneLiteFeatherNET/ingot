@@ -60,6 +60,20 @@ Some requests are exempt:
 * Requests with an `Authorization` header.
 * The login and setup requests, which create the cookies in the first place.
 
+## Cross-site requests
+
+A browser says where a request comes from in the `Sec-Fetch-Site` header. When a request to the API carries the session or refresh cookie and its `Sec-Fetch-Site` is `cross-site` or `same-site`, Ingot refuses it with `403` before it authenticates the request. A page on another site cannot read an answer of the API with the cookies of the person, and it cannot change data with them either. The rule applies to every method, not only to changes.
+
+A sibling subdomain of the same domain counts as `same-site`, so it is refused too. Such a subdomain could set the CSRF cookie that the check above trusts, which is why the CSRF check alone is not enough.
+
+Some requests are not refused:
+
+* A top-level navigation, such as the redirect of an external identity provider back to Ingot. The browser sends `Sec-Fetch-Mode: navigate` and `Sec-Fetch-Dest: document` for it.
+* Requests with an `Authorization` header, such as the requests of tokens.
+* Requests from the same origin, and requests without a `Sec-Fetch-Site` header.
+
+The documented deployments serve the dashboard and its API from one origin, so the dashboard's own calls send `same-origin` and are not affected. A dashboard served from another site than its API is not a supported setup. An operator who runs one can set `INGOT_FETCH_METADATA=off`, see [Environment variables](../reference/environment-variables.md#server-variables).
+
 ## Failed logins and lockouts
 
 Ingot counts failed password logins. It keeps the counts in the database, so every replica sees the same counts.

@@ -66,6 +66,12 @@ The `INGOT_` names are read first. Where a `REPOSILITE_` name exists, it is read
 * The `ingot.local.*` system properties fall back to `reposilite.local.*`.
 * `JAVA_OPTS`, `PUID` and `PGID` have no prefix and are unchanged.
 
+### Cookie requests from other sites
+
+A request to the API that carries the session or refresh cookie is now refused with `403` when it comes from another site or from a sibling subdomain. The body is the same error response as the CSRF refusal. Requests with an `Authorization` header, top-level navigations and same-origin requests are not affected. Maven, Gradle, sbt and token clients send no cookie and are not affected either.
+
+The documented deployments serve the dashboard and its API from one origin, so no change is needed. A dashboard served from another site than its API, or from a sibling subdomain of it, needs `INGOT_FETCH_METADATA=off`. See [Environment variables](environment-variables.md#server-variables) and [Cross-site requests](../explanation/sessions-and-login.md#cross-site-requests).
+
 ### Cache-Control of access-controlled files
 
 Files of `PRIVATE` and `HIDDEN` repositories, and files that a group serves from a private member, are now answered with `Cache-Control: private, max-age=<seconds>` instead of `public`. A shared cache in front of Ingot, such as a CDN or a company proxy, no longer stores those answers, so a file downloaded with credentials is not handed to other clients. Maven, Gradle and the dashboard ignore the header, and status codes, bodies and `ETag` values stay the same. Refused `401` answers for files carry `no-cache, no-store, max-age=0`.

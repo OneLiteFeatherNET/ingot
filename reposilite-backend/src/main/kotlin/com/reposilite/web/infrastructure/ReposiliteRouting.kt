@@ -33,6 +33,8 @@ import com.reposilite.shared.internalServer
 import com.reposilite.shared.extensions.error
 import com.reposilite.shared.toErrorResponse
 import net.onelitefeather.ingot.identity.session.CsrfPolicy
+import net.onelitefeather.ingot.identity.session.FetchMetadataPolicy
+import net.onelitefeather.ingot.identity.session.FetchMetadataSettings
 
 typealias ReposiliteRouting = DslRouting<ReposiliteConfiguration, ReposiliteDslRoute, ReposiliteScope, Unit>
 typealias ReposiliteDslRoute = DslRoute<ContextDsl<*>, Unit>
@@ -57,6 +59,18 @@ class ReposiliteDsl(
 
 }
 
+private fun Context.fetchMetadataRequest(): FetchMetadataPolicy.Request =
+    FetchMetadataPolicy.Request(
+        method = method().name,
+        path = path(),
+        hasAuthorizationHeader = header(Header.AUTHORIZATION) != null,
+        sessionCookie = cookie(SessionCookies.SESSION),
+        refreshCookie = cookie(SessionCookies.REFRESH),
+        secFetchSite = header("Sec-Fetch-Site"),
+        secFetchMode = header("Sec-Fetch-Mode"),
+        secFetchDest = header("Sec-Fetch-Dest"),
+    )
+
 private fun Context.csrfRequest(): CsrfPolicy.Request =
     CsrfPolicy.Request(
         method = method().name,
@@ -75,6 +89,7 @@ fun createReposiliteDsl(
     failureFacade: FailureFacade,
     loginFacade: LoginFacade,
     basePath: Reference<String>,
+    fetchMetadata: FetchMetadataSettings = FetchMetadataSettings.resolve(),
 ): ReposiliteRouting {
     /**
      * A request with an Authorization header is authenticated by it, as before. Without one, a browser session cookie
@@ -120,6 +135,11 @@ fun createReposiliteDsl(
         routeFactory = { route ->
             Handler { ctx ->
                 try {
+                    if (fetchMetadata.enabled && FetchMetadataPolicy.violation(ctx.fetchMetadataRequest(), basePath.get())) {
+                        ctx.status(FORBIDDEN)
+                        ctx.response(FORBIDDEN.toErrorResponse("Cookie request refused: the request comes from another site"))
+                        return@Handler
+                    }
                     if (CsrfPolicy.violation(ctx.csrfRequest(), basePath.get())) {
                         ctx.status(FORBIDDEN)
                         ctx.response(FORBIDDEN.toErrorResponse("Cookie request refused: the X-CSRF-Token header does not match the session"))

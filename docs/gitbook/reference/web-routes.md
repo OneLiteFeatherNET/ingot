@@ -133,6 +133,8 @@ Both need valid credentials (`401` otherwise). A deployment to a `PROXY` or a `G
 
 A request that authenticates with the session cookie and changes state must send the value of the `ingot_csrf` cookie in the `X-CSRF-Token` header, or it answers `403`. Requests with an `Authorization` header are exempt.
 
+A request to the API with the session or refresh cookie that comes from another site, or from a sibling subdomain, answers `403` before that check, unless it is a top-level navigation. See [Cross-site requests](../explanation/sessions-and-login.md#cross-site-requests).
+
 ## Directory index
 
 A `GET` or `HEAD` request on a directory of a repository answers with an HTML page. There is no setting to turn it off, and there is no other format. The JSON listing is part of the API.
