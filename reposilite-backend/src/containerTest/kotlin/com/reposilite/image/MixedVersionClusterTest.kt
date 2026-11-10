@@ -16,7 +16,10 @@
 
 package com.reposilite.image
 
+import java.net.Socket
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import java.time.Duration
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -25,6 +28,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.wait.strategy.Wait
+import org.testcontainers.utility.DockerImageName
 
 /**
  * The previous release and the current build beside each other on one MariaDB database and one repository directory,
@@ -155,6 +161,136 @@ class MixedVersionClusterTest {
             .isEmpty()
     }
 
+    @Test
+    @DisplayName("two current replicas ignore a version 2 and an unknown version 1 message and still apply a known event")
+    fun `unknown bus messages are ignored and the next known event is applied`(@TempDir directory: Path) {
+        withSharedState(directory) { state ->
+            withBroker(state) { broker, bus ->
+                sharedRepositoryReplica(ImageUnderTest.server, state, bus = bus, instanceId = "replica-a").use { first ->
+                    first.startOrExplain()
+                    val cluster = state.database.query("SELECT content FROM settings WHERE name = 'cluster-identifier'").single().single()
+
+                    sharedRepositoryReplica(ImageUnderTest.server, state, bus = bus, instanceId = "replica-b").use { second ->
+                        second.startOrExplain()
+                        awaitBusConnected(first)
+                        awaitBusConnected(second)
+
+                        val before = second.status()
+                        val ignoredBefore = counter(before, "ignored")
+
+                        // The three messages go out together. A message of an unknown version or type must be ignored,
+                        // while a known one must be applied, and each of them is the same snapshot payload.
+                        publishUntilApplied(
+                            broker = broker,
+                            subject = "ingot.$cluster.events",
+                            messages = listOf(
+                                envelope(version = 2, type = "status.snapshot", cluster = cluster, origin = IGNORED_VERSION),
+                                envelope(version = 1, type = "status.from-a-newer-release", cluster = cluster, origin = IGNORED_TYPE),
+                                envelope(version = 1, type = "status.snapshot", cluster = cluster, origin = APPLIED),
+                            ),
+                            replica = second,
+                        )
+
+                        // The NATS connection keeps the order of one publisher, so an applied event proves the two before it were handled.
+                        val after = second.status()
+                        assertThat(after).describedAs("the replica lists the instance of the applied event").contains("\"id\":\"$APPLIED\"")
+                        assertThat(after)
+                            .describedAs("a version 2 message does not add an instance: %s", after)
+                            .doesNotContain(IGNORED_VERSION)
+                        assertThat(after)
+                            .describedAs("a message of an unknown type does not add an instance: %s", after)
+                            .doesNotContain(IGNORED_TYPE)
+                        assertThat(counter(after, "ignored"))
+                            .describedAs("the two unknown messages are counted as ignored: %s", after)
+                            .isGreaterThanOrEqualTo(ignoredBefore + 2)
+                        // The first failuresCount of the status is the one of this replica, which is listed first.
+                        assertThat(counter(after, "failuresCount"))
+                            .describedAs("no failure is recorded for an ignored message: %s", after)
+                            .isEqualTo(counter(before, "failuresCount"))
+                        assertThat(after).describedAs("the bus stays connected").contains("\"state\":\"connected\"")
+                        assertThat(Http.get(second.baseUrl()).isSuccessful).describedAs("the replica keeps answering").isTrue()
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Publishes [messages] to the broker and waits until [replica] lists the instance of [APPLIED]. Messages are sent again
+     * every poll, because a replica that has not subscribed yet would miss the first round. The wait is bounded by [BUS_BOUND].
+     */
+    private fun publishUntilApplied(broker: GenericContainer<*>, subject: String, messages: List<String>, replica: GenericContainer<*>) {
+        val deadline = System.nanoTime() + BUS_BOUND.toNanos()
+        while (true) {
+            publish(broker, subject, messages)
+            if (replica.status().contains("\"id\":\"$APPLIED\"")) return
+            check(System.nanoTime() < deadline) {
+                "the replica did not apply the known event within $BUS_BOUND, its status was:\n${replica.status()}"
+            }
+            CountDownLatch(1).await(2, TimeUnit.SECONDS)
+        }
+    }
+
+    /** Waits, within [BUS_BOUND], until [replica] reports its bus connection as connected. */
+    private fun awaitBusConnected(replica: GenericContainer<*>) {
+        val deadline = System.nanoTime() + BUS_BOUND.toNanos()
+        while (!replica.status().contains("\"state\":\"connected\"")) {
+            check(System.nanoTime() < deadline) { "the bus of ${replica.baseUrl()} did not connect, its status was:\n${replica.status()}" }
+            CountDownLatch(1).await(2, TimeUnit.SECONDS)
+        }
+    }
+
+    private fun GenericContainer<*>.status(): String = Http.get("${baseUrl()}/api/status/instance", MIXED_BOOTSTRAP).body
+
+    /** The number the bus section of the status reports under [name], such as `ignored`. */
+    private fun counter(status: String, name: String): Long =
+        Regex("\"$name\":(\\d+)").find(status)?.groupValues?.get(1)?.toLong()
+            ?: error("the status has no counter $name: $status")
+
+    /** One envelope with the payload of a snapshot, so only its version or type decides whether it is applied. */
+    private fun envelope(version: Int, type: String, cluster: String, origin: String): String =
+        """{"v":$version,"type":"$type","cluster":"$cluster","origin":"$origin","at":"2026-11-10T10:00:00Z","payload":$SNAPSHOT_PAYLOAD}"""
+
+    /**
+     * Writes [messages] to the broker with the NATS text protocol, and returns once the broker has taken them: the PING
+     * is answered only after the publishes before it. The socket has a read timeout, so a silent broker fails the test.
+     */
+    private fun publish(broker: GenericContainer<*>, subject: String, messages: List<String>) {
+        Socket(broker.host, broker.getMappedPort(NATS_PORT)).use { socket ->
+            socket.soTimeout = BUS_BOUND.toMillis().toInt()
+            val input = socket.getInputStream().bufferedReader(StandardCharsets.UTF_8)
+            val output = socket.getOutputStream()
+            input.readLine() // INFO, sent by the broker first
+            output.write("CONNECT {\"verbose\":false,\"pedantic\":false,\"protocol\":0,\"name\":\"mixed-version-test\"}\r\n".toByteArray())
+            messages.forEach { message ->
+                val bytes = message.toByteArray(StandardCharsets.UTF_8)
+                output.write("PUB $subject ${bytes.size}\r\n".toByteArray())
+                output.write(bytes)
+                output.write("\r\n".toByteArray())
+            }
+            output.write("PING\r\n".toByteArray())
+            output.flush()
+            val reply = generateSequence { input.readLine() }.first { it.startsWith("PONG") || it.startsWith("-ERR") }
+            check(reply.startsWith("PONG")) { "the broker refused a publish: $reply" }
+        }
+    }
+
+    /** A NATS broker on the network of [state]. [block] gets it and the address the replicas use to reach it. */
+    private fun withBroker(state: SharedState, block: (GenericContainer<*>, String) -> Unit) {
+        GenericContainer(DockerImageName.parse(NATS_IMAGE))
+            .withNetwork(state.network)
+            .withExposedPorts(NATS_PORT)
+            .waitingFor(Wait.forLogMessage(".*Server is ready.*", 1))
+            .withStartupTimeout(Duration.ofMinutes(2))
+            .use { broker ->
+                broker.start()
+                val address = checkNotNull(broker.containerInfo.networkSettings.networks.values.single().ipAddress) {
+                    "the NATS broker has no address on the test network"
+                }
+                block(broker, "nats://$address:$NATS_PORT")
+            }
+    }
+
     /** Puts [content] at [path] through the replica at [url]. The content is the path, so every artifact is distinct. */
     private fun deploy(url: String, path: String, content: String) {
         val response = Http.put("$url/$path", content, MIXED_BOOTSTRAP)
@@ -200,7 +336,23 @@ class MixedVersionClusterTest {
     }
 
     private companion object {
-        val WAIT_BOUND: java.time.Duration = java.time.Duration.ofSeconds(60)
+        val WAIT_BOUND: Duration = Duration.ofSeconds(60)
+
+        /** Long enough for a replica to connect and to receive the first snapshot of the bus. Every wait is a latch. */
+        val BUS_BOUND: Duration = Duration.ofSeconds(180)
+
+        const val NATS_IMAGE = "nats:2.12-alpine"
+        const val NATS_PORT = 4222
+
+        /** The origins of the three messages of the bus case. Each is the instance id that the status would list. */
+        const val IGNORED_VERSION = "probe-version-2"
+        const val IGNORED_TYPE = "probe-unknown-type"
+        const val APPLIED = "probe-known"
+
+        /** A complete, valid snapshot payload, so a message is ignored for its version or type alone. */
+        const val SNAPSHOT_PAYLOAD =
+            """{"version":"1.1.1","uptimeStart":1762596000000,"usedMemory":512,"maxMemory":1024,"usedThreads":40,"maxThreads":200,""" +
+                """"failuresCount":0,"health":"up","interval":60000,"sample":{"at":1762596030000,"memory":512,"threads":40}}"""
 
         const val FROM_OLD_TO_NEW = "releases/com/example/mixed/1.0.0/mixed-1.0.0.jar"
         const val FROM_NEW_TO_OLD = "releases/com/example/mixed/2.0.0/mixed-2.0.0.jar"
