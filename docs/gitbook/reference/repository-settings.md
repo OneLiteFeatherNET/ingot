@@ -101,6 +101,7 @@ A new instance starts with three repositories. Their other fields have the defau
 | `id` | Id | string | empty | Name and address of the repository. At least 1 character. A name of 64 or more characters fails to load. |
 | `visibility` | Visibility | `PUBLIC`, `HIDDEN`, `PRIVATE` | `PUBLIC` | Who can read and list the repository. See [Visibility](#visibility). |
 | `type` | Type | `HOSTED`, `PROXY`, `GROUP`, or absent | absent | Declared repository type. Absent means untyped. See [Repository types](repository-types.md). |
+| `format` | Format | `maven2`, or absent | absent | The repository format. Absent means `maven2`, which is the only format of this version. See [Format](#format). |
 | `description` | Description | string | empty | Plain text shown in the repository list. At most 280 characters. |
 | `tags` | Tags | list of strings | empty | Labels to group and find repositories. At most 10 tags. Each tag has 1 to 32 characters: lowercase letters, digits or hyphens, starting with a letter or digit. A tag may appear once. |
 | `redeployment` | Redeployment | boolean | `false` | Whether a file that already exists can be uploaded again. See [Redeployment](#redeployment). |
@@ -116,6 +117,17 @@ A new instance starts with three repositories. Their other fields have the defau
 | `readOnly` | Read-only | boolean, or absent | absent, which means `false` | Refuses deploys and deletes with `405`. Hosted and untyped repositories only. See [Version policy and read-only](#version-policy-and-read-only). |
 
 The id of a repository should not equal a reserved path segment of the dashboard or the API, such as `api`, `search` or `settings`. Ingot does not reject such an id, it logs a warning at startup and on every settings change. The dashboard creates ids from letters, digits, dots, underscores and hyphens, and compares them without regard to case.
+
+## Format
+
+`format` names the format of a repository, which decides how its paths, metadata and uploads are handled. This version has one format, `maven2`, and an absent key means `maven2`. Ingot does not write the key back when it saves a repository that had none, so a configuration written before the key existed stays as it was. A repository that names `maven2` keeps the key.
+
+The rules of the format are checked when the settings are saved:
+
+* An id that no installed format provides is refused, and the message names the repository and the installed formats. The id `maven` is refused with a hint to use `maven2` or to leave the key out.
+* A repository that proxies a local repository (a [loopback reference](#loopback-references) or a `GROUP`) must name a repository of the same format.
+
+These checks run on a save only. A configuration that holds a format this version does not know still starts: its repository is not served, the failure is recorded with its name among the server failures, and the other repositories serve as usual.
 
 ## Visibility
 

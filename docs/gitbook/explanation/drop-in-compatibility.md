@@ -31,6 +31,8 @@ The server file inside the image is called `ingot.jar`. The path `/app/reposilit
 
 A data directory written by Reposilite is read by Ingot as it is. The configuration and state files keep their names: `configuration.cdn`, `configuration.shared.json` and the SQLite database `reposilite.db`.
 
+A repository may carry a `format` key in `configuration.shared.json`. A configuration without the key is read as it always was, because the key is optional and means `maven2`. Ingot does not add the key to a repository that did not have it. See [Repository settings](../reference/repository-settings.md#format).
+
 Access tokens are carried over with their names, secrets, expiry dates and descriptions. Their rights are carried over exactly, including the old way of matching routes. The migration runs on the first start, inside one database transaction, and nothing needs to be run by hand. See [Token migration](token-migration.md) for the design.
 
 ### The configuration
@@ -67,6 +69,8 @@ Ingot keeps the promise for the image, the data and the clients. It does not rep
 ## What cannot be undone
 
 A rollback to Reposilite restores the old state, and nothing created in Ingot survives it. Users, machine accounts, tokens and rights created in Ingot are not visible to Reposilite. Tokens created in Ingot do not work there. Take a backup before you upgrade, and read [Roll back an upgrade](../how-to/roll-back-an-upgrade.md) before you start.
+
+A repository with a `format` key is also a rollback concern. Reposilite and earlier Ingot releases ignore the key when they read the configuration, and they drop it the next time they save it. A repository that names a format other than `maven2` would then be served as Maven by the older release. This version has no such format in its user interface, so only a key written by hand can create one.
 
 ## Related pages
 
