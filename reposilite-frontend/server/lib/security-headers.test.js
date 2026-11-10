@@ -66,3 +66,15 @@ describe('document headers', () => {
     expect(securityHeaders(), 'the headers of assets and api answers').not.toHaveProperty('Cross-Origin-Opener-Policy')
   })
 })
+
+// The policy the backend sends for the embedded dashboard (DASHBOARD_POLICY in SecurityHeaders.kt, asserted there
+// against the same text). Plugin pages add no source to it, so the image and the server stay in step.
+const RECORDED_DASHBOARD_POLICY = "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; " +
+  "img-src 'self' data: https: http:; font-src 'self' data:; connect-src 'self'; " +
+  "object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+
+describe('dashboard policy with plugin pages', () => {
+  it('sends the backend dashboard policy plus form-action self, unchanged by plugin pages', () => {
+    expect(securityHeaders()['Content-Security-Policy']).toBe(`${RECORDED_DASHBOARD_POLICY}; form-action 'self'`)
+  })
+})
