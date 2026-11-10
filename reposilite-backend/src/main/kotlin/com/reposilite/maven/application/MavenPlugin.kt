@@ -22,6 +22,7 @@ import com.reposilite.console.api.CommandsSetupEvent
 import com.reposilite.frontend.DashboardPaths
 import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.MirrorEnvironment
 import com.reposilite.maven.PreservedBuildsListener
 import com.reposilite.maven.PrivateAsPublicSetting
 import com.reposilite.maven.metadataLocksFor
@@ -77,6 +78,7 @@ internal class MavenPlugin : ReposilitePlugin() {
                 artifactIndexSink = artifactIndexSink,
                 cachePrivateAsPublic = PrivateAsPublicSetting.read(),
                 metadataLocks = metadataLocksFor(reposilite().database, clock),
+                mirrorEnvironment = MirrorEnvironment.read(),
             ).mavenFacade()
 
         logger.info("")

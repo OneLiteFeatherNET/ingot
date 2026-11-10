@@ -38,6 +38,7 @@ internal class RepositoryFactory(
     private val failureFacade: FailureFacade,
     private val storageFacade: StorageFacade,
     private val repositoriesNames: Collection<String>,
+    private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
 ) {
 
     private val repositoriesDirectory = Paths.get("repositories")
@@ -81,11 +82,21 @@ internal class RepositoryFactory(
                     repositoryService = repositoryService,
                     repositoryName = host
                 )
-            else ->
-                configurationSource.httpProxy
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { createHttpProxy(it) }
-                    .let { remoteClientProvider.createClient(failureFacade, it) }
+            else -> {
+                val configuredProxy = configurationSource.httpProxy
+                selectEnvironmentProxy(configuredProxy, host, mirrorEnvironment).fold(
+                    { environmentProxy ->
+                        val proxy = environmentProxy ?: configuredProxy
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { createHttpProxy(it) }
+                        remoteClientProvider.createClient(failureFacade, proxy)
+                    },
+                    { refusal ->
+                        failureFacade.logger.warn("Mirror of repository refused: $refusal")
+                        RefusedRemoteClient(refusal)
+                    }
+                )
+            }
         }
 
         return MirrorHost(host, configurationSource, remoteClient)

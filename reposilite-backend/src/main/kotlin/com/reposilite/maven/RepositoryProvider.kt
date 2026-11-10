@@ -51,6 +51,7 @@ internal class RepositoryProvider(
     repositoriesSource: Reference<List<RepositorySettings>>,
     resolutionCacheClusterMaxAge: Reference<Long>,
     artifactIndexSink: ArtifactIndexSink,
+    private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
 ) {
 
     val repositoryService = RepositoryService(
@@ -121,6 +122,7 @@ internal class RepositoryProvider(
             storageFacade = storageFacade,
             repositoryService = repositoryService,
             repositoriesNames = names,
+            mirrorEnvironment = mirrorEnvironment,
         )
 
         val sharedBucketConflicts = findS3SharedBucketConflicts(

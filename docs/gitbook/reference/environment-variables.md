@@ -232,6 +232,19 @@ Read once at startup, in this order: the system property `ingot.proxy.upstreamSt
 
 The value is compared without regard to case. Any other value stops the startup with a message that names `INGOT_PROXY_UPSTREAM_STATUS`. See [Create proxy repositories](../how-to/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
 
+### Mirror environment proxy
+
+Read once at startup. `INGOT_HTTP_USE_ENV_PROXY` is the switch. When it is `true` in any case, a mirror without an `httpProxy` value takes its outgoing proxy from the environment: `HTTPS_PROXY` for an `https` URL and `HTTP_PROXY` for an `http` URL. The variable names are read in upper case first and in lower case second. `REPOSILITE_HTTP_USE_ENV_PROXY` is read when `INGOT_HTTP_USE_ENV_PROXY` is not set. Any value other than `true` leaves the switch off, and the default is off.
+
+| Rule | Behavior |
+| --- | --- |
+| `httpProxy` | A per-mirror `httpProxy` value wins, and the environment is not consulted for that mirror. |
+| `NO_PROXY` | A comma-separated list. A host named exactly is reached directly, a name with a leading dot such as `.svc` matches every host below that domain, and `*` matches every host. |
+| Credentials | A proxy value with a user name or a password is refused. The mirror request then fails with a message that names the variable. Ingot never writes the value or the credentials to the log. Set `httpProxy` on the mirror when the proxy needs a login. |
+| Other URLs | Only mirror clients read the switch. S3, OIDC and the update check do not. |
+
+The JVM system properties such as `https.proxyHost` in `JAVA_OPTS` still apply to all outgoing connections whatever the switch says. The JDK does not read `HTTPS_PROXY` or `HTTP_PROXY` by itself, so the switch is the only way to take them into account. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#route-mirror-traffic-through-an-egress-proxy).
+
 ### Maven cache control
 
 Read once at startup from `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`, or from the legacy `REPOSILITE_MAVEN_CACHE_PRIVATE_AS_PUBLIC` when the `INGOT_` name is not set. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.

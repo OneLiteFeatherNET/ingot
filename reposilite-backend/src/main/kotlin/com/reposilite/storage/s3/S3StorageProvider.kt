@@ -63,6 +63,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.S3Object
 import software.amazon.awssdk.services.s3.model.UploadPartRequest
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.io.PushbackInputStream
 import java.nio.file.attribute.FileTime
@@ -130,8 +131,14 @@ class S3StorageProvider(
     private fun putThroughTemporaryFile(location: Location, data: InputStream): Result<Unit, ErrorResponse> {
         val temporary = File.createTempFile("reposilite-", "-s3-put")
 
-        temporary.outputStream().use { destination ->
-            data.copyTo(destination)
+        try {
+            temporary.outputStream().use { destination ->
+                data.copyTo(destination)
+            }
+        } catch (exception: IOException) {
+            // A copy that fails while it is read is never sent, so its temporary file goes with it.
+            temporary.delete()
+            throw exception
         }
 
         try {

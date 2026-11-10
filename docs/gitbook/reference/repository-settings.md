@@ -158,6 +158,7 @@ An entry of `proxied` describes one repository that this repository can fetch fi
 | `readTimeout` | Read Timeout | integer (seconds), at least 0 | `15` | Time to wait for data from a remote host. |
 | `authorization` | Mirror Credentials | object or absent | absent | Credentials for the referenced repository. See below. |
 | `httpProxy` | HTTP Proxy | string | empty | HTTP or SOCKS proxy for the connection to a remote host. Sensitive. |
+| `checksumPolicy` | Checksum policy | `ignore`, `warn` or `fail` | `ignore` | Checks stored copies against the checksum files of the remote. `warn` and `fail` need `store` set to `true`. See [Check checksums](../how-to/create-proxy-repositories.md#check-checksums). |
 | `authenticatedFetchingOnly` | Authenticated Fetching Only | boolean | `false` | Fetches an uncached file only for authenticated callers. |
 
 `authenticatedFetchingOnly` does not hide the repository from anonymous callers, use the [visibility](#visibility) for that. Turn it on together with `store`, or with a second entry that has it turned off. Files that are already stored stay readable for everyone who may read the repository.

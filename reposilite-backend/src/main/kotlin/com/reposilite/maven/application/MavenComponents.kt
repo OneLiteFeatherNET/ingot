@@ -30,6 +30,7 @@ import com.reposilite.maven.MetadataLocks
 import com.reposilite.maven.MetadataService
 import com.reposilite.maven.MirrorCacheLedger
 import com.reposilite.maven.MirrorCacheService
+import com.reposilite.maven.MirrorEnvironment
 import com.reposilite.maven.MirrorService
 import com.reposilite.maven.ResolutionProvider
 import com.reposilite.maven.RepositoryProvider
@@ -64,6 +65,7 @@ internal class MavenComponents(
     private val artifactIndexSink: ArtifactIndexSink,
     private val cachePrivateAsPublic: Boolean = false,
     private val metadataLocks: MetadataLocks = LockingMetadataLocks(clock),
+    private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
 ) : PluginComponents {
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
@@ -110,6 +112,7 @@ internal class MavenComponents(
             repositoriesSource = mavenSettings.computed { it.repositories },
             resolutionCacheClusterMaxAge = mavenSettings.computed { it.resolutionCacheClusterMaxAgeSeconds },
             artifactIndexSink = artifactIndexSink,
+            mirrorEnvironment = mirrorEnvironment,
         )
 
     private fun latestService(): LatestService =

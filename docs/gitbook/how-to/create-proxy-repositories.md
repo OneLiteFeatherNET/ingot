@@ -46,6 +46,7 @@ Each `proxied` entry accepts the options below. Leave an option out to use its d
 | --- | --- | --- |
 | `reference` | none | The URL of the remote repository, or the id of another local repository. |
 | `store` | `false` | Keep a copy of each fetched file on the local storage of the proxy. |
+| `checksumPolicy` | `ignore` | Check the stored copies against the checksum files of the remote: `ignore`, `warn` or `fail`. Needs `store` set to `true`. See [Check checksums](#check-checksums). |
 | `authorization` | none | Credentials for the remote, see below. |
 | `allowedGroups` | empty, all groups allowed | Group paths that may be fetched, for example `org/apache`. |
 | `allowedExtensions` | `.jar`, `.war`, `.aar`, `.pom`, `.xml`, `.module`, the checksum files, `.asc` and `.sigstore.json` | File extensions that may be fetched. Use `<none>` to allow files without an extension. |
@@ -127,6 +128,33 @@ The copy and the request share one fetch when every host of the repository has `
 {% hint style="warning" %}
 With several replicas, a cache on local disk is per pod. Each pod fetches and keeps its own copy. Use [S3 storage](use-s3-storage.md) for the repository when the replicas should share the cache. See [Run on Kubernetes](run-on-kubernetes.md).
 {% endhint %}
+
+## Check checksums
+
+With `checksumPolicy` the proxy compares the artifact files it stores with the checksum files that the same remote publishes next to them, `<file>.sha256` first and `<file>.sha1` when there is no `.sha256` file. Metadata files and checksum files are not checked.
+
+| Value | Behavior |
+| --- | --- |
+| `ignore` | Stores the copy without a check, as earlier versions did. This is the default. |
+| `warn` | Stores and serves the copy. A mismatch, or a remote without a checksum file, is written to the log with the file name and the remote. |
+| `fail` | Stores and serves a copy only when it matches. A copy that does not match, or a remote without any checksum file, is refused, and the next remote in `proxied` is tried. When every remote is refused the client gets `502 Bad Gateway`, and nothing is stored. |
+
+The example enables the check for one remote:
+
+```json
+{
+  "reference": "https://repo.example.com/releases",
+  "store": true,
+  "checksumPolicy": "fail"
+}
+```
+
+Points to know before you choose `fail`:
+
+* The check runs on the copies fetched after the policy is set. Copies that are already stored are not checked again.
+* `warn` and `fail` need `store` set to `true`. A remote with `store` set to `false` is refused when the configuration is validated, and the message names `checksumPolicy`.
+* Signature files such as `.asc` and `.sigstore.json` are artifact files, so `fail` checks them too. A remote that publishes no checksum for them is refused.
+* A checksum file that the remote serves wrong makes every copy from that remote fail. Compare with another remote before you rely on one.
 
 ## Typed and untyped repositories
 

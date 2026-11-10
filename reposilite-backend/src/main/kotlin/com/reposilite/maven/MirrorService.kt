@@ -23,6 +23,7 @@ import com.reposilite.maven.StoragePolicy.PRIORITIZE_UPSTREAM_METADATA
 import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.http.RemoteClient
 import com.reposilite.shared.internalServer
 import com.reposilite.shared.notFound
 import com.reposilite.status.FailureFacade
@@ -36,6 +37,7 @@ import panda.std.Result.ok
 import io.javalin.http.HttpStatus.BAD_GATEWAY
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.UNAUTHORIZED
+import java.io.IOException
 import java.io.InputStream
 import java.time.Clock
 import java.time.Instant
@@ -44,6 +46,9 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 
 internal const val NO_EXTENSION_MARKER = "<none>"
+
+/** A checksum file is one digest and a file name, so anything longer is not read as one. */
+private const val MAX_CHECKSUM_FILE_BYTES = 256
 
 internal class MirrorService(
     private val journalist: Journalist,
@@ -156,28 +161,92 @@ internal class MirrorService(
 
     private fun fetchFromRemoteHosts(repository: Repository, gav: Location, accessToken: AccessTokenIdentifier?, hosts: List<MirrorHost>): MirrorResolution<InputStream> =
         searchInRemoteRepositories(repository, gav, accessToken, hosts) { (host, config, client) ->
-            client
-                .get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
-                .flatMap { data ->
-                    when {
-                        config.store -> storeFile(repository, gav, data, host)
-                        else -> ok(data)
-                    }
-                }
-                .mapErr { error -> error.updateMessage { "$host: $it" } }
+            when {
+                config.store -> fetchAndStoreFromHost(repository, gav, host, config, client)
+                    .flatMap { repository.storageProvider.getFile(gav) }
+                else -> client
+                    .get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
+                    .mapErr { error -> error.updateMessage { "$host: $it" } }
+            }
         }
 
     private fun fetchAndStoreFromRemoteHosts(repository: Repository, gav: Location, accessToken: AccessTokenIdentifier?, hosts: List<MirrorHost>): MirrorResolution<Unit> =
         searchInRemoteRepositories(repository, gav, accessToken, hosts) { (host, config, client) ->
-            client
-                .get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
-                .flatMap { data -> putMirroredFile(repository, gav, data, host) }
-                .mapErr { error -> error.updateMessage { "$host: $it" } }
+            fetchAndStoreFromHost(repository, gav, host, config, client)
         }
 
-    private fun storeFile(repository: Repository, gav: Location, data: InputStream, host: String): Result<InputStream, ErrorResponse> =
-        putMirroredFile(repository, gav, data, host)
-            .flatMap { repository.storageProvider.getFile(gav) }
+    /**
+     * Fetches an artifact from one host and stores it, under the checksum policy of the host. Metadata and checksum
+     * files are never checked. Under [ChecksumPolicy.FAIL] the copy is verified while it is written, so a copy that does
+     * not match is refused before the storage commits it.
+     */
+    private fun fetchAndStoreFromHost(repository: Repository, gav: Location, host: String, config: MirroredRepositorySettings, client: RemoteClient): Result<Unit, ErrorResponse> {
+        val policy = if (gav.getSimpleName().isMetadataOrChecksumFileName()) ChecksumPolicy.IGNORE else config.checksumPolicy
+        val response = client.get("${host.removeSuffix("/")}/$gav", config.authorization, config.connectTimeout, config.readTimeout)
+            .mapErr { error -> error.updateMessage { "$host: $it" } }
+        return when (policy) {
+            ChecksumPolicy.IGNORE -> response
+                .flatMap { data -> putMirroredFile(repository, gav, data, host) }
+                .mapErr { error -> error.updateMessage { "$host: $it" } }
+            ChecksumPolicy.WARN -> response
+                .flatMap { data -> storeAndCompare(repository, gav, data, host, config, client) }
+                .mapErr { error -> error.updateMessage { "$host: $it" } }
+            ChecksumPolicy.FAIL -> response
+                .flatMap { data -> storeVerified(repository, gav, data, host, config, client) }
+        }
+    }
+
+    /** Stores the copy as it is, then compares it with the checksum of the same host and logs what differs. */
+    private fun storeAndCompare(repository: Repository, gav: Location, data: InputStream, host: String, config: MirroredRepositorySettings, client: RemoteClient): Result<Unit, ErrorResponse> {
+        val digest = DigestingInputStream(data)
+        return putMirroredFile(repository, gav, digest, host)
+            .peek {
+                val expected = readExpectedChecksum(host, gav, config, client)
+                val actual = expected?.let { digest.digestOf(it.algorithm) }
+                if (expected == null) {
+                    logger.warn("MirrorService | No checksum file for '$gav' on '$host', the copy is stored without a check")
+                } else if (actual != null && actual != expected.hex) {
+                    logger.warn("MirrorService | Upstream checksum mismatch for '$gav' on '$host', the copy is stored as it is")
+                }
+            }
+    }
+
+    /**
+     * Stores the copy only when it matches the checksum of the same host. The host is refused when it publishes no
+     * checksum, and a copy that does not match is refused while it is read, before the storage commits it.
+     */
+    private fun storeVerified(repository: Repository, gav: Location, data: InputStream, host: String, config: MirroredRepositorySettings, client: RemoteClient): Result<Unit, ErrorResponse> {
+        val expected = readExpectedChecksum(host, gav, config, client)
+        if (expected == null) {
+            data.close()
+            return refuseCopy(gav, host, "no checksum file")
+        }
+        return try {
+            putMirroredFile(repository, gav, DigestingInputStream(data, expected), host)
+        } catch (failure: IOException) {
+            refuseCopy(gav, host, failure.message ?: "the copy could not be read")
+        }
+    }
+
+    private fun refuseCopy(gav: Location, host: String, reason: String): Result<Unit, ErrorResponse> {
+        logger.warn("MirrorService | Refused copy of '$gav' from '$host': $reason")
+        return error(ErrorResponse(BAD_GATEWAY, "Upstream copy could not be verified against its checksum"))
+    }
+
+    /** The first checksum file of [host] that holds a digest, SHA-256 before SHA-1. Null when the host has none. */
+    private fun readExpectedChecksum(host: String, gav: Location, config: MirroredRepositorySettings, client: RemoteClient): ExpectedChecksum? =
+        ChecksumAlgorithm.entries.firstNotNullOfOrNull { algorithm ->
+            val response = client.get("${host.removeSuffix("/")}/$gav${algorithm.extension}", config.authorization, config.connectTimeout, config.readTimeout)
+            if (!response.isOk) {
+                return@firstNotNullOfOrNull null
+            }
+            val content = try {
+                response.get().use { String(it.readNBytes(MAX_CHECKSUM_FILE_BYTES), Charsets.UTF_8) }
+            } catch (failure: IOException) {
+                return@firstNotNullOfOrNull null
+            }
+            parseChecksumFile(content, algorithm)?.let { ExpectedChecksum(algorithm, it) }
+        }
 
     /**
      * Stores a fetched copy and records that its version directory holds a mirror copy, together with the upstream
