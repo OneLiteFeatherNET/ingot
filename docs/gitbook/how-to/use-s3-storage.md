@@ -67,6 +67,48 @@ The S3 keys are stored with the repository settings in the database. Anyone who 
 
 For AWS, set the region of your bucket.
 
+## Large uploads
+
+Ingot does not copy an upload to its temporary directory first. It sends the bytes to the bucket as they arrive:
+
+* A file that ends within its first 8 MiB is sent in one request, as before.
+* A larger file is sent as a multipart upload. Ingot sends parts of 8 MiB and holds one part in memory at a time. The last part may be smaller.
+
+The object is the same in both cases: the same key, the same content type and no extra metadata. Other tools read it like any other object.
+
+A multipart upload has at most 10,000 parts, so one file can be about 78 GiB at most. A larger file fails with the generic write error, and its upload is aborted.
+
+Each upload above 8 MiB holds one 8 MiB part in the heap while the part is sent. When many large uploads run at once, count them in the heap size.
+
+If a part or the completion fails, Ingot aborts the multipart upload, so the bucket keeps no incomplete upload. A server that is killed in the middle of an upload cannot abort it. Its parts stay in the bucket, unlisted, and cost storage until a lifecycle rule removes them. This rule removes incomplete uploads that are older than 7 days and no completed object:
+
+```json
+{
+  "Rules": [
+    {
+      "ID": "abort-incomplete-multipart-uploads",
+      "Status": "Enabled",
+      "Filter": {"Prefix": ""},
+      "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 7}
+    }
+  ]
+}
+```
+
+```bash
+aws s3api put-bucket-lifecycle-configuration --bucket <bucket> --lifecycle-configuration file://lifecycle.json
+```
+
+This call replaces all lifecycle rules of the bucket. If the bucket has rules already, add this one to them instead.
+
+### Upload through the temporary file
+
+Set `INGOT_S3_BUFFER_TO_DISK=true` to write every upload to a temporary file first and send it in one request, as before. Ingot reads `REPOSILITE_S3_BUFFER_TO_DISK` when the variable is not set. The setting is read at start, so restart Ingot after changing it, and it applies to every S3 repository of the instance. Any value other than `true` or `false` stops the start and names the variable.
+
+Use it when the storage service does not accept multipart uploads, or when the heap is too small for one 8 MiB part per concurrent upload. The temporary directory then needs room for the largest upload again.
+
+Google Cloud Storage through its S3 interoperability API was not checked for multipart uploads. If uploads above 8 MiB fail there, set `INGOT_S3_BUFFER_TO_DISK=true`.
+
 ## Ceph RGW and Rook
 
 These steps were not tested against a live Rook cluster. Check the service name and port in your cluster.
