@@ -92,6 +92,16 @@ def failed_reads(lines, expected_sha256):
     return failed
 
 
+def read_outcomes(lines, limit=5):
+    """Names the most frequent "<status> <sha256>" lines with their counts, most frequent first, for a failure message."""
+    counts = {}
+    for line in lines:
+        key = line.strip()
+        counts[key] = counts.get(key, 0) + 1
+    ranked = sorted(counts.items(), key=lambda item: -item[1])[:limit]
+    return ", ".join(f"{count}x {key}" for key, count in ranked)
+
+
 def missing_versions(metadata_xml, expected_versions):
     """The expected versions that maven-metadata.xml does not list."""
     try:
@@ -442,7 +452,8 @@ class Smoke:
             raise SmokeFailure(f"only {len(lines)} reads ran, too few to show anything about the rollout")
         failed = failed_reads(lines, expected)
         if failed:
-            raise SmokeFailure(f"{failed} of {len(lines)} reads through the Service failed during the rolling restart")
+            raise SmokeFailure(f"{failed} of {len(lines)} reads through the Service failed during the rolling restart, "
+                               f"expected 200 {expected}, answered: {read_outcomes(lines)}")
         self.kubectl.run(["delete", "pod", READER, "--ignore-not-found"])
         self.pods()
 

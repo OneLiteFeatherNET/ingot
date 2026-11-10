@@ -19,6 +19,7 @@ from ha_smoke import (
     SmokeFailure,
     check_run_observed,
     failed_reads,
+    read_outcomes,
     missing_versions,
     parse_curl_output,
     parse_instance_ids,
@@ -96,6 +97,18 @@ class FailedReadsTest(unittest.TestCase):
 
     def test_no_reads_at_all_counts_as_a_failed_read(self):
         self.assertEqual(1, failed_reads([], EXPECTED_SHA), "a check without reads proves nothing and must fail")
+
+
+class ReadOutcomesTest(unittest.TestCase):
+
+    def test_outcomes_are_counted_most_frequent_first(self):
+        lines = ["401 none", f"200 {EXPECTED_SHA}", "401 none", "000 none", "401 none"]
+        self.assertEqual("3x 401 none, 1x 200 " + EXPECTED_SHA + ", 1x 000 none", read_outcomes(lines),
+                         "a failed rollout check names what the reads answered, so the log shows the cause")
+
+    def test_outcomes_are_limited_to_the_most_frequent(self):
+        lines = [f"{500 + index} none" for index in range(10)]
+        self.assertEqual(5, read_outcomes(lines, limit=5).count("x "), "only the most frequent outcomes are listed")
 
 
 class MissingVersionsTest(unittest.TestCase):
