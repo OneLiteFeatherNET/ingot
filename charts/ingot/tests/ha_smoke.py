@@ -650,6 +650,9 @@ def diagnostics(kubectl, out=print):
         ["get", "pods", "-o", "wide"],
         ["get", "events", "--sort-by=.lastTimestamp"],
         ["logs", "-l", SERVER_SELECTOR, "--all-containers", "--prefix", "--tail=300"],
+        # a replica whose container restarted: why the previous one ended (OOMKilled, exit code) and its last lines
+        ["describe", "pods", "-l", SERVER_SELECTOR],
+        ["logs", "-l", SERVER_SELECTOR, "--all-containers", "--prefix", "--previous", "--tail=100"],
         ["logs", "-l", "app in (mariadb,floci,nats)", "--all-containers", "--prefix", "--tail=100"],
     ]
     for args in commands:
