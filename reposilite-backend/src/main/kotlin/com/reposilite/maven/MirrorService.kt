@@ -21,7 +21,9 @@ import com.reposilite.journalist.Journalist
 import com.reposilite.journalist.Logger
 import com.reposilite.maven.StoragePolicy.PRIORITIZE_UPSTREAM_METADATA
 import com.reposilite.maven.api.METADATA_FILE
+import com.reposilite.maven.api.MirrorIntegrityEvent
 import com.reposilite.maven.application.MirroredRepositorySettings
+import com.reposilite.plugin.Extensions
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.http.RemoteClient
 import com.reposilite.shared.internalServer
@@ -47,8 +49,14 @@ import java.util.concurrent.ConcurrentHashMap
 
 internal const val NO_EXTENSION_MARKER = "<none>"
 
+/** The algorithm named by an integrity event when the host published no checksum file at all. */
+private const val NO_ALGORITHM = "none"
+
 /** A checksum file is one digest and a file name, so anything longer is not read as one. */
 private const val MAX_CHECKSUM_FILE_BYTES = 256
+
+/** The algorithm as the integrity events name it, such as `sha256`: the extension of its checksum file without the dot. */
+private fun ChecksumAlgorithm.label(): String = extension.removePrefix(".")
 
 internal class MirrorService(
     private val journalist: Journalist,
@@ -57,6 +65,7 @@ internal class MirrorService(
     private val mirrorCache: MirrorCacheService,
     private val artifactIndexSink: ArtifactIndexSink,
     private val operationCounters: MavenOperationCounters = MavenOperationCounters(),
+    private val extensions: Extensions = Extensions(journalist),
 ) : Journalist {
 
     private data class FetchKey(
@@ -203,10 +212,16 @@ internal class MirrorService(
             .peek {
                 val expected = readExpectedChecksum(host, gav, config, client)
                 val actual = expected?.let { digest.digestOf(it.algorithm) }
-                if (expected == null) {
-                    logger.warn("MirrorService | No checksum file for '$gav' on '$host', the copy is stored without a check")
-                } else if (actual != null && actual != expected.hex) {
-                    logger.warn("MirrorService | Upstream checksum mismatch for '$gav' on '$host', the copy is stored as it is")
+                when {
+                    expected == null -> {
+                        logger.warn("MirrorService | No checksum file for '$gav' on '$host', the copy is stored without a check")
+                        raiseIntegrityEvent(repository, gav, host, ChecksumPolicy.WARN, ChecksumResult.MISSING, NO_ALGORITHM, CopyOutcome.STORED)
+                    }
+                    actual != null && actual != expected.hex -> {
+                        logger.warn("MirrorService | Upstream checksum mismatch for '$gav' on '$host', the copy is stored as it is")
+                        raiseIntegrityEvent(repository, gav, host, ChecksumPolicy.WARN, ChecksumResult.MISMATCH, expected.algorithm.label(), CopyOutcome.STORED)
+                    }
+                    actual != null -> operationCounters.recordChecksumResult(ChecksumPolicy.WARN, ChecksumResult.VERIFIED)
                 }
             }
     }
@@ -219,13 +234,33 @@ internal class MirrorService(
         val expected = readExpectedChecksum(host, gav, config, client)
         if (expected == null) {
             data.close()
+            raiseIntegrityEvent(repository, gav, host, ChecksumPolicy.FAIL, ChecksumResult.MISSING, NO_ALGORITHM, CopyOutcome.REFUSED)
             return refuseCopy(gav, host, "no checksum file")
         }
-        return try {
-            putMirroredFile(repository, gav, DigestingInputStream(data, expected), host)
+        val verifying = DigestingInputStream(data, expected)
+        val stored = try {
+            putMirroredFile(repository, gav, verifying, host)
         } catch (failure: IOException) {
-            refuseCopy(gav, host, failure.message ?: "the copy could not be read")
+            if (verifying.mismatched) return refuseMismatch(repository, gav, host, expected)
+            return refuseCopy(gav, host, failure.message ?: "the copy could not be read")
         }
+        return when {
+            stored.isOk -> stored.also { operationCounters.recordChecksumResult(ChecksumPolicy.FAIL, ChecksumResult.VERIFIED) }
+            verifying.mismatched -> refuseMismatch(repository, gav, host, expected)
+            else -> stored
+        }
+    }
+
+    /** A copy that does not match its checksum under fail is refused, and the mismatch is recorded as refused. */
+    private fun refuseMismatch(repository: Repository, gav: Location, host: String, expected: ExpectedChecksum): Result<Unit, ErrorResponse> {
+        raiseIntegrityEvent(repository, gav, host, ChecksumPolicy.FAIL, ChecksumResult.MISMATCH, expected.algorithm.label(), CopyOutcome.REFUSED)
+        return refuseCopy(gav, host, "upstream copy does not match its ${expected.algorithm.extension} checksum")
+    }
+
+    /** Counts a mismatch or a missing checksum and raises the event that the audit log maps. */
+    private fun raiseIntegrityEvent(repository: Repository, gav: Location, host: String, policy: ChecksumPolicy, result: ChecksumResult, algorithm: String, outcome: CopyOutcome) {
+        operationCounters.recordChecksumResult(policy, result)
+        extensions.emitEvent(MirrorIntegrityEvent(result, repository.name, gav.toString(), host, policy, algorithm, outcome))
     }
 
     private fun refuseCopy(gav: Location, host: String, reason: String): Result<Unit, ErrorResponse> {

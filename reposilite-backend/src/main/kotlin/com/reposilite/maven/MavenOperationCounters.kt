@@ -51,6 +51,8 @@ data class MavenOperationTotals(
     val upstream: Map<UpstreamOutcome, Long>,
     /** Refusals of protected groups by repository. Only repositories that refused a request appear. */
     val namespaceRefusals: Map<String, Long> = emptyMap(),
+    /** Checksum results of the policies that check copies, warn and fail. Every result of both is present. */
+    val checksumResults: Map<ChecksumPolicy, Map<ChecksumResult, Long>> = emptyMap(),
 )
 
 /**
@@ -62,6 +64,10 @@ class MavenOperationCounters {
     private val deploys = EnumMap<DeployOutcome, AtomicLong>(DeployOutcome::class.java)
     private val upstream = EnumMap<UpstreamOutcome, AtomicLong>(UpstreamOutcome::class.java)
     private val namespaceRefusals = ConcurrentHashMap<String, AtomicLong>()
+
+    /** Only the policies that check copies are counted; ignore has no series. */
+    private val checksumResults: Map<ChecksumPolicy, Map<ChecksumResult, AtomicLong>> =
+        listOf(ChecksumPolicy.WARN, ChecksumPolicy.FAIL).associateWith { ChecksumResult.entries.associateWith { AtomicLong() } }
 
     init {
         DeployOutcome.entries.forEach { deploys[it] = AtomicLong() }
@@ -81,10 +87,16 @@ class MavenOperationCounters {
         namespaceRefusals.computeIfAbsent(repository) { AtomicLong() }.incrementAndGet()
     }
 
+    /** Counts one checksum result of a copy under [policy]. A policy that does not check copies counts nothing. */
+    fun recordChecksumResult(policy: ChecksumPolicy, result: ChecksumResult) {
+        checksumResults[policy]?.get(result)?.incrementAndGet()
+    }
+
     fun snapshot(): MavenOperationTotals = MavenOperationTotals(
         deploys = deploys.mapValues { it.value.get() },
         upstream = upstream.mapValues { it.value.get() },
         namespaceRefusals = namespaceRefusals.mapValues { it.value.get() },
+        checksumResults = checksumResults.mapValues { (_, byResult) -> byResult.mapValues { it.value.get() } },
     )
 
 }

@@ -87,6 +87,17 @@ internal class OperationalMetrics(
             }
             .register(registry)
 
+        CounterWithCallback.builder()
+            .name("ingot_mirror_checksum_results_total")
+            .help("Checksum results of mirror copies by checksum policy, warn or fail, and by result: verified, mismatch or missing")
+            .labelNames("policy", "result")
+            .callback { callback ->
+                source.maven()?.checksumResults?.forEach { (policy, byResult) ->
+                    byResult.forEach { (result, count) -> callback.call(count.toDouble(), policy.name.lowercase(), result.name.lowercase()) }
+                }
+            }
+            .register(registry)
+
         GaugeWithCallback.builder()
             .name("ingot_mirror_cache_entries")
             .help("Rows of the mirror cache across all proxy repositories")

@@ -22,8 +22,10 @@ import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.audit.infrastructure.AuditEndpoints
 import com.reposilite.configuration.shared.SharedConfigurationFacade
+import com.reposilite.maven.ChecksumResult
 import com.reposilite.maven.api.DeleteEvent
 import com.reposilite.maven.api.DeployEvent
+import com.reposilite.maven.api.MirrorIntegrityEvent
 import com.reposilite.maven.api.ProxyRefusedEvent
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
@@ -85,6 +87,10 @@ internal class AuditPlugin : ReposilitePlugin() {
             }
         }
 
+        event { event: MirrorIntegrityEvent ->
+            recordSafely { auditFacade.record(mirrorIntegrityAuditEvent(event)) }
+        }
+
         event { _: ReposiliteInitializeEvent ->
             reposilite().scheduler.scheduleWithFixedDelay({ recordSafely { auditFacade.purgeExpired() } }, 1, 24, HOURS)
         }
@@ -122,6 +128,29 @@ internal fun proxyRefusedAuditEvent(event: ProxyRefusedEvent, tokenName: String?
         repository = event.repository,
         path = event.gav.toString(),
         details = mapOf("prefix" to event.prefix, "skippedMembers" to event.skippedMembers),
+        success = false,
+    )
+
+/**
+ * The audit event of a mirror copy that did not match its checksum, or whose host published none. The fetch has no request
+ * actor, so the actor is the system. The details carry the host, the policy, the algorithm and the outcome, never a digest.
+ */
+internal fun mirrorIntegrityAuditEvent(event: MirrorIntegrityEvent): AuditEvent =
+    AuditEvent(
+        action = when (event.result) {
+            ChecksumResult.MISMATCH -> AuditAction.MIRROR_CHECKSUM_MISMATCH
+            ChecksumResult.MISSING -> AuditAction.MIRROR_CHECKSUM_MISSING
+            ChecksumResult.VERIFIED -> error("A verified copy raises no integrity event")
+        },
+        actor = AuditActor.SYSTEM_ACTOR,
+        repository = event.repository,
+        path = event.path,
+        details = mapOf(
+            "host" to event.host,
+            "policy" to event.policy.name.lowercase(),
+            "algorithm" to event.algorithm,
+            "outcome" to event.outcome.name.lowercase(),
+        ),
         success = false,
     )
 

@@ -16,6 +16,8 @@
 
 package com.reposilite.plugin.prometheus.metrics
 
+import com.reposilite.maven.ChecksumPolicy
+import com.reposilite.maven.ChecksumResult
 import com.reposilite.maven.DeployOutcome
 import com.reposilite.maven.MavenOperationTotals
 import com.reposilite.maven.UpstreamOutcome
@@ -92,6 +94,7 @@ internal class OperationalMetricsTest {
             "ingot_deploy_results",
             "ingot_upstream_requests",
             "ingot_namespace_refusals",
+            "ingot_mirror_checksum_results",
             "ingot_mirror_cache_entries",
             "ingot_cluster_connected",
             "ingot_cluster_dropped_events",
@@ -99,6 +102,23 @@ internal class OperationalMetricsTest {
             "ingot_search_outbox_pending",
             "ingot_search_outbox_oldest_age_seconds",
         )
+    }
+
+    @Test
+    fun `should expose all six checksum series at zero before the first fetch`() {
+        // given: no fetch has checked a copy yet, so every checksum result of warn and fail is zero
+        source.maven = maven().copy(
+            checksumResults = listOf(ChecksumPolicy.WARN, ChecksumPolicy.FAIL).associateWith { ChecksumResult.entries.associateWith { 0L } },
+        )
+
+        // when: the series are scraped
+        register()
+
+        // then: warn and fail each carry verified, mismatch and missing, so the series exist from the first scrape
+        assertThat(samples("ingot_mirror_checksum_results"))
+            .describedAs("checksum series before the first fetch")
+            .hasSize(6)
+            .allSatisfy { (_, value) -> assertThat(value).isZero() }
     }
 
     @Test
