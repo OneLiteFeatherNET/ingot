@@ -52,6 +52,7 @@ internal class RepositoryProvider(
     resolutionCacheClusterMaxAge: Reference<Long>,
     artifactIndexSink: ArtifactIndexSink,
     private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
+    private val uploadChecksumDefault: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
 ) {
 
     val repositoryService = RepositoryService(
@@ -123,6 +124,7 @@ internal class RepositoryProvider(
             repositoryService = repositoryService,
             repositoriesNames = names,
             mirrorEnvironment = mirrorEnvironment,
+            uploadChecksumDefault = uploadChecksumDefault,
         )
 
         val sharedBucketConflicts = findS3SharedBucketConflicts(

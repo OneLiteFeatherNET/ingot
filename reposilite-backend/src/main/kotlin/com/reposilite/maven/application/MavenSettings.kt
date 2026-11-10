@@ -23,6 +23,7 @@ import com.reposilite.configuration.shared.api.SettingsKey
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.api.ValidatedSettings
 import com.reposilite.maven.ChecksumPolicy
+import com.reposilite.maven.UploadChecksumPolicy
 import com.reposilite.maven.EffectiveRepositoryType
 import com.reposilite.maven.NamespaceProtection
 import com.reposilite.maven.RepositoryType
@@ -182,6 +183,15 @@ data class RepositorySettings(
         Only a repository of the type GROUP accepts this key. Empty disables the rule (Default: empty)
     """)
     val protectedGroupPrefixes: List<String> = listOf(),
+    @get:Doc(title = "Upload checksum policy", description = """
+        What Ingot does with an uploaded checksum file (.md5, .sha1, .sha256 or .sha512) that does not match the artifact
+        stored before it. The check only runs when the artifact is already stored.<br/>
+        ignore - stores the checksum file without a check<br/>
+        warn - stores the checksum file and records the mismatch in the audit log<br/>
+        reject - refuses the checksum file with 400, stores nothing and records the refusal in the audit log<br/>
+        Leave it empty to use the instance default, which is set by INGOT_UPLOAD_CHECKSUM_POLICY and is ignore when unset.
+    """)
+    val uploadChecksumPolicy: UploadChecksumPolicy? = null,
 ) : SharedSettings {
 
     /**

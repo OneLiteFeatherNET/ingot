@@ -45,6 +45,8 @@ class Repository internal constructor(
     val declaredType: RepositoryType? = null,
     /** Group id prefixes this group serves from hosted members only, see [NamespaceProtection]. Empty disables the rule. */
     val protectedGroupPrefixes: List<String> = emptyList(),
+    /** What a checksum file that does not match its stored artifact gets, see [UploadChecksumPolicy]. */
+    val uploadChecksumPolicy: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
 ) : RegisteredRepository {
 
     init {

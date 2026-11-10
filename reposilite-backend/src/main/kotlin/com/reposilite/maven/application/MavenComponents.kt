@@ -24,6 +24,7 @@ import com.reposilite.maven.LatestService
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.MavenOperationCounters
 import com.reposilite.maven.StorageUsageService
+import com.reposilite.maven.UploadChecksumPolicy
 import com.reposilite.maven.storageTargets
 import com.reposilite.maven.LockingMetadataLocks
 import com.reposilite.maven.MetadataLocks
@@ -66,6 +67,7 @@ internal class MavenComponents(
     private val cachePrivateAsPublic: Boolean = false,
     private val metadataLocks: MetadataLocks = LockingMetadataLocks(clock),
     private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
+    private val uploadChecksumDefault: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
 ) : PluginComponents {
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
@@ -114,6 +116,7 @@ internal class MavenComponents(
             resolutionCacheClusterMaxAge = mavenSettings.computed { it.resolutionCacheClusterMaxAgeSeconds },
             artifactIndexSink = artifactIndexSink,
             mirrorEnvironment = mirrorEnvironment,
+            uploadChecksumDefault = uploadChecksumDefault,
         )
 
     private fun latestService(): LatestService =
