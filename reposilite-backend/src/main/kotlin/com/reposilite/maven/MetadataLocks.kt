@@ -18,9 +18,12 @@ package com.reposilite.maven
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.errorResponse
 import io.javalin.http.HttpStatus.SERVICE_UNAVAILABLE
+import net.onelitefeather.ingot.schema.ExposedLeaseTable
 import net.onelitefeather.ingot.schema.LeaseSchemaLock
 import net.onelitefeather.ingot.schema.LeaseTable
+import org.jetbrains.exposed.v1.jdbc.Database
 import panda.std.Result
+import java.security.MessageDigest
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -55,9 +58,43 @@ internal interface MetadataLocks {
         /** How often a waiter tries again for the process lock and for the lease. */
         val POLL_INTERVAL: Duration = Duration.ofMillis(100)
 
+        /** The `Retry-After` of a 503 answer, in seconds. It is longer than the wait bound, so a retry finds the lock free. */
+        const val RETRY_AFTER_SECONDS: String = "10"
+
     }
 
 }
+
+/**
+ * The metadata lock of an instance with [database]. A shared database (MariaDB, MySQL, PostgreSQL) takes the lease row as well,
+ * so the instances of that database are serialised. An embedded database has a single writer and takes the process lock only,
+ * and issues no statement against `ingot_lock`.
+ */
+internal fun metadataLocksFor(database: Database, clock: Clock): MetadataLocks =
+    if (database.vendor.lowercase() in SHARED_DATABASE_VENDORS) {
+        LockingMetadataLocks(clock = clock, leaseTables = metadataLeaseTables(database))
+    } else {
+        LockingMetadataLocks(clock = clock)
+    }
+
+/** The lease table of each metadata key. The table is created once, the key only decides the row. */
+internal fun metadataLeaseTables(database: Database): (key: String) -> LeaseTable {
+    ExposedLeaseTable(database).createIfAbsent()
+    return { key -> ExposedLeaseTable(database, leaseNameOf(key)) }
+}
+
+private val SHARED_DATABASE_VENDORS = setOf("mariadb", "mysql", "postgresql")
+
+/**
+ * The name of the lease row of [key]. The column holds 64 characters, so the key is hashed: a prefix and 55 hex digits of its
+ * SHA-256 are unique in practice, and the name of a repository and path of any length fits.
+ */
+private fun leaseNameOf(key: String): String {
+    val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray(Charsets.UTF_8))
+    return "metadata:" + digest.joinToString("") { "%02x".format(it) }.take(LEASE_HASH_LENGTH)
+}
+
+private const val LEASE_HASH_LENGTH = 55
 
 /** What a writer holding a metadata lock may do with it. */
 internal interface MetadataLockScope {
