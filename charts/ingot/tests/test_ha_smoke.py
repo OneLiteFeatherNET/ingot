@@ -18,6 +18,9 @@ from ha_smoke import (
     POLL_SECONDS,
     SmokeFailure,
     check_run_observed,
+    ROLLING_GROUP,
+    ROLLING_PATH,
+    artifact_path,
     failed_reads,
     read_outcomes,
     missing_versions,
@@ -97,6 +100,13 @@ class FailedReadsTest(unittest.TestCase):
 
     def test_no_reads_at_all_counts_as_a_failed_read(self):
         self.assertEqual(1, failed_reads([], EXPECTED_SHA), "a check without reads proves nothing and must fail")
+
+
+class RollingArtifactTest(unittest.TestCase):
+
+    def test_the_reader_reads_the_path_the_rolling_check_deploys(self):
+        self.assertEqual(ROLLING_PATH, artifact_path(ROLLING_GROUP, "rolling", "1.0.0"),
+                         "the reader must read the artifact the check deployed, or every read is a 404")
 
 
 class ReadOutcomesTest(unittest.TestCase):

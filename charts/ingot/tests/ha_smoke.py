@@ -92,6 +92,11 @@ def failed_reads(lines, expected_sha256):
     return failed
 
 
+def artifact_path(group, artifact, version):
+    """The repository path of the pom of [artifact] in [group] at [version], as a deploy writes it."""
+    return f"{group}/{artifact}/{version}/{artifact}-{version}.pom"
+
+
 def read_outcomes(lines, limit=5):
     """Names the most frequent "<status> <sha256>" lines with their counts, most frequent first, for a failure message."""
     counts = {}
@@ -195,6 +200,7 @@ SERVICE_URL = f"http://{RELEASE}.{NAMESPACE}.svc.cluster.local:8080"
 POLICY = "smoke"
 CLIENT = "ha-client"
 READER = "ha-reader"
+ROLLING_GROUP = "net/onelitefeather/smoke"
 ROLLING_PATH = "net/onelitefeather/smoke/rolling/1.0.0/rolling-1.0.0.pom"
 LEASE_GROUP = "net/onelitefeather/smoke/lease"
 LEASE_VERSIONS = 80
@@ -353,7 +359,7 @@ class Smoke:
                           describe=f"{expected} ready server replicas")
 
     def deploy(self, ip, group, artifact, version, body):
-        path = f"/releases/{group}/{artifact}/{version}/{artifact}-{version}.pom"
+        path = f"/releases/{artifact_path(group, artifact, version)}"
         status, _, reply = self.http.request("PUT", pod_url(ip, path), headers=basic_auth_header(), body=body)
         if not 200 <= status < 300:
             raise SmokeFailure(f"deploying {path} answered {status}: {reply[:200]!r}")
@@ -433,7 +439,7 @@ class Smoke:
         self.out("check 1: reads through the Service during a rolling restart")
         body = b"<project>rolling</project>\n"
         ip = next(iter(self.pods().values()))
-        self.deploy(ip, "net/onelitefeather/smoke/rolling", "rolling", "1.0.0", body)
+        self.deploy(ip, ROLLING_GROUP, "rolling", "1.0.0", body)
         expected = sha256_hex(body)
         self.kubectl.apply_json(reader_pod())
         self.kubectl.run(["wait", f"pod/{READER}", "--for=condition=Ready", "--timeout=180s"])
