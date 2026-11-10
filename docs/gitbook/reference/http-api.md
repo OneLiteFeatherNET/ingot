@@ -157,7 +157,19 @@ Available only when `INGOT_NEXUS_IMPORT_ENABLED` is `true`. Without it these pat
 | --- | --- | --- | --- |
 | POST | `/api/migration/nexus/connection/test` | Instance admin | Probes a Nexus with a URL, a user and a password in the body. Answers the reachability, the version from the `Server` header, whether the credential is accepted and which areas it can read. A URL with user information answers `400`. The password is never returned. |
 
-The remaining importer routes (discover, jobs, report, credentials) are listed here as they are added.
+| POST | `/api/migration/nexus/discover` | Instance admin | Lists the Nexus repositories with their format and type, the component count and bytes of each hosted one, and a total per format. Reads only. |
+| POST | `/api/migration/nexus/jobs` | Instance admin | Creates a job of kind `DRY_RUN`, `IMPORT` or `VERIFY` and answers `202` with its id. The body holds the URL, the user, the password (a literal or a `${env:NAME}` reference), optionally the repositories, the Ingot names per repository, the `conflictPolicy` (`refuse`, `abort` or `overwrite`), the `audit` mode, and for a verify job the `verifyImportJob`. The job runs at the next tick of an instance that may take it. |
+| GET | `/api/migration/nexus/jobs` | Instance admin | Lists the jobs, newest first, with their status, owner and repository states. |
+| GET | `/api/migration/nexus/jobs/{id}` | Instance admin | One job: status, pause reason, last error, the repositories with their state, the counts per file result and the summary of its plan. |
+| POST | `/api/migration/nexus/jobs/{id}/pause` | Instance admin | Pauses a queued job at once, or a running job before its next file. Answers `204`. |
+| POST | `/api/migration/nexus/jobs/{id}/resume` | Instance admin | Resumes a job the operator paused. Answers `204`. |
+| POST | `/api/migration/nexus/jobs/{id}/cancel` | Instance admin | Cancels a job. A running one stops before its next file and keeps the files it copied. Answers `204`. |
+| PUT | `/api/migration/nexus/jobs/{id}/credentials` | Instance admin | Supplies the password again for a job paused with `CREDENTIALS_NEEDED`, body `{"password": "..."}`. Answers `204`. |
+| GET | `/api/migration/nexus/jobs/{id}/report` | Instance admin | The loss report of the job, as JSON or with `?format=csv`. |
+| GET | `/api/migration/nexus/jobs/{id}/conflicts` | Instance admin | The files that differ from the target, with both checksums. |
+| DELETE | `/api/migration/nexus/jobs/{id}` | Instance admin | Deletes a finished job with its rows. A job that is queued, paused or running answers `409`. Answers `204`. |
+
+Every write answers `503` while read-only mode is on. No route takes a credential in the query string, and no route returns one.
 
 ## Database
 

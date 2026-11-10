@@ -2,7 +2,7 @@
 
 The Nexus importer copies Maven repositories from Sonatype Nexus Repository 3 into Ingot. It reads Nexus through its REST API and never writes to Nexus. It is bundled in the image and off until you switch it on.
 
-> **Status.** In this version only the connection test route is exposed. The dry run, the copy, the verify pass and the job and report routes are built and tested inside the importer, but their HTTP routes are not yet wired into the server. The steps below describe the complete flow the importer is built for, so read the status before you plan a migration.
+> **Status.** The routes are exposed when `INGOT_NEXUS_IMPORT_ENABLED` is `true`: discovery, the dry run, the import, the verify pass, the job and report routes, and the operator controls. The steps below are the flow. The importer is tested against a fake Nexus that replays documented responses; it has not been run against a licensed Nexus instance, so start with a dry run and a small repository.
 
 ## Before you start
 
