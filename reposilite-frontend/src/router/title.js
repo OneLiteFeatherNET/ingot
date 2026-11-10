@@ -29,6 +29,9 @@ const pageTitle = (route, siteTitle) => {
     const qualifier = qualifierOf(route.params)
     return qualifier ? `${qualifier} · ${siteTitle}` : siteTitle
   }
+  if (route.name === 'settings-repositories' || route.name === 'settings-repository') {
+    return `Repositories · ${siteTitle}`
+  }
   const section = route.meta?.section
   if (section && section !== 'overview') {
     return `${pageLabel(section)} · ${siteTitle}`

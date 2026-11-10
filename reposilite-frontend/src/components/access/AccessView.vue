@@ -18,7 +18,7 @@
 import { computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useSession } from '../../store/session'
-import { groupedChildren, sideNavOf } from '../../navigation/registry'
+import { adminGroups, sideNavOf } from '../../navigation/registry'
 import SideNavLayout from '../layout/SideNavLayout.vue'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
@@ -53,9 +53,9 @@ const { can } = useSession()
 // Below 600px the side navigation is an index instead of a column beside the page; see SideNavLayout.
 const narrow = useMediaQuery('(max-width: 599px)')
 
-// A section whose node the user lacks is left out, not greyed out. The sections, their groups and the
-// node each one needs come from the navigation registry, the same node the route guard checks.
-const groups = computed(() => groupedChildren('access', can))
+// A page whose node the user lacks is left out, not greyed out. The pages, their groups and the node each one
+// needs come from the navigation registry, the same node the route guard checks. Every Administration page shows this tree.
+const groups = computed(() => adminGroups(can))
 const sideNav = sideNavOf('access')
 </script>
 

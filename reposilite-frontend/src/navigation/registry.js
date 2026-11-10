@@ -16,33 +16,43 @@
 
 /*
  * The one list of pages of the dashboard. A page is added or renamed here, and every
- * navigation surface reads it: the rail, the bottom bar and its More sheet, the route
- * table (src/router/routes.js builds the `meta` of each route from it), the Access tabs,
- * the document title and the route guard, which reads that meta.
+ * navigation surface reads it: the rail, the bottom bar, the route table (src/router/routes.js
+ * builds the `meta` of each route from it), the Access and Settings side navigation, the settings
+ * hub, the document title and the route guard, which reads that meta.
+ *
+ * The rail holds four entries: Browse (overview), Search, Dashboard and Administration. Administration
+ * opens the hub at /settings and is the group of every page an operator uses to run the instance; ADMIN_TREE
+ * lists those pages in four groups (Repository, Security, System, Support). Every Administration page shows
+ * this one tree in its side navigation (adminGroups), with the current page marked.
  *
  * Paths and route names stay in src/router/routes.js. An entry names its route by name.
  *
- * Entry fields:
- * - key         stable identifier (overview, search, dashboard, analytics, access, console,
- *               maintenance, audit, settings, account)
+ * Entry fields (PAGES):
+ * - key         stable identifier (overview, search, dashboard, settings, access, analytics, audit,
+ *               console, maintenance, account)
  * - route       the route name in routes.js
  * - label       the text in the rail, the bar, the breadcrumbs and the document title
- * - area        work, monitor, administration, troubleshoot, or none for a page outside the rail
- * - permission  { node } or { anyNode } for a manager page, { manager: false } for an open page,
+ * - area        rail for an entry of the rail, or none for a page outside it
+ * - permission  { node } or { anyNode } that the route needs, { manager: false } for an open page,
  *               { signedIn: true } for a page that needs a signed in visitor only
+ * - reach       optional. The permission that shows the entry in the rail, when it is wider than the
+ *               route's own permission (Administration is shown to anyone with an Administration page)
  * - barOrder    the place of the page in the bottom bar rule (the first four permitted pages in this order
  *               are in the bar, the rest sit under More); a page without one is never in the bar
  * - children    for Access: the side pages, each with key, route, label, group, permission and
  *               optional `detail` (the route of one principal or team of that page) and `landing`
- *               (true when the /access address may open it). Settings gets its children later.
+ *               (true when the /access address may open it).
  *
  * Functions:
  * - visiblePages(can)            the rail pages a visitor may open, in rail order (no account page)
  * - visibleChildren(key, can)    the children of a page the visitor may open
- * - groupedChildren(key, can)  the visible children in headed groups, as SideNavLayout takes them
+ * - adminGroups(can, options)    the Administration tree the visitor may open, in headed groups
+ *                                [{ heading, links: [{ key, label, to }] }]; settings domains are passed in
+ * - administrationLocation(can)  where the Administration entry of the rail opens: the hub, or the one page
+ *                                the visitor may open
  * - sideNavOf(key)              { label, sectionLabel, indexTo } of a page for SideNavLayout
- * - settingsGroupOf(domain)    the category of a Settings domain: Repository, Instance, Data, or Plugins for any other
- * - groupedSettingsDomains(domains)  a domain list in category groups [{ heading, domains }], empty groups left out
+ * - settingsGroupOf(domain)    the category of a Settings domain in the legacy Settings groups (Repository, Instance, Data, Plugins)
+ * - reservedDomainIds(domains)  the settings domain ids that a reserved page name under /settings shadows
  * - firstAccessRoute(can)        the route /access opens: the first permitted landing page, or users
  * - accessTabOf(routeName)       the Access tab key of a route, including its detail routes
  * - railGroups(can)            the rail pages in their groups: [{ area, heading, pages }], empty groups left out
@@ -62,89 +72,78 @@ import { ADMIN_NODES, ACCESS_NODES, INSTANCE_ADMIN_NODE, requiredNodes } from '.
 
 const MORE_KEY = 'more'
 
-/*
- * The pages and settings sections that server plugins contribute, from GET /api/frontend/plugin-ui. The
- * manifest is read after the session is known (src/store/pluginUi.js) and replaces the previous one. The
- * static PAGES list above is never changed by it.
- */
-const NO_CONTRIBUTIONS = { pages: [], sections: [], enabledPlugins: [] }
-const contributions = shallowRef(NO_CONTRIBUTIONS)
-
-// The groups a contributed page may name, in rail order. A page whose group is not one of these sits in Plugins.
-const CONTRIBUTED_GROUPS = ['Repository', 'Security', 'System', 'Support']
-const PLUGINS_HEADING = 'Plugins'
-
-// The Settings category a contributed section is placed in. System has no Settings category of its own.
-const SECTION_SETTINGS_GROUPS = { Repository: 'Repository', System: 'Instance' }
-
-const setContributions = (manifest) => {
-  contributions.value = manifest
-    ? { pages: manifest.pages ?? [], sections: manifest.sections ?? [], enabledPlugins: manifest.enabledPlugins ?? [] }
-    : NO_CONTRIBUTIONS
-}
-
-// The permission node that opens a contributed page: the node of its admin area, or the instance admin node for `*`.
-const pageNodeOf = (area) => (area === '*' ? INSTANCE_ADMIN_NODE : `ingot.admin.${area}`)
-
-const contributedKey = (page) => `${page.plugin}/${page.id}`
-
-const contributedHeading = (page) => (CONTRIBUTED_GROUPS.includes(page.group) ? page.group : PLUGINS_HEADING)
-
-// The contributed pages the visitor may open, each with its key and the heading of its group.
-const contributedPages = (can) => contributions.value.pages
-  .filter(page => can(pageNodeOf(page.area)))
-  .map(page => ({ ...page, key: contributedKey(page), heading: contributedHeading(page) }))
-
-const contributedPageByRoute = (plugin, id) =>
-  contributions.value.pages.find(page => page.plugin === plugin && page.id === id)
-
-// The node a contributed page needs, for the route guard. Undefined for a page the manifest does not name.
-const contributedPageNode = (plugin, id) => {
-  const page = contributedPageByRoute(plugin, id)
-  return page ? pageNodeOf(page.area) : undefined
-}
-
-// The rail groups of the contributed pages: [{ heading, pages }] in the order of CONTRIBUTED_GROUPS, Plugins last.
-const contributedRailGroups = (can) => [...CONTRIBUTED_GROUPS, PLUGINS_HEADING]
-  .map(heading => ({ heading, pages: contributedPages(can).filter(page => page.heading === heading) }))
-  .filter(group => group.pages.length > 0)
-
-// The location an address without a page id is replaced with: the first page the manifest names for the plugin.
-// Null when the address already names a page, or the plugin contributes none.
-const pluginPageRedirect = (plugin, page) => {
-  if (page !== undefined) return null
-  const first = contributions.value.pages.find(entry => entry.plugin === plugin)
-  return first ? { name: 'settings-plugin', params: { plugin, page: first.id } } : null
-}
-
-const sectionOf = (domain) => contributions.value.sections.find(section => section.domain === domain)
-
-const settingsLabelOf = (domain) => sectionOf(domain)?.label
-
-const enabledPlugins = () => contributions.value.enabledPlugins
-
-// The groups of the rail, in order, and the number of pages the bottom bar keeps before More.
-const AREAS = [
-  { area: 'work', heading: 'Work' },
-  { area: 'monitor', heading: 'Monitor' },
-  { area: 'administration', heading: 'Administration' },
-  { area: 'troubleshoot', heading: 'Troubleshoot' },
-]
+// The groups of the rail. The four entries of the rail form one unlabelled block, so the group has no heading.
+const AREAS = [{ area: 'rail', heading: undefined }]
 const BAR_SIZE = 4
 
+// The settings domains that belong to the Repository group of the Administration tree. Any other domain, a plugin
+// domain included, is listed under System, so it never fails to show.
+const REPOSITORY_DOMAINS = ['maven', 'javadoc', 'cleanup']
+
+// The page names under /settings that a settings domain may not take as its id, since the page is served first.
+const RESERVED_SETTINGS_PAGES = ['repositories']
+
+/*
+ * The Administration tree. A static entry names its route, label and permission. The settings domains are not
+ * listed here, because the server decides which exist; they are added to their group by adminGroups.
+ */
+const ADMIN_TREE = [
+  {
+    heading: 'Repository',
+    entries: [
+      { key: 'repositories', route: 'settings-repositories', detail: 'settings-repository', label: 'Repositories', permission: { node: ADMIN_NODES.settings } },
+    ],
+  },
+  {
+    heading: 'Security',
+    entries: [
+      { key: 'users', route: 'access-users', label: 'Users', permission: { node: ADMIN_NODES.users } },
+      { key: 'machines', route: 'access-machines', label: 'Machine accounts', permission: { node: ADMIN_NODES.users } },
+      { key: 'teams', route: 'access-teams', label: 'Teams', permission: { node: ADMIN_NODES.teams } },
+      { key: 'sso', route: 'access-sso', label: 'SSO', permission: { node: INSTANCE_ADMIN_NODE } },
+      { key: 'ldap', route: 'access-ldap', label: 'LDAP', permission: { node: INSTANCE_ADMIN_NODE } },
+      { key: 'security', route: 'access-security', label: 'Security settings', permission: { node: INSTANCE_ADMIN_NODE } },
+      { key: 'check', route: 'access-check', label: 'Permission check', permission: { anyNode: ACCESS_NODES } },
+      { key: 'audit', route: 'audit', label: 'Audit log', permission: { node: ADMIN_NODES.audit } },
+    ],
+  },
+  { heading: 'System', entries: [] },
+  {
+    heading: 'Support',
+    entries: [
+      { key: 'console', route: 'console', label: 'Console', permission: { node: ADMIN_NODES.console } },
+      { key: 'maintenance', route: 'maintenance', label: 'Maintenance', permission: { node: ADMIN_NODES.maintenance } },
+      { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { node: ADMIN_NODES.dashboard } },
+    ],
+  },
+]
+
+const ADMIN_ENTRIES = ADMIN_TREE.flatMap(group => group.entries)
+
+// The Administration entry is shown to a visitor who may open the hub or any page of the tree.
+const ADMINISTRATION_REACH = {
+  anyNode: [ADMIN_NODES.settings, ...ADMIN_ENTRIES.flatMap(entry => requiredNodes(entry.permission))],
+}
+
 const PAGES = [
-  { key: 'overview', route: 'overview', label: 'Repositories', area: 'work', permission: { manager: false }, barOrder: 1 },
-  { key: 'search', route: 'search', label: 'Search', area: 'work', permission: { manager: false }, barOrder: 2 },
-  { key: 'dashboard', route: 'dashboard', label: 'Dashboard', area: 'monitor', permission: { node: ADMIN_NODES.dashboard }, barOrder: 3 },
-  { key: 'analytics', route: 'analytics', label: 'Analytics', area: 'monitor', permission: { node: ADMIN_NODES.dashboard }, barOrder: 6 },
-  { key: 'audit', route: 'audit', label: 'Audit log', area: 'monitor', permission: { node: ADMIN_NODES.audit }, barOrder: 7 },
+  { key: 'overview', route: 'overview', label: 'Browse', area: 'rail', permission: { manager: false }, barOrder: 1 },
+  { key: 'search', route: 'search', label: 'Search', area: 'rail', permission: { manager: false }, barOrder: 2 },
+  { key: 'dashboard', route: 'dashboard', label: 'Dashboard', area: 'rail', permission: { node: ADMIN_NODES.dashboard }, barOrder: 3 },
+  {
+    key: 'settings',
+    route: 'settings',
+    label: 'Administration',
+    area: 'rail',
+    permission: { node: ADMIN_NODES.settings },
+    reach: ADMINISTRATION_REACH,
+    barOrder: 4,
+  },
   {
     key: 'access',
     route: 'access',
     label: 'Access',
-    area: 'administration',
+    area: 'none',
     permission: { anyNode: ACCESS_NODES },
-    barOrder: 4,
     children: [
       { key: 'users', route: 'access-users', detail: 'access-user', label: 'Users', group: 'People', permission: { node: ADMIN_NODES.users }, landing: true },
       { key: 'machines', route: 'access-machines', detail: 'access-machine', label: 'Machine accounts', group: 'People', permission: { node: ADMIN_NODES.users }, landing: true },
@@ -155,9 +154,10 @@ const PAGES = [
       { key: 'check', route: 'access-check', label: 'Check', group: 'Tools', permission: { anyNode: ACCESS_NODES } },
     ],
   },
-  { key: 'settings', route: 'settings', label: 'Settings', area: 'administration', permission: { node: ADMIN_NODES.settings }, barOrder: 5 },
-  { key: 'console', route: 'console', label: 'Console', area: 'troubleshoot', permission: { node: ADMIN_NODES.console }, barOrder: 8 },
-  { key: 'maintenance', route: 'maintenance', label: 'Maintenance', area: 'troubleshoot', permission: { node: ADMIN_NODES.maintenance }, barOrder: 9 },
+  { key: 'analytics', route: 'analytics', label: 'Analytics', area: 'none', permission: { node: ADMIN_NODES.dashboard } },
+  { key: 'audit', route: 'audit', label: 'Audit log', area: 'none', permission: { node: ADMIN_NODES.audit } },
+  { key: 'console', route: 'console', label: 'Console', area: 'none', permission: { node: ADMIN_NODES.console } },
+  { key: 'maintenance', route: 'maintenance', label: 'Maintenance', area: 'none', permission: { node: ADMIN_NODES.maintenance } },
   { key: 'account', route: 'account', label: 'My account', area: 'none', permission: { signedIn: true } },
 ]
 
@@ -175,41 +175,54 @@ const allowedBy = (permission, can) => requiredNodes(permission).some(node => ca
 const isOpen = (permission) => requiredNodes(permission).length === 0
 
 const visiblePages = (can) =>
-  PAGES.filter(page => page.area !== 'none' && (isOpen(page.permission) || allowedBy(page.permission, can)))
+  PAGES.filter(page => page.area !== 'none' && (isOpen(page.permission) || allowedBy(page.reach ?? page.permission, can)))
 
 const visibleChildren = (key, can) => childrenOf(key).filter(child => allowedBy(child.permission, can))
 
-// Children in their groups, in the order the groups first appear: [{ heading, links: [{ key, label, to }] }].
-// A group without a visible child is left out. `to` is the router location of the child.
-const groupedChildren = (key, can) => {
-  const groups = []
-  visibleChildren(key, can).forEach(child => {
-    let group = groups.find(entry => entry.heading === child.group)
-    if (!group) {
-      group = { heading: child.group, links: [] }
-      groups.push(group)
-    }
-    group.links.push({ key: child.key, label: child.label, to: { name: child.route } })
+/*
+ * The Administration tree a visitor may open, in its groups: [{ heading, links: [{ key, label, to }] }]. `to` is the
+ * router location of the link. A group without a visible link is left out. The settings domains come from the
+ * caller (`domains` is the list the server gave, Access domains left out), and are listed only to a visitor with
+ * the settings node, each in the group treeGroupOf names. `titleOf` gives their label.
+ */
+const adminGroups = (can, { domains = [], titleOf = (domain) => domain } = {}) => ADMIN_TREE
+  .map(group => {
+    const pages = group.entries
+      .filter(entry => allowedBy(entry.permission, can))
+      .map(entry => ({ key: entry.key, label: entry.label, to: { name: entry.route } }))
+    const settingsLinks = can(ADMIN_NODES.settings)
+      ? domains
+        .filter(domain => treeGroupOf(domain) === group.heading)
+        .map(domain => ({ key: domain, label: titleOf(domain), to: { name: 'settings', params: { domain } } }))
+      : []
+    return { heading: group.heading, links: [...pages, ...settingsLinks] }
   })
-  return groups
+  .filter(group => group.links.length > 0)
+
+/*
+ * Where the Administration entry of the rail opens: the hub when the visitor may open it, otherwise the first
+ * Administration page the visitor may open (for example the audit log of a visitor with only that node).
+ */
+const administrationLocation = (can) => {
+  if (can(ADMIN_NODES.settings)) return { name: 'settings' }
+  const first = ADMIN_ENTRIES.find(entry => allowedBy(entry.permission, can))
+  return first ? { name: first.route } : { name: 'settings' }
 }
 
 // What SideNavLayout needs of a page except the groups: the accessible name of the navigation, the first
-// crumb and the location of the index. All three come from the entry of the page.
+// crumb and the location of the index. The navigation is the Administration tree on every page of it.
 const sideNavOf = (key) => {
   const page = pageByKey(key)
-  return { label: `${page.label} sections`, sectionLabel: page.label, indexTo: { name: page.route } }
+  return { label: 'Administration', sectionLabel: page.label, indexTo: { name: page.route } }
 }
 
-// The Settings domains are filled from the server schema at run time, so Settings has no static children.
-// A fixed mapping places the domains the server is known to list in a category; any other domain, such
-// as one a plugin adds, falls into Plugins and so never fails to show.
-const SETTINGS_GROUPS = [
-  { heading: 'Repository', domains: ['maven', 'javadoc', 'cleanup'] },
-  { heading: 'Instance', domains: ['web', 'frontend'] },
-  { heading: 'Data', domains: ['statistics', 'audit', 'search'] },
-  { heading: 'Plugins', domains: [] }
-]
+// The group of a Settings domain in the Administration tree: Repository for the repository domains and a plugin section
+// in the Repository group, System for every other domain, a plugin domain included.
+const treeGroupOf = (domain) => {
+  const section = sectionOf(domain)
+  if (section) return section.group === 'Repository' ? 'Repository' : 'System'
+  return REPOSITORY_DOMAINS.includes(domain) ? 'Repository' : 'System'
+}
 
 const SETTINGS_FALLBACK_GROUP = 'Plugins'
 
@@ -225,6 +238,9 @@ const settingsGroupOf = (domain) => {
 const groupedSettingsDomains = (domains) => SETTINGS_GROUPS
   .map(group => ({ heading: group.heading, domains: domains.filter(domain => settingsGroupOf(domain) === group.heading) }))
   .filter(group => group.domains.length > 0)
+
+// The settings domain ids that a reserved page name under /settings would shadow.
+const reservedDomainIds = (domains) => domains.filter(domain => RESERVED_SETTINGS_PAGES.includes(domain))
 
 const firstAccessRoute = (can) => {
   const landing = visibleChildren('access', can).find(child => child.landing)
@@ -271,6 +287,7 @@ const unlistedRoutes = (names) => {
   const covered = new Set([
     ...PAGES.map(page => page.route),
     ...PAGES.flatMap(page => childrenOf(page.key)).flatMap(child => [child.route, child.detail].filter(Boolean)),
+    ...ADMIN_ENTRIES.flatMap(entry => [entry.route, entry.detail].filter(Boolean)),
     ...EXEMPT_ROUTES,
   ])
   return names.filter(name => !covered.has(name))
@@ -278,6 +295,7 @@ const unlistedRoutes = (names) => {
 
 export {
   PAGES,
+  ADMIN_TREE,
   MORE_KEY,
   setContributions,
   contributedPages,
@@ -290,10 +308,11 @@ export {
   pageByKey,
   visiblePages,
   visibleChildren,
-  groupedChildren,
+  adminGroups,
+  administrationLocation,
   sideNavOf,
   settingsGroupOf,
-  groupedSettingsDomains,
+  reservedDomainIds,
   firstAccessRoute,
   accessTabOf,
   pageLabel,

@@ -22,8 +22,7 @@ import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { ADMIN_NODES } from '../../store/nodeAccess'
-import { contributedRailGroups, groupedSettingsDomains, settingsLabelOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, settingsLabelOf, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import SideNavLayout from '../layout/SideNavLayout.vue'
@@ -115,24 +114,18 @@ const activeDomain = computed(() => {
 // Below 600px the side navigation is not drawn beside the domain; see SideNavLayout.
 const narrow = useMediaQuery('(max-width: 599px)')
 
-// The domains of the side navigation, in the category groups of the registry. With one domain there is
-// nothing to switch between, so no navigation is drawn.
+/*
+ * The side navigation is the Administration tree, the same one every Administration page shows. Its settings domains
+ * are the tabs of this page, and the repositories page is one of its links.
+ */
+const session = useSession()
+const can = (node) => (typeof session.can === 'function' ? session.can(node) : true)
 const sideNav = sideNavOf('settings')
-// The pages a plugin contributed are listed after the domains, in their groups, so they stay reachable where the bar
-// does not hold them. A domain a plugin labelled shows that label.
-const pluginPageGroups = computed(() => contributedRailGroups(session.can).map(group => ({
-  heading: group.heading,
-  links: group.pages.map(page => ({ key: page.key, label: page.title, to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } } }))
-})))
-const domainGroups = computed(() => (tabDomains.value.length > 1
-  ? [
-    ...groupedSettingsDomains(tabDomains.value).map(group => ({
-      heading: group.heading,
-      links: group.domains.map(domain => ({ key: domain, label: settingsLabelOf(domain) ?? store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
-    })),
-    ...pluginPageGroups.value,
-  ]
-  : []))
+const navGroups = computed(() => adminGroups(can, {
+  domains: tabDomains.value,
+  titleOf: (domain) => settingsLabelOf(domain) ?? store.titleOf(domain),
+}))
+const repositoriesRoute = computed(() => route.name === 'settings-repositories' || route.name === 'settings-repository')
 
 // With no domain in the address and several to choose from, the page is the hub. With one domain the
 // address is replaced with it, as the watcher below reports.
@@ -322,15 +315,13 @@ const openConflictReview = async () => {
  * node, so a visitor either may edit every domain or none. A session without a node check, as the tests
  * provide, is taken to edit.
  */
-const session = useSession()
-const mayEdit = () => (typeof session.can === 'function' ? session.can(ADMIN_NODES.settings) : true)
 const hubCards = computed(() => hubGroups({
+  can,
   domains: domains.value,
   schemas: store.schemas.value,
   saved: savedSettings.value,
   unsaved: [...new Set(changes.value.map(change => change.domain))],
   titleOf: store.titleOf,
-  editable: mayEdit
 }))
 
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
@@ -425,8 +416,8 @@ const formsConfiguration = {
 watch(
   () => props.selectedTab,
   (selectedTab, prev) => {
-    /* Fetch configuration only when user opens the configuration tab  */
-    if (selectedTab === 'Settings' && prev == undefined && domains.value.length == 0)
+    /* Fetch configuration only when the user opens an Administration page that reads it (any page of the settings section) */
+    if (selectedTab && prev == undefined && domains.value.length == 0)
       store.fetchConfiguration()
   },
   { immediate: true }
@@ -497,8 +488,8 @@ watch(
       <SideNavLayout
         :label="sideNav.label"
         :section-label="sideNav.sectionLabel"
-        :groups="domainGroups"
-        :current="activeDomain"
+        :groups="navGroups"
+        :current="repositoriesRoute ? 'repositories' : activeDomain"
         :index-to="sideNav.indexTo"
         :narrow="narrow"
         replace

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { groupedSettingsDomains } from '../../navigation/registry'
+import { adminGroups } from '../../navigation/registry'
 import { collectionsOf } from './collections'
 import { settingsTabDomains } from './accessDomains'
 
@@ -33,19 +33,24 @@ const domainSummary = (schema, saved) => {
   return collections.map(collection => countText(collection, saved?.[collection.key]?.length ?? 0)).join(', ')
 }
 
-// The cards of the hub in the groups of the registry. `unsaved` lists the domains whose draft differs from
-// the saved value, and `editable(domain)` tells whether the visitor may edit one; a group without a card is left out.
-const hubGroups = ({ domains, schemas, saved, unsaved, titleOf, editable }) => groupedSettingsDomains(
-  settingsTabDomains(domains).filter(editable)
-).map(group => ({
+// The cards of the hub: the Administration tree the visitor may open, in its groups. A settings domain is a card
+// with its saved summary, and `unsaved` lists the domains whose draft differs from the saved value. A page is a
+// card without a summary. `can(node)` answers for the visitor, and a settings domain is listed only with the settings node.
+const hubGroups = ({ can, domains, schemas, saved, unsaved, titleOf }) => adminGroups(can, {
+  domains: settingsTabDomains(domains),
+  titleOf,
+}).map(group => ({
   heading: group.heading,
-  cards: group.domains.map(domain => ({
-    key: domain,
-    title: titleOf(domain),
-    summary: domainSummary(schemas[domain], saved[domain]),
-    unsaved: unsaved.includes(domain),
-    to: { name: 'settings', params: { domain } }
-  }))
+  cards: group.links.map(link => {
+    const isDomain = link.to.name === 'settings'
+    return {
+      key: link.key,
+      title: link.label,
+      summary: isDomain ? domainSummary(schemas[link.key], saved[link.key]) : '',
+      unsaved: isDomain && unsaved.includes(link.key),
+      to: link.to,
+    }
+  }),
 }))
 
 export { domainSummary, hubGroups }

@@ -18,6 +18,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, useRoute, useRouter } from 'vue-router'
+import { ROUTES } from '../../router/routes'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
 import SettingsView from './SettingsView.vue'
 
@@ -93,14 +94,8 @@ const fakeClient = () => ({
 
 const namedRouter = () => createRouter({
   history: createMemoryHistory(),
-  routes: [
-    { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-    { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
-    { name: 'access', path: '/access', component: { render: () => null } },
-    { name: 'access-sso', path: '/access/sso', component: { render: () => null } },
-    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } },
-    { name: 'home', path: '/', component: { render: () => null } }
-  ]
+  // The real route table, so every link of the Administration tree resolves; each page is a stub.
+  routes: ROUTES.map(route => (route.redirect ? route : { ...route, component: { render: () => null } })),
 })
 
 const loadedStore = async () => {
@@ -157,7 +152,8 @@ describe('SettingsView page', () => {
     store.domains.value = ['maven']
     await mountSettings({ store })
 
-    expect(wrapper.find('[aria-label="Settings sections"]').exists()).toBe(false)
+    // The Administration tree is always shown; the one domain is the title of its page, not a tab of its own.
+    expect(wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())).toContain('Repositories')
     expect(wrapper.get('h2').text()).toBe('Maven')
   })
 
@@ -167,7 +163,10 @@ describe('SettingsView page', () => {
     store.schemas.value.login = { title: 'Login' }
     await mountSettings({ store, props: { domain: 'maven' } })
 
-    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
+    expect(links).toContain('Maven')
+    expect(links).toContain('Ingot')
+    expect(links).not.toContain('Login')
   })
 
   it('shows the login domain as a card with links to its pages under Access when it is opened', async () => {
@@ -183,10 +182,11 @@ describe('SettingsView page', () => {
     expect(hrefs).toEqual(['/access/sso', '/access/ldap'])
   })
 
-  it('shows one secondary tab per domain when there is more than one', async () => {
+  it('shows one link per domain when there is more than one, in the tree', async () => {
     await mountSettings({ props: { domain: 'maven' } })
 
-    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
+    expect(links).toEqual(expect.arrayContaining(['Maven', 'Ingot']))
   })
 
   it('puts the factory reset in a danger zone at the end of the page', async () => {
@@ -402,7 +402,7 @@ describe('SettingsView driven by the router', () => {
 
   it('writes a domain picked in the tabs into the address without adding a history entry', async () => {
     const { router } = await mountAt(['/', '/settings/maven'])
-    await wrapper.findAll('[aria-label="Settings sections"] a').find(tab => tab.text() === 'Ingot').trigger('click')
+    await wrapper.findAll('[aria-label="Administration"] a').find(tab => tab.text() === 'Ingot').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
