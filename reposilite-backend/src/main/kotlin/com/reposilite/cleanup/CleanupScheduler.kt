@@ -45,6 +45,8 @@ internal class CleanupScheduler(
     private val start: (CleanupPolicy) -> Unit,
     private val claims: ScheduledJobClaims,
     private val journalist: Journalist,
+    /** Whether the instance is read-only. A run that falls due then is skipped for the day, and no claim is written. */
+    private val readOnly: () -> Boolean = { false },
 ) {
 
     private val startedOn = ConcurrentHashMap<String, LocalDate>()
@@ -52,6 +54,15 @@ internal class CleanupScheduler(
     fun tick() {
         val now = ZonedDateTime.ofInstant(clock.instant(), clock.zone)
         val today = now.toLocalDate()
+
+        if (readOnly()) {
+            // Skipped for the day rather than deferred, so the run is not started once read-only is turned off
+            policies().forEach { policy ->
+                val due = policy.scheduledTime() ?: return@forEach
+                if (policy.enabled && due <= now.toLocalTime()) startedOn[policy.id] = today
+            }
+            return
+        }
 
         policies().forEach { policy ->
             if (!policy.enabled) return@forEach

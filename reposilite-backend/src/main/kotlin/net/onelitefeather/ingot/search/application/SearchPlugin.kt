@@ -26,6 +26,7 @@ import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import net.onelitefeather.ingot.readonly.ReadOnlyFacade
 import com.reposilite.plugin.reposilite
 import com.reposilite.status.FailureFacade
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
@@ -63,7 +64,7 @@ import kotlin.random.Random
  */
 @Plugin(
     name = "search",
-    dependencies = ["local-configuration", "shared-configuration", "maven", "failure"],
+    dependencies = ["local-configuration", "shared-configuration", "maven", "failure", "read-only"],
     settings = SearchSettings::class,
 )
 internal class SearchPlugin : ReposilitePlugin() {
@@ -97,6 +98,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         val outbox = OutboxStore(database, clock)
         val instanceId = UUID.randomUUID().toString()
         val maven = facade<MavenFacade>()
+        val readOnlyFacade = facade<ReadOnlyFacade>()
         val ledger = SqlMirrorCacheLedger(database)
         val index = DatabaseArtifactIndex(database)
         val worker = OutboxWorker(
@@ -156,6 +158,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             startup = startup,
             execute = execute,
             onFailure = { logger.warn("SEARCH | $it") },
+            readOnly = { readOnlyFacade.isReadOnly() },
         )
         val verifyScheduler = VerifyScheduler(
             clock = clock,
@@ -165,6 +168,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             runs = runs,
             execute = execute,
             onFailure = { logger.warn("SEARCH | $it") },
+            readOnly = { readOnlyFacade.isReadOnly() },
         )
         scheduleRuns(rebuildScheduler, verifyScheduler)
 

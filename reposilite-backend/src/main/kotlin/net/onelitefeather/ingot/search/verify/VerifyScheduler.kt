@@ -46,6 +46,8 @@ internal class VerifyScheduler(
     private val runs: RunStore,
     private val execute: (() -> Unit) -> Unit = { it() },
     private val onFailure: (String) -> Unit = {},
+    /** Whether the instance is read-only. A verify that falls due then is skipped for the date. */
+    private val readOnly: () -> Boolean = { false },
 ) {
 
     private val running = AtomicBoolean(false)
@@ -59,6 +61,10 @@ internal class VerifyScheduler(
         val today = now.toLocalDate()
         if (now.toLocalTime() < LocalTime.parse(current.verifyAt)) return
         if (attemptedOn == today) return
+        if (readOnly()) {
+            attemptedOn = today
+            return
+        }
         if (runs.isLive(RunKind.REBUILD) || runs.isLive(RunKind.VERIFY)) return
 
         attemptedOn = today
