@@ -55,6 +55,7 @@
 * [Create hosted repositories](how-to/create-hosted-repositories.md)
 * [Create a proxy repository](how-to/create-proxy-repositories.md)
 * [Create a group repository](how-to/create-a-group-repository.md)
+* [Verify uploaded checksums](how-to/verify-uploaded-checksums.md)
 * [Search for artifacts](how-to/search-for-artifacts.md)
 * [Rebuild the search index](how-to/rebuild-search-index.md)
 * [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
