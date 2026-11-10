@@ -351,6 +351,9 @@ class SharedConfigurationFacade(
     fun isMutable(): Boolean =
         sharedConfigurationProvider.isMutable()
 
+    fun isExternallyManaged(): Boolean =
+        sharedConfigurationProvider.isExternallyManaged()
+
     fun getProviderName(): String =
         sharedConfigurationProvider.name()
 

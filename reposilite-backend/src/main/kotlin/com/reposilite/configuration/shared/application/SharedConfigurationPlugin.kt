@@ -61,7 +61,7 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
             throw loadResult.error
         }
 
-        if (sharedConfigurationFacade.isMutable()) {
+        if (sharedConfigurationFacade.isMutable() || sharedConfigurationFacade.isExternallyManaged()) {
             val watcher = reposilite().scheduler.scheduleWithFixedDelay({
                 sharedConfigurationFacade.reloadIfChanged()
             }, 10, 10, TimeUnit.SECONDS)
