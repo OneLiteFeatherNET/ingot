@@ -19,7 +19,7 @@ import { computed, inject, nextTick, onMounted, provide, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
 import EntryDetail from '../settings/EntryDetail.vue'
-import { collectionsOf, idText, validateNewId } from '../settings/collections'
+import { collectionsOf, entryAddresses, idText, validateNewId } from '../settings/collections'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { tagsInUse } from '../../store/maven/repositories'
 import {
@@ -65,13 +65,17 @@ const typeHeading = ref(null)
 
 const collection = computed(() => collectionsOf(store.schemas.value.maven).find(list => list.key === 'repositories') ?? null)
 const entries = computed(() => store.configurations.value.maven?.repositories ?? [])
+// The address of each entry, as the list links to it: the id, or a key for an entry without a usable id.
+const addresses = computed(() => entryAddresses(entries.value, store.entryKeysOf('maven', 'repositories')))
 // The position of the entry in the draft. It is found from the address, and kept while the id is being typed, so a
 // rename does not lose the entry (the address follows the new id only once that id is usable).
 const index = ref(-1)
 watch(() => [props.id, entries.value.length], () => {
-  index.value = entries.value.findIndex(entry => entry.id === props.id)
+  index.value = addresses.value.indexOf(props.id)
 }, { immediate: true })
 const entry = computed(() => (index.value >= 0 ? entries.value[index.value] : null))
+// The name of the entry in the heading and in the list; an entry without an id is named as the list names it.
+const title = computed(() => idText(entry.value) || 'Unnamed repository')
 const others = computed(() => entries.value.filter((_, position) => position !== index.value))
 const otherIds = computed(() => others.value.map(idText))
 const otherTags = computed(() => tagsInUse(others.value))
@@ -88,7 +92,7 @@ const blankCount = computed(() => (entry.value && canDeclare.value ? blankEntrie
 const blankNotice = computed(() => blankEntriesNotice(blankCount.value))
 const writeChoice = computed(() => writePolicyOf(entry.value ?? {}))
 const offerReadOnly = computed(() => Boolean(collection.value?.itemSchema?.properties?.readOnly))
-const groupsListingIt = computed(() => groupsReferencing(entries.value, props.id))
+const groupsListingIt = computed(() => groupsReferencing(entries.value, idText(entry.value)))
 const backHref = computed(() => router.resolve({ name: 'settings-repositories' }).href)
 
 // The draft entry at this position is replaced; the page never writes a key of its own besides the ones named here.
@@ -129,9 +133,9 @@ const declare = () => {
 
 // Deleting in the form takes the entry out of the draft, and the list says so once it opens.
 const onDelete = () => {
-  const id = props.id
+  const name = title.value
   store.removeEntry('maven', 'repositories', index.value)
-  router.push({ name: 'settings-repositories', query: { deleted: id } })
+  router.push({ name: 'settings-repositories', query: { deleted: name } })
 }
 
 const back = () => router.push({ name: 'settings-repositories' })
@@ -195,7 +199,7 @@ onMounted(() => {
         data-test="entry-title"
         class="min-w-0 break-all md-headline-small text-on-surface focus:outline-none"
       >
-        {{ entry.id }}
+        {{ title }}
       </h1>
 
       <section

@@ -80,8 +80,9 @@ const arrowOf = (key) => (props.sortKey === key ? SORT_ARROWS[props.sortDirectio
 const versionLabel = (row) => (row.type.key === 'GROUP' ? '-' : (VERSION_LABELS[row.versionPolicy] ?? 'Mixed'))
 const writeLabel = (row) => (row.writePolicy ? WRITE_LABELS[row.writePolicy] : '-')
 
-const detailHref = (id) => router.resolve({ name: 'settings-repository', params: { id } }).href
-const openDetail = (id) => router.push({ name: 'settings-repository', params: { id } })
+// A row opens its detail at its route: the id, or a key address for an entry without one.
+const detailHref = (route) => router.resolve({ name: 'settings-repository', params: { id: route } }).href
+const openDetail = (route) => router.push({ name: 'settings-repository', params: { id: route } })
 </script>
 
 <template>
@@ -180,7 +181,7 @@ const openDetail = (id) => router.push({ name: 'settings-repository', params: { 
       <tbody>
         <tr
           v-for="row in rows"
-          :key="row.id"
+          :key="row.route"
           class="border-b border-outline-variant align-top"
         >
           <th
@@ -188,7 +189,7 @@ const openDetail = (id) => router.push({ name: 'settings-repository', params: { 
             class="px-3 py-3 text-left md-body-large text-on-surface"
           >
             <RouterLink
-              :to="{ name: 'settings-repository', params: { id: row.id } }"
+              :to="{ name: 'settings-repository', params: { id: row.route } }"
               class="md-focus-ring rounded-corner-small break-all text-primary"
             >
               {{ row.name }}
@@ -197,6 +198,10 @@ const openDetail = (id) => router.push({ name: 'settings-repository', params: { 
               v-if="row.unsaved"
               class="ml-2 md-label-medium text-warning"
             >Unsaved</span>
+            <span
+              v-if="row.unnamed"
+              class="block md-body-small text-on-surface-variant"
+            >Enter an id.</span>
           </th>
           <td class="px-3 py-3">
             <div class="flex flex-col gap-2">
@@ -234,16 +239,17 @@ const openDetail = (id) => router.push({ name: 'settings-repository', params: { 
             <div class="flex flex-wrap items-center gap-1">
               <MdButton
                 variant="text"
-                :href="detailHref(row.id)"
-                :aria-label="`Edit ${row.id}`"
-                @click.prevent="openDetail(row.id)"
+                :href="detailHref(row.route)"
+                :aria-label="`Edit ${row.name}`"
+                @click.prevent="openDetail(row.route)"
               >
                 Edit
               </MdButton>
               <MdButton
+                v-if="!row.unnamed"
                 variant="text"
                 type="button"
-                :aria-label="`Copy address of ${row.id}`"
+                :aria-label="`Copy address of ${row.name}`"
                 @click="emit('copy', row)"
               >
                 Copy address
@@ -252,8 +258,8 @@ const openDetail = (id) => router.push({ name: 'settings-repository', params: { 
                 variant="text"
                 type="button"
                 error
-                :aria-label="`Delete ${row.id}`"
-                @click="emit('delete', row.id)"
+                :aria-label="`Delete ${row.name}`"
+                @click="emit('delete', row)"
               >
                 Delete
               </MdButton>

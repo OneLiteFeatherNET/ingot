@@ -21,7 +21,7 @@ import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
 import DeleteEntryDialog from '../settings/DeleteEntryDialog.vue'
 import RepositoryWizard from '../settings/RepositoryWizard.vue'
-import { idText } from '../settings/collections'
+import { entryAddresses, idText } from '../settings/collections'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import usePlaceholders from '../../store/placeholders'
 import { copyToClipboard } from '../card/copySnippet'
@@ -57,12 +57,13 @@ const sortKey = ref(null)
 const sortDirection = ref('ascending')
 const message = ref('')
 const wizardOpen = ref(false)
-// The id of the repository whose delete is asked for; empty while no delete dialog is open.
-const deleteTarget = ref('')
+// The row whose delete is asked for; null while no delete dialog is open. The row carries the position in the draft,
+// so an entry without an id is removed by its position.
+const deleteRow = ref(null)
 const deleteOpen = computed({
-  get: () => deleteTarget.value !== '',
+  get: () => deleteRow.value !== null,
   set: (open) => {
-    if (!open) deleteTarget.value = ''
+    if (!open) deleteRow.value = null
   }
 })
 
@@ -76,7 +77,14 @@ const savedIds = computed(() => {
 })
 const origin = computed(() => new URL(productionUrl).origin)
 const base = computed(() => basePath || '/')
-const rows = computed(() => rowsOf(entries.value, { origin: origin.value, basePath: base.value, savedIds: savedIds.value }))
+// The address of each detail page, the same one the generic editor uses: the id, or a key for an entry without one.
+const addresses = computed(() => entryAddresses(entries.value, store.entryKeysOf('maven', 'repositories')))
+const rows = computed(() => rowsOf(entries.value, {
+  origin: origin.value,
+  basePath: base.value,
+  savedIds: savedIds.value,
+  addresses: addresses.value
+}))
 const shownRows = computed(() => {
   const filtered = filterRows(rows.value, query.value)
   return sortKey.value ? sortRows(filtered, sortKey.value, sortDirection.value) : filtered
@@ -98,7 +106,7 @@ const sortBy = (key) => {
 
 const copyAddress = async (row) => {
   const copied = await copyToClipboard(row.address, typeof navigator === 'undefined' ? undefined : navigator.clipboard)
-  message.value = copied ? `Copied address of ${row.id}` : `Could not copy the address of ${row.id}`
+  message.value = copied ? `Copied address of ${row.name}` : `Could not copy the address of ${row.name}`
 }
 
 // A query the page acts on once is removed from the address, so a reload or a second visit does not repeat it.
@@ -128,17 +136,18 @@ watch(wizardOpen, (open, wasOpen) => {
   if (wasOpen && !open) nextTick(() => newButton.value?.$el?.focus())
 })
 
-const deleteReferences = computed(() => groupsReferencing(entries.value, deleteTarget.value))
-const askDelete = (id) => {
-  deleteTarget.value = id
+// The dialog asks for the id typed; an entry without one is asked for as "unnamed", the way the generic editor does.
+const deleteName = computed(() => deleteRow.value?.id || 'unnamed')
+const deleteReferences = computed(() => groupsReferencing(entries.value, deleteRow.value?.id ?? ''))
+const askDelete = (row) => {
+  deleteRow.value = row
 }
 
 // The row goes out of the draft at once; the save bar counts it. The focus moves to the heading, never to the row.
 const confirmDelete = () => {
-  const id = deleteTarget.value
-  const position = entries.value.findIndex(entry => entry.id === id)
-  if (position >= 0) store.removeEntry('maven', 'repositories', position)
-  message.value = `${id} deleted, not saved yet`
+  const row = deleteRow.value
+  if (row) store.removeEntry('maven', 'repositories', row.index)
+  message.value = `${row?.name ?? ''} deleted, not saved yet`
   nextTick(() => heading.value?.focus())
 }
 </script>
@@ -217,7 +226,7 @@ const confirmDelete = () => {
     <RepositoryWizard v-model="wizardOpen" />
 
     <DeleteEntryDialog
-      :id="deleteTarget"
+      :id="deleteName"
       v-model="deleteOpen"
       :references="deleteReferences"
       @confirm="confirmDelete"

@@ -101,7 +101,8 @@ describe('the repositories page with an entry that has no id', () => {
     await sortButton('Name').trigger('click')
     await flushPromises()
 
-    expect(rowHeaders().map(text => text.slice(0, 'releases'.length)), 'ascending by name, the unnamed row first')
+    // The first word of each name cell: the unnamed row reads "Unnamed repository", the others their id.
+    expect(rowHeaders().map(text => text.split(' ')[0]), 'ascending by name, the unnamed row first')
       .toEqual(['Unnamed', 'releases', 'snapshots'])
     expect(rowHeaders(), 'every row is still listed').toHaveLength(3)
   })

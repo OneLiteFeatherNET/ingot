@@ -28,6 +28,11 @@ export const SORT_KEYS = ['name', 'type', 'visibility', 'storage']
 const VISIBILITY_LABELS = { PUBLIC: 'Public', HIDDEN: 'Hidden', PRIVATE: 'Private' }
 const STORAGE_LABELS = { fs: 'File system', s3: 'S3' }
 const NO_VALUE = '-'
+// The name of an entry without an id, as the generic editor showed it. The row keeps its id empty.
+export const UNNAMED = 'Unnamed repository'
+
+// An id that is missing or not text is the empty id, which the search and the sort read as no value.
+const idOf = (entry) => (typeof entry?.id === 'string' ? entry.id : '')
 
 const visibilityLabel = (visibility) => VISIBILITY_LABELS[visibility] ?? String(visibility ?? NO_VALUE)
 
@@ -49,13 +54,20 @@ export const captionOf = (shown, total) => `Repositories, ${shown} of ${total} s
 
 /*
  * One row per entry of the draft. `savedIds`, when given, are the repositories the server holds, and every other
- * row is marked unsaved. `writePolicy` is set for hosted repositories only.
+ * row is marked unsaved. `writePolicy` is set for hosted repositories only. `addresses`, when given, are the
+ * addresses of the detail pages, one per entry (an entry without a usable id has a key address, see collections.js).
+ * An entry without an id keeps its place in `index`, has no address of its own and is named UNNAMED.
  */
-export const rowsOf = (entries, { origin = '', basePath = '/', savedIds } = {}) => entries.map(entry => {
+export const rowsOf = (entries, { origin = '', basePath = '/', savedIds, addresses } = {}) => entries.map((entry, index) => {
   const { type, declared } = effectiveTypeOf(entry)
+  const id = idOf(entry)
+  const unnamed = id === ''
   return {
-    id: entry.id,
-    name: entry.id,
+    index,
+    id,
+    name: unnamed ? UNNAMED : id,
+    unnamed,
+    route: addresses?.[index] ?? (unnamed ? `~${index}` : id),
     description: entry.description ?? '',
     tags: Array.isArray(entry.tags) ? entry.tags : [],
     type: { key: type, label: TYPE_LABELS[type.toLowerCase()], derived: !declared },
@@ -63,8 +75,8 @@ export const rowsOf = (entries, { origin = '', basePath = '/', savedIds } = {}) 
     storage: storageLabel(entry, type),
     writePolicy: type === 'HOSTED' ? writePolicyOf(entry) : null,
     versionPolicy: entry.versionPolicy ?? null,
-    address: addressOf(origin, basePath, entry.id),
-    unsaved: savedIds !== undefined && !savedIds.includes(entry.id),
+    address: unnamed ? NO_VALUE : addressOf(origin, basePath, id),
+    unsaved: savedIds !== undefined && !savedIds.includes(id),
   }
 })
 
