@@ -52,6 +52,9 @@ internal class CleanupSchedulerReadOnlyTest {
             calls += "takeover $key"
             return false
         }
+        override fun complete(key: String, done: Boolean) {
+            calls += "complete $key"
+        }
     }
 
     private val nightly = CleanupPolicy(
