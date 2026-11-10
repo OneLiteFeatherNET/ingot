@@ -98,7 +98,9 @@ When both criteria are set, a version has to match both. When only `keepLatest` 
 
 * A scheduler checks the policies every 30 seconds. A policy starts when the clock of the server shows the scheduled hour and minute and the policy is enabled.
 * An instance that is not running at that minute does not start the run for that day. Ingot does not catch up later.
-* Instances that share a database claim a run with the key `cleanup:<id>:<date>`, where the date is the UTC date. Only one instance runs a policy per UTC day.
+* Instances that share a database run a policy once per UTC day. The day is held under the key `cleanup:<id>:<date>`, where the date is the UTC date. The run keeps that key while it runs and marks the day as done when it ends, so no other instance starts that day again.
+* If the instance that started the day stops before its run ends, a later check on the same UTC day takes the day over once the key has not been renewed for 60 seconds, and runs the policy again from a fresh plan. A day that has ended, with success or with a failure, is never run again.
+* While a run holds the lease `cleanup:<id>:active`, no other run of that policy starts on any instance that shares the database, manual or scheduled. A scheduled run that finds a manual run in progress writes a skip to the log and does not retry that day.
 
 ## Runs
 
@@ -108,7 +110,7 @@ A run deletes the planned versions through the repository delete service. The se
 | --- | --- |
 | Manual run | Uses the delete permission of the account that starts it. |
 | Scheduled run | Has no account and is not checked against a token. |
-| Parallel runs | A policy that is already running on the instance answers `409`. |
+| Parallel runs | A policy that is already running answers `409`, on the instance that was asked and on every other instance that shares the database. |
 | History | Each policy keeps its last 20 runs. |
 | Audit log | A run records one `CLEANUP_RUN` event with the run id, policy, scope, trigger, status and counts. The single deletions of a run are not recorded as `ARTIFACT_DELETED` events. |
 | Log | A run writes a `CLEANUP` line to the server log. |
