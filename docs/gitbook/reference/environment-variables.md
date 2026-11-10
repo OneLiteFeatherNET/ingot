@@ -181,6 +181,17 @@ The cluster plugin reads these settings at start. Without `INGOT_CLUSTER_URL` or
 
 Boolean variables accept `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`, in any case. Credentials are never printed. The log shows the URL with the credentials replaced by `REDACTED`.
 
+## Audit sink variables
+
+The audit plugin reads these variables at start. Without either of them the sink writes nothing and starts no thread. See [JSON lines sink](audit-events.md#json-lines-sink) for the line format and [Forward audit events to a SIEM](../how-to/forward-audit-events-to-a-siem.md) for a setup.
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_AUDIT_SINK_STDOUT` | `REPOSILITE_AUDIT_SINK_STDOUT` | `false` | `true` writes every audit event as a JSON line to standard output. Any other value leaves it off. |
+| `INGOT_AUDIT_SINK_FILE` | `REPOSILITE_AUDIT_SINK_FILE` | unset, no file | Path of the file the JSON lines are appended to. A relative path is resolved against the working directory. A blank value means no file. |
+
+Both can be set at once. When a variable is set under both names, the `INGOT_` name is used. For the standard output switch, `true` in any case turns it on, and every other value turns it off.
+
 ## Names that do not follow the rule
 
 These settings are read directly. They do not accept the `INGOT_LOCAL_` prefix, and most of them do not accept an `INGOT_` spelling at all.
