@@ -31,7 +31,7 @@ metadata:
 type: Opaque
 stringData:
   # The connection string of the server: "mariadb <host:port> <database> <user> <password>".
-  database: "mariadb mariadb.ingot-ha.svc.cluster.local:3306 ingot ingot-ci-password"
+  database: "mariadb mariadb.ingot-ha.svc.cluster.local:3306 ingot ingot ingot-ci-password"
 ---
 apiVersion: v1
 kind: Secret
