@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "downloadUrl": "{BASE}/repository/releases/com/example/app/maven-metadata.xml",
+      "path": "com/example/app/maven-metadata.xml",
+      "id": "cmVsZWFzZXM6Zzd3ODk",
+      "repository": "releases",
+      "format": "maven2",
+      "checksum": {
+        "sha1": "0000000000000000000000000000000000000003",
+        "md5": "00000000000000000000000000000003"
+      },
+      "contentType": "application/xml",
+      "lastModified": "2026-01-15T10:00:02.000+00:00",
+      "fileSize": 512
+    }
+  ],
+  "continuationToken": null
+}

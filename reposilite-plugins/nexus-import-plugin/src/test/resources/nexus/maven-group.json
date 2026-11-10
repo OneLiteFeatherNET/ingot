@@ -1,0 +1,14 @@
+{
+  "name": "public-group",
+  "format": "maven2",
+  "type": "group",
+  "url": "{BASE}/repository/public-group",
+  "online": true,
+  "storage": {
+    "blobStoreName": "default",
+    "strictContentTypeValidation": true
+  },
+  "group": {
+    "memberNames": ["releases", "snapshots-proxy"]
+  }
+}
