@@ -136,6 +136,18 @@ The plugin exports these metric families:
 | `reposilite_deploy_total` | Deployments. |
 | `reposilite_response_file_size_bytes` | Sizes of the files that were served. |
 | `jetty_*` | The web server: requests and thread pool. |
+| `ingot_http_server_request_duration_seconds` | Histogram of request durations, labelled `method`, `route` and `code`. The route is the route template, or `unmatched`. |
+| `ingot_http_server_requests_total` | Counter of requests, labelled `method`, `route` and `code`. |
+| `ingot_deploy_results_total{result}` | Counter of deploys, `result` is `accepted` or `rejected`. |
+| `ingot_upstream_requests_total{outcome}` | Counter of fetches from upstream hosts of proxy repositories, `outcome` is `success`, `not_found`, `failure` or `timeout`. |
+| `ingot_mirror_cache_entries` | Gauge of the rows in the mirror cache, across all proxy repositories. |
+| `ingot_cluster_connected` | Gauge, `1` when the cluster bus is connected and `0` when it is not. Present only when a cluster bus is configured. |
+| `ingot_cluster_dropped_events_total` | Counter of cluster bus messages dropped because they exceeded the transport limits. Present only when a cluster bus is configured and its transport reports drops. |
+| `ingot_batch_job_last_success_timestamp_seconds{job}` | Gauge, Unix time of the last successful run on this instance, `job` is `cleanup` or `audit-purge`. A job with no success yet has no sample. |
+| `ingot_search_outbox_pending` | Gauge of search outbox entries that may still be processed. Present only when search is enabled. |
+| `ingot_search_outbox_oldest_age_seconds` | Gauge, age of the oldest pending search outbox entry, `0` when there is none. Present only when search is enabled. |
+
+Counters and histograms count the work of one instance, so sum them across replicas with `sum by (...)`. Gauges and the job timestamps describe one instance as well. No series carries a repository name, a path, a user name or a token name, so the number of series does not grow with the number of repositories.
 
 The plugin also exports the JVM metrics.
 
