@@ -276,6 +276,28 @@ value is set. Expects the root context.
 - name: JDK_JAVA_OPTIONS
   value: {{ . | quote }}
 {{- end }}
+{{- if .Values.opentelemetry.enabled }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_SERVICE_NAME" "owner" "opentelemetry") }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_TRACES_EXPORTER" "owner" "opentelemetry") }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_METRICS_EXPORTER" "owner" "opentelemetry") }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_LOGS_EXPORTER" "owner" "opentelemetry") }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_EXPORTER_OTLP_PROTOCOL" "owner" "opentelemetry") }}
+- name: OTEL_SERVICE_NAME
+  value: {{ default (include "ingot.fullname" $root) .Values.opentelemetry.serviceName | quote }}
+- name: OTEL_TRACES_EXPORTER
+  value: {{ .Values.opentelemetry.tracesExporter | quote }}
+- name: OTEL_METRICS_EXPORTER
+  value: {{ .Values.opentelemetry.metricsExporter | quote }}
+- name: OTEL_LOGS_EXPORTER
+  value: {{ .Values.opentelemetry.logsExporter | quote }}
+- name: OTEL_EXPORTER_OTLP_PROTOCOL
+  value: {{ .Values.opentelemetry.protocol | quote }}
+{{- with .Values.opentelemetry.endpoint }}
+{{- include "ingot.checkEnvConflict" (dict "root" $root "name" "OTEL_EXPORTER_OTLP_ENDPOINT" "owner" "opentelemetry.endpoint") }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ . | quote }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -324,7 +346,39 @@ The JVM flags of the jvm block as one space separated string. A key renders a fl
 The flags that the chart adds to JDK_JAVA_OPTIONS of the server, as one space separated string.
 */}}
 {{- define "ingot.chartJdkFlags" -}}
-{{- include "ingot.jvmFlags" . -}}
+{{- $flags := include "ingot.jvmFlags" . -}}
+{{- if .Values.opentelemetry.enabled -}}
+{{- $flags = join " " (compact (list $flags "-javaagent:/otel/javaagent.jar")) -}}
+{{- end -}}
+{{- $flags -}}
+{{- end }}
+
+{{/*
+The init container that copies the agent jar into the emptyDir of the server. Empty when the agent is off. With a security
+profile the init container gets the profile's security context as well, because the restricted level applies to every
+container of the pod.
+*/}}
+{{- define "ingot.otelInitContainer" -}}
+{{- if .Values.opentelemetry.enabled -}}
+- name: otel-agent
+  image: {{ .Values.opentelemetry.agentImage | quote }}
+  command: ["cp", "/javaagent.jar", "/otel/javaagent.jar"]
+  securityContext:
+    {{- if .Values.deployment.securityProfile }}
+    {{- include "ingot.profileContainerSecurityContext" . | nindent 4 }}
+    {{- else }}
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    {{- end }}
+  resources:
+    {{- toYaml .Values.opentelemetry.resources | nindent 4 }}
+  volumeMounts:
+    - name: otel-agent
+      mountPath: /otel
+{{- end -}}
 {{- end }}
 
 {{/*

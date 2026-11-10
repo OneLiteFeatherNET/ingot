@@ -250,6 +250,34 @@ jvm:
   # Further JVM options, appended unchanged to JDK_JAVA_OPTIONS.
   extraOptions: []
 
+## Opt-in OpenTelemetry Java agent of the server. The init container copies the agent jar into an emptyDir, which the server
+## mounts read-only at /otel, and the agent flag goes into JDK_JAVA_OPTIONS. The dashboard gets no agent. The image must
+## carry the agent at /javaagent.jar and a shell with cp. Set the exporter variables here, not in env, because env values
+## that the chart also sets fail the render.
+opentelemetry:
+  enabled: false
+  # Image of the init container. Pinned by tag, which Renovate updates as it does for the other images.
+  agentImage: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.30.0
+  # Sets OTEL_SERVICE_NAME. Empty uses the release fullname.
+  serviceName: ""
+  # Sets OTEL_EXPORTER_OTLP_ENDPOINT. Empty leaves the endpoint of the agent unchanged.
+  endpoint: ""
+  # Sets OTEL_EXPORTER_OTLP_PROTOCOL.
+  protocol: grpc
+  # Sets OTEL_TRACES_EXPORTER and OTEL_METRICS_EXPORTER.
+  tracesExporter: otlp
+  metricsExporter: otlp
+  # Sets OTEL_LOGS_EXPORTER. Logs stay off by default, because the console output is usually shipped already.
+  logsExporter: none
+  # Resources of the init container.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
 ## Rolling update
 rollingUpdate:
   maxUnavailable: 0
