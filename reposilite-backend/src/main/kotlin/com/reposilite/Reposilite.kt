@@ -51,6 +51,8 @@ class Reposilite(
     val extensions: Extensions,
     /** How the instance leaves the rotation on shutdown. The defaults keep the stop of earlier versions. */
     val shutdownSettings: ShutdownSettings = ShutdownSettings(),
+    /** The requests in progress the server works on at once, or null for no limit. Unset keeps the behaviour of earlier versions. */
+    val maxConcurrentRequests: Int? = null,
     /** Waits out the pre-stop delay. Tests inject a recorder, so no test waits on the wall clock. */
     private val awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
 ) : Facade, Journalist {

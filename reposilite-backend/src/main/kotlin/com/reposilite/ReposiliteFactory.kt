@@ -33,6 +33,7 @@ import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.schema.SchemaLockFactory
 import net.onelitefeather.ingot.schema.SchemaLockRequest
 import java.time.Clock
+import net.onelitefeather.ingot.web.RequestLimitSettings
 import net.onelitefeather.ingot.web.ShutdownSettings
 import java.time.Duration
 import kotlin.io.path.absolutePathString
@@ -51,6 +52,8 @@ object ReposiliteFactory {
         schemaLockFactory: SchemaLockFactory = SchemaLockFactory.DEFAULT,
         // Read before anything binds a port, so an invalid value stops the start here
         shutdownSettings: ShutdownSettings = ShutdownSettings.read(),
+        // Read before anything binds a port, so an invalid value stops the start here
+        maxConcurrentRequests: Int? = RequestLimitSettings.read(),
         awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
     ): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
@@ -106,6 +109,7 @@ object ReposiliteFactory {
             scheduler = newSingleThreadScheduledExecutor("Ingot | Scheduler"),
             extensions = Extensions(journalist),
             shutdownSettings = shutdownSettings,
+            maxConcurrentRequests = maxConcurrentRequests,
             awaitDelay = awaitDelay,
         )
 
