@@ -59,7 +59,7 @@ internal class StatusPlugin : ReposilitePlugin() {
      * this at the Reposilite release coordinate, which would make an Ingot instance compare itself
      * against a version line it does not track. Operators who mirror our releases internally can
      * redirect the check with -Dingot.status.remote-version-url, and disable it entirely with
-     * -Dingot.status.remote-version-check=false.
+     * -Dingot.status.remote-version-check=false or INGOT_STATUS_REMOTE_VERSION_CHECK=false.
      */
     private val remoteVersionEndpoint =
         System.getProperty("ingot.status.remote-version-url")

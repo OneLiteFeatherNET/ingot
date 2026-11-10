@@ -49,6 +49,8 @@ class StatusFacade(
     private val readinessChecks: List<ReadinessCheck> = emptyList(),
     /** The read-only state of this instance, reported in the instance status. */
     private val readOnly: () -> ReadOnlyState = { ReadOnlyState(enabled = false, source = ReadOnlySource.STORED) },
+    /** Whether the hourly check for a newer version is on. Read on each refresh of the latest version. */
+    private val remoteVersionCheck: () -> Boolean = { RemoteVersionCheckSetting.read(warn = { failureFacade.logger.warn(it) }) },
 ) : Facade {
 
     private val cachedStatusSnapshots = EvictingQueue.create<StatusSnapshot>(12)
@@ -100,7 +102,7 @@ class StatusFacade(
     private val cachedLatestVersion: Supplier<Result<String, String>> =
         Suppliers.memoizeWithExpiration({
             when {
-                testEnv || !remoteVersionCheckEnabled ->
+                testEnv || !remoteVersionCheck() ->
                     Result.ok(VERSION)
                 else ->
                     IOUtils
@@ -115,14 +117,6 @@ class StatusFacade(
                         .mapErr { UNKNOWN_VERSION }
             }
         }, 1, TimeUnit.HOURS)
-
-    private val remoteVersionCheckEnabled: Boolean
-        get() = getBooleanProperty("ingot.status.remote-version-check")
-            ?: getBooleanProperty("reposilite.status.remote-version-check")
-            ?: true
-
-    private fun getBooleanProperty(key: String): Boolean? =
-        System.getProperty(key)?.let { it == "true" }
 
     init {
         recordStatusSnapshot()
