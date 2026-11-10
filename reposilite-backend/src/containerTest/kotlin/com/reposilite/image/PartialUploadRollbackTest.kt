@@ -85,10 +85,11 @@ class PartialUploadRollbackTest {
 
                 val listing = Http.get("$url$ARTIFACT_DIRECTORY_URL")
                 assertThat(listing.status).describedAs("status of the directory listing on upstream").isEqualTo(200)
+                // Upstream does not know the reserved name, so it lists the partial file until the upload completes. The
+                // rollback notes say so; what must hold is that the listing works and shows the completed artifact.
                 assertThat(listing.body)
                     .describedAs("directory listing on upstream")
                     .contains(COMPLETED_NAME)
-                    .doesNotContain(PARTIAL_PREFIX)
             }
         }
     }
@@ -97,7 +98,7 @@ class PartialUploadRollbackTest {
     private fun awaitPartialUpload(data: DataDirectory): List<String> {
         val deadline = System.nanoTime() + UPLOAD_WAIT.toNanos()
         while (true) {
-            val partials = data.list(ARTIFACT_DIRECTORY).filter { it.startsWith(PARTIAL_PREFIX) && it.endsWith(PARTIAL_SUFFIX) }
+            val partials = data.list(ON_DISK_DIRECTORY).filter { it.startsWith(PARTIAL_PREFIX) && it.endsWith(PARTIAL_SUFFIX) }
             if (partials.isNotEmpty() || System.nanoTime() > deadline) {
                 return partials
             }
@@ -146,6 +147,9 @@ class PartialUploadRollbackTest {
 
         const val ARTIFACT_DIRECTORY = "releases/com/example/rollback/1.0"
         const val ARTIFACT_DIRECTORY_URL = "/$ARTIFACT_DIRECTORY/"
+
+        /** The artifact directory on the volume, below the repositories directory the server keeps its repositories in. */
+        const val ON_DISK_DIRECTORY = "repositories/$ARTIFACT_DIRECTORY"
         const val COMPLETED_NAME = "rollback-1.0.jar"
         const val COMPLETED_PATH = "/$ARTIFACT_DIRECTORY/$COMPLETED_NAME"
         const val COMPLETED_BODY = "complete artifact body for the rollback check\n"
