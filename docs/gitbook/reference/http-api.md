@@ -149,6 +149,12 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 
 A change is written to the [audit log](audit-events.md) and announced on the cluster bus when one is configured. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
 
+## Database
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| POST | `/api/database/snapshots` | Maintenance area (`ingot.admin.maintenance`) | Writes a consistent snapshot of the SQLite database into `backups/` in the working directory while the instance runs. Answers with `fileName`, `sizeBytes` and `createdAt`, never with a path. Answers `409` for a database that is not SQLite or a name that is already taken. |
+
 ## Audit
 
 | Method | Path | Auth | Purpose |

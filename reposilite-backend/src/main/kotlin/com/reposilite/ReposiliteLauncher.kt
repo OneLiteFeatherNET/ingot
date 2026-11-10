@@ -17,6 +17,7 @@ package com.reposilite
 
 import com.reposilite.configuration.generateRequestedConfiguration
 import com.reposilite.configuration.local.LocalConfigurationFileException
+import net.onelitefeather.ingot.backup.runDatabaseSnapshot
 import net.onelitefeather.ingot.deploy.UnknownDeployTargetException
 import net.onelitefeather.ingot.deploy.toStartupRefusal
 import picocli.CommandLine
@@ -24,7 +25,12 @@ import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     try {
-        createWithParameters(*args)?.launch()
+        val parameters = parseParameters(*args)
+        if (parameters.isSnapshotRun()) {
+            // The snapshot runs before any instance is built, so it starts no plugin, no port and no scheduler
+            exitProcess(runDatabaseSnapshot(parameters))
+        }
+        createFromParameters(parameters)?.launch()
     } catch (exception: UnknownDeployTargetException) {
         // A refused target is an operator error, so it ends the process with one line and no stack trace.
         val refusal = exception.toStartupRefusal()
@@ -37,14 +43,25 @@ fun main(args: Array<String>) {
     }
 }
 
-fun createWithParameters(vararg args: String): Reposilite? {
+fun createWithParameters(vararg args: String): Reposilite? =
+    createFromParameters(parseParameters(*args))
+
+fun parseParameters(vararg args: String): ReposiliteParameters {
     val parameters = ReposiliteParameters()
 
     CommandLine(parameters)
         .setCaseInsensitiveEnumValuesAllowed(true)
         .execute(*args)
 
-    if (parameters.usageHelpRequested || parameters.versionInfoRequested) {
+    return parameters
+}
+
+/**
+ * Builds the instance for the given parameters. The informational flags and a snapshot run build nothing and return null.
+ * A snapshot run is performed by [runDatabaseSnapshot] from [main].
+ */
+fun createFromParameters(parameters: ReposiliteParameters): Reposilite? {
+    if (parameters.usageHelpRequested || parameters.versionInfoRequested || parameters.isSnapshotRun()) {
         return null
     }
 
@@ -55,3 +72,6 @@ fun createWithParameters(vararg args: String): Reposilite? {
 
     return ReposiliteFactory.createReposilite(parameters)
 }
+
+private fun ReposiliteParameters.isSnapshotRun(): Boolean =
+    snapshotDatabaseRequested && !usageHelpRequested && !versionInfoRequested

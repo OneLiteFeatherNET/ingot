@@ -138,6 +138,11 @@ class ReposiliteParameters : Runnable {
     @Option(names = ["--no-color"], description = ["Disable ANSI colors in console output"])
     var noColor = false
 
+    @Option(names = ["--snapshot-database"], description = [
+        "Write one online snapshot of the SQLite database into the backups directory and exit without starting the server"
+    ])
+    var snapshotDatabaseRequested = false
+
     override fun run() {
         this.workingDirectory = Paths.get(workingDirectoryName)
         this.pluginDirectory = pluginDirectoryName?.let { Paths.get(it) } ?: workingDirectory.resolve("plugins")
