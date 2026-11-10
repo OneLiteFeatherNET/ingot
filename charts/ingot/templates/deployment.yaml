@@ -55,7 +55,7 @@ spec:
       {{- end }}
       containers:
       - name: {{ include "ingot.fullname" . }}
-        image: "{{ .Values.image.name }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+        image: {{ include "ingot.serverImage" . | quote }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         stdin: true
         {{- with .Values.resources }}
@@ -103,9 +103,15 @@ spec:
             {{- if .Values.persistence.subPath }}
             subPath: {{ .Values.persistence.subPath }}
             {{- end }}
+          {{- if .Values.clusterBus.credentialsSecret }}
+          - name: ingot-cluster-credentials
+            mountPath: {{ include "ingot.clusterCredentialsPath" . }}
+            readOnly: true
+          {{- end }}
           {{- if .Values.deployment.additionalVolumeMounts }}
           {{- toYaml .Values.deployment.additionalVolumeMounts | nindent 10 }}
           {{- end }}
+        {{- $generatedEnv := include "ingot.generatedEnv" . | trim }}
         {{- $instanceIdSet := false }}
         {{- range .Values.env }}
         {{- if eq .name "INGOT_CLUSTER_INSTANCE_ID" }}
@@ -119,7 +125,7 @@ spec:
         {{- end }}
         {{- end }}
         {{- $renderShutdownTimeout := and (gt $drain 0) (not $shutdownTimeoutSet) }}
-        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout }}
+        {{- if or (eq .Values.mode "split") .Values.env $renderShutdownTimeout $generatedEnv }}
         env:
           {{- if eq .Values.mode "split" }}
           - name: INGOT_TARGET
@@ -134,6 +140,9 @@ spec:
           {{- if $renderShutdownTimeout }}
           - name: INGOT_SHUTDOWN_TIMEOUT
             value: {{ $drain | quote }}
+          {{- end }}
+          {{- with $generatedEnv }}
+          {{- . | nindent 10 }}
           {{- end }}
           {{- with .Values.env }}
           {{- toYaml . | nindent 10 }}
@@ -157,6 +166,11 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if .Values.clusterBus.credentialsSecret }}
+        - name: ingot-cluster-credentials
+          secret:
+            secretName: {{ .Values.clusterBus.credentialsSecret | quote }}
+        {{- end }}
         {{- if .Values.deployment.additionalVolumes }}
           {{- toYaml .Values.deployment.additionalVolumes | nindent 8 }}
         {{- end }}
@@ -170,5 +184,9 @@ spec:
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deployment.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
