@@ -102,6 +102,7 @@ These events come from `IdentityFacade` unless another source is named. The acto
 | --- | --- | --- |
 | `READ_ONLY_CHANGED` | The stored read-only state is changed through `POST` or `DELETE /api/admin/read-only` (`ReadOnlyFacade.set`). A repeated enable or disable changes nothing and writes nothing. A forced state writes nothing either. | `enabled` (the stored value after the change) |
 | `NEXUS_IMPORT_RUN` | A Nexus import job ends, or pauses for a reason that needs the operator. The actor is `migration`. In `summary` mode (`INGOT_NEXUS_IMPORT_AUDIT=summary`) this is the only event of the copy. In `per-file` mode each copied file also has its own `ARTIFACT_DEPLOYED` event with the actor `migration`. | `copied`, `skipped`, `conflicts`, `failed` (counts) and `status` |
+| `SUPPORT_BUNDLE_DOWNLOADED` | A support bundle is downloaded from `GET /api/admin/support/bundle`. The actor is the principal of the request. A refused bundle (the final redaction check found a secret, or the archive exceeds its size cap) is recorded with `success` false and a `reason`, and no file count. Opening the system information page writes nothing. | `files` (the number of files in the bundle), `redactions` (the number of values withheld, masked or scrubbed); on a refusal `reason` instead |
 
 ### Login and sessions
 

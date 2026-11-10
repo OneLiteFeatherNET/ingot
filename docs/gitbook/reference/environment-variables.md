@@ -230,6 +230,14 @@ The image also ships `nexus-import-plugin.jar`, the Nexus Repository 3 importer,
 
 There is no variable that turns off certificate verification. Nexus certificates are checked against the JVM trust store, and private certificate authorities belong there, see [Import from Nexus](../how-to/import-from-nexus.md).
 
+### Support bundle switch
+
+The system information page and the support bundle are on by default, because both are read-only and need the console area. A support bundle lists what the instance runs on and never holds a secret, see [Collect a support bundle](../how-to/collect-a-support-bundle.md).
+
+| Environment variable | Legacy environment variable | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_SUPPORT_BUNDLE_ENABLED` | `REPOSILITE_SUPPORT_BUNDLE_ENABLED` | unset (on) | `false` turns off `/api/admin/support/system-info` and `/api/admin/support/bundle`, which then answer `404`, and hides the two pages. `true` or unset keeps them on. The `INGOT_` name wins when both are set, and the system property `-Dingot.supportBundle.enabled` is read when neither variable is set. A value other than `true` or `false` stops the start, and the message names the variable. |
+
 ### S3 upload variable
 
 | Variable | Fallback | Default | Meaning |
