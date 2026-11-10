@@ -47,6 +47,10 @@ class Repository internal constructor(
     val protectedGroupPrefixes: List<String> = emptyList(),
     /** What a checksum file that does not match its stored artifact gets, see [UploadChecksumPolicy]. */
     val uploadChecksumPolicy: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
+    /** The version policy of deploys, [VersionPolicy.MIXED] unless the settings set one. */
+    val versionPolicy: VersionPolicy = VersionPolicy.MIXED,
+    /** Whether deploys and deletes are refused with 405. Reads are not affected. */
+    val readOnly: Boolean = false,
 ) : RegisteredRepository {
 
     init {

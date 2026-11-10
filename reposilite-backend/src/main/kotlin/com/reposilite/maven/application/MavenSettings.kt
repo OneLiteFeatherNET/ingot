@@ -28,6 +28,7 @@ import com.reposilite.maven.EffectiveRepositoryType
 import com.reposilite.maven.NamespaceProtection
 import com.reposilite.maven.RepositoryType
 import com.reposilite.maven.StoragePolicy
+import com.reposilite.maven.VersionPolicy
 import com.reposilite.maven.RepositoryVisibility
 import com.reposilite.maven.RepositoryVisibility.PRIVATE
 import com.reposilite.maven.RepositoryVisibility.PUBLIC
@@ -192,6 +193,20 @@ data class RepositorySettings(
         Leave it empty to use the instance default, which is set by INGOT_UPLOAD_CHECKSUM_POLICY and is ignore when unset.
     """)
     val uploadChecksumPolicy: UploadChecksumPolicy? = null,
+    @get:Doc(title = "Version policy", description = """
+        Which versions this repository accepts on deploy. Leave it empty to accept both release and snapshot versions, as before.<br/>
+        RELEASE - refuses a deploy into a -SNAPSHOT version directory with 400<br/>
+        SNAPSHOT - refuses a deploy into any other version directory with 400; maven-metadata.xml and its checksums are always accepted<br/>
+        MIXED - accepts both, the same as leaving it empty<br/>
+        Only for hosted and untyped repositories. Reads, deletes and cleanup runs are not affected.
+    """)
+    val versionPolicy: VersionPolicy? = null,
+    @get:Doc(title = "Read-only", description = """
+        Set to true to refuse every deploy and delete into this repository with 405, while reads keep working.
+        Scheduled cleanup skips the repository. This is separate from the read-only mode of the whole instance, which answers 503.<br/>
+        Only for hosted and untyped repositories. Leave it empty or false to accept writes as before.
+    """)
+    val readOnly: Boolean? = null,
 ) : SharedSettings {
 
     /**
@@ -251,8 +266,27 @@ data class RepositorySettings(
         }
 
         violations += protectedPrefixFormatViolations()
+        violations += policyViolations()
 
         return violations
+    }
+
+    /**
+     * The version policy and the read-only flag are opt-in: they are only checked when they are set, and only on the
+     * types that take uploads. A proxy or a group takes no uploads, so neither key has an effect on it.
+     */
+    private fun policyViolations(): List<String> = buildList {
+        when (type) {
+            RepositoryType.GROUP -> {
+                if (versionPolicy != null) add("repository '$id': versionPolicy is not supported on type GROUP, each member of a group enforces its own policy")
+                if (readOnly != null) add("repository '$id': readOnly is not supported on type GROUP, a group takes no uploads")
+            }
+            RepositoryType.PROXY -> {
+                if (versionPolicy != null) add("repository '$id': versionPolicy is not supported on type PROXY, a proxy takes no uploads")
+                if (readOnly != null) add("repository '$id': readOnly is not supported on type PROXY, a proxy takes no uploads")
+            }
+            RepositoryType.HOSTED, null -> Unit
+        }
     }
 
     /**
