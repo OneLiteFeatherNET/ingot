@@ -150,7 +150,7 @@ The comment in a generated `configuration.cdn` still lists `postgresql` under th
 | --- | --- |
 | Default source | The `settings` table of the database, under the name `remote-shared-configuration`. All instances that use the same database share it. |
 | Refresh | Each instance checks the database every 10 seconds and loads a changed document. |
-| File source | `--shared-configuration <file>` reads a JSON file instead. An empty value selects `configuration.shared.json`. This source is not watched: a change needs a restart. |
+| File source | `--shared-configuration <file>` reads a JSON file instead. An empty value selects `configuration.shared.json`. By default the file is read at start only, so a change needs a restart. With `INGOT_SHARED_CONFIGURATION_RELOAD=true` the file is checked every 10 seconds, a changed document is applied, and the API refuses writes to the domains the file holds, see [Shared settings reload](environment-variables.md#shared-configuration-reload). |
 | Template | `--generate-configuration shared` writes a template for the plugins that declare settings. |
 | Load errors | A document that cannot be loaded stops the start. `--ignore-shared-configuration-errors` starts with default values instead. |
 

@@ -44,6 +44,12 @@ interface SharedConfigurationProvider {
 
     fun isMutable(): Boolean
 
+    /**
+     * True when the stored document can change without a write by this instance, so it is polled for changes. Such a
+     * document is read-only for the API.
+     */
+    fun isExternallyManaged(): Boolean = false
+
     fun name(): String
 
 }

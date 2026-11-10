@@ -155,6 +155,8 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 | GET | `/api/settings/domain/{name}` | Instance admin | Reads a settings domain. |
 | PUT | `/api/settings/domain/{name}` | Instance admin | Updates a settings domain. |
 
+While `INGOT_SHARED_CONFIGURATION_RELOAD=true` and the shared settings come from a file, a `PUT` to a domain that the file holds answers `409`. The message names the file, nothing is written and no audit event is recorded. Change the file instead and let the instance pick it up. See [Shared settings reload](environment-variables.md#shared-configuration-reload).
+
 ## Status and statistics
 
 | Method | Path | Auth | Purpose |
