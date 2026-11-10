@@ -85,6 +85,7 @@ Rules that decide when rows are written or removed:
 * A deployment into the directory removes its row, because the directory now holds hosted content. When a row was removed, the search index re-labels the copies whose origin changed.
 * A deletion removes the row of the deleted path and of every path below it.
 * Repository names longer than 128 characters and directory paths longer than 512 characters are not recorded.
+* A copy from a mirror with `checksumPolicy` set to `fail` is written to storage only after it matches the checksum file of its host. A copy that does not match is never written, so it gets no row and is never served. See [Create a proxy repository](../how-to/create-proxy-repositories.md#check-checksums).
 
 A copy without a row is never treated as a mirror copy. This includes copies from before the ledger existed. Those copies are never removed by a mirror-copy cleanup.
 
