@@ -75,6 +75,12 @@ class ReposiliteParameters : Runnable {
      */
     var sharedConfigurationReload: Boolean? = null
 
+    /**
+     * Replaces the process environment as the source of the settings secret reference switch and allowlists. Not a command-line
+     * option: only the integration test harness sets it, because a test cannot change the environment of its own process.
+     */
+    var settingsSecretEnvironment: Map<String, String>? = null
+
     @Option(names = ["--ignore-shared-configuration-errors"], description = ["Ignore errors while loading shared configuration file"])
     var ignoreSharedConfigurationErrors = false
 
