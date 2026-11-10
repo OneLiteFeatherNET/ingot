@@ -71,6 +71,37 @@ class MixedVersionClusterTest {
         }
     }
 
+    @Test
+    @DisplayName("the previous release restarts and serves once the current build has changed the schema")
+    fun `the old replica restarts after the schema changed`(@TempDir directory: Path) {
+        withSharedState(directory) { state ->
+            // The current build keeps running for the whole case, so the restart happens beside a changed schema.
+            sharedRepositoryReplica(ImageUnderTest.server, state).use { current ->
+                sharedRepositoryReplica(ImageUnderTest.previous, state).use { previous ->
+                    previous.startOrExplain()
+                    deploy(previous.baseUrl(), BEFORE_RESTART, BEFORE_RESTART)
+
+                    current.startOrExplain()
+                    assertServes(current.baseUrl(), BEFORE_RESTART, reason = "the current build reads the old deploy")
+                }
+
+                // The old replica is replaced by a new process on the same database and directory.
+                sharedRepositoryReplica(ImageUnderTest.previous, state).use { restarted ->
+                    restarted.startOrExplain()
+                    val url = restarted.baseUrl()
+
+                    val tokens = Http.get("$url/api/tokens", MIXED_BOOTSTRAP)
+                    assertThat(tokens.isSuccessful)
+                        .describedAs("the restarted previous release answers an authenticated request: status %s, body %s", tokens.status, tokens.body)
+                        .isTrue()
+                    assertServes(url, BEFORE_RESTART, reason = "the restarted previous release reads the old deploy")
+                    deploy(url, AFTER_RESTART, AFTER_RESTART)
+                    assertServes(current.baseUrl(), AFTER_RESTART, reason = "the current build reads a deploy of the restarted release")
+                }
+            }
+        }
+    }
+
     /** Puts [content] at [path] through the replica at [url]. The content is the path, so every artifact is distinct. */
     private fun deploy(url: String, path: String, content: String) {
         val response = Http.put("$url/$path", content, MIXED_BOOTSTRAP)
@@ -122,5 +153,7 @@ class MixedVersionClusterTest {
         const val FROM_NEW_TO_OLD = "releases/com/example/mixed/2.0.0/mixed-2.0.0.jar"
         const val CONCURRENT_FROM_OLD = "releases/com/example/mixed/3.0.0/mixed-3.0.0.jar"
         const val CONCURRENT_FROM_NEW = "releases/com/example/mixed/4.0.0/mixed-4.0.0.jar"
+        const val BEFORE_RESTART = "releases/com/example/mixed/5.0.0/mixed-5.0.0.jar"
+        const val AFTER_RESTART = "releases/com/example/mixed/6.0.0/mixed-6.0.0.jar"
     }
 }
