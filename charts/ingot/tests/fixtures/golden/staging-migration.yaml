@@ -1,0 +1,236 @@
+# Golden render, see tests/test_golden.py. Parsed manifests sorted by kind and name.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: reposilite
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: reposilite
+    app.kubernetes.io/version: 1.1.1
+    helm.sh/chart: ingot-1.1.1
+  name: reposilite
+  namespace: reposilite-staging
+spec:
+  minReadySeconds: 0
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: reposilite
+      app.kubernetes.io/name: reposilite
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations: null
+      labels:
+        app.kubernetes.io/instance: reposilite
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: reposilite
+        app.kubernetes.io/version: 1.1.1
+        helm.sh/chart: ingot-1.1.1
+        logs.onelitefeather.net/env: staging
+        logs.onelitefeather.net/format: ansi
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - fr-rosenau
+            weight: 100
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: reposilite
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - env:
+        - name: JAVA_OPTS
+          value: -Xmx256M -Dreposilite.s3.pathStyleAccessEnabled=true
+        - name: INGOT_LOCAL_DEFAULTFRONTEND
+          value: 'false'
+        - name: REPOSILITE_LOCAL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              key: DATABASE
+              name: reposilite-secrets
+        - name: JDK_JAVA_OPTIONS
+          value: -javaagent:/otel/javaagent.jar
+        - name: OTEL_SERVICE_NAME
+          value: reposilite-staging
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_LOGS_EXPORTER
+          value: none
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://alloy-receiver.grafana.svc.cluster.local:4317
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: grpc
+        image: ghcr.io/onelitefeathernet/ingot:nightly
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        name: reposilite
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 1
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 2
+            memory: 2Gi
+          requests:
+            cpu: 600m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsGroup: 1000
+          runAsUser: 1000
+        stdin: true
+        volumeMounts:
+        - mountPath: /app/data
+          name: data
+        - mountPath: /otel
+          name: otel-agent
+          readOnly: true
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /var/log/reposilite/
+          name: logging
+        - mountPath: /app/data/repositories
+          name: repositories
+      initContainers:
+      - command:
+        - cp
+        - /javaagent.jar
+        - /otel/javaagent.jar
+        image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.30.0
+        name: otel-agent
+        resources:
+          limits:
+            cpu: 100m
+            memory: 64Mi
+          requests:
+            cpu: 10m
+            memory: 32Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /otel
+          name: otel-agent
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: reposilite
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: reposilite
+      - emptyDir: {}
+        name: otel-agent
+      - emptyDir: {}
+        name: tmp
+      - emptyDir: {}
+        name: logging
+      - name: repositories
+        persistentVolumeClaim:
+          claimName: reposilite-staging-repositories
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    app.kubernetes.io/instance: reposilite
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: reposilite
+    app.kubernetes.io/version: 1.1.1
+    helm.sh/chart: ingot-1.1.1
+  name: reposilite
+  namespace: reposilite-staging
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: reposilite
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: reposilite
+    app.kubernetes.io/version: 1.1.1
+    helm.sh/chart: ingot-1.1.1
+  name: reposilite
+  namespace: reposilite-staging
+spec:
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/instance: reposilite
+    app.kubernetes.io/name: reposilite
+  type: ClusterIP
+---
+apiVersion: v1
+automountServiceAccountToken: false
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/instance: reposilite
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: reposilite
+    app.kubernetes.io/version: 1.1.1
+    helm.sh/chart: ingot-1.1.1
+  name: reposilite
+  namespace: reposilite-staging
