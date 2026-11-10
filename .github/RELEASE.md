@@ -39,11 +39,59 @@ the attribution does not depend on it: that lives in NOTICE, the README and the 
   for the Maven publish. The container push authenticates with the built-in `GITHUB_TOKEN`
   and needs no secret.
 
+## Verify a release
+
+Every release is signed. The server image, the dashboard image and the Helm chart are signed
+keylessly with the identity of the release workflow on `main`, and the standalone jar carries
+a build provenance attestation from the same workflow. No key is involved, so there is no
+public key to fetch or trust: the check is that the signer is this workflow on `main`.
+
+Replace `<version>` with the release, for example `3.5.29`. The signer identity is the same
+for every command:
+
+```sh
+# Server image
+cosign verify \
+  --certificate-identity https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/onelitefeathernet/ingot:<version>
+
+# Dashboard image
+cosign verify \
+  --certificate-identity https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/onelitefeathernet/ingot-dashboard:<version>
+
+# Helm chart
+cosign verify \
+  --certificate-identity https://github.com/OneLiteFeatherNET/ingot/.github/workflows/release-please.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/onelitefeathernet/charts/ingot:<version>
+
+# Standalone jar, downloaded from the release page
+gh attestation verify ingot-<version>.jar \
+  --repo OneLiteFeatherNET/ingot \
+  --signer-workflow OneLiteFeatherNET/ingot/.github/workflows/release-please.yml \
+  --source-ref refs/heads/main
+```
+
+Each command exits with an error when the signature or attestation is missing or was made by
+another workflow, branch or repository.
+
+Two things to know:
+
+- Nightly images are not signed. The `nightly` tag carries no signature, so these commands
+  fail for it by design. Only a release version is verifiable.
+- A rebuild of a release (see below) is signed as well, but only when it is dispatched from
+  `main`. A rebuild dispatched from another branch is signed by an identity that the check
+  refuses, and the job fails after the push.
+
 ## Rebuilding a container image
 
 The `Release Please` workflow takes a `workflow_dispatch` with a `container_version` input.
 It runs only the container job, for the version you name, and leaves the release itself
-alone.
+alone. Dispatch it from `main`: the signature of a rebuild is accepted only from that branch
+(see [Verify a release](#verify-a-release)).
 
 ## Adding a file whose version has to follow
 
