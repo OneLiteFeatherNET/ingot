@@ -230,7 +230,8 @@ internal class MavenEndpoints(
         responses = [
             OpenApiResponse(status = "200", description = "Input stream of requested file", content = [OpenApiContent(type = FORM_DATA_MULTIPART)]),
             OpenApiResponse(status = "401", description = "Returns 401 for invalid credentials"),
-            OpenApiResponse(status = "405", description = "Returns 405 if the repository is a proxy or a group, which take no uploads"),
+            OpenApiResponse(status = "400", description = "Returns 400 if the version policy of the repository refuses the version of the artifact, e.g. a snapshot into a RELEASE repository"),
+            OpenApiResponse(status = "405", description = "Returns 405 if the repository is a proxy or a group, which take no uploads, or if it is read-only"),
             OpenApiResponse(status = "507", description = "Returns 507 if Ingot does not have enough disk space to store the uploaded file")
         ]
     )
@@ -256,14 +257,14 @@ internal class MavenEndpoints(
         tags = ["Maven"],
         path = "/{repository}/{gav}",
         summary = "Delete the given file from repository",
-        description = "Returns 405 if the repository is a proxy or a group, which take no uploads and no deletions.",
+        description = "Returns 405 if the repository is a proxy or a group, which take no uploads and no deletions, or if it is read-only.",
         methods = [HttpMethod.DELETE],
         pathParams = [
             OpenApiParam(name = "repository", description = "Destination repository", required = true),
             OpenApiParam(name = "gav", description = "Artifact path qualifier", required = true)
         ],
         responses = [
-            OpenApiResponse(status = "405", description = "Returns 405 if the repository is a proxy or a group, which take no deletions")
+            OpenApiResponse(status = "405", description = "Returns 405 if the repository is a proxy or a group, which take no deletions, or if it is read-only")
         ]
     )
     private val deleteFile = ReposiliteRoute<Unit>("/{repository}/<gav>", DELETE) {
