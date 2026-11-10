@@ -16,6 +16,9 @@
 
 package com.reposilite.maven
 
+import com.reposilite.maven.api.METADATA_FILE
+import com.reposilite.storage.api.Location
+
 /**
  * Which versions a repository accepts on deploy. Absent in the settings means [MIXED], which is what every repository
  * did before the policy existed. The policy is checked for deploys only.
@@ -28,4 +31,18 @@ enum class VersionPolicy {
     RELEASE,
     SNAPSHOT,
     MIXED,
+}
+
+/**
+ * Whether a deploy to [location] is refused by this policy. The version is the name of the parent directory, which is
+ * the version directory for every artifact file and its checksums. Artifact metadata sits above the version
+ * directories, so [SNAPSHOT] accepts it. [RELEASE] refuses only what lies in a snapshot directory.
+ */
+internal fun VersionPolicy.refusesDeployOf(location: Location): Boolean {
+    val snapshotVersion = location.getParent().getSimpleName().endsWith(SNAPSHOT_SUFFIX)
+    return when (this) {
+        VersionPolicy.MIXED -> false
+        VersionPolicy.RELEASE -> snapshotVersion
+        VersionPolicy.SNAPSHOT -> !snapshotVersion && !location.getSimpleName().startsWith(METADATA_FILE)
+    }
 }
