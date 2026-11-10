@@ -76,6 +76,10 @@ class Repository internal constructor(
     val acceptsUploads: Boolean
         get() = declaredType.acceptsUploads()
 
+    /** The write policy shown to operators, or null for a repository that takes no uploads at all. */
+    val writePolicy: WritePolicy?
+        get() = if (acceptsUploads) writePolicyOf(redeployment, readOnly) else null
+
     internal val resolutionCache: ResolutionCache? =
         if (resolutionCacheMaxEntries > 0) ResolutionCache(resolutionCacheMaxEntries) else null
 

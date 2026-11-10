@@ -23,7 +23,7 @@ import com.reposilite.maven.api.DeployRequest
 import com.reposilite.maven.api.GeneratePomRequest
 import com.reposilite.maven.api.PomDetails
 import com.reposilite.maven.api.RepositoryListQuery
-import com.reposilite.maven.api.RepositorySummary
+import com.reposilite.maven.api.RepositoryListEntry
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.maven.specification.MavenSpecification
@@ -252,7 +252,7 @@ internal class RepositoryPolicyTest : MavenSpecification() {
     inner class Listing {
 
         private fun summaries() =
-            mavenFacade.listRepositories(UNAUTHORIZED, RepositoryListQuery()).repositories.associateBy { it.id }
+            mavenFacade.listRepositoryEntries(UNAUTHORIZED, RepositoryListQuery()).repositories.associateBy { it.id }
 
         @Test
         fun `should list the version policy and the read-only flag of every repository`() {
@@ -293,7 +293,7 @@ internal class RepositoryPolicyTest : MavenSpecification() {
             val document = """{ "id": "legacy", "visibility": "PUBLIC", "description": "", "tags": [], "type": "hosted", "typeExplicit": false }"""
 
             // when: the summary is read
-            val summary = DEFAULT_OBJECT_MAPPER.readValue(document, RepositorySummary::class.java)
+            val summary = DEFAULT_OBJECT_MAPPER.readValue(document, RepositoryListEntry::class.java)
 
             // then: the new fields are absent, and the rest is read as before
             assertThat(summary.id).isEqualTo("legacy")

@@ -24,7 +24,7 @@ import com.reposilite.maven.api.VersionLookupRequest
 import com.reposilite.maven.api.VersionsResponse
 import com.reposilite.maven.api.PomDetails
 import com.reposilite.maven.api.RepositoryListQuery
-import com.reposilite.maven.api.RepositoryListResponse
+import com.reposilite.maven.api.RepositoryListEntriesResponse
 import com.reposilite.maven.api.RepositoryMembersResponse
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
@@ -151,13 +151,13 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
             OpenApiResponse(
                 status = "200",
                 description = "Returns the visible repositories that match the query",
-                content = [OpenApiContent(from = RepositoryListResponse::class)]
+                content = [OpenApiContent(from = RepositoryListEntriesResponse::class)]
             )
         ]
     )
-    private val listRepositories = ReposiliteRoute<RepositoryListResponse>("/api/maven/repositories", GET) {
+    private val listRepositories = ReposiliteRoute<RepositoryListEntriesResponse>("/api/maven/repositories", GET) {
         accessed {
-            response = mavenFacade.listRepositories(
+            response = mavenFacade.listRepositoryEntries(
                 accessToken = this?.identifier,
                 query = RepositoryListQuery(query = ctx.queryParam("q"), tags = ctx.queryParams("tag")),
             ).asSuccess()

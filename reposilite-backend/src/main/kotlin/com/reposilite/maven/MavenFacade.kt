@@ -29,6 +29,8 @@ import com.reposilite.maven.api.LatestVersionResponse
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.Metadata
 import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.maven.api.RepositoryListEntriesResponse
+import com.reposilite.maven.api.RepositoryListEntry
 import com.reposilite.maven.api.RepositoryListResponse
 import com.reposilite.maven.api.RepositoryMembersResponse
 import com.reposilite.maven.api.ResolvedDocument
@@ -285,6 +287,25 @@ class MavenFacade internal constructor(
 
     fun listRepositories(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): RepositoryListResponse =
         RepositoryListResponse(repositoryService.listRepositories(accessToken, query))
+
+    /** The same list as [listRepositories], each entry with the version policy, the read-only flag and the write policy. */
+    fun listRepositoryEntries(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): RepositoryListEntriesResponse =
+        RepositoryListEntriesResponse(
+            repositoryService.listRepositories(accessToken, query).map { summary ->
+                val repository = getRepository(summary.id)
+                RepositoryListEntry(
+                    id = summary.id,
+                    visibility = summary.visibility,
+                    description = summary.description,
+                    tags = summary.tags,
+                    type = summary.type,
+                    typeExplicit = summary.typeExplicit,
+                    versionPolicy = repository?.versionPolicy?.name,
+                    readOnly = repository?.readOnly,
+                    writePolicy = repository?.writePolicy?.name,
+                )
+            }
+        )
 
     /** The repositories [repository] references through loopback mirrors, as far as the token may see them. */
     fun findMembers(accessToken: AccessTokenIdentifier?, repository: String): Result<RepositoryMembersResponse, ErrorResponse> =
