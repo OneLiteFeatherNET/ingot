@@ -23,6 +23,8 @@ import com.reposilite.ReposiliteParameters
 import com.reposilite.ReposiliteSpecification
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.frontend.application.FrontendSettings
+import io.javalin.http.HttpStatus
+import kong.unirest.core.Unirest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -65,5 +67,27 @@ internal class SharedConfigurationReloadIntegrationTest : ReposiliteSpecificatio
         assertThat(sharedConfigurationFacade.getDomainSettings<FrontendSettings>().get().id)
             .describedAs("frontend id after the edit of the mounted file")
             .isEqualTo("edited-repository")
+    }
+
+    @Test
+    fun `a settings save over the API is refused with a conflict and the mounted file is unchanged`() {
+        // given: a permitted token and the mounted file as it was written
+        val (name, secret) = useDefaultManagementToken()
+        val before = sharedConfiguration.readText()
+
+        // when: the frontend domain is saved over the API
+        val response = Unirest.put("$base/api/settings/domain/frontend")
+            .basicAuth(name, secret)
+            .header("Content-Type", "application/json")
+            .body("""{"id":"saved-from-dashboard"}""")
+            .asString()
+
+        // then: the save is refused as a conflict and the file is byte for byte the same
+        assertThat(response.status)
+            .describedAs("status of a save to a domain managed by the file")
+            .isEqualTo(HttpStatus.CONFLICT.code)
+        assertThat(sharedConfiguration.readText())
+            .describedAs("file after a refused save")
+            .isEqualTo(before)
     }
 }
