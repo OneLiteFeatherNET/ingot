@@ -166,13 +166,23 @@ These settings are read directly. They do not accept the `INGOT_LOCAL_` prefix, 
 
 ### Prometheus plugin
 
-The `prometheus` plugin (module `reposilite-plugins/prometheus-plugin`) reads a system property first and the environment second.
+The `prometheus` plugin (module `reposilite-plugins/prometheus-plugin`) reads the `INGOT_PROMETHEUS_` environment variable first, then a system property, then the `REPOSILITE_PROMETHEUS_` environment variable. The first value that is set wins. Existing deployments that set only the `REPOSILITE_` names keep working.
 
-| System property | Environment variable | Default | Meaning |
+| Environment variable | Legacy environment variable | System property | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| `INGOT_PROMETHEUS_PATH` | `REPOSILITE_PROMETHEUS_PATH` | `reposilite.prometheus.path` | `/metrics` | Path of the metrics endpoint. |
+| `INGOT_PROMETHEUS_USER` | `REPOSILITE_PROMETHEUS_USER` | `reposilite.prometheus.user` | none | User name for the metrics endpoint. Required: without it the plugin throws `Prometheus user is not defined`. |
+| `INGOT_PROMETHEUS_PASSWORD` | `REPOSILITE_PROMETHEUS_PASSWORD` | `reposilite.prometheus.password` | none | Password for the metrics endpoint. Required: without it the plugin throws `Prometheus password is not defined`. |
+
+#### Metrics switch
+
+The image ships the plugin as `prometheus-plugin.jar` in `/app/bundled-plugins/`, outside the data volume. It is loaded only when the switch is on.
+
+| Environment variable | Legacy environment variable | Default | Meaning |
 | --- | --- | --- | --- |
-| `reposilite.prometheus.path` | `REPOSILITE_PROMETHEUS_PATH` | `/metrics` | Path of the metrics endpoint. |
-| `reposilite.prometheus.user` | `REPOSILITE_PROMETHEUS_USER` | none | User name for the metrics endpoint. Required: without it the plugin throws `Prometheus user is not defined`. |
-| `reposilite.prometheus.password` | `REPOSILITE_PROMETHEUS_PASSWORD` | none | Password for the metrics endpoint. Required: without it the plugin throws `Prometheus password is not defined`. |
+| `INGOT_METRICS_ENABLED` | `REPOSILITE_METRICS_ENABLED` | unset (off) | `true` loads the bundled plugin. When `INGOT_METRICS_ENABLED` is set, it decides on its own and the legacy name is ignored. |
+
+With the switch on and no user or password, start-up fails with the message above, as it does for an installed plugin without credentials. A `prometheus-plugin.jar` in the plugins directory with the same plugin id takes precedence: the bundled copy is then not loaded. The directory can be changed with the JVM property `ingot.bundledPlugins`, which is meant for tests and unusual images.
 
 ### S3 upload variable
 

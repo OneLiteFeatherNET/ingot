@@ -28,14 +28,10 @@ include(
 )
 
 // Plugins aren't needed to build the server jar, so the Docker build trims them from the context (see .dockerignore).
+// The image keeps only the bundled metrics plugin, so each plugin is included when its directory is present.
 if (rootDir.resolve("reposilite-plugins").isDirectory) {
-    include(
-        "reposilite-plugins",
-        "reposilite-plugins:checksum-plugin",
-        "reposilite-plugins:example-plugin",
-        "reposilite-plugins:groovy-plugin",
-        "reposilite-plugins:migration-plugin",
-        "reposilite-plugins:prometheus-plugin",
-        "reposilite-plugins:swagger-plugin"
-    )
+    include("reposilite-plugins")
+    listOf("checksum-plugin", "example-plugin", "groovy-plugin", "migration-plugin", "prometheus-plugin", "swagger-plugin")
+        .filter { rootDir.resolve("reposilite-plugins/$it").isDirectory }
+        .forEach { include("reposilite-plugins:$it") }
 }

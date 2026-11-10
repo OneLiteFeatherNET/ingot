@@ -51,6 +51,7 @@ internal class MirrorService(
     private val clock: Clock,
     private val mirrorCache: MirrorCacheService,
     private val artifactIndexSink: ArtifactIndexSink,
+    private val operationCounters: MavenOperationCounters = MavenOperationCounters(),
 ) : Journalist {
 
     private data class FetchKey(
@@ -230,6 +231,7 @@ internal class MirrorService(
         var lastUpstreamError: ErrorResponse? = null
         for (host in eligibleHosts) {
             val result = fetch(host)
+            operationCounters.recordUpstream(UpstreamOutcome.of(result))
             if (result.isOk) {
                 return MirrorResolution.Resolved(result.get(), host)
             }

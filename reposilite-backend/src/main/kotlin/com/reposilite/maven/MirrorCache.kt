@@ -76,6 +76,9 @@ internal interface MirrorCacheLedger {
     /** The version directories of [repository] with their last access. */
     fun find(repository: String): Map<String, Instant>
 
+    /** The number of rows of all repositories. */
+    fun count(): Long
+
 }
 
 /**
@@ -134,6 +137,10 @@ internal class MirrorCacheService(
     /** The version directories that hold mirror copies of [repository], with their last access. */
     fun cachedVersions(repository: String): Map<String, Instant> =
         ledger.find(repository)
+
+    /** The number of mirror cache rows of all repositories. */
+    fun entryCount(): Long =
+        ledger.count()
 
     private fun isRecordable(repository: String, versionPath: String): Boolean =
         versionPath.isNotEmpty() &&

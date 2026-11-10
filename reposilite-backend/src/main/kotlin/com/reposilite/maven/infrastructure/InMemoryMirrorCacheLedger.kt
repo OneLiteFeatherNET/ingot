@@ -58,4 +58,7 @@ internal class InMemoryMirrorCacheLedger : MirrorCacheLedger {
             .filter { (key, _) -> key.first == repository }
             .associate { (key, row) -> key.second to row.lastAccess }
 
+    override fun count(): Long =
+        rows.size.toLong()
+
 }

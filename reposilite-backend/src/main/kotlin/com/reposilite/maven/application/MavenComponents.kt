@@ -22,6 +22,7 @@ import com.reposilite.frontend.application.FrontendSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.maven.LatestService
 import com.reposilite.maven.MavenFacade
+import com.reposilite.maven.MavenOperationCounters
 import com.reposilite.maven.StorageUsageService
 import com.reposilite.maven.storageTargets
 import com.reposilite.maven.LockingMetadataLocks
@@ -67,6 +68,9 @@ internal class MavenComponents(
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
 
+    /** Shared by the mirror service that fetches upstream and by the facade that reads the totals for the metrics. */
+    private val operationCounters = MavenOperationCounters()
+
     private fun securityProvider(): RepositorySecurityProvider =
         RepositorySecurityProvider(accessTokenFacade)
 
@@ -80,6 +84,7 @@ internal class MavenComponents(
             clock = clock,
             mirrorCache = mirrorCache,
             artifactIndexSink = artifactIndexSink,
+            operationCounters = operationCounters,
         )
 
     private fun resolutionProvider(): ResolutionProvider =
@@ -126,6 +131,7 @@ internal class MavenComponents(
             mirrorCache = mirrorCache,
             artifactIndexSink = artifactIndexSink,
             cachePrivateAsPublic = cachePrivateAsPublic,
+            operationCounters = operationCounters,
         )
 
     private fun storageUsageService(repositoryProvider: RepositoryProvider): StorageUsageService =

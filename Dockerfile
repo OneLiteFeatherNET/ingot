@@ -27,7 +27,7 @@ WORKDIR /home/ingot-build
 # The below line will show an Error in some IDE's, It is valid Dockerfile.
 RUN --mount=type=cache,target=/root/.gradle <<EOF
   export GRADLE_OPTS="-Djdk.lang.Process.launchMechanism=vfork"
-  ./gradlew :reposilite-backend:shadowJar --no-daemon --stacktrace
+  ./gradlew :reposilite-backend:shadowJar :reposilite-plugins:prometheus-plugin:shadowJar --no-daemon --stacktrace
 EOF
 
 # Image labels are not declared here on purpose. The block that used to sit at this
@@ -80,6 +80,10 @@ WORKDIR /app
 # Import application code
 COPY --chmod=755 entrypoint.sh entrypoint.sh
 COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-backend/build/libs/ingot-*.jar ingot.jar
+
+# The metrics plugin ships beside the server, outside /app/data: the data volume survives upgrades, and a copy there would keep
+# an old plugin after an image upgrade. The loader reads this directory only when INGOT_METRICS_ENABLED=true.
+COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-test/workspace/plugins/prometheus-plugin.jar /app/bundled-plugins/prometheus-plugin.jar
 
 # The artifact is named after this project, but /app/reposilite.jar is part of what an
 # upstream deployment may reference: anything that overrides the entrypoint or the command

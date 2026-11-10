@@ -37,6 +37,9 @@ docker-compose.split.yml
 
 # Not used in running application
 reposilite-test
-reposilite-plugins
+# Only the metrics plugin is built into the image, see /app/bundled-plugins in the Dockerfile.
+reposilite-plugins/*
+!reposilite-plugins/build.gradle.kts
+!reposilite-plugins/prometheus-plugin
 .github/
 .codecov.yml

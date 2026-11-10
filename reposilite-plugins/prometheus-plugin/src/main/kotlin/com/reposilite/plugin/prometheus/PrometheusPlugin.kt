@@ -6,7 +6,9 @@ import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.prometheus.metrics.HttpRequestMetrics
 import com.reposilite.plugin.prometheus.metrics.JettyMetrics
+import com.reposilite.plugin.prometheus.metrics.OperationalMetrics
 import com.reposilite.plugin.prometheus.metrics.QueuedThreadPoolMetrics
 import com.reposilite.plugin.prometheus.metrics.ReposiliteMetrics
 import com.reposilite.status.FailureFacade
@@ -16,10 +18,10 @@ import com.reposilite.web.api.HttpServerConfigurationEvent
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
 import io.prometheus.metrics.instrumentation.jvm.JvmMetrics
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.eclipse.jetty.server.handler.StatisticsHandler
 import org.eclipse.jetty.util.thread.QueuedThreadPool
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.DurationUnit
+import java.util.function.LongSupplier
 
 
 @Plugin(name = "prometheus", dependencies = ["failure", "statistics", "status"])
@@ -29,28 +31,21 @@ class PrometheusPlugin : ReposilitePlugin() {
         logger.info("")
         logger.info("--- Prometheus")
 
-        val prometheusPath = (System.getProperty("reposilite.prometheus.path")
-            ?: System.getenv("REPOSILITE_PROMETHEUS_PATH")
-            ?: "/metrics").toLocation()
-
-        val prometheusUser = System.getProperty("reposilite.prometheus.user")
-            ?: System.getenv("REPOSILITE_PROMETHEUS_USER")
-            ?: throw IllegalStateException("Prometheus user is not defined")
-
-        val prometheusPassword = System.getProperty("reposilite.prometheus.password")
-            ?: System.getenv("REPOSILITE_PROMETHEUS_PASSWORD")
-            ?: throw IllegalStateException("Prometheus password is not defined")
+        val settings = PrometheusSettings.read(environment = System.getenv(), property = { System.getProperty(it) })
+        val prometheusPath = settings.path.toLocation()
 
         val prometheusFacade = PrometheusFacade(
             failureFacade = facade<FailureFacade>(),
-            prometheusUser = prometheusUser,
-            prometheusPassword = prometheusPassword
+            prometheusUser = settings.user,
+            prometheusPassword = settings.password
         )
 
         JvmMetrics.builder().register()
         logger.info("Prometheus | JVM metrics has been initialized.")
 
         ReposiliteMetrics.register(facade<StatusFacade>(), facade<FailureFacade>())
+
+        OperationalMetrics(PrometheusRegistry.defaultRegistry, FacadeOperationalSource { extensions().getFacades() })
 
         event { event: ResolvedFileEvent ->
             event.result.map { (info, _) ->
@@ -67,23 +62,11 @@ class PrometheusPlugin : ReposilitePlugin() {
 
 
         event { event: HttpServerConfigurationEvent ->
-            event.config.routes.before { ctx ->
-                ctx.attribute("timestamp", System.currentTimeMillis())
-            }
-
-            event.config.routes.after { ctx ->
-                if (ctx.path().toLocation() == prometheusPath)
-                    return@after
-
-                ReposiliteMetrics.responseCounter.labelValues(ctx.statusCode().toString()).inc()
-
-                val currentTime = System.currentTimeMillis()
-                val timestamp = ctx.attribute<Long>("timestamp")
-
-                if (timestamp != null)
-                    JettyMetrics.responseTimeSummary.labelValues(ctx.statusCode().toString())
-                        .observe((currentTime - timestamp).milliseconds.toDouble(DurationUnit.SECONDS))
-            }
+            HttpRequestMetrics(PrometheusRegistry.defaultRegistry, LongSupplier { System.nanoTime() })
+                .install(event.config.routes, metricsPath = prometheusPath.toString()) { code, seconds ->
+                    ReposiliteMetrics.responseCounter.labelValues(code.toString()).inc()
+                    JettyMetrics.responseTimeSummary.labelValues(code.toString()).observe(seconds)
+                }
 
             event.config.jetty.modifyServer { server ->
                 val handler = StatisticsHandler()
