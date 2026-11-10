@@ -259,10 +259,25 @@ class ChartRenderTest(unittest.TestCase):
             self.assertEqual("/", container(deployment)[probe]["httpGet"]["path"],
                              f"the all-in-one {probe} must use the root path as upstream does")
 
-    def test_startup_probe_is_absent_by_default(self):
-        for values in (None, split_values()):
-            deployment = named(render(values), "Deployment", SERVER)
-            self.assertNotIn("startupProbe", container(deployment), "no startup probe unless it is enabled")
+    # Replaces test_startup_probe_is_absent_by_default for split: the startup probe is on by default in split, so a
+    # first start that takes longer than the liveness budget is not restarted. All-in-one keeps it off.
+    def test_startup_probe_is_absent_by_default_in_all_in_one(self):
+        deployment = named(render(), "Deployment", SERVER)
+        self.assertNotIn("startupProbe", container(deployment), "no startup probe in all-in-one unless it is enabled")
+
+    def test_startup_probe_is_rendered_by_default_in_split(self):
+        startup = container(named(render(split_values()), "Deployment", SERVER))["startupProbe"]
+        self.assertEqual(5, startup["periodSeconds"], "the split startup probe period must be 5 seconds")
+        self.assertEqual(30, startup["failureThreshold"], "the split startup budget must be 30 failures of 5 seconds")
+        self.assertEqual(
+            "/api/status/health", startup["httpGet"]["path"], "the split startup probe must use the health endpoint",
+        )
+
+    def test_startup_probe_can_be_turned_off_in_split(self):
+        values = split_values()
+        values["probes"] = {"startup": {"enabled": False}}
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertNotIn("startupProbe", container(deployment), "an explicit enabled: false must win over the split default")
 
     def test_enabled_startup_probe_uses_the_root_path_in_all_in_one_mode(self):
         deployment = named(render({"probes": {"startup": {"enabled": True}}}), "Deployment", SERVER)
@@ -286,11 +301,56 @@ class ChartRenderTest(unittest.TestCase):
             self.assertEqual("/healthz", container(deployment)[probe]["httpGet"]["path"],
                              f"the dashboard {probe} must use GET /healthz")
 
-    def test_split_server_probes_use_the_api_health_endpoint(self):
+    # Replaces test_split_server_probes_use_the_api_health_endpoint. Readiness moved to /api/status/ready, because the
+    # health endpoint answers UP while the database is down. Liveness stays on the health endpoint, so an outage never
+    # restarts a pod.
+    def test_split_server_liveness_uses_the_api_health_endpoint(self):
         deployment = named(render(split_values()), "Deployment", SERVER)
-        for probe in ("readinessProbe", "livenessProbe"):
-            self.assertEqual("/api/status/health", container(deployment)[probe]["httpGet"]["path"],
-                             f"the split server {probe} must avoid the dashboard path")
+        self.assertEqual(
+            "/api/status/health", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "the split server liveness must stay on the health endpoint, so a database outage never restarts a pod",
+        )
+
+    def test_split_server_readiness_uses_the_readiness_endpoint(self):
+        deployment = named(render(split_values()), "Deployment", SERVER)
+        self.assertEqual(
+            "/api/status/ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "the split server readiness must use /api/status/ready, which fails while the database or storage is down",
+        )
+
+    def test_split_server_readiness_tolerates_one_slow_answer(self):
+        readiness = container(named(render(split_values()), "Deployment", SERVER))["readinessProbe"]
+        self.assertEqual(3, readiness["timeoutSeconds"], "the split readiness check runs two bounded checks, so it needs 3 seconds")
+        self.assertEqual(2, readiness["failureThreshold"], "one slow answer must not take the split pod out of rotation")
+
+    def test_all_in_one_readiness_keeps_its_budget(self):
+        readiness = container(named(render(), "Deployment", SERVER))["readinessProbe"]
+        self.assertEqual(1, readiness["timeoutSeconds"], "the all-in-one readiness timeout must stay at the upstream 1 second")
+        self.assertEqual(1, readiness["failureThreshold"], "the all-in-one readiness threshold must stay at the upstream 1")
+
+    def test_explicit_readiness_path_wins_in_all_in_one_mode(self):
+        deployment = named(render({"probes": {"readinessPath": "/api/status/ready"}}), "Deployment", SERVER)
+        self.assertEqual(
+            "/api/status/ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "an explicit probes.readinessPath must win over the all-in-one default",
+        )
+        self.assertEqual(
+            "/", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "probes.readinessPath must not change the liveness probe",
+        )
+
+    def test_explicit_readiness_path_wins_in_split_mode(self):
+        values = split_values()
+        values["probes"] = {"readinessPath": "/custom-ready"}
+        deployment = named(render(values), "Deployment", SERVER)
+        self.assertEqual(
+            "/custom-ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "an explicit probes.readinessPath must win over the split default",
+        )
+        self.assertEqual(
+            "/api/status/health", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "probes.readinessPath must not change the split liveness probe",
+        )
 
     def test_pod_disruption_budget_is_absent_by_default(self):
         self.assertEqual([], of_kind(render(), "PodDisruptionBudget"), "no PodDisruptionBudget by default")
