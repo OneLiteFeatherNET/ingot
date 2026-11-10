@@ -295,7 +295,7 @@ const cancel = () => {
 const done = () => {
   const id = draft.basics.id
   emit('update:modelValue', false)
-  router.push({ name: 'settings-entry', params: { domain: 'maven', collection: 'repositories', entry: id } })
+  router.push({ name: 'settings-repository', params: { id } })
 }
 
 const onModalUpdate = (open) => {

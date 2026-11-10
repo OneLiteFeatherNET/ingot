@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -90,10 +91,7 @@ const fakeClient = (server) => ({
 
 const namedRouter = () => createRouter({
   history: createMemoryHistory(),
-  routes: [
-    { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-    { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
-  ]
+  routes: stubRoutes()
 })
 
 const loadedStore = async (server = SERVER) => {
@@ -109,7 +107,7 @@ const mountEntries = async ({ props = {}, store } = {}) => {
   const viewProps = { selectedTab: 'Settings', domain: 'maven', collection: 'repositories', entry: 'releases', ...props }
   // The address the view is mounted with is the one the router is on, as it is in the app.
   await router.push(viewProps.entry
-    ? { name: 'settings-entry', params: { domain: viewProps.domain, collection: viewProps.collection, entry: viewProps.entry } }
+    ? { name: 'settings-repository', params: { id: viewProps.entry } }
     : { name: 'settings', params: { domain: viewProps.domain } })
   const configuration = store ?? await loadedStore()
   wrapper = mount(SettingsView, {
@@ -125,13 +123,10 @@ const mountEntries = async ({ props = {}, store } = {}) => {
 }
 
 // The router hands the address back to the view as props. The tests do the same after each navigation.
-const followAddress = async (router) => {
-  await wrapper.setProps({ entry: router.currentRoute.value.params.entry })
+const followAddress = async () => {
   await flushPromises()
 }
 
-const itemButtons = () => wrapper.findAll('li button')
-const itemTitles = () => itemButtons().map(button => button.find('span').text())
 const idField = () => document.querySelector('#entry-detail-id')
 const typeInto = async (input, value) => {
   input.value = value
@@ -178,18 +173,17 @@ describe('SettingsView rename', () => {
     await typeInto(idField(), 'mirror')
 
     expect(repositoryIds(store)).toEqual(['mirror', 'snapshots'])
-    expect(router.currentRoute.value.params.entry).toBe('mirror')
+    expect(router.currentRoute.value.params.id).toBe('mirror')
   })
 
-  it('keeps the same item selected and on screen across a rename', async () => {
+  it('keeps the same entry open across a rename, with the new id in the field', async () => {
     const { router } = await mountEntries()
-    const item = itemButtons()[0].element
 
     await typeInto(idField(), 'mirror')
-    await followAddress(router)
+    await followAddress()
 
-    expect(itemButtons()[0].element, 'the item is the same element').toBe(item)
-    expect(itemButtons()[0].attributes('aria-current')).toBe('true')
+    expect(idField().value, 'the field keeps the typed id').toBe('mirror')
+    expect(router.currentRoute.value.params.id).toBe('mirror')
     expect(wrapper.get('[data-test="entry-title"]').text()).toBe('mirror')
   })
 
@@ -198,7 +192,7 @@ describe('SettingsView rename', () => {
 
     await typeInto(idField(), 'snapshots')
 
-    expect(router.currentRoute.value.params.entry).toBe('releases')
+    expect(router.currentRoute.value.params.id).toBe('releases')
     expect(wrapper.get('[data-test="entry-title"]').text(), 'the open entry stays open').toBe('snapshots')
     expect(wrapper.text()).toContain('A repository with this id already exists.')
     expect(store.invalidDomains.value).toEqual(['maven'])
@@ -214,50 +208,3 @@ describe('SettingsView rename', () => {
   })
 })
 
-describe('SettingsView entries without a usable id', () => {
-  it('lists an entry without an id as unnamed, with the reason, and not as an empty item', async () => {
-    const store = await loadedStore({ maven: { repositories: [{ visibility: 'PUBLIC' }, SERVER.maven.repositories[1]] } })
-    await mountEntries({ store, props: { entry: 'snapshots' } })
-
-    expect(itemTitles()).toEqual(['Unnamed repository', 'snapshots'])
-    expect(itemButtons()[0].text()).toContain('Enter an id.')
-  })
-
-  it('opens an unnamed entry by its key and names it, which moves the address to the new id', async () => {
-    const store = await loadedStore({ maven: { repositories: [{ visibility: 'PUBLIC' }, SERVER.maven.repositories[1]] } })
-    const { router } = await mountEntries({ store, props: { entry: 'snapshots' } })
-
-    await itemButtons()[0].trigger('click')
-    await flushPromises()
-    await followAddress(router)
-
-    expect(router.currentRoute.value.params.entry.startsWith('~'), 'the unnamed entry is addressed by its key').toBe(true)
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('Unnamed repository')
-
-    await typeInto(idField(), 'named')
-    await followAddress(router)
-
-    expect(repositoryIds(store)).toEqual(['named', 'snapshots'])
-    expect(router.currentRoute.value.params.entry).toBe('named')
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('named')
-  })
-})
-
-describe('SettingsView action bar', () => {
-  it('shows the action bar right after an entry is created', async () => {
-    // Outside the maven domain a collection has no guided flow, so "New entry" opens the id dialog.
-    const server = { ingot: { repositories: [{ id: 'releases', visibility: 'PUBLIC', storageProvider: { type: 'fs' } }] } }
-    await mountEntries({ props: { domain: 'ingot', entry: undefined }, store: await loadedStore(server) })
-    await wrapper.find('[data-test="new-entry"]').trigger('click')
-    await flushPromises()
-
-    document.querySelector('#new-entry-id').value = 'mirror'
-    document.querySelector('#new-entry-id').dispatchEvent(new Event('input'))
-    await flushPromises()
-    document.getElementById('new-entry-form').dispatchEvent(new Event('submit', { cancelable: true }))
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('1 unsaved change')
-    expect(wrapper.findAll('[role="status"]').some(status => status.text().includes('Save'))).toBe(true)
-  })
-})

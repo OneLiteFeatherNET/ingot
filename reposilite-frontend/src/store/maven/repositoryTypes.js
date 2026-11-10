@@ -82,7 +82,7 @@ const isBlankReference = (reference) => {
   const trimmed = String(reference ?? '').trim()
   return (trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed) === ''
 }
-const isBlankEntry = (item) => isBlankReference(item?.reference)
+export const isBlankEntry = (item) => isBlankReference(item?.reference)
 
 /* The number of blank entries that a switch to `to` removes. Only a typed repository drops them. */
 export const blankEntriesRemovedBy = (entry, to) => (Array.isArray(entry?.proxied) && isTyped(to)

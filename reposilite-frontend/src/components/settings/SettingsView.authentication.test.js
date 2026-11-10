@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -52,11 +53,7 @@ const fakeClient = () => ({
 
 const namedRouter = () => createRouter({
   history: createMemoryHistory(),
-  routes: [
-    { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-    { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
-    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } }
-  ]
+  routes: stubRoutes()
 })
 
 let wrapper
@@ -86,7 +83,9 @@ describe('settings tabs without authentication', () => {
   it('does not offer an Authentication tab, because the domain is edited under Access', async () => {
     await mountSettings('maven')
 
-    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    const links = wrapper.findAll('[aria-label="Administration"] a').map(link => link.text())
+    expect(links, 'the domains are in the Administration tree').toEqual(expect.arrayContaining(['Maven', 'Ingot']))
+    expect(links, 'no Authentication link, the domain is edited under Access').not.toContain('Authentication')
   })
 
   it('still renders the danger zone below the page', async () => {

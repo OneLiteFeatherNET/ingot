@@ -16,6 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { domainSummary, hubGroups } from './settingsHub'
+import { ADMIN_NODES } from '../../store/nodeAccess'
 
 // Fixtures are built per test, so no test can change what another one reads.
 const collectionSchema = () => ({
@@ -48,9 +49,12 @@ const fixture = (overrides = {}) => ({
   saved: { maven: { repositories: entries(6) }, web: {}, acme: {} },
   unsaved: [],
   titleOf: (domain) => ({ maven: 'Maven', web: 'Web', acme: 'Acme' })[domain],
-  editable: () => true,
+  can: () => true,
   ...overrides
 })
+
+// The cards that open a settings domain, the ones this test is about. The other cards are the Access and page links.
+const domainCards = (group) => group.cards.filter(card => card.to.name === 'settings')
 
 describe('domainSummary', () => {
   it('counts the entries of a collection in its plural name', () => {
@@ -75,20 +79,17 @@ describe('domainSummary', () => {
 })
 
 describe('hubGroups', () => {
-  it('orders the groups Repository, Instance, Plugins and puts an unnamed domain in Plugins', () => {
+  it('places the maven domain in Repository, and the other domains, unnamed ones too, in System', () => {
     const groups = hubGroups(fixture())
 
-    expect(groups.map(group => [group.heading, group.cards.map(card => card.key)])).toEqual([
-      ['Repository', ['maven']],
-      ['Instance', ['web']],
-      ['Plugins', ['acme']]
-    ])
+    expect(domainCards(groups.find(group => group.heading === 'Repository')).map(card => card.key), 'the repository domain').toEqual(['maven'])
+    expect(domainCards(groups.find(group => group.heading === 'System')).map(card => card.key), 'the other domains').toEqual(['web', 'acme'])
   })
 
   it('gives a card its title, the saved summary and the address of its domain', () => {
-    const [repository] = hubGroups(fixture())
+    const repository = hubGroups(fixture()).find(group => group.heading === 'Repository')
 
-    expect(repository.cards[0]).toEqual({
+    expect(repository.cards.find(card => card.key === 'maven')).toEqual({
       key: 'maven',
       title: 'Maven',
       summary: '6 repositories',
@@ -98,21 +99,22 @@ describe('hubGroups', () => {
   })
 
   it('marks a domain with a draft change and keeps its saved summary', () => {
-    const [repository] = hubGroups(fixture({ unsaved: ['maven'] }))
+    const groups = hubGroups(fixture({ unsaved: ['maven'] }))
+    const maven = domainCards(groups.find(group => group.heading === 'Repository'))[0]
 
-    expect(repository.cards[0].unsaved).toBe(true)
-    expect(repository.cards[0].summary, 'the card shows the saved value, not the draft').toBe('6 repositories')
+    expect(maven.unsaved).toBe(true)
+    expect(maven.summary, 'the card shows the saved value, not the draft').toBe('6 repositories')
   })
 
-  it('leaves out a group whose domains the visitor may not edit', () => {
-    const groups = hubGroups(fixture({ editable: (domain) => domain !== 'web' }))
+  it('leaves out every settings domain from a visitor without the settings node', () => {
+    const groups = hubGroups(fixture({ can: (node) => node !== ADMIN_NODES.settings }))
 
-    expect(groups.map(group => group.heading)).toEqual(['Repository', 'Plugins'])
+    expect(groups.flatMap(group => domainCards(group)), 'no domain card is offered').toEqual([])
   })
 
   it('leaves out the domains that are edited under Access', () => {
     const groups = hubGroups(fixture({ domains: ['maven', 'login', 'authentication'] }))
 
-    expect(groups.flatMap(group => group.cards.map(card => card.key))).toEqual(['maven'])
+    expect(groups.flatMap(group => domainCards(group).map(card => card.key))).toEqual(['maven'])
   })
 })

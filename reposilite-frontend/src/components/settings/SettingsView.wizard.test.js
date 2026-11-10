@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -57,14 +58,11 @@ const mountSettings = async () => {
   await store.fetchConfiguration()
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-      { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
-      { name: 'home', path: '/', component: { render: () => null } }
-    ]
+    routes: stubRoutes()
   })
+  await router.push('/settings/repositories')
   wrapper = mount(SettingsView, {
-    props: { selectedTab: 'Settings', domain: 'maven' },
+    props: { selectedTab: 'Settings' },
     global: { plugins: [router], provide: { [configurationStoreKey]: store } },
     attachTo: document.body
   })

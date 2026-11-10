@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -235,10 +236,7 @@ beforeEach(async () => {
   configuration = createConfigurationStore(ref(client))
   router = createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { render: () => null } },
-      { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
-    ]
+    routes: stubRoutes()
   })
   await router.push('/')
 })
@@ -614,7 +612,7 @@ describe('RepositoryWizard create sequence', () => {
 
     await click('#wizard-done')
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven/repositories/team')
+    expect(router.currentRoute.value.fullPath, 'Done opens the repository on the Repositories page').toBe('/settings/repositories/team')
   })
 })
 

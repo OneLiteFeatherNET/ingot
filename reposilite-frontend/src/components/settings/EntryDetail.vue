@@ -96,6 +96,21 @@ const props = defineProps({
   validator: {
     type: Object,
     required: true
+  },
+  // The page draws the heading itself when it is false, and the back arrow goes with the heading.
+  showHeader: {
+    type: Boolean,
+    default: true
+  },
+  // Fields of the entry that the page edits with its own control, so the generated form leaves them out.
+  omit: {
+    type: Array,
+    default: () => []
+  },
+  // The groups that list this entry as a member, named by the delete confirmation before it can be used.
+  references: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -225,7 +240,7 @@ const labelled = (node, type) => ({
 })
 
 const formLayout = computed(() => {
-  const hidden = new Set([...hiddenFormFields(typeValue.value), ...(props.typed ? ['type'] : [])])
+  const hidden = new Set([...hiddenFormFields(typeValue.value), ...(props.typed ? ['type'] : []), ...props.omit])
   return labelled(withoutFields(layout.value, hidden), typeValue.value)
 })
 </script>
@@ -255,7 +270,10 @@ const formLayout = computed(() => {
     v-else
     class="flex flex-col gap-6"
   >
-    <header class="flex items-center gap-2">
+    <header
+      v-if="showHeader"
+      class="flex items-center gap-2"
+    >
       <MdIconButton
         class="min-[840px]:hidden"
         :aria-label="backLabel"
@@ -483,6 +501,7 @@ const formLayout = computed(() => {
     <DeleteEntryDialog
       :id="idText(entry) || 'unnamed'"
       v-model="deleteOpen"
+      :references="references"
       @confirm="emit('delete')"
     />
   </div>
