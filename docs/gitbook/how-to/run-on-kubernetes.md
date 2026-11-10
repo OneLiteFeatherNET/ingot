@@ -318,6 +318,8 @@ objectStorage:
 
 The chart renders each variable as a reference to a key of that Secret, so the values stay in the cluster. The first two keys must exist, or the pod does not start. `AWS_REGION` may be left out.
 
+To use the workload identity of the pod instead of keys, see [Credentials from the workload identity](use-s3-storage.md#credentials-from-the-workload-identity). For how to deliver these Secrets through Git, see [Manage secrets with GitOps](manage-secrets-with-gitops.md).
+
 ## Route mirror traffic through an egress proxy
 
 When the cluster reaches external repositories only through an egress proxy, set the proxy variables on the pod and turn on the switch. Mirror clients then use the proxy, and a mirror with its own `httpProxy` keeps that value:
@@ -422,13 +424,14 @@ Several replicas need all of the following:
 * A `ReadWriteMany` volume, or `persistence.enabled: false`, so that pods on other nodes can start.
 
 {% hint style="warning" %}
-As of this writing, the code does not yet do the following, which the design for Kubernetes high availability calls for:
+Two points of the high availability design are covered by the code now. Schema creation takes a lock that is shared by all pods, with the timeout `schemaLockTimeout`. A metadata write is locked across the pods that share one database, which the tests cover for MariaDB. Statistics are flushed at shutdown.
 
-* Schema creation runs in every pod at startup, with no lock across pods.
-* A metadata write, such as a deployment that updates `maven-metadata.xml`, is not locked across pods. Two pods that deploy the same artifact at the same time can lose one version from the metadata.
-* The all-in-one probes use `/` unless `probes.readinessPath` is set, and shutdown does not wait for in-flight requests unless `deployment.shutdown` is set. Statistics are not flushed at shutdown.
+These limits still apply:
 
-Until these are fixed, run one replica. Several replicas are only safe if you accept these risks. The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.
+* The all-in-one probes use `/` unless `probes.readinessPath` is set.
+* Shutdown does not wait for in-flight requests unless `deployment.shutdown` or `INGOT_SHUTDOWN_TIMEOUT` is set.
+
+The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.
 {% endhint %}
 
 An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](configure-cluster-bus.md). With more than one replica or the autoscaler on, the install notes warn about the settings that are missing, such as a `ReadWriteOnce` claim or no `INGOT_LOCAL_DATABASE`. The warnings do not stop the install. See [Multi-replica operation](../explanation/multi-replica-operation.md#what-the-helm-chart-warns-about).
@@ -481,10 +484,17 @@ ingress:
 
 Apply the change with `helm upgrade --install` and the same `--version` and values file as before. If you run Ingot under a path prefix, see [Run behind a reverse proxy and base path](run-behind-reverse-proxy.md).
 
+With a Gateway API implementation instead of an ingress, see [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md). For the body size and the timeouts that the edge needs for large uploads, see [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md).
+
+For the sizing of the heap and the memory limit, see [Size the deployment](size-the-deployment.md). For a comparison of the JAR, the container image and the two Helm shapes, see [Deployment options compared](../explanation/deployment-options-compared.md).
+
 ## Related
 
 * [Run with Docker](install-with-docker.md) describes the same image without an orchestrator.
 * [Configure a database](configure-database.md) lists the database forms and their rules.
 * [Configure the cluster bus](configure-cluster-bus.md) sets the optional message bus between replicas.
 * [Use S3 storage](use-s3-storage.md) explains the S3 settings per repository.
+* [Manage secrets with GitOps](manage-secrets-with-gitops.md) delivers the Secrets of this page from Git.
+* [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md) and [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md) cover the cluster edge.
+* [Size the deployment](size-the-deployment.md) describes how to choose the heap and the limits.
 * [Create proxy repositories](create-proxy-repositories.md) for a proxy with a shared or large cache.
