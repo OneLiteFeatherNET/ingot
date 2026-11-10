@@ -228,7 +228,7 @@ internal class NexusImportIntegrationTest : ReposiliteSpecification() {
     )
 
     private fun createJob(kind: String, extra: Map<String, Any> = emptyMap()): String {
-        val response = admin(Unirest.post(JOBS).header(JSON, JSON_TYPE).body(job(kind, extra))).asString()
+        val response = admin(Unirest.post("$base$JOBS").header(JSON, JSON_TYPE).body(job(kind, extra))).asString()
         assertThat(response.status).describedAs(response.body).isEqualTo(202)
         return json(response.body)["id"].asText()
     }
