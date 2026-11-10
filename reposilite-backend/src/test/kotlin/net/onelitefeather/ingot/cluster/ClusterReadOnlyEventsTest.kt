@@ -47,6 +47,8 @@ internal class ClusterReadOnlyEventsTest {
 
         override fun sharedConfigurationChanged(domain: String) {}
 
+        override fun javadocInvalidated(repository: String, path: String) {}
+
         override fun clusterBusOpened() {}
 
         override fun readOnlyChanged() {

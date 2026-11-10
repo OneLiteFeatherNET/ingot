@@ -45,6 +45,8 @@ internal class ClusterConfigurationEventsTest {
 
         override fun resolutionInvalidated(repository: String, path: String) {}
 
+        override fun javadocInvalidated(repository: String, path: String) {}
+
         override fun sharedConfigurationChanged(domain: String) {
             changedDomains.add(domain)
         }

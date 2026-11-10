@@ -58,6 +58,8 @@ internal class ClusterResolutionEventsTest {
 
         override fun sharedConfigurationChanged(domain: String) {}
 
+        override fun javadocInvalidated(repository: String, path: String) {}
+
         override fun clusterBusOpened() {
             busOpened.incrementAndGet()
         }

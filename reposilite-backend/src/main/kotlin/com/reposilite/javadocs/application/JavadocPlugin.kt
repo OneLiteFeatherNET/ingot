@@ -21,18 +21,18 @@ import com.reposilite.frontend.FrontendFacade
 import com.reposilite.javadocs.JavadocContainerService
 import com.reposilite.javadocs.JavadocFacade
 import com.reposilite.javadocs.infrastructure.JavadocEndpoints
+import com.reposilite.javadocs.javadocEvictionRoot
 import com.reposilite.maven.MavenFacade
 import com.reposilite.maven.api.DeployEvent
 import com.reposilite.plugin.api.Facade
+import com.reposilite.plugin.api.JavadocInvalidatedEvent
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
 import com.reposilite.status.FailureFacade
-import com.reposilite.storage.deleteRecursivelyInside
 import com.reposilite.web.api.RoutingSetupEvent
-import kotlin.io.path.exists
 
 @Plugin(name = "javadoc", dependencies = ["failure", "shared-configuration", "frontend", "maven"], settings = JavadocSettings::class)
 internal class JavadocPlugin : ReposilitePlugin() {
@@ -67,21 +67,16 @@ internal class JavadocPlugin : ReposilitePlugin() {
         )
 
         event { event: DeployEvent ->
-            val gav = event.gav
-                .takeIf { gav -> javadocSuffixes.get().any { gav.toString().endsWith(it) } }
-                ?: return@event
+            val artifactRoot = javadocEvictionRoot(event.gav, javadocSuffixes.get()) ?: return@event
 
-            val artifactRootContainer = javadocContainerService.createContainer(javadocFolder, event.repository, gav.getParent())
-            val artifactRootDirectory = artifactRootContainer.javadocContainerPath.parent ?: return@event
-            val repositoryJavadocRoot = javadocFolder.resolve(event.repository.name)
-
-            if (artifactRootDirectory.exists()) {
-                runCatching {
-                    artifactRootDirectory.deleteRecursivelyInside(repositoryJavadocRoot)
-                }.onFailure {
-                    failureFacade.throwException("Cannot evict javadoc cache for ${event.gav}", it)
-                }
+            runCatching {
+                javadocFacade.evictArtifact(event.repository.name, artifactRoot)
+            }.onFailure {
+                failureFacade.throwException("Cannot evict javadoc cache for ${event.gav}", it)
             }
+
+            // Published after the local eviction and after the deploy is stored; without a cluster bus nobody listens.
+            extensions().emitEvent(JavadocInvalidatedEvent(event.repository.name, artifactRoot.toString()))
         }
 
         event { event: RoutingSetupEvent ->

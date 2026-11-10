@@ -26,6 +26,7 @@ enum class ClusterEventType(val wireName: String, val payloadFields: Set<String>
     TOKEN_CHANGED("token.changed", setOf("name")),
     SESSION_REVOKED("session.revoked", setOf("family")),
     CONFIG_CHANGED("config.changed", setOf("domain")),
+    JAVADOC_INVALIDATED("javadoc.invalidated", setOf("repository", "path")),
     STORAGE_USAGE("storage.usage", setOf("computedAt", "repositories")),
     CONSOLE_LINE("console.line", setOf("channel", "message", "timestamp")),
     FAILURE_RECORDED("failure.recorded", setOf("source", "type", "message")),

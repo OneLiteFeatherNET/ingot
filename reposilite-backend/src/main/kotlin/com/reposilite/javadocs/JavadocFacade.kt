@@ -27,9 +27,12 @@ import com.reposilite.maven.Repository
 import com.reposilite.maven.api.VersionLookupRequest
 import com.reposilite.plugin.api.Facade
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.badRequest
+import com.reposilite.shared.badRequestError
 import com.reposilite.shared.notFound
 import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.Location
+import com.reposilite.storage.deleteRecursivelyInside
 import com.reposilite.token.AccessTokenIdentifier
 import io.javalin.http.ContentType
 import panda.std.Result
@@ -43,6 +46,15 @@ import kotlin.io.path.notExists
 import kotlin.io.path.readLines
 
 private const val LATEST_PATTERN = "/latest"
+
+/**
+ * The artifact directory whose unpacked javadoc cache is evicted when a jar at [gav] is deployed, or null when the jar is not a
+ * javadoc jar. The directory holds every version of the artifact, so it is two levels above the jar.
+ */
+internal fun javadocEvictionRoot(gav: Location, suffixes: List<String>): Location? =
+    gav.takeIf { location -> suffixes.any { location.toString().endsWith(it) } }
+        ?.getParent()
+        ?.getParent()
 
 class JavadocFacade internal constructor(
     private val journalist: Journalist,
@@ -132,6 +144,39 @@ class JavadocFacade internal constructor(
             ?.map { request.gav.replace(LATEST_PATTERN, "/%s".format(it.version)) }
             ?.orNull()
             ?: request.gav
+
+    /**
+     * Drops the unpacked javadoc cache of every version of the artifact at [artifactRoot] in [repository]. An absent cache is a no-op.
+     * Throws when the directory is not strictly inside the javadoc cache of the repository.
+     */
+    fun evictArtifact(repository: String, artifactRoot: Location) {
+        val repositoryRoot = javadocFolder.resolve(repository)
+        val artifactDirectory = repositoryRoot.resolve(artifactRoot.toString())
+
+        if (artifactDirectory.exists()) {
+            artifactDirectory.deleteRecursivelyInside(repositoryRoot)
+        }
+    }
+
+    /**
+     * Applies a `javadoc.invalidated` event received from the cluster bus. The payload is not trusted: the repository must exist on
+     * this instance, the path must be a valid repository location, and the directory it names must lie strictly inside the javadoc
+     * cache of that repository. A refused event deletes nothing.
+     */
+    fun evictReceived(repository: String, path: String): Result<Unit, ErrorResponse> {
+        if (mavenFacade.getRepository(repository) == null) {
+            return notFoundError("Javadoc eviction refused, unknown repository $repository")
+        }
+        // Location.of silently strips leading slashes, so an absolute path is refused here rather than rebased under the root.
+        if (path.startsWith("/")) {
+            return badRequestError("Javadoc eviction refused, absolute path $path")
+        }
+
+        return Location.ofRequest(path).flatMap { artifactRoot ->
+            supplyThrowing { evictArtifact(repository, artifactRoot) }
+                .mapErr { badRequest("Javadoc eviction refused for $path: ${it.message}") }
+        }
+    }
 
     override fun getLogger(): Logger =
         journalist.logger
