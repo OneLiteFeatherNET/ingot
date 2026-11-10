@@ -82,6 +82,7 @@ internal class RepositoryRouteDispatcherTest {
     private class FakeFormat(override val id: String, private val handler: RepositoryRequestHandler) : RepositoryFormat {
         override val pathRules: PathRules = NoPathRules
         override val mount: FormatMount = FormatMount.RepositoryPath
+        override val storageHints: StorageHints = NoStorageHints
         override fun handler(context: FormatContext): RepositoryRequestHandler = handler
     }
 

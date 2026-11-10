@@ -47,8 +47,23 @@ interface RepositoryFormat {
     /** Where the format is served. Only [FormatMount.RepositoryPath] is served by this version. */
     val mount: FormatMount
 
+    /** What the format needs from the storage it is kept in. */
+    val storageHints: StorageHints
+
     /** The handler of the requests for the repositories of this format. Built once, when the first request arrives. */
     fun handler(context: FormatContext): RepositoryRequestHandler
+
+}
+
+/** What a format needs from the storage it is kept in. The storage moves bytes and does not know the format. */
+@ExperimentalIngotFormatApi
+interface StorageHints {
+
+    /**
+     * The keys that a write makes stale in an S3 head cache, besides the written key: each returned key is a prefix. Null keeps the
+     * rule of the storage, which is the Maven rule of earlier versions.
+     */
+    val relatedKeys: ((key: String) -> Collection<String>)?
 
 }
 

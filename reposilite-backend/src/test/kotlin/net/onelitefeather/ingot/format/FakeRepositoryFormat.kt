@@ -26,6 +26,7 @@ import panda.std.asSuccess
 internal class FakeRepositoryFormat(override val id: String) : RepositoryFormat {
     override val pathRules: PathRules = NoPathRules
     override val mount: FormatMount = FormatMount.RepositoryPath
+    override val storageHints: StorageHints = NoStorageHints
     override fun handler(context: FormatContext): RepositoryRequestHandler = NoRequestHandler
 }
 
@@ -34,7 +35,14 @@ internal class FakeRepositoryFormat(override val id: String) : RepositoryFormat 
 internal class DuplicateFakeRepositoryFormat(override val id: String) : RepositoryFormat {
     override val pathRules: PathRules = NoPathRules
     override val mount: FormatMount = FormatMount.RepositoryPath
+    override val storageHints: StorageHints = NoStorageHints
     override fun handler(context: FormatContext): RepositoryRequestHandler = NoRequestHandler
+}
+
+/** Storage hints that name no related keys, so the storage keeps its own rule. */
+@OptIn(ExperimentalIngotFormatApi::class)
+internal object NoStorageHints : StorageHints {
+    override val relatedKeys: ((key: String) -> Collection<String>)? = null
 }
 
 /** A handler that answers every request with success, for the formats that are only registered in a test. */

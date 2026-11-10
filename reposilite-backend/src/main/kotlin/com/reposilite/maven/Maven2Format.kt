@@ -20,6 +20,7 @@ import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.frontend.FrontendFacade
 import com.reposilite.maven.infrastructure.MavenEndpoints
 import com.reposilite.maven.infrastructure.MavenRepositoryRequestHandler
+import com.reposilite.storage.s3.defaultRelatedKeys
 import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
 import net.onelitefeather.ingot.format.FormatContext
 import net.onelitefeather.ingot.format.FormatMount
@@ -27,6 +28,15 @@ import net.onelitefeather.ingot.format.PathRules
 import net.onelitefeather.ingot.format.RepositoryFormat
 import net.onelitefeather.ingot.format.RepositoryFormats
 import net.onelitefeather.ingot.format.RepositoryRequestHandler
+import net.onelitefeather.ingot.format.StorageHints
+
+/** The storage hints of the Maven layout: a write drops the `maven-metadata.xml` two levels above it from an S3 head cache. */
+@OptIn(ExperimentalIngotFormatApi::class)
+internal object MavenStorageHints : StorageHints {
+
+    override val relatedKeys: (key: String) -> Collection<String> = defaultRelatedKeys
+
+}
 
 /**
  * The Maven 2 layout, the format of every repository that names none. Found through the service file of the format SPI, so it
@@ -40,6 +50,8 @@ class Maven2Format : RepositoryFormat {
     override val pathRules: PathRules = MavenPathRules
 
     override val mount: FormatMount = FormatMount.RepositoryPath
+
+    override val storageHints: StorageHints = MavenStorageHints
 
     override fun handler(context: FormatContext): RepositoryRequestHandler =
         MavenRepositoryRequestHandler(

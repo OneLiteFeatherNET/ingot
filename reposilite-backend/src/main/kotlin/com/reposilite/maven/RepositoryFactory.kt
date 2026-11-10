@@ -28,6 +28,7 @@ import com.reposilite.shared.http.RemoteClientProvider
 import com.reposilite.shared.http.createHttpProxy
 import com.reposilite.status.FailureFacade
 import com.reposilite.storage.StorageFacade
+import com.reposilite.storage.s3.RelatedKeyAware
 import net.onelitefeather.ingot.format.RepositoryFormats
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -59,6 +60,19 @@ internal class RepositoryFactory(
                 "Unknown format '${configuration.resolvedFormat()}' of repository '$repositoryName', the installed formats are ${formats.ids.sorted().joinToString(", ")}"
             )
 
+        val mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) }
+        val storageProvider = storageFacade
+            .createStorageProvider(
+                journalist = journalist,
+                failureFacade = failureFacade,
+                workingDirectory = workingDirectory.resolve(repositoriesDirectory),
+                repository = repositoryName,
+                storageSettings = configuration.storageProvider,
+            )
+            ?: throw IllegalArgumentException("Unknown storage provider '${configuration.storageProvider.type}'")
+        // The head cache of an S3 storage drops the keys that the format names, see RelatedKeyRule
+        (storageProvider as? RelatedKeyAware)?.let { aware -> format.storageHints.relatedKeys?.let { aware.useRelatedKeys(it) } }
+
         return Repository(
             name = repositoryName.ifEmpty { UUID.randomUUID().toString() },
             visibility = configuration.visibility,
@@ -71,17 +85,8 @@ internal class RepositoryFactory(
             versionPolicy = configuration.versionPolicy ?: VersionPolicy.MIXED,
             readOnly = configuration.readOnly ?: false,
             repositoryFormat = format,
-            mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) },
-            storageProvider =
-                storageFacade
-                    .createStorageProvider(
-                        journalist = journalist,
-                        failureFacade = failureFacade,
-                        workingDirectory = workingDirectory.resolve(repositoriesDirectory),
-                        repository = repositoryName,
-                        storageSettings = configuration.storageProvider,
-                    )
-                    ?: throw IllegalArgumentException("Unknown storage provider '${configuration.storageProvider.type}'"),
+            mirrorHosts = mirrorHosts,
+            storageProvider = storageProvider,
             storagePolicy = configuration.storagePolicy,
             metadataMaxAgeInSeconds = configuration.metadataMaxAge,
             resolutionCacheMaxEntries = configuration.resolutionCacheMaxEntries,

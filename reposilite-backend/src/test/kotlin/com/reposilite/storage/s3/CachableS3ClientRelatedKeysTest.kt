@@ -61,7 +61,7 @@ internal class CachableS3ClientRelatedKeysTest {
         val client = CachableS3Client(s3, cache, relatedKeys = { _ -> listOf("drop/one.txt") })
 
         // when: an object is written
-        client.putObject(PutObjectRequest.builder().key("written/a.jar").build(), null)
+        client.putObject(PutObjectRequest.builder().key("written/a.jar").build(), RequestBody.empty())
 
         // then: only the named key is gone, and the written key was not cached before the write
         assertThat(cache.asMap().keys)
@@ -79,7 +79,7 @@ internal class CachableS3ClientRelatedKeysTest {
         val client = CachableS3Client(s3, cache)
 
         // when: an artifact of that version is written
-        client.putObject(PutObjectRequest.builder().key("com/example/1.0/a.jar").build(), null)
+        client.putObject(PutObjectRequest.builder().key("com/example/1.0/a.jar").build(), RequestBody.empty())
 
         // then: the metadata entry of com/example is dropped, as it always was, and the unrelated entries stay
         assertThat(cache.asMap().keys)
@@ -96,7 +96,7 @@ internal class CachableS3ClientRelatedKeysTest {
         val client = CachableS3Client(s3, cache, relatedKeys = { _ -> emptyList() })
 
         // when: an artifact of that version is written
-        client.putObject(PutObjectRequest.builder().key("com/example/1.0/a.jar").build(), null)
+        client.putObject(PutObjectRequest.builder().key("com/example/1.0/a.jar").build(), RequestBody.empty())
 
         // then: no other entry is dropped, so the default rule does not apply once a format supplies its own
         assertThat(cache.asMap().keys)

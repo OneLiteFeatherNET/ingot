@@ -81,7 +81,7 @@ class S3StorageProvider(
     private val keyPrefix: String = "",
     /** Restores the temporary file path for every upload, see `INGOT_S3_BUFFER_TO_DISK`. */
     private val bufferToDisk: Boolean = false,
-) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix, failureFacade), Journalist {
+) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix, failureFacade), Journalist, RelatedKeyAware {
 
     init {
         if (!skipBucketCreation) {
@@ -114,6 +114,10 @@ class S3StorageProvider(
     /** Bounds the HEAD answers of this storage to the cluster, when the storage caches them. */
     internal fun bindMetadataCacheToClusterBus() {
         (s3 as? CachableS3Client)?.bindToClusterBus()
+    }
+
+    override fun useRelatedKeys(rule: RelatedKeyRule) {
+        (s3 as? CachableS3Client)?.useRelatedKeys(rule)
     }
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
