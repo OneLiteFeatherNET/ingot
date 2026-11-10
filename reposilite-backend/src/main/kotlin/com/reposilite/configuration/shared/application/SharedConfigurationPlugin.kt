@@ -46,7 +46,7 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
             failureFacade = facade(),
             configurationFacade = facade(),
             sharedConfigurationReload = parameters().sharedConfigurationReload ?: SharedConfigurationReload.read(),
-            secretReferences = SettingsSecretReferences.read(),
+            secretReferences = SettingsSecretReferences.read(parameters().settingsSecretEnvironment ?: System.getenv()),
         ).sharedConfigurationFacade()
 
         logger.info("")
