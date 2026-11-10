@@ -179,13 +179,17 @@ data class ArtifactFileItem(
     val browseLink: String,
 )
 
-/** The state of the index (4.8). [lagSeconds] is the age of the oldest pending outbox row, 0 when there is none. */
+/**
+ * The state of the index (4.8). [lagSeconds] is the age of the oldest pending outbox row, 0 when there is none.
+ * [pendingEntries] is the number of outbox rows that may still be claimed.
+ */
 data class IndexStatus(
     val state: IndexState,
     val lagSeconds: Long,
     val lastFullRebuild: Instant?,
     val deadLetters: Long,
     val droppedEnqueues: Long,
+    val pendingEntries: Long = 0L,
 )
 
 enum class IndexState { READY, BUILDING, MISSING, DEGRADED }

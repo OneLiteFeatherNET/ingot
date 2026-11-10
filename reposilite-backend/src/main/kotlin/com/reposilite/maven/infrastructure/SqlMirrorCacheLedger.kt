@@ -135,6 +135,10 @@ internal class SqlMirrorCacheLedger(private val database: Database) : MirrorCach
                 }
         }
 
+    override fun count(): Long = transaction(database) {
+        MirrorCacheEntryTable.selectAll().count()
+    }
+
     private fun entryExists(repository: String, path: String): Boolean =
         MirrorCacheEntryTable.selectAll()
             .where { (MirrorCacheEntryTable.repositoryId eq repository) and (MirrorCacheEntryTable.entryPath eq path) }

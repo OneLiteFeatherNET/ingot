@@ -23,6 +23,7 @@ import com.google.common.base.Suppliers
 import com.google.common.collect.EvictingQueue
 import com.reposilite.VERSION
 import com.reposilite.plugin.api.Facade
+import com.reposilite.status.api.ClusterBusResponse
 import com.reposilite.status.api.InstanceStatusResponse
 import com.reposilite.status.api.StatusSnapshot
 import panda.std.Result
@@ -82,6 +83,10 @@ class StatusFacade(
     fun attachClusterStatus(source: ClusterStatusSource) {
         clusterStatusSource = source
     }
+
+    /** The bus section of the cluster status, or null when no bus is attached. Read by the metrics at scrape time. */
+    fun clusterBus(): ClusterBusResponse? =
+        clusterStatusSource?.clusterStatus(instanceFigures())?.bus
 
     /** Calls [listener] with the figures each time a snapshot is recorded, on the thread that records it. */
     fun onSnapshotRecorded(listener: (InstanceFigures) -> Unit) {

@@ -28,6 +28,8 @@ import com.reposilite.scheduling.utcDayKey
 import panda.std.reactive.Reference
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
 
 /** Largest number of rows one export writes. Anything beyond it is cut off and the export says so in its log. */
 const val MAX_EXPORT_ROWS = 100_000
@@ -48,6 +50,12 @@ class AuditFacade(
 ) : Facade, Journalist {
 
     private data class FailureKey(val name: String, val address: String?)
+
+    /** When this instance last completed the retention purge. Empty until the first purge of this instance. */
+    private val lastPurge = AtomicReference<Instant?>(null)
+
+    /** The completion time of the last retention purge run by this instance, read by the metrics at scrape time. */
+    fun lastPurgeCompletedAt(): Instant? = lastPurge.get()
 
     private data class OpenFailure(val minute: Long, val recordId: Long)
 
@@ -169,6 +177,7 @@ class AuditFacade(
             val cutoff = clock.millis() - retentionDays * DAY_MILLIS
             return repository.deleteBefore(cutoff)
                 .also { removed -> if (removed > 0) logger.info("AUDIT | Removed $removed event(s) older than $retentionDays day(s)") }
+                .also { lastPurge.set(clock.instant()) }
         } finally {
             claims.complete(key, done = true)
         }

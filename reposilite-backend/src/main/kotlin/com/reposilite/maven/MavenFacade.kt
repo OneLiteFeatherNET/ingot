@@ -63,9 +63,16 @@ class MavenFacade internal constructor(
     private val mirrorCache: MirrorCacheService,
     private val artifactIndexSink: ArtifactIndexSink,
     private val cachePrivateAsPublic: Boolean,
+    private val operationCounters: MavenOperationCounters = MavenOperationCounters(),
 ) : Journalist, Facade {
 
     private val repositoryService = repositoryProvider.repositoryService
+
+    /** The deploy and upstream counts of this instance, read by the metrics at scrape time. */
+    fun operationTotals(): MavenOperationTotals = operationCounters.snapshot()
+
+    /** The number of mirror cache rows of all repositories, read by the metrics at scrape time. */
+    fun mirrorCacheEntryCount(): Long = mirrorCache.entryCount()
 
     fun findDetails(lookupRequest: LookupRequest): Result<out FileDetails, ErrorResponse> =
         repositoryService.findDetails(lookupRequest).map { details -> withListableFiles(lookupRequest, details) }
@@ -135,6 +142,7 @@ class MavenFacade internal constructor(
     fun deployFile(deployRequest: DeployRequest): Result<Unit, ErrorResponse> =
         checkAcceptsUploads(deployRequest.repository)
             .flatMap { repositoryService.deployFile(deployRequest) }
+            .also { operationCounters.recordDeploy(if (it.isOk) DeployOutcome.ACCEPTED else DeployOutcome.REJECTED) }
             // a deployment makes the directory hold hosted content, so it is no longer a mirror copy
             .peek {
                 val directory = deployRequest.gav.getParent().provenancePath()

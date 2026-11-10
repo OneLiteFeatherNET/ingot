@@ -8,6 +8,7 @@ import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.prometheus.metrics.HttpRequestMetrics
 import com.reposilite.plugin.prometheus.metrics.JettyMetrics
+import com.reposilite.plugin.prometheus.metrics.OperationalMetrics
 import com.reposilite.plugin.prometheus.metrics.QueuedThreadPoolMetrics
 import com.reposilite.plugin.prometheus.metrics.ReposiliteMetrics
 import com.reposilite.status.FailureFacade
@@ -52,6 +53,8 @@ class PrometheusPlugin : ReposilitePlugin() {
         logger.info("Prometheus | JVM metrics has been initialized.")
 
         ReposiliteMetrics.register(facade<StatusFacade>(), facade<FailureFacade>())
+
+        OperationalMetrics(PrometheusRegistry.defaultRegistry, FacadeOperationalSource { extensions().getFacades() })
 
         event { event: ResolvedFileEvent ->
             event.result.map { (info, _) ->

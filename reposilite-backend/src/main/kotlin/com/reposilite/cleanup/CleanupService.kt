@@ -38,6 +38,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * A repository as the cleanup sees it.
@@ -184,6 +185,12 @@ class CleanupService internal constructor(
      */
     internal fun runScheduled(policyId: String, dayKey: String? = null): Result<CleanupRun, ErrorResponse> =
         run(policyId, CleanupActor(by = SCHEDULER_ACTOR, accessToken = null), CleanupTrigger.SCHEDULED, listOfNotNull(dayKey))
+            .peek { lastScheduledSuccess.set(clock.instant()) }
+
+    private val lastScheduledSuccess = AtomicReference<Instant?>(null)
+
+    /** When a scheduled run of this instance last ended without an error. Null until the first one, read by the metrics. */
+    fun lastScheduledRunSucceededAt(): Instant? = lastScheduledSuccess.get()
 
     private fun findPolicy(policyId: String): CleanupPolicy? =
         policies().firstOrNull { it.id == policyId }

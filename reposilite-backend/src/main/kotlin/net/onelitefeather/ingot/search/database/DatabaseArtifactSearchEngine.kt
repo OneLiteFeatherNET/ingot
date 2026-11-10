@@ -388,6 +388,7 @@ internal class DatabaseArtifactSearchEngine(
             lastFullRebuild = lastFull?.let(Instant::ofEpochMilli),
             deadLetters = deadLetters,
             droppedEnqueues = dropped,
+            pendingEntries = outbox.selectAll().where { outbox.attempts less OutboxPolicy.MAX_ATTEMPTS }.count(),
         )
     }
 
