@@ -102,6 +102,59 @@ class MixedVersionClusterTest {
         }
     }
 
+    @Test
+    @DisplayName("the columns the current build adds can be written by the previous release")
+    fun `columns the current build adds stay writable by the previous release`(@TempDir directory: Path) {
+        withSharedState(directory) { state ->
+            val afterPrevious: List<SchemaColumn>
+            val afterCurrent: List<SchemaColumn>
+            sharedRepositoryReplica(ImageUnderTest.previous, state).use { previous ->
+                previous.startOrExplain()
+                afterPrevious = state.database.columns()
+
+                sharedRepositoryReplica(ImageUnderTest.server, state).use { current ->
+                    current.startOrExplain()
+                    afterCurrent = state.database.columns()
+                }
+            }
+            assertNoIncompatibleChange(afterPrevious, afterCurrent, "the current build started on the previous release's schema")
+
+            // The previous release is restarted on the schema the current build left behind.
+            sharedRepositoryReplica(ImageUnderTest.previous, state).use { restarted ->
+                restarted.startOrExplain()
+                assertNoIncompatibleChange(afterCurrent, state.database.columns(), "the previous release restarted")
+            }
+        }
+    }
+
+    /**
+     * What the previous release can still work with, checked on two listings of the database. A column the first listing
+     * had is not removed, does not change its type, and does not become required. A column the second listing added to a
+     * table the first listing had must not be required either, because the previous release inserts into that table
+     * without it.
+     *
+     * A table the first listing did not have is not checked. The previous release does not know it and never writes to
+     * it, and the design allows new tables with any columns. Its columns are the current build's own business.
+     */
+    private fun assertNoIncompatibleChange(before: List<SchemaColumn>, after: List<SchemaColumn>, transition: String) {
+        val known = before.associateBy { it.key }
+        val knownTables = before.map { it.table }.toSet()
+        val current = after.associateBy { it.key }
+
+        assertThat(known.keys - current.keys)
+            .describedAs("%s: columns that were removed", transition)
+            .isEmpty()
+        assertThat(known.values.filter { current.getValue(it.key).type != it.type }.map { it.key })
+            .describedAs("%s: columns whose type changed", transition)
+            .isEmpty()
+        assertThat(known.values.filter { !it.requiresValue && current.getValue(it.key).requiresValue }.map { it.key })
+            .describedAs("%s: columns that became NOT NULL without a default", transition)
+            .isEmpty()
+        assertThat(current.values.filter { it.table in knownTables && it.key !in known && it.requiresValue }.map { it.key })
+            .describedAs("%s: columns added to an existing table that are NOT NULL without a default", transition)
+            .isEmpty()
+    }
+
     /** Puts [content] at [path] through the replica at [url]. The content is the path, so every artifact is distinct. */
     private fun deploy(url: String, path: String, content: String) {
         val response = Http.put("$url/$path", content, MIXED_BOOTSTRAP)

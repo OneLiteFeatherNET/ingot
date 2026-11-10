@@ -106,6 +106,22 @@ internal class MariaDb private constructor(
         return result.stdout.lines().filter { it.isNotEmpty() }.map { it.split("\t") }
     }
 
+    /** Every column of the database as `information_schema` describes it, in a stable order. */
+    fun columns(): List<SchemaColumn> =
+        query(
+            "SELECT table_name, column_name, is_nullable, IFNULL(column_default, '$NO_DEFAULT'), extra, column_type " +
+                "FROM information_schema.columns WHERE table_schema = '$DB_NAME' ORDER BY table_name, column_name"
+        ).map { row ->
+            SchemaColumn(
+                table = row[0],
+                column = row[1],
+                nullable = row[2] == "YES",
+                default = row[3].takeIf { it != NO_DEFAULT },
+                extra = row[4],
+                type = row[5],
+            )
+        }
+
     override fun close() {
         container.stop()
     }
@@ -133,6 +149,24 @@ internal class MariaDb private constructor(
     }
 }
 
+/** One column as `information_schema` lists it. [default] is null when the column has no default. */
+internal data class SchemaColumn(
+    val table: String,
+    val column: String,
+    val nullable: Boolean,
+    val default: String?,
+    val extra: String,
+    val type: String,
+) {
+    val key: String
+        get() = "$table.$column"
+
+    /** A value must be sent for this column, so a writer that does not know it fails. */
+    val requiresValue: Boolean
+        get() = !nullable && default == null && !extra.contains("auto_increment") && !extra.contains("GENERATED")
+}
+
+private const val NO_DEFAULT = "<none>"
 private const val MARIADB_IMAGE = "mariadb:11.4"
 private const val DB_NAME = "ingot"
 private const val DB_USER = "ingot"
