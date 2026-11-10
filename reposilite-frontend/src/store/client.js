@@ -647,6 +647,23 @@ const createClient = (defaultName, defaultSecret) => {
         })
       },
     },
+    // Read-only mode of the instance. Only principals with the maintenance area get an answer other
+    // than 403. The writes answer with the same body; 409 means the environment forces the state.
+    readOnly: {
+      get() {
+        return get("/api/admin/read-only")
+      },
+      enable() {
+        return axios.post(createURL("/api/admin/read-only"), {}, {
+          ...defaultAuthorization(),
+        })
+      },
+      disable() {
+        return axios.delete(createURL("/api/admin/read-only"), {
+          ...defaultAuthorization(),
+        })
+      },
+    },
     audit: {
       list(params) {
         return get(`/api/audit${queryString(params)}`)

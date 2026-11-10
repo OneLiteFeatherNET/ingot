@@ -23,6 +23,7 @@ import MdCard from '../md/MdCard.vue'
 import { healthLabel, summariseCluster, uptimeOf } from './clusterStatus'
 import FailuresSheet from './FailuresSheet.vue'
 import InstanceHealthRow from './InstanceHealthRow.vue'
+import ReadOnlyToggle from './ReadOnlyToggle.vue'
 import StatTile from './StatTile.vue'
 
 // Five seconds, where this used to ask once a second. Memory, threads and uptime do not
@@ -176,6 +177,12 @@ const hasFailures = computed(() => instanceStatus.value?.failuresCount > 0)
 const openFailures = () => {
   if (hasFailures.value) failuresOpen.value = true
 }
+
+// Read-only mode comes with the status. The source says whether the environment forces it, which
+// decides whether turning it off from the dashboard can work.
+const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === 'environment'
+  ? 'Set by INGOT_READ_ONLY on this instance.'
+  : 'Turned on from this dashboard or the API.')
 </script>
 
 <template>
@@ -225,6 +232,25 @@ const openFailures = () => {
     v-else
     class="flex flex-col gap-3"
   >
+    <div
+      v-if="instanceStatus.readOnly"
+      data-testid="read-only-banner"
+      role="status"
+      class="flex flex-col gap-1 rounded-corner-medium bg-tertiary-container p-4 text-on-tertiary-container"
+    >
+      <p class="md-title-small">
+        Read-only mode is on
+      </p>
+      <p class="md-body-medium">
+        This instance is read-only. Writes are refused until read-only mode is turned off.
+      </p>
+      <p class="md-body-small">
+        {{ readOnlySource }}
+      </p>
+    </div>
+
+    <ReadOnlyToggle @changed="requestStatus()" />
+
     <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
       <StatTile
         label="Used memory"
