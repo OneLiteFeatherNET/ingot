@@ -174,6 +174,12 @@ The `prometheus` plugin (module `reposilite-plugins/prometheus-plugin`) reads a 
 | `reposilite.prometheus.user` | `REPOSILITE_PROMETHEUS_USER` | none | User name for the metrics endpoint. Required: without it the plugin throws `Prometheus user is not defined`. |
 | `reposilite.prometheus.password` | `REPOSILITE_PROMETHEUS_PASSWORD` | none | Password for the metrics endpoint. Required: without it the plugin throws `Prometheus password is not defined`. |
 
+### S3 upload variable
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_S3_BUFFER_TO_DISK` | `REPOSILITE_S3_BUFFER_TO_DISK`, read when the `INGOT_` variable is not set | `false` | `true` writes every S3 upload to a temporary file before it is sent, as before large uploads were streamed. `false` streams uploads as multipart uploads above 8 MiB. Read once at start, for every S3 repository of the instance. Any value other than `true` or `false`, in any case, stops the start with a message that names the variable. See [Large uploads](../how-to/use-s3-storage.md#large-uploads). |
+
 ### S3 storage system properties
 
 These are JVM system properties. There is no environment variable form. Pass them in `JAVA_OPTS`, for example `JAVA_OPTS=-Dreposilite.s3.pathStyleAccessEnabled=true`. Set them before the server starts. Only the exact value `true` turns a property on.

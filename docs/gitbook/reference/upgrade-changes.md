@@ -118,3 +118,10 @@ An upload is written to a temporary file in the directory of its target, named `
 * A partial file left by a crash is removed when the storage starts, once it has not been modified for 24 hours. Newer partial files stay, because another replica on the same volume may still be receiving them.
 
 Partial files are never listed, counted in the storage usage or served. After a rollback to an earlier release on the same volume, that release lists a partial file until the upload completes or the file is removed. Status codes and bodies of uploads and downloads do not change, apart from the `400` above. No configuration, environment variable, manifest or plugin changes, and a data directory is adopted as before.
+
+### S3 uploads no longer use the temporary directory
+
+An S3 upload is sent to the bucket as it arrives. An upload above 8 MiB is a multipart upload, and no copy of it is written to the system temporary directory of the container. The stored objects are unchanged: the same keys, content types and bytes, and a repository reads them as before. No configuration, environment variable, manifest or plugin changes. Operators can drop any sizing that was made for the temporary directory.
+
+* A failed upload is aborted, so the bucket keeps no incomplete upload from it. An upload that is interrupted by a killed process leaves parts in the bucket. Add the `AbortIncompleteMultipartUpload` lifecycle rule from [Large uploads](../how-to/use-s3-storage.md#large-uploads) to remove them.
+* `INGOT_S3_BUFFER_TO_DISK=true` restores the temporary file path for every upload. Use it only when the storage service rejects multipart uploads.

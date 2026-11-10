@@ -196,6 +196,95 @@ class CachableS3ClientTest {
             .isEqualTo(1)
     }
 
+    @Test
+    fun `should invalidate the cached answer of the key on completeMultipartUpload`() {
+        val fixture = MultipartCacheFixture()
+        val key = "com/example/a/1.0/a-1.0.jar"
+
+        fixture.client.headObject(HeadObjectRequest.builder().key(key).build())
+        fixture.client.headObject(HeadObjectRequest.builder().key(key).build())
+        assertThat(fixture.headRequests.get()).isEqualTo(1)
+
+        fixture.client.completeMultipartUpload(CompleteMultipartUploadRequest.builder().bucket("test").key(key).uploadId("upload-1").build())
+        fixture.client.headObject(HeadObjectRequest.builder().key(key).build())
+
+        assertThat(fixture.headRequests.get())
+            .`as`("the answer cached before the multipart upload is replaced by a request to S3")
+            .isEqualTo(2)
+    }
+
+    @Test
+    fun `should invalidate the cached maven-metadata xml of the parent on completeMultipartUpload`() {
+        val fixture = MultipartCacheFixture()
+        val mavenMetadata = "parent/maven-metadata.xml"
+        fixture.cache.put(mavenMetadata, HeadObjectResponse.builder().build())
+
+        fixture.client.completeMultipartUpload(
+            CompleteMultipartUploadRequest.builder().bucket("test").key("parent/foo/bar.txt").uploadId("upload-1").build()
+        )
+
+        assertThat(fixture.cache.getIfPresent(mavenMetadata))
+            .`as`("the cached maven-metadata.xml of the parent directory is removed, as after a single put")
+            .isNull()
+    }
+
+    @Test
+    fun `should keep the cached answer while a multipart upload is created and its parts are sent`() {
+        val fixture = MultipartCacheFixture()
+        val key = "com/example/a/1.0/a-1.0.jar"
+
+        fixture.client.headObject(HeadObjectRequest.builder().key(key).build())
+        fixture.client.createMultipartUpload(CreateMultipartUploadRequest.builder().bucket("test").key(key).build())
+        fixture.client.uploadPart(
+            UploadPartRequest.builder().bucket("test").key(key).uploadId("upload-1").partNumber(1).build(),
+            RequestBody.fromBytes(ByteArray(1))
+        )
+        fixture.client.headObject(HeadObjectRequest.builder().key(key).build())
+
+        assertThat(fixture.headRequests.get())
+            .`as`("creating the upload and sending its parts do not change the key, so the cached answer is kept")
+            .isEqualTo(1)
+        assertThat(fixture.uploadCalls)
+            .`as`("the multipart calls reached the wrapped client")
+            .containsExactly("create", "part")
+    }
+
+    /** A client whose cache is visible to the test, with a wrapped S3 that counts HEAD requests and records the multipart calls. */
+    private class MultipartCacheFixture {
+        val cache: Cache<String, HeadObjectResponse> = Caffeine.newBuilder().maximumSize(100).build()
+        val headRequests = AtomicInteger(0)
+        val uploadCalls = mutableListOf<String>()
+
+        val client = CachableS3Client(
+            object : S3Client {
+                override fun headObject(request: HeadObjectRequest): HeadObjectResponse {
+                    headRequests.incrementAndGet()
+                    return HeadObjectResponse.builder().build()
+                }
+
+                override fun createMultipartUpload(request: CreateMultipartUploadRequest): CreateMultipartUploadResponse {
+                    uploadCalls += "create"
+                    return CreateMultipartUploadResponse.builder().uploadId("upload-1").build()
+                }
+
+                override fun uploadPart(request: UploadPartRequest, requestBody: RequestBody?): UploadPartResponse {
+                    uploadCalls += "part"
+                    return UploadPartResponse.builder().eTag("etag-1").build()
+                }
+
+                override fun completeMultipartUpload(request: CompleteMultipartUploadRequest): CompleteMultipartUploadResponse {
+                    uploadCalls += "complete"
+                    return CompleteMultipartUploadResponse.builder().build()
+                }
+
+                override fun serviceName(): String = S3Client.SERVICE_NAME
+
+                override fun close() {}
+            },
+            cache,
+        )
+    }
+
     private class ManualTicker : Ticker {
         private var nanos: Long = 0L
 

@@ -35,7 +35,12 @@ import java.time.Duration
 
 private val useS3V4Signer = System.getProperty("reposilite.s3.use-s3-v4-signer", "false") == "true"
 
-class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3StorageProviderSettings> {
+/**
+ * [bufferToDisk] is read once, when the factory is created at start-up, and is the same for every repository of the process.
+ */
+class S3StorageProviderFactory(
+    private val bufferToDisk: Boolean = S3BufferToDiskSetting.read(),
+) : StorageProviderFactory<S3StorageProvider, S3StorageProviderSettings> {
 
     override fun create(
         journalist: Journalist,
@@ -105,7 +110,8 @@ class S3StorageProviderFactory : StorageProviderFactory<S3StorageProvider, S3Sto
                 failureFacade = failureFacade,
                 s3 = s3Client,
                 bucket = settings.bucketName,
-                keyPrefix = keyPrefix
+                keyPrefix = keyPrefix,
+                bufferToDisk = bufferToDisk,
             )
         } catch (exception: Exception) {
             failureFacade.logger.error("Cannot connect to S3 storage provider: ${exception.message}")

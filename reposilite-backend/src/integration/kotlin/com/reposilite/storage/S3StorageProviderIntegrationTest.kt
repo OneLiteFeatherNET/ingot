@@ -40,9 +40,15 @@ import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import panda.std.ResultAssertions.assertError
 import panda.std.ResultAssertions.assertOk
+import software.amazon.awssdk.core.sync.RequestBody
+import software.amazon.awssdk.services.s3.model.S3Exception
+import software.amazon.awssdk.services.s3.model.UploadPartRequest
+import software.amazon.awssdk.services.s3.model.UploadPartResponse
 import java.io.File
 import java.net.URI
+import java.security.MessageDigest
 
 internal class S3StorageProviderIntegrationTest : StorageProviderIntegrationTest() {
 
@@ -226,6 +232,78 @@ internal class S3StorageProviderIntegrationTest : StorageProviderIntegrationTest
         assertThat(files.map { it.path }).containsExactlyInAnyOrder("com/example/app.jar", "top.txt")
         assertThat(files.sumOf { it.sizeBytes }).isEqualTo(7L)
     }
+
+    @Test
+    fun `should read back a 20 MiB streamed upload byte for byte`() {
+        val location = "/streamed/big-1.0.jar".toLocation()
+        val data = ByteArray(20 * mebibyte) { (it % 251).toByte() }
+
+        assertOk(storageProvider.putFile(location, data.inputStream()))
+
+        val stored = assertOk(storageProvider.getFile(location)).use { it.readBytes() }
+        assertThat(sha1(stored)).describedAs("SHA-1 of the object read back").isEqualTo(sha1(data))
+    }
+
+    @Test
+    fun `should send 8 MiB plus one byte as two parts of a multipart upload`() {
+        val partSizes = mutableListOf<Long>()
+        val counting = object : DelegatingS3Client(rawS3Client()) {
+            override fun uploadPart(uploadPartRequest: UploadPartRequest, requestBody: RequestBody): UploadPartResponse {
+                partSizes += uploadPartRequest.contentLength()
+                return super.uploadPart(uploadPartRequest, requestBody)
+            }
+        }
+        val provider = providerOver(counting)
+        val location = "/parts/two-parts-1.0.jar".toLocation()
+        val data = ByteArray(8 * mebibyte + 1) { (it % 251).toByte() }
+
+        assertOk(provider.putFile(location, data.inputStream()))
+
+        assertThat(partSizes)
+            .describedAs("part sizes of an 8 MiB plus one byte upload")
+            .containsExactly(8L * mebibyte, 1L)
+        val stored = assertOk(provider.getFile(location)).use { it.readBytes() }
+        assertThat(sha1(stored)).describedAs("SHA-1 of the object read back").isEqualTo(sha1(data))
+    }
+
+    @Test
+    fun `should leave no incomplete upload in the bucket when a part is rejected`() {
+        val raw = rawS3Client()
+        var uploadedParts = 0
+        val rejecting = object : DelegatingS3Client(raw) {
+            override fun uploadPart(uploadPartRequest: UploadPartRequest, requestBody: RequestBody): UploadPartResponse {
+                uploadedParts++
+                if (uploadedParts == 2) {
+                    throw S3Exception.builder().statusCode(500).message("forced part failure").build()
+                }
+                return super.uploadPart(uploadPartRequest, requestBody)
+            }
+        }
+        val location = "/parts/rejected-1.0.jar".toLocation()
+
+        val error = assertError(providerOver(rejecting).putFile(location, ByteArray(20 * mebibyte).inputStream()))
+
+        assertThat(error.status).describedAs("status of a rejected part").isEqualTo(500)
+        assertThat(raw.listMultipartUploads { it.bucket(bucket) }.uploads())
+            .describedAs("incomplete multipart uploads in the bucket after a rejected part")
+            .isEmpty()
+        assertThat(storageProvider.exists(location)).describedAs("object after a rejected part").isFalse()
+    }
+
+    private val mebibyte = 1024 * 1024
+
+    private fun sha1(bytes: ByteArray): String =
+        MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    private fun rawS3Client(): S3Client =
+        S3Client.builder()
+            .endpointOverride(URI.create(SharedContainers.floci.s3Endpoint()))
+            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
+            .region(Region.of("us-east-1"))
+            .build()
+
+    private fun providerOver(s3: S3Client): S3StorageProvider =
+        S3StorageProvider(failureFacade = FailureFacade(InMemoryLogger()), s3 = s3, bucket = bucket)
 
     private fun storageProvider(repository: String, prefix: String = "reposilite", sharedBucket: Boolean = true): StorageProvider {
         val logger = InMemoryLogger()

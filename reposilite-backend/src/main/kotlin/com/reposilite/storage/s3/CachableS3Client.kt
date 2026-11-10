@@ -6,6 +6,8 @@ import com.github.benmanes.caffeine.cache.Ticker
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.DelegatingS3Client
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest
@@ -73,6 +75,13 @@ class CachableS3Client : DelegatingS3Client {
     override fun putObject(putObjectRequest: PutObjectRequest, requestBody: RequestBody?): PutObjectResponse? {
         val response = super.putObject(putObjectRequest, requestBody)
         invalidate(putObjectRequest.key())
+        return response
+    }
+
+    /** An object written by a multipart upload appears only on completion, so only the completion invalidates. */
+    override fun completeMultipartUpload(completeMultipartUploadRequest: CompleteMultipartUploadRequest): CompleteMultipartUploadResponse {
+        val response = super.completeMultipartUpload(completeMultipartUploadRequest)
+        invalidate(completeMultipartUploadRequest.key())
         return response
     }
 
