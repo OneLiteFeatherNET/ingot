@@ -6,12 +6,65 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Create a default fully qualified app name. Mirrors the helper of the upstream reposilite chart 1.4.5, so that a
-release migrated with nameOverride and fullnameOverride keeps the names of the upstream release.
+Name that the upstream reposilite chart 1.4.5 gives this release: the release name when it contains reposilite, and
+<release>-reposilite otherwise.
+*/}}
+{{- define "ingot.upstreamFullname" -}}
+{{- if contains "reposilite" .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-reposilite" .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Whether an object belongs to this release, as "true" or "". Helm writes the owner annotations on every object it installs.
+Expects the dictionary keys object, release and namespace.
+*/}}
+{{- define "ingot.ownedByRelease" -}}
+{{- if and (eq (dig "metadata" "annotations" "meta.helm.sh/release-name" "" .object) .release) (eq (dig "metadata" "annotations" "meta.helm.sh/release-namespace" "" .object) .namespace) -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Whether the release adopts the names of the upstream reposilite chart, as "true" or "". The lookup runs in the release
+namespace. An owned Deployment with the upstream name decides by its selector: the upstream selector adopts, the Ingot
+selector keeps the Ingot names, and any other selector fails the render, because the selector of a Deployment is
+immutable. Without an owned Deployment, an owned claim with the upstream name adopts. Nothing is adopted when
+nameOverride or fullnameOverride is set, and helm template renders nothing from the lookup, so it keeps the Ingot names.
+*/}}
+{{- define "ingot.upstreamAdoption" -}}
+{{- if not (or .Values.nameOverride .Values.fullnameOverride) -}}
+{{- $name := include "ingot.upstreamFullname" . -}}
+{{- $deployment := lookup "apps/v1" "Deployment" .Release.Namespace $name -}}
+{{- if and $deployment (eq (include "ingot.ownedByRelease" (dict "object" $deployment "release" .Release.Name "namespace" .Release.Namespace)) "true") -}}
+{{- $selectorName := dig "spec" "selector" "matchLabels" "app.kubernetes.io/name" "" $deployment -}}
+{{- $selectorInstance := dig "spec" "selector" "matchLabels" "app.kubernetes.io/instance" "" $deployment -}}
+{{- if and (eq $selectorName "reposilite") (eq $selectorInstance .Release.Name) -}}
+true
+{{- else if ne $selectorName "ingot" -}}
+{{- fail (printf "Deployment %s in namespace %s has the selector {app.kubernetes.io/name: %s, app.kubernetes.io/instance: %s}, but the upstream chart uses {app.kubernetes.io/name: reposilite, app.kubernetes.io/instance: %s}: set nameOverride and fullnameOverride to choose the names explicitly" $name .Release.Namespace $selectorName $selectorInstance .Release.Name) -}}
+{{- end -}}
+{{- else -}}
+{{- $claim := lookup "v1" "PersistentVolumeClaim" .Release.Namespace $name -}}
+{{- if and $claim (eq (include "ingot.ownedByRelease" (dict "object" $claim "release" .Release.Name "namespace" .Release.Namespace)) "true") -}}
+true
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Create a default fully qualified app name. Mirrors the helper of the upstream reposilite chart 1.4.5. A release that has
+the upstream objects in its namespace keeps the upstream name, see ingot.upstreamAdoption. Otherwise the Ingot name is
+used, so a release migrated with nameOverride and fullnameOverride keeps the names of the upstream release.
 */}}
 {{- define "ingot.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else if eq (include "ingot.upstreamAdoption" .) "true" }}
+{{- include "ingot.upstreamFullname" . }}
 {{- else }}
 {{- $name := default .Chart.Name .Values.nameOverride }}
 {{- if contains $name .Release.Name }}
@@ -41,8 +94,20 @@ Selector labels of the server. They are the same as the upstream chart, in every
 from the all-in-one workload to split keeps the immutable selector of its Deployment.
 */}}
 {{- define "ingot.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "ingot.name" . }}
+app.kubernetes.io/name: {{ include "ingot.serverSelectorName" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Value of app.kubernetes.io/name in the server selector: reposilite when the release adopts the upstream names, the chart
+name otherwise.
+*/}}
+{{- define "ingot.serverSelectorName" -}}
+{{- if eq (include "ingot.upstreamAdoption" .) "true" -}}
+reposilite
+{{- else -}}
+{{- include "ingot.name" . -}}
+{{- end -}}
 {{- end }}
 
 {{/*
