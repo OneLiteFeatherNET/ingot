@@ -90,7 +90,7 @@ internal abstract class ArtifactSearchBackendContract {
             ),
         )
 
-        backend.apply(listOf(IndexAction.RemovePrefix(REPOSITORY, DIRECTORY, notAfter = CUTOFF)))
+        backend.apply(listOf(IndexAction.RemovePrefix(REPOSITORY, DIRECTORY, notAfter = Instant.ofEpochMilli(CUTOFF))))
 
         assertThat(backend.existing(REPOSITORY, listOf(JAR, SOURCES)).keys)
             .`as`("paths left after the removal")
