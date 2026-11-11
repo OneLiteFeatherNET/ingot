@@ -128,20 +128,25 @@ export function nameProblems(file, source, entry, registry) {
   }
 
   const problems = []
-  if (root.tagType !== TAG_ELEMENT) {
-    problems.push(`${file}: the root must be a plain element, not a component or slot, so that a parent attribute does not fall through`)
-  }
-
-  const rootAnchor = anchorsOf(root).find((anchor) => anchor.attribute === "data-ingot-component")
-  if (!rootAnchor) {
-    problems.push(`${file}: the root element has no data-ingot-component="${entry.name}"`)
-  } else if (rootAnchor.dynamic || rootAnchor.value !== entry.name) {
-    problems.push(`${file}: data-ingot-component is "${rootAnchor.value}", the registry says "${entry.name}"`)
+  // A component with several root elements (v-if branches, a Teleport) names each of them, so a selector reaches
+  // whichever branch is on screen. No other element of the component carries the name.
+  for (const element of roots) {
+    if (element.tagType !== TAG_ELEMENT) {
+      problems.push(`${file}: a root must be a plain element, not a component or slot, so that a parent attribute does not fall through`)
+    }
+    const rootAnchor = anchorsOf(element).find((anchor) => anchor.attribute === "data-ingot-component")
+    if (!rootAnchor) {
+      problems.push(`${file}: a root element has no data-ingot-component="${entry.name}"`)
+    } else if (rootAnchor.dynamic || rootAnchor.value !== entry.name) {
+      problems.push(`${file}: data-ingot-component is "${rootAnchor.value}", the registry says "${entry.name}"`)
+    }
   }
 
   const componentAttributes = anchors.filter((anchor) => anchor.attribute === "data-ingot-component")
-  if (componentAttributes.length > 1) {
-    problems.push(`${file}: data-ingot-component appears ${componentAttributes.length} times, once is allowed`)
+  if (componentAttributes.length > roots.length) {
+    problems.push(
+      `${file}: data-ingot-component appears ${componentAttributes.length} times, but the component has ${roots.length} root element(s)`,
+    )
   }
 
   for (const anchor of anchors) {

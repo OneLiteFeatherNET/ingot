@@ -80,10 +80,26 @@ describe("anchor checks on a single template", () => {
     expect(nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))).toEqual([])
   })
 
-  it("accepts a multi-root component whose first root carries the name", () => {
-    const source = `<template><header data-ingot-component="side-nav-layout"></header><footer></footer></template>`
+  it("accepts a multi-root component whose every root carries the name", () => {
+    const source = `<template><header data-ingot-component="side-nav-layout"></header><footer data-ingot-component="side-nav-layout"></footer></template>`
 
     expect(nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))).toEqual([])
+  })
+
+  it("reports a root of a multi-root component that lacks the name", () => {
+    const source = `<template><header data-ingot-component="side-nav-layout"></header><footer></footer></template>`
+
+    const problems = nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))
+
+    expect(problems).toEqual([expect.stringContaining("a root element has no")])
+  })
+
+  it("reports the name on an element that is not a root", () => {
+    const source = `<template><nav data-ingot-component="side-nav-layout"><p data-ingot-component="side-nav-layout"></p></nav></template>`
+
+    const problems = nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))
+
+    expect(problems).toEqual([expect.stringContaining("2 times")])
   })
 
   it("reports a data-ingot-component value that is not the registered name", () => {
