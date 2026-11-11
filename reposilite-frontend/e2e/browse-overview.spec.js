@@ -19,9 +19,6 @@ import { siteUrl } from './support/api.js'
 
 test.describe('browse overview', () => {
   test('shows the full repository URL in the build snippet without horizontal scrolling', async ({ page, seed }) => {
-    // Known regression on main: the snippet scrolls sideways instead of showing the address. The fixing change
-    // is fix-browse-overview, which removes this marker.
-    test.fail(true, 'fix-browse-overview')
     // A long identifier, close to the longest name the server accepts, so that the address is wider than the snippet.
     const repository = await seed.repository('long-address-snippet')
     await page.goto(siteUrl(`/browse/${repository}`))
@@ -42,9 +39,6 @@ test.describe('browse overview', () => {
   })
 
   test('labels the repository filter as a filter of the list', async ({ page }) => {
-    // Known regression on main: the filter field is named for its placeholder and does not say that it filters
-    // the list. The fixing change is fix-browse-overview, which removes this marker.
-    test.fail(true, 'fix-browse-overview')
     await page.goto(siteUrl('/'))
     await expect(page.getByRole('searchbox', { name: /filter/i }), 'the repository filter field').toBeVisible()
   })
