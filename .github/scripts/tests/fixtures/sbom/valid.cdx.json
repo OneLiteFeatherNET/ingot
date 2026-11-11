@@ -1,0 +1,83 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:acb84dc6-bf90-4de3-b3c4-9f95019445af",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-01T10:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "group": "org.cyclonedx",
+          "name": "cyclonedx-gradle-plugin",
+          "version": "3.5.1"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:maven/org.example/app@1.1.1?type=jar",
+      "group": "org.example",
+      "name": "app",
+      "version": "1.1.1",
+      "purl": "pkg:maven/org.example/app@1.1.1?type=jar"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.example/alpha@1.0.0",
+      "group": "org.example",
+      "name": "alpha",
+      "version": "1.0.0",
+      "purl": "pkg:maven/org.example/alpha@1.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "165d717e5cc36805e15b818b999309ab104381d69d378407d4d73035e593d995"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.example/beta@2.0.0",
+      "group": "org.example",
+      "name": "beta",
+      "version": "2.0.0",
+      "purl": "pkg:maven/org.example/beta@2.0.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT"
+          }
+        }
+      ],
+      "supplier": {
+        "name": "Example Foundation"
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:maven/org.example/app@1.1.1?type=jar",
+      "dependsOn": [
+        "pkg:maven/org.example/alpha@1.0.0",
+        "pkg:maven/org.example/beta@2.0.0"
+      ]
+    },
+    {
+      "ref": "pkg:maven/org.example/alpha@1.0.0"
+    },
+    {
+      "ref": "pkg:maven/org.example/beta@2.0.0"
+    }
+  ]
+}
