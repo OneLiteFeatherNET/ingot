@@ -53,15 +53,15 @@ const sectionStub = vi.hoisted(() => (name, key) => async () => {
     default: defineComponent({
       name,
       props: {
-        selectedTab: String,
-        qualifier: Object,
-        search: String,
-        tab: String,
-        name: String,
-        level: String,
-        domain: String,
-        collection: String,
-        entry: String
+        selectedTab: { type: String, default: undefined },
+        qualifier: { type: Object, default: undefined },
+        search: { type: String, default: undefined },
+        tab: { type: String, default: undefined },
+        name: { type: String, default: undefined },
+        level: { type: String, default: undefined },
+        domain: { type: String, default: undefined },
+        collection: { type: String, default: undefined },
+        entry: { type: String, default: undefined }
       },
       emits: ['update:search', 'update:level', 'update:domain'],
       render() {
