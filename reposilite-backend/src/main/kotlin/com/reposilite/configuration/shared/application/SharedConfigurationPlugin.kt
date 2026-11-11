@@ -1,27 +1,15 @@
-/*
- * Copyright (c) 2023 dzikoysk
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.reposilite.configuration.shared.application
 
+import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SettingsSecretReferences
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedConfigurationReload
 import com.reposilite.configuration.shared.api.SharedSettings
+import com.reposilite.configuration.shared.infrastructure.SettingsDecryptCommand
 import com.reposilite.configuration.shared.infrastructure.SettingsEndpoints
+import com.reposilite.configuration.shared.infrastructure.SettingsReencryptCommand
+import com.reposilite.console.api.CommandsSetupEvent
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
@@ -30,6 +18,12 @@ import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.settings.encryption.KeyStartOutcome
+import net.onelitefeather.ingot.settings.encryption.SettingsKeyConfiguration
+import net.onelitefeather.ingot.settings.encryption.SettingsKeyGuard
+import net.onelitefeather.ingot.settings.encryption.SettingsKeyRecords
+import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
+import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
 import java.util.concurrent.TimeUnit
 
 @Plugin(name = "shared-configuration", dependencies = ["failure", "configuration", "local-configuration"])
@@ -37,6 +31,9 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
 
     override fun initialize(): SharedConfigurationFacade {
         val localConfiguration = facade<LocalConfiguration>()
+        val settingsEnvironment = parameters().settingsSecretEnvironment ?: System.getenv()
+        val keyConfiguration = SettingsKeySources.read(settingsEnvironment)
+        val secretCipher = SettingsSecretCipher.of(keyConfiguration)
 
         val sharedConfigurationFacade = SharedConfigurationComponents(
             journalist = this,
@@ -46,12 +43,16 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
             failureFacade = facade(),
             configurationFacade = facade(),
             sharedConfigurationReload = parameters().sharedConfigurationReload ?: SharedConfigurationReload.read(),
-            secretReferences = SettingsSecretReferences.read(parameters().settingsSecretEnvironment ?: System.getenv()),
+            secretReferences = SettingsSecretReferences.read(settingsEnvironment),
+            secretCipher = secretCipher,
         ).sharedConfigurationFacade()
 
         logger.info("")
         logger.info("--- Shared settings")
         logger.info("Loading shared configuration from ${sharedConfigurationFacade.getProviderName()}")
+        val keyRecords = SettingsKeyRecords(facade<ConfigurationFacade>())
+        checkSettingsKey(sharedConfigurationFacade, keyRecords, keyConfiguration)
+
         val storedConfiguration = sharedConfigurationFacade.fetchConfiguration()
         val loadResult = sharedConfigurationFacade.loadSharedSettingsFromString(storedConfiguration)
 
@@ -61,6 +62,13 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
             logger.error("If you want to ignore those errors and let Ingot start with default settings as a fallback values,")
             logger.error("please launch Ingot with --ignore-shared-configuration-errors' flag.")
             throw loadResult.error
+        }
+
+        // A database that still holds plain secrets is stored again with envelopes, once, when a key is configured. A managed
+        // file is never rewritten at start, its values are sealed by the next save.
+        if (loadResult.isOk && secretCipher.sealing && sharedConfigurationFacade.isMutable() && sharedConfigurationFacade.plaintextSecretCount() > 0) {
+            val sealed = sharedConfigurationFacade.sealStoredSecrets(reason = "first-start")
+            logger.info("Settings encryption | Sealed ${sealed ?: 0} stored secret values with key id ${secretCipher.activeKeyId}")
         }
 
         if (sharedConfigurationFacade.isMutable() || sharedConfigurationFacade.isExternallyManaged()) {
@@ -86,7 +94,39 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
             event.registerRoutes(SettingsEndpoints(sharedConfigurationFacade, localConfiguration.hideSettingsSecrets, facade()))
         }
 
+        event { event: CommandsSetupEvent ->
+            event.registerCommand(SettingsReencryptCommand(sharedConfigurationFacade, keyRecords, secretCipher))
+            event.registerCommand(SettingsDecryptCommand(sharedConfigurationFacade, keyRecords, secretCipher))
+        }
+
         return sharedConfigurationFacade
+    }
+
+    /**
+     * Compares the configured key with the key record of the database before anything is loaded. A new database adopts the key.
+     *
+     * @throws IllegalStateException when the key does not match the stored settings, see [SettingsKeyGuard]
+     */
+    private fun checkSettingsKey(
+        sharedConfigurationFacade: SharedConfigurationFacade,
+        keyRecords: SettingsKeyRecords,
+        configuration: SettingsKeyConfiguration,
+    ) {
+        var outcome = SettingsKeyGuard.verify(configuration, keyRecords.read(), sharedConfigurationFacade.storedSealedSettings())
+        if (outcome is KeyStartOutcome.Adopt) {
+            // Another instance may adopt a key in the same moment: the record that was stored first is the one that counts.
+            val stored = keyRecords.adopt(outcome.record)
+            outcome = SettingsKeyGuard.verify(configuration, stored, sharedConfigurationFacade.storedSealedSettings())
+        }
+
+        when (outcome) {
+            is KeyStartOutcome.AcceptedPreviousKey -> logger.warn(
+                "Settings encryption | The stored settings are sealed with the previous key (key id ${outcome.stored.keyId}). " +
+                    "A key rotation is open, run settings-reencrypt after every replica has the new key."
+            )
+            is KeyStartOutcome.Adopt, KeyStartOutcome.Accepted -> logger.info("Settings encryption | Settings key accepted")
+            KeyStartOutcome.Unkeyed -> logger.info("Settings encryption | No settings key is configured, secrets are stored as before")
+        }
     }
 
 }

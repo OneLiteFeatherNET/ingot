@@ -39,6 +39,7 @@ import com.reposilite.status.FailureFacade
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
 import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeException
 import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
+import net.onelitefeather.ingot.settings.encryption.SealedSetting
 import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
 import io.javalin.http.HttpStatus
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
@@ -466,6 +467,27 @@ class SharedConfigurationFacade(
     /**
      * The number of stored secret values that are still plain text. Empty values, references and envelopes are not counted.
      */
+    /**
+     * The envelopes of the stored document, with the domain, the property path and the key identifier each one names. Used at start,
+     * before the document is opened, so a missing or foreign key is reported with its place.
+     */
+    fun storedSealedSettings(): List<SealedSetting> {
+        val root = runCatching { DEFAULT_OBJECT_MAPPER.readTree(sharedConfigurationProvider.fetchConfiguration()) }.getOrNull()
+            ?: return emptyList()
+        val found = mutableListOf<SealedSetting>()
+        getDomainNames().forEach { name ->
+            val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
+            val node = root.get(name) ?: return@forEach
+            SettingsSecrets.transformSensitive(reference.type, node) { path, value ->
+                if (SettingsEnvelopeCodec.isEnvelope(value)) {
+                    found.add(SealedSetting(domain = name, path = path, keyId = value.split(':').getOrElse(2) { "" }))
+                }
+                value
+            }
+        }
+        return found
+    }
+
     fun plaintextSecretCount(): Int =
         countSecretValues(sharedConfigurationProvider.fetchConfiguration()) { isPlainSecret(it) }
 

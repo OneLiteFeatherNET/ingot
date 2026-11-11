@@ -48,6 +48,10 @@ class SettingsSecretCipher(
     val activeKeyId: String?
         get() = active?.keyId
 
+    /** The key record of the active key, null when no key is active. */
+    val activeRecord: StoredSettingsKey?
+        get() = active?.let { StoredSettingsKey.of(it) }
+
     val previousKeyId: String?
         get() = previous?.keyId
 
