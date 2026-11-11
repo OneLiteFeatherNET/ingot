@@ -29,6 +29,7 @@ defineProps({
   <footer
     v-if="text"
     class="container pt-6 pb-10 text-center md-label-medium text-on-surface-variant"
+    data-ingot-component="site-footer"
   >
     {{ text }}
   </footer>

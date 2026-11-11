@@ -27,6 +27,7 @@ const { icpLicense, privacyPolicy } = usePlaceholders()
   <div
     v-if="icpLicense || privacyPolicy"
     class="h-8 pb-2 w-full text-center md-label-medium text-on-surface-variant"
+    data-ingot-component="site-legal"
   >
     <a
       v-if="icpLicense"

@@ -1,0 +1,74 @@
+{
+  "contract": 1,
+  "components": [
+    {
+      "name": "page-footer",
+      "file": "src/components/footer/PageFooter.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "site-footer",
+      "file": "src/components/footer/SiteFooter.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "site-legal",
+      "file": "src/components/footer/SiteLegal.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "default-header",
+      "file": "src/components/header/DefaultHeader.vue",
+      "stability": "stable",
+      "parts": [
+        "title"
+      ],
+      "states": []
+    },
+    {
+      "name": "header-hero",
+      "file": "src/components/header/HeaderHero.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "login-modal",
+      "file": "src/components/header/LoginModal.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "menu-panel",
+      "file": "src/components/header/MenuPanel.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "side-nav-layout",
+      "file": "src/components/layout/SideNavLayout.vue",
+      "stability": "stable",
+      "parts": [
+        "nav",
+        "page"
+      ],
+      "states": []
+    },
+    {
+      "name": "skip-link",
+      "file": "src/components/layout/SkipLink.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    }
+  ],
+  "aliases": []
+}

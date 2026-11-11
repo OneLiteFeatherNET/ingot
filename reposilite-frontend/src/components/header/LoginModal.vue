@@ -271,7 +271,7 @@ const overlayStyle = {
 </script>
 
 <template>
-  <div>
+  <div data-ingot-component="login-modal">
     <MdButton
       variant="tonal"
       @click="showLogin = true"

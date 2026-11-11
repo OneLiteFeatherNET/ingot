@@ -9,6 +9,7 @@
     "eslint": "eslint \"src/**\" \"server/**\" nitro.config.mjs",
     "test": "vitest run",
     "e2e": "playwright test",
+    "anchors:doc": "node scripts/anchors-doc.mjs",
     "build": "vite build",
     "build:dashboard": "INGOT_DASHBOARD_BUILD=1 vite build && nitro build",
     "serve": "vite preview",

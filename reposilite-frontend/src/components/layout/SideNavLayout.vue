@@ -64,9 +64,10 @@ const linkClasses = (active) => [
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-6 min-[1240px]:flex-row min-[1240px]:items-start min-[1240px]:gap-10">
+  <div class="flex min-w-0 flex-col gap-6 min-[1240px]:flex-row min-[1240px]:items-start min-[1240px]:gap-10" data-ingot-component="side-nav-layout">
     <nav
       v-if="showsSideNav"
+      data-ingot-part="nav"
       :aria-label="label"
       :class="narrow
         ? 'flex w-full flex-col gap-4'
@@ -104,6 +105,7 @@ const linkClasses = (active) => [
 
     <div
       v-if="showsPage"
+      data-ingot-part="page"
       class="flex min-w-0 flex-1 flex-col gap-4"
     >
       <div class="flex min-w-0 items-center gap-2">

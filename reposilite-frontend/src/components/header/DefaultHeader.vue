@@ -39,13 +39,17 @@ const { title } = usePlaceholders()
 <template>
   <header
     class="sticky top-0 z-30 bg-surface-container text-on-surface min-[1600px]:pr-4"
+    data-ingot-component="default-header"
   >
     <!-- The top app bar: the title on the left, the account actions on the right. -->
     <div
       class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2"
       :class="framed ? 'max-w-[1280px] min-[1920px]:max-w-[1600px]' : ''"
     >
-      <h1 class="md-title-large min-w-0 truncate">
+      <h1
+        data-ingot-part="title"
+        class="md-title-large min-w-0 truncate"
+      >
         <router-link
           :to="'/'"
           class="md-focus-ring rounded-corner-small text-on-surface no-underline"
