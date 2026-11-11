@@ -54,7 +54,7 @@ defineExpose({ content })
 <XmlTag name="repository">
   <XmlTag name="id">{{ data.repoId }}</XmlTag>
   <XmlTag name="name">{{ data.title }}</XmlTag>
-  <XmlTag name="url">{{ data.domain }}</XmlTag>
+  <XmlTag name="url"><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></XmlTag>
 </XmlTag>
 </pre>
   <pre
@@ -66,7 +66,7 @@ start="{"
 end="}"
 >
     name <CodeString>{{ gradleId }}</CodeString>
-    url <CodeString>{{ data.domain }}</CodeString>
+    url <CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString>
 </CodeBrackets>
 </pre>
   <pre
@@ -81,13 +81,13 @@ end="}"
     url = uri<CodeBrackets
 start="("
 end=")"
-><CodeString>{{ data.domain }}</CodeString></CodeBrackets>
+><CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString></CodeBrackets>
 </CodeBrackets>
 </pre>
   <pre
     v-else-if="configuration.lang === 'scala'"
     ref="preElement"
   >
-resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString>{{ data.domain }}</CodeString>
+resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString>
 </pre>
 </template>
