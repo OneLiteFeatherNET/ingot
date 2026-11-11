@@ -22,14 +22,14 @@ import { property } from '../../helpers/vue-extensions'
 import { errorMessage } from '../../helpers/toast'
 import { browseLocation } from '../../router/paths'
 import { tagsFromParam, tagsParam, textFromParam, textParam } from '../../router/url-state'
-import { filterRepositories, tagUsage } from '../../store/maven/repositories'
+import { filterRepositories, parseSearch, tagUsage } from '../../store/maven/repositories'
 import { TYPE_FILTERS, filterByType, typesFromParam } from '../../store/maven/repositoryTypes'
 import Card from '../card/SnippetsCard.vue'
 import FileBrowserView from '../browser/FileBrowserView.vue'
 import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
+import MdTextField from '../md/MdTextField.vue'
 import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
-import SearchBar from '../search/SearchBar.vue'
 import { writePolicyLabelOf } from '../../store/maven/repositoryPolicy'
 
 /*
@@ -129,10 +129,22 @@ const text = computed(() => textFromParam(route.query.q))
 const selectedTags = computed(() => tagsFromParam(route.query.tag))
 const selectedTypes = computed(() => typesFromParam(route.query.type))
 const filtersActive = computed(() => text.value.trim() !== '' || selectedTags.value.length > 0 || selectedTypes.value.length > 0)
+// The filter text is read the way the Administration page reads it: a tag:name word is a tag, and the other words are text.
+// The tags of the text and the tags of the chips select together.
+const criteria = computed(() => {
+  const parsed = parseSearch(text.value)
+  return { text: parsed.text, tags: [...new Set([...parsed.tags, ...selectedTags.value])] }
+})
 const matches = computed(() => filterByType(
-  filterRepositories(repositories.value, { text: text.value, tags: selectedTags.value }),
+  filterRepositories(repositories.value, criteria.value),
   selectedTypes.value
 ))
+
+// Mixed is derived by the server for a repository without a declared type, so it is kept apart from the declared types.
+const DERIVED_TYPES = ['mixed']
+const DECLARED_FILTERS = TYPE_FILTERS.filter(filter => !DERIVED_TYPES.includes(filter.key))
+const DERIVED_FILTERS = TYPE_FILTERS.filter(filter => DERIVED_TYPES.includes(filter.key))
+const DERIVED_TYPE_HELP = 'Mixed: no type is declared, and the repository proxies both local and remote repositories.'
 
 const shownTags = computed(() => {
   const used = tagUsage(repositories.value).slice(0, SHOWN_TAGS).map(entry => entry.tag)
@@ -142,6 +154,12 @@ const shownTags = computed(() => {
 const countText = computed(() => (filtersActive.value
   ? `${matches.value.length} of ${repositories.value.length} repositories`
   : `${repositories.value.length} repositories`))
+
+// The count region is always in the page, so its first message is announced; it is empty while the list loads.
+const statusText = computed(() => (loading.value || failure.value ? '' : countText.value))
+
+// The artifact search offers the filter text as its query, and only when there is text to search for.
+const artifactSearchText = computed(() => text.value.trim())
 
 const badgeOf = (repository) => BADGES[repository.visibility] ?? null
 
@@ -183,9 +201,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
     v-else
     class="container mx-auto mb-12 grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
   >
-    <div class="min-w-0 lg:col-start-2 lg:row-start-1">
-      <Card :qualifier="qualifier" />
-    </div>
+    <!-- The list comes first in reading order. From 1024px the card keeps its column on the right, and below it follows the list. -->
     <section
       class="min-w-0"
       aria-labelledby="overview-repositories-title"
@@ -197,12 +213,48 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
         Repositories
       </h2>
 
-      <SearchBar
-        class="mt-4"
-        label="Search by id, description or tag"
-        :model-value="text"
-        @update:model-value="setText"
-      >
+      <div class="mt-4 flex flex-col gap-3">
+        <MdTextField
+          :model-value="text"
+          label="Filter repositories"
+          variant="outlined"
+          autocomplete="off"
+          supporting-text="Search by id, description or tag. Use tag:name for one tag."
+          @update:model-value="setText"
+        >
+          <template #leading-icon>
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
+            </svg>
+          </template>
+          <template
+            v-if="text !== ''"
+            #trailing-icon
+          >
+            <button
+              type="button"
+              class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 items-center justify-center rounded-corner-full text-on-surface-variant"
+              aria-label="Clear search"
+              @click="setText('')"
+            >
+              <svg
+                class="size-6"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          </template>
+        </MdTextField>
+
         <div
           v-if="shownTags.length > 0"
           role="group"
@@ -220,30 +272,70 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
             {{ tag }}
           </MdChip>
         </div>
-        <div
-          role="group"
-          aria-label="Filter by type"
-          class="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          <MdChip
-            v-for="filter in TYPE_FILTERS"
-            :key="filter.key"
-            variant="filter"
-            data-test="filter-type"
-            :selected="selectedTypes.includes(filter.key)"
-            @click="toggleType(filter.key)"
+
+        <div class="flex flex-col">
+          <p
+            aria-hidden="true"
+            class="px-4 md-label-medium text-on-surface-variant"
           >
-            {{ filter.label }}
-          </MdChip>
+            Repository type
+          </p>
+          <div
+            role="group"
+            aria-label="Repository type"
+            class="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <MdChip
+              v-for="filter in DECLARED_FILTERS"
+              :key="filter.key"
+              variant="filter"
+              data-test="filter-type"
+              :selected="selectedTypes.includes(filter.key)"
+              @click="toggleType(filter.key)"
+            >
+              {{ filter.label }}
+            </MdChip>
+          </div>
         </div>
-      </SearchBar>
+
+        <div class="flex flex-col">
+          <p
+            aria-hidden="true"
+            class="px-4 md-label-medium text-on-surface-variant"
+          >
+            Derived type
+          </p>
+          <div
+            role="group"
+            aria-label="Derived type"
+            aria-describedby="overview-derived-type-help"
+            class="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <MdChip
+              v-for="filter in DERIVED_FILTERS"
+              :key="filter.key"
+              variant="filter"
+              data-test="filter-type"
+              :selected="selectedTypes.includes(filter.key)"
+              @click="toggleType(filter.key)"
+            >
+              {{ filter.label }}
+            </MdChip>
+          </div>
+          <p
+            id="overview-derived-type-help"
+            class="px-4 md-body-small text-on-surface-variant"
+          >
+            {{ DERIVED_TYPE_HELP }}
+          </p>
+        </div>
+      </div>
 
       <p
-        v-if="!loading && !failure"
         role="status"
         class="mt-3 md-body-medium text-on-surface-variant"
       >
-        {{ countText }}
+        {{ statusText }}
       </p>
 
       <div
@@ -287,7 +379,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
             data-test="repository-row"
             :to="browseLocation(repository.id)"
             :aria-label="`Browse ${repository.id}`"
-            :class="['md-state-layer md-focus-ring-inset relative flex min-w-0 gap-4 px-4 text-on-surface no-underline', rowLayout(repository)]"
+            :class="['md-state-layer md-focus-ring-inset relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 px-4 text-on-surface no-underline min-[600px]:flex min-[600px]:gap-4', rowLayout(repository)]"
           >
             <span
               class="flex size-10 shrink-0 items-center justify-center rounded-corner-full bg-secondary-container text-on-secondary-container"
@@ -325,30 +417,39 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
                 >{{ tag }}</span>
               </span>
             </span>
-            <RepositoryTypeBadge
-              :repository="repository"
-              class="self-center"
-            />
+            <!--
+              The type and the visibility sit on a line of their own under the text below 600px, so they are never
+              pushed out of the row. From 600px the wrapper takes no box of its own and they sit at the end of the row.
+            -->
             <span
-              v-if="writePolicyLabelOf(repository)"
-              data-test="write-policy"
-              class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
-            >{{ writePolicyLabelOf(repository) }}</span>
-            <span
-              v-if="badgeOf(repository)"
-              data-test="visibility"
-              class="inline-flex shrink-0 self-center items-center gap-1 md-label-large text-on-surface-variant"
+              data-test="marks"
+              class="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-2 min-[600px]:contents"
             >
-              <svg
-                class="size-[18px]"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
+              <RepositoryTypeBadge
+                :repository="repository"
+                class="self-center"
+              />
+              <span
+                v-if="writePolicyLabelOf(repository)"
+                data-test="write-policy"
+                class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
+              >{{ writePolicyLabelOf(repository) }}</span>
+              <span
+                v-if="badgeOf(repository)"
+                data-test="visibility"
+                class="inline-flex shrink-0 self-center items-center gap-1 md-label-large text-on-surface-variant"
               >
-                <path :d="badgeOf(repository).icon" />
-              </svg>
-              {{ badgeOf(repository).label }}
+                <svg
+                  class="size-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path :d="badgeOf(repository).icon" />
+                </svg>
+                {{ badgeOf(repository).label }}
+              </span>
             </span>
             <svg
               class="size-6 shrink-0 self-center text-on-surface-variant"
@@ -370,15 +471,30 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
         <p class="md-body-large text-on-surface-variant">
           {{ repositories.length === 0 ? 'No repositories yet.' : 'No repository matches these filters.' }}
         </p>
-        <MdButton
+        <div
           v-if="repositories.length > 0 && filtersActive"
-          variant="text"
-          type="button"
-          @click="clearFilters"
+          class="flex flex-wrap items-center gap-2"
         >
-          Clear filters
-        </MdButton>
+          <RouterLink
+            v-if="artifactSearchText !== ''"
+            :to="{ name: 'search', query: { q: artifactSearchText } }"
+            class="md-state-layer md-focus-ring inline-flex h-10 items-center rounded-corner-full px-3 md-label-large text-primary no-underline"
+          >
+            Search artifacts for {{ artifactSearchText }}
+          </RouterLink>
+          <MdButton
+            variant="text"
+            type="button"
+            @click="clearFilters"
+          >
+            Clear filters
+          </MdButton>
+        </div>
       </div>
     </section>
+
+    <div class="min-w-0 lg:col-start-2 lg:row-start-1">
+      <Card :qualifier="qualifier" />
+    </div>
   </div>
 </template>

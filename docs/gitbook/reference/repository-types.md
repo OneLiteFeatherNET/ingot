@@ -66,6 +66,8 @@ The API reports an effective type for every repository. A declared type is repor
 | External URLs only | `proxy` |
 | Both local and external | `mixed` |
 
+On the Browse page, the derived type `mixed` is shown as **Mixed** in its own group, **Derived type**, apart from the declared types **Hosted**, **Proxy** and **Group**. The address keeps the value `mixed` in its `type` parameter.
+
 The repository list at `GET /api/maven/repositories` carries two fields for every repository:
 
 | Field | Value |

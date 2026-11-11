@@ -15,7 +15,7 @@
   -->
 
 <script setup>
-import { onBeforeUnmount, ref, useId, watch, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, ref, useId, watch, watchEffect } from 'vue'
 import { useSession } from '../../store/session'
 import { copyToClipboard, selectText } from './copySnippet'
 import { readDetailsCollapsed, writeDetailsCollapsed } from './detailsCollapsed'
@@ -49,6 +49,7 @@ const toggleCollapsed = () => {
 }
 
 const title = ref('')
+const rootPage = ref(false)
 const configurations = [
   { name: 'Maven', lang: 'xml' },
   { name: 'Gradle Kotlin', lang: 'kotlin' },
@@ -61,8 +62,11 @@ const { createRepositories } = useRepository()
 const { parseMetadata } = useMetadata()
 const { client } = useSession()
 
+// The root page has no repository yet, so its heading says what to replace; a repository path names its repository.
 const displayRepository = () => {
-  title.value = 'Repository details'
+  const repository = props.qualifier.path.split('/')[0]
+  rootPage.value = repository === ''
+  title.value = rootPage.value ? 'Use a repository' : `Repository details: ${repository}`
   data.value = createRepositories(props.qualifier)
 }
 
@@ -129,6 +133,11 @@ const codeBlock = ref()
 
 // '' (nothing yet), 'copied' or 'selected'. Shown as a status line next to the copy action.
 const copyState = ref('')
+const copyMessage = computed(() => {
+  if (copyState.value === 'copied') return 'Copied'
+  if (copyState.value === 'selected') return 'Copying is not available here. The snippet is selected: press Ctrl+C (Cmd+C on macOS) to copy it.'
+  return ''
+})
 let resetCopyState
 
 const copy = async () => {
@@ -194,6 +203,13 @@ const selectTab = (tab) =>
         v-show="!collapsed"
         :id="bodyId"
       >
+        <p
+          v-if="rootPage && !loading"
+          class="mb-4 px-2 md-body-medium text-on-surface-variant"
+        >
+          Replace <code class="font-mono">&lt;repository&gt;</code> with the id of a repository from the list.
+          The id in the snippet is a label in your build file, so the instance id works too.
+        </p>
         <CardMenu
           :configurations="configurations"
           @select-tab="selectTab"
@@ -274,23 +290,19 @@ const selectTab = (tab) =>
                   </template>
                 </div>
               </div>
-              <!-- Below the snippet, so a status line never sits over a line of it. -->
-              <p
-                v-if="copyState === 'copied'"
-                role="status"
-                class="mt-2 md-body-small text-success"
-              >
-                Copied
-              </p>
-              <p
-                v-if="copyState === 'selected'"
-                role="status"
-                class="mt-2 md-body-small text-on-surface-variant"
-              >
-                Copying is not available here. The snippet is selected: press Ctrl+C (Cmd+C on macOS) to copy it.
-              </p>
             </div>
           </transition>
+          <!--
+            Below the snippet, so a status line never sits over a line of it. The region is rendered before any
+            outcome, so assistive technology announces the message when it changes.
+          -->
+          <p
+            role="status"
+            class="md-body-small"
+            :class="{ 'mt-2 text-success': copyState === 'copied', 'mt-2 text-on-surface-variant': copyState === 'selected' }"
+          >
+            {{ copyMessage }}
+          </p>
         </div>
       </div>
     </div>
