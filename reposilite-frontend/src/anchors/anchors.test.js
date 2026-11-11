@@ -16,13 +16,14 @@
 
 import { describe, expect, it } from "vitest"
 import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
+import { resolve } from "node:path"
 import {
   DYNAMIC_ALLOWLIST,
   PENDING_AREAS,
   aliasProblems,
   dynamicProblems,
   listSourceFiles,
+  listSourceTree,
   nameProblems,
   partAndStateProblems,
   registryProblems,
@@ -32,8 +33,8 @@ import registry from "./registry.json"
 import { renderAnchorsDoc } from "./render.js"
 
 // Reads files and nothing else: no server, no clock, no network. Every fixture below is a string built inside its test.
-const FRONTEND_ROOT = fileURLToPath(new URL("../..", import.meta.url))
-const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url))
+const FRONTEND_ROOT = resolve(import.meta.dirname, "../..")
+const REPO_ROOT = resolve(import.meta.dirname, "../../..")
 const read = (relative) => readFileSync(`${FRONTEND_ROOT}/${relative}`, "utf8")
 
 const REPOSITORIES_TABLE = "src/components/repositories/RepositoriesTable.vue"
@@ -103,7 +104,7 @@ describe("anchor checks on a single template", () => {
 
   it("reports a state value that is outside the closed set", () => {
     const source = `<template><nav data-ingot-component="side-nav-layout"><a data-ingot-state="busy"></a></nav></template>`
-    const entry = entryFor("side-nav-layout", { states: ["current"] })
+    const entry = entryFor("side-nav-layout")
 
     const problems = partAndStateProblems(NAVIGATION_FILE, source, entry)
 
@@ -111,7 +112,7 @@ describe("anchor checks on a single template", () => {
   })
 
   it("reports a state that the registry does not list for this component", () => {
-    const source = `<template><nav data-ingot-component="side-nav-layout"><a data-ingot-state="open"></a></nav></template>`
+    const source = `<template><nav data-ingot-component="side-nav-layout"><a data-ingot-state="open"></a><i data-ingot-state="current"></i></nav></template>`
     const entry = entryFor("side-nav-layout", { states: ["current"] })
 
     const problems = partAndStateProblems(NAVIGATION_FILE, source, entry)
@@ -194,7 +195,7 @@ describe("anchor checks on the registry", () => {
   it("reports a registry entry whose file is not in the source", () => {
     const problems = registryProblems(
       registryOf([entryFor("side-nav-layout", { file: "src/components/layout/Missing.vue" })]),
-      [NAVIGATION_FILE],
+      [],
       [],
     )
 
@@ -281,7 +282,8 @@ describe("anchor checks across the dashboard source", () => {
   })
 
   it("selects on no data-ingot attribute outside the anchor suite", () => {
-    const problems = selectorProblems(sourceFiles.map((file) => ({ path: file.path, source: sourceOf[file.path] })))
+    const tree = listSourceTree(FRONTEND_ROOT).map((path) => ({ path, source: read(path) }))
+    const problems = selectorProblems(tree)
 
     expect(problems, problems.join("\n")).toEqual([])
   })
