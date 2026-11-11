@@ -46,7 +46,7 @@ initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${
 </script>
 
 <template>
-  <div :class="{ 'dark': theme.isDark }">
+  <div :class="{ 'dark': theme.isDark }" data-ingot-component="app-shell">
     <div class="min-h-screen bg-surface text-on-surface">
       <SkipLink />
       <router-view

@@ -2,6 +2,13 @@
   "contract": 1,
   "components": [
     {
+      "name": "app-shell",
+      "file": "src/App.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "access-view",
       "file": "src/components/access/AccessView.vue",
       "stability": "experimental",
@@ -675,6 +682,199 @@
       "states": []
     },
     {
+      "name": "md-button",
+      "file": "src/components/md/MdButton.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-card",
+      "file": "src/components/md/MdCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-checkbox",
+      "file": "src/components/md/MdCheckbox.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-chip",
+      "file": "src/components/md/MdChip.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-chip-input",
+      "file": "src/components/md/MdChipInput.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-icon-button",
+      "file": "src/components/md/MdIconButton.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-linear-progress",
+      "file": "src/components/md/MdLinearProgress.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-navigation-bar",
+      "file": "src/components/md/MdNavigationBar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-navigation-rail",
+      "file": "src/components/md/MdNavigationRail.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-radio",
+      "file": "src/components/md/MdRadio.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-select",
+      "file": "src/components/md/MdSelect.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-snackbar",
+      "file": "src/components/md/MdSnackbar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-switch",
+      "file": "src/components/md/MdSwitch.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-text-area",
+      "file": "src/components/md/MdTextArea.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-text-field",
+      "file": "src/components/md/MdTextField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "connect-step",
+      "file": "src/components/migration/ConnectStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "cut-over-step",
+      "file": "src/components/migration/CutOverStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "discover-step",
+      "file": "src/components/migration/DiscoverStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "dry-run-step",
+      "file": "src/components/migration/DryRunStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "job-progress",
+      "file": "src/components/migration/JobProgress.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "mapping-step",
+      "file": "src/components/migration/MappingStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "migration-dialog",
+      "file": "src/components/migration/MigrationDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "migration-view",
+      "file": "src/components/migration/MigrationView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "password-field",
+      "file": "src/components/migration/PasswordField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "problem-alert",
+      "file": "src/components/migration/ProblemAlert.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "sync-step",
+      "file": "src/components/migration/SyncStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "verify-step",
+      "file": "src/components/migration/VerifyStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "repository-overview",
       "file": "src/components/overview/RepositoryOverview.vue",
       "stability": "experimental",
@@ -1040,6 +1240,22 @@
       "states": []
     },
     {
+      "name": "support-view",
+      "file": "src/components/support/SupportView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "system-info-view",
+      "file": "src/components/support/SystemInfoView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
       "name": "repository-type-badge",
       "file": "src/components/tokens/RepositoryTypeBadge.vue",
       "stability": "experimental",
@@ -1063,6 +1279,38 @@
     {
       "name": "token-tag",
       "file": "src/components/tokens/TokenTag.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "not-found-view",
+      "file": "src/components/util/NotFoundView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "view-load-error",
+      "file": "src/components/util/ViewLoadError.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "view-loading",
+      "file": "src/components/util/ViewLoading.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "index-page",
+      "file": "src/pages/IndexPage.vue",
       "stability": "experimental",
       "parts": [],
       "states": []

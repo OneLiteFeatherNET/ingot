@@ -328,6 +328,7 @@ const activeLabel = computed(() => pageLabel(section.value))
   <div
     class="bg-surface text-on-surface"
     :class="hasNavigation ? 'min-[600px]:pl-24 min-[600px]:bg-surface-container' : ''"
+    data-ingot-component="index-page"
   >
     <!--
       Below 600px the bar sits at the bottom, so the footer block reserves its height and the

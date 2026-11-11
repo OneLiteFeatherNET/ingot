@@ -84,6 +84,7 @@ const stateClass = computed(() => {
       'md-state-layer md-focus-ring md-touch-target relative inline-flex h-8 items-center gap-2 rounded-corner-small px-4 md-label-large no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
       stateClass
     ]"
+    data-ingot-component="md-chip"
   >
     <svg
       v-if="isFilter && selected"

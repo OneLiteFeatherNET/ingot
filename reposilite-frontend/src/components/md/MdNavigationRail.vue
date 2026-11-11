@@ -112,6 +112,7 @@ const select = (item, event) => {
   <nav
     :aria-label="label"
     class="flex h-full w-24 flex-col items-center bg-surface-container text-on-surface"
+    data-ingot-component="md-navigation-rail"
   >
     <div
       v-if="$slots.top"

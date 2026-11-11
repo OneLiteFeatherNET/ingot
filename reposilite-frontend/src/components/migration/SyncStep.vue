@@ -166,6 +166,7 @@ onMounted(() => {
   <section
     class="flex flex-col gap-6"
     aria-labelledby="migration-sync-title"
+    data-ingot-component="sync-step"
   >
     <h2
       id="migration-sync-title"

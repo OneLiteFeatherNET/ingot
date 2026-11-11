@@ -22,6 +22,7 @@ import MdButton from '../md/MdButton.vue'
   <section
     class="container mx-auto flex flex-col items-start gap-4 py-12"
     aria-labelledby="not-found-title"
+    data-ingot-component="not-found-view"
   >
     <h2
       id="not-found-title"

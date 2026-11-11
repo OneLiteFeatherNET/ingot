@@ -116,6 +116,7 @@ const labelClass = computed(() =>
     class="flex items-center gap-3"
     :class="attrs.class"
     :style="attrs.style"
+    data-ingot-component="md-switch"
   >
     <button
       v-bind="forwardedAttrs()"

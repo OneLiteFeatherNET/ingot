@@ -76,6 +76,7 @@ const submit = async () => {
   <section
     class="flex flex-col gap-6"
     aria-labelledby="migration-discover-title"
+    data-ingot-component="discover-step"
   >
     <h2
       id="migration-discover-title"

@@ -43,9 +43,7 @@ export const KNOWN_ATTRIBUTES = Object.freeze([
 
 // Folders that are not annotated yet. The suite skips their components and fails if a registry entry sits in one.
 // The last batch empties the list.
-export const PENDING_AREAS = Object.freeze([
-  "md", "migration", "util", "support", "pages", "App.vue",
-])
+export const PENDING_AREAS = Object.freeze([])
 
 // The only dynamic data-ingot-* bindings. Each reads a value that the same element already shows as text (see the
 // reference page, Decision 4 and 5). Anything else must be a literal.

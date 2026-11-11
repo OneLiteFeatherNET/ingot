@@ -162,6 +162,7 @@ const cardContentClass = computed(() =>
     :is="card ? 'label' : 'div'"
     :class="[rootClass, attrs.class]"
     :style="attrs.style"
+    data-ingot-component="md-radio"
   >
     <span class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full">
       <input

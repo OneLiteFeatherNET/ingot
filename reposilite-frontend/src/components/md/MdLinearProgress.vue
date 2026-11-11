@@ -51,6 +51,7 @@ const percent = computed(() => {
     aria-valuemax="100"
     :aria-valuenow="indeterminate ? undefined : percent"
     class="relative h-1 w-full overflow-hidden rounded-corner-full bg-surface-container-highest"
+    data-ingot-component="md-linear-progress"
   >
     <div
       v-if="indeterminate"

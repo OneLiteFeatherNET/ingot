@@ -110,6 +110,7 @@ onMounted(() => {
   <section
     class="flex flex-col gap-6"
     aria-labelledby="migration-verify-title"
+    data-ingot-component="verify-step"
   >
     <h2
       id="migration-verify-title"

@@ -178,6 +178,7 @@ onMounted(() => {
   <section
     class="flex flex-col gap-6"
     aria-labelledby="migration-dry-run-title"
+    data-ingot-component="dry-run-step"
   >
     <h2
       id="migration-dry-run-title"

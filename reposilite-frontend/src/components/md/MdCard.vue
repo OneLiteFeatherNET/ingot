@@ -39,6 +39,7 @@ const VARIANTS = {
   <div
     :data-variant="variant"
     :class="['rounded-corner-medium p-4 text-on-surface', VARIANTS[variant] ?? VARIANTS.filled]"
+    data-ingot-component="md-card"
   >
     <slot />
   </div>
