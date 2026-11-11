@@ -431,7 +431,7 @@ watch(
     description="Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance."
     :label="sideNav.label"
     :section-label="sideNav.sectionLabel"
-    :groups="hubShown ? [] : navGroups"
+    :groups="navGroups"
     :current="settingsCurrent"
     :index-to="sideNav.indexTo"
     :narrow="narrow"

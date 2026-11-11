@@ -29,8 +29,8 @@ test.describe('repositories table layout', () => {
   for (const width of [1280, 1920]) {
     test(`keeps a long name and address whole and the row actions on one line at ${width} px`, async ({ adminPage: page, seed }, testInfo) => {
       // Known regression on main: names and addresses break mid-word and the row actions wrap. The fixing
-      // change is fix-administration-navigation, which removes this marker.
-      test.fail(true, 'fix-administration-navigation')
+      // change is rework-administration-layout, which removes this marker.
+      test.fail(true, 'rework-administration-layout')
       // One word, no hyphen: a break inside it can only be a mid-word break.
       const repository = await seed.create(unbrokenName(testInfo, 'long'), { description: 'Long name for the layout check' })
       await page.setViewportSize({ width, height: 900 })
