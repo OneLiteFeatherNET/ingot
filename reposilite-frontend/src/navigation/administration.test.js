@@ -22,6 +22,7 @@ import {
   pageLabel,
   railGroups,
   reservedDomainIds,
+  sideNavOf,
   unlistedRoutes
 } from './registry'
 import { ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../store/nodeAccess'
@@ -34,6 +35,14 @@ const only = (...nodes) => (node) => nodes.includes(node)
 const railLabels = (can) => railGroups(can).flatMap(group => group.pages.map(page => page.label))
 const headingsOf = (groups) => groups.map(group => group.heading)
 const linksOf = (groups, heading) => groups.find(group => group.heading === heading)?.links ?? []
+
+describe('the breadcrumb of an Administration page', () => {
+  it('starts with Administration on every Administration page, not with the page itself', () => {
+    for (const key of ['audit', 'console', 'maintenance', 'analytics', 'access', 'settings']) {
+      expect(sideNavOf(key).sectionLabel, `the first crumb of ${key}`).toBe('Administration')
+    }
+  })
+})
 
 describe('the four entries of the rail', () => {
   it('shows Browse, Search, Dashboard and Administration to an administrator, in that order', () => {
