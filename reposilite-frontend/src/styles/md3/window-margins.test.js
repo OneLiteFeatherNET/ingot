@@ -60,10 +60,8 @@ describe('shared container gutter', () => {
 describe('views use the shared window margins', () => {
   const containerFiles = [
     '../../components/header/DefaultHeader.vue',
-    '../../components/console/ConsoleView.vue',
     '../../components/dashboard/DashboardView.vue',
-    '../../components/access/AccessView.vue',
-    '../../components/settings/SettingsView.vue'
+    '../../components/layout/AdministrationFrame.vue'
   ]
 
   it.each(containerFiles)('%s does not override the container gutter', (file) => {

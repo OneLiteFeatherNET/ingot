@@ -18,8 +18,9 @@
 import { computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useSession } from '../../store/session'
-import { adminGroups, sideNavOf } from '../../navigation/registry'
-import SideNavLayout from '../layout/SideNavLayout.vue'
+import { adminGroups, pageTreeKey, sideNavOf } from '../../navigation/registry'
+import AdministrationFrame from '../layout/AdministrationFrame.vue'
+import { useSettingsDomains } from '../settings/useSettingsDomains'
 import PrincipalsPanel from './PrincipalsPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
 import SsoProvidersPanel from './SsoProvidersPanel.vue'
@@ -54,62 +55,48 @@ const { can } = useSession()
 const narrow = useMediaQuery('(max-width: 599px)')
 
 // A page whose node the user lacks is left out, not greyed out. The pages, their groups and the node each one
-// needs come from the navigation registry, the same node the route guard checks. Every Administration page shows this tree.
-const groups = computed(() => adminGroups(can))
+// needs come from the navigation registry, the same node the route guard checks. Every Administration page shows this tree,
+// with the settings domains the visitor may open.
+const settings = useSettingsDomains()
+const groups = computed(() => adminGroups(can, { domains: settings.domains.value, titleOf: settings.titleOf }))
 const sideNav = sideNavOf('access')
 </script>
 
 <template>
-  <section
-    class="container mx-auto pb-12 pt-7"
-    aria-labelledby="access-title"
+  <AdministrationFrame
+    description="Who can sign in to this instance and what they can reach."
+    :label="sideNav.label"
+    :section-label="sideNav.sectionLabel"
+    :groups="groups"
+    :current="pageTreeKey(tab)"
+    :index-to="sideNav.indexTo"
+    :narrow="narrow"
   >
-    <div class="flex flex-col gap-1 pb-4">
-      <h2
-        id="access-title"
-        class="md-headline-small text-on-surface"
-      >
-        Access
-      </h2>
-      <p class="md-body-large text-on-surface-variant">
-        Who can sign in to this instance and what they can reach.
-      </p>
+    <div>
+      <PrincipalsPanel
+        v-if="tab === 'users'"
+        kind="USER"
+        :name="name"
+      />
+      <PrincipalsPanel
+        v-else-if="tab === 'machines'"
+        kind="MACHINE"
+        :name="name"
+      />
+      <SsoProvidersPanel
+        v-else-if="tab === 'sso'"
+      />
+      <LdapPanel
+        v-else-if="tab === 'ldap'"
+      />
+      <SecurityPanel
+        v-else-if="tab === 'security'"
+      />
+      <TeamsPanel
+        v-else-if="tab === 'teams'"
+        :name="name"
+      />
+      <CheckPermissionView v-else-if="tab === 'check'" />
     </div>
-
-    <SideNavLayout
-      :label="sideNav.label"
-      :section-label="sideNav.sectionLabel"
-      :groups="groups"
-      :current="tab"
-      :index-to="sideNav.indexTo"
-      :narrow="narrow"
-    >
-      <div>
-        <PrincipalsPanel
-          v-if="tab === 'users'"
-          kind="USER"
-          :name="name"
-        />
-        <PrincipalsPanel
-          v-else-if="tab === 'machines'"
-          kind="MACHINE"
-          :name="name"
-        />
-        <SsoProvidersPanel
-          v-else-if="tab === 'sso'"
-        />
-        <LdapPanel
-          v-else-if="tab === 'ldap'"
-        />
-        <SecurityPanel
-          v-else-if="tab === 'security'"
-        />
-        <TeamsPanel
-          v-else-if="tab === 'teams'"
-          :name="name"
-        />
-        <CheckPermissionView v-else-if="tab === 'check'" />
-      </div>
-    </SideNavLayout>
-  </section>
+  </AdministrationFrame>
 </template>

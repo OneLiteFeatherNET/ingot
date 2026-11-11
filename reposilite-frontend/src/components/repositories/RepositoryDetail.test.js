@@ -90,10 +90,10 @@ const writePolicyRadios = () => Array.from(document.querySelectorAll('fieldset i
 const buttonNamed = (text) => Array.from(document.querySelectorAll('button')).find(button => button.textContent.trim() === text)
 
 describe('the repository detail page', () => {
-  it('opens at the address of the repository and names it with an h1', async () => {
+  it('opens at the address of the repository and names it with an h2', async () => {
     await mountDetail({ id: 'releases' })
 
-    expect(wrapper.find('h1').text(), 'the heading is the id').toBe('releases')
+    expect(wrapper.find('h2').text(), 'the heading is the id').toBe('releases')
   })
 
   it('keeps the type switch and the access card', async () => {
@@ -210,7 +210,7 @@ describe('the repository detail page', () => {
   it('shows a not found pane with a link back to the list for an id that does not exist', async () => {
     await mountDetail({ id: 'nowhere' })
 
-    expect(wrapper.find('h1').text(), 'the pane says it is not found').toBe('Repository not found')
+    expect(wrapper.find('h2').text(), 'the pane says it is not found').toBe('Repository not found')
     const link = wrapper.find('a[href="/settings/repositories"]')
     expect(link.exists(), 'a link goes back to the list').toBe(true)
     expect(link.text(), 'the link names the list').toBe('Back to repositories')

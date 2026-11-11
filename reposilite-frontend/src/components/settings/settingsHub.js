@@ -42,12 +42,13 @@ const hubGroups = ({ can, domains, schemas, saved, unsaved, titleOf }) => adminG
 }).map(group => ({
   heading: group.heading,
   cards: group.links.map(link => {
-    const isDomain = link.to.name === 'settings'
+    const domain = link.to.name === 'settings' ? link.to.params.domain : undefined
+    const isDomain = domain !== undefined
     return {
       key: link.key,
       title: link.label,
-      summary: isDomain ? domainSummary(schemas[link.key], saved[link.key]) : '',
-      unsaved: isDomain && unsaved.includes(link.key),
+      summary: isDomain ? domainSummary(schemas[domain], saved[domain]) : '',
+      unsaved: isDomain && unsaved.includes(domain),
       to: link.to,
     }
   }),

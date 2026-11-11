@@ -82,15 +82,15 @@ describe('hubGroups', () => {
   it('places the maven domain in Repository, and the other domains, unnamed ones too, in System', () => {
     const groups = hubGroups(fixture())
 
-    expect(domainCards(groups.find(group => group.heading === 'Repository')).map(card => card.key), 'the repository domain').toEqual(['maven'])
-    expect(domainCards(groups.find(group => group.heading === 'System')).map(card => card.key), 'the other domains').toEqual(['web', 'acme'])
+    expect(domainCards(groups.find(group => group.heading === 'Repository')).map(card => card.key), 'the repository domain').toEqual(['settings:maven'])
+    expect(domainCards(groups.find(group => group.heading === 'System')).map(card => card.key), 'the other domains').toEqual(['settings:web', 'settings:acme'])
   })
 
   it('gives a card its title, the saved summary and the address of its domain', () => {
     const repository = hubGroups(fixture()).find(group => group.heading === 'Repository')
 
-    expect(repository.cards.find(card => card.key === 'maven')).toEqual({
-      key: 'maven',
+    expect(repository.cards.find(card => card.key === 'settings:maven')).toEqual({
+      key: 'settings:maven',
       title: 'Maven',
       summary: '6 repositories',
       unsaved: false,
@@ -115,6 +115,6 @@ describe('hubGroups', () => {
   it('leaves out the domains that are edited under Access', () => {
     const groups = hubGroups(fixture({ domains: ['maven', 'login', 'authentication'] }))
 
-    expect(groups.flatMap(group => domainCards(group).map(card => card.key))).toEqual(['maven'])
+    expect(groups.flatMap(group => domainCards(group).map(card => card.key))).toEqual(['settings:maven'])
   })
 })

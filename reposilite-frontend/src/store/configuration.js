@@ -25,6 +25,7 @@ import { default as UnsupportedRenderer, tester as unsupportedTester } from '../
 import { invalidColourFields } from '../theme/settings'
 import { setAppearance, applyAppearance } from './appearance'
 import { etagOf, isPreconditionFailed } from './client'
+import { settingsDomainNames } from './settingsDomains'
 import { frontendSecretsHidden } from './placeholders'
 import { diffSettings } from '../components/settings/settingsDiff'
 
@@ -139,7 +140,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
 
   const fetchConfiguration = async () => {
     try {
-      const { data: domainNames } = await client.value.settings.domains()
+      const domainNames = await settingsDomainNames(client.value)
       const loaded = await Promise.all(domainNames.map(async domain => {
         const [schema, configuration] = await Promise.all([
           client.value.settings.schema(domain),

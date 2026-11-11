@@ -69,7 +69,7 @@ describe('the Repositories page inside Settings', () => {
   it('shows the Repositories page in place of the generic domain form', async () => {
     const { router } = await mountSettings({ address: '/settings/repositories' })
 
-    expect(wrapper.find('h1').text(), 'the page heading is Repositories').toBe('Repositories')
+    expect(wrapper.find('h2').text(), 'the page heading is Repositories').toBe('Repositories')
     expect(wrapper.find('table').exists(), 'the table of the repositories is shown').toBe(true)
     expect(wrapper.find('#repositories-title').exists(), 'the generic collection editor is not drawn').toBe(false)
     expect(router.currentRoute.value.name, 'the address stays on the Repositories page').toBe('settings-repositories')
@@ -84,7 +84,7 @@ describe('the Repositories page inside Settings', () => {
   it('shows the detail of one repository at its own address', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    expect(wrapper.find('h1').text(), 'the detail heading is the id').toBe('releases')
+    expect(wrapper.find('h2').text(), 'the detail heading is the id').toBe('releases')
   })
 
   it('lists a repository without an id as Unnamed repository, and its Edit action opens its detail', async () => {

@@ -22,7 +22,7 @@ import { ROUTES } from '../../router/routes'
 import AccessView from './AccessView.vue'
 import { authenticationStore } from './authenticationTestKit'
 import { configurationStoreKey } from '../../store/configuration'
-import { INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
+import { ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../../store/nodeAccess'
 
 const holder = vi.hoisted(() => ({ session: null }))
 
@@ -42,6 +42,7 @@ describe('AccessView', () => {
   let router
   let principals
   let teams
+  let settingsDomains
 
   const mountView = async (props, url = '/access/users') => {
     router = createRouter({
@@ -69,13 +70,39 @@ describe('AccessView', () => {
       list: vi.fn().mockResolvedValue({ data: [] }),
       get: vi.fn()
     }
+    settingsDomains = {
+      domains: vi.fn().mockResolvedValue({ data: ['web', 'maven'] }),
+      schema: vi.fn().mockResolvedValue({ data: { title: 'Web' } })
+    }
     holder.session = {
       client: ref({
         identity: { principals, teams },
-        settings: { fetch: vi.fn().mockResolvedValue({ data: {} }), update: vi.fn() }
+        settings: { fetch: vi.fn().mockResolvedValue({ data: {} }), update: vi.fn(), ...settingsDomains }
       }),
       can: () => true
     }
+  })
+
+  it('draws one Administration heading with the Access description', async () => {
+    await mountView({ tab: 'users' })
+
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Administration'])
+    expect(wrapper.text()).toContain('Who can sign in to this instance and what they can reach.')
+  })
+
+  it('lists the settings domains in the Administration tree, as the other Administration pages do', async () => {
+    await mountView({ tab: 'users' })
+
+    const labels = wrapper.findAll('[aria-label="Administration"] a').map(link => link.text())
+    expect(labels, 'the settings domains are in the tree with their titles').toContain('Web')
+  })
+
+  it('makes no request for the settings domains to a visitor without the settings node', async () => {
+    holder.session.can = (node) => node !== ADMIN_NODES.settings
+
+    await mountView({ tab: 'users' })
+
+    expect(settingsDomains.domains, 'the domain list is not requested without the settings node').not.toHaveBeenCalled()
   })
 
   afterEach(() => {

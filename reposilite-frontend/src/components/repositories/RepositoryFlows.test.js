@@ -75,7 +75,7 @@ const mountList = async ({ address = '/settings/repositories', store } = {}) => 
 const buttonLabelled = (label) => wrapper.find(`button[aria-label="${label}"]`)
 const wizardDialogs = () => document.querySelectorAll('#repository-wizard')
 const deleteDialog = () => document.querySelector('#delete-entry-form')
-const headingText = () => wrapper.find('h1').text()
+const headingText = () => wrapper.find('h2').text()
 
 describe('creating a repository from the page', () => {
   it('opens the existing wizard once from New repository', async () => {
@@ -104,7 +104,7 @@ describe('creating a repository from the page', () => {
     await flushPromises()
 
     expect(headingText(), 'the detail of the new repository is shown').toBe('fresh')
-    expect(document.activeElement?.tagName, 'the focus is on the heading').toBe('H1')
+    expect(document.activeElement?.tagName, 'the focus is on the heading').toBe('H2')
     expect(document.activeElement?.textContent.trim(), 'the focused heading names the repository').toBe('fresh')
   })
 })
@@ -138,7 +138,7 @@ describe('deleting a repository from the page', () => {
     expect(wrapper.findAll('tbody th[scope="row"]').map(cell => cell.text()), 'the row is removed').not.toContain('releases')
     expect(store.hasUnsavedChanges.value, 'the removal is a draft change').toBe(true)
     expect(wrapper.find('[data-test="status-message"]').text(), 'the status says it is not saved yet').toContain('releases deleted, not saved yet')
-    expect(document.activeElement?.tagName, 'focus is on a heading').toBe('H1')
+    expect(document.activeElement?.tagName, 'focus is on a heading').toBe('H2')
     expect(headingText(), 'the focus goes to the list heading').toBe('Repositories')
   })
 

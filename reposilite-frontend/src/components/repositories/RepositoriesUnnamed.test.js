@@ -133,7 +133,7 @@ describe('the repositories page with an entry that has no id', () => {
 
     expect(router.currentRoute.value.name, 'the Edit action opens the repository detail').toBe('settings-repository')
     expect(String(router.currentRoute.value.params.id).startsWith('~'), 'the unnamed entry is addressed by its key').toBe(true)
-    expect(wrapper.find('h1').text(), 'the detail heading names the entry').toBe('Unnamed repository')
+    expect(wrapper.find('h2').text(), 'the detail heading names the entry').toBe('Unnamed repository')
   })
 
   it('removes the unnamed entry from the draft after the typed name unnamed, and keeps the others', async () => {

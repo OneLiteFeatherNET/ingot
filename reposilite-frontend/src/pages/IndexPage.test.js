@@ -24,11 +24,11 @@ import IndexPage from './IndexPage.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
 
 // The session is replaced by a plain flag, so each test decides whether the user is a manager.
-const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange: null, can: null }))
+const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange: null, can: null, client: null }))
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 
 vi.mock('../store/session', () => ({
-  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange, can: session.can })
+  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange, can: session.can, client: session.client })
 }))
 
 vi.mock('../store/login', () => ({ openLogin: login.openLogin }))
@@ -87,7 +87,8 @@ const QUALIFIER = { path: '', watchable: 0 }
 
 // Builds the router the application builds, on memory history, with the session answered
 // at once. The page is mounted directly, with the router beside it, as the app does.
-const mountAt = async (url, { manager = false, logged = manager, mustChange = false, nodes } = {}) => {
+const mountAt = async (url, { manager = false, logged = manager, mustChange = false, nodes, client = null } = {}) => {
+  session.client = client ? ref(client) : null
   session.isManager = ref(manager)
   // Without a node list the session is a legacy one and the manager flag answers, as in the store.
   session.can = (node) => (nodes === undefined ? session.isManager.value : canUse(nodes, node))
@@ -726,5 +727,67 @@ describe('IndexPage main landmark', () => {
     const { wrapper } = await mountAt('/dashboard', { manager: true })
 
     expect(wrapper.find('main [data-test="section"]').exists(), 'the content is inside main').toBe(true)
+  })
+})
+
+// A client that lists two settings domains and gives their titles, as the server does.
+const clientWithDomains = () => ({
+  settings: {
+    domains: vi.fn(async () => ({ data: ['web', 'maven'] })),
+    schema: vi.fn(async (domain) => ({ data: { title: domain === 'web' ? 'Web' : 'Maven' } }))
+  }
+})
+
+const treeLabels = (wrapper) => wrapper.findAll('nav[aria-label="Administration"] a').map(link => link.text())
+
+describe('IndexPage Administration tree', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  it('shows the same tree, with the settings domains, on every Administration page', async () => {
+    const trees = {}
+    for (const url of ['/console', '/audit', '/maintenance', '/analytics']) {
+      const { wrapper } = await mountAt(url, { manager: true, client: clientWithDomains() })
+      trees[url] = treeLabels(wrapper)
+    }
+
+    expect(trees['/console'], 'the settings domains are in the tree of the console page').toContain('Web')
+    expect(trees['/audit'], 'the tree of the audit log equals the tree of the console').toEqual(trees['/console'])
+    expect(trees['/maintenance'], 'the tree of maintenance equals the tree of the console').toEqual(trees['/console'])
+    expect(trees['/analytics'], 'the tree of analytics equals the tree of the console').toEqual(trees['/console'])
+  })
+
+  it('marks only the Audit log entry on /audit, and not the audit settings domain', async () => {
+    const { wrapper } = await mountAt('/audit', { manager: true, client: clientWithDomains() })
+
+    const marked = wrapper.findAll('nav[aria-label="Administration"] a').filter(link => link.attributes('aria-current') === 'page')
+    expect(marked.map(link => link.text())).toEqual(['Audit log'])
+  })
+
+  it('draws one Administration heading on the console page, and the page description on maintenance', async () => {
+    const { wrapper: consolePage } = await mountAt('/console', { manager: true, client: clientWithDomains() })
+    expect(consolePage.findAll('h1').map(heading => heading.text())).toEqual(['Administration'])
+
+    const { wrapper: maintenance } = await mountAt('/maintenance', { manager: true, client: clientWithDomains() })
+    expect(maintenance.text()).toContain('Storage usage, the search index and cleanup for this Ingot instance.')
+    expect(maintenance.text(), 'the subtitle does not speak of managers').not.toContain('manager')
+  })
+
+  it('requests the settings domains once, when the visitor goes on from the console to the settings hub', async () => {
+    const client = clientWithDomains()
+    const { router } = await mountAt('/console', { manager: true, client })
+
+    await router.push('/settings')
+    await flushPromises()
+
+    expect(client.settings.domains, 'one request for the session').toHaveBeenCalledTimes(1)
+  })
+
+  it('makes no request for the settings domains to a visitor without the settings node', async () => {
+    const client = clientWithDomains()
+    await mountAt('/audit', { logged: true, nodes: ['ingot.admin.audit'], client })
+
+    expect(client.settings.domains, 'the visitor without the node causes no request that would answer 403').not.toHaveBeenCalled()
   })
 })

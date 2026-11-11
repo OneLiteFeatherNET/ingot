@@ -48,6 +48,7 @@
  * - visibleChildren(key, can)    the children of a page the visitor may open
  * - adminGroups(can, options)    the Administration tree the visitor may open, in headed groups
  *                                [{ heading, links: [{ key, label, to }] }]; settings domains are passed in
+ * - currentTreeKey(route, domain) the key of the tree entry on screen (`page:<key>` or `settings:<domain>`), or undefined
  * - administrationLocation(can)  where the Administration entry of the rail opens: the hub, or the one page
  *                                the visitor may open
  * - sideNavOf(key)              { label, sectionLabel, indexTo } of a page for SideNavLayout
@@ -277,17 +278,33 @@ const visibleChildren = (key, can) => childrenOf(key).filter(child => allowedBy(
 // The links of the pages a plugin contributed under one heading of the tree, in the order the manifest lists them.
 const pluginLinksOf = (can, heading) => contributedPages(can)
   .filter(page => page.heading === heading)
-  .map(page => ({ key: page.key, label: page.title, to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } } }))
+  .map(page => ({ key: `plugin:${page.key}`, label: page.title, to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } } }))
+
+/*
+ * The key of an entry of the tree. A static page and a settings domain may share an id (the audit log page and the audit
+ * settings domain do), so each kind has its own prefix: no two entries of the tree have the same key, whatever a plugin adds.
+ * A key is internal: it is never a route name, an address or a label.
+ */
+const pageTreeKey = (key) => (key === undefined ? undefined : `page:${key}`)
+const settingsTreeKey = (domain) => (domain === undefined ? undefined : `settings:${domain}`)
+
+// The key of the entry the page on screen is, from its route name and, on a Settings page, its domain. Undefined when the
+// page is no entry of the tree, such as the settings hub.
+const currentTreeKey = (routeName, domain) => {
+  if (domain !== undefined) return settingsTreeKey(domain)
+  const entry = ADMIN_ENTRIES.find(item => item.route === routeName || item.detail === routeName)
+  return entry ? pageTreeKey(entry.key) : undefined
+}
 
 const adminGroups = (can, { domains = [], titleOf = (domain) => domain } = {}) => ADMIN_TREE
   .map(group => {
     const pages = group.entries
       .filter(entry => entryAvailable(entry) && allowedBy(entry.permission, can))
-      .map(entry => ({ key: entry.key, label: entry.label, to: { name: entry.route } }))
+      .map(entry => ({ key: pageTreeKey(entry.key), label: entry.label, to: { name: entry.route } }))
     const settingsLinks = can(ADMIN_NODES.settings)
       ? domains
         .filter(domain => treeGroupOf(domain) === group.heading)
-        .map(domain => ({ key: domain, label: titleOf(domain), to: { name: 'settings', params: { domain } } }))
+        .map(domain => ({ key: settingsTreeKey(domain), label: titleOf(domain), to: { name: 'settings', params: { domain } } }))
       : []
     return { heading: group.heading, links: [...pages, ...settingsLinks, ...pluginLinksOf(can, group.heading)] }
   })
@@ -415,6 +432,8 @@ export {
   visiblePages,
   visibleChildren,
   adminGroups,
+  currentTreeKey,
+  pageTreeKey,
   administrationLocation,
   sideNavOf,
   settingsGroupOf,

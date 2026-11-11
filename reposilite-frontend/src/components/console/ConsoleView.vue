@@ -182,8 +182,9 @@ onBeforeUnmount(() => window.removeEventListener('resize', measurePanel))
 const SEND_ICON = 'M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Z'
 </script>
 
+
 <template>
-  <div class="container mx-auto pt-7 pb-12">
+  <div>
     <div class="flex w-full flex-col gap-3 pb-3 xl:flex-row xl:items-start xl:justify-between">
       <div class="w-full xl:mr-5 xl:w-1/2">
         <MdTextField

@@ -203,6 +203,24 @@ describe('StorageUsagePanel', () => {
     expect(session.client.maven.storage).toHaveBeenCalledTimes(2)
   })
 
+  it('shows only the progress while the server computes, not a zero total', async () => {
+    session.client = fakeClient({
+      storage: vi.fn(() => Promise.resolve({ data: storageBody({ computing: true, computedAt: null, totalBytes: 0, repositories: [] }) }))
+    })
+    await mountPanel()
+
+    expect(wrapper.text(), 'no total while the figures are computed').not.toContain('Total')
+    expect(wrapper.text(), 'no "not measured" text while the figures are computed').not.toContain('No repository has been measured yet')
+    expect(wrapper.find('[role="progressbar"]').exists(), 'the progress is shown').toBe(true)
+  })
+
+  it('shows the total and the repository count once the figures have arrived', async () => {
+    await mountPanel()
+
+    expect(wrapper.text()).toContain('Total')
+    expect(wrapper.text()).toContain('across 2 repositories')
+  })
+
   it('shows the load failure in place of the figures', async () => {
     session.client = fakeClient({
       storage: vi.fn(() => Promise.reject(Object.assign(new Error('Request failed'), { response: { data: { message: 'Storage is unavailable' } } })))

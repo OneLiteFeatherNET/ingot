@@ -156,13 +156,13 @@ const confirmDelete = () => {
   <div class="flex flex-col gap-6">
     <header class="flex flex-wrap items-end justify-between gap-4">
       <div class="flex min-w-0 flex-col gap-1">
-        <h1
+        <h2
           ref="heading"
           tabindex="-1"
           class="md-headline-medium text-on-surface focus:outline-none"
         >
           Repositories
-        </h1>
+        </h2>
         <p class="md-body-medium text-on-surface-variant">
           Every repository of this instance. Changes are saved with the other settings.
         </p>
