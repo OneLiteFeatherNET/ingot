@@ -579,7 +579,9 @@ jobs:
             exit 0
           fi
 
-          if ! git diff --name-only "$BASE" "$HEAD" > "$RUNNER_TEMP/changed.txt"; then
+          # Three dots diff against the merge base, so commits that reached main after this branch
+          # was cut do not count as changes of this pull request.
+          if ! git diff --name-only "$BASE...$HEAD" > "$RUNNER_TEMP/changed.txt"; then
             echo "Could not diff the pull request, running the coverage job."
             echo "backend=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -594,10 +596,15 @@ jobs:
   # It is gated on coverage-changes. A job skipped by its `if` counts as success for the
   # required "Coverage" status check, the same way the Build aggregate already relies on, so
   # skipping does not block a merge. The job name stays "Coverage" for that reason.
+  #
+  # The condition only skips when coverage-changes succeeded and found no backend change. If
+  # the detection job fails, it is not skipped and the full run goes ahead, because a failed
+  # detection must never turn into a passing check. The !cancelled() guard keeps a cancelled
+  # run from starting the job.
   coverage:
     name: "Coverage"
     needs: coverage-changes
-    if: needs.coverage-changes.outputs.backend == 'true'
+    if: ${{ !cancelled() && (needs.coverage-changes.result != 'success' || needs.coverage-changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -96,7 +96,19 @@ class CoverageGateInWorkflowTest(unittest.TestCase):
 
     def test_coverage_job_runs_only_when_backend_changed(self):
         block = job_block(self.workflow, "coverage")
-        self.assertIn("if: needs.coverage-changes.outputs.backend == 'true'", block)
+        self.assertIn("needs.coverage-changes.outputs.backend == 'true'", block)
+
+    def test_coverage_job_condition_has_cancelled_guard(self):
+        block = job_block(self.workflow, "coverage")
+        self.assertIn("!cancelled()", block)
+
+    def test_coverage_job_runs_when_detection_job_did_not_succeed(self):
+        block = job_block(self.workflow, "coverage")
+        self.assertIn("needs.coverage-changes.result != 'success'", block)
+
+    def test_detection_job_diffs_against_the_merge_base(self):
+        block = job_block(self.workflow, "coverage-changes")
+        self.assertIn('git diff --name-only "$BASE...$HEAD"', block)
 
     def test_coverage_job_keeps_its_required_check_name(self):
         block = job_block(self.workflow, "coverage")
