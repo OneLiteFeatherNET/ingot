@@ -68,6 +68,12 @@ const mountPage = async ({ schema, fields } = {}) => {
 const rowOf = (id) => wrapper.findAll('tbody tr').find(row => row.find('th[scope="row"] a').text() === id)
 const headerOf = (label) => wrapper.findAll('th').find(header => header.text().startsWith(label))
 const sortButton = (label) => headerOf(label).find('button')
+// The Actions menu is teleported to the body, so its items are read from the document.
+const menuItems = () => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')]
+const openActions = async (name) => {
+  wrapper.find(`button[aria-label="Actions for ${name}"]`).trigger('click')
+  await flushPromises()
+}
 const statusText = () => wrapper.findAll('[role="status"]').map(region => region.text()).join(' | ')
 const filterInput = () => wrapper.find('input[type="search"], input[type="text"]')
 
@@ -152,41 +158,82 @@ describe('the repositories table', () => {
     expect(row.findAll('button').map(button => button.text()), 'no declare action is offered').not.toContain('Declare type')
   })
 
-  it('names the row actions after the repository', async () => {
+  it('gives each row one Actions button named after the repository, and no inline action', async () => {
     await mountPage()
 
     const row = rowOf('releases')
     const names = row.findAll('a, button').map(control => control.attributes('aria-label'))
-    expect(names, 'the edit and delete actions are named with the repository').toEqual(
-      expect.arrayContaining(['Edit releases', 'Delete releases', 'Copy address of releases'])
-    )
+    expect(names, 'the row has the name link and one Actions button').toEqual([undefined, 'Actions for releases'])
   })
 
-  it('keeps the name link before the actions in one row', async () => {
+  it('names the items of the Actions menu after the repository', async () => {
+    await mountPage()
+
+    await openActions('releases')
+
+    expect(menuItems().map(item => item.getAttribute('aria-label')), 'the items keep the names of the inline actions')
+      .toEqual(['Edit releases', 'Copy address of releases', 'Delete releases'])
+  })
+
+  it('keeps the name link before the Actions button in one row', async () => {
     await mountPage()
 
     const controls = rowOf('releases').findAll('a, button')
     expect(controls[0].text(), 'the first control of the row is the name link').toBe('releases')
-    expect(controls[1].attributes('aria-label'), 'the next control is the first action').toBe('Edit releases')
+    expect(controls[1].attributes('aria-label'), 'the next control is the Actions button').toBe('Actions for releases')
   })
 
-  it('copies the address, reports Copied and keeps the focus on the copy button', async () => {
+  it('copies the address, reports Copied and returns the focus to the Actions button', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     try {
       await mountPage()
-      const button = wrapper.find('button[aria-label="Copy address of releases"]')
-      button.element.focus()
+      const trigger = wrapper.find('button[aria-label="Actions for releases"]')
+      await openActions('releases')
 
-      await button.trigger('click')
+      menuItems().find(item => item.getAttribute('aria-label') === 'Copy address of releases').click()
       await flushPromises()
 
       expect(writeText, 'the address is written to the clipboard').toHaveBeenCalledWith('https://repo.example.net/releases')
       expect(statusText(), 'the copy is reported').toContain('Copied')
-      expect(document.activeElement, 'the focus stays on the copy button').toBe(button.element)
+      expect(document.activeElement, 'the focus returns to the Actions button').toBe(trigger.element)
     } finally {
       delete navigator.clipboard
     }
+  })
+
+  it('truncates the name and the address on one line, with the full value as title', async () => {
+    await mountPage()
+
+    const row = rowOf('releases')
+    const name = row.find('th[scope="row"] a')
+    const address = row.find('code')
+    expect(name.classes(), 'the name is truncated with an ellipsis').toContain('truncate')
+    expect(name.classes(), 'the name is never broken inside a word').not.toContain('break-all')
+    expect(name.attributes('title'), 'the title is the full name').toBe('releases')
+    expect(address.classes(), 'the address is truncated with an ellipsis').toContain('truncate')
+    expect(address.classes(), 'the address is never broken inside a word').not.toContain('break-all')
+    expect(address.attributes('title'), 'the title is the full address').toBe('https://repo.example.net/releases')
+  })
+
+  it('keeps the Write policy heading on one line', async () => {
+    await mountPage()
+
+    expect(headerOf('Write policy').classes(), 'the heading does not wrap').toContain('whitespace-nowrap')
+  })
+
+  it('hides the low-priority columns below their breakpoint, Name, Type and Actions never', async () => {
+    await mountPage()
+
+    const hidden = (label) => headerOf(label).classes()
+    expect(hidden('Storage'), 'Storage is the first to go').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))
+    expect(hidden('Version policy'), 'Version policy is shown from 1600 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1600px]:table-cell']))
+    expect(hidden('Visibility'), 'Visibility is shown from 1600 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1600px]:table-cell']))
+    expect(hidden('Write policy'), 'Write policy is shown from 1240 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1240px]:table-cell']))
+    expect(hidden('Address'), 'Address is shown from 1240 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1240px]:table-cell']))
+    expect(hidden('Name'), 'Name is always shown').not.toContain('hidden')
+    expect(hidden('Type'), 'Type is always shown').not.toContain('hidden')
+    expect(hidden('Actions'), 'Actions is always shown').not.toContain('hidden')
   })
 
   it('shows the Version policy column only when the schema declares it', async () => {
