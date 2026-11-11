@@ -181,6 +181,12 @@ const close = () => {
 
 // The first field is only in the document once the dialog has opened, so focus waits for that.
 const focusFirst = () => root.value?.querySelector('input')?.focus()
+// The opened event comes after the transition. A field the visitor has already clicked into keeps the focus,
+// because moving it then would send what they type to the username field.
+const focusOnOpen = () => {
+  if (root.value?.contains(document.activeElement)) return
+  focusFirst()
+}
 const focusField = (id) => nextTick().then(() => document.getElementById(id)?.focus())
 
 watch(showLogin, open => {
@@ -279,7 +285,7 @@ const overlayStyle = {
       teleport-to="body"
       :overlay-style="overlayStyle"
       aria-labelledby="login-title"
-      @opened="focusFirst"
+      @opened="focusOnOpen"
       @closed="forgetInput"
     >
       <!-- The 24px side inset is set on the modal's content wrapper; the dialog caps at 560px. -->
