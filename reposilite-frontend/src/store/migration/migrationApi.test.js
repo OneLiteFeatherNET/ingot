@@ -151,4 +151,11 @@ describe('the migration API module', () => {
     expect(onUnauthorized, 'the sign in flow is started once').toHaveBeenCalledTimes(1)
     expect(error.status).toBe(401)
   })
+
+  it('builds the report download address for each format, without any credential', () => {
+    const api = createMigrationApi(recordingHttp())
+
+    expect(api.reportHref(4, 'csv')).toMatch(new RegExp(`${MIGRATION_BASE}/jobs/4/report\\?format=csv$`))
+    expect(api.reportHref(4, 'json')).toMatch(new RegExp(`${MIGRATION_BASE}/jobs/4/report\\?format=json$`))
+  })
 })
