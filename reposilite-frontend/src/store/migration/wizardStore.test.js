@@ -101,6 +101,17 @@ describe('the wizard store', () => {
     expect(window.location.href).not.toContain(PASSWORD)
   })
 
+  it('replaces a job with the same id and keeps the other jobs, so a job of this visit is seen by every step', () => {
+    const { store } = freshStore()
+    store.setJobs([{ id: 1, kind: 'DRY_RUN', status: 'COMPLETED' }, { id: 2, kind: 'IMPORT', status: 'RUNNING' }])
+
+    store.upsertJob({ id: 2, kind: 'IMPORT', status: 'COMPLETED' })
+    store.upsertJob({ id: 3, kind: 'VERIFY', status: 'QUEUED' })
+
+    expect(store.state.jobs.map(job => job.id)).toEqual([1, 2, 3])
+    expect(store.state.jobs.find(job => job.id === 2).status).toBe('COMPLETED')
+  })
+
   it('starts with every page value empty', () => {
     const { store } = freshStore()
 
