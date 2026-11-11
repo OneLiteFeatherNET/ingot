@@ -545,6 +545,13 @@
       "states": []
     },
     {
+      "name": "rail-brand",
+      "file": "src/components/header/RailBrand.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "create-token-dialog",
       "file": "src/components/identity/CreateTokenDialog.vue",
       "stability": "experimental",

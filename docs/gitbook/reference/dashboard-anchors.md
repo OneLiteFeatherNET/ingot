@@ -143,6 +143,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `problem-alert` | experimental | `src/components/migration/ProblemAlert.vue` | none | `error` |
 | `profile-card` | experimental | `src/components/account/ProfileCard.vue` | none | none |
 | `public-repositories-dialog` | experimental | `src/components/dashboard/PublicRepositoriesDialog.vue` | none | none |
+| `rail-brand` | experimental | `src/components/header/RailBrand.vue` | none | none |
 | `read-only-toggle` | experimental | `src/components/dashboard/ReadOnlyToggle.vue` | none | `error` |
 | `rebuild-index-dialog` | experimental | `src/components/maintenance/RebuildIndexDialog.vue` | none | none |
 | `repositories-table` | experimental | `src/components/repositories/RepositoriesTable.vue` | `header`, `row`, `cell-name`, `empty` | `empty` |
