@@ -7,6 +7,7 @@ import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.configuration.shared.SharedConfigurationReload
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.infrastructure.SettingsDecryptCommand
+import com.reposilite.configuration.shared.infrastructure.SettingsEncryptionEndpoint
 import com.reposilite.configuration.shared.infrastructure.SettingsEndpoints
 import com.reposilite.configuration.shared.infrastructure.SettingsExportEndpoints
 import com.reposilite.configuration.shared.infrastructure.SettingsReencryptCommand
@@ -98,6 +99,7 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
         }
 
         event { event: RoutingSetupEvent ->
+            event.registerRoutes(SettingsEncryptionEndpoint(sharedConfigurationFacade, secretCipher))
             event.registerRoutes(
                 SettingsExportEndpoints(
                     sharedConfigurationFacade = sharedConfigurationFacade,
