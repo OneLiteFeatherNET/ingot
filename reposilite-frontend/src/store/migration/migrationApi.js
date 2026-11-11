@@ -28,6 +28,9 @@ import { createURL, handleRequest } from '../client'
 
 const MIGRATION_BASE = '/api/migration/nexus'
 
+// The address of a report download. A plain link, so the browser fetches it with the session and no credential is in it.
+const reportHref = (id, format) => createURL(`${MIGRATION_BASE}/jobs/${id}/report?format=${format}`)
+
 class ApiProblem extends Error {
   constructor({ status, title, detail, type }) {
     super(detail || title || `Request failed with status ${status}`)
@@ -106,4 +109,4 @@ const migrationApi = createMigrationApi(dashboardHttp, {
   onUnauthorized: (problem) => unauthorizedListener(problem),
 })
 
-export { createMigrationApi, migrationApi, onMigrationUnauthorized, ApiProblem, MIGRATION_BASE }
+export { createMigrationApi, migrationApi, onMigrationUnauthorized, reportHref, ApiProblem, MIGRATION_BASE }

@@ -21,6 +21,8 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ConnectStep from './ConnectStep.vue'
 import DiscoverStep from './DiscoverStep.vue'
+import MappingStep from './MappingStep.vue'
+import DryRunStep from './DryRunStep.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import { migrationApi } from '../../store/migration/migrationApi'
 import { STEPS, STEP_LABELS, stepTarget, nextClosedReason } from '../../store/migration/gating'
@@ -45,6 +47,8 @@ const notice = ref('')
 const STEP_VIEWS = {
   connect: ConnectStep,
   discover: DiscoverStep,
+  mapping: MappingStep,
+  'dry-run': DryRunStep,
 }
 
 const current = computed(() => (STEPS.includes(props.step) ? props.step : STEPS[0]))

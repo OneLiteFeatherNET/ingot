@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { createMigrationApi, ApiProblem, MIGRATION_BASE } from './migrationApi'
+import { createMigrationApi, reportHref, ApiProblem, MIGRATION_BASE } from './migrationApi'
 
 // A transport that records each call and answers with the given reply. A reply that is an Error is thrown,
 // as an axios error carries its response on `response`.
@@ -153,9 +153,8 @@ describe('the migration API module', () => {
   })
 
   it('builds the report download address for each format, without any credential', () => {
-    const api = createMigrationApi(recordingHttp())
-
-    expect(api.reportHref(4, 'csv')).toMatch(new RegExp(`${MIGRATION_BASE}/jobs/4/report\\?format=csv$`))
-    expect(api.reportHref(4, 'json')).toMatch(new RegExp(`${MIGRATION_BASE}/jobs/4/report\\?format=json$`))
+    expect(reportHref(4, 'csv')).toMatch(new RegExp(`${MIGRATION_BASE}/jobs/4/report\\?format=csv$`))
+    expect(reportHref(4, 'json')).toMatch(new RegExp(`${MIGRATION_BASE}/jobs/4/report\\?format=json$`))
+    expect(reportHref(4, 'csv'), 'the address names no password').not.toContain('password')
   })
 })
