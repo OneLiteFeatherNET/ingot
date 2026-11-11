@@ -235,6 +235,7 @@ onMounted(() => {
         v-if="running"
         :job="shown"
         label="Import progress"
+        :unreadable="watched.watching.value && watched.error.value !== null"
       />
 
       <p

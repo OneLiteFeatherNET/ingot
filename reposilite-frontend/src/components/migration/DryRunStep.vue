@@ -240,6 +240,7 @@ onMounted(() => {
         v-if="watched.watching.value && watched.job.value"
         :job="watched.job.value"
         label="Dry run progress"
+        :unreadable="watched.error.value !== null"
       />
 
       <p

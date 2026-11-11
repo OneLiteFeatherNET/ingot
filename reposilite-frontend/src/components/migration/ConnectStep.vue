@@ -42,6 +42,14 @@ const pending = ref(false)
 
 const connected = computed(() => wizard.state.connection !== null)
 const summary = ref(null)
+const forgotten = ref(false)
+const passwordHeld = computed(() => wizard.passwords.recall() !== null)
+
+// The operator asks for the password to be dropped. The next call that needs it asks for it again.
+const forgetPassword = () => {
+  wizard.passwords.forget()
+  forgotten.value = true
+}
 
 // The fields that are invalid, each with its message. The summary links to them and takes the focus on a failed submit.
 const errorItems = computed(() => [
@@ -270,6 +278,24 @@ const submit = async () => {
           {{ warning }}
         </li>
       </ul>
+    </div>
+
+    <div
+      v-if="passwordHeld || forgotten"
+      class="flex max-w-xl flex-col items-start gap-2 md-body-medium text-on-surface-variant"
+    >
+      <p v-if="forgotten && !passwordHeld">
+        The password was forgotten. The steps that need it will ask for it again.
+      </p>
+      <MdButton
+        v-if="passwordHeld"
+        id="migration-forget-password"
+        type="button"
+        variant="outlined"
+        @click="forgetPassword"
+      >
+        Forget the password
+      </MdButton>
     </div>
 
     <p v-if="connected">

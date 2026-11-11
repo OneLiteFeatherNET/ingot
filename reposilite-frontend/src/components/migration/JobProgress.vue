@@ -32,6 +32,11 @@ const props = defineProps({
   label: {
     type: String,
     required: true
+  },
+  // True while the last read of the job failed and the poller is trying again.
+  unreadable: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -71,6 +76,12 @@ watch(() => [props.job.status, percent.value], ([state, value]) => {
       class="sr-only"
     >
       {{ announced }}
+    </p>
+    <p
+      v-if="unreadable"
+      class="md-body-medium text-on-surface-variant"
+    >
+      Progress could not be read, trying again.
     </p>
     <p
       v-if="reason"

@@ -27,10 +27,12 @@ import SyncStep from './SyncStep.vue'
 import VerifyStep from './VerifyStep.vue'
 import CutOverStep from './CutOverStep.vue'
 import ProblemAlert from './ProblemAlert.vue'
-import { migrationApi } from '../../store/migration/migrationApi'
+import { migrationApi, onMigrationUnauthorized } from '../../store/migration/migrationApi'
 import { STEPS, STEP_LABELS, stepStates, stepTarget, nextClosedReason } from '../../store/migration/gating'
 import { MIGRATION_API, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
+import { openLogin } from '../../store/login'
+import { useSession } from '../../store/session'
 
 const props = defineProps({
   step: {
@@ -43,9 +45,12 @@ const api = inject(MIGRATION_API, migrationApi)
 const wizard = inject(MIGRATION_WIZARD, useWizard())
 const router = useRouter()
 
+const { isLogged } = useSession()
 const loaded = ref(false)
 const loadProblem = ref(null)
 const notice = ref('')
+// A visitor without the permission sees this state and no step, so no data is shown to them.
+const denied = computed(() => loadProblem.value?.status === 403)
 
 const STEP_VIEWS = {
   connect: ConnectStep,
@@ -84,6 +89,11 @@ const decide = () => {
 }
 
 onMounted(async () => {
+  // A 401 drops the literal password and opens the sign in dialog; the address stays on this step.
+  onMigrationUnauthorized(() => {
+    wizard.passwords.forget()
+    openLogin()
+  })
   try {
     wizard.setJobs(await api.listJobs())
   } catch (error) {
@@ -92,6 +102,11 @@ onMounted(async () => {
   }
   loaded.value = true
   decide()
+})
+
+// A session that ends takes the literal password with it.
+watch(isLogged, (logged) => {
+  if (!logged) wizard.passwords.forget()
 })
 
 // A new step takes the focus on its heading, so a screen reader announces the step. The router leaves the focus
@@ -103,7 +118,10 @@ watch(() => props.step, async () => {
 })
 
 // Leaving the wizard drops the literal password (design D4). The rest of the page state stays in memory.
-onBeforeUnmount(() => wizard.passwords.forget())
+onBeforeUnmount(() => {
+  onMigrationUnauthorized(() => {})
+  wizard.passwords.forget()
+})
 </script>
 
 <template>
@@ -150,8 +168,20 @@ onBeforeUnmount(() => wizard.passwords.forget())
       v-if="loadProblem"
       :problem="loadProblem"
     />
+    <section
+      v-if="denied"
+      role="alert"
+      class="flex flex-col gap-1"
+    >
+      <p class="md-title-small text-on-surface">
+        You do not have access to the import.
+      </p>
+      <p class="md-body-medium text-on-surface-variant">
+        Only instance administrators can run a Nexus import. Sign in with an account that can, to see this page.
+      </p>
+    </section>
     <p
-      v-if="!loaded"
+      v-else-if="!loaded"
       class="md-body-large text-on-surface-variant"
     >
       Reading the import jobs of this instance.
