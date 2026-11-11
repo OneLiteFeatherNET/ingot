@@ -61,8 +61,8 @@ def steps_of(block):
 
 
 def value_of(step, key):
-    """Returns the value of a key that is set at the level of a step's own keys, or None."""
-    pattern = re.compile(rf"^        {re.escape(key)}:\s*(.*?)\s*$")
+    """Returns the value of a key of a step, or of its `with:` inputs, or None."""
+    pattern = re.compile(rf"^\s+{re.escape(key)}:\s*(.*?)\s*$")
     for line in step:
         match = pattern.match(line)
         if match:
