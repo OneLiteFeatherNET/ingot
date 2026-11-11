@@ -83,6 +83,7 @@ const buildOption = () => {
     },
     legend: multiSeries.value
       ? {
+          show: true,
           bottom: 0,
           icon: 'roundRect',
           itemGap: 18,

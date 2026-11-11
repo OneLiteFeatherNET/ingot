@@ -527,7 +527,7 @@ describe('InstanceStatusPanel read-only banner', () => {
       }
     })
 
-    expect(wrapper.find('[data-testid="read-only-banner"]').text(), 'the scope of the stored state is the cluster').toContain('every instance of the cluster')
+    expect(wrapper.find('[data-testid="read-only-banner"]').text(), 'the scope of the stored state is the cluster').toContain('Every instance of the cluster refuses writes')
     wrapper.unmount()
   })
 

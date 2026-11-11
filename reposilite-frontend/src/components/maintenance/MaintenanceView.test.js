@@ -106,7 +106,7 @@ describe('MaintenanceView', () => {
     wrapper = mount(MaintenanceView, { attachTo: document.body })
     await flushPromises()
 
-    expect(wrapper.find('[role="switch"]').exists(), 'a principal without the maintenance area sees no switch').toBe(false)
+    expect(wrapper.find('#read-only-switch').exists(), 'a principal without the maintenance area sees no read-only switch').toBe(false)
     expect(wrapper.text(), 'and no Writes section either').not.toContain('Writes')
   })
 

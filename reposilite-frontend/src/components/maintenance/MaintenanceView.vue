@@ -19,6 +19,7 @@ import { ref } from 'vue'
 import StorageUsagePanel from './StorageUsagePanel.vue'
 import CleanupPoliciesPanel from './CleanupPoliciesPanel.vue'
 import IndexPanel from './IndexPanel.vue'
+import ReadOnlyToggle from '../dashboard/ReadOnlyToggle.vue'
 
 // A finished run changes the storage figures, so the storage panel is asked to reload.
 const storageRevision = ref(0)
@@ -29,6 +30,7 @@ const storageRevision = ref(0)
     class="flex flex-col gap-6"
     data-ingot-component="maintenance-view"
   >
+    <ReadOnlyToggle />
     <StorageUsagePanel :revision="storageRevision" />
     <IndexPanel />
     <CleanupPoliciesPanel @ran="storageRevision += 1" />
