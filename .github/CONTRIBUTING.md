@@ -77,6 +77,27 @@ Visit the README.md of each module to see details about how to run it and work w
   * [Plugins](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-plugins) - plugin system related subprojects
 * [Frontend](https://github.com/OneLiteFeatherNET/ingot/tree/main/reposilite-frontend) - sources of the default frontend in Vue
 
+### Dashboard end-to-end tests
+
+The browser suite in `reposilite-frontend/e2e/` drives the dashboard against the real server. It starts the shaded server jar, so build it first:
+
+```shell
+./gradlew :reposilite-backend:shadowJar
+cd reposilite-frontend
+npm ci
+npx playwright install chromium
+npm run e2e
+```
+
+On a machine that runs several heavy jobs, prefix the run with the slot runner and keep two workers: `heavy npx playwright test --workers=2`.
+The server runs on a free loopback port with a fresh data directory, and both are removed at the end of the run.
+
+Some tests check a known fault that is not fixed on main yet. Such a test is marked with `test.fail(true, '<change>')` and reports as expected failure.
+The change named in the marker removes the marker in its own pull request, so the test then runs as a normal test and a fix that is merged without it fails the run.
+
+A new flow is added as a spec under `reposilite-frontend/e2e/`. Seed its data with `seed.repository(...)` and `seed.upload(...)` from `e2e/support/fixtures.js`, which go through the public REST API and are removed when the test ends.
+Give the test its own name with `seed.name(...)`, never a fixed repository id.
+
 ## Maintainers
 
 Ingot is a fork, so keeping it reconcilable with upstream is part of maintaining it.
