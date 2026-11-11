@@ -143,7 +143,7 @@ describe('GettingStartedCard', () => {
     await mountCard()
 
     expect($('[data-step-action="deploy-token"]').getAttribute('href')).toBe('/tokens/new')
-    expect($('[data-step-action="repository"]').getAttribute('href')).toBe('/settings/maven?new=repository')
+    expect($('[data-step-action="repository"]').getAttribute('href')).toBe('/settings/repositories?new=repository')
   })
 
   it('does not show itself to someone who does not manage the instance', async () => {

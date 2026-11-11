@@ -75,8 +75,8 @@ describe('PublicRepositoriesDialog', () => {
 
     const links = [...dialog().querySelectorAll('a')]
     expect(links.map(link => link.getAttribute('href'))).toEqual([
-      '/settings/maven/repositories/mirror',
-      '/settings/maven/repositories/releases'
+      '/settings/repositories/mirror',
+      '/settings/repositories/releases'
     ])
   })
 
@@ -102,7 +102,7 @@ describe('PublicRepositoriesDialog', () => {
     dialog().querySelector('a').click()
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven/repositories/mirror')
+    expect(router.currentRoute.value.fullPath).toBe('/settings/repositories/mirror')
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 })

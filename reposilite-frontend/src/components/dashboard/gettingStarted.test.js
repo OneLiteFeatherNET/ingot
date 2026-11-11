@@ -118,7 +118,7 @@ describe('getting started checklist', () => {
 
   it('links each step to the place that completes it', () => {
     const byKey = Object.fromEntries(itemsFor().map(item => [item.key, item.action.to]))
-    expect(byKey.repository).toEqual({ name: 'settings', params: { domain: 'maven' }, query: { new: 'repository' } })
+    expect(byKey.repository).toEqual({ name: 'settings-repositories', query: { new: 'repository' } })
     expect(byKey['deploy-token']).toEqual({ name: 'token', params: { name: 'new' } })
     expect(byKey.branding).toEqual({ name: 'settings', params: { domain: 'frontend' } })
   })
