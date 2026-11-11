@@ -86,7 +86,7 @@ internal object SearchSchema {
     private fun upgradeStatementsIn(tables: SearchTables): List<String> {
         val artifact = tables.artifact
         val keyIndex = artifact.indices.single { it.customName == "ix_search_gav_key" }
-        return listOf("ALTER TABLE ${artifact.tableName} ADD COLUMN ${artifact.gavKey.descriptionDdl(false)}") +
+        return listOf("ALTER TABLE ${artifact.tableName} ADD COLUMN ${artifact.gavKey.descriptionDdl(true)}") +
             SchemaUtils.createIndex(keyIndex) +
             SchemaUtils.createStatements(tables.token)
     }
