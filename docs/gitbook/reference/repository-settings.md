@@ -33,7 +33,11 @@ The table lists every repository of the draft. A repository that is not saved ye
 | Version policy | The version policy of the repository. Shown only when the settings schema of the server declares `versionPolicy`. A group shows a dash. |
 | Write policy | Allow, Allow once or Read only, for a hosted repository. See [Write policy](#write-policy). A group or proxy shows a dash. Without `readOnly` in the settings schema, the column shows Allow or Allow once from `redeployment` alone. |
 | Storage | File system or S3. A group shows a dash. |
-| Address | The address of the repository, with a button that copies it. |
+| Address | The address of the repository. A long address is cut with an ellipsis, and the full address is its tooltip. |
+
+Each row has one **Actions** button. Its menu holds **Edit**, **Copy address** and **Delete**, and the menu items name the repository, for example "Edit releases". An unnamed entry has no **Copy address** item.
+
+The columns are hidden by priority when the window is narrow. Below 1920 pixels the Storage column is hidden. Below 1600 pixels Version policy and Visibility are hidden too. Below 1240 pixels Write policy and Address are hidden. Name, Type and Actions are always shown, and a hidden value is still on the page of the repository. A long name is cut with an ellipsis, and its full name is its tooltip.
 
 ### Derived type
 
