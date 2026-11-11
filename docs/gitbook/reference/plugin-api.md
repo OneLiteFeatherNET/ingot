@@ -237,7 +237,7 @@ The gate becomes blocking in a later change, once the first report has been revi
 
 ## Dashboard pages
 
-A plugin can add pages to the dashboard without shipping JavaScript. It declares each page as data through the `plugin-ui` facade, and the dashboard draws the page with its own components. No plugin code, script, stylesheet, frame or HTML runs in the browser. The administrator's session therefore never runs plugin code, and the browser policy of the dashboard stays as it is. The reasons are in [Security headers](../explanation/security-headers.md#plugin-pages).
+A plugin can add pages to the dashboard without shipping JavaScript. It declares each page as data through the `plugin-ui` facade, and the dashboard draws the page with its own components. No plugin code, script, stylesheet, frame or HTML runs in the browser. The administrator's session therefore never runs plugin code, and the browser policy of the dashboard stays as it is. The reasons are in [Security headers](../explanation/security-headers.md#plugin-pages). For what a plugin can target on the dashboard today and what is still missing, see [Extend the dashboard from a plugin](../how-to/extend-the-dashboard-from-a-plugin.md).
 
 ### Register a page
 

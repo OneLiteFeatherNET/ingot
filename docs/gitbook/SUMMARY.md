@@ -67,6 +67,7 @@
 * [Use the Nexus import wizard](how-to/use-the-nexus-import-wizard.md)
 * [Install a plugin](how-to/install-a-plugin.md)
 * [Write a plugin](how-to/write-a-plugin.md)
+* [Extend the dashboard from a plugin](how-to/extend-the-dashboard-from-a-plugin.md)
 
 ### Operate and upgrade
 
@@ -113,6 +114,7 @@
 * [Web routes](reference/web-routes.md)
 * [Dashboard pages](reference/dashboard-pages.md)
 * [Plugin API](reference/plugin-api.md)
+* [Dashboard anchors](reference/dashboard-anchors.md)
 
 ### Upgrades
 
