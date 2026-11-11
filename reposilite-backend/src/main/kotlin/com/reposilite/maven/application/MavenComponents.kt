@@ -87,10 +87,11 @@ internal class MavenComponents(
             mirrorCache = mirrorCache,
             artifactIndexSink = artifactIndexSink,
             operationCounters = operationCounters,
+            extensions = extensions,
         )
 
     private fun resolutionProvider(): ResolutionProvider =
-        ResolutionProvider(journalist, extensions)
+        ResolutionProvider(journalist, extensions, operationCounters)
 
     private fun repositoryProvider(
         mirrorService: MirrorService = mirrorService(),

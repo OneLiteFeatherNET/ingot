@@ -41,6 +41,7 @@ A new instance starts with three repositories. Their other fields have the defau
 | `metadataMaxAge` | Max age of metadata file | integer (seconds) | `0` | How long a stored metadata file counts as current. See [Storage policy](#storage-policy). |
 | `resolutionCacheMaxEntries` | Resolution cache size | integer, at least 0 | `0` | Size of the cache for routing decisions. `0` turns the cache off. See [Resolution cache](#resolution-cache). |
 | `proxied` | Mirrored repositories | list of [proxied entries](#proxied-entries) | empty | Repositories this repository can fetch files from. |
+| `protectedGroupPrefixes` | Protected group prefixes | list of dotted group ids, such as `net.onelitefeather` | empty | Group ids that a group serves from hosted members only, so that a proxy member never answers for them. Accepted only on a `GROUP`. See [Protect your own namespace](../how-to/create-a-group-repository.md#protect-your-own-namespace). |
 
 The id of a repository should not equal a reserved path segment of the dashboard or the API, such as `api`, `search` or `settings`. Ingot does not reject such an id, it logs a warning at startup and on every settings change. The dashboard creates ids from letters, digits, dots, underscores and hyphens, and compares them without regard to case.
 

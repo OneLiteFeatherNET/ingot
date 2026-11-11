@@ -42,6 +42,19 @@ internal enum class ChecksumAlgorithm(val extension: String, val javaName: Strin
 
 internal data class ExpectedChecksum(val algorithm: ChecksumAlgorithm, val hex: String)
 
+/** The result of checking one copy of a mirror under [ChecksumPolicy.WARN] or [ChecksumPolicy.FAIL]. */
+enum class ChecksumResult {
+    VERIFIED,
+    MISMATCH,
+    MISSING,
+}
+
+/** Whether a copy that was checked is kept in storage or refused. */
+enum class CopyOutcome {
+    STORED,
+    REFUSED,
+}
+
 /**
  * The digest in a checksum file: the first word of its content, in lower case. The content may be the bare digest or a
  * digest followed by a file name, as the `sha256sum` tool writes it. Null when the first word is not a digest of [algorithm].
@@ -65,6 +78,10 @@ internal class DigestingInputStream(
 
     private val digests = ChecksumAlgorithm.entries.associateWith { MessageDigest.getInstance(it.javaName) }
     private var computed: Map<ChecksumAlgorithm, String>? = null
+
+    /** Whether the stream ended with a digest that differs from [expected]. Set just before that end fails. */
+    var mismatched: Boolean = false
+        private set
 
     /** The digest of the whole stream, or null while the stream has not been read to its end. */
     fun digestOf(algorithm: ChecksumAlgorithm): String? = computed?.get(algorithm)
@@ -97,6 +114,7 @@ internal class DigestingInputStream(
         val check = expected ?: return
         val actual = computed?.get(check.algorithm)
         if (actual != check.hex) {
+            mismatched = true
             throw IOException("upstream copy does not match its ${check.algorithm.extension} checksum")
         }
     }

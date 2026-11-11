@@ -76,6 +76,37 @@ A `400` response means that a rule is broken, and nothing was stored. The messag
 | `stores nothing` | Remove `store` from the member. |
 | `is part of a cycle of proxied repositories (all -> team -> all)` | Break the loop, for example by removing a group from another group's members. |
 | `has an empty proxied reference` | Remove the entry with the empty reference. |
+| `protectedGroupPrefixes needs a repository of type GROUP, but this repository is PROXY` | Remove `protectedGroupPrefixes`, or declare the repository as `GROUP`. |
+| `is not a dotted group id, use letters, digits, '_' and '-' joined by single dots` | Write the prefix as dotted group id, such as `net.onelitefeather`, without slashes or leading or trailing dots. |
+| `lists 'net.onelitefeather' more than once` | Remove the repeated prefix. |
+
+## Protect your own namespace
+
+A group asks its members in order, and a proxy member answers for any coordinate its upstream knows. If someone publishes an artifact under your group id to a public repository, with a higher version than yours, a build that resolves through the group can receive that artifact while your own copy is missing. This is dependency confusion. To make the group serve your group ids from your hosted members only, list them under `protectedGroupPrefixes`:
+
+```json
+{
+  "id": "all",
+  "type": "GROUP",
+  "protectedGroupPrefixes": ["net.onelitefeather"],
+  "proxied": [
+    { "reference": "releases" },
+    { "reference": "snapshots" },
+    { "reference": "central" }
+  ]
+}
+```
+
+Here `central` is a `PROXY` repository. For a coordinate under `net.onelitefeather`, the group asks `releases` and `snapshots` only and never `central`.
+
+* A prefix covers its group id and every group below it. `net.onelitefeather` covers `net.onelitefeather.ingot`, but not `net.onelitefeatherx`. Matching is case sensitive.
+* A coordinate that no hosted member holds is answered with `404`, the same answer as a coordinate that exists nowhere. The answer does not reveal that a rule exists.
+* Put your hosted members directly in the group. A member group that holds a proxy somewhere below it is skipped as a whole for protected coordinates.
+* The rule applies to requests through the group. A client that asks the proxy repository directly still gets what the proxy serves, so builds should use the group URL only.
+* The key is accepted only on a `GROUP`. Ingot refuses it on a hosted, proxy or mixed repository, and the message names the key.
+* The list is empty by default, so existing groups behave as before until you set it.
+
+Each refusal writes the audit event `NAMESPACE_PROXY_REFUSED` (see [audit events](../reference/audit-events.md#mirrors-and-protected-groups)) and counts in `ingot_namespace_refusals_total` (see [monitor status and failures](monitor-status-and-failures.md)). A refusal means either an attack or a build that expects an artifact your hosted members do not hold yet. Check the artifact first. If it is missing, deploy it to the hosted member.
 
 ## Verify the result
 

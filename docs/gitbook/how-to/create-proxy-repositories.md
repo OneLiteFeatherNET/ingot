@@ -139,6 +139,8 @@ With `checksumPolicy` the proxy compares the artifact files it stores with the c
 | `warn` | Stores and serves the copy. A mismatch, or a remote without a checksum file, is written to the log with the file name and the remote. |
 | `fail` | Stores and serves a copy only when it matches. A copy that does not match, or a remote without any checksum file, is refused, and the next remote in `proxied` is tried. When every remote is refused the client gets `502 Bad Gateway`, and nothing is stored. |
 
+Each mismatch and each missing checksum file under `warn` or `fail` is also written to the audit log as `MIRROR_CHECKSUM_MISMATCH` or `MIRROR_CHECKSUM_MISSING`, and counted in `ingot_mirror_checksum_results_total`. See [audit events](../reference/audit-events.md#mirrors-and-protected-groups) and [monitor status and failures](monitor-status-and-failures.md).
+
 The example enables the check for one remote:
 
 ```json

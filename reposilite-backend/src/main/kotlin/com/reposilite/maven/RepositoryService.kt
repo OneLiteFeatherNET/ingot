@@ -218,6 +218,7 @@ internal class RepositoryService(
             mirrorFirst = mirrorService.shouldPrioritizeMirrorRepository(repository, gav),
             tryLocal = { repository.storageProvider.getFile(gav) },
             tryRemote = { hosts -> mirrorService.findRemoteFile(repository, gav, accessToken, hosts) },
+            isHostedMember = ::isHostedMember,
         )
         return extensions.emitEvent(ResolvedFileDataEvent(accessToken, repository, gav, result)).result
     }
@@ -230,6 +231,7 @@ internal class RepositoryService(
             mirrorFirst = mirrorService.shouldPrioritizeMirrorRepository(repository, gav),
             tryLocal = { findLocalDetails(accessToken, repository, gav) },
             tryRemote = { hosts -> mirrorService.findRemoteDetails(repository, gav, accessToken, hosts) },
+            isHostedMember = ::isHostedMember,
         ).peek {
             recordResolvedRequest(Identifier(repository.name, gav.toString()), it)
         }
@@ -241,6 +243,33 @@ internal class RepositoryService(
                     ?.let { securityProvider.canBrowseResource(accessToken, repository, gav).map { _ -> it } }
                     ?: it.asSuccess()
             }
+
+    /**
+     * A member a protected group may ask: a loopback reference to a hosted repository, or to a group whose members are all
+     * hosted, see [isHostedOnly]. An external reference, which is a proxy, is never hosted. A member that does not exist
+     * is not hosted either, so it is skipped rather than guessed at.
+     */
+    private fun isHostedMember(mirror: MirrorHost): Boolean =
+        mirror.client is RepositoryLoopbackClient &&
+            repositoryProvider.getRepository(mirror.host)?.let { isHostedOnly(it, path = emptySet()) } == true
+
+    /**
+     * Whether [repository] holds only hosted content. A group is hosted when every member is hosted, checked recursively.
+     * [path] holds the groups already on the way down; reaching one of them again is a loop, which is not hosted, so a
+     * cycle of groups ends here and does not count as a source of its own. Proxies and mixed repositories are not hosted.
+     */
+    private fun isHostedOnly(repository: Repository, path: Set<String>): Boolean =
+        when (repository.effectiveType) {
+            EffectiveRepositoryType.HOSTED -> true
+            EffectiveRepositoryType.GROUP ->
+                repository.name !in path &&
+                    repository.mirrorHosts.isNotEmpty() &&
+                    repository.mirrorHosts.all { mirror ->
+                        mirror.client is RepositoryLoopbackClient &&
+                            repositoryProvider.getRepository(mirror.host)?.let { isHostedOnly(it, path + repository.name) } == true
+                    }
+            EffectiveRepositoryType.PROXY, EffectiveRepositoryType.MIXED -> false
+        }
 
     private fun recordResolvedRequest(identifier: Identifier, fileDetails: FileDetails) {
         if (fileDetails is DocumentInfo && ignoredExtensions.none { extension -> fileDetails.name.endsWith(extension) }) {

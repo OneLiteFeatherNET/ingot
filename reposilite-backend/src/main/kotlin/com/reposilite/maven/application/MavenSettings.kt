@@ -24,6 +24,7 @@ import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.api.ValidatedSettings
 import com.reposilite.maven.ChecksumPolicy
 import com.reposilite.maven.EffectiveRepositoryType
+import com.reposilite.maven.NamespaceProtection
 import com.reposilite.maven.RepositoryType
 import com.reposilite.maven.StoragePolicy
 import com.reposilite.maven.RepositoryVisibility
@@ -72,7 +73,8 @@ data class MavenSettings(
     private fun typeViolations(): List<String> {
         val localNames = repositories.map { it.id }.toSet()
         val perRepository = repositories.flatMap { repository -> repository.typeViolations(localNames) }
-        return perRepository + cycleViolations(localNames)
+        val protectedPrefixes = repositories.flatMap { repository -> repository.protectedPrefixViolations(localNames) }
+        return perRepository + cycleViolations(localNames) + protectedPrefixes
     }
 
     /**
@@ -172,8 +174,44 @@ data class RepositorySettings(
     """)
     val resolutionCacheMaxEntries: Int = 0,
     @get:Doc(title = "Mirrored repositories", description = "List of mirrored repositories associated with this repository.")
-    val proxied: List<MirroredRepositorySettings> = listOf()
+    val proxied: List<MirroredRepositorySettings> = listOf(),
+    @get:Doc(title = "Protected group prefixes", description = """
+        Group ids, such as net.onelitefeather, that this group serves from its hosted members only. A proxy member is never
+        asked for a coordinate under such a prefix, so a public upstream cannot answer for it. A prefix covers its subgroups,
+        and a coordinate that no hosted member holds is answered as not found.<br/>
+        Only a repository of the type GROUP accepts this key. Empty disables the rule (Default: empty)
+    """)
+    val protectedGroupPrefixes: List<String> = listOf(),
 ) : SharedSettings {
+
+    /**
+     * The prefix rules that concern this repository alone: each prefix is a dotted group id and is listed once. The rule
+     * on the type is checked in [protectedPrefixViolations], where the local repositories are known.
+     */
+    private fun protectedPrefixFormatViolations(): List<String> = buildList {
+        protectedGroupPrefixes.filterNot { NamespaceProtection.isValidPrefix(it) }.forEach { prefix ->
+            add("repository '$id': protectedGroupPrefixes entry '$prefix' is not a dotted group id, use letters, digits, '_' and '-' joined by single dots")
+        }
+        protectedGroupPrefixes.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach { prefix ->
+            add("repository '$id': protectedGroupPrefixes lists '$prefix' more than once")
+        }
+    }
+
+    /**
+     * The key is accepted only on a group. [localNames] are the ids of the repositories of this instance, see
+     * [effectiveType]. Empty when no prefix is set, so an existing repository is never affected.
+     */
+    internal fun protectedPrefixViolations(localNames: Collection<String>): List<String> {
+        if (protectedGroupPrefixes.isEmpty()) {
+            return emptyList()
+        }
+        val effective = effectiveType(localNames)
+        return if (effective == EffectiveRepositoryType.GROUP) {
+            emptyList()
+        } else {
+            listOf("repository '$id': protectedGroupPrefixes needs a repository of type GROUP, but this repository is ${effective.name}")
+        }
+    }
 
     /**
      * Describes every rule of [description] and [tags] that this repository breaks, each message
@@ -201,6 +239,8 @@ data class RepositorySettings(
         proxied.filter { it.checksumPolicy != ChecksumPolicy.IGNORE && !it.store }.forEach { mirror ->
             violations += "repository '$id': mirror '${mirror.referencedHost()}' sets checksumPolicy to ${mirror.checksumPolicy.name.lowercase()}, which needs store to be enabled"
         }
+
+        violations += protectedPrefixFormatViolations()
 
         return violations
     }
