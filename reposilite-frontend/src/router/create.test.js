@@ -134,10 +134,10 @@ describe('route names and parameters', () => {
   it('reads the domain alone for the settings of one domain', async () => {
     const router = makeRouter()
 
-    await router.push('/settings/maven')
+    await router.push('/settings/web')
 
     expect(router.currentRoute.value.name).toBe('settings')
-    expect(router.currentRoute.value.params.domain).toBe('maven')
+    expect(router.currentRoute.value.params.domain).toBe('web')
   })
 })
 
