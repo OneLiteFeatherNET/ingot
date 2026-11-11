@@ -27,7 +27,7 @@ import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.RepositoryAccess
 import net.onelitefeather.ingot.search.access.SearchAccess
-import net.onelitefeather.ingot.search.outbox.IndexAction
+import net.onelitefeather.ingot.search.backend.IndexAction
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils

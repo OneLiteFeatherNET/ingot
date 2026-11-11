@@ -23,12 +23,11 @@ import com.reposilite.storage.StorageEntrySource
 import com.reposilite.storage.api.Location
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
-import net.onelitefeather.ingot.search.database.IndexRowStore
-import net.onelitefeather.ingot.search.database.SampledRow
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.backend.SampledRow
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
-import net.onelitefeather.ingot.search.outbox.ArtifactIndexWriter
-import net.onelitefeather.ingot.search.outbox.IndexAction
 import net.onelitefeather.ingot.search.outbox.OutboxOp
 import net.onelitefeather.ingot.search.outbox.OutboxStore
 import net.onelitefeather.ingot.search.runs.RepositoryEntries
@@ -96,8 +95,7 @@ data class VerifyOutcome(val run: RunSummary, val report: DriftReport?)
 internal class VerifyService(
     private val owner: String,
     private val runs: RunStore,
-    private val rows: IndexRowStore,
-    private val index: ArtifactIndexWriter,
+    private val backend: ArtifactSearchBackend,
     private val outbox: OutboxStore,
     private val repositories: RepositoryEntries,
     private val ledger: MirrorCacheLedger,
@@ -151,9 +149,9 @@ internal class VerifyService(
     private fun deleteRemovedRepositories(handle: RunHandle): Long {
         val configured = repositories.names().toSet()
         var deleted = 0L
-        for (name in rows.repositories().filter { it !in configured }) {
+        for (name in backend.repositories().filter { it !in configured }) {
             do {
-                val batch = rows.deleteRepository(name, DELETE_BATCH)
+                val batch = backend.deleteRepository(name, DELETE_BATCH)
                 deleted += batch
                 heartbeat(handle, RunCounters(deleted = deleted))
             } while (batch > 0)
@@ -162,9 +160,8 @@ internal class VerifyService(
     }
 
     private fun drawSample(): List<SampledRow> {
-        val range = rows.idRange() ?: return emptyList()
-        val start = random.nextLong(range.first, range.last + 1)
-        return rows.sample(start, sampleSize().coerceAtLeast(1))
+        val start = backend.sampleStart(random) ?: return emptyList()
+        return backend.sample(start, sampleSize().coerceAtLeast(1)).rows
     }
 
     private fun check(handle: RunHandle, sample: List<SampledRow>): Checked {
@@ -235,7 +232,7 @@ internal class VerifyService(
     private fun repair(report: DriftReport, checked: Checked) {
         val actions = report.missing.map { IndexAction.RemovePath(it.repository, it.path) } +
             checked.reoriginDirectories.map { (key, provenance) -> IndexAction.Reorigin(key.first, key.second, provenance) }
-        index.apply(actions)
+        backend.apply(actions)
         report.changed.forEach { outbox.enqueue(it.repository, it.path, OutboxOp.CHANGED_PATH) }
     }
 

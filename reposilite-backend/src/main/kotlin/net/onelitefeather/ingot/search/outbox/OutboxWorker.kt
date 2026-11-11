@@ -19,12 +19,14 @@ package net.onelitefeather.ingot.search.outbox
 import net.onelitefeather.ingot.search.ArtifactPathParser
 import net.onelitefeather.ingot.search.ArtifactPathResult
 import net.onelitefeather.ingot.search.IndexRow
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
-import net.onelitefeather.ingot.search.outbox.IndexAction.Reorigin
-import net.onelitefeather.ingot.search.outbox.IndexAction.RemovePath
-import net.onelitefeather.ingot.search.outbox.IndexAction.RemovePrefix
-import net.onelitefeather.ingot.search.outbox.IndexAction.Upsert
+import net.onelitefeather.ingot.search.backend.IndexAction.Reorigin
+import net.onelitefeather.ingot.search.backend.IndexAction.RemovePath
+import net.onelitefeather.ingot.search.backend.IndexAction.RemovePrefix
+import net.onelitefeather.ingot.search.backend.IndexAction.Upsert
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -43,7 +45,7 @@ data class TickResult(val claimed: Int, val completed: Int, val failed: Int)
 internal class OutboxWorker(
     private val owner: String,
     private val outbox: OutboxStore,
-    private val index: ArtifactIndexWriter,
+    private val index: ArtifactSearchBackend,
     private val storage: IndexStorage,
     private val origins: OriginLookup,
     private val state: SearchStateStore,

@@ -17,8 +17,7 @@
 package net.onelitefeather.ingot.search.database
 
 import net.onelitefeather.ingot.search.IndexRow
-import net.onelitefeather.ingot.search.outbox.ArtifactIndexWriter
-import net.onelitefeather.ingot.search.outbox.IndexAction
+import net.onelitefeather.ingot.search.backend.IndexAction
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -42,12 +41,12 @@ import java.util.Locale
  * Writes `search_artifact` (artifact search spec, 2.3 and 3.3). The upsert key is `(repository, path_hash)`, so replaying an
  * action leaves the same row. Ranges on the path use the half-open form of section 2.10, never LIKE.
  */
-internal class DatabaseArtifactIndex(private val database: Database) : ArtifactIndexWriter {
+internal class DatabaseArtifactIndex(private val database: Database) {
 
     private val dialect = SearchDialect.of(database.vendor)
     private val rows = SearchTables(dialect).artifact
 
-    override fun apply(actions: List<IndexAction>) {
+    fun apply(actions: List<IndexAction>) {
         if (actions.isEmpty()) return
         transaction(database) {
             actions.forEach { action ->
@@ -66,7 +65,7 @@ internal class DatabaseArtifactIndex(private val database: Database) : ArtifactI
         }
     }
 
-    override fun pathsAt(repository: String, prefix: String, after: String?, limit: Int): List<String> = transaction(database) {
+    fun pathsAt(repository: String, prefix: String, after: String?, limit: Int): List<String> = transaction(database) {
         rows.selectAll()
             .where { at(repository, prefix) and (after?.let { rows.path greater it } ?: Op.TRUE) }
             .orderBy(rows.path)

@@ -27,13 +27,12 @@ import net.onelitefeather.ingot.search.ArtifactPathResult
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.SearchColumn
-import net.onelitefeather.ingot.search.database.IndexRowStore
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
-import net.onelitefeather.ingot.search.database.StoredRow
-import net.onelitefeather.ingot.search.outbox.ArtifactIndexWriter
-import net.onelitefeather.ingot.search.outbox.IndexAction
 import net.onelitefeather.ingot.search.outbox.OutboxStore
 import net.onelitefeather.ingot.search.runs.IndexRunStatus
 import net.onelitefeather.ingot.search.runs.RepositoryEntries
@@ -68,8 +67,7 @@ import java.util.concurrent.atomic.AtomicLong
 internal class RebuildService(
     private val owner: String,
     private val runs: RunStore,
-    private val rows: IndexRowStore,
-    private val index: ArtifactIndexWriter,
+    private val backend: ArtifactSearchBackend,
     private val outbox: OutboxStore,
     private val repositories: RepositoryEntries,
     private val ledger: MirrorCacheLedger,
@@ -109,7 +107,7 @@ internal class RebuildService(
 
     /** The trigger of the rebuild the startup rules call for, or null (artifact search spec, 3.7). */
     fun startupTrigger(gapRebuild: Boolean): RunTrigger? = StartupRules.decide(
-        rowCount = rows.count(),
+        rowCount = backend.count(),
         lastFullRebuild = state.get(SearchStateKey.LAST_FULL_REBUILD)?.toLongOrNull()?.let { Instant.ofEpochMilli(it) },
         heartbeat = state.get(SearchStateKey.HEARTBEAT)?.toLongOrNull()?.let { Instant.ofEpochMilli(it) },
         gapRebuild = gapRebuild,
@@ -200,7 +198,11 @@ internal class RebuildService(
         return page
     }
 
-    /** Writes one page and commits the cursor, the counters and the lease with it. Rolls back when the run is no longer ours. */
+    /**
+     * Writes one page and commits the cursor, the counters and the lease with it. When the backend joins the database
+     * transaction, the rows and the cursor commit together, and a refused commit rolls the rows back too. Otherwise the rows
+     * reach the backend first and the cursor follows; a crash in between repeats the page, and its actions are idempotent.
+     */
     private fun writePage(handle: RunHandle, progress: Progress, name: String, page: StorageEntryPage, directories: Map<String, String?>) {
         val parsed = mutableListOf<Pair<ArtifactFileRecord, StorageEntry>>()
         var unparsed = 0L
@@ -216,23 +218,32 @@ internal class RebuildService(
 
         val now = clock.millis()
         val cursorPath = page.next ?: RunCursor.LISTED
-        var upserted = 0
-        runs.atomically {
-            val pending = outbox.pendingPaths(name, parsed.map { it.first.path })
-            val (held, writable) = parsed.partition { it.first.path in pending }
-            rows.touch(name, held.map { it.first.path }, now)
-
-            val existing = rows.existing(name, writable.map { it.first.path })
-            val actions = writable.map { (file, entry) -> IndexAction.Upsert(rowOf(file, entry, existing[file.path], directories, now)) }
-            index.apply(actions)
-            upserted = actions.size
-
+        val commit = { upserted: Int ->
             val counters = progress.counters + RunCounters(processed = page.entries.size.toLong(), upserted = upserted.toLong(), unparsed = unparsed, skippedTooLong = tooLong)
             if (!runs.progress(handle, name, cursorPath, counters, progress.lastError)) throw RunInterrupted()
-            progress.counters = counters
+            counters
         }
+        val counters = if (backend.joinsDatabaseTransaction) {
+            runs.atomically { commit(writeRows(name, parsed, directories, now)) }
+        } else {
+            val upserted = writeRows(name, parsed, directories, now)
+            runs.atomically { commit(upserted) }
+        }
+        progress.counters = counters
         progress.cursorRepository = name
         progress.cursorPath = cursorPath
+    }
+
+    /** Marks the held rows as seen, and applies the upsert of every other parsed file. Returns how many files were upserted. */
+    private fun writeRows(name: String, parsed: List<Pair<ArtifactFileRecord, StorageEntry>>, directories: Map<String, String?>, now: Long): Int {
+        val pending = outbox.pendingPaths(name, parsed.map { it.first.path })
+        val (held, writable) = parsed.partition { it.first.path in pending }
+        backend.touch(name, held.map { it.first.path }, now)
+
+        val existing = backend.existing(name, writable.map { it.first.path })
+        val actions = writable.map { (file, entry) -> IndexAction.Upsert(rowOf(file, entry, existing[file.path], directories, now)) }
+        backend.apply(actions)
+        return actions.size
     }
 
     private fun rowOf(
@@ -260,16 +271,16 @@ internal class RebuildService(
     /** Deletes the rows of [name] that no page of this run re-indexed: their files are gone. */
     private fun deleteStale(handle: RunHandle, start: RunSummary, progress: Progress, name: String) {
         do {
-            val deleted = rows.deleteStale(name, start.runStartedAt.toEpochMilli(), DELETE_BATCH)
+            val deleted = backend.deleteStale(name, start.runStartedAt.toEpochMilli(), DELETE_BATCH)
             progress.counters += RunCounters(deleted = deleted.toLong())
             commit(handle, progress, name, RunCursor.LISTED)
         } while (deleted > 0)
     }
 
     private fun deleteRemovedRepositories(handle: RunHandle, progress: Progress, configured: Set<String>) {
-        for (name in rows.repositories().filter { it !in configured }) {
+        for (name in backend.repositories().filter { it !in configured }) {
             do {
-                val deleted = rows.deleteRepository(name, DELETE_BATCH)
+                val deleted = backend.deleteRepository(name, DELETE_BATCH)
                 progress.counters += RunCounters(deleted = deleted.toLong())
                 commit(handle, progress, progress.cursorRepository, progress.cursorPath)
             } while (deleted > 0)

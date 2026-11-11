@@ -22,14 +22,14 @@ import net.onelitefeather.ingot.search.ArtifactPathParser
 import net.onelitefeather.ingot.search.ArtifactPathResult
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.Provenance
-import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
-import net.onelitefeather.ingot.search.database.IndexRowStore
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.database.DatabaseSearchBackend
 import net.onelitefeather.ingot.search.database.SearchDialect
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.database.SearchTables
 import net.onelitefeather.ingot.search.database.SqliteFileDatabase
-import net.onelitefeather.ingot.search.outbox.IndexAction
 import net.onelitefeather.ingot.search.outbox.OutboxStore
 import net.onelitefeather.ingot.search.runs.FakeRepositoryEntries
 import net.onelitefeather.ingot.search.runs.RunStore
@@ -50,15 +50,13 @@ internal class RebuildHarness(val database: Database, val clock: MutableClock, p
     val entries = FakeRepositoryEntries()
     val ledger = InMemoryMirrorCacheLedger()
     val outbox = OutboxStore(database, clock)
-    val rows = IndexRowStore(database)
     val runs = RunStore(database, clock)
     val state = SearchStateStore(database, clock)
 
-    fun service(owner: String = "instance-a"): RebuildService = RebuildService(
+    fun service(owner: String = "instance-a", backend: ArtifactSearchBackend = DatabaseSearchBackend(database, clock)): RebuildService = RebuildService(
         owner = owner,
         runs = runs,
-        rows = rows,
-        index = DatabaseArtifactIndex(database),
+        backend = backend,
         outbox = outbox,
         repositories = entries,
         ledger = ledger,
@@ -79,7 +77,7 @@ internal class RebuildHarness(val database: Database, val clock: MutableClock, p
     fun seedRow(repository: String, path: String, size: Long, indexedAt: Instant, sha1: String? = null) {
         val parsed = ArtifactPathParser.parse(repository, path) as ArtifactPathResult.Row
         val row = IndexRow(parsed.file, Provenance.HOSTED, size, Instant.parse("2026-10-01T00:00:00Z").toEpochMilli(), sha1, null, indexedAt.toEpochMilli())
-        DatabaseArtifactIndex(database).apply(listOf(IndexAction.Upsert(row)))
+        DatabaseSearchBackend(database, clock).apply(listOf(IndexAction.Upsert(row)))
     }
 
     companion object {
