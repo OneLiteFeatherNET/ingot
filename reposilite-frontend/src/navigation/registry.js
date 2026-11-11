@@ -72,6 +72,67 @@ import { ADMIN_NODES, ACCESS_NODES, INSTANCE_ADMIN_NODE, requiredNodes } from '.
 
 const MORE_KEY = 'more'
 
+/*
+ * The pages and settings sections that server plugins contribute, from GET /api/frontend/plugin-ui. The
+ * manifest is read after the session is known (src/store/pluginUi.js) and replaces the previous one. The
+ * static PAGES list above is never changed by it.
+ */
+const NO_CONTRIBUTIONS = { pages: [], sections: [], enabledPlugins: [] }
+const contributions = shallowRef(NO_CONTRIBUTIONS)
+
+// The groups a contributed page may name, in rail order. A page whose group is not one of these sits in Plugins.
+const CONTRIBUTED_GROUPS = ['Repository', 'Security', 'System', 'Support']
+const PLUGINS_HEADING = 'Plugins'
+
+// The Settings category a contributed section is placed in. System has no Settings category of its own.
+const SECTION_SETTINGS_GROUPS = { Repository: 'Repository', System: 'Instance' }
+
+const setContributions = (manifest) => {
+  contributions.value = manifest
+    ? { pages: manifest.pages ?? [], sections: manifest.sections ?? [], enabledPlugins: manifest.enabledPlugins ?? [] }
+    : NO_CONTRIBUTIONS
+}
+
+// The permission node that opens a contributed page: the node of its admin area, or the instance admin node for `*`.
+const pageNodeOf = (area) => (area === '*' ? INSTANCE_ADMIN_NODE : `ingot.admin.${area}`)
+
+const contributedKey = (page) => `${page.plugin}/${page.id}`
+
+const contributedHeading = (page) => (CONTRIBUTED_GROUPS.includes(page.group) ? page.group : PLUGINS_HEADING)
+
+// The contributed pages the visitor may open, each with its key and the heading of its group.
+const contributedPages = (can) => contributions.value.pages
+  .filter(page => can(pageNodeOf(page.area)))
+  .map(page => ({ ...page, key: contributedKey(page), heading: contributedHeading(page) }))
+
+const contributedPageByRoute = (plugin, id) =>
+  contributions.value.pages.find(page => page.plugin === plugin && page.id === id)
+
+// The node a contributed page needs, for the route guard. Undefined for a page the manifest does not name.
+const contributedPageNode = (plugin, id) => {
+  const page = contributedPageByRoute(plugin, id)
+  return page ? pageNodeOf(page.area) : undefined
+}
+
+// The rail groups of the contributed pages: [{ heading, pages }] in the order of CONTRIBUTED_GROUPS, Plugins last.
+const contributedRailGroups = (can) => [...CONTRIBUTED_GROUPS, PLUGINS_HEADING]
+  .map(heading => ({ heading, pages: contributedPages(can).filter(page => page.heading === heading) }))
+  .filter(group => group.pages.length > 0)
+
+// The location an address without a page id is replaced with: the first page the manifest names for the plugin.
+// Null when the address already names a page, or the plugin contributes none.
+const pluginPageRedirect = (plugin, page) => {
+  if (page !== undefined) return null
+  const first = contributions.value.pages.find(entry => entry.plugin === plugin)
+  return first ? { name: 'settings-plugin', params: { plugin, page: first.id } } : null
+}
+
+const sectionOf = (domain) => contributions.value.sections.find(section => section.domain === domain)
+
+const settingsLabelOf = (domain) => sectionOf(domain)?.label
+
+const enabledPlugins = () => contributions.value.enabledPlugins
+
 // The groups of the rail. The four entries of the rail form one unlabelled block, so the group has no heading.
 const AREAS = [{ area: 'rail', heading: undefined }]
 const BAR_SIZE = 4
@@ -185,6 +246,11 @@ const visibleChildren = (key, can) => childrenOf(key).filter(child => allowedBy(
  * caller (`domains` is the list the server gave, Access domains left out), and are listed only to a visitor with
  * the settings node, each in the group treeGroupOf names. `titleOf` gives their label.
  */
+// The links of the pages a plugin contributed under one heading of the tree, in the order the manifest lists them.
+const pluginLinksOf = (can, heading) => contributedPages(can)
+  .filter(page => page.heading === heading)
+  .map(page => ({ key: page.key, label: page.title, to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } } }))
+
 const adminGroups = (can, { domains = [], titleOf = (domain) => domain } = {}) => ADMIN_TREE
   .map(group => {
     const pages = group.entries
@@ -195,8 +261,9 @@ const adminGroups = (can, { domains = [], titleOf = (domain) => domain } = {}) =
         .filter(domain => treeGroupOf(domain) === group.heading)
         .map(domain => ({ key: domain, label: titleOf(domain), to: { name: 'settings', params: { domain } } }))
       : []
-    return { heading: group.heading, links: [...pages, ...settingsLinks] }
+    return { heading: group.heading, links: [...pages, ...settingsLinks, ...pluginLinksOf(can, group.heading)] }
   })
+  .concat([{ heading: PLUGINS_HEADING, links: pluginLinksOf(can, PLUGINS_HEADING) }])
   .filter(group => group.links.length > 0)
 
 /*
@@ -225,6 +292,13 @@ const treeGroupOf = (domain) => {
   return REPOSITORY_DOMAINS.includes(domain) ? 'Repository' : 'System'
 }
 
+const SETTINGS_GROUPS = [
+  { heading: 'Repository', domains: ['maven', 'javadoc', 'cleanup'] },
+  { heading: 'Instance', domains: ['web', 'frontend'] },
+  { heading: 'Data', domains: ['statistics', 'audit', 'search'] },
+  { heading: 'Plugins', domains: [] }
+]
+
 const SETTINGS_FALLBACK_GROUP = 'Plugins'
 
 // A domain a plugin placed with a section takes that section's category; the other domains keep the mapping above.
@@ -234,11 +308,6 @@ const settingsGroupOf = (domain) => {
   return SETTINGS_GROUPS.find(group => group.domains.includes(domain))?.heading ?? SETTINGS_FALLBACK_GROUP
 }
 
-// A domain list in groups: [{ heading, domains }], in the order of SETTINGS_GROUPS, the domains in the order
-// they were given. A group without a domain is left out.
-const groupedSettingsDomains = (domains) => SETTINGS_GROUPS
-  .map(group => ({ heading: group.heading, domains: domains.filter(domain => settingsGroupOf(domain) === group.heading) }))
-  .filter(group => group.domains.length > 0)
 
 // The settings domain ids that a reserved page name under /settings would shadow.
 const reservedDomainIds = (domains) => domains.filter(domain => RESERVED_SETTINGS_PAGES.includes(domain))
