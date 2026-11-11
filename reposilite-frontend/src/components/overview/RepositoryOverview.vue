@@ -218,6 +218,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
           :model-value="text"
           label="Filter repositories"
           variant="outlined"
+          type="search"
           autocomplete="off"
           supporting-text="Search by id, description or tag. Use tag:name for one tag."
           @update:model-value="setText"

@@ -407,6 +407,12 @@ describe('RepositoryOverview Material 3 structure', () => {
     expect(wrapper.find('.md-embedded-input').exists(), 'the pill of the search bar is gone').toBe(false)
   })
 
+  it('makes the filter a search field, so assistive technology announces it as one', async () => {
+    await mountAt('/')
+
+    expect(search().attributes('type'), 'the input has the searchbox role').toBe('search')
+  })
+
   it('does not make the filter a search landmark', async () => {
     await mountAt('/')
 

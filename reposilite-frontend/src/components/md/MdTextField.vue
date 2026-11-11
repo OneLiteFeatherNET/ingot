@@ -141,6 +141,12 @@ const DATE_INPUT = '[color-scheme:light] dark:[color-scheme:dark] accent-primary
 
 const dateClass = computed(() => (props.type === 'date' ? DATE_INPUT : ''))
 
+// A search field gets the browser's own clear button, which would sit next to the field's clear action.
+// The field draws that action itself, so the browser's button is switched off.
+const SEARCH_INPUT = '[&::-webkit-search-cancel-button]:appearance-none'
+
+const searchClass = computed(() => (props.type === 'search' ? SEARCH_INPUT : ''))
+
 const labelClass = computed(() => [
   'pointer-events-none absolute top-1/2 -translate-y-1/2 md-body-large transition-all duration-(--md-sys-motion-duration-short4) ease-md-standard',
   FLOAT[variantKey.value],
@@ -180,6 +186,7 @@ const helperClass = computed(() => {
           'min-h-6 min-w-6',
           fieldClass,
           dateClass,
+          searchClass,
           $slots['leading-icon'] ? 'pl-12' : 'pl-4',
           $slots['trailing-icon'] ? 'pr-12' : 'pr-4'
         ]"
