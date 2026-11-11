@@ -62,7 +62,7 @@ Rules for the "Who can open it" column:
 
 ### Administration tree
 
-**Administration** groups its pages under four headings: **Repository**, **Security**, **System** and **Support**. Every Administration page shows the same side navigation, and the current page carries `aria-current="page"`. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
+**Administration** groups its pages under four headings: **Repository**, **Security**, **System** and **Support**. Every Administration page has the heading **Administration**, with a line under it that describes the page, and shows the same side navigation. The settings domains the visitor may open are part of that navigation on every page. The current page carries `aria-current="page"`, and the last crumb of the breadcrumb names it. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
 
 | Group | Pages and addresses |
 | --- | --- |
