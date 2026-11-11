@@ -24,6 +24,9 @@ import { SCRIM_STYLE } from './dialog'
 /*
  * Confirms the removal of one entry. The delete action stays disabled until the id is typed
  * exactly, with the same case and no stray spaces, so an accidental Enter cannot remove an entry.
+ * `references` names the groups that list the entry as a member; they are shown before the confirm
+ * button. Initial focus is on Cancel, and a dialog closed without a confirmation returns the focus to
+ * the control that opened it.
  */
 const props = defineProps({
   modelValue: {
@@ -33,6 +36,10 @@ const props = defineProps({
   id: {
     type: String,
     required: true
+  },
+  references: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -40,15 +47,35 @@ const emit = defineEmits(['update:modelValue', 'confirm'])
 
 const typed = ref('')
 const matches = computed(() => typed.value === props.id)
+const cancel = ref(null)
+let opener = null
+let confirmed = false
 
 watch(() => props.modelValue, (open) => {
-  if (open) typed.value = ''
+  if (open) {
+    typed.value = ''
+    opener = document.activeElement
+    confirmed = false
+    return
+  }
+  if (!confirmed && opener?.isConnected) opener.focus()
 })
+
+// Cancel takes the focus as soon as it is drawn, and the focus trap of the modal starts on it too, so the modal's own
+// first focus (the id field) does not take it away.
+watch(cancel, (button) => {
+  if (button && props.modelValue) button.$el.focus()
+})
+const focusTrap = {
+  allowOutsideClick: true,
+  initialFocus: () => cancel.value?.$el
+}
 
 const close = () => emit('update:modelValue', false)
 
 const confirm = () => {
   if (!matches.value) return
+  confirmed = true
   emit('confirm')
   close()
 }
@@ -60,6 +87,7 @@ const confirm = () => {
     teleport-to="body"
     :overlay-style="SCRIM_STYLE"
     class="flex min-h-full items-center justify-center p-4"
+    :focus-trap="focusTrap"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <form
@@ -84,6 +112,23 @@ const confirm = () => {
       >
         It is removed from the configuration when you save. Type its id to confirm.
       </p>
+      <div
+        v-if="references.length > 0"
+        data-test="delete-references"
+        class="mt-4 flex flex-col gap-1"
+      >
+        <p class="md-body-medium text-warning">
+          A group lists this repository as a member. Removing it leaves the group without that member.
+        </p>
+        <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium text-on-surface">
+          <li
+            v-for="group in references"
+            :key="group"
+          >
+            {{ group }}
+          </li>
+        </ul>
+      </div>
       <div class="mt-6">
         <MdTextField
           id="delete-entry-confirm-input"
@@ -98,6 +143,7 @@ const confirm = () => {
       <div class="mt-6 flex flex-wrap justify-end gap-2">
         <MdButton
           id="delete-entry-cancel"
+          ref="cancel"
           variant="text"
           type="button"
           @click="close"

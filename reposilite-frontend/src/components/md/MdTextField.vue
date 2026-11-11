@@ -177,6 +177,7 @@ const helperClass = computed(() => {
         :id="inputId"
         :class="[
           'peer',
+          'min-h-6 min-w-6',
           fieldClass,
           dateClass,
           $slots['leading-icon'] ? 'pl-12' : 'pl-4',

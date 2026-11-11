@@ -19,6 +19,7 @@ import { defineComponent, h, ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, useRoute, useRouter } from 'vue-router'
 import { createConfigurationStore, configurationStoreKey } from '../../store/configuration'
+import { stubRoutes } from './fixtures/routes'
 import SettingsView from './SettingsView.vue'
 
 // Session and toast are replaced, so that the store and the view touch neither the network nor the DOM.
@@ -62,7 +63,7 @@ const INGOT_SCHEMA = {
       items: {
         type: 'object',
         title: 'Mirror',
-        properties: { id: { type: 'string', title: 'Id' } },
+        properties: { id: { type: 'string', title: 'Id' }, visibility: { type: 'string', enum: ['PUBLIC', 'PRIVATE'], title: 'Visibility' } },
         additionalProperties: false
       }
     }
@@ -79,32 +80,32 @@ const SERVER = {
   ingot: { name: 'ingot', mirrors: [{ id: 'central' }] }
 }
 
+// The maven repositories are no longer listed by the generic editor, so the tests that exercise the generic list,
+// the entry address and the action bar use the mirrors of ingot with the two entries those tests name.
+const MIRRORS_SERVER = {
+  ...SERVER,
+  ingot: { name: 'ingot', mirrors: [{ id: 'releases', visibility: 'PUBLIC' }, { id: 'snapshots', visibility: 'PRIVATE' }] }
+}
+
 const SCHEMAS = { maven: MAVEN_SCHEMA, ingot: INGOT_SCHEMA }
 
-const fakeClient = () => ({
-  server: SERVER,
+const fakeClient = (server = SERVER) => ({
+  server,
   settings: {
-    domains: async () => ({ data: Object.keys(SERVER) }),
+    domains: async () => ({ data: Object.keys(server) }),
     schema: async (domain) => ({ data: SCHEMAS[domain] }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(SERVER[domain])) }),
+    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
     update: async () => ({ data: {} })
   }
 })
 
 const namedRouter = () => createRouter({
   history: createMemoryHistory(),
-  routes: [
-    { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-    { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
-    { name: 'access', path: '/access', component: { render: () => null } },
-    { name: 'access-sso', path: '/access/sso', component: { render: () => null } },
-    { name: 'access-ldap', path: '/access/ldap', component: { render: () => null } },
-    { name: 'home', path: '/', component: { render: () => null } }
-  ]
+  routes: stubRoutes()
 })
 
-const loadedStore = async () => {
-  const store = createConfigurationStore(ref(fakeClient()))
+const loadedStore = async (server) => {
+  const store = createConfigurationStore(ref(fakeClient(server)))
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   return store
 }
@@ -137,7 +138,7 @@ const typeIn = async (selector, value) => {
   input.dispatchEvent(new Event('input'))
   await flushPromises()
 }
-const repositoryIds = (store) => store.configurations.value.maven.repositories.map(entry => entry.id)
+const mirrorIds = (store) => store.configurations.value.ingot.mirrors.map(entry => entry.id)
 
 afterEach(() => {
   wrapper?.unmount()
@@ -167,7 +168,10 @@ describe('SettingsView page', () => {
     store.schemas.value.login = { title: 'Login' }
     await mountSettings({ store, props: { domain: 'maven' } })
 
-    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    // The Administration tree replaces the tabs of the domains (administration-navigation spec).
+    const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
+    expect(links, 'Maven and Ingot are in the tree').toEqual(expect.arrayContaining(['Maven', 'Ingot']))
+    expect(links, 'Login is edited under Access, not in the tree').not.toContain('Login')
   })
 
   it('shows the login domain as a card with links to its pages under Access when it is opened', async () => {
@@ -183,10 +187,11 @@ describe('SettingsView page', () => {
     expect(hrefs).toEqual(['/access/sso', '/access/ldap'])
   })
 
-  it('shows one secondary tab per domain when there is more than one', async () => {
+  it('shows one link per domain when there is more than one, in the Administration tree', async () => {
     await mountSettings({ props: { domain: 'maven' } })
 
-    expect(wrapper.findAll('[aria-label="Settings sections"] a').map(tab => tab.text())).toEqual(['Maven', 'Ingot'])
+    const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
+    expect(links, 'the domains are links of the tree').toEqual(expect.arrayContaining(['Maven', 'Ingot']))
   })
 
   it('puts the factory reset in a danger zone at the end of the page', async () => {
@@ -195,7 +200,8 @@ describe('SettingsView page', () => {
     const zone = wrapper.get('section[aria-labelledby="settings-danger-title"]')
     expect(zone.text()).toContain('Danger zone')
     expect(zone.findAll('button').map(button => button.text())).toContain('Factory reset')
-    const collection = wrapper.get('section[aria-labelledby="repositories-title"]')
+    // The maven domain page links to the Repositories page instead of listing the repositories (spec: Table columns).
+    const collection = wrapper.get('section[aria-labelledby="maven-repositories-link-title"]')
     expect(collection.element.compareDocumentPosition(zone.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
@@ -208,41 +214,41 @@ describe('SettingsView page', () => {
 
 describe('SettingsView collections', () => {
   it('lists the entries of a collection under the collection title', async () => {
-    await mountSettings({ props: { domain: 'maven' } })
+    await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot' } })
 
-    expect(wrapper.get('[aria-labelledby="repositories-title"] h2').text()).toBe('Repositories')
+    expect(wrapper.get('[aria-labelledby="mirrors-title"] h2').text()).toBe('Mirrors')
     expect(itemIds()).toEqual(['releases', 'snapshots'])
   })
 
   it('pushes the entry address when an entry is selected', async () => {
-    const { router } = await mountSettings({ props: { domain: 'maven' } })
+    const { router } = await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot' } })
 
     await itemButtons()[1].trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('settings-entry')
-    expect(router.currentRoute.value.params).toEqual({ domain: 'maven', collection: 'repositories', entry: 'snapshots' })
+    expect(router.currentRoute.value.params).toEqual({ domain: 'ingot', collection: 'mirrors', entry: 'snapshots' })
   })
 
   it('selects the entry named by the address', async () => {
-    await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'snapshots' } })
+    await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'snapshots' } })
 
     expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
     expect(itemButtons()[1].attributes('aria-current')).toBe('true')
   })
 
   it('says the repository was not found when the address names no entry, and links back to the list', async () => {
-    const { router } = await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'ghost' } })
+    const { router } = await mountSettings({ props: { domain: 'ingot', collection: 'mirrors', entry: 'ghost' } })
 
     expect(wrapper.text()).toContain('Repository not found')
-    const back = wrapper.findAll('a').find(link => link.text() === 'Back to repositories')
-    expect(back?.attributes('href'), 'the not-found link goes to the settings route of the domain').toBe('/settings/maven')
+    const back = wrapper.findAll('a').find(link => link.text() === 'Back to mirrors')
+    expect(back?.attributes('href'), 'the not-found link goes to the settings route of the domain').toBe('/settings/ingot')
 
     await back.trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('settings')
-    expect(router.currentRoute.value.params.domain).toBe('maven')
+    expect(router.currentRoute.value.params.domain).toBe('ingot')
   })
 
   it('adds a new entry, selects it and replaces the address with the new entry', async () => {
@@ -261,8 +267,8 @@ describe('SettingsView collections', () => {
   })
 
   it('removes an entry only after its id is typed exactly, then returns to the list', async () => {
-    const { router, store } = await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'snapshots' } })
-    await pressButton('Delete repository')
+    const { router, store } = await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'snapshots' } })
+    await pressButton('Delete mirror')
 
     await typeIn('#delete-entry-confirm-input', 'snapshot')
     expect(document.getElementById('delete-entry-confirm').hasAttribute('disabled')).toBe(true)
@@ -270,17 +276,17 @@ describe('SettingsView collections', () => {
     document.getElementById('delete-entry-confirm').click()
     await flushPromises()
 
-    expect(repositoryIds(store)).toEqual(['releases'])
+    expect(mirrorIds(store)).toEqual(['releases'])
     expect(router.currentRoute.value.name).toBe('settings')
   })
 })
 
-// The repository form has the type select first; the visibility select is the one that offers PRIVATE.
+// The entry form has the type select first; the visibility select is the one that offers PRIVATE.
 const visibilitySelect = () => wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())
 
 describe('SettingsView unsaved changes', () => {
   it('counts an edit in the action bar and drops it when the edit is discarded', async () => {
-    const { store } = await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'releases' } })
+    const { store } = await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'releases' } })
 
     await visibilitySelect().setValue('PRIVATE')
     await flushPromises()
@@ -290,17 +296,17 @@ describe('SettingsView unsaved changes', () => {
 
     await pressButton('Discard')
 
-    expect(store.configurations.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect(store.configurations.value.ingot.mirrors[0].visibility).toBe('PUBLIC')
     expect(wrapper.text()).not.toContain('unsaved change')
   })
 
   it('keeps the edit in the store when the view is closed, so the bar comes back with the draft', async () => {
-    const { store } = await mountSettings({ props: { domain: 'maven', collection: 'repositories', entry: 'releases' } })
+    const { store } = await mountSettings({ store: await loadedStore(MIRRORS_SERVER), props: { domain: 'ingot', collection: 'mirrors', entry: 'releases' } })
     await visibilitySelect().setValue('PRIVATE')
     wrapper.unmount()
     wrapper = undefined
 
-    await mountSettings({ store, props: { domain: 'maven', collection: 'repositories', entry: 'releases' } })
+    await mountSettings({ store, props: { domain: 'ingot', collection: 'mirrors', entry: 'releases' } })
 
     expect(wrapper.text()).toContain('1 unsaved change')
   })
@@ -327,13 +333,13 @@ describe('SettingsView driven by the router', () => {
   })
 
   // The paths are visited in order, so the history holds them the way a user would have made them.
-  const mountAt = async (paths) => {
+  const mountAt = async (paths, server) => {
     const router = namedRouter()
     for (const path of paths) {
       await router.push(path)
     }
     await router.isReady()
-    const store = await loadedStore()
+    const store = await loadedStore(server)
     wrapper = mount(RouteHost, {
       global: {
         plugins: [router],
@@ -350,23 +356,23 @@ describe('SettingsView driven by the router', () => {
   }
 
   it('selects the entry the address names when the page is opened', async () => {
-    await mountAt(['/settings/maven/repositories/snapshots'])
+    await mountAt(['/settings/ingot/mirrors/snapshots'], MIRRORS_SERVER)
 
     expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
   })
 
   it('pushes the address of an entry that is selected', async () => {
-    const { router } = await mountAt(['/', '/settings/maven'])
+    const { router } = await mountAt(['/', '/settings/ingot'], MIRRORS_SERVER)
 
     await itemButtons()[0].trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven/repositories/releases')
+    expect(router.currentRoute.value.fullPath).toBe('/settings/ingot/mirrors/releases')
     expect(wrapper.get('[data-test="entry-title"]').text()).toBe('releases')
   })
 
   it('returns to the previous selection with the back button', async () => {
-    const { router } = await mountAt(['/', '/settings/maven/repositories/releases'])
+    const { router } = await mountAt(['/', '/settings/ingot/mirrors/releases'], MIRRORS_SERVER)
     await itemButtons()[1].trigger('click')
     await flushPromises()
     expect(wrapper.get('[data-test="entry-title"]').text()).toBe('snapshots')
@@ -374,7 +380,7 @@ describe('SettingsView driven by the router', () => {
     router.back()
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven/repositories/releases')
+    expect(router.currentRoute.value.fullPath).toBe('/settings/ingot/mirrors/releases')
     expect(wrapper.get('[data-test="entry-title"]').text()).toBe('releases')
   })
 
@@ -402,7 +408,7 @@ describe('SettingsView driven by the router', () => {
 
   it('writes a domain picked in the tabs into the address without adding a history entry', async () => {
     const { router } = await mountAt(['/', '/settings/maven'])
-    await wrapper.findAll('[aria-label="Settings sections"] a').find(tab => tab.text() === 'Ingot').trigger('click')
+    await wrapper.findAll('[aria-label="Administration"] a').find(tab => tab.text() === 'Ingot').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
@@ -415,27 +421,27 @@ describe('SettingsView driven by the router', () => {
     const { router } = await mountAt(['/', '/settings/ghost'])
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
-    expect(itemIds(), 'the first domain is the one on screen').toEqual(['releases', 'snapshots'])
+    expect(wrapper.find('#maven-repositories-link-title').exists(), 'the first domain is the one on screen').toBe(true)
   })
 
   it('leads the not-found pane back to the domain list through the router', async () => {
-    const { router } = await mountAt(['/', '/settings/maven/repositories/ghost'])
+    const { router } = await mountAt(['/', '/settings/ingot/mirrors/ghost'])
     expect(wrapper.text()).toContain('Repository not found')
 
-    await wrapper.findAll('a').find(link => link.text() === 'Back to repositories').trigger('click')
+    await wrapper.findAll('a').find(link => link.text() === 'Back to mirrors').trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
+    expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
   })
 
   it('returns to the domain list when the selected entry is deleted', async () => {
-    const { router, store } = await mountAt(['/', '/settings/maven/repositories/snapshots'])
-    await clickButtonText('Delete repository')
+    const { router, store } = await mountAt(['/', '/settings/ingot/mirrors/snapshots'], MIRRORS_SERVER)
+    await clickButtonText('Delete mirror')
     await typeIn('#delete-entry-confirm-input', 'snapshots')
     document.getElementById('delete-entry-confirm').click()
     await flushPromises()
 
-    expect(repositoryIds(store)).toEqual(['releases'])
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
+    expect(mirrorIds(store)).toEqual(['releases'])
+    expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
   })
 })

@@ -17,6 +17,7 @@
 <script setup>
 import { computed, defineAsyncComponent, ref, watch, watchEffect, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useMediaQuery } from '@vueuse/core'
 import { useSession } from '../store/session'
 import { openLogin } from '../store/login'
 import { useLoginErrorNotice } from '../components/header/loginErrors'
@@ -28,6 +29,7 @@ import MdButton from '../components/md/MdButton.vue'
 import MdNavigationBar from '../components/md/MdNavigationBar.vue'
 import MdNavigationRail from '../components/md/MdNavigationRail.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
+import SideNavLayout from '../components/layout/SideNavLayout.vue'
 import OverviewIcon from '../components/icons/OverviewIcon.vue'
 import SearchIcon from '../components/icons/SearchIcon.vue'
 import DashboardIcon from '../components/icons/DashboardIcon.vue'
@@ -44,7 +46,7 @@ import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect } from '../navigation/registry'
+import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
 import { qualifierOf, browseLocation } from '../router/paths'
@@ -86,6 +88,11 @@ defineProps({
   qualifier: property(Object, true)
 })
 
+// The pages of the Administration tree that draw the tree as a side navigation. Access draws its own in AccessView.
+const ADMIN_SIDE_PAGES = ['audit', 'console', 'maintenance', 'analytics']
+// The pages that the Administration entry of the rail and the bar stands for.
+const ADMINISTRATION_SECTIONS = ['settings', 'access', ...ADMIN_SIDE_PAGES]
+
 const route = useRoute()
 const router = useRouter()
 const { isManager, can, isLogged, mustChangePassword } = useSession()
@@ -98,6 +105,8 @@ useLoginErrorNotice()
  * The views report changes back through the router, so the address always says what is shown.
  */
 const section = computed(() => route.meta.section ?? null)
+// The entry of the rail and the bar that is current: every Administration page is under Administration.
+const navigationSection = computed(() => (ADMINISTRATION_SECTIONS.includes(section.value) ? 'settings' : section.value))
 // A contributed page is judged by the area it names, not by the settings meta of its route. A page the manifest
 // does not name has no node, so it is not allowed and the page below shows it as not found.
 const pluginPageNode = computed(() => (route.name === 'settings-plugin'
@@ -160,10 +169,12 @@ onBeforeUnmount(() => {
 
 // Overview keeps the repository path being browsed, so moving between sections and back does
 // not lose the place in the browser.
-const locationOf = (key) =>
-  key === 'overview'
-    ? browseLocation(browsedPath.value)
-    : { name: pageByKey(key).route }
+// Administration opens the hub, or the one Administration page a visitor may open (see administrationLocation).
+const locationOf = (key) => {
+  if (key === 'overview') return browseLocation(browsedPath.value)
+  if (key === 'settings') return administrationLocation(can)
+  return { name: pageByKey(key).route }
+}
 
 // The bar and the rail share these destinations. Each one is a real link, so it can be
 // opened in a new tab and the browser's history works.
@@ -205,7 +216,7 @@ const barItems = computed(() => [
   ...layout.value.bar.map(destinationOf),
   ...(moreKeys.value.length > 0 ? [{ key: MORE_KEY, label: 'More' }] : []),
 ])
-const barSection = computed(() => (moreKeys.value.includes(section.value) ? MORE_KEY : section.value))
+const barSection = computed(() => (moreKeys.value.includes(navigationSection.value) ? MORE_KEY : navigationSection.value))
 const moreOpen = ref(false)
 
 const selectBarItem = (key) => {
@@ -246,6 +257,13 @@ const replaceQuery = (key, value) => {
   }
   return router.replace({ name: route.name, params: route.params, query: next })
 }
+
+// The Administration pages other than Access and Settings draw the Administration tree beside the page. Below 600px
+// the tree is an index instead of a column; see SideNavLayout. The settings domains are known only inside Settings,
+// so the tree here lists the static pages.
+const narrow = useMediaQuery('(max-width: 599px)')
+const adminSideNav = computed(() => (ADMIN_SIDE_PAGES.includes(section.value) ? sideNavOf(section.value) : null))
+const adminTree = computed(() => adminGroups(can, { domains: [] }))
 
 // Access: the tab on screen (users, machines, teams, sso, ldap, security or check; none at /access, which is the index on a narrow screen) and the name of the principal or team that
 // is open. The view moves between them through the router itself. The registry maps each route to its tab.
@@ -384,25 +402,35 @@ const activeLabel = computed(() => pageLabel(section.value))
         <SearchView v-else-if="section === 'search'" />
         <AccountView v-else-if="section === 'account'" />
         <DashboardView v-else-if="section === 'dashboard'" />
-        <AnalyticsView v-else-if="section === 'analytics'" />
         <AccessView
           v-else-if="section === 'access'"
           :tab="accessTab"
           :name="accessName"
         />
-        <ConsoleView
-          v-else-if="section === 'console'"
-          :level="consoleLevel"
-          :search="consoleSearch"
-          @update:level="setConsoleLevel"
-          @update:search="setConsoleSearch"
-        />
-        <MaintenanceView v-else-if="section === 'maintenance'" />
-        <AuditView
-          v-else-if="section === 'audit'"
-          :query="route.query"
-          @update:query="setAuditQuery"
-        />
+        <SideNavLayout
+          v-else-if="adminSideNav"
+          :label="adminSideNav.label"
+          :section-label="adminSideNav.sectionLabel"
+          :groups="adminTree"
+          :current="section"
+          :index-to="adminSideNav.indexTo"
+          :narrow="narrow"
+        >
+          <AnalyticsView v-if="section === 'analytics'" />
+          <ConsoleView
+            v-else-if="section === 'console'"
+            :level="consoleLevel"
+            :search="consoleSearch"
+            @update:level="setConsoleLevel"
+            @update:search="setConsoleSearch"
+          />
+          <MaintenanceView v-else-if="section === 'maintenance'" />
+          <AuditView
+            v-else-if="section === 'audit'"
+            :query="route.query"
+            @update:query="setAuditQuery"
+          />
+        </SideNavLayout>
         <SettingsView
           v-else-if="section === 'settings'"
           :selected-tab="activeLabel"
@@ -484,7 +512,7 @@ const activeLabel = computed(() => pageLabel(section.value))
         <MdNavigationRail
           class="h-full"
           :items="railItems"
-          :model-value="section"
+          :model-value="navigationSection"
           @update:model-value="selectSection"
         >
           <template #icon="{ item, active }">

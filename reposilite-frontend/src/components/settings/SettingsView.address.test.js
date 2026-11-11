@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 // Loaded while the file is collected, not inside the first test: a fresh worker evaluates the
@@ -44,10 +45,7 @@ const mountSettings = async (props) => {
   const { createMemoryHistory, createRouter } = await import('vue-router')
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-      { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
-    ]
+    routes: stubRoutes()
   })
   return mount(SettingsView, {
     props: { selectedTab: 'Settings', ...props },

@@ -76,6 +76,9 @@ const ROUTES = [
   // A page a server plugin contributed. Placed before the settings entry, which would take the plugin as a collection.
   // Its permission is the area of the page, which the page checks (see IndexPage), so the route needs no node here.
   { name: 'settings-plugin', path: '/settings/plugins/:plugin/:page?', meta: { section: 'settings', manager: true } },
+  // The repositories are a page of their own under /settings. Placed before the generic settings route, which would take `repositories` as a domain.
+  { name: 'settings-repositories', path: '/settings/repositories', meta: routeMeta('settings') },
+  { name: 'settings-repository', path: '/settings/repositories/:id', meta: routeMeta('settings') },
   { name: 'settings', path: '/settings/:domain?', meta: routeMeta('settings') },
   {
     name: 'settings-entry',

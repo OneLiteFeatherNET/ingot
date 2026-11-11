@@ -22,8 +22,7 @@ import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { ADMIN_NODES } from '../../store/nodeAccess'
-import { contributedRailGroups, groupedSettingsDomains, settingsLabelOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, settingsLabelOf, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import SideNavLayout from '../layout/SideNavLayout.vue'
@@ -33,7 +32,8 @@ import { hubGroups } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
-import RepositoryWizard from './RepositoryWizard.vue'
+import RepositoriesView from '../repositories/RepositoriesView.vue'
+import RepositoryDetail from '../repositories/RepositoryDetail.vue'
 import { collectionsOf, entryLayout, idText, validateNewId } from './collections'
 import { barClearance } from './barClearance'
 import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
@@ -115,33 +115,43 @@ const activeDomain = computed(() => {
 // Below 600px the side navigation is not drawn beside the domain; see SideNavLayout.
 const narrow = useMediaQuery('(max-width: 599px)')
 
-// The domains of the side navigation, in the category groups of the registry. With one domain there is
-// nothing to switch between, so no navigation is drawn.
+/*
+ * The side navigation is the Administration tree, the same one every Administration page shows. Its settings domains
+ * are the tabs of this page, and the repositories page is one of its links.
+ */
+const session = useSession()
+const can = (node) => (typeof session.can === 'function' ? session.can(node) : true)
 const sideNav = sideNavOf('settings')
-// The pages a plugin contributed are listed after the domains, in their groups, so they stay reachable where the bar
-// does not hold them. A domain a plugin labelled shows that label.
-const pluginPageGroups = computed(() => contributedRailGroups(session.can).map(group => ({
-  heading: group.heading,
-  links: group.pages.map(page => ({ key: page.key, label: page.title, to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } } }))
-})))
-const domainGroups = computed(() => (tabDomains.value.length > 1
-  ? [
-    ...groupedSettingsDomains(tabDomains.value).map(group => ({
-      heading: group.heading,
-      links: group.domains.map(domain => ({ key: domain, label: settingsLabelOf(domain) ?? store.titleOf(domain), to: { name: 'settings', params: { domain } } }))
-    })),
-    ...pluginPageGroups.value,
-  ]
-  : []))
+const navGroups = computed(() => adminGroups(can, {
+  domains: tabDomains.value,
+  titleOf: (domain) => settingsLabelOf(domain) ?? store.titleOf(domain),
+}))
+// The Repositories page and one repository are their own pages, not a domain: they have no domain in the address.
+const repositoriesPage = computed(() => route.name === 'settings-repositories')
+const repositoryPage = computed(() => route.name === 'settings-repository')
+const repositoriesRoute = computed(() => repositoriesPage.value || repositoryPage.value)
+
+// The schema fields of a repository, which decide the columns and the controls the Repositories page shows.
+const repositoryFields = computed(() => Object.keys(store.schemas.value.maven?.properties?.repositories?.items?.properties ?? {}))
 
 // With no domain in the address and several to choose from, the page is the hub. With one domain the
-// address is replaced with it, as the watcher below reports.
-const hubShown = computed(() => !props.domain && tabDomains.value.length > 1)
+// address is replaced with it, as the watcher below reports. The repositories pages have no domain at all.
+const hubShown = computed(() => !props.domain && tabDomains.value.length > 1 && !repositoriesRoute.value)
 
 const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
+
+// The repositories of the maven domain are listed on their own page, so the domain page leaves them out.
+const movedToRepositories = (domain, list) => domain === 'maven' && list.key === 'repositories'
 const activeCollections = computed(() => (activeDomain.value && !isAccessDomain(activeDomain.value)
-  ? collectionsFor(activeDomain.value)
+  ? collectionsFor(activeDomain.value).filter(list => !movedToRepositories(activeDomain.value, list))
   : []))
+
+// The maven domain page links to the Repositories page, and says how many there are.
+const mavenDomain = computed(() => activeDomain.value === 'maven' && !repositoriesRoute.value)
+const repositoriesHref = computed(() => router.resolve({ name: 'settings-repositories' }).href)
+const repositoryCount = computed(() => store.configurations.value.maven?.repositories?.length ?? 0)
+const repositoryCountText = computed(() => (repositoryCount.value === 1 ? '1 repository' : `${repositoryCount.value} repositories`))
+const openRepositories = () => router.push({ name: 'settings-repositories' })
 
 const entriesOf = (domain, collection) => configurations.value[domain]?.[collection.key] ?? []
 
@@ -177,7 +187,7 @@ watch(
 // address names none or one the server does not have, or once the list has arrived. The page answers
 // with a replace, after which the two agree and nothing is reported again, so there is no loop.
 watch([activeDomain, () => props.domain], ([domain, requested]) => {
-  if (domain && domain !== requested && !hubShown.value) emit('update:domain', domain)
+  if (domain && domain !== requested && !hubShown.value && !repositoriesRoute.value) emit('update:domain', domain)
 }, { immediate: true })
 
 const selectEntry = (collection, id) => {
@@ -187,25 +197,6 @@ const selectEntry = (collection, id) => {
 const backToList = () => {
   router.push({ name: 'settings', params: { domain: activeDomain.value } })
 }
-
-/*
- * The maven repositories are created through the guided wizard instead of the id dialog. The
- * wizard is opened by "New repository", or by a link with ?new=repository, such as the checklist
- * on the dashboard. That link is consumed once the wizard opens, so closing it does not reopen it.
- */
-const wizardOpen = ref(false)
-const openRepositoryWizard = () => { wizardOpen.value = true }
-const isRepositoryList = (collection) => activeDomain.value === 'maven' && collection.key === 'repositories'
-
-const guidedCreateFor = (collection) => (isRepositoryList(collection) ? openRepositoryWizard : null)
-
-watch([() => route.query.new, activeDomain], ([requested, domain]) => {
-  if (requested !== 'repository' || domain !== 'maven') return
-  const query = { ...route.query }
-  delete query.new
-  router.replace({ name: route.name, params: route.params, query })
-  openRepositoryWizard()
-}, { immediate: true })
 
 const createEntry = (collection, id) => {
   const domain = activeDomain.value
@@ -322,15 +313,13 @@ const openConflictReview = async () => {
  * node, so a visitor either may edit every domain or none. A session without a node check, as the tests
  * provide, is taken to edit.
  */
-const session = useSession()
-const mayEdit = () => (typeof session.can === 'function' ? session.can(ADMIN_NODES.settings) : true)
 const hubCards = computed(() => hubGroups({
+  can,
   domains: domains.value,
   schemas: store.schemas.value,
   saved: savedSettings.value,
   unsaved: [...new Set(changes.value.map(change => change.domain))],
   titleOf: store.titleOf,
-  editable: mayEdit
 }))
 
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
@@ -425,8 +414,8 @@ const formsConfiguration = {
 watch(
   () => props.selectedTab,
   (selectedTab, prev) => {
-    /* Fetch configuration only when user opens the configuration tab  */
-    if (selectedTab === 'Settings' && prev == undefined && domains.value.length == 0)
+    /* Fetch configuration only when the user opens an Administration page that reads it (any page of the settings section) */
+    if (selectedTab && prev == undefined && domains.value.length == 0)
       store.fetchConfiguration()
   },
   { immediate: true }
@@ -440,9 +429,13 @@ watch(
   >
     <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-end md:justify-between">
       <div class="flex min-w-0 flex-col gap-1">
-        <h1 class="md-headline-medium text-on-surface">
+        <!-- On the Repositories pages the page heading is the h1; the settings title is then a heading of its own. -->
+        <component
+          :is="repositoriesRoute ? 'h2' : 'h1'"
+          class="md-headline-medium text-on-surface"
+        >
           Settings
-        </h1>
+        </component>
         <p class="md-body-medium text-on-surface-variant">
           Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance.
         </p>
@@ -497,14 +490,14 @@ watch(
       <SideNavLayout
         :label="sideNav.label"
         :section-label="sideNav.sectionLabel"
-        :groups="domainGroups"
-        :current="activeDomain"
+        :groups="navGroups"
+        :current="repositoriesRoute ? 'repositories' : activeDomain"
         :index-to="sideNav.indexTo"
         :narrow="narrow"
         replace
       >
         <h2
-          v-if="tabDomains.length <= 1 && !isAccessDomain(activeDomain)"
+          v-if="tabDomains.length <= 1 && !isAccessDomain(activeDomain) && !repositoriesRoute"
           class="md-title-large text-on-surface"
         >
           {{ store.titleOf(activeDomain) }}
@@ -514,43 +507,74 @@ watch(
           role="tabpanel"
           class="mt-6 flex flex-col gap-8"
         >
-          <AccessDomainCard
-            v-if="isAccessDomain(activeDomain)"
-            :domain="activeDomain"
-            :title="store.titleOf(activeDomain)"
+          <RepositoriesView
+            v-if="repositoriesPage"
+            :schema-fields="repositoryFields"
           />
-          <JsonForms
-            v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
-            :key="`domain-fields:${activeDomain}`"
-            :config="formsConfiguration"
-            :data="configurations[activeDomain]"
-            :schema="domainForm.schema"
-            :uischema="domainForm.layout"
-            :renderers="renderers"
-            :ajv="store.configurationValidator"
-            @change="onDomainChange(activeDomain, $event)"
+          <RepositoryDetail
+            v-else-if="repositoryPage"
+            :id="route.params.id"
           />
+          <template v-else>
+            <section
+              v-if="mavenDomain"
+              aria-labelledby="maven-repositories-link-title"
+              class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-low p-4"
+            >
+              <h2
+                id="maven-repositories-link-title"
+                class="md-title-medium text-on-surface"
+              >
+                Repositories
+              </h2>
+              <p class="md-body-medium text-on-surface-variant">
+                {{ repositoryCountText }} of this instance. Each one is edited on its own page.
+              </p>
+              <MdButton
+                variant="tonal"
+                type="button"
+                class="self-start"
+                :href="repositoriesHref"
+                @click.prevent="openRepositories"
+              >
+                Open the Repositories page
+              </MdButton>
+            </section>
+            <AccessDomainCard
+              v-if="isAccessDomain(activeDomain)"
+              :domain="activeDomain"
+              :title="store.titleOf(activeDomain)"
+            />
+            <JsonForms
+              v-if="!isAccessDomain(activeDomain) && domainForm && configurations[activeDomain]"
+              :key="`domain-fields:${activeDomain}`"
+              :config="formsConfiguration"
+              :data="configurations[activeDomain]"
+              :schema="domainForm.schema"
+              :uischema="domainForm.layout"
+              :renderers="renderers"
+              :ajv="store.configurationValidator"
+              @change="onDomainChange(activeDomain, $event)"
+            />
 
-          <CollectionEditor
-            v-for="list in activeCollections"
-            :key="`${activeDomain}:${list.key}`"
-            :collection="list"
-            :entries="entriesOf(activeDomain, list)"
-            :keys="store.entryKeysOf(activeDomain, list.key)"
-            :selected-id="selectedIdFor(list)"
-            :back-href="backHref"
-            :renderers="renderers"
-            :validator="store.configurationValidator"
-            :guided-create="guidedCreateFor(list)"
-            :show-access="isRepositoryList(list)"
-            :typed="isRepositoryList(list)"
-            :server-error="saveError ?? ''"
-            @select="selectEntry(list, $event)"
-            @back="backToList"
-            @create="createEntry(list, $event)"
-            @change="updateEntry(list, $event)"
-            @delete="deleteEntry(list, $event)"
-          />
+            <CollectionEditor
+              v-for="list in activeCollections"
+              :key="`${activeDomain}:${list.key}`"
+              :collection="list"
+              :entries="entriesOf(activeDomain, list)"
+              :keys="store.entryKeysOf(activeDomain, list.key)"
+              :selected-id="selectedIdFor(list)"
+              :back-href="backHref"
+              :renderers="renderers"
+              :validator="store.configurationValidator"
+              :server-error="saveError ?? ''"
+              @select="selectEntry(list, $event)"
+              @back="backToList"
+              @create="createEntry(list, $event)"
+              @change="updateEntry(list, $event)"
+              @delete="deleteEntry(list, $event)"
+            />
+          </template>
         </div>
       </SideNavLayout>
     </template>
@@ -589,11 +613,6 @@ watch(
         </template>
       </FactoryResetModal>
     </section>
-
-    <RepositoryWizard
-      v-if="activeDomain === 'maven'"
-      v-model="wizardOpen"
-    />
 
     <div
       v-if="hasUnsavedChanges"

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -235,10 +236,7 @@ beforeEach(async () => {
   configuration = createConfigurationStore(ref(client))
   router = createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/', component: { render: () => null } },
-      { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
-    ]
+    routes: stubRoutes()
   })
   await router.push('/')
 })
@@ -614,7 +612,7 @@ describe('RepositoryWizard create sequence', () => {
 
     await click('#wizard-done')
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven/repositories/team')
+    expect(router.currentRoute.value.fullPath, 'Done opens the repository on the Repositories page').toBe('/settings/repositories/team')
   })
 })
 
@@ -809,5 +807,31 @@ describe('type step', () => {
       type: 'GROUP',
       proxied: [{ reference: 'snapshots' }, { reference: 'releases' }]
     })
+  })
+})
+
+describe('RepositoryWizard accessibility', () => {
+  it('marks the invalid id aria-invalid and describes it with its message', async () => {
+    await mountWizard()
+
+    await next()
+
+    const field = $('#wizard-repository-id')
+    expect(field.getAttribute('aria-invalid'), 'the field is marked invalid').toBe('true')
+    const described = (field.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+      .map(id => document.getElementById(id)?.textContent ?? '')
+      .join(' ')
+    expect(described, 'the description names the message of the field').toContain('Enter an id.')
+  })
+
+  it('moves the focus to an error summary when a step is refused', async () => {
+    await mountWizard()
+
+    await next()
+
+    const focused = document.activeElement
+    const isSummary = focused?.getAttribute('role') === 'alert' || focused?.getAttribute('tabindex') === '-1'
+    expect(isSummary, 'the focus is on the error summary, not on the next button').toBe(true)
+    expect(focused?.textContent ?? '', 'the summary lists the refused field').toContain('Enter an id.')
   })
 })

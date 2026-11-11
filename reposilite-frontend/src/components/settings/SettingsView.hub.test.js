@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -73,11 +74,7 @@ const fakeClient = (names = Object.keys(SCHEMAS)) => {
 
 const namedRouter = () => createRouter({
   history: createMemoryHistory(),
-  routes: [
-    { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-    { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } },
-    { name: 'access', path: '/access', component: { render: () => null } }
-  ]
+  routes: stubRoutes()
 })
 
 let wrapper
@@ -108,14 +105,12 @@ const group = (heading) => hub().get(`[role="group"][aria-label="${heading}"]`)
 const cardTitles = (heading) => group(heading).findAll('[data-test="settings-card"] h3').map(card => card.text())
 
 describe('the settings hub at /settings', () => {
-  it('groups the domains as Repository, Instance, Data and Plugins, with an unnamed domain in Plugins', async () => {
+  it('groups the domains under Repository and System, with the Repositories page first in Repository', async () => {
     await mountHub()
 
-    expect(hub().findAll('[role="group"]').map(entry => entry.attributes('aria-label'))).toEqual(['Repository', 'Instance', 'Data', 'Plugins'])
-    expect(cardTitles('Repository')).toEqual([SCHEMAS.maven.title, SCHEMAS.javadoc.title, SCHEMAS.cleanup.title])
-    expect(cardTitles('Instance')).toEqual([SCHEMAS.web.title, SCHEMAS.frontend.title])
-    expect(cardTitles('Data')).toEqual([SCHEMAS.statistics.title, SCHEMAS.audit.title])
-    expect(cardTitles('Plugins')).toEqual(['Acme'])
+    expect(hub().findAll('[role="group"]').map(entry => entry.attributes('aria-label'))).toEqual(expect.arrayContaining(['Repository', 'System']))
+    expect(cardTitles('Repository'), 'the page of the repositories, then the domains of the group').toEqual(['Repositories', SCHEMAS.maven.title, SCHEMAS.javadoc.title, SCHEMAS.cleanup.title])
+    expect(cardTitles('System'), 'the other domains, plugin domains included').toEqual([SCHEMAS.web.title, SCHEMAS.frontend.title, SCHEMAS.statistics.title, SCHEMAS.audit.title, 'Acme'])
   })
 
   it('shows no card for the domains that are edited under Access', async () => {
@@ -137,10 +132,10 @@ describe('the settings hub at /settings', () => {
     store.setDomainData('maven', { repositories: sixRepositories().slice(0, 2) })
     await flushPromises()
 
-    const mavenCard = group('Repository').findAll('[data-test="settings-card"]')[0]
+    const mavenCard = group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === SCHEMAS.maven.title)
     expect(mavenCard.text()).toContain('Unsaved changes')
     expect(mavenCard.text(), 'the card shows the saved value, not the draft').toContain('6 repositories')
-    expect(group('Instance').text(), 'a domain without a change is not marked').not.toContain('Unsaved changes')
+    expect(group('System').text(), 'a domain without a change is not marked').not.toContain('Unsaved changes')
   })
 
   it('shows only the groups the visitor may edit', async () => {
@@ -163,7 +158,7 @@ describe('the settings hub at /settings', () => {
     const { store, router, client } = await mountHub()
     const before = JSON.stringify(store.configurations.value)
 
-    await group('Repository').get('[data-test="settings-card"]').trigger('click')
+    await group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === SCHEMAS.maven.title).trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/maven')

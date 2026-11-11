@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { stubRoutes } from './fixtures/routes'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -71,7 +72,7 @@ const MAVEN_SCHEMA = {
 }
 
 const SERVER = {
-  maven: {
+  ingot: {
     repositories: [
       { id: 'releases', visibility: 'PUBLIC', storageProvider: { type: 's3', bucketName: 'test' } },
       { id: 'snapshots', visibility: 'PRIVATE', storageProvider: { type: 'fs' } }
@@ -88,12 +89,10 @@ const fakeClient = (server) => ({
   }
 })
 
+// The real route table with stub pages, since the view resolves the names of the other Settings pages too.
 const namedRouter = () => createRouter({
   history: createMemoryHistory(),
-  routes: [
-    { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
-    { name: 'settings-entry', path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
-  ]
+  routes: stubRoutes()
 })
 
 const loadedStore = async (server = SERVER) => {
@@ -106,7 +105,7 @@ let wrapper
 
 const mountEntries = async ({ props = {}, store } = {}) => {
   const router = namedRouter()
-  const viewProps = { selectedTab: 'Settings', domain: 'maven', collection: 'repositories', entry: 'releases', ...props }
+  const viewProps = { selectedTab: 'Settings', domain: 'ingot', collection: 'repositories', entry: 'releases', ...props }
   // The address the view is mounted with is the one the router is on, as it is in the app.
   await router.push(viewProps.entry
     ? { name: 'settings-entry', params: { domain: viewProps.domain, collection: viewProps.collection, entry: viewProps.entry } }
@@ -144,7 +143,7 @@ const confirmVariantSwitch = async () => {
   yes.click()
   await flushPromises()
 }
-const repositoryIds = (store) => store.configurations.value.maven.repositories.map(entry => entry.id)
+const repositoryIds = (store) => store.configurations.value.ingot.repositories.map(entry => entry.id)
 
 afterEach(() => {
   wrapper?.unmount()
@@ -167,7 +166,7 @@ describe('SettingsView storage variant', () => {
     await variantSelect().setValue('0')
     await confirmVariantSwitch()
 
-    expect(store.configurations.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect(store.configurations.value.ingot.repositories[0].visibility).toBe('PUBLIC')
   })
 })
 
@@ -201,7 +200,7 @@ describe('SettingsView rename', () => {
     expect(router.currentRoute.value.params.entry).toBe('releases')
     expect(wrapper.get('[data-test="entry-title"]').text(), 'the open entry stays open').toBe('snapshots')
     expect(wrapper.text()).toContain('A repository with this id already exists.')
-    expect(store.invalidDomains.value).toEqual(['maven'])
+    expect(store.invalidDomains.value).toEqual(['ingot'])
   })
 
   it('refuses to save an entry whose id is cleared, and the action bar says so', async () => {
@@ -216,7 +215,7 @@ describe('SettingsView rename', () => {
 
 describe('SettingsView entries without a usable id', () => {
   it('lists an entry without an id as unnamed, with the reason, and not as an empty item', async () => {
-    const store = await loadedStore({ maven: { repositories: [{ visibility: 'PUBLIC' }, SERVER.maven.repositories[1]] } })
+    const store = await loadedStore({ ingot: { repositories: [{ visibility: 'PUBLIC' }, SERVER.ingot.repositories[1]] } })
     await mountEntries({ store, props: { entry: 'snapshots' } })
 
     expect(itemTitles()).toEqual(['Unnamed repository', 'snapshots'])
@@ -224,7 +223,7 @@ describe('SettingsView entries without a usable id', () => {
   })
 
   it('opens an unnamed entry by its key and names it, which moves the address to the new id', async () => {
-    const store = await loadedStore({ maven: { repositories: [{ visibility: 'PUBLIC' }, SERVER.maven.repositories[1]] } })
+    const store = await loadedStore({ ingot: { repositories: [{ visibility: 'PUBLIC' }, SERVER.ingot.repositories[1]] } })
     const { router } = await mountEntries({ store, props: { entry: 'snapshots' } })
 
     await itemButtons()[0].trigger('click')

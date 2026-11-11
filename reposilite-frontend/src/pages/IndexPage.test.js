@@ -53,15 +53,15 @@ const sectionStub = vi.hoisted(() => (name, key) => async () => {
     default: defineComponent({
       name,
       props: {
-        selectedTab: String,
-        qualifier: Object,
-        search: String,
-        tab: String,
-        name: String,
-        level: String,
-        domain: String,
-        collection: String,
-        entry: String
+        selectedTab: { type: String, default: undefined },
+        qualifier: { type: Object, default: undefined },
+        search: { type: String, default: undefined },
+        tab: { type: String, default: undefined },
+        name: { type: String, default: undefined },
+        level: { type: String, default: undefined },
+        domain: { type: String, default: undefined },
+        collection: { type: String, default: undefined },
+        entry: { type: String, default: undefined }
       },
       emits: ['update:search', 'update:level', 'update:domain'],
       render() {
@@ -127,9 +127,8 @@ const chooseLink = async (wrapper, label) => {
 
 const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 
-const SECTION_LABELS = ['Repositories', 'Search', 'Dashboard', 'Analytics', 'Audit log', 'Access', 'Settings', 'Console', 'Maintenance']
-// The bottom bar keeps the daily sections and puts the rarer admin pages under More.
-const BAR_LABELS = ['Repositories', 'Search', 'Dashboard', 'Access']
+// The four entries of the rail, which the bottom bar shows too for an administrator. Administration holds the rest.
+const SECTION_LABELS = ['Browse', 'Search', 'Dashboard', 'Administration']
 
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
@@ -295,12 +294,12 @@ describe('IndexPage no access state', () => {
     expect(wrapper.find('[data-test="no-access"] h2').text()).toBe('Console')
   })
 
-  it('offers a link to Repositories and does not navigate to overview by itself', async () => {
+  it('offers a link to Browse and does not navigate to overview by itself', async () => {
     const { wrapper, router } = await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
     const push = vi.spyOn(router, 'push')
     const replace = vi.spyOn(router, 'replace')
 
-    const link = wrapper.find('[data-test="no-access"]').findAll('a').find(anchor => anchor.text() === 'Repositories')
+    const link = wrapper.find('[data-test="no-access"]').findAll('a').find(anchor => anchor.text() === 'Browse')
 
     expect(link.attributes('href')).toBe('/')
     expect(push).not.toHaveBeenCalled()
@@ -379,140 +378,55 @@ describe('IndexPage navigation', () => {
     session.isManager = null
   })
 
-  it('offers the rail with every section, in order, to a manager', async () => {
+  const railLabels = (wrapper) => navigations(wrapper)[1].findAll('a').map(link => link.text())
+  const barLabels = (wrapper) => navigations(wrapper)[0].findAll('a').map(link => link.text())
+  const barButtons = (wrapper) => navigations(wrapper)[0].findAll('button')
+
+  it('offers the rail with the four entries, in order, to a manager', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    const [, rail] = navigations(wrapper)
-
-    expect(rail.findAll('a').map(link => link.text()), 'the rail has room for every section')
-      .toEqual(SECTION_LABELS)
+    expect(railLabels(wrapper), 'Browse, Search, Dashboard and Administration').toEqual(SECTION_LABELS)
   })
 
-  const railLabels = (wrapper) => navigations(wrapper)[1].findAll('a').map(link => link.text())
+  it('draws the rail without group headings, since the four entries form one block', async () => {
+    const { wrapper } = await mountAt('/', { manager: true })
 
-  it('hides Maintenance from a user without ingot.admin.maintenance', async () => {
-    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
-
-    expect(railLabels(wrapper)).not.toContain('Maintenance')
+    expect(navigations(wrapper)[1].findAll('[role="group"]')).toHaveLength(0)
   })
 
-  it('shows Maintenance to a user with ingot.admin.maintenance', async () => {
+  it('hides Dashboard from a user without ingot.admin.dashboard and keeps Administration for maintenance', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.maintenance'] })
 
-    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search', 'Maintenance'])
+    expect(railLabels(wrapper)).toEqual(['Browse', 'Search', 'Administration'])
   })
 
-  it('hides Access from a user with no access node', async () => {
-    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.console', 'ingot.admin.audit'] })
-
-    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search', 'Audit log', 'Console'])
-  })
-
-  it('shows every section to a user with ingot.admin.*', async () => {
+  it('shows every entry to a user with ingot.admin.*', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.*'] })
 
     expect(railLabels(wrapper)).toEqual(SECTION_LABELS)
   })
 
-  it('puts exactly four permitted sections in the bottom bar, with no More item', async () => {
-    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.console', 'ingot.admin.audit'] })
+  it('shows Administration to a visitor with the audit node alone, and the entry opens the audit log', async () => {
+    const { wrapper, router } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
 
-    const [bar] = navigations(wrapper)
+    expect(railLabels(wrapper)).toEqual(['Browse', 'Search', 'Administration'])
 
-    expect(bar.findAll('a').map(link => link.text())).toEqual(['Repositories', 'Search', 'Audit log', 'Console'])
-    expect(bar.findAll('button'), 'nothing is left over').toHaveLength(0)
+    await chooseLink(navigations(wrapper)[1], 'Administration')
+
+    expect(router.currentRoute.value.fullPath, 'the entry opens the one page the visitor may open').toBe('/audit')
+    expect(shownSection(wrapper)).toBe('audit')
   })
 
-  it('shows a visitor with the audit node alone Repositories, Search and Audit log in the bar, without More', async () => {
-    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
-
-    const [bar] = navigations(wrapper)
-
-    expect(bar.findAll('a').map(link => link.text())).toEqual(['Repositories', 'Search', 'Audit log'])
-    expect(bar.findAll('button')).toHaveLength(0)
-  })
-
-  it('groups the rail into Work, Monitor, Administration and Troubleshoot with the group name as label', async () => {
-    const { wrapper } = await mountAt('/', { manager: true })
-
-    const groups = navigations(wrapper)[1].findAll('[role="group"]')
-
-    expect(groups.map(group => group.attributes('aria-label'))).toEqual(['Work', 'Monitor', 'Administration', 'Troubleshoot'])
-    expect(groups.map(group => group.findAll('a').map(link => link.text()))).toEqual([
-      ['Repositories', 'Search'],
-      ['Dashboard', 'Analytics', 'Audit log'],
-      ['Access', 'Settings'],
-      ['Console', 'Maintenance']
-    ])
-  })
-
-  it('leaves an empty group out of the rail', async () => {
-    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
-
-    const groups = navigations(wrapper)[1].findAll('[role="group"]')
-
-    expect(groups.map(group => group.attributes('aria-label'))).toEqual(['Work', 'Monitor'])
-  })
-
-  it('shows the public sections only to a user with repository nodes but no admin node', async () => {
+  it('hides Administration from a visitor with no Administration page, and keeps Browse and Search', async () => {
     const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.repository.releases.read'] })
 
-    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search'])
+    expect(railLabels(wrapper)).toEqual(['Browse', 'Search'])
   })
 
-  it('shows the legacy manager every section when the session has no node list', async () => {
-    const { wrapper } = await mountAt('/', { manager: true })
-
-    expect(railLabels(wrapper)).toEqual(SECTION_LABELS)
-  })
-
-  it('keeps a user without the node of the page at the page address', async () => {
-    const { router } = await mountAt('/maintenance', { logged: true, nodes: ['ingot.admin.audit'] })
-
-    expect(router.currentRoute.value.name).toBe('maintenance')
-  })
-
-  it('keeps the daily sections in the bar and puts the rarer ones under More', async () => {
-    const { wrapper } = await mountAt('/', { manager: true })
-
-    const [bar] = navigations(wrapper)
-
-    expect(bar.findAll('a').map(link => link.text())).toEqual(BAR_LABELS)
-    expect(bar.findAll('button').map(button => button.text()), 'the bar has one More item for the overflow')
-      .toEqual(['More'])
-  })
-
-  it('opens the overflow sections from More and closes the panel once one is chosen', async () => {
-    const { wrapper, router } = await mountAt('/', { manager: true })
-
-    const [bar] = navigations(wrapper)
-    await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
-
-    const panel = wrapper.find('nav[aria-label="More sections"]')
-    expect(panel.findAll('a').map(link => link.text())).toEqual(['Analytics', 'Audit log', 'Settings', 'Console', 'Maintenance'])
-    expect(panel.findAll('[role="group"]').map(group => group.attributes('aria-label')), 'the leftovers sit under group headings')
-      .toEqual(['Monitor', 'Administration', 'Troubleshoot'])
-
-    await panel.findAll('a').find(link => link.text() === 'Audit log').trigger('click')
-
-    expect(wrapper.find('nav[aria-label="More sections"]').exists()).toBe(false)
-    await flushPromises()
-    expect(router.currentRoute.value.name).toBe('audit')
-  })
-
-  it('offers a visitor Repositories and Search, the two sections that need no sign in', async () => {
+  it('shows an anonymous visitor only Browse and Search in the rail', async () => {
     const { wrapper } = await mountAt('/', { manager: false })
 
-    expect(railLabels(wrapper)).toEqual(['Repositories', 'Search'])
-  })
-
-  it('offers an anonymous visitor only Repositories and Search in the bottom bar, without a More item', async () => {
-    const { wrapper } = await mountAt('/', { manager: false })
-
-    const [bar] = navigations(wrapper)
-
-    expect(bar.findAll('a').map(link => link.text()), 'the bar links').toEqual(['Repositories', 'Search'])
-    expect(bar.findAll('button'), 'nothing is left over for More').toHaveLength(0)
+    expect(railLabels(wrapper)).toEqual(['Browse', 'Search'])
   })
 
   it('shows an anonymous visitor none of the admin entries in the rail or the bar', async () => {
@@ -520,21 +434,64 @@ describe('IndexPage navigation', () => {
 
     const shown = navigations(wrapper).flatMap(nav => nav.findAll('a').map(link => link.text()))
 
-    for (const label of ['Dashboard', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit log', 'Settings']) {
+    for (const label of ['Dashboard', 'Administration', 'Analytics', 'Access', 'Console', 'Maintenance', 'Audit log']) {
       expect(shown, `${label} needs a sign in`).not.toContain(label)
     }
   })
 
-  it('keeps every entry of an admin reachable, in the bottom bar or under More', async () => {
+  it('puts the four entries in the bottom bar, with no More item, for an administrator', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    const [bar] = navigations(wrapper)
-    await bar.findAll('button').find(button => button.text() === 'More').trigger('click')
+    expect(barLabels(wrapper)).toEqual(SECTION_LABELS)
+    expect(barButtons(wrapper), 'nothing is left over for More').toHaveLength(0)
+  })
 
-    const inBar = bar.findAll('a').map(link => link.text())
-    const underMore = wrapper.find('nav[aria-label="More sections"]').findAll('a').map(link => link.text())
+  it('puts Browse, Search and Administration in the bottom bar for the audit node alone, without More', async () => {
+    const { wrapper } = await mountAt('/', { logged: true, nodes: ['ingot.admin.audit'] })
 
-    expect([...inBar, ...underMore].sort()).toEqual([...SECTION_LABELS].sort())
+    expect(barLabels(wrapper)).toEqual(['Browse', 'Search', 'Administration'])
+    expect(barButtons(wrapper)).toHaveLength(0)
+  })
+
+  it('puts only Browse and Search in the bottom bar for an anonymous visitor, without More', async () => {
+    const { wrapper } = await mountAt('/', { manager: false })
+
+    expect(barLabels(wrapper)).toEqual(['Browse', 'Search'])
+    expect(barButtons(wrapper)).toHaveLength(0)
+  })
+
+  it.each([
+    ['/access/users'],
+    ['/audit'],
+    ['/console'],
+    ['/maintenance'],
+    ['/analytics'],
+    ['/settings'],
+  ])('marks Administration as the current entry of both navigations at %s', async (url) => {
+    const { wrapper } = await mountAt(url, { manager: true })
+
+    const current = navigations(wrapper).map(nav => nav.findAll('[aria-current="page"]').map(item => item.text()))
+
+    expect(current).toEqual([['Administration'], ['Administration']])
+  })
+
+  it('keeps the browsed repository path on the Browse link and opens the hub from Administration', async () => {
+    const { wrapper } = await mountAt('/browse/org/repo', { manager: true })
+
+    const browse = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Browse')
+    const administration = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Administration')
+
+    expect(browse.attributes('href'), 'returning to Browse keeps the place in the browser').toBe('/browse/org/repo')
+    expect(administration.attributes('href'), 'an administrator opens the hub').toBe('/settings')
+  })
+
+  it('switches the section through the router when a rail item is chosen', async () => {
+    const { wrapper, router } = await mountAt('/', { manager: true })
+
+    await chooseLink(navigations(wrapper)[1], 'Dashboard')
+
+    expect(router.currentRoute.value.fullPath).toBe('/dashboard')
+    expect(shownSection(wrapper)).toBe('dashboard')
   })
 
   it('opens the search page from the rail without a sign in', async () => {
@@ -546,34 +503,6 @@ describe('IndexPage navigation', () => {
     expect(shownSection(wrapper)).toBe('search')
   })
 
-  it('marks the active section as the current page in both navigations', async () => {
-    const { wrapper } = await mountAt('/access/users', { manager: true })
-
-    const current = navigations(wrapper).map(nav =>
-      nav.findAll('[aria-current="page"]').map(item => item.text()))
-
-    expect(current).toEqual([['Access'], ['Access']])
-  })
-
-  it('keeps the browsed repository path on the overview link', async () => {
-    const { wrapper } = await mountAt('/browse/org/repo', { manager: true })
-
-    const overview = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Repositories')
-    const access = navigations(wrapper)[0].findAll('a').find(link => link.text() === 'Access')
-
-    expect(overview.attributes('href'), 'returning to overview keeps the place in the browser').toBe('/browse/org/repo')
-    expect(access.attributes('href'), 'the Access entry links to /access, which opens the user list').toBe('/access')
-  })
-
-  it('switches the section through the router when a rail item is chosen', async () => {
-    const { wrapper, router } = await mountAt('/', { manager: true })
-
-    await chooseLink(navigations(wrapper)[1], 'Console')
-
-    expect(router.currentRoute.value.fullPath).toBe('/console')
-    expect(shownSection(wrapper)).toBe('console')
-  })
-
   it('shows the previous section again when the browser goes back', async () => {
     const { wrapper, router } = await mountAt('/dashboard', { manager: true })
 
@@ -583,6 +512,55 @@ describe('IndexPage navigation', () => {
     await flushPromises()
 
     expect(shownSection(wrapper), 'the back button must restore the section from the URL').toBe('dashboard')
+  })
+})
+
+describe('IndexPage Administration tree', () => {
+  beforeEach(() => {
+    session.isManager = null
+  })
+
+  const treeOf = (wrapper) => wrapper.find('nav[aria-label="Administration"]')
+  const treeGroups = (wrapper) => treeOf(wrapper).findAll('[role="group"]')
+
+  it.each([
+    ['/audit', 'Audit log'],
+    ['/console', 'Console'],
+    ['/maintenance', 'Maintenance'],
+    ['/analytics', 'Analytics'],
+  ])('shows the Administration tree beside %s, with its page marked as the current page', async (url, label) => {
+    const { wrapper } = await mountAt(url, { manager: true })
+
+    expect(treeOf(wrapper).exists(), 'the page has the side navigation of Administration').toBe(true)
+    expect(treeOf(wrapper).findAll('[aria-current="page"]').map(item => item.text())).toEqual([label])
+  })
+
+  it('lists the Administration pages in the groups Repository, Security and Support', async () => {
+    const { wrapper } = await mountAt('/audit', { manager: true })
+
+    expect(treeGroups(wrapper).map(group => group.attributes('aria-label')), 'System is left out, it has no page here')
+      .toEqual(['Repository', 'Security', 'Support'])
+    expect(treeGroups(wrapper).map(group => group.findAll('a').map(link => link.text()))).toEqual([
+      ['Repositories'],
+      ['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP', 'Security settings', 'Permission check', 'Audit log'],
+      ['Console', 'Maintenance', 'Analytics']
+    ])
+  })
+
+  it('lists only the Administration pages the visitor may open', async () => {
+    const { wrapper } = await mountAt('/audit', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    expect(treeGroups(wrapper).map(group => group.attributes('aria-label'))).toEqual(['Security'])
+    expect(treeGroups(wrapper)[0].findAll('a').map(link => link.text())).toEqual(['Audit log'])
+  })
+
+  it('opens another Administration page from the tree', async () => {
+    const { wrapper, router } = await mountAt('/audit', { manager: true })
+
+    await chooseLink(treeOf(wrapper), 'Console')
+
+    expect(router.currentRoute.value.fullPath).toBe('/console')
+    expect(shownSection(wrapper)).toBe('console')
   })
 })
 
@@ -671,13 +649,14 @@ describe('IndexPage view state from the URL', () => {
   })
 
   it('hands the settings view the domain, collection and entry of an entry URL', async () => {
-    const { wrapper } = await mountAt('/settings/maven/repositories/releases', { manager: true })
+    // A maven repositories address now moves to the Repositories page, so a domain without that move keeps the entry.
+    const { wrapper } = await mountAt('/settings/cleanup/policies/nightly', { manager: true })
 
     const settings = wrapper.findComponent({ name: 'SettingsStub' })
 
-    expect(settings.props('domain')).toBe('maven')
-    expect(settings.props('collection')).toBe('repositories')
-    expect(settings.props('entry')).toBe('releases')
+    expect(settings.props('domain')).toBe('cleanup')
+    expect(settings.props('collection')).toBe('policies')
+    expect(settings.props('entry')).toBe('nightly')
   })
 
   it('moves to the domain the settings view chose and drops the entry that was open', async () => {

@@ -121,13 +121,13 @@ describe('route names and parameters', () => {
   it('reads the domain, collection and entry of a settings entry', async () => {
     const router = makeRouter()
 
-    await router.push('/settings/maven/repositories/releases')
+    await router.push('/settings/cleanup/policies/nightly')
 
     expect(router.currentRoute.value.name).toBe('settings-entry')
     expect(router.currentRoute.value.params).toEqual({
-      domain: 'maven',
-      collection: 'repositories',
-      entry: 'releases'
+      domain: 'cleanup',
+      collection: 'policies',
+      entry: 'nightly'
     })
   })
 

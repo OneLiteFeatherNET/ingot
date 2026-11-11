@@ -17,7 +17,8 @@
 import { nextTick } from 'vue'
 import { createRouter } from 'vue-router'
 import { ROUTES } from './routes'
-import { firstAccessRoute, visibleChildren } from '../navigation/registry'
+import { administrationLocation, firstAccessRoute, visibleChildren } from '../navigation/registry'
+import { ADMIN_NODES } from '../store/nodeAccess'
 import { createManagerGuard, createPasswordChangeGuard } from './guard'
 import { pageTitle } from './title'
 
@@ -57,6 +58,18 @@ const createAppRouter = ({
     return legacy(to.hash) ?? true
   })
 
+  // The old addresses of the repositories move to the Repositories page, with their query kept. Other collections
+  // of other domains are not redirected: only the maven repositories moved.
+  router.beforeEach((to) => {
+    if (to.name === 'settings-entry' && to.params.domain === 'maven' && to.params.collection === 'repositories') {
+      return { name: 'settings-repository', params: { id: to.params.entry }, query: to.query, replace: true }
+    }
+    if (to.name === 'settings' && to.params.domain === 'maven' && to.query.new === 'repository') {
+      return { name: 'settings-repositories', query: to.query, replace: true }
+    }
+    return true
+  })
+
   router.beforeEach(createPasswordChangeGuard({ mustChangePassword }))
   router.beforeEach(createManagerGuard({ whenSessionKnown }))
 
@@ -68,6 +81,14 @@ const createAppRouter = ({
     if (pages.length === 1) return { name: pages[0].route, replace: true }
     if (pages.length > 1 && narrow()) return true
     return { name: firstAccessRoute(can), replace: true }
+  })
+
+  // /settings without a domain is the hub. A visitor who may not open the hub but may open one Administration page
+  // is sent to that page, so the address of the Administration entry always opens something. Also after the guard.
+  router.beforeEach((to) => {
+    if (to.name !== 'settings' || to.params.domain || can(ADMIN_NODES.settings)) return true
+    const location = administrationLocation(can)
+    return location.name === 'settings' ? true : { ...location, replace: true }
   })
 
   router.afterEach((to, from, failure) => {

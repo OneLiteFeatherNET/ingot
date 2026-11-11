@@ -240,7 +240,7 @@ const labelClass = computed(() => {
           v-model="draft"
           type="text"
           autocomplete="off"
-          class="md-embedded-input min-w-[8rem] flex-1 px-1 md-body-large text-on-surface disabled:text-on-surface/38"
+          class="md-embedded-input min-h-6 min-w-6 min-w-[8rem] flex-1 px-1 md-body-large text-on-surface disabled:text-on-surface/38"
           :disabled="disabled"
           :aria-invalid="invalid ? 'true' : undefined"
           :aria-describedby="helperText ? helperId : undefined"
