@@ -43,7 +43,7 @@ Domains:
 | [`frontend`](#frontend) | Title, links and appearance of the dashboard. |
 | [`javadoc`](#javadoc) | Javadoc viewer. |
 | [`login`](#login) | Browser login: sessions, lockout, OpenID Connect and LDAP. |
-| [`maven`](#maven) | Repositories. |
+| [`maven`](#maven) | Repositories. Edited on the Repositories page, not under Settings. |
 | [`search`](#search) | Behavior of the artifact search index. |
 | [`statistics`](#statistics) | Request statistics. |
 | [`web`](#web) | Proxy headers. |
@@ -207,6 +207,8 @@ The directory login is usable when `url` and `userBaseDn` are set. For the provi
 ## maven
 
 Validated: the description and tags of each repository are checked. The repository fields are described in [Repository settings](repository-settings.md).
+
+The domain is edited on the Repositories page of the dashboard (`/settings/repositories`). The repositories are in its table, and the domain-level field below it is in the **Maven options** section. The former Maven page at `/settings/maven` redirects there.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
