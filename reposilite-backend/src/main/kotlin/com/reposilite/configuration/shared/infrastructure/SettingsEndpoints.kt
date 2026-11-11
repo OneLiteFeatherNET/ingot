@@ -52,6 +52,9 @@ import java.io.InputStream
  * value when the placeholder is sent back, see [SettingsSecrets]. Secrets that a write leaves out of an existing entry keep
  * their stored value either way.
  */
+internal const val SECRETS_PARAMETER = "secrets"
+internal const val SECRETS_HIDDEN = "hidden"
+
 internal class SettingsEndpoints(
     private val sharedConfigurationFacade: SharedConfigurationFacade,
     private val hideSecrets: Reference<Boolean>,
@@ -124,7 +127,9 @@ internal class SettingsEndpoints(
                     // The tag describes the stored settings, so it is still valid when secrets are hidden from the body
                     ctx.header(Header.ETAG, snapshot.etag)
                     val settings = snapshot.settings
-                    if (hideSecrets.get()) {
+                    // The dashboard asks with ?secrets=hidden, and it never receives a value whatever hideSettingsSecrets says.
+                    // Without the parameter the read is the one scripts always had.
+                    if (hideSecrets.get() || ctx.queryParam(SECRETS_PARAMETER) == SECRETS_HIDDEN) {
                         SettingsSecrets.mask(
                             settings.javaClass,
                             DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(settings),
@@ -195,7 +200,8 @@ internal class SettingsEndpoints(
             type = reference.type,
             incoming = incoming,
             stored = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(stored),
-            placeholders = hideSecrets.get()
+            // A placeholder is kept on every write, whatever hideSettingsSecrets says: an unchanged secret keeps its stored value.
+            placeholders = true
         )
         if (restored.isErr) {
             return badRequest(restored.error).asError()
