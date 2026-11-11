@@ -249,6 +249,6 @@ describe('the blockers of a sync start', () => {
 
     const result = syncBlockers({ dryRun: finishedDryRun(), acceptance: accepted(rows), rows })
 
-    expect(result.reasons).toEqual(expect.arrayContaining([expect.stringMatching(/included/i)]))
+    expect(result.reasons).toEqual(expect.arrayContaining([expect.stringMatching(/include at least one/i)]))
   })
 })
