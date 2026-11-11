@@ -2,16 +2,22 @@
 
 ## Purpose
 
-The `q` parameter of artifact search matches words of a group's coordinates, on every database Ingot supports, with no extra
-service. A query that names a coordinate keeps its behaviour exactly. The index is upgraded in place, and an older version can
-still read the database.
+The `q` parameter of artifact search also matches words of a group's coordinates, on every database Ingot supports, with no extra
+service. Nothing that the previous version returns is lost: every token keeps its previous predicate, and word matches are added
+after the previous results. The index is upgraded in place, and an older version can still read the database.
 
 ## ADDED Requirements
 
-### Requirement: Coordinate queries keep their rules
+### Requirement: Every previous match is kept
 
-A query whose `q` contains `.` or `:` SHALL match exactly the groups it matched on the previous version, in the same order. Its
-query SHALL contain no predicate on the token table.
+For every query, every group that the previous version returns SHALL still be returned, in the previous relative order, before any
+group that matches only by word. Each whitespace token SHALL keep exactly the previous predicate: a plain token matches the groupId
+prefix, the artifactId prefix or the exact version; a token with a colon is a coordinates token.
+
+#### Scenario: Two plain tokens keep their prefix matches
+
+- **WHEN** the query is `q=co foo` and the group `com.x:foo-lib` is indexed
+- **THEN** the group is returned, because its groupId starts with `co` and its artifactId starts with `foo`, as on the previous version
 
 #### Scenario: Dotted query is unchanged
 
@@ -19,89 +25,69 @@ query SHALL contain no predicate on the token table.
 - **THEN** the groups returned are the groups of the previous version, in the same order, and no group is returned only because
   one of its tokens starts with `bench1`
 
-#### Scenario: Coordinates word is unchanged
-
-- **WHEN** the query is `q=org.springframework:spring-core`
-- **THEN** the groups returned are the groups of the previous version, in the same order
-
 #### Scenario: Golden table holds
 
-- **WHEN** the golden table of coordinate queries captured on the previous version is run against this version on a fixed fixture
-- **THEN** every query returns the same groups in the same order
+- **WHEN** the golden table captured on the previous version is run against this version on a fixed fixture
+- **THEN** every dotted-only and colon-only query returns the same groups in the same order, and every other query returns every
+  group of the previous version in the previous order, followed only by word-only groups
 
-### Requirement: Loose words match tokens of the coordinates
+### Requirement: Plain tokens also match by word
 
-A query of two or more whitespace-separated words, without `.` or `:`, SHALL match a group only when every word matches it. Each word is split
-into parts on characters that are neither letters nor digits. Every part SHALL equal a token of the group exactly, except the last part of the last
-word, which SHALL be the start of a token. Tokens are the lower-cased letter and digit runs of the groupId, artifactId and version.
+A whitespace token without `.` or `:` SHALL also match a group by word, as a union with its previous predicate. Each part of the token,
+where parts are the runs of letters and digits, SHALL equal a token of the group exactly. The last part of the last token of the query
+MAY instead be the start of a token. The tokens of a query SHALL be ANDed, as before. A token with no parts, or with more than four
+parts, SHALL NOT have a word match.
 
-#### Scenario: Whole token matches
+#### Scenario: Words match whole tokens
 
-- **WHEN** the artifact `spring-core` is indexed and the query is `q=spring core`
-- **THEN** the group `org.springframework:spring-core` is returned
+- **WHEN** the query is `q=jackson databind` and the group `com.fasterxml.jackson.core:jackson-databind` is indexed
+- **THEN** the group is returned by word: `jackson` is a whole token and `databind` starts a token, although the groupId does not start
+  with `jackson`
 
-#### Scenario: Last word matches by prefix
+#### Scenario: Earlier token must be a whole token
 
-- **WHEN** the artifact `spring-core` is indexed and the query is `q=spring cor`
-- **THEN** the group `org.springframework:spring-core` is returned
+- **WHEN** the query is `q=frame core` and the group `org.springframework:spring-core` is indexed
+- **THEN** the group is not returned, because `frame` is not a token of it
 
-#### Scenario: Earlier word must be a whole token
+#### Scenario: Every token must match
 
-- **WHEN** the artifact `spring-core` is indexed and the query is `q=frame core`
-- **THEN** the group `org.springframework:spring-core` is not returned, because `frame` is not a token of it
-
-#### Scenario: Every word must match
-
-- **WHEN** the query is `q=spring kafka` and only `spring-core` is indexed
+- **WHEN** the query is `q=spring kafka` and only `org.springframework:spring-core` is indexed
 - **THEN** that group is not returned
 
-### Requirement: Single word matches by today's rule and by token
+#### Scenario: Word-only groups come after the previous results
 
-A query of one whitespace-separated word, with or without a hyphen, and without `.` or `:`, SHALL return the groups that today's
-rule matches, and the groups whose tokens match the word, split into parts as above with the last part as a prefix. The groups
-of today's rule SHALL come first, each part in the existing order, and the groups that match only by token SHALL follow in the
-existing order.
+- **WHEN** the query is `q=spring core` and both a group matched by the previous rule and a group matched only by word are indexed
+- **THEN** the group matched by the previous rule is returned first
 
-#### Scenario: Token of an artifactId matches
+### Requirement: A token with a separator gets no word match
 
-- **WHEN** the artifact `spring-core` is indexed and the query is `q=core`
-- **THEN** the group `org.springframework:spring-core` is returned
+A token that contains `.` or `:` SHALL match only by its previous predicate.
 
-#### Scenario: Rule rows come first
+#### Scenario: Dotted token is not matched by word
 
-- **WHEN** the query is `q=jackson`, a group whose groupId starts with `jackson` exists, and a group matches only by a token `jackson`
-- **THEN** the group whose groupId starts with `jackson` is returned before the group that matches only by token
+- **WHEN** the query is `q=org.framework core` and the group `org.springframework:spring-core` is indexed
+- **THEN** the group is not returned, because `org.framework` is a dotted token with no word match and it is not a prefix of the groupId
 
-#### Scenario: Hyphenated word keeps the prefix match
+### Requirement: Limits and errors are unchanged
 
-- **WHEN** the query is `q=spring-co` and an artifactId starts with `spring-co`
-- **THEN** that group is returned, as it is today
+The limit of five tokens, the limit of 200 characters, the 400 responses and the coordinates limits SHALL be those of the previous
+version. This version SHALL NOT add an error response.
 
-### Requirement: Results only grow for coordinate and single-word queries
+#### Scenario: Token with five parts
 
-Every group that a coordinate query or a single-word query matched before this version SHALL still match the same query after the
-upgrade. The contract suite SHALL hold a table of earlier queries and expected groups. The same requirement for several-word queries
-is an open question of `design.md`, not a requirement of this version.
+- **WHEN** the query is `q=a-b-c-d-e`
+- **THEN** the response is the same as on the previous version, and it is not an error caused by this change
 
-#### Scenario: Previous match survives for a single word
+#### Scenario: Six tokens
 
-- **WHEN** a single-word query matched a group under the previous version and the same data is searched with this version
-- **THEN** the group is still returned
+- **WHEN** the query has six tokens
+- **THEN** the response is the 400 of the previous version, naming `q`
 
-### Requirement: Words without parts or with many parts match by today's rule
+### Requirement: Results only grow, and the same on every supported database
 
-A word that has no letters or digits, or that has more than four parts, SHALL match by today's rule only, with no token predicate and
-no error response. A query that is accepted today SHALL NOT be refused by this version.
-
-#### Scenario: Five-part word
-
-- **WHEN** the query is `q=a-b-c-d-e` (a single word with five parts)
-- **THEN** the response is 200 with the groups of today's rule, and it is not 400
-
-### Requirement: Same results on every supported database
-
-The word matching SHALL use the same predicate on SQLite, H2, MariaDB and PostgreSQL. It SHALL NOT use `LIKE`, a database full text
-index or a ranking function. The same cases SHALL pass on each database.
+The word predicate SHALL be a union with the previous predicate, built from index-driven subqueries, and SHALL NOT be an SQL `OR` between
+the previous predicate and a correlated `EXISTS`. It SHALL NOT use `LIKE`, a database full text index or a ranking function. The same
+cases SHALL pass on SQLite, H2, MariaDB and PostgreSQL.
 
 #### Scenario: Cross database contract
 
@@ -115,10 +101,10 @@ the pull request description. No test SHALL assert a time.
 
 #### Scenario: Gate passes
 
-- **WHEN** the benchmark runs on a synthetic dataset of one million GAVs, with 50 queries per kind (coordinate prefix, colon, single
-  word, two-word word query) on SQLite and PostgreSQL, on the same hardware
-- **THEN** the coordinate queries have a p95 no more than 10 percent above main's p95 on both databases, no PostgreSQL statement
-  exceeds the 10 second statement timeout, and the single-word p50 and p95 are recorded against 0.85 s and 1.53 s
+- **WHEN** the benchmark runs on a synthetic dataset of one million GAVs, with 50 queries per kind (dotted-only, colon, one plain token,
+  several plain tokens, mixed dotted then plain) on SQLite and PostgreSQL, on the same hardware
+- **THEN** the dotted-only and colon queries have a p95 no more than 10 percent above main's p95 on both databases, no PostgreSQL
+  statement exceeds the 10 second statement timeout, and the other kinds are recorded against main
 
 #### Scenario: Gate records the cost
 
@@ -127,7 +113,8 @@ the pull request description. No test SHALL assert a time.
 
 #### Scenario: Gate fails
 
-- **WHEN** the p95 of a coordinate query on this branch is more than 10 percent above main's, or a PostgreSQL statement exceeds 10 seconds
+- **WHEN** the p95 of a dotted-only or colon query on this branch is more than 10 percent above main's, or a PostgreSQL statement
+  exceeds 10 seconds
 - **THEN** the code pull request does not open, and the maintainer decides how to proceed
 
 ### Requirement: Token index is additive and kept with the rows
@@ -168,9 +155,9 @@ stay as they are.
 #### Scenario: Operator words are plain words
 
 - **WHEN** the query is `q=core OR`
-- **THEN** the word `or` must match like any other word, and no group is returned for it unless a token or a prefix matches
+- **THEN** `or` must match like any other token, by its previous predicate or as a word
 
 #### Scenario: Sort unchanged
 
 - **WHEN** a query has no `sort` parameter
-- **THEN** the groups are ordered by groupId as before
+- **THEN** the groups are ordered by groupId as before, the word-only groups after the previous results
