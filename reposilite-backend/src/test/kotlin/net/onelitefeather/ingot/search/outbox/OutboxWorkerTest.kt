@@ -19,7 +19,7 @@ package net.onelitefeather.ingot.search.outbox
 import com.reposilite.audit.MutableClock
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
-import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
+import net.onelitefeather.ingot.search.database.DatabaseSearchBackend
 import net.onelitefeather.ingot.search.database.SearchDialect
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateKey
@@ -78,7 +78,7 @@ internal abstract class OutboxWorkerTest {
         val worker = OutboxWorker(
             owner = "instance-a",
             outbox = outbox,
-            index = DatabaseArtifactIndex(database),
+            index = DatabaseSearchBackend(database, clock),
             storage = storage,
             origins = { repository, directory ->
                 if (mirrorDirectories.containsKey("$repository/$directory")) {

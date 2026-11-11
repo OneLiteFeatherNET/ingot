@@ -16,7 +16,7 @@
 
 package net.onelitefeather.ingot.search.verify
 
-import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
+import net.onelitefeather.ingot.search.database.DatabaseSearchBackend
 import net.onelitefeather.ingot.search.rebuild.RebuildHarness
 import kotlin.random.Random
 
@@ -28,8 +28,7 @@ internal fun RebuildHarness.verifyService(
 ): VerifyService = VerifyService(
     owner = owner,
     runs = runs,
-    rows = rows,
-    index = DatabaseArtifactIndex(database),
+    backend = DatabaseSearchBackend(database, clock),
     outbox = outbox,
     repositories = entries,
     ledger = ledger,

@@ -18,7 +18,7 @@ package net.onelitefeather.ingot.search.database
 import net.onelitefeather.ingot.search.ArtifactFileRecord
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.Provenance
-import net.onelitefeather.ingot.search.outbox.IndexAction
+import net.onelitefeather.ingot.search.backend.IndexAction
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
