@@ -80,7 +80,7 @@ export const checklistItems = ({ repositories, tokens, frontend, acknowledgedPub
     done: repositories !== null && repositories.some(isCustomRepository),
     action: {
       label: 'Create a repository',
-      to: { name: 'settings', params: { domain: 'maven' }, query: { new: 'repository' } }
+      to: { name: 'settings-repositories', query: { new: 'repository' } }
     }
   },
   {

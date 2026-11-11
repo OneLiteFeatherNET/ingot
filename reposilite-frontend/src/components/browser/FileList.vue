@@ -46,8 +46,8 @@ const references = computed(() => props.members ?? [])
 const hasReferences = computed(() => references.value.length > 0)
 const repositoryId = computed(() => props.qualifier.path.split('/')[0])
 const editMembers = () => router.push({
-  name: 'settings-entry',
-  params: { domain: 'maven', collection: 'repositories', entry: repositoryId.value }
+  name: 'settings-repository',
+  params: { id: repositoryId.value }
 })
 // The not-found actions go to the directory above the one that is missing, and to the first
 // segment of the browsed path, which is the repository itself.
