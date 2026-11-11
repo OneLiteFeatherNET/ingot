@@ -20,7 +20,7 @@
  * not silently move the other. The rail publishes it as --app-rail-width on the document root
  * while it is mounted, and fixed overlays such as the snackbar read it there.
  */
-export const RAIL_WIDTH = 80
+export const RAIL_WIDTH = 96
 
 export const RAIL_WIDTH_VARIABLE = '--app-rail-width'
 

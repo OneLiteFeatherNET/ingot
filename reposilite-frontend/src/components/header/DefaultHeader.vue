@@ -18,19 +18,33 @@
 import usePlaceholders from '../../store/placeholders'
 import MenuPanel from './MenuPanel.vue'
 
-const { title } = usePlaceholders()
+/*
+ * The top bar. It starts at the right edge of the navigation rail and reaches the window edge. Its title
+ * row is the container the page content uses, so the title and the content share one left edge, and the
+ * account actions end where the content ends. `framed` is set on the administration pages, whose content
+ * has its own maximum width; the bar takes the same one.
+ *
+ * The brand rule runs along the bottom edge of the bar, across all of it.
+ */
+defineProps({
+  framed: {
+    type: Boolean,
+    default: false
+  }
+})
 
-// The top app bar and the navigation rail share the surface container colour, so the app frame
-// reads as one region apart from the page content on surface. The bar keeps that colour when the
-// page scrolls under it, so it needs no scroll state.
+const { title } = usePlaceholders()
 </script>
 
 <template>
   <header
-    class="sticky top-0 z-30 bg-surface-container text-on-surface"
+    class="sticky top-0 z-30 bg-surface-container text-on-surface min-[1600px]:pr-4"
   >
-    <!-- The top app bar: the title on the left, the account and theme actions on the right. -->
-    <div class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2">
+    <!-- The top app bar: the title on the left, the account actions on the right. -->
+    <div
+      class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2"
+      :class="framed ? 'max-w-[1280px] min-[1920px]:max-w-[1600px]' : ''"
+    >
       <h1 class="md-title-large min-w-0 truncate">
         <router-link
           :to="'/'"
@@ -41,12 +55,9 @@ const { title } = usePlaceholders()
       </h1>
       <MenuPanel />
     </div>
-    <!--
-      The avatar, description and organisation link used to sit here, which put them above
-      the console, the settings form and every other view an operator works in: 356px of
-      chrome before the first line of content, on a screen that is often 900px tall. They
-      describe the repository, so they belong to the page that presents the repository, and
-      the overview tab renders HeaderHero itself.
-    -->
+    <div
+      class="olf-brand-bar absolute inset-x-0 bottom-0"
+      aria-hidden="true"
+    />
   </header>
 </template>

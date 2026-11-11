@@ -31,12 +31,12 @@ vi.mock('../../store/session', () => ({
   })
 }))
 
-const mountHeader = () => {
+const mountHeader = (props = {}) => {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/:qualifier(.*)', component: { render: () => null } }]
   })
-  return mount(DefaultHeader, { global: { plugins: [router] } })
+  return mount(DefaultHeader, { props, global: { plugins: [router] } })
 }
 
 describe('DefaultHeader', () => {
@@ -52,5 +52,45 @@ describe('DefaultHeader', () => {
     const wrapper = mountHeader()
 
     expect(wrapper.find('header').classes()).toEqual(expect.arrayContaining(['sticky', 'top-0']))
+  })
+
+  it('ends the bar 16px short of the window from 1600px up, as the content sheet does', () => {
+    const wrapper = mountHeader()
+
+    expect(wrapper.find('header').classes(), 'the bar and the sheet share one right edge').toContain('min-[1600px]:pr-4')
+  })
+
+  it('places the title in the container the page content uses, so both start at one x', () => {
+    const wrapper = mountHeader()
+
+    const container = wrapper.find('header > .container')
+    expect(container.exists(), 'the title row is the shared container').toBe(true)
+    expect(container.find('h1').exists(), 'the title sits in it').toBe(true)
+  })
+
+  it('takes the administration frame width when the page is an administration page', () => {
+    const wrapper = mountHeader({ framed: true })
+
+    const container = wrapper.find('header > .container')
+    expect(container.classes(), 'the same width rule as the administration frame').toEqual(
+      expect.arrayContaining(['max-w-[1280px]', 'min-[1920px]:max-w-[1600px]'])
+    )
+  })
+
+  it('keeps the usual container width on pages without the administration frame', () => {
+    const wrapper = mountHeader()
+
+    expect(wrapper.find('header > .container').classes()).not.toContain('max-w-[1280px]')
+  })
+
+  it('draws the brand rule under the top bar across its whole width', () => {
+    const wrapper = mountHeader()
+
+    const rule = wrapper.find('header > .olf-brand-bar')
+    expect(rule.exists(), 'the rule is a direct child of the bar').toBe(true)
+    expect(rule.classes(), 'it spans the bar from edge to edge, at its bottom edge').toEqual(
+      expect.arrayContaining(['absolute', 'inset-x-0', 'bottom-0'])
+    )
+    expect(rule.attributes('aria-hidden'), 'the decoration carries no information').toBe('true')
   })
 })

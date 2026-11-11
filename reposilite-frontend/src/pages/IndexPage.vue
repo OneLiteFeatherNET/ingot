@@ -22,6 +22,7 @@ import { useSession } from '../store/session'
 import { openLogin } from '../store/login'
 import { useLoginErrorNotice } from '../components/header/loginErrors'
 import DefaultHeader from '../components/header/DefaultHeader.vue'
+import RailBrand from '../components/header/RailBrand.vue'
 import HeaderHero from '../components/header/HeaderHero.vue'
 import FileBrowserView from '../components/browser/FileBrowserView.vue'
 import RepositoryOverview from '../components/overview/RepositoryOverview.vue'
@@ -125,6 +126,9 @@ useLoginErrorNotice()
 const section = computed(() => route.meta.section ?? null)
 // The entry of the rail and the bar that is current: every Administration page is under Administration.
 const navigationSection = computed(() => (ADMINISTRATION_SECTIONS.includes(section.value) ? 'settings' : section.value))
+// The administration pages draw their content in the administration frame, which has its own maximum width.
+// The top bar takes the same width, so its title and the frame's content start at one x.
+const framedPage = computed(() => ADMINISTRATION_SECTIONS.includes(section.value))
 // A contributed page is judged by the area it names, not by the settings meta of its route. A page the manifest
 // does not name has no node, so it is not allowed and the page below shows it as not found.
 const pluginPageNode = computed(() => (route.name === 'settings-plugin'
@@ -323,18 +327,18 @@ const activeLabel = computed(() => pageLabel(section.value))
 <template>
   <div
     class="bg-surface text-on-surface"
-    :class="hasNavigation ? 'min-[600px]:pl-20 min-[600px]:bg-surface-container' : ''"
+    :class="hasNavigation ? 'min-[600px]:pl-24 min-[600px]:bg-surface-container' : ''"
   >
     <!--
       Below 600px the bar sits at the bottom, so the footer block reserves its height and the
       device's safe area above the footer. From 600px the rail sits at the left and the page moves
-      right by its 80px width, the header included. From 600px the frame (rail and top bar) is
+      right by its 96px width, the header included. From 600px the frame (rail and top bar) is
       surface-container, and the content is a surface sheet with rounded corners where it meets
       them. The sheet is at least as tall as the window below the top bar, so its footer sits at
       the bottom of the window. From 1600px the sheet also rounds its top right corner and keeps
       a 16px gap to the window edge.
     -->
-    <DefaultHeader />
+    <DefaultHeader :framed="framedPage" />
     <!--
       The corners stay put while the page scrolls: the sheet's own corner scrolls under the top
       bar with the rest of the page, so these two sticky pieces paint the same corners again at the
@@ -556,13 +560,16 @@ const activeLabel = computed(() => pageLabel(section.value))
           </template>
         </MdNavigationBar>
       </div>
-      <div class="fixed inset-y-0 left-0 z-20 hidden w-20 min-[600px]:block">
+      <div class="fixed inset-y-0 left-0 z-20 hidden w-24 min-[600px]:block">
         <MdNavigationRail
           class="h-full"
           :items="railItems"
           :model-value="navigationSection"
           @update:model-value="selectSection"
         >
+          <template #top>
+            <RailBrand />
+          </template>
           <template #icon="{ item, active }">
             <component
               :is="SECTION_ICONS[item.key] ?? SECTION_ICONS.settings"

@@ -15,91 +15,187 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref } from 'vue'
-import { mount } from '@vue/test-utils'
+import { ref, reactive } from 'vue'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import MenuPanel from './MenuPanel.vue'
 
-// A signed in user, so that the account actions are the ones on screen.
-const session = vi.hoisted(() => ({ logout: null }))
+// The session and the theme are replaced, so each test states who is signed in and which theme is on.
+const state = vi.hoisted(() => ({
+  isLogged: true,
+  logout: null,
+  changeTheme: null,
+  mode: 'dark'
+}))
 
 vi.mock('../../store/session', () => ({
   useSession: () => ({
     token: ref({ name: 'alice', secret: 'secret' }),
-    isLogged: ref(true),
-    logout: (...args) => session.logout(...args),
+    principal: ref({ name: 'alice', displayName: 'Alice Example' }),
+    isLogged: ref(state.isLogged),
+    logout: (...args) => state.logout(...args),
     login: vi.fn(),
     loginFailureMessage: (error) => String(error)
   })
 }))
 
-// The router is not part of this test, so the link component is replaced by one that hands its
-// slot a fixed address and a recorder for the navigation.
-const navigation = vi.hoisted(() => ({ navigate: null, target: null }))
+vi.mock('../../store/theme', () => ({
+  default: () => ({
+    theme: reactive({ mode: state.mode, isDark: state.mode === 'dark' }),
+    changeTheme: (...args) => state.changeTheme(...args)
+  })
+}))
 
-const RouterLinkStub = {
-  props: ['to'],
-  render() {
-    navigation.target = this.to
-    return this.$slots.default({ href: '/account', navigate: (...args) => navigation.navigate(...args) })
-  }
+const mountPanel = () => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/account', name: 'account', component: { render: () => null } },
+      { path: '/:qualifier(.*)', component: { render: () => null } }
+    ]
+  })
+  const wrapper = mount(MenuPanel, { global: { plugins: [router] }, attachTo: document.body })
+  return { wrapper, router }
 }
 
-const mountPanel = () => mount(MenuPanel, { global: { stubs: { RouterLink: RouterLinkStub } } })
+// The account menu is teleported to the body, so its items are read from the document.
+const menuItem = (name) => [...document.querySelectorAll('[role="menu"] [role="menuitem"], [role="menu"] [role="menuitemradio"]')]
+  .find(item => item.textContent.trim() === name)
+const accountTrigger = (wrapper) => wrapper.find('button[aria-haspopup="menu"]')
 
-describe('MenuPanel', () => {
+describe('MenuPanel, signed in', () => {
+  let mounted
+
   beforeEach(() => {
-    session.logout = vi.fn()
-    navigation.navigate = vi.fn(event => event.preventDefault())
-    navigation.target = null
+    state.isLogged = true
+    state.mode = 'dark'
+    state.logout = vi.fn()
+    state.changeTheme = vi.fn()
+    mounted?.wrapper.unmount()
+    mounted = undefined
   })
 
-  it('links to the account page by its route name', () => {
-    const wrapper = mountPanel()
+  const open = async () => {
+    mounted = mountPanel()
+    await accountTrigger(mounted.wrapper).trigger('click')
+    await flushPromises()
+    return mounted
+  }
 
-    const link = wrapper.findAll('a').find(anchor => anchor.text() === 'My account')
+  it('shows the account as one button, named after the signed in user', () => {
+    mounted = mountPanel()
 
-    expect(link, 'the account page is one click from the header').toBeDefined()
-    expect(link.attributes('href')).toBe('/account')
-    expect(navigation.target).toEqual({ name: 'account' })
+    const triggers = mounted.wrapper.findAll('button[aria-haspopup="menu"]')
+    expect(triggers, 'one account button').toHaveLength(1)
+    expect(triggers[0].attributes('aria-label'), 'the visible name is the accessible name, so no label overrides it').toBeUndefined()
+    expect(triggers[0].text(), 'the name is part of the button').toContain('Alice Example')
   })
 
-  it('gives the compact account control an accessible name', () => {
-    const wrapper = mountPanel()
+  it('draws the first letter of the name as the avatar, hidden from assistive technology', () => {
+    mounted = mountPanel()
 
-    expect(wrapper.find('a[aria-label="My account"]').exists(), 'the icon-only link on small screens needs a name').toBe(true)
+    const avatar = accountTrigger(mounted.wrapper).find('[aria-hidden="true"]')
+    expect(avatar.text(), 'the initial of the name, in capitals').toBe('A')
   })
 
-  it('navigates through the router when the account link is pressed', async () => {
-    const wrapper = mountPanel()
+  it('takes the name out of the layout below 900 pixels, but keeps it as the button name', () => {
+    mounted = mountPanel()
 
-    await wrapper.findAll('a').find(anchor => anchor.text() === 'My account').trigger('click')
-
-    expect(navigation.navigate).toHaveBeenCalledTimes(1)
+    const name = accountTrigger(mounted.wrapper).find('[data-test="account-name"]')
+    expect(name.text()).toBe('Alice Example')
+    expect(name.classes(), 'screen reader only on narrow windows').toContain('sr-only')
+    expect(name.classes(), 'shown again from 900 pixels').toContain('min-[900px]:not-sr-only')
   })
 
-  it('offers logout as a real button with its name as text', () => {
-    const wrapper = mountPanel()
+  it('keeps Welcome, My account, Logout and the theme icon out of the bar', () => {
+    mounted = mountPanel()
 
-    const logout = wrapper.findAll('button').find(button => button.text() === 'Logout')
-
-    expect(logout, 'logout must be a button, not a clickable div').toBeDefined()
-    expect(logout.element.tagName).toBe('BUTTON')
+    const bar = mounted.wrapper.text()
+    expect(bar, 'no welcome text in the bar').not.toContain('Welcome')
+    expect(mounted.wrapper.findAll('button').map(button => button.text()), 'no loose Logout button in the bar').not.toContain('Logout')
+    expect(mounted.wrapper.findAll('a').map(link => link.text()), 'no loose My account link in the bar').not.toContain('My account')
   })
 
-  it('gives the compact logout control an accessible name', () => {
-    const wrapper = mountPanel()
+  it('opens the menu with the name of the user as its heading', async () => {
+    const { wrapper } = await open()
 
-    const compact = wrapper.find('button[aria-label="Logout"]')
-
-    expect(compact.exists(), 'the icon-only logout on small screens needs a name for screen readers')
-      .toBe(true)
+    expect(accountTrigger(wrapper).attributes('aria-expanded')).toBe('true')
+    const heading = document.querySelector('[role="menu"] [data-test="menu-heading"]')
+    expect(heading, 'the heading names the user').not.toBeNull()
+    expect(heading.textContent.trim()).toBe('Alice Example')
   })
 
-  it('signs the user out when the logout button is pressed', async () => {
-    const wrapper = mountPanel()
+  it('offers My account as a link to the account page', async () => {
+    await open()
 
-    await wrapper.findAll('button').find(button => button.text() === 'Logout').trigger('click')
+    const link = menuItem('My account')
+    expect(link, 'My account is a menu item').toBeDefined()
+    expect(link.getAttribute('href')).toBe('/account')
+  })
 
-    expect(session.logout).toHaveBeenCalledTimes(1)
+  it('navigates to the account page when My account is chosen', async () => {
+    const { router } = await open()
+
+    menuItem('My account').click()
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('account')
+  })
+
+  it('offers the three themes as radio items and checks the one in use', async () => {
+    await open()
+
+    const radios = [...document.querySelectorAll('[role="menuitemradio"]')]
+    expect(radios.map(radio => radio.textContent.trim())).toEqual(['Light', 'Dark', 'Follow system'])
+    expect(menuItem('Dark').getAttribute('aria-checked'), 'the theme in use is checked').toBe('true')
+    expect(menuItem('Light').getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('changes the theme when a theme is chosen', async () => {
+    await open()
+
+    menuItem('Light').click()
+    await flushPromises()
+
+    expect(state.changeTheme).toHaveBeenCalledWith('light')
+  })
+
+  it('offers Logout as a menu item, and signs the user out when it is chosen', async () => {
+    await open()
+
+    const logout = menuItem('Logout')
+    expect(logout, 'logout is a menu item').toBeDefined()
+
+    logout.click()
+    await flushPromises()
+
+    expect(state.logout).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('MenuPanel, signed out', () => {
+  beforeEach(() => {
+    state.isLogged = false
+    state.mode = 'auto'
+    state.logout = vi.fn()
+    state.changeTheme = vi.fn()
+  })
+
+  it('keeps a visible Sign in button', () => {
+    const { wrapper } = mountPanel()
+
+    expect(wrapper.findAll('button').map(button => button.text()), 'the Sign in button').toContain('Sign in')
+  })
+
+  it('offers no account menu, since there is no account to show', () => {
+    const { wrapper } = mountPanel()
+
+    expect(wrapper.find('button[aria-haspopup="menu"]').exists()).toBe(false)
+  })
+
+  it('keeps the theme control reachable for a visitor who is not signed in', () => {
+    const { wrapper } = mountPanel()
+
+    expect(wrapper.find('button[aria-label^="Theme: "]').exists()).toBe(true)
   })
 })
