@@ -167,6 +167,16 @@ describe('the settings hub at /settings', () => {
     expect(client.update, 'nothing is saved').not.toHaveBeenCalled()
   })
 
+  it('draws the Administration tree beside the hub, with the entries of the other Administration pages', async () => {
+    await mountHub()
+
+    const tree = wrapper.get('nav[aria-label="Administration"]')
+    const entries = tree.findAll('a').map(link => link.text())
+    expect(entries, 'the page entries of the tree').toEqual(expect.arrayContaining(['Repositories', 'Audit log']))
+    expect(entries, 'the settings domains of the tree').toEqual(expect.arrayContaining([SCHEMAS.maven.title, SCHEMAS.web.title]))
+    expect(tree.findAll('[aria-current="page"]'), 'the hub marks no entry of the tree').toHaveLength(0)
+  })
+
   it('shows no hub when the address names a domain', async () => {
     await mountHub({ props: { domain: 'web' } })
 
