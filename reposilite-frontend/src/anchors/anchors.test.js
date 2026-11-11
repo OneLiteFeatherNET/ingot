@@ -88,6 +88,12 @@ describe("anchor checks on a single template", () => {
     expect(problems).toEqual([expect.stringContaining("no element of its own")])
   })
 
+  it("accepts a dynamic component tag as the carrier, because its rendered element is a plain element", () => {
+    const source = `<template><component :is="tag" data-ingot-component="side-nav-layout"></component></template>`
+
+    expect(nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))).toEqual([])
+  })
+
   it("reports a component whose template has no plain element to carry the name", () => {
     const source = `<template><slot></slot></template>`
 

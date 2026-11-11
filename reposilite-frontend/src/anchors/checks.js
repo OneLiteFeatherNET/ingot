@@ -119,10 +119,14 @@ export function inspectTemplate(source, file) {
 
 // The plain elements that carry the name: every plain root element, or, when the component's roots are all other
 // components (a card or a dialog around its content), the first plain element of its template.
+// A plain element is an HTML element, or a <component :is> whose rendered element is an HTML element (a button, a link).
+// A static attribute on such a tag lands on the rendered element, so it is a carrier as well.
+const isPlain = (node) => node.tagType === TAG_ELEMENT || node.tag === "component"
+
 function carriersOf(roots, elements) {
-  const native = roots.filter((node) => node.tagType === TAG_ELEMENT)
+  const native = roots.filter(isPlain)
   if (native.length > 0) return native
-  return elements.filter((node) => node.tagType === TAG_ELEMENT).slice(0, 1)
+  return elements.filter(isPlain).slice(0, 1)
 }
 
 // The root name, the closed attribute set, and the alias attributes of one component.
