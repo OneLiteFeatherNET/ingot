@@ -76,6 +76,7 @@
 * [Verify an upgrade](how-to/verify-an-upgrade.md)
 * [Roll back an upgrade](how-to/roll-back-an-upgrade.md)
 * [Review the audit log](how-to/review-audit-log.md)
+* [Forward audit events to a SIEM](how-to/forward-audit-events-to-a-siem.md)
 * [Monitor status and failures](how-to/monitor-status-and-failures.md)
 
 ## Reference

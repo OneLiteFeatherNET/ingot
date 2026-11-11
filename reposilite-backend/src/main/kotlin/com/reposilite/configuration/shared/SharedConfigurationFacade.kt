@@ -358,6 +358,9 @@ class SharedConfigurationFacade(
         }
 
         extensions.emitEvent(AuditEvent(action = AuditAction.SETTINGS_CHANGED, actor = actor, details = mapOf("domain" to name, "fields" to fields)))
+        if (name == MAVEN_DOMAIN) {
+            repositoryAuditEvents(before, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(body), actor).forEach { extensions.emitEvent(it) }
+        }
     }
 
     private fun domainTypes(): Map<String, Class<*>> =

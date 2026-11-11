@@ -4,7 +4,7 @@ description: Reference for the audit log of Ingot. Lists every audit action with
 
 # Audit events
 
-The audit log records administrative and artifact events. Each event is one row in the table `audit_events`. This page lists what is recorded, how long it is kept, and how the log is read and exported. For the steps to read and export the log, see [Review the audit log](../how-to/review-audit-log.md).
+The audit log records administrative and artifact events. Each event is one row in the table `audit_events`. This page lists what is recorded, how long it is kept, and how the log is read and exported. For the steps to read and export the log, see [Review the audit log](../how-to/review-audit-log.md). Optionally, every event is also written as a JSON line for a log collector, see [JSON lines sink](#json-lines-sink).
 
 ## Event fields
 
@@ -53,6 +53,8 @@ Nothing is written for a mirror with `checksumPolicy` `ignore`, or for metadata 
 | Action | Written when | Details keys |
 | --- | --- | --- |
 | `SETTINGS_CHANGED` | A settings domain is saved and at least one field value differs from before (`SharedConfigurationFacade`). Values are never written, only paths. | `domain`, `fields` (dotted paths such as `ldap.host`) |
+| `REPOSITORY_CREATED` | A save of the `maven` domain adds a repository id that was not stored before (`SharedConfigurationFacade`). Written in addition to `SETTINGS_CHANGED`. Sets `repository` to the new id. | `visibility`, `type` (the declared type, or `null`) |
+| `REPOSITORY_DELETED` | A save of the `maven` domain removes a stored repository id. Written in addition to `SETTINGS_CHANGED`. Sets `repository` to the removed id. A rename is one deletion of the old id and one creation of the new id. A change of visibility or type alone writes no repository event. | `visibility`, `type` of the removed entry (or `null`) |
 
 ### Legacy tokens
 
@@ -136,6 +138,71 @@ Purge behaviour:
 * It reads `retentionDays` on each run, so a change applies to the next run.
 * With several instances on one database, only one instance purges per UTC day (claim key `audit-purge`).
 * A purge that removes rows writes the log line `AUDIT | Removed <n> event(s) older than <days> day(s)`.
+
+## JSON lines sink
+
+The sink writes every audit event as one JSON object per line, in addition to the table. It is off by default, and with it off the server writes nothing extra. It is switched on with the variables `INGOT_AUDIT_SINK_STDOUT` and `INGOT_AUDIT_SINK_FILE`, listed in [Environment variables](environment-variables.md#audit-sink-variables). For a collector setup, see [Forward audit events to a SIEM](../how-to/forward-audit-events-to-a-siem.md).
+
+### Line fields
+
+Every line is UTF-8, has exactly one JSON object and ends with a line feed. Every field is always present, and a value that does not apply is `null`.
+
+| Field | Type | Content |
+| --- | --- | --- |
+| `schema` | string | Always `ingot.audit`. Lets a collector pick audit lines out of a stream that carries other logs. |
+| `version` | integer | `1`. See the compatibility rule below. |
+| `time` | string | ISO-8601 instant in UTC with milliseconds, taken when the event is recorded. |
+| `node` | string | The instance identifier of the replica that recorded the event. It is the value of `INGOT_CLUSTER_INSTANCE_ID`, or the host name when that is unset. |
+| `action` | string | One action name of the tables above. |
+| `actor` | string | As in the table. |
+| `actorAddress` | string or `null` | Client address. `null` when `recordActorAddress` is `false` or the address is unknown. |
+| `repository` | string or `null` | Repository name, as in the table. |
+| `path` | string or `null` | Artifact coordinates for artifact events, as in the table. |
+| `details` | object or `null` | The details keys of the action as a JSON object, not as text. `null` when the action has none. |
+| `success` | boolean | As in the table. |
+| `occurrences` | integer | Always `1`. Each failed login is its own line. |
+
+An example line, wrapped here for reading:
+
+```json
+{"schema":"ingot.audit","version":1,"time":"2026-11-10T08:15:30.123Z","node":"ingot-0","action":"TOKEN_CREATED","actor":"admin","actorAddress":"10.0.0.2","repository":null,"path":null,"details":{"token":"deploy-bot","replaced":false},"success":true,"occurrences":1}
+```
+
+A line has no `id`. It describes an event, not a table row, so the lines and the rows do not match one to one: failed logins are folded into one row in the table, and each of them is one line.
+
+### Compatibility
+
+Adding a field or an action name does not change `version`. Consumers must ignore fields they do not know, and must accept action names they do not know. Renaming, removing or retyping a field, or changing what it means, raises `version`. The server writes one version at a time, so a collector rule that checks `version` keeps working until the operator upgrades past it.
+
+### Failure behaviour
+
+* Recording an event never waits for the sink. The line is handed to an in-memory queue of 10 000 lines, and one background thread writes it.
+* The table row is written whether or not the line was written, and the line is written before the row, so a line exists even when the database is down.
+* A full queue drops the new line. A write error, such as a full disk or a missing permission, drops the batch that failed.
+* Dropped and failed lines are counted. At most one warning per minute is logged, starting with `AUDIT | JSON sink lost`, with the counts and the last error.
+* A file that cannot be opened does not stop the start. The sink tries again on the next write and creates missing parent directories.
+* On shutdown the queue is written for up to 5 seconds. Lines still queued after that are lost.
+
+### Files
+
+The file is opened in append mode and created with mode `0640`. The sink never rotates, compresses or deletes the file. It checks the path at most once per second and opens the file again when the path no longer names the open file, so an external `logrotate` with `create`, or a rename by an operator, needs no signal.
+
+## Personal data
+
+The audit log holds personal data wherever a person is named. The JSON lines sink copies that data out of the database, so it has to be handled in both places. Ingot does not give legal advice on this, but the table below says which fields carry personal data and what controls exist.
+
+| Field | Personal data when |
+| --- | --- |
+| `actor` | It is a user name, an e-mail style login or an OIDC subject. A machine account or token name usually is not. |
+| `actorAddress` | Always when the actor is a person, because an IP address is personal data. |
+| `details` | It names a principal, a team or the members of a team. |
+| `path`, `repository` | Rarely, when a coordinate contains a name. |
+
+* `recordActorAddress` controls the address in the table and in the lines. Turning it off stops new addresses in both. It does not remove the addresses already written.
+* `retentionDays` applies to the table only. The lines are kept as long as the collector and the rotated files keep them, so set those to the retention the policy requires.
+* Removing a principal does not rewrite old rows or old lines. The sink never edits its file. Where a person must be erased from the lines, the collector or the file owner does it.
+* Secrets are never written to `details`, and the lines carry no secret.
+* The file is `0640`. Standard output is the log stream of the platform, so its access is the access to that stream.
 
 ## Read access
 

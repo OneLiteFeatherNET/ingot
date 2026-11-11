@@ -20,10 +20,15 @@ import com.reposilite.audit.AuditFacade
 import com.reposilite.audit.AuditRepository
 import com.reposilite.audit.infrastructure.InMemoryAuditRepository
 import com.reposilite.audit.infrastructure.SqlAuditRepository
+import com.reposilite.audit.sink.AuditLineSink
+import com.reposilite.audit.sink.AuditSink
+import com.reposilite.audit.sink.AuditSinkSettings
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.scheduling.ScheduledJobClaims
 import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
+import net.onelitefeather.ingot.cluster.ClusterSettings
+import net.onelitefeather.ingot.cluster.ClusterSources
 import org.jetbrains.exposed.v1.jdbc.Database
 import panda.std.reactive.Reference
 import java.time.Clock
@@ -33,6 +38,8 @@ class AuditComponents(
     private val database: Database?,
     private val settings: Reference<AuditSettings>,
     private val clock: Clock = Clock.systemUTC(),
+    private val nodeId: String = ClusterSettings.instanceIdOf(ClusterSources.system()),
+    private val sinkSettings: AuditSinkSettings = AuditSinkSettings.read(),
 ) : PluginComponents {
 
     private fun auditRepository(): AuditRepository =
@@ -45,9 +52,17 @@ class AuditComponents(
     private fun purgeClaims(): ScheduledJobClaims =
         database?.let { SqlScheduledJobClaims(it, clock) } ?: ScheduledJobClaims.Unshared
 
+    /**
+     * The JSON lines sink for the switches of the environment. It starts its writer thread only when a target is set, and
+     * the caller closes it when the plugin is disposed.
+     */
+    fun lineSink(): AuditLineSink =
+        AuditSink.open(sinkSettings, clock, journalist.logger)
+
     fun auditFacade(
         repository: AuditRepository = auditRepository(),
         claims: ScheduledJobClaims = purgeClaims(),
+        lineSink: AuditLineSink = AuditLineSink.Disabled,
     ): AuditFacade =
         AuditFacade(
             journalist = journalist,
@@ -55,6 +70,8 @@ class AuditComponents(
             settings = settings,
             clock = clock,
             claims = claims,
+            lineSink = lineSink,
+            node = nodeId,
         )
 
 }

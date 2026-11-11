@@ -88,3 +88,4 @@ The `details` column holds the event details as JSON. A cell that begins with `=
 ## Next steps
 
 * Look up what each action means, and how long events are kept, in [Audit events](../reference/audit-events.md).
+* To keep a copy of the events outside the database, for a collector or a SIEM, see [Forward audit events to a SIEM](forward-audit-events-to-a-siem.md).

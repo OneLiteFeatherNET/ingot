@@ -29,6 +29,7 @@ import com.reposilite.maven.api.MirrorIntegrityEvent
 import com.reposilite.maven.api.ProxyRefusedEvent
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
+import com.reposilite.plugin.api.ReposiliteDisposeEvent
 import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
@@ -48,12 +49,15 @@ internal class AuditPlugin : ReposilitePlugin() {
     override fun initialize(): AuditFacade {
         val sharedConfigurationFacade = facade<SharedConfigurationFacade>()
 
-        val auditFacade = AuditComponents(
+        val components = AuditComponents(
             journalist = this,
             database = reposilite().database,
             settings = sharedConfigurationFacade.getDomainSettings<AuditSettings>(),
             clock = Clock.systemUTC(),
-        ).auditFacade()
+        )
+        val lineSink = components.lineSink()
+        event { _: ReposiliteDisposeEvent -> lineSink.close() }
+        val auditFacade = components.auditFacade(lineSink = lineSink)
 
         event { event: AuditEvent ->
             recordSafely { auditFacade.record(event) }
