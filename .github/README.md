@@ -5,6 +5,9 @@
   <a href="https://github.com/OneLiteFeatherNET/ingot/blob/main/LICENSE">
    <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" />
   </a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/OneLiteFeatherNET/ingot">
+   <img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/OneLiteFeatherNET/ingot/badge" />
+  </a>
  </p>
 </div>
 
@@ -38,8 +41,9 @@ full attribution and the statement of changes required by section 4(b) of the li
 > **Status:** the product is branded as Ingot and the build publishes as
 > `net.onelitefeather.ingot`. The module directories and the Java packages stay
 > `reposilite-*` and `com.reposilite.*` on purpose, so existing Reposilite plugins keep
-> compiling. No Ingot release has been cut yet, so the quickstart below builds from
-> source.
+> compiling. Released versions are listed on the
+> [releases page](https://github.com/OneLiteFeatherNET/ingot/releases). The quickstart
+> below builds from source.
 
 **Ingot's version line starts at 1.0.0**, independent of the Reposilite 3.5.28 the sources
 came from. The number restarting does not mean the feature set did: 1.0.0 has everything
