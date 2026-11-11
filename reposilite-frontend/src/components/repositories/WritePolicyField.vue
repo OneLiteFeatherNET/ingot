@@ -39,10 +39,11 @@ const emit = defineEmits(['update:modelValue'])
 
 const name = `write-policy-${useId()}`
 
+// The help line of each choice names the status code the choice answers.
 const HELP = {
-  allow: 'A release may be deployed again over an existing version.',
-  allowOnce: 'A release version can be deployed only once.',
-  readOnly: 'Nothing can be deployed to this repository.'
+  allow: 'Deploys are accepted.',
+  allowOnce: 'The first deploy of each file is accepted; a later deploy of the same file is refused with 409.',
+  readOnly: 'Deploys and deletes are refused with 405 Method Not Allowed. Reads are not affected. If the instance is in read-only mode, every repository answers 503 first.'
 }
 
 const choices = computed(() => WRITE_CHOICES
