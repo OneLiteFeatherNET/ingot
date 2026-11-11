@@ -66,7 +66,10 @@ const overlayStyle = {
     @opened="$emit('opened')"
     @closed="$emit('closed')"
   >
-    <div class="mx-auto max-h-[90dvh] w-full min-w-70 max-w-140 overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3" data-ingot-component="dialog-shell">
+    <div
+      class="mx-auto max-h-[90dvh] w-full min-w-70 max-w-140 overflow-y-auto rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+      data-ingot-component="dialog-shell"
+    >
       <slot />
     </div>
   </VueFinalModal>

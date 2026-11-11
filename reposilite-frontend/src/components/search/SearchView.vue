@@ -246,7 +246,10 @@ const toggleRow = (item) => {
 </script>
 
 <template>
-  <div class="container mx-auto mb-12 pt-7" data-ingot-component="search-view">
+  <div
+    class="container mx-auto mb-12 pt-7"
+    data-ingot-component="search-view"
+  >
     <h1 class="md-headline-small text-on-surface">
       Search
     </h1>

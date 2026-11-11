@@ -152,7 +152,10 @@ const validateDomain = (text, existing) => {
     labelledby="sso-dialog-title"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <div ref="root" data-ingot-component="sso-provider-dialog">
+    <div
+      ref="root"
+      data-ingot-component="sso-provider-dialog"
+    >
       <div class="flex items-center gap-3">
         <span
           v-if="kind"

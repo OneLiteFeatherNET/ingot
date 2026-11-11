@@ -83,7 +83,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 px-1" data-ingot-component="instance-health-row">
+  <div
+    class="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 px-1"
+    data-ingot-component="instance-health-row"
+  >
     <div
       role="status"
       class="flex flex-wrap items-center gap-x-2 md-body-medium text-on-surface"

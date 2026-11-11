@@ -64,7 +64,10 @@ const linkClasses = (active) => [
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-6 min-[1240px]:flex-row min-[1240px]:items-start min-[1240px]:gap-10" data-ingot-component="side-nav-layout">
+  <div
+    class="flex min-w-0 flex-col gap-6 min-[1240px]:flex-row min-[1240px]:items-start min-[1240px]:gap-10"
+    data-ingot-component="side-nav-layout"
+  >
     <nav
       v-if="showsSideNav"
       data-ingot-part="nav"

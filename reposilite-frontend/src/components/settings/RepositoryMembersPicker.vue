@@ -100,7 +100,10 @@ const setCredential = (index, field, value) => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4" data-ingot-component="repository-members-picker">
+  <div
+    class="flex flex-col gap-4"
+    data-ingot-component="repository-members-picker"
+  >
     <ol
       v-if="modelValue.length > 0"
       aria-label="Members in order"

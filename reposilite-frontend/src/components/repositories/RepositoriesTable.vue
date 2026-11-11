@@ -265,7 +265,11 @@ const onAction = (row, value) => {
             />
           </td>
         </tr>
-        <tr v-if="rows.length === 0" data-ingot-part="empty" data-ingot-state="empty">
+        <tr
+          v-if="rows.length === 0"
+          data-ingot-part="empty"
+          data-ingot-state="empty"
+        >
           <td
             :colspan="columnCount"
             class="px-3 py-6 md-body-medium text-on-surface-variant"

@@ -61,7 +61,10 @@ const scope = computed(() =>
 </script>
 
 <template>
-  <div id="delete-modal" data-ingot-component="delete-entry-modal">
+  <div
+    id="delete-modal"
+    data-ingot-component="delete-entry-modal"
+  >
     <VueFinalModal
       v-if="isOpen"
       :model-value="isOpen"

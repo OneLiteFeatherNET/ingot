@@ -95,7 +95,10 @@ const revertLabelOf = (change) => {
       class="flex min-h-full w-full flex-col bg-surface-container-low text-on-surface shadow-elevation-3 min-[840px]:w-[28rem] min-[840px]:rounded-l-corner-extra-large"
       data-ingot-component="settings-review-sheet"
     >
-      <header data-ingot-part="header" class="flex items-center justify-between gap-2 border-b border-outline-variant px-4 py-4 md:px-6">
+      <header
+        data-ingot-part="header"
+        class="flex items-center justify-between gap-2 border-b border-outline-variant px-4 py-4 md:px-6"
+      >
         <h2
           id="settings-review-title"
           class="md-title-large text-on-surface"

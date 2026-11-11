@@ -140,9 +140,9 @@ const submit = async () => {
     >
       <div
         v-if="errorItems.length"
-        data-ingot-state="error"
         id="migration-connect-errors"
         ref="summary"
+        data-ingot-state="error"
         tabindex="-1"
         role="alert"
         class="flex flex-col gap-1 rounded-corner-small bg-error-container p-3 text-on-error-container"

@@ -196,7 +196,10 @@ const labelClass = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-w-0 w-full flex-col gap-1" data-ingot-component="md-chip-input">
+  <div
+    class="flex min-w-0 w-full flex-col gap-1"
+    data-ingot-component="md-chip-input"
+  >
     <div class="relative">
       <div
         class="flex min-h-14 flex-wrap items-center gap-2 rounded-corner-extra-small border bg-transparent px-4 py-2"

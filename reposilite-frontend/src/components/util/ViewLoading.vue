@@ -19,7 +19,11 @@ import MdLinearProgress from '../md/MdLinearProgress.vue'
 </script>
 
 <template>
-  <div class="container mx-auto py-8" data-ingot-component="view-loading" data-ingot-state="loading">
+  <div
+    class="container mx-auto py-8"
+    data-ingot-component="view-loading"
+    data-ingot-state="loading"
+  >
     <MdLinearProgress
       indeterminate
       label="Loading view"

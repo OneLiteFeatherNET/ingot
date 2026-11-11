@@ -134,7 +134,10 @@ const onBlur = () => {
 </script>
 
 <template>
-  <div class="relative min-w-0" data-ingot-component="combobox-field">
+  <div
+    class="relative min-w-0"
+    data-ingot-component="combobox-field"
+  >
     <MdTextField
       :id="inputId"
       :model-value="modelValue"

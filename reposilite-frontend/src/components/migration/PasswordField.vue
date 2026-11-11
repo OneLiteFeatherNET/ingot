@@ -58,7 +58,10 @@ const revealed = ref(false)
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" data-ingot-component="password-field">
+  <div
+    class="flex flex-col gap-2"
+    data-ingot-component="password-field"
+  >
     <MdTextField
       :id="id"
       :label="label"

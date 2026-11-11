@@ -30,7 +30,10 @@ defineProps({
     start="<"
     end=">"
   >
-    <span class="text-primary" data-ingot-component="xml-tag">{{ name }}</span>
+    <span
+      class="text-primary"
+      data-ingot-component="xml-tag"
+    >{{ name }}</span>
   </CodeBrackets><slot /><CodeBrackets
     start="</"
     end=">"

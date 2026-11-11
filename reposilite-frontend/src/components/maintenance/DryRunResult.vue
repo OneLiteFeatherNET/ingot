@@ -34,7 +34,10 @@ const empty = computed(() => isNothingToDelete(props.preview))
 </script>
 
 <template>
-  <div class="flex flex-col gap-4" data-ingot-component="dry-run-result">
+  <div
+    class="flex flex-col gap-4"
+    data-ingot-component="dry-run-result"
+  >
     <p class="md-body-large text-on-surface">
       <template v-if="empty">
         Nothing would be deleted.

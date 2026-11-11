@@ -26,7 +26,10 @@ defineProps({
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1.5" data-ingot-component="status-label">
+  <span
+    class="inline-flex items-center gap-1.5"
+    data-ingot-component="status-label"
+  >
     <!--
       items-center centres the dot on the line box, and the x-height of the text sits about half a
       pixel lower than that middle. The nudge moves the dot onto the x-height centre.

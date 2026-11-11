@@ -55,7 +55,10 @@ const emit = defineEmits(['retry'])
     variant="outlined"
     class="min-w-0"
   >
-    <header class="pb-3" data-ingot-component="chart-card">
+    <header
+      class="pb-3"
+      data-ingot-component="chart-card"
+    >
       <h3 class="md-title-medium text-on-surface">
         {{ title }}
       </h3>
