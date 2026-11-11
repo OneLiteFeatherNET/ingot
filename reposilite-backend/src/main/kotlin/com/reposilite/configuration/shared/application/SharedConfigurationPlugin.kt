@@ -8,6 +8,7 @@ import com.reposilite.configuration.shared.SharedConfigurationReload
 import com.reposilite.configuration.shared.api.SharedSettings
 import com.reposilite.configuration.shared.infrastructure.SettingsDecryptCommand
 import com.reposilite.configuration.shared.infrastructure.SettingsEndpoints
+import com.reposilite.configuration.shared.infrastructure.SettingsExportEndpoints
 import com.reposilite.configuration.shared.infrastructure.SettingsReencryptCommand
 import com.reposilite.console.api.CommandsSetupEvent
 import com.reposilite.plugin.api.Plugin
@@ -24,6 +25,8 @@ import net.onelitefeather.ingot.settings.encryption.SettingsKeyGuard
 import net.onelitefeather.ingot.settings.encryption.SettingsKeyRecords
 import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
 import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
+import net.onelitefeather.ingot.settings.export.SettingsExportCodec
+import java.time.Clock
 import java.util.concurrent.TimeUnit
 
 @Plugin(name = "shared-configuration", dependencies = ["failure", "configuration", "local-configuration"])
@@ -92,6 +95,17 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
 
         event { event: RoutingSetupEvent ->
             event.registerRoutes(SettingsEndpoints(sharedConfigurationFacade, localConfiguration.hideSettingsSecrets, facade()))
+        }
+
+        event { event: RoutingSetupEvent ->
+            event.registerRoutes(
+                SettingsExportEndpoints(
+                    sharedConfigurationFacade = sharedConfigurationFacade,
+                    codec = SettingsExportCodec(),
+                    clock = Clock.systemUTC(),
+                    audit = { auditEvent -> extensions().emitEvent(auditEvent) },
+                )
+            )
         }
 
         event { event: CommandsSetupEvent ->
