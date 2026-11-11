@@ -131,6 +131,13 @@ function carriersOf(roots, elements) {
 // The root name, the closed attribute set, and the alias attributes of one component.
 export function nameProblems(file, source, entry, registry) {
   const { roots, elements, anchors } = inspectTemplate(source, file)
+  // A component that only hands its props to one child component renders no element of its own. A name on it would
+  // land on the child's element, so it has none, and the registry says so with ownElement: false.
+  if (entry.ownElement === false) {
+    return anchors.some((anchor) => anchor.attribute === "data-ingot-component")
+      ? [`${file}: "${entry.name}" renders no element of its own, so it must not carry data-ingot-component`]
+      : []
+  }
   const carriers = carriersOf(roots, elements)
   if (carriers.length === 0) {
     return [`${file}: no plain element is there to carry the name, so the component cannot be anchored`]

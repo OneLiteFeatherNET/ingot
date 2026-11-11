@@ -56,7 +56,7 @@ export function renderAnchorsDoc(registry) {
     "| --- | --- | --- | --- | --- |",
     ...components.map(
       (entry) =>
-        `| \`${entry.name}\` | ${entry.stability} | \`${entry.file}\` | ${code(entry.parts)} | ${code(entry.states)} |`,
+        `| \`${entry.name}\`${entry.ownElement === false ? " (no element of its own)" : ""} | ${entry.stability} | \`${entry.file}\` | ${code(entry.parts)} | ${code(entry.states)} |`,
     ),
     "",
     "## Aliases",

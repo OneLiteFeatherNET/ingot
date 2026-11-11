@@ -72,6 +72,22 @@ describe("anchor checks on a single template", () => {
     expect(nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))).toEqual([])
   })
 
+  it("accepts a component that renders no element of its own when it carries no name", () => {
+    const source = `<template><MdSelect :model-value="value" /></template>`
+    const entry = entryFor("md-select-renderer", { ownElement: false })
+
+    expect(nameProblems(NAVIGATION_FILE, source, entry, registryOf([]))).toEqual([])
+  })
+
+  it("reports a name on a component that renders no element of its own", () => {
+    const source = `<template><MdSelect data-ingot-component="md-select-renderer" /></template>`
+    const entry = entryFor("md-select-renderer", { ownElement: false })
+
+    const problems = nameProblems(NAVIGATION_FILE, source, entry, registryOf([]))
+
+    expect(problems).toEqual([expect.stringContaining("no element of its own")])
+  })
+
   it("reports a component whose template has no plain element to carry the name", () => {
     const source = `<template><slot></slot></template>`
 
