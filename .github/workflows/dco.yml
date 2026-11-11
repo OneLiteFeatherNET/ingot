@@ -27,13 +27,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: "Checkout pull request head"
+      # The base commit, so that the checker comes from main and a pull request cannot change the rules it is judged
+      # by. A pull request that branched before the checker existed has no copy of it.
+      - name: "Checkout base branch"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           # The full history, so that the base commit and the upstream cherry-pick targets are present.
           fetch-depth: 0
           persist-credentials: false
+
+      # The commits under test are fetched as objects only. Nothing from the pull request tree is executed.
+      - name: "Fetch pull request commits"
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git fetch --no-tags --quiet origin "+refs/pull/${PR_NUMBER}/head:refs/dco/pr-head"
 
       - name: "Look for cherry-picked upstream commits"
         id: trailers
