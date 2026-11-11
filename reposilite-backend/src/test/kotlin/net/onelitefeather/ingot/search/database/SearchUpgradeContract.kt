@@ -26,6 +26,8 @@ import net.onelitefeather.ingot.search.backend.IndexAction
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Test
@@ -69,10 +71,12 @@ internal abstract class SearchUpgradeContract {
         val backend = DatabaseSearchBackend(database, clock)
         backend.apply(listOf(IndexAction.Upsert(row(JAR)), IndexAction.Upsert(row(SPRING_CORE_JAR))))
         transaction(database) {
-            exec("DROP INDEX ix_search_gav_key")
-            exec("DROP TABLE search_token")
+            // MariaDB drops an index with its only column; the other databases need the index dropped first.
+            if (SearchDialect.of(database.vendor) != SearchDialect.MARIADB) exec("DROP INDEX ix_search_gav_key")
+            SchemaUtils.drop(SearchTables(SearchDialect.of(database.vendor)).token)
             exec("ALTER TABLE search_artifact DROP COLUMN gav_key")
-            exec("DELETE FROM search_state WHERE \"key\" = 'schema-2'")
+            val state = SearchTables(SearchDialect.of(database.vendor)).state
+            state.deleteWhere { state.key eq SearchSchema.TOKEN_MARKER_KEY }
         }
     }
 
