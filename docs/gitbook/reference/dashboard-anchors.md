@@ -92,6 +92,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `login-modal` | stable | `src/components/header/LoginModal.vue` | none | none |
 | `maintenance-view` | experimental | `src/components/maintenance/MaintenanceView.vue` | none | none |
 | `mapping-step` | experimental | `src/components/migration/MappingStep.vue` | none | none |
+| `maven-options-panel` | experimental | `src/components/repositories/MavenOptionsPanel.vue` | none | none |
 | `md-button` | experimental | `src/components/md/MdButton.vue` | none | none |
 | `md-card` | experimental | `src/components/md/MdCard.vue` | none | none |
 | `md-checkbox` | experimental | `src/components/md/MdCheckbox.vue` | none | none |
@@ -102,6 +103,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-linear-progress` | experimental | `src/components/md/MdLinearProgress.vue` | none | none |
 | `md-navigation-bar` | experimental | `src/components/md/MdNavigationBar.vue` | none | none |
 | `md-navigation-rail` | experimental | `src/components/md/MdNavigationRail.vue` | none | none |
+| `md-overflow-menu` | experimental | `src/components/md/MdOverflowMenu.vue` | none | none |
 | `md-radio` | experimental | `src/components/md/MdRadio.vue` | none | none |
 | `md-select` | experimental | `src/components/md/MdSelect.vue` | none | none |
 | `md-select-renderer` (no element of its own) | stable | `src/components/renderers/MdSelectRenderer.vue` | none | none |

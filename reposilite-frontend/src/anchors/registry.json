@@ -752,6 +752,13 @@
       "states": []
     },
     {
+      "name": "md-overflow-menu",
+      "file": "src/components/md/MdOverflowMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-radio",
       "file": "src/components/md/MdRadio.vue",
       "stability": "experimental",
@@ -1023,6 +1030,13 @@
       "name": "unsupported-renderer",
       "file": "src/components/renderers/UnsupportedRenderer.vue",
       "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "maven-options-panel",
+      "file": "src/components/repositories/MavenOptionsPanel.vue",
+      "stability": "experimental",
       "parts": [],
       "states": []
     },
