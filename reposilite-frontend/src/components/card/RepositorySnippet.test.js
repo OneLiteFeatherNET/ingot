@@ -63,6 +63,15 @@ describe('RepositorySnippet url wrapping', () => {
   })
 })
 
+describe('RepositorySnippet block wrapping', () => {
+  it.each(['xml', 'groovy', 'kotlin', 'scala'])('lets the %s block wrap long lines instead of scrolling sideways', (lang) => {
+    const pre = render(lang).find('pre').element
+
+    expect(pre.classList, 'a long repository id on its own line may break at any character').toContain('wrap-anywhere')
+    expect(pre.classList, 'the block keeps its indentation while it wraps').toContain('whitespace-pre-wrap')
+  })
+})
+
 describe('RepositorySnippet Gradle and SBT text', () => {
   it('indents the Gradle Groovy block by four spaces and keeps its url whole', () => {
     const text = render('groovy').find('pre').element.textContent

@@ -50,6 +50,7 @@ defineExpose({ content })
   <pre
     v-if="configuration.lang === 'xml'"
     ref="preElement"
+    class="whitespace-pre-wrap wrap-anywhere"
   >
 <XmlTag name="repository">
   <XmlTag name="id">{{ data.repoId }}</XmlTag>
@@ -60,6 +61,7 @@ defineExpose({ content })
   <pre
     v-else-if="configuration.lang === 'groovy'"
     ref="preElement"
+    class="whitespace-pre-wrap wrap-anywhere"
   >
 maven <CodeBrackets
 start="{"
@@ -72,6 +74,7 @@ end="}"
   <pre
     v-else-if="configuration.lang === 'kotlin'"
     ref="preElement"
+    class="whitespace-pre-wrap wrap-anywhere"
   >
 maven <CodeBrackets
 start="{"
@@ -87,6 +90,7 @@ end=")"
   <pre
     v-else-if="configuration.lang === 'scala'"
     ref="preElement"
+    class="whitespace-pre-wrap wrap-anywhere"
   >
 resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString>
 </pre>

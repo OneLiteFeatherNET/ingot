@@ -268,6 +268,12 @@ describe('MdTextField', () => {
     expect(classes, 'the picker selection uses the primary role').toContain('accent-primary')
   })
 
+  it('hides the native clear button of a search field, since the field has its own clear action', () => {
+    const wrapper = mount(MdTextField, { props: { label: 'Filter repositories', type: 'search' } })
+
+    expect(wrapper.find('input').classes(), 'the browser does not draw a second clear button').toContain('[&::-webkit-search-cancel-button]:appearance-none')
+  })
+
   it('leaves a text input without the date styling', () => {
     const wrapper = mount(MdTextField, { props: { label: 'Name' } })
 
