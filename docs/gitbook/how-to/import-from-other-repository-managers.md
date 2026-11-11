@@ -11,6 +11,8 @@ You can move the artifacts of Nexus, Artifactory or another Reposilite into Ingo
 | Copy the storage | Large imports, when the layout already matches. | Nothing. Ingot does not see the files until you rebuild the search index, and it does not change any metadata. |
 | Re-deploy with HTTP `PUT` | Smaller imports, or when the source metadata should be kept as uploaded. | Stores each file as a deployment, emits the deploy events, and applies the snapshot and redeployment rules. |
 
+For Nexus Repository 3 there is a guided import in the dashboard, which runs the same steps through the import API. See [Use the Nexus import wizard](use-the-nexus-import-wizard.md).
+
 ## Before you begin
 
 * A repository in Ingot that will hold the artifacts. Create it first, see [Create hosted repositories](create-hosted-repositories.md). Do not use a `PROXY` or a `GROUP` as the target, because they refuse uploads.
