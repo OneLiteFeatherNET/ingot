@@ -30,11 +30,12 @@ import AccessDomainCard from './AccessDomainCard.vue'
 import SettingsHub from './SettingsHub.vue'
 import { hubGroups } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
+import { domainFormOf } from './domainForm'
 import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoriesView from '../repositories/RepositoriesView.vue'
 import RepositoryDetail from '../repositories/RepositoryDetail.vue'
-import { collectionsOf, entryLayout, idText, validateNewId } from './collections'
+import { collectionsOf, idText, validateNewId } from './collections'
 import { barClearance } from './barClearance'
 import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
@@ -165,15 +166,8 @@ const selectedIdFor = (collection) => (props.collection === collection.key ? (pr
  */
 const domainForm = computed(() => {
   const domain = activeDomain.value
-  const schema = store.schemas.value[domain]
-  if (!domain || !schema?.properties) return null
-  const collectionKeys = collectionsFor(domain).map(collection => collection.key)
-  const fields = Object.fromEntries(
-    Object.entries(schema.properties).filter(([key]) => !collectionKeys.includes(key))
-  )
-  if (Object.keys(fields).length === 0) return null
-  const fieldSchema = { ...schema, properties: fields }
-  return { schema: fieldSchema, layout: entryLayout(fieldSchema, { exclude: [] }) }
+  if (!domain) return null
+  return domainFormOf(store.schemas.value[domain], collectionsFor(domain).map(collection => collection.key))
 })
 
 // The address names the domain on screen. A domain that is not in the address is written there.
