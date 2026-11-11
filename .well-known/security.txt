@@ -1,0 +1,6 @@
+# Reference copy of the security.txt of the Ingot project.
+# Served at /.well-known/security.txt by the project website once it exists (RFC 9116, section 3).
+Contact: https://github.com/OneLiteFeatherNET/ingot/security/advisories/new
+Policy: https://github.com/OneLiteFeatherNET/ingot/security/policy
+Expires: 2027-05-11T00:00:00Z
+Preferred-Languages: en
