@@ -66,12 +66,18 @@ describe("anchor checks on a single template", () => {
     expect(problems).toEqual([expect.stringContaining("side-nav-layout")])
   })
 
-  it("reports a root that is a child component, because a parent attribute would fall through to it", () => {
-    const source = `<template><MdCard data-ingot-component="side-nav-layout"></MdCard></template>`
+  it("names the first plain element inside a root that is a child component, not the child itself", () => {
+    const source = `<template><MdCard><div data-ingot-component="side-nav-layout"></div></MdCard></template>`
+
+    expect(nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))).toEqual([])
+  })
+
+  it("reports a component whose template has no plain element to carry the name", () => {
+    const source = `<template><slot></slot></template>`
 
     const problems = nameProblems(NAVIGATION_FILE, source, entryFor("side-nav-layout"), registryOf([]))
 
-    expect(problems).toEqual([expect.stringContaining("plain element")])
+    expect(problems).toEqual([expect.stringContaining("no plain element")])
   })
 
   it("accepts the named element inside a root Teleport", () => {

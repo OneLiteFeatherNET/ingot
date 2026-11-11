@@ -26,6 +26,7 @@ const NODE_ELEMENT = 1
 const PROP_ATTRIBUTE = 6
 const PROP_DIRECTIVE = 7
 const TAG_ELEMENT = 0
+const TAG_SLOT = 2
 
 export const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
 export const STATES = Object.freeze(["current", "loading", "error", "empty", "open"])
@@ -81,10 +82,10 @@ function elementsIn(children, out = []) {
 }
 
 // The elements that Vue renders at the top level. A Teleport or a plain template wrapper is looked through, because the
-// element inside it is what reaches the page.
+// element inside it is what reaches the page. A slot renders content of its parent, not an element of its own.
 function rootsIn(children) {
   return children
-    .filter((node) => node.type === NODE_ELEMENT)
+    .filter((node) => node.type === NODE_ELEMENT && node.tagType !== TAG_SLOT)
     .flatMap((node) => (isTransparent(node) ? rootsIn(node.children) : [node]))
 }
 
@@ -115,25 +116,31 @@ export function inspectTemplate(source, file) {
   const elements = elementsIn(children)
   return {
     roots: rootsIn(children),
+    elements,
     anchors: elements.flatMap((element) => anchorsOf(element)),
   }
 }
 
+// The plain elements that carry the name: every plain root element, or, when the component's roots are all other
+// components (a card or a dialog around its content), the first plain element of its template.
+function carriersOf(roots, elements) {
+  const native = roots.filter((node) => node.tagType === TAG_ELEMENT)
+  if (native.length > 0) return native
+  return elements.filter((node) => node.tagType === TAG_ELEMENT).slice(0, 1)
+}
+
 // The root name, the closed attribute set, and the alias attributes of one component.
 export function nameProblems(file, source, entry, registry) {
-  const { roots, anchors } = inspectTemplate(source, file)
-  const root = roots[0]
-  if (!root) {
-    return [`${file}: the template has no root element`]
+  const { roots, elements, anchors } = inspectTemplate(source, file)
+  const carriers = carriersOf(roots, elements)
+  if (carriers.length === 0) {
+    return [`${file}: no plain element is there to carry the name, so the component cannot be anchored`]
   }
 
   const problems = []
   // A component with several root elements (v-if branches, a Teleport) names each of them, so a selector reaches
   // whichever branch is on screen. No other element of the component carries the name.
-  for (const element of roots) {
-    if (element.tagType !== TAG_ELEMENT) {
-      problems.push(`${file}: a root must be a plain element, not a component or slot, so that a parent attribute does not fall through`)
-    }
+  for (const element of carriers) {
     const rootAnchor = anchorsOf(element).find((anchor) => anchor.attribute === "data-ingot-component")
     if (!rootAnchor) {
       problems.push(`${file}: a root element has no data-ingot-component="${entry.name}"`)
@@ -143,9 +150,9 @@ export function nameProblems(file, source, entry, registry) {
   }
 
   const componentAttributes = anchors.filter((anchor) => anchor.attribute === "data-ingot-component")
-  if (componentAttributes.length > roots.length) {
+  if (componentAttributes.length > carriers.length) {
     problems.push(
-      `${file}: data-ingot-component appears ${componentAttributes.length} times, but the component has ${roots.length} root element(s)`,
+      `${file}: data-ingot-component appears ${componentAttributes.length} times, but the component has ${carriers.length} named element(s)`,
     )
   }
 
