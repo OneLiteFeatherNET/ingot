@@ -59,6 +59,9 @@ const fakeClient = () => ({
     })),
     update: vi.fn(() => Promise.resolve({ data: '' }))
   },
+  readOnly: {
+    get: vi.fn(() => Promise.resolve({ status: 200, data: { enabled: false, source: 'stored' } }))
+  },
   cleanup: {
     runs: vi.fn(() => Promise.resolve({ data: [] })),
     dryRun: vi.fn(),
@@ -81,6 +84,32 @@ afterEach(() => {
 })
 
 describe('MaintenanceView', () => {
+  it('shows the read-only switch in a section labelled Writes, above the other panels', async () => {
+    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    await flushPromises()
+
+    const section = wrapper.find('section[aria-labelledby]')
+    expect(section.exists(), 'the switch sits in its own section').toBe(true)
+    expect(section.text(), 'the section is labelled Writes').toContain('Writes')
+    expect(section.find('[role="switch"]').exists(), 'a principal with the maintenance area sees the switch').toBe(true)
+    const storageHeading = wrapper.findAll('h3').find(heading => heading.text().includes('Storage usage'))
+    expect(section.element.compareDocumentPosition(storageHeading.element) & Node.DOCUMENT_POSITION_FOLLOWING, 'the section comes before the storage panel').toBeTruthy()
+  })
+
+  it('hides the Writes section and the switch when the probe answers 403', async () => {
+    session.client = {
+      ...fakeClient(),
+      readOnly: {
+        get: vi.fn(() => Promise.reject(Object.assign(new Error('Forbidden'), { response: { status: 403, data: {} } })))
+      }
+    }
+    wrapper = mount(MaintenanceView, { attachTo: document.body })
+    await flushPromises()
+
+    expect(wrapper.find('[role="switch"]').exists(), 'a principal without the maintenance area sees no switch').toBe(false)
+    expect(wrapper.text(), 'and no Writes section either').not.toContain('Writes')
+  })
+
   it('shows the storage usage and the cleanup policies on one page', async () => {
     wrapper = mount(MaintenanceView, { attachTo: document.body })
     await flushPromises()

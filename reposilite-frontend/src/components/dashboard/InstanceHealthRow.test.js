@@ -164,4 +164,25 @@ describe('InstanceHealthRow', () => {
 
     expect(wrapper.findAll('nav a').map(link => link.text())).toEqual(['API docs', 'Metrics'])
   })
+
+  it('leaves the label out when the cluster summary already states the health', async () => {
+    session.client = ref(clientWith({}))
+    wrapper = mount(InstanceHealthRow, { attachTo: document.body, props: { showLabel: false } })
+    await flushPromises()
+
+    expect(wrapper.text(), 'the cluster summary is the one health statement, so the row has no Healthy label').not.toContain('Healthy')
+  })
+
+  it('keeps the details of an unhealthy instance when the label is left out', async () => {
+    session.client = ref(clientWith({
+      health: () => Promise.reject(Object.assign(new Error('Request failed'), {
+        response: { status: 503, data: { status: 'DOWN', details: 'database unreachable' } }
+      }))
+    }))
+    wrapper = mount(InstanceHealthRow, { attachTo: document.body, props: { showLabel: false } })
+    await flushPromises()
+
+    expect(wrapper.text(), 'the detail the server sends is still shown').toContain('database unreachable')
+    expect(wrapper.text(), 'the label is not repeated').not.toContain('Unhealthy')
+  })
 })
