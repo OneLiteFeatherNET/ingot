@@ -28,14 +28,17 @@ const ADMINISTRATION_PAGES = [
   '/audit',
 ]
 
-// The links of the Administration side navigation, in order, with the current one marked.
-const administrationLinks = (page) => page
-  .getByRole('navigation', { name: 'Administration', exact: true })
-  .getByRole('link')
-  .evaluateAll(links => links.map(link => ({
+// The links of the Administration side navigation, in order, with the current one marked. The settings domains join
+// the tree when the session's domain list arrives, after the page itself, so the read waits for two of them first.
+const administrationLinks = async (page) => {
+  const tree = page.getByRole('navigation', { name: 'Administration', exact: true })
+  await expect(tree.getByRole('link', { name: 'Maven', exact: true })).toBeVisible()
+  await expect(tree.getByRole('link', { name: 'Audit', exact: true })).toBeVisible()
+  return tree.getByRole('link').evaluateAll(links => links.map(link => ({
     name: link.textContent.trim(),
     current: link.getAttribute('aria-current') === 'page',
   })))
+}
 
 test.describe('administration navigation', () => {
   test('lists the same Administration entries in the same order on every page', async ({ page }) => {
