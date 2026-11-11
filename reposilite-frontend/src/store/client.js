@@ -614,6 +614,14 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
+      encryptionState() {
+        return axios.get(createURL("/api/settings/encryption"), {
+          headers: {
+            Accepts: "application/json",
+            ...defaultAuthorization().headers,
+          },
+        })
+      },
       exportSaved(password) {
         return axios.post(createURL("/api/settings/export"), { password }, {
           headers: {
