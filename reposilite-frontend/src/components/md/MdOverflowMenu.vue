@@ -24,8 +24,11 @@ import MdButton from './MdButton.vue'
  *
  * Props:
  *   label  the accessible name of the button, such as "Actions for releases"
- *   items  [{ value, label, ariaLabel, error }]: the text of each item, its accessible name, and whether it is
- *          a destructive action (drawn in the error colour)
+ *   items  [{ value, label, ariaLabel, error, href }]: the text of each item, its accessible name, whether it is
+ *          a destructive action (drawn in the error colour), and an optional address. An item with an address is a
+ *          link with the menuitem role, so middle click and open in new tab work. A plain click on it is reported
+ *          through `select` and not followed by the browser (the router takes it); a click with a modifier key is
+ *          left to the browser, and the menu closes.
  * Emits:
  *   select  the value of the chosen item; the menu closes and the focus returns to the button
  *
@@ -109,6 +112,17 @@ const choose = (value) => {
   triggerElement()?.focus({ preventScroll: true })
 }
 
+// A link item is followed by the router on a plain click. With a modifier key, or a button other than the primary
+// one, the browser opens the address itself, so the menu only closes.
+const chooseLink = (event, value) => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+    closeMenu()
+    return
+  }
+  event.preventDefault()
+  choose(value)
+}
+
 const onMenuKeydown = (event) => {
   const items = menuItems()
   const index = items.indexOf(document.activeElement)
@@ -169,17 +183,31 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
         @keydown="onMenuKeydown"
         @focusout="onFocusout"
       >
-        <button
+        <template
           v-for="item in items"
           :key="item.value"
-          type="button"
-          role="menuitem"
-          :aria-label="item.ariaLabel"
-          :class="[itemClass, item.error ? '!text-error' : '']"
-          @click="choose(item.value)"
         >
-          {{ item.label }}
-        </button>
+          <a
+            v-if="item.href"
+            :href="item.href"
+            role="menuitem"
+            :aria-label="item.ariaLabel"
+            :class="[itemClass, item.error ? '!text-error' : '']"
+            @click="chooseLink($event, item.value)"
+          >
+            {{ item.label }}
+          </a>
+          <button
+            v-else
+            type="button"
+            role="menuitem"
+            :aria-label="item.ariaLabel"
+            :class="[itemClass, item.error ? '!text-error' : '']"
+            @click="choose(item.value)"
+          >
+            {{ item.label }}
+          </button>
+        </template>
       </div>
     </Teleport>
   </div>

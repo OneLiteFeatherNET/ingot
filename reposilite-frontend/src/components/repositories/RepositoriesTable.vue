@@ -83,11 +83,12 @@ const versionLabel = (row) => (row.type.key === 'GROUP' ? '-' : (VERSION_LABELS[
 const writeLabel = (row) => (row.writePolicy ? WRITE_LABELS[row.writePolicy] : '-')
 
 // A row opens its detail at its route: the id, or a key address for an entry without one.
+const detailHref = (route) => router.resolve({ name: 'settings-repository', params: { id: route } }).href
 const openDetail = (route) => router.push({ name: 'settings-repository', params: { id: route } })
 
 // The actions of a row, in one menu. An unnamed entry has no address to copy, so it has no copy action.
 const actionsOf = (row) => [
-  { value: 'edit', label: 'Edit', ariaLabel: `Edit ${row.name}` },
+  { value: 'edit', label: 'Edit', ariaLabel: `Edit ${row.name}`, href: detailHref(row.route) },
   ...(row.unnamed ? [] : [{ value: 'copy', label: 'Copy address', ariaLabel: `Copy address of ${row.name}` }]),
   { value: 'delete', label: 'Delete', ariaLabel: `Delete ${row.name}`, error: true }
 ]
