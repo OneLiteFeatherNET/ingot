@@ -591,6 +591,13 @@
       "states": []
     },
     {
+      "name": "administration-frame",
+      "file": "src/components/layout/AdministrationFrame.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "side-nav-layout",
       "file": "src/components/layout/SideNavLayout.vue",
       "stability": "stable",
@@ -1227,10 +1234,9 @@
       "name": "settings-view",
       "file": "src/components/settings/SettingsView.vue",
       "stability": "stable",
-      "parts": [
-        "header"
-      ],
-      "states": []
+      "parts": [],
+      "states": [],
+      "ownElement": false
     },
     {
       "name": "unsaved-changes-bar",

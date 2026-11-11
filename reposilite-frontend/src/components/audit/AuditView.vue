@@ -144,6 +144,7 @@ const countText = computed(() => {
   <section
     class="flex flex-col"
     aria-label="Audit log"
+    data-ingot-component="audit-view"
   >
     <div class="overflow-hidden rounded-corner-large bg-surface-container-low">
       <form
@@ -257,6 +258,7 @@ const countText = computed(() => {
 
       <MdLinearProgress
         v-if="loading"
+        data-ingot-state="loading"
         indeterminate
         label="Loading audit events"
       />

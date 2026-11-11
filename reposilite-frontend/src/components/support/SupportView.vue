@@ -53,7 +53,10 @@ const downloadBundle = async () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div
+    class="flex flex-col gap-6"
+    data-ingot-component="support-view"
+  >
     <p
       v-if="state === 'off'"
       class="md-body-medium text-on-surface-variant"

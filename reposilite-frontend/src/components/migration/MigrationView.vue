@@ -128,6 +128,7 @@ onBeforeUnmount(() => {
   <div
     ref="root"
     class="flex flex-col gap-6"
+    data-ingot-component="migration-view"
   >
     <nav aria-label="Migration steps">
       <ol class="flex flex-wrap gap-2 list-none">

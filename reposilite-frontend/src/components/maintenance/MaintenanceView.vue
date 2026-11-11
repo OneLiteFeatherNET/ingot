@@ -25,7 +25,10 @@ const storageRevision = ref(0)
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div
+    class="flex flex-col gap-6"
+    data-ingot-component="maintenance-view"
+  >
     <StorageUsagePanel :revision="storageRevision" />
     <IndexPanel />
     <CleanupPoliciesPanel @ran="storageRevision += 1" />
