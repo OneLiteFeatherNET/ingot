@@ -29,6 +29,7 @@ import com.reposilite.shared.extensions.shutdownGracefully
 import com.reposilite.status.StatusFacade
 import com.reposilite.web.HttpServer
 import net.onelitefeather.ingot.readonly.ReadOnlySetting
+import net.onelitefeather.ingot.support.SupportBundleSetting
 import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.web.ShutdownSettings
 import java.time.Duration
@@ -56,6 +57,8 @@ class Reposilite(
     val maxConcurrentRequests: Int? = null,
     /** The read-only switch read at start. The default is off, unless the environment forces it on. */
     val readOnlySetting: ReadOnlySetting = ReadOnlySetting(forced = false),
+    /** The opt-out of the system information and the support bundle. The default keeps both on. */
+    val supportBundleSetting: SupportBundleSetting = SupportBundleSetting(enabled = true),
     /** Waits out the pre-stop delay. Tests inject a recorder, so no test waits on the wall clock. */
     private val awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
 ) : Facade, Journalist {

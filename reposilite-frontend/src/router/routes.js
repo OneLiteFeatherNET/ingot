@@ -29,7 +29,7 @@
  */
 
 import dashboardSegments from './dashboard-segments.json'
-import { routeMeta } from '../navigation/registry'
+import { adminRouteMeta, routeMeta } from '../navigation/registry'
 
 const ROUTES = [
   { name: 'overview', path: '/', meta: routeMeta('overview') },
@@ -82,6 +82,9 @@ const ROUTES = [
   // The repositories are a page of their own under /settings. Placed before the generic settings route, which would take `repositories` as a domain.
   { name: 'settings-repositories', path: '/settings/repositories', meta: routeMeta('settings') },
   { name: 'settings-repository', path: '/settings/repositories/:id', meta: routeMeta('settings') },
+  // The support pages are listed before the generic settings route, which would otherwise take their names as domains.
+  { name: 'system-info', path: '/settings/system-info', meta: adminRouteMeta('system-info') },
+  { name: 'support', path: '/settings/support', meta: adminRouteMeta('support') },
   { name: 'settings', path: '/settings/:domain?', meta: routeMeta('settings') },
   {
     name: 'settings-entry',

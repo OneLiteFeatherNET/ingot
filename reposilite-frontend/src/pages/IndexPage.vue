@@ -46,8 +46,9 @@ import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
+import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
+import { supportBundleReady, loadSupportBundle, clearSupportBundle } from '../store/supportBundle'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
 import { qualifierOf, browseLocation } from '../router/paths'
 import { textFromParam, textParam, optionalParam } from '../router/url-state'
@@ -67,6 +68,8 @@ const AnalyticsView = lazyView(() => import('../components/dashboard/AnalyticsVi
 const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
 const MigrationView = lazyView(() => import('../components/migration/MigrationView.vue'))
+const SystemInfoView = lazyView(() => import('../components/support/SystemInfoView.vue'))
+const SupportView = lazyView(() => import('../components/support/SupportView.vue'))
 const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
 const AccountView = lazyView(() => import('../components/account/AccountView.vue'))
 const SearchView = lazyView(() => import('../components/search/SearchView.vue'))
@@ -92,6 +95,8 @@ defineProps({
 // The pages of the Administration tree that draw the tree as a side navigation. Access draws its own in AccessView.
 // Migration is the System page of the tree; it exists only while the nexus-import plugin is enabled (see migrationMissing).
 const ADMIN_SIDE_PAGES = ['audit', 'console', 'maintenance', 'analytics', 'migration']
+// The support pages are children of Settings: they share its section, and draw the same tree as the ADMIN_SIDE_PAGES.
+const SUPPORT_ROUTES = ['system-info', 'support']
 // The pages that the Administration entry of the rail and the bar stands for.
 const ADMINISTRATION_SECTIONS = ['settings', 'access', ...ADMIN_SIDE_PAGES]
 
@@ -137,6 +142,12 @@ watch([pluginUiReady, () => route.fullPath], () => {
   if (target) router.replace(target)
 }, { immediate: true })
 watch(isLogged, (logged) => (logged ? loadPluginUi() : clearPluginUi()), { immediate: true })
+watch(isLogged, (logged) => (logged ? loadSupportBundle() : clearSupportBundle()), { immediate: true })
+
+// The support pages are not found while the instance does not offer them (an opt-out instance), and wait for the answer.
+const supportPageOpen = computed(() => SUPPORT_ROUTES.includes(route.name) && isLogged.value && sectionAllowed.value)
+const supportPageWaiting = computed(() => supportPageOpen.value && !supportBundleReady.value)
+const supportPageAbsent = computed(() => supportPageOpen.value && supportBundleReady.value && !supportBundleOffered.value)
 
 // The server asks for a new password: the router closes every other page at navigation time, and
 // this follows when the flag arrives later, with the session that has just been read or started.
@@ -270,7 +281,10 @@ const replaceQuery = (key, value) => {
 // the tree is an index instead of a column; see SideNavLayout. The settings domains are known only inside Settings,
 // so the tree here lists the static pages.
 const narrow = useMediaQuery('(max-width: 599px)')
-const adminSideNav = computed(() => (ADMIN_SIDE_PAGES.includes(section.value) ? sideNavOf(section.value) : null))
+const adminSideNav = computed(() => {
+  if (ADMIN_SIDE_PAGES.includes(section.value)) return sideNavOf(section.value)
+  return SUPPORT_ROUTES.includes(route.name) ? sideNavOf('settings') : null
+})
 const adminTree = computed(() => adminGroups(can, { domains: [] }))
 
 // Access: the tab on screen (users, machines, teams, sso, ldap, security or check; none at /access, which is the index on a narrow screen) and the name of the principal or team that
@@ -339,6 +353,8 @@ const activeLabel = computed(() => pageLabel(section.value))
         <ViewLoading v-else-if="migrationPending" />
         <NotFoundView v-else-if="migrationMissing" />
         <NotFoundView v-else-if="pluginPageMissing" />
+        <ViewLoading v-else-if="supportPageWaiting" />
+        <NotFoundView v-else-if="supportPageAbsent" />
         <section
           v-else-if="!sectionAllowed && isLogged"
           data-test="no-access"
@@ -422,7 +438,7 @@ const activeLabel = computed(() => pageLabel(section.value))
           :label="adminSideNav.label"
           :section-label="adminSideNav.sectionLabel"
           :groups="adminTree"
-          :current="section"
+          :current="route.name"
           :index-to="adminSideNav.indexTo"
           :narrow="narrow"
         >
@@ -444,6 +460,8 @@ const activeLabel = computed(() => pageLabel(section.value))
             :query="route.query"
             @update:query="setAuditQuery"
           />
+          <SystemInfoView v-else-if="route.name === 'system-info'" />
+          <SupportView v-else-if="route.name === 'support'" />
         </SideNavLayout>
         <SettingsView
           v-else-if="section === 'settings'"

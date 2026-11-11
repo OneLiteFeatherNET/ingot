@@ -47,7 +47,7 @@ The action `*` covers all four actions.
 | `settings` | None. Accepted in node text. Its endpoints need the instance admin status. |
 | `maintenance` | The read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh. |
 | `audit` | None. Accepted in node text. The audit endpoints need the instance admin status. |
-| `console` | None. Accepted in node text. The console needs the instance admin status. |
+| `console` | The console endpoints and the support endpoints: the system information (`/api/admin/support/system-info`), the support bundle (`/api/admin/support/bundle`) and their availability. The console needs the instance admin status. |
 | `dashboard` | None. Accepted in node text. |
 
 The areas `users`, `tokens` and `teams` are checked by their own endpoints. Every other endpoint that requires an admin checks the instance admin status, which means `ingot.admin.*` (or `*`). The HTTP API page lists which endpoint needs which check.
@@ -59,7 +59,7 @@ A denial of an area works against an instance admin. A principal that holds `ing
 {% endhint %}
 
 {% hint style="warning" %}
-The areas `settings`, `dashboard` and `console` are valid node text, but no endpoint checks them by area. Granting one of them has no effect on any endpoint today. The `maintenance` area gates the read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh.
+The areas `settings` and `dashboard` are valid node text, but no endpoint checks them by area. Granting one of them has no effect on any endpoint today. The `maintenance` area gates the read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh. The `console` area gates the support endpoints, which are read-only, so a principal that holds it can download the support bundle of the answering instance.
 {% endhint %}
 
 ## Wildcards

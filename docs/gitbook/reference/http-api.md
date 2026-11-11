@@ -20,9 +20,21 @@ Paths in braces are path parameters. `<gav>` stands for the rest of a Maven path
 | Refresh cookie | The refresh cookie of a browser session is required. |
 | Path permission | A token or session that may perform the action on the path. Instance admins pass. The action is read for GET and HEAD, deploy for PUT and POST, and delete for DELETE. |
 | Instance admin | The caller holds `ingot.admin.*` (or `*`). Token narrowing applies. |
-| Admin area `<area>` | The caller holds `ingot.admin.<area>` (or `ingot.admin.*`). Token narrowing applies. Only the areas `users`, `tokens` and `teams` are checked this way. |
+| Admin area `<area>` | The caller holds `ingot.admin.<area>` (or `ingot.admin.*`). Token narrowing applies. Only the areas `users`, `tokens`, `teams`, `console` and `audit` are checked this way, and the support endpoints use `console`. |
 
 Wrong or missing credentials answer with `401`. A valid caller without the right answers with `403`. Read [Permission nodes](permission-nodes.md) and [Access tokens and routes](access-tokens-and-routes.md) for what the rights are.
+
+## Support
+
+Read-only routes for the system information and the support bundle. Both need the console area (`ingot.admin.console`), so an anonymous caller gets `401` and a principal without the area gets `403`. Every answer carries `Cache-Control: no-store`. Read-only mode does not refuse them. With the opt-out `INGOT_SUPPORT_BUNDLE_ENABLED=false` the two data routes answer `404` before anything is read. See [Collect a support bundle](../how-to/collect-a-support-bundle.md).
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/admin/support/availability` | Admin area `console` | Returns `{"enabled": true}` or `{"enabled": false}`. The dashboard uses it to show or hide the support links. |
+| GET | `/api/admin/support/system-info` | Admin area `console` | Returns the system information as JSON: the Ingot version and build (`unknown` when the jar carries none), the JVM, the operating system, the database kind and endpoint, the storage kinds and regions per repository, the cluster members, the plugins, the environment, the system properties and the redacted configuration. |
+| GET | `/api/admin/support/bundle` | Admin area `console` | Returns `application/zip` with `Content-Disposition: attachment; filename="ingot-support-<instance>-<yyyyMMdd-HHmmss>.zip"`. The files are `manifest.json`, `system-info.json`, `configuration-local.json`, `configuration-shared.json`, `cluster.json`, `plugins.json` and `logs/<instance>.log`. The bundle describes the instance that answers only, and is capped at 8 MiB. |
+
+A bundle is built under one permit. A second download while one is being built waits briefly and then answers `429`. A bundle or a system information answer that the final redaction check refuses is never served: the answer is `500` with a problem body that says the check failed. A download writes one [audit event](audit-events.md).
 
 ## Login and sessions
 

@@ -24,6 +24,7 @@ import com.google.common.collect.EvictingQueue
 import com.reposilite.VERSION
 import com.reposilite.plugin.api.Facade
 import com.reposilite.status.api.ClusterBusResponse
+import com.reposilite.status.api.ClusterStatusResponse
 import com.reposilite.status.api.InstanceStatusResponse
 import com.reposilite.status.api.StatusSnapshot
 import panda.std.Result
@@ -154,6 +155,13 @@ class StatusFacade(
             cluster = clusterStatusSource?.let { it.clusterStatus(instanceFigures()) }
         )
     }
+
+    /**
+     * The cluster section of the status as this instance sees it, or null when no bus is attached. Unlike [fetchInstanceStatus] it
+     * makes no outbound call, so it is safe for a response that is only read on request.
+     */
+    fun fetchClusterStatus(): ClusterStatusResponse? =
+        clusterStatusSource?.clusterStatus(instanceFigures())
 
     /** The figures of this instance, as the cluster sees them. */
     fun instanceFigures(): InstanceFigures =

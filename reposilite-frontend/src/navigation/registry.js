@@ -191,11 +191,20 @@ const ADMIN_TREE = [
       { key: 'console', route: 'console', label: 'Console', permission: { node: ADMIN_NODES.console } },
       { key: 'maintenance', route: 'maintenance', label: 'Maintenance', permission: { node: ADMIN_NODES.maintenance } },
       { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { node: ADMIN_NODES.dashboard } },
+      { key: 'system-info', route: 'system-info', label: 'System information', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value },
+      { key: 'support', route: 'support', label: 'Support bundle', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value },
     ],
   },
 ]
 
 const ADMIN_ENTRIES = ADMIN_TREE.flatMap(group => group.entries)
+
+// Whether the instance offers the support pages (GET /api/admin/support/availability). False until the server has
+// answered, so a support page is listed only once the instance says it is on (see src/store/supportBundle.js).
+const supportBundleOffered = shallowRef(false)
+const setSupportBundleOffered = (offered) => {
+  supportBundleOffered.value = offered === true
+}
 
 // The Administration entry is shown to a visitor who may open the hub or any page of the tree.
 const ADMINISTRATION_REACH = {
@@ -366,6 +375,12 @@ const metaOf = (section, permission) => {
     : { section, manager: true, anyNode: permission.anyNode }
 }
 
+// The meta of a route of an Administration tree entry (see ADMIN_TREE), named by its route.
+const adminRouteMeta = (routeName) => {
+  const entry = ADMIN_ENTRIES.find(item => item.route === routeName)
+  return metaOf('settings', entry.permission)
+}
+
 const routeMeta = (key, childKey) => {
   const page = pageByKey(key)
   const permission = childKey ? childrenOf(key).find(child => child.key === childKey).permission : page.permission
@@ -410,5 +425,8 @@ export {
   railGroups,
   barLayout,
   routeMeta,
+  adminRouteMeta,
+  supportBundleOffered,
+  setSupportBundleOffered,
   unlistedRoutes,
 }
