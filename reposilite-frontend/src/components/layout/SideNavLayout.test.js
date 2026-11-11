@@ -98,6 +98,31 @@ describe('SideNavLayout', () => {
     ])
   })
 
+  it('draws the side navigation 208 pixels wide and sticky beside the page', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+
+    const classes = wrapper.find(SIDE_NAV).classes()
+    expect(classes, 'the column is 208 pixels wide').toContain('w-52')
+    expect(classes, 'the column stays in view while the page scrolls').toContain('sticky')
+    expect(classes, 'the column stops one rem below the top bar').toContain('top-[calc(4rem+1rem)]')
+    expect(classes, 'the column is at most the window less the top bar and one rem at the bottom').toContain('max-h-[calc(100dvh-6rem)]')
+    expect(classes, 'a tall column scrolls inside itself').toContain('overflow-y-auto')
+  })
+
+  it('does not make the index sticky on narrow widths', async () => {
+    const wrapper = await mountLayout({ current: undefined, narrow: true })
+
+    expect(wrapper.find(SIDE_NAV).classes()).not.toContain('sticky')
+  })
+
+  it('lays the side navigation and the page in a row only from 1240 pixels', async () => {
+    const wrapper = await mountLayout({ current: 'users', narrow: false })
+
+    const classes = wrapper.element.classList
+    expect(classes, 'the row starts at the 1240 pixel breakpoint').toContain('min-[1240px]:flex-row')
+    expect(classes, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
+  })
+
   it('shows the side navigation and the page side by side on wide widths', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 

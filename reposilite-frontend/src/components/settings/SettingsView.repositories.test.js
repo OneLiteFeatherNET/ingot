@@ -87,7 +87,7 @@ describe('the Repositories page inside Settings', () => {
     expect(wrapper.find('h2').text(), 'the detail heading is the id').toBe('releases')
   })
 
-  it('lists a repository without an id as Unnamed repository, and its Edit action opens its detail', async () => {
+  it('lists a repository without an id as Unnamed repository, and its Edit item opens its detail', async () => {
     const server = {
       maven: {
         repositories: [
@@ -99,9 +99,11 @@ describe('the Repositories page inside Settings', () => {
     const { router } = await mountSettings({ address: '/settings/repositories', server })
 
     expect(wrapper.text(), 'the unnamed repository is listed').toContain('Unnamed repository')
-    await wrapper.find('[aria-label="Edit Unnamed repository"]').trigger('click')
+    await wrapper.find('button[aria-label="Actions for Unnamed repository"]').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name, 'the Edit action opens the repository detail').toBe('settings-repository')
+    document.querySelector('[role="menu"] [aria-label="Edit Unnamed repository"]').click()
+    await flushPromises()
+    expect(router.currentRoute.value.name, 'the Edit item opens the repository detail').toBe('settings-repository')
   })
 
   it('links the maven page to the Repositories page instead of listing the repositories there', async () => {

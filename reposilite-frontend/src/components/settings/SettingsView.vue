@@ -112,8 +112,8 @@ const activeDomain = computed(() => {
   return tabDomains.value[0] ?? domains.value[0]
 })
 
-// Below 600px the side navigation is not drawn beside the domain; see SideNavLayout.
-const narrow = useMediaQuery('(max-width: 599px)')
+// Below 1240px the side navigation is an index instead of a column beside the domain; see SideNavLayout.
+const narrow = useMediaQuery('(max-width: 1239px)')
 
 /*
  * The side navigation is the Administration tree, the same one every Administration page shows. Its settings domains

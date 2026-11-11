@@ -97,7 +97,11 @@ describe('the repositories page keyboard and screen reader contract', () => {
 
     expect(positive(), 'the list has no positive tabindex').toEqual([])
 
-    document.querySelector('[aria-label="Delete releases"]')?.click()
+    wrapper.find('button[aria-label="Actions for releases"]').trigger('click')
+    await flushPromises()
+    expect(positive(), 'the open Actions menu has no positive tabindex').toEqual([])
+
+    document.querySelector('[role="menuitem"][aria-label="Delete releases"]').click()
     await flushPromises()
     expect(positive(), 'the delete dialog has no positive tabindex').toEqual([])
   })

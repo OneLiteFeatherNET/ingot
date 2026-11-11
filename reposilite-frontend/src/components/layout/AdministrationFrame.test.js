@@ -80,6 +80,36 @@ describe('AdministrationFrame', () => {
     expect(wrapper.find('[aria-label="Administration"]').exists(), 'the side navigation is drawn').toBe(true)
   })
 
+  it('caps the page at 1280 pixels, and at 1600 pixels from 1920 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const classes = wrapper.element.classList
+    expect(classes, 'the page is capped at 1280 pixels').toContain('max-w-[1280px]')
+    expect(classes, 'the cap grows to 1600 pixels from 1920 pixels').toContain('min-[1920px]:max-w-[1600px]')
+  })
+
+  it('draws the page heading and its actions in one row from 600 pixels', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const header = wrapper.find('header').classes()
+    expect(header, 'the row starts at the 600 pixel breakpoint').toContain('min-[600px]:flex-row')
+    expect(header, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
+  })
+
+  it('does not make the page header sticky, so it scrolls away', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    expect(wrapper.find('header').classes(), 'the header is not sticky').not.toContain('sticky')
+  })
+
+  it('makes the side navigation the only sticky element of the page', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const sticky = wrapper.findAll('.sticky')
+    expect(sticky.length, 'exactly one sticky element').toBe(1)
+    expect(sticky[0].attributes('aria-label'), 'the sticky element is the side navigation').toBe('Administration')
+  })
+
   it('marks only the current entry with aria-current page', async () => {
     const wrapper = await mountFrame({ current: 'settings:audit' }, '/settings/audit')
 

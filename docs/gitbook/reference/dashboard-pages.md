@@ -64,6 +64,12 @@ Rules for the "Who can open it" column:
 
 **Administration** groups its pages under four headings: **Repository**, **Security**, **System** and **Support**. Every Administration page has the heading **Administration**, with a line under it that describes the page, and shows the same side navigation. The settings domains the visitor may open are part of that navigation on every page. The current page carries `aria-current="page"`, and the last crumb of the breadcrumb names it. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
 
+### Layout at four widths
+
+The Administration pages use one layout at four widths. Below 600 pixels the navigation is the bottom bar, and the Administration tree is an index with a back arrow on each page. From 600 to 1239 pixels the rail is at the left, and the tree is still an index. From 1240 pixels the tree stands beside the page at 208 pixels wide. It stays in view while the page scrolls, below the top bar and above the save bar, and scrolls inside itself when it is taller than the window. From 1920 pixels the page is at most 1600 pixels wide.
+
+The heading and the page actions form one row above the columns from 600 pixels. The row is not sticky: it scrolls away with the page, and the top bar stays at the top of the window.
+
 | Group | Pages and addresses |
 | --- | --- |
 | **Repository** | **Repositories** (`/settings/repositories`), **Cleanup policies** (`/settings/cleanup`), **Maven settings** (`/settings/maven`, the rest of the `maven` domain), **Javadoc** (`/settings/javadoc`) |
@@ -215,8 +221,8 @@ The router resolves old `#/<path>?tab=<section>` links on the first navigation (
 
 This section covers the Administration tree and the **Repositories** page. It describes what the pages are built to do. It is not a conformance claim.
 
-* **Keyboard.** Every function is meant to work with the keyboard alone, in reading order. Focus is visible. Within a repository row, Tab goes from the name link to that row's actions. Escape closes a dialog and returns focus to the control that opened it.
-* **Screen reader names.** The Administration tree is a navigation landmark named **Administration**, and each group is a heading above its list of links. The repository table has a caption with the number of rows shown and the total, column headers, and the name as the row header. A sorted column reports its direction. Each action names its repository, for example "Edit releases" and "Delete releases". Type and state are given in text, not only by colour or an icon.
+* **Keyboard.** Every function is meant to work with the keyboard alone, in reading order. Focus is visible. Within a repository row, Tab goes from the name link to that row's **Actions** button. Enter or Space opens its menu, the arrow keys move through the items, and Escape closes the menu. Escape closes a dialog and returns focus to the control that opened it.
+* **Screen reader names.** The Administration tree is a navigation landmark named **Administration**, and each group is a heading above its list of links. The repository table has a caption with the number of rows shown and the total, column headers, and the name as the row header. A sorted column reports its direction. The row's **Actions** button names its repository, for example "Actions for releases", and its menu items keep the names "Edit releases", "Copy address of releases" and "Delete releases". Type and state are given in text, not only by colour or an icon.
 * **Reflow.** At a width of 320 CSS pixels and 200 percent zoom, the page is meant to need no sideways scroll for the page itself. The table scrolls inside a named, focusable region.
 * **Target size.** Interactive controls are meant to be at least 24 by 24 CSS pixels.
 * **Not verified yet.** No manual pass with a screen reader has been recorded on this page. The result of that pass is reported with the change that adds the page, not here. Contrast of the badges and the behaviour of each dialog with a screen reader are not checked by this section.

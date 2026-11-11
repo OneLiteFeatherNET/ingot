@@ -29,7 +29,7 @@ import SideNavLayout from './SideNavLayout.vue'
  *   groups       the Administration tree: [{ heading, links: [{ key, label, to }] }]; empty draws no side navigation
  *   current      the key of the entry on screen, or undefined
  *   indexTo      the router location of the index
- *   narrow       true on narrow widths (see SideNavLayout)
+ *   narrow       true below 1240 pixels, where the tree is an index (see SideNavLayout)
  *   replace      true when a link replaces the history entry
  *
  * Slots: `actions` (buttons of the page, beside the heading) and the default slot (the page content).
@@ -48,10 +48,10 @@ defineProps({
 
 <template>
   <section
-    class="container mx-auto pb-12 pt-7"
+    class="container mx-auto max-w-[1280px] pb-12 pt-7 min-[1920px]:max-w-[1600px]"
     aria-labelledby="administration-title"
   >
-    <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-end md:justify-between">
+    <header class="flex flex-col gap-4 pb-6 min-[600px]:flex-row min-[600px]:items-end min-[600px]:justify-between">
       <div class="flex min-w-0 flex-col gap-1">
         <h1
           id="administration-title"

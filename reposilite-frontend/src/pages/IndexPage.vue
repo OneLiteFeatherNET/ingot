@@ -288,10 +288,10 @@ const replaceQuery = (key, value) => {
   return router.replace({ name: route.name, params: route.params, query: next })
 }
 
-// The Administration pages other than Access and Settings draw the Administration tree beside the page. Below 600px
+// The Administration pages other than Access and Settings draw the Administration tree beside the page. Below 1240px
 // the tree is an index instead of a column; see SideNavLayout. The settings domains are known only inside Settings,
 // so the tree here lists the static pages.
-const narrow = useMediaQuery('(max-width: 599px)')
+const narrow = useMediaQuery('(max-width: 1239px)')
 const adminSideNav = computed(() => {
   if (ADMIN_SIDE_PAGES.includes(section.value)) return { ...sideNavOf(section.value), description: ADMIN_DESCRIPTIONS[route.name] }
   return SUPPORT_ROUTES.includes(route.name) ? { ...sideNavOf('settings'), description: ADMIN_DESCRIPTIONS[route.name] } : null

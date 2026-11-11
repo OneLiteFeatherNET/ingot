@@ -84,6 +84,12 @@ const mountList = async ({ address = '/settings/repositories' } = {}) => {
 const rowHeaders = () => wrapper.findAll('tbody th[scope="row"]').map(cell => cell.text())
 const unnamedRow = () => wrapper.findAll('tbody tr').find(row => row.text().includes('Unnamed repository'))
 const buttonLabelled = (label) => wrapper.find(`[aria-label="${label}"]`)
+// The Actions menu is teleported to the body: its items are read from the document, after the row's button opened it.
+const menuItemLabelled = (label) => document.querySelector(`[role="menu"] [aria-label="${label}"]`)
+const openActionsOf = async (name) => {
+  buttonLabelled(`Actions for ${name}`).trigger('click')
+  await flushPromises()
+}
 const sortButton = (label) => wrapper.findAll('thead th').find(header => header.text().startsWith(label)).find('button')
 const deleteDialog = () => document.querySelector('#delete-entry-form')
 
@@ -118,17 +124,20 @@ describe('the repositories page with an entry that has no id', () => {
     expect(rowHeaders(), 'the filter keeps only the matching repository').toEqual(['snapshots'])
   })
 
-  it('names the Edit and Delete actions of the unnamed row with the name Unnamed repository', async () => {
+  it('names the Actions button and the Edit and Delete items of the unnamed row with the name Unnamed repository', async () => {
     await mountList()
 
-    expect(buttonLabelled('Edit Unnamed repository').exists(), 'the edit action is named').toBe(true)
-    expect(buttonLabelled('Delete Unnamed repository').exists(), 'the delete action is named').toBe(true)
+    expect(buttonLabelled('Actions for Unnamed repository').exists(), 'the actions button is named').toBe(true)
+    await openActionsOf('Unnamed repository')
+    expect(menuItemLabelled('Edit Unnamed repository') !== null, 'the edit item is named').toBe(true)
+    expect(menuItemLabelled('Delete Unnamed repository') !== null, 'the delete item is named').toBe(true)
   })
 
-  it('opens the detail of the unnamed entry from its Edit action, at an address that keeps its place', async () => {
+  it('opens the detail of the unnamed entry from its Edit item, at an address that keeps its place', async () => {
     const { router } = await mountList()
 
-    await buttonLabelled('Edit Unnamed repository').trigger('click')
+    await openActionsOf('Unnamed repository')
+    menuItemLabelled('Edit Unnamed repository').click()
     await flushPromises()
 
     expect(router.currentRoute.value.name, 'the Edit action opens the repository detail').toBe('settings-repository')
@@ -139,7 +148,8 @@ describe('the repositories page with an entry that has no id', () => {
   it('removes the unnamed entry from the draft after the typed name unnamed, and keeps the others', async () => {
     const { store } = await mountList()
 
-    await buttonLabelled('Delete Unnamed repository').trigger('click')
+    await openActionsOf('Unnamed repository')
+    menuItemLabelled('Delete Unnamed repository').click()
     await flushPromises()
     const input = document.querySelector('#delete-entry-confirm-input')
     input.value = 'unnamed'

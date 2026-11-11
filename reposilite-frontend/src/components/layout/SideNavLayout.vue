@@ -31,7 +31,7 @@ import { RouterLink } from 'vue-router'
  *   groups       [{ heading, links: [{ key, label, to }] }], where `to` is a router location
  *   current      the key of the open section, or undefined when no section is open
  *   indexTo      the router location of the index, which the back arrow and the first crumb go to
- *   narrow       true on narrow widths
+ *   narrow       true below 1240 pixels; from 1240 pixels the navigation is a sticky column beside the page
  *   replace      true when a link replaces the history entry instead of adding one
  *
  * The page content is the default slot.
@@ -64,11 +64,13 @@ const linkClasses = (active) => [
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-6 md:flex-row md:items-start md:gap-10">
+  <div class="flex min-w-0 flex-col gap-6 min-[1240px]:flex-row min-[1240px]:items-start min-[1240px]:gap-10">
     <nav
       v-if="showsSideNav"
       :aria-label="label"
-      :class="narrow ? 'flex w-full flex-col gap-4' : 'flex w-56 shrink-0 flex-col gap-4'"
+      :class="narrow
+        ? 'flex w-full flex-col gap-4'
+        : 'sticky top-[calc(4rem+1rem)] flex max-h-[calc(100dvh-6rem)] w-52 shrink-0 flex-col gap-4 overflow-y-auto'"
     >
       <div
         v-for="group in groups"

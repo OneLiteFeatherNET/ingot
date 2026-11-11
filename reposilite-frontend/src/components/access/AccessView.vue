@@ -51,8 +51,8 @@ defineProps({
 
 const { can } = useSession()
 
-// Below 600px the side navigation is an index instead of a column beside the page; see SideNavLayout.
-const narrow = useMediaQuery('(max-width: 599px)')
+// Below 1240px the side navigation is an index instead of a column beside the page; see SideNavLayout.
+const narrow = useMediaQuery('(max-width: 1239px)')
 
 // A page whose node the user lacks is left out, not greyed out. The pages, their groups and the node each one
 // needs come from the navigation registry, the same node the route guard checks. Every Administration page shows this tree,
