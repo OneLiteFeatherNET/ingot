@@ -34,40 +34,55 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `add-member-dialog` | experimental | `src/components/access/AddMemberDialog.vue` | none | `error` |
 | `adjustments-modal` | experimental | `src/components/browser/AdjustmentsModal.vue` | none | none |
 | `all-of-renderer` | stable | `src/components/renderers/AllOfRenderer.vue` | none | none |
+| `analytics-view` | experimental | `src/components/dashboard/AnalyticsView.vue` | none | none |
 | `appearance-preview` | stable | `src/components/settings/AppearancePreview.vue` | none | none |
 | `appearance-section-renderer` | stable | `src/components/renderers/AppearanceSectionRenderer.vue` | none | none |
 | `array-list-renderer` | stable | `src/components/renderers/ArrayListRenderer.vue` | none | none |
 | `artifact-snippet` | experimental | `src/components/card/ArtifactSnippet.vue` | none | none |
+| `audit-event-row` | experimental | `src/components/audit/AuditEventRow.vue` | none | none |
+| `audit-view` | experimental | `src/components/audit/AuditView.vue` | none | `loading` |
 | `authentication-group-form` | experimental | `src/components/access/AuthenticationGroupForm.vue` | none | none |
 | `boolean-switch-renderer` (no element of its own) | stable | `src/components/renderers/BooleanSwitchRenderer.vue` | none | none |
 | `breadcrumb-navigation` | experimental | `src/components/browser/BreadcrumbNavigation.vue` | none | none |
 | `browser-icon` | experimental | `src/components/browser/BrowserIcon.vue` | none | none |
 | `card-menu` | experimental | `src/components/card/CardMenu.vue` | none | none |
+| `chart-card` | experimental | `src/components/dashboard/ChartCard.vue` | none | `loading` |
 | `check-permission-view` | experimental | `src/components/access/check/CheckPermissionView.vue` | none | `loading` |
+| `cleanup-policies-panel` | experimental | `src/components/maintenance/CleanupPoliciesPanel.vue` | none | `error` |
 | `code-brackets` | experimental | `src/components/card/CodeBrackets.vue` | none | none |
 | `code-string` | experimental | `src/components/card/CodeString.vue` | none | none |
 | `collection-editor` | stable | `src/components/settings/CollectionEditor.vue` | none | none |
 | `combobox-field` | experimental | `src/components/access/check/ComboboxField.vue` | none | none |
 | `confirm-action-dialog` | experimental | `src/components/access/ConfirmActionDialog.vue` | none | none |
 | `conflict-dialog` | stable | `src/components/settings/ConflictDialog.vue` | none | none |
+| `console-view` | experimental | `src/components/console/ConsoleView.vue` | none | none |
 | `constant-renderer` | stable | `src/components/renderers/ConstantRenderer.vue` | none | none |
 | `create-token-dialog` | experimental | `src/components/identity/CreateTokenDialog.vue` | none | `error` |
+| `dashboard-view` | experimental | `src/components/dashboard/DashboardView.vue` | none | none |
 | `declare-type-dialog` | experimental | `src/components/repositories/DeclareTypeDialog.vue` | none | none |
 | `default-header` | stable | `src/components/header/DefaultHeader.vue` | `title` | none |
 | `delete-entry-dialog` | stable | `src/components/settings/DeleteEntryDialog.vue` | none | none |
 | `delete-entry-modal` | experimental | `src/components/browser/DeleteEntryModal.vue` | none | none |
+| `delete-policy-dialog` | experimental | `src/components/maintenance/DeletePolicyDialog.vue` | none | none |
 | `detailed-list-entry` | experimental | `src/components/browser/DetailedListEntry.vue` | none | none |
 | `dialog-shell` | experimental | `src/components/identity/DialogShell.vue` | none | none |
+| `dry-run-result` | experimental | `src/components/maintenance/DryRunResult.vue` | none | none |
 | `entry-detail` | stable | `src/components/settings/EntryDetail.vue` | `header` | none |
 | `entry-list` | stable | `src/components/settings/EntryList.vue` | none | none |
 | `factory-reset-modal` | stable | `src/components/settings/FactoryResetModal.vue` | none | none |
+| `failures-sheet` | experimental | `src/components/dashboard/FailuresSheet.vue` | none | none |
 | `file-browser-view` | experimental | `src/components/browser/FileBrowserView.vue` | none | none |
 | `file-list` | experimental | `src/components/browser/FileList.vue` | none | `error` |
 | `file-upload` | experimental | `src/components/browser/FileUpload.vue` | none | none |
+| `getting-started-card` | experimental | `src/components/dashboard/GettingStartedCard.vue` | none | `error` |
 | `header-hero` | stable | `src/components/header/HeaderHero.vue` | none | none |
+| `index-panel` | experimental | `src/components/maintenance/IndexPanel.vue` | none | none |
+| `instance-health-row` | experimental | `src/components/dashboard/InstanceHealthRow.vue` | none | none |
+| `instance-status-panel` | experimental | `src/components/dashboard/InstanceStatusPanel.vue` | `read-only-banner`, `cluster-summary`, `cluster-instances`, `cluster-instance` | none |
 | `ldap-panel` | experimental | `src/components/access/LdapPanel.vue` | none | none |
 | `legacy-grants-panel` | experimental | `src/components/access/LegacyGrantsPanel.vue` | none | none |
 | `login-modal` | stable | `src/components/header/LoginModal.vue` | none | none |
+| `maintenance-view` | experimental | `src/components/maintenance/MaintenanceView.vue` | none | none |
 | `md-colour-field-renderer` | stable | `src/components/renderers/MdColourFieldRenderer.vue` | none | none |
 | `md-select-renderer` (no element of its own) | stable | `src/components/renderers/MdSelectRenderer.vue` | none | none |
 | `md-text-area-renderer` (no element of its own) | stable | `src/components/renderers/MdTextAreaRenderer.vue` | none | none |
@@ -91,10 +106,14 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `permission-nodes-card` | experimental | `src/components/access/PermissionNodesCard.vue` | none | none |
 | `plugin-block` | stable | `src/components/plugins/PluginBlock.vue` | none | `error`, `loading` |
 | `plugin-page` | stable | `src/components/plugins/PluginPageView.vue` | `header` | none |
+| `policy-dialog` | experimental | `src/components/maintenance/PolicyDialog.vue` | none | none |
 | `principal-actions-menu` | experimental | `src/components/access/PrincipalActionsMenu.vue` | none | none |
 | `principal-detail` | experimental | `src/components/access/PrincipalDetail.vue` | none | `loading` |
 | `principals-panel` | experimental | `src/components/access/PrincipalsPanel.vue` | none | none |
 | `profile-card` | experimental | `src/components/account/ProfileCard.vue` | none | none |
+| `public-repositories-dialog` | experimental | `src/components/dashboard/PublicRepositoriesDialog.vue` | none | none |
+| `read-only-toggle` | experimental | `src/components/dashboard/ReadOnlyToggle.vue` | none | `error` |
+| `rebuild-index-dialog` | experimental | `src/components/maintenance/RebuildIndexDialog.vue` | none | none |
 | `repositories-table` | experimental | `src/components/repositories/RepositoriesTable.vue` | `header`, `row`, `cell-name`, `empty` | `empty` |
 | `repositories-view` | experimental | `src/components/repositories/RepositoriesView.vue` | none | none |
 | `repository-access-card` | stable | `src/components/settings/RepositoryAccessCard.vue` | none | `loading` |
@@ -105,8 +124,12 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `repository-type-badge` | experimental | `src/components/tokens/RepositoryTypeBadge.vue` | none | none |
 | `repository-wizard` | stable | `src/components/settings/RepositoryWizard.vue` | `header` | none |
 | `reset-password-dialog` | experimental | `src/components/access/ResetPasswordDialog.vue` | none | none |
+| `resolved-requests-chart` (no element of its own) | experimental | `src/components/dashboard/ResolvedRequestsChart.vue` | none | none |
+| `resource-trends` | experimental | `src/components/dashboard/ResourceTrends.vue` | none | none |
 | `revoke-token-dialog` | experimental | `src/components/identity/RevokeTokenDialog.vue` | none | `error` |
 | `rotate-token-dialog` | experimental | `src/components/identity/RotateTokenDialog.vue` | none | none |
+| `run-history` | experimental | `src/components/maintenance/RunHistory.vue` | none | none |
+| `run-now-dialog` | experimental | `src/components/maintenance/RunNowDialog.vue` | none | `error` |
 | `search-bar` | experimental | `src/components/search/SearchBar.vue` | none | none |
 | `search-filters` | experimental | `src/components/search/SearchFilters.vue` | none | none |
 | `search-result-row` | experimental | `src/components/search/SearchResultRow.vue` | none | none |
@@ -128,6 +151,9 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `snippets-card` | experimental | `src/components/card/SnippetsCard.vue` | none | none |
 | `sso-provider-dialog` | experimental | `src/components/access/SsoProviderDialog.vue` | none | none |
 | `sso-providers-panel` | experimental | `src/components/access/SsoProvidersPanel.vue` | none | none |
+| `stat-tile` | experimental | `src/components/dashboard/StatTile.vue` | none | none |
+| `status-label` | experimental | `src/components/dashboard/StatusLabel.vue` | none | none |
+| `storage-usage-panel` | experimental | `src/components/maintenance/StorageUsagePanel.vue` | none | none |
 | `switch-field` | stable | `src/components/renderers/SwitchField.vue` | none | none |
 | `tags-field-renderer` (no element of its own) | stable | `src/components/renderers/TagsFieldRenderer.vue` | none | none |
 | `team-detail` | experimental | `src/components/access/TeamDetail.vue` | none | `loading` |
@@ -135,6 +161,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `team-members-card` | experimental | `src/components/access/TeamMembersCard.vue` | none | none |
 | `team-parents-card` | experimental | `src/components/access/TeamParentsCard.vue` | none | `loading` |
 | `teams-panel` | experimental | `src/components/access/TeamsPanel.vue` | none | none |
+| `time-series-chart` | experimental | `src/components/dashboard/TimeSeriesChart.vue` | none | none |
 | `token-list` | experimental | `src/components/identity/TokenList.vue` | none | none |
 | `token-tag` | experimental | `src/components/tokens/TokenTag.vue` | none | none |
 | `type-badge` | experimental | `src/components/repositories/TypeBadge.vue` | none | none |
