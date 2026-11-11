@@ -347,6 +347,60 @@ jobs:
   # The cmp is the drift check of the dashboard segment list: the chart carries a copy of the
   # source that the frontend router and the backend read, and an edit of one without the other
   # fails here.
+  # The release job generates, validates and attests the same two SBOMs, but only for a release. This job runs the
+  # generation and the validation on each pull request, so that a generator which breaks is found by the pull request
+  # that breaks it. It only reads the repository: no identity token and no write permission.
+  sbom:
+    name: "SBOM"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Generate the SBOM of the standalone jar"
+        run: ./gradlew :reposilite-backend:cyclonedxDirectBom
+
+      - name: "Set up Node"
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
+        with:
+          node-version: "24"
+
+      # The same pinned generator as the release job, see there for why --flatten-components is needed.
+      - name: "Generate the SBOM of the dashboard"
+        working-directory: reposilite-frontend
+        env:
+          CYCLONEDX_NPM_VERSION: "6.0.1"
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/build/sbom"
+          npx --yes "@cyclonedx/cyclonedx-npm@${CYCLONEDX_NPM_VERSION}" \
+            --package-lock-only --omit dev --flatten-components \
+            --spec-version 1.6 --output-format JSON \
+            --output-file "$GITHUB_WORKSPACE/build/sbom/ingot-frontend.cdx.json"
+
+      - name: "Set up Python"
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "Install the SBOM validation dependencies"
+        run: python3 -m pip install "jsonschema==4.26.0"
+
+      - name: "Validate the SBOMs"
+        run: python3 .github/scripts/verify_sbom.py build/sbom/*.cdx.json
+
   chart:
     name: "Helm chart"
     runs-on: ubuntu-latest

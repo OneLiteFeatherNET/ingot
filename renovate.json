@@ -9,6 +9,24 @@
     "reposilite-test/**"
   ],
   "separateMultipleMajor": true,
+  "customManagers": [
+    {
+      "description": "The SBOM steps run the CycloneDX npm generator with npx, which no Renovate manager reads. Its version is the CYCLONEDX_NPM_VERSION value of the workflow.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/(ci|release-please)\\.yml$/"],
+      "matchStrings": ["CYCLONEDX_NPM_VERSION: \"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "@cyclonedx/cyclonedx-npm",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "description": "The SBOM validation installs jsonschema with pip in the workflows, where no Renovate manager reads it.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/(ci|release-please)\\.yml$/"],
+      "matchStrings": ["\"jsonschema==(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "jsonschema",
+      "datasourceTemplate": "pypi"
+    }
+  ],
   "packageRules": [
     {
       "description": "Major updates are never automerged and are labelled for manual review. Renovate has no license detection, so the license check has to be done by a human on the PR.",
