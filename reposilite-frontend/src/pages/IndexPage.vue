@@ -46,7 +46,7 @@ import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect } from '../navigation/registry'
+import { MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
 import { qualifierOf, browseLocation } from '../router/paths'
@@ -66,6 +66,7 @@ const DashboardView = lazyView(() => import('../components/dashboard/DashboardVi
 const AnalyticsView = lazyView(() => import('../components/dashboard/AnalyticsView.vue'))
 const AccessView = lazyView(() => import('../components/access/AccessView.vue'))
 const SettingsView = lazyView(() => import('../components/settings/SettingsView.vue'))
+const MigrationView = lazyView(() => import('../components/migration/MigrationView.vue'))
 const AuditView = lazyView(() => import('../components/audit/AuditView.vue'))
 const AccountView = lazyView(() => import('../components/account/AccountView.vue'))
 const SearchView = lazyView(() => import('../components/search/SearchView.vue'))
@@ -89,7 +90,8 @@ defineProps({
 })
 
 // The pages of the Administration tree that draw the tree as a side navigation. Access draws its own in AccessView.
-const ADMIN_SIDE_PAGES = ['audit', 'console', 'maintenance', 'analytics']
+// Migration is the System page of the tree; it exists only while the nexus-import plugin is enabled (see migrationMissing).
+const ADMIN_SIDE_PAGES = ['audit', 'console', 'maintenance', 'analytics', 'migration']
 // The pages that the Administration entry of the rail and the bar stands for.
 const ADMINISTRATION_SECTIONS = ['settings', 'access', ...ADMIN_SIDE_PAGES]
 
@@ -116,6 +118,12 @@ const sectionAllowed = computed(() => {
   if (route.name === 'settings-plugin') return pluginPageNode.value !== undefined && can(pluginPageNode.value)
   return routeAllowed(route.meta, can, isManager.value) && (!route.meta.signedIn || isLogged.value)
 })
+// The migration page exists only while the nexus-import plugin is enabled. Until the manifest is read, the page waits.
+const migrationPending = computed(() => route.name === 'settings-migration' && isLogged.value && !pluginUiReady.value)
+const migrationMissing = computed(() => route.name === 'settings-migration'
+  && isLogged.value
+  && pluginUiReady.value
+  && !pluginEnabled(NEXUS_IMPORT_PLUGIN))
 // The manifest of a plugin page is read once the session is known, so the page waits for it.
 const pluginPageMissing = computed(() => route.name === 'settings-plugin'
   && isLogged.value
@@ -328,6 +336,8 @@ const activeLabel = computed(() => pageLabel(section.value))
       >
         <NotFoundView v-if="route.name === 'not-found'" />
         <ViewLoading v-else-if="route.name === 'settings-plugin' && isLogged && !pluginUiReady" />
+        <ViewLoading v-else-if="migrationPending" />
+        <NotFoundView v-else-if="migrationMissing" />
         <NotFoundView v-else-if="pluginPageMissing" />
         <section
           v-else-if="!sectionAllowed && isLogged"
@@ -425,6 +435,10 @@ const activeLabel = computed(() => pageLabel(section.value))
             @update:search="setConsoleSearch"
           />
           <MaintenanceView v-else-if="section === 'maintenance'" />
+          <MigrationView
+            v-else-if="section === 'migration'"
+            :step="route.params.step"
+          />
           <AuditView
             v-else-if="section === 'audit'"
             :query="route.query"

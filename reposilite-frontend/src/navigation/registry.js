@@ -72,6 +72,9 @@ import { ADMIN_NODES, ACCESS_NODES, INSTANCE_ADMIN_NODE, requiredNodes } from '.
 
 const MORE_KEY = 'more'
 
+// The server plugin whose enabled state shows the nexus import wizard. The name is the plugin's id.
+const NEXUS_IMPORT_PLUGIN = 'nexus-import'
+
 /*
  * The pages and settings sections that server plugins contribute, from GET /api/frontend/plugin-ui. The
  * manifest is read after the session is known (src/store/pluginUi.js) and replaces the previous one. The
@@ -133,6 +136,12 @@ const settingsLabelOf = (domain) => sectionOf(domain)?.label
 
 const enabledPlugins = () => contributions.value.enabledPlugins
 
+// Whether a server plugin is enabled, as the manifest of the plugin UI lists it. False until a session has read it.
+const pluginEnabled = (name) => enabledPlugins().includes(name)
+
+// An entry with `requires` is listed only while the predicate holds, on top of its permission.
+const entryAvailable = (entry) => entry.requires === undefined || entry.requires()
+
 // The groups of the rail. The four entries of the rail form one unlabelled block, so the group has no heading.
 const AREAS = [{ area: 'rail', heading: undefined }]
 const BAR_SIZE = 4
@@ -168,7 +177,14 @@ const ADMIN_TREE = [
       { key: 'audit', route: 'audit', label: 'Audit log', permission: { node: ADMIN_NODES.audit } },
     ],
   },
-  { heading: 'System', entries: [] },
+  {
+    heading: 'System',
+    // The nexus import wizard. Listed only while the nexus-import plugin is enabled, so an installation without it sees
+    // no entry and the address answers as an unknown one.
+    entries: [
+      { key: 'migration', route: 'settings-migration', label: 'Migration', permission: { node: INSTANCE_ADMIN_NODE }, requires: () => pluginEnabled(NEXUS_IMPORT_PLUGIN) },
+    ],
+  },
   {
     heading: 'Support',
     entries: [
@@ -219,6 +235,9 @@ const PAGES = [
   { key: 'audit', route: 'audit', label: 'Audit log', area: 'none', permission: { node: ADMIN_NODES.audit } },
   { key: 'console', route: 'console', label: 'Console', area: 'none', permission: { node: ADMIN_NODES.console } },
   { key: 'maintenance', route: 'maintenance', label: 'Maintenance', area: 'none', permission: { node: ADMIN_NODES.maintenance } },
+  // The nexus import wizard lives in the System group of the Administration tree (see ADMIN_TREE). This entry only gives its
+  // route a page, so the route has a section and a title; it is never listed in the rail.
+  { key: 'migration', route: 'settings-migration', label: 'Migration', area: 'none', permission: { node: INSTANCE_ADMIN_NODE }, requires: () => pluginEnabled(NEXUS_IMPORT_PLUGIN) },
   { key: 'account', route: 'account', label: 'My account', area: 'none', permission: { signedIn: true } },
 ]
 
@@ -254,7 +273,7 @@ const pluginLinksOf = (can, heading) => contributedPages(can)
 const adminGroups = (can, { domains = [], titleOf = (domain) => domain } = {}) => ADMIN_TREE
   .map(group => {
     const pages = group.entries
-      .filter(entry => allowedBy(entry.permission, can))
+      .filter(entry => entryAvailable(entry) && allowedBy(entry.permission, can))
       .map(entry => ({ key: entry.key, label: entry.label, to: { name: entry.route } }))
     const settingsLinks = can(ADMIN_NODES.settings)
       ? domains
@@ -272,7 +291,7 @@ const adminGroups = (can, { domains = [], titleOf = (domain) => domain } = {}) =
  */
 const administrationLocation = (can) => {
   if (can(ADMIN_NODES.settings)) return { name: 'settings' }
-  const first = ADMIN_ENTRIES.find(entry => allowedBy(entry.permission, can))
+  const first = ADMIN_ENTRIES.find(entry => entryAvailable(entry) && allowedBy(entry.permission, can))
   return first ? { name: first.route } : { name: 'settings' }
 }
 
@@ -375,6 +394,8 @@ export {
   pluginPageRedirect,
   settingsLabelOf,
   enabledPlugins,
+  pluginEnabled,
+  NEXUS_IMPORT_PLUGIN,
   pageByKey,
   visiblePages,
   visibleChildren,

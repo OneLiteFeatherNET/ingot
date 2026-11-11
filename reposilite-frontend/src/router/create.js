@@ -97,7 +97,9 @@ const createAppRouter = ({
     // A new page takes the focus, so that a screen reader announces it. The first navigation of a page load is the
     // page the visitor opened, and a change of query or hash inside a page is a control in use, so neither moves it.
     const firstNavigation = from.matched.length === 0
-    if (!failure && !firstNavigation && to.path !== from.path) {
+    // A move between two steps of the import wizard is taken by the heading of the step (MigrationView), not by the page.
+    const betweenMigrationSteps = to.name === 'settings-migration' && from.name === 'settings-migration'
+    if (!failure && !firstNavigation && to.path !== from.path && !betweenMigrationSteps) {
       nextTick(() => document.getElementById('main')?.focus())
     }
   })
