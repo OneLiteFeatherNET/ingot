@@ -97,9 +97,9 @@ jobs:
         working-directory: reposilite-frontend
         run: npm run license-check
 
-  # Own job rather than steps in Licenses, so a failing unit test shows as its own check and
-  # does not hide the licence result. ESLint is in its warn phase: findings are printed in the
-  # log and only a broken configuration fails the job.
+  # Own job rather than steps in Licenses, so a lint failure shows as its own check and does not hide
+  # the licence result. ESLint is in its warn phase: findings are printed in the log and only a broken
+  # configuration fails the job. The unit tests run in Coverage (frontend), once, with coverage.
   frontend:
     name: "Frontend"
     runs-on: ubuntu-latest
@@ -124,9 +124,6 @@ jobs:
         working-directory: reposilite-frontend
         run: npm run eslint
 
-      - name: "Run the frontend unit tests"
-        working-directory: reposilite-frontend
-        run: npm test
 
   # Nothing checked dependencies for known advisories before this, which is how 67 of them
   # accumulated unnoticed across the JVM and npm trees. Renovate raises versions but says
@@ -542,9 +539,10 @@ jobs:
       - name: "Run the two-replica smoke test"
         run: python3 charts/ingot/tests/ha_smoke.py
 
-  # Decides whether the Coverage job has to run. Pull requests that only touch documentation,
-  # OpenSpec proposals or repository metadata skip the roughly 80 minute backend suite. Pushes
-  # always run it, and so does any path the deny list in coverage_changes.sh does not name.
+  # Decides which coverage jobs have to run. Pull requests that only touch documentation, OpenSpec
+  # proposals or repository metadata skip all of them. A pull request that only touches the dashboard
+  # skips the full backend suite and runs only the backend tests that serve the dashboard. Pushes always
+  # run everything, and so does any path the deny list in coverage_changes.sh does not name.
   coverage-changes:
     name: "Detect coverage changes"
     runs-on: ubuntu-latest
@@ -552,6 +550,8 @@ jobs:
       contents: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      frontend_only: ${{ steps.filter.outputs.frontend_only }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -559,7 +559,7 @@ jobs:
           # Both ends of the pull request have to be present for the diff below.
           fetch-depth: 0
 
-      - name: "Check whether the backend changed"
+      - name: "Check which coverage jobs are needed"
         id: filter
         env:
           EVENT: ${{ github.event_name }}
@@ -568,46 +568,46 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Pushes to main always run the coverage job, so the default is the full run.
-          if [ "$EVENT" != "pull_request" ]; then
-            echo "Not a pull request, running the coverage job."
+          # Every coverage job runs in full. Used whenever the answer is not known, so a failed
+          # detection can never skip a test.
+          full_run() {
+            echo "$1, running every coverage job."
             echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend_only=false" >> "$GITHUB_OUTPUT"
             exit 0
+          }
+
+          # Pushes to main always run everything.
+          if [ "$EVENT" != "pull_request" ]; then
+            full_run "Not a pull request"
           fi
 
           # A missing or unreadable range is no reason to skip the tests.
           if [ -z "$BASE" ] || [ -z "$HEAD" ] \
              || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null \
              || ! git cat-file -e "${HEAD}^{commit}" 2>/dev/null; then
-            echo "No usable pull request range, running the coverage job."
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-            exit 0
+            full_run "No usable pull request range"
           fi
 
           # Three dots diff against the merge base, so commits that reached main after this branch
           # was cut do not count as changes of this pull request.
           if ! git diff --name-only "$BASE...$HEAD" > "$RUNNER_TEMP/changed.txt"; then
-            echo "Could not diff the pull request, running the coverage job."
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-            exit 0
+            full_run "Could not diff the pull request"
           fi
 
           bash .github/scripts/coverage_changes.sh < "$RUNNER_TEMP/changed.txt" >> "$GITHUB_OUTPUT"
 
-  # Second JDK leg, combined with the JaCoCo report so the test suite is not run three times.
-  # This job is intentionally repo-specific: the shared gradle-build-pr workflow has no
-  # coverage upload, and the Codecov integration is a Reposilite-only mechanic.
+  # Backend coverage. It is gated on coverage-changes, and a job skipped by its `if` counts as success
+  # for the aggregate Coverage check below. The condition only skips when coverage-changes succeeded and
+  # found no backend change. A failed detection runs the full suite, and the !cancelled() guard keeps a
+  # cancelled run from starting the job.
   #
-  # It is gated on coverage-changes. A job skipped by its `if` counts as success for the
-  # required "Coverage" status check, the same way the Build aggregate already relies on, so
-  # skipping does not block a merge. The job name stays "Coverage" for that reason.
-  #
-  # The condition only skips when coverage-changes succeeded and found no backend change. If
-  # the detection job fails, it is not skipped and the full run goes ahead, because a failed
-  # detection must never turn into a passing check. The !cancelled() guard keeps a cancelled
-  # run from starting the job.
-  coverage:
-    name: "Coverage"
+  # A dashboard-only pull request runs the backend tests that serve the dashboard, because the server
+  # bundles and serves the built frontend. Everything else is skipped, and so is the Codecov upload, since
+  # a partial report would misstate the coverage Codecov shows for the default branch.
+  coverage-backend:
+    name: "Coverage (backend)"
     needs: coverage-changes
     if: ${{ !cancelled() && (needs.coverage-changes.result != 'success' || needs.coverage-changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
@@ -633,10 +633,24 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      # The backend tests that serve the dashboard, unit and integration. The filters select the frontend
+      # package, the dashboard policy, the dashboard route and caching tests, and the security header tests
+      # of the dashboard document. --tests applies to each task, so the two tasks run in separate invocations.
+      - name: "Run the dashboard tests of the backend"
+        if: ${{ needs.coverage-changes.outputs.frontend_only == 'true' }}
+        run: |
+          ./gradlew :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
+          ./gradlew :reposilite-backend:integration --tests 'com.reposilite.frontend.*' \
+            --tests 'com.reposilite.web.DashboardRoutesIntegrationTest*' \
+            --tests 'com.reposilite.web.DashboardCachingIntegrationTest*' \
+            --tests 'com.reposilite.web.SecurityHeadersIntegrationTest*'
+
       - name: "Run tests with coverage"
+        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' }}
         run: ./gradlew :reposilite-backend:testCoverage
 
       - name: "Upload coverage to Codecov"
+        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
         with:
           files: "./reposilite-backend/build/reports/jacoco/reposilite-backend-report.xml"
@@ -644,6 +658,66 @@ jobs:
           # Tokenless uploads are rate limited. Set CODECOV_TOKEN in the repository secrets,
           # or drop this input together with codecov.yml if coverage reporting is not wanted.
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Frontend coverage. The dashboard suite runs here and nowhere else, so a pull request that does not
+  # touch reposilite-frontend/ does not run it. The report is an artifact, not a Codecov upload.
+  coverage-frontend:
+    name: "Coverage (frontend)"
+    needs: coverage-changes
+    if: ${{ !cancelled() && (needs.coverage-changes.result != 'success' || needs.coverage-changes.outputs.frontend == 'true') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Set up Node"
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: "reposilite-frontend/package-lock.json"
+
+      - name: "Install frontend dependencies"
+        working-directory: reposilite-frontend
+        run: npm ci
+
+      - name: "Run the frontend unit tests with coverage"
+        working-directory: reposilite-frontend
+        run: npm run test:coverage
+
+      - name: "Publish the frontend coverage report"
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: frontend-coverage
+          path: reposilite-frontend/coverage
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The required status check. Its name is exactly "Coverage", which the ruleset requires, so it stays one
+  # job while the work is split above. It runs even when a needed job was skipped, and fails only when a
+  # needed job failed or was cancelled. A skipped job counts as success, as it did before the split.
+  coverage:
+    name: "Coverage"
+    needs: [coverage-backend, coverage-frontend]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Check the coverage jobs"
+        env:
+          BACKEND: ${{ needs.coverage-backend.result }}
+          FRONTEND: ${{ needs.coverage-frontend.result }}
+        run: |
+          for result in "$BACKEND" "$FRONTEND"; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "::error::A coverage job ended with '$result'."; exit 1 ;;
+            esac
+          done
 
   # A plugin written for Reposilite 3.5.28 has to keep running on Ingot, and nothing else checks that. The job compares
   # the plugin API with 3.5.28, starts a fresh server with the upstream jars of two bundled plugins, and compiles and
