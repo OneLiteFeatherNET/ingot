@@ -23,6 +23,7 @@ import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.SnapshotFilter
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Exists
+import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -32,6 +33,7 @@ import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import java.util.Locale
 
@@ -106,7 +108,12 @@ internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTab
             val prefixes = prefixRange(rows.groupIdLc, word) or prefixRange(rows.artifactIdLc, word) or (rows.versionLc eq word)
             val parts = SearchTokens.partsOf(word)
             if (parts.isEmpty() || parts.size > MAX_WORD_PARTS) return prefixes
-            val everyPart = parts.map { part -> tokenExists(part, rows, tokens) }.reduce { acc, op -> acc and op }
+            // The longest part drives the lookup: its uncorrelated IN on the token index is the selective side. The other parts
+            // are probes of one GAV's tokens on the primary key, so no part scans the artifact table (D2, plan check).
+            val drive = parts.maxBy { it.length }
+            val driven: Op<Boolean> = rows.gavKey inSubQuery tokens.select(tokens.gavKey).where { prefixRange(tokens.token, drive) }
+            val probes = parts.filter { it !== drive }.map { part -> tokenExists(part, rows, tokens) }
+            val everyPart = (listOf(driven) + probes).reduce { acc, op -> acc and op }
             return prefixes or everyPart
         }
 

@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.search
 
+import net.onelitefeather.ingot.search.backend.KeyBatch
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -32,7 +33,7 @@ internal class TokenSweep(
     private val clock: Clock,
     private val batchSize: Int,
     private val interval: Duration,
-    private val keyRows: (Int) -> Int,
+    private val keyRows: (Long, Int) -> KeyBatch?,
     private val readOnly: () -> Boolean,
     private val execute: (() -> Unit) -> Unit,
     private val onFailure: (String) -> Unit,
@@ -42,6 +43,10 @@ internal class TokenSweep(
 
     @Volatile
     private var lastRunAt: Instant? = null
+
+    /** The id after which the next batch starts. Kept across runs, so a run that fails resumes where it stopped (full text change, D6). */
+    @Volatile
+    private var cursor: Long = 0L
 
     fun tick() {
         if (readOnly()) return
@@ -60,10 +65,20 @@ internal class TokenSweep(
         }
     }
 
-    /** Keys batches until one batch keys no row. Returns nothing: the store is the record of what was keyed. */
+    /**
+     * Keys batches from the cursor to the end of the rows, each batch starting after the last id of the one before. When no row
+     * is left the pass is complete, and the next pass starts from zero, so rows that are unkeyed again are found.
+     */
     private fun sweep() {
-        while (keyRows(batchSize) > 0) {
-            // each batch is its own transaction in the store; the loop ends with the first empty batch
+        var after = cursor
+        while (true) {
+            val batch = keyRows(after, batchSize)
+            if (batch == null) {
+                cursor = 0L
+                return
+            }
+            after = batch.lastId
+            cursor = after
         }
     }
 

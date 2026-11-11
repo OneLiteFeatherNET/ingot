@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.search
 
 import com.reposilite.audit.MutableClock
+import net.onelitefeather.ingot.search.backend.KeyBatch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -27,17 +28,23 @@ internal class TokenSweepTest {
 
     private val start = Instant.parse("2026-11-11T10:00:00Z")
 
-    /** A store of [unkeyed] rows: each call keys up to the batch size and returns how many it keyed. */
-    private class UnkeyedRows(var unkeyed: Int) {
+    /**
+     * A store of unkeyed rows with the given ids. Like the database, a batch takes the unkeyed rows after the cursor, in id
+     * order, and reports the id of its last row. Every cursor it is asked from is recorded.
+     */
+    private class UnkeyedRows(ids: List<Long>) {
+        private val unkeyed = ids.toMutableList()
+        val cursors = mutableListOf<Long>()
         val productiveBatches = mutableListOf<Int>()
-        var calls = 0
+        val remaining: Int get() = unkeyed.size
 
-        fun key(batchSize: Int): Int {
-            calls++
-            val keyed = minOf(unkeyed, batchSize)
-            unkeyed -= keyed
-            if (keyed > 0) productiveBatches += keyed
-            return keyed
+        fun key(after: Long, batchSize: Int): KeyBatch? {
+            cursors += after
+            val batch = unkeyed.filter { it > after }.take(batchSize)
+            if (batch.isEmpty()) return null
+            unkeyed.removeAll(batch.toSet())
+            productiveBatches += batch.size
+            return KeyBatch(keyed = batch.size, lastId = batch.last())
         }
     }
 
@@ -59,63 +66,91 @@ internal class TokenSweepTest {
     @Test
     fun `a sweep keys five unkeyed rows in three batches of two`() {
         val clock = MutableClock(start)
-        val rows = UnkeyedRows(unkeyed = 5)
+        val rows = UnkeyedRows(listOf(1, 2, 3, 4, 5))
 
         sweep(clock, rows).tick()
 
         assertThat(rows.productiveBatches)
             .`as`("rows keyed per batch that keyed any row")
             .containsExactly(2, 2, 1)
-        assertThat(rows.unkeyed).`as`("rows left unkeyed after the sweep").isZero()
+        assertThat(rows.remaining).`as`("rows left unkeyed after the sweep").isZero()
+    }
+
+    @Test
+    fun `each batch starts after the last id of the batch before`() {
+        val clock = MutableClock(start)
+        val rows = UnkeyedRows(listOf(1, 2, 3, 4, 5))
+
+        sweep(clock, rows).tick()
+
+        assertThat(rows.cursors)
+            .`as`("cursors the batches were asked from: zero, then the last id of each batch, then none left")
+            .containsExactly(0L, 2L, 4L, 5L)
+    }
+
+    @Test
+    fun `a pass that finds nothing starts the next pass from zero`() {
+        val clock = MutableClock(start)
+        val rows = UnkeyedRows(listOf(1, 2))
+        val sweep = sweep(clock, rows)
+        sweep.tick()
+        val callsAfterFirstPass = rows.cursors.size
+
+        clock.advance(Duration.ofHours(SIX_HOURS))
+        sweep.tick()
+
+        assertThat(rows.cursors.drop(callsAfterFirstPass).first())
+            .`as`("cursor of the first batch of the second pass")
+            .isZero()
     }
 
     @Test
     fun `a read-only instance runs no sweep`() {
         val clock = MutableClock(start)
-        val rows = UnkeyedRows(unkeyed = 5)
+        val rows = UnkeyedRows(listOf(1, 2, 3, 4, 5))
 
         sweep(clock, rows, readOnly = true).tick()
 
-        assertThat(rows.calls).`as`("calls to the store on a read-only instance").isZero()
-        assertThat(rows.unkeyed).`as`("rows left unkeyed on a read-only instance").isEqualTo(5)
+        assertThat(rows.cursors).`as`("calls to the store on a read-only instance").isEmpty()
+        assertThat(rows.remaining).`as`("rows left unkeyed on a read-only instance").isEqualTo(5)
     }
 
     @Test
     fun `the first tick after a start runs the sweep`() {
         val clock = MutableClock(start)
-        val rows = UnkeyedRows(unkeyed = 1)
+        val rows = UnkeyedRows(listOf(1))
 
         sweep(clock, rows).tick()
 
-        assertThat(rows.unkeyed).`as`("rows keyed by the first tick").isZero()
+        assertThat(rows.remaining).`as`("rows keyed by the first tick").isZero()
     }
 
     @Test
     fun `a sweep does not run again before six hours have passed`() {
         val clock = MutableClock(start)
-        val rows = UnkeyedRows(unkeyed = 0)
+        val rows = UnkeyedRows(emptyList())
         val sweep = sweep(clock, rows)
         sweep.tick()
-        val callsAfterFirst = rows.calls
+        val callsAfterFirst = rows.cursors.size
 
         clock.advance(Duration.ofHours(SIX_HOURS).minusMinutes(1))
         sweep.tick()
 
-        assertThat(rows.calls).`as`("calls made before six hours have passed").isEqualTo(callsAfterFirst)
+        assertThat(rows.cursors.size).`as`("calls made before six hours have passed").isEqualTo(callsAfterFirst)
     }
 
     @Test
     fun `a sweep runs again once six hours have passed`() {
         val clock = MutableClock(start)
-        val rows = UnkeyedRows(unkeyed = 0)
+        val rows = UnkeyedRows(emptyList())
         val sweep = sweep(clock, rows)
         sweep.tick()
-        val callsAfterFirst = rows.calls
+        val callsAfterFirst = rows.cursors.size
 
         clock.advance(Duration.ofHours(SIX_HOURS))
         sweep.tick()
 
-        assertThat(rows.calls).`as`("calls made after six hours have passed").isGreaterThan(callsAfterFirst)
+        assertThat(rows.cursors.size).`as`("calls made after six hours have passed").isGreaterThan(callsAfterFirst)
     }
 
     private companion object {

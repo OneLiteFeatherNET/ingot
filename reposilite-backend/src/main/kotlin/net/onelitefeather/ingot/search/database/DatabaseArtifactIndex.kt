@@ -19,6 +19,7 @@ package net.onelitefeather.ingot.search.database
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.backend.KeyBatch
 import net.onelitefeather.ingot.search.gavKeyOf
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
@@ -78,15 +79,17 @@ internal class DatabaseArtifactIndex(private val database: Database) {
     }
 
     /**
-     * Fills the key and the tokens of up to [batchSize] rows that have no key, in one transaction, in id order. Returns how
-     * many rows were keyed; 0 means none is left (full text change, D6).
+     * Fills the key and the tokens of up to [batchSize] rows that have no key and an id after [after], in one transaction, in id
+     * order. The range on the id starts every batch at the cursor, so a pass costs one walk of the id index, not one per batch.
+     * Returns the batch with the id of its last row, or null when no such row is left (full text change, D6).
      */
-    fun keyRows(batchSize: Int): Int = transaction(database) {
+    fun keyRows(after: Long, batchSize: Int): KeyBatch? = transaction(database) {
         val batch = rows.select(rows.id, rows.groupId, rows.artifactId, rows.version)
-            .where { rows.gavKey.isNull() }
+            .where { (rows.id greater after) and rows.gavKey.isNull() }
             .orderBy(rows.id to SortOrder.ASC)
             .limit(batchSize)
             .toList()
+        if (batch.isEmpty()) return@transaction null
         batch.forEach { row ->
             val groupId = row[rows.groupId]
             val artifactId = row[rows.artifactId]
@@ -95,7 +98,7 @@ internal class DatabaseArtifactIndex(private val database: Database) {
             rows.update(where = { rows.id eq row[rows.id] }, body = { it[rows.gavKey] = key })
             insertTokens(groupId, artifactId, version)
         }
-        batch.size
+        KeyBatch(keyed = batch.size, lastId = batch.last()[rows.id])
     }
 
     /** The tokens of one GAV, inserted with insert-ignore: a token that exists is left as it is, so a replay adds nothing. */

@@ -149,12 +149,37 @@ internal abstract class SearchUpgradeContract {
         backend.apply((1..5).map { IndexAction.Upsert(row("com/example/lib$it/1.0/lib$it-1.0.jar")) })
         transaction(database) { exec("UPDATE search_artifact SET gav_key = NULL") }
 
-        val batches = listOf(backend.keyRows(2), backend.keyRows(2), backend.keyRows(2), backend.keyRows(2))
+        val keyed = mutableListOf<Int>()
+        var after = 0L
+        while (true) {
+            val batch = backend.keyRows(after, 2) ?: break
+            keyed += batch.keyed
+            after = batch.lastId
+        }
 
-        assertThat(batches).`as`("rows keyed per call, batches of two").containsExactly(2, 2, 1, 0)
+        assertThat(keyed).`as`("rows keyed per batch, batches of two").containsExactly(2, 2, 1)
         assertThat(backend.status().tokensComplete)
             .`as`("tokensComplete after the sweep")
             .isTrue()
+    }
+
+    @Test
+    fun `a batch starts after the id it is given even when rows before it are unkeyed`() = withDatabase { database ->
+        SearchSchema.ensure(database, clock)
+        val backend = DatabaseSearchBackend(database, clock)
+        backend.apply((1..3).map { IndexAction.Upsert(row("com/example/lib$it/1.0/lib$it-1.0.jar")) })
+        transaction(database) { exec("UPDATE search_artifact SET gav_key = NULL") }
+        val ids = transaction(database) {
+            val rows = SearchTables(SearchDialect.of(database.vendor)).artifact
+            rows.selectAll().orderBy(rows.id).map { it[rows.id] }
+        }
+
+        val batch = backend.keyRows(ids.first(), 1)
+
+        assertThat(batch?.lastId).`as`("last id of the batch that starts after the first row").isEqualTo(ids[1])
+        assertThat(backend.status().tokensComplete)
+            .`as`("tokensComplete while the first row is still unkeyed")
+            .isFalse()
     }
 
     @Test
