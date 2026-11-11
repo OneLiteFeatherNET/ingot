@@ -174,22 +174,33 @@ describe('colour roles', () => {
       }
     })
 
-    it(`takes the accent roles from the official OneLiteFeather tables in the ${theme} theme`, () => {
+    it(`takes the accent roles from the steel seed scheme in the ${theme} theme`, () => {
       const expected = theme === 'light'
-        ? { '--md-sys-color-primary': '#ac1c67', '--md-sys-color-secondary': '#94387c', '--md-sys-color-tertiary': '#4d4fb7' }
-        : { '--md-sys-color-primary': '#ff88b7', '--md-sys-color-secondary': '#f88cd6', '--md-sys-color-tertiary': '#9496ff' }
+        ? { '--md-sys-color-primary': '#0062a1', '--md-sys-color-secondary': '#515e7d', '--md-sys-color-tertiary': '#565a8b' }
+        : { '--md-sys-color-primary': '#9ccaff', '--md-sys-color-secondary': '#b9c6ea', '--md-sys-color-tertiary': '#bfc2fa' }
 
       for (const [name, value] of Object.entries(expected)) {
-        expect(THEMES[theme][name], `${name} should be the official OLF value`).toBe(value)
+        expect(THEMES[theme][name], `${name} should be the steel seed value`).toBe(value)
       }
+    })
+
+    it(`makes the steel tone the default primary in the ${theme} theme, a blue and not the OLF pink`, () => {
+      const [, a, b] = toLab(THEMES[theme]['--md-sys-color-primary'])
+      const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360
+      expect(hue, `the ${theme} primary is at ${hue.toFixed(0)} degrees, expected the steel blue family (about 230 to 275)`)
+        .toBeGreaterThanOrEqual(230)
+      expect(hue, `the ${theme} primary is at ${hue.toFixed(0)} degrees, expected the steel blue family (about 230 to 275)`)
+        .toBeLessThanOrEqual(275)
     })
   }
 
-  it('keeps the surfaces neutral, without the pink tint of the official table', () => {
+  // The steel seed's neutral palette leaves a slight blue tint on the dark surface (chroma 6.4), so the
+  // bound allows that tint and still rejects a strong colour cast.
+  it('keeps the surfaces near neutral, with at most the slight tint of the seed', () => {
     for (const theme of ['light', 'dark']) {
       const [, a, b] = toLab(THEMES[theme]['--md-sys-color-surface'])
       const chroma = Math.hypot(a, b)
-      expect(chroma, `the ${theme} surface should be near neutral (CIE LCh chroma ${chroma.toFixed(1)})`).toBeLessThan(6)
+      expect(chroma, `the ${theme} surface should be near neutral (CIE LCh chroma ${chroma.toFixed(1)})`).toBeLessThan(8)
     }
   })
 
@@ -218,13 +229,24 @@ describe('high contrast', () => {
 })
 
 describe('brand expression', () => {
-  it('defines the four-stop OLF gradient at 135 degrees', () => {
-    const gradient = THEMES.light['--olf-gradient']
+  it('runs the brand gradient at 135 degrees from the primary to the tertiary of the default scheme', () => {
+    const light = THEMES.light['--olf-gradient']
+    const dark = THEMES.dark['--olf-gradient']
 
-    expect(gradient, 'the gradient should be defined on :root').toBeDefined()
-    expect(gradient, 'the gradient should run at 135 degrees').toMatch(/^linear-gradient\(135deg,/)
-    for (const stop of ['#f7931d', '#ec008b', '#91268f', '#2a388f']) {
-      expect(gradient.toLowerCase(), `the gradient should contain the OLF stop ${stop}`).toContain(stop)
+    expect(light, 'the gradient should be defined on :root').toBe(
+      'linear-gradient(135deg, #0062a1 0%, #565a8b 100%)'
+    )
+    expect(dark, 'the gradient should be redefined on .dark').toBe(
+      'linear-gradient(135deg, #9ccaff 0%, #bfc2fa 100%)'
+    )
+  })
+
+  it('keeps the brand gradient free of the OLF pink', () => {
+    for (const theme of ['light', 'dark']) {
+      const gradient = THEMES[theme]['--olf-gradient'].toLowerCase()
+      for (const pink of ['#ec008b', '#91268f', '#f7931d']) {
+        expect(gradient, `the ${theme} gradient should not contain ${pink}`).not.toContain(pink)
+      }
     }
   })
 
@@ -263,11 +285,13 @@ describe('chart series', () => {
     })
   }
 
-  it('starts the series with the brand pink, a hue between magenta and red', () => {
-    const [light] = chartSeries(THEMES.light)
-    const [, a, b] = toLab(light)
-    const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360
-    // Pink and magenta sit between roughly 330 and 25 degrees in CIE LCh.
-    expect(hue >= 330 || hue <= 25, `chart-1 is at ${hue.toFixed(0)} degrees, expected the OLF pink family`).toBe(true)
+  it('starts the series with the steel blue, not magenta or pink', () => {
+    for (const theme of ['light', 'dark']) {
+      const [first] = chartSeries(THEMES[theme])
+      const [, a, b] = toLab(first)
+      const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360
+      // Blue sits between roughly 200 and 290 degrees in CIE LCh; pink and magenta start near 300 and above.
+      expect(hue >= 200 && hue <= 290, `${theme} chart-1 is at ${hue.toFixed(0)} degrees, expected the steel blue family`).toBe(true)
+    }
   })
 })

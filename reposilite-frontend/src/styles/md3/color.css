@@ -15,126 +15,124 @@
  */
 
 /*
- * MD3 colour roles for the OneLiteFeather scheme. The accent roles (primary, secondary,
- * tertiary, error, inverse-primary, surface-tint and the fixed roles) are the official OLF
- * Material 3 tables, generated from the OLF Pink #EC008B with SchemeVibrant at contrast 0.
- * The neutral roles are not in the official table: they come from a near-neutral palette at
- * the source hue (357) with chroma 3, so the surfaces stay white and grey and do not take a
- * pink tint. DESIGN.md explains the override. The hex values here are the source of truth.
- * Every role is also a Tailwind colour utility through the @theme inline block below, for
- * example bg-surface-container or text-on-surface-variant.
+ * MD3 colour roles for the default OneLiteFeather scheme. The light and dark roles are the
+ * scheme that the seed path in src/theme/runtime.js generates from the steel seed #3A5F85
+ * with SchemeVibrant at contrast 0, so the default looks the same as setting that seed. The
+ * high contrast block below and the brand gradient are not generated; see the notes there.
+ * The hex values here are the source of truth. Every role is also a Tailwind colour utility
+ * through the @theme inline block below, for example bg-surface-container or text-on-surface-variant.
  */
 
 :root {
-  --md-sys-color-primary: #ac1c67;
-  --md-sys-color-on-primary: #ffeff2;
-  --md-sys-color-primary-container: #ff6eac;
-  --md-sys-color-on-primary-container: #4b0028;
-  --md-sys-color-primary-fixed: #ff6eac;
-  --md-sys-color-primary-fixed-dim: #f55aa0;
-  --md-sys-color-on-primary-fixed: #000000;
-  --md-sys-color-on-primary-fixed-variant: #5c0033;
-  --md-sys-color-secondary: #94387c;
-  --md-sys-color-on-secondary: #ffeef5;
-  --md-sys-color-secondary-container: #ffbfe6;
-  --md-sys-color-on-secondary-container: #7b2266;
-  --md-sys-color-secondary-fixed: #ffbfe6;
-  --md-sys-color-secondary-fixed-dim: #ffa9e1;
-  --md-sys-color-on-secondary-fixed: #630851;
-  --md-sys-color-on-secondary-fixed-variant: #872c70;
-  --md-sys-color-tertiary: #4d4fb7;
-  --md-sys-color-on-tertiary: #f4f1ff;
-  --md-sys-color-tertiary-container: #a7a9ff;
-  --md-sys-color-on-tertiary-container: #1f1d8a;
-  --md-sys-color-tertiary-fixed: #a7a9ff;
-  --md-sys-color-tertiary-fixed-dim: #9799ff;
-  --md-sys-color-on-tertiary-fixed: #060061;
-  --md-sys-color-on-tertiary-fixed-variant: #292993;
-  --md-sys-color-error: #b41340;
-  --md-sys-color-on-error: #ffefef;
-  --md-sys-color-error-container: #f74b6d;
-  --md-sys-color-on-error-container: #510017;
-  --md-sys-color-background: #fff8f8;
-  --md-sys-color-on-background: #1f1a1c;
-  --md-sys-color-surface: #fff8f8;
-  --md-sys-color-on-surface: #1f1a1c;
-  --md-sys-color-surface-variant: #eedfe2;
-  --md-sys-color-on-surface-variant: #4e4447;
-  --md-sys-color-surface-tint: #ac1c67;
-  --md-sys-color-surface-dim: #e1d8d9;
-  --md-sys-color-surface-bright: #fff8f8;
+  --md-sys-color-primary: #0062a1;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #d0e4ff;
+  --md-sys-color-on-primary-container: #00497b;
+  --md-sys-color-primary-fixed: #d0e4ff;
+  --md-sys-color-primary-fixed-dim: #9ccaff;
+  --md-sys-color-on-primary-fixed: #001d35;
+  --md-sys-color-on-primary-fixed-variant: #00497b;
+  --md-sys-color-secondary: #515e7d;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #d8e2ff;
+  --md-sys-color-on-secondary-container: #394664;
+  --md-sys-color-secondary-fixed: #d8e2ff;
+  --md-sys-color-secondary-fixed-dim: #b9c6ea;
+  --md-sys-color-on-secondary-fixed: #0c1b36;
+  --md-sys-color-on-secondary-fixed-variant: #394664;
+  --md-sys-color-tertiary: #565a8b;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #e0e0ff;
+  --md-sys-color-on-tertiary-container: #3f4372;
+  --md-sys-color-tertiary-fixed: #e0e0ff;
+  --md-sys-color-tertiary-fixed-dim: #bfc2fa;
+  --md-sys-color-on-tertiary-fixed: #121644;
+  --md-sys-color-on-tertiary-fixed-variant: #3f4372;
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #93000a;
+  --md-sys-color-background: #f8f9ff;
+  --md-sys-color-on-background: #161c24;
+  --md-sys-color-surface: #f8f9ff;
+  --md-sys-color-on-surface: #161c24;
+  --md-sys-color-surface-variant: #dae3f1;
+  --md-sys-color-on-surface-variant: #3f4753;
+  --md-sys-color-surface-tint: #0062a1;
+  --md-sys-color-surface-dim: #d4dae5;
+  --md-sys-color-surface-bright: #f8f9ff;
   --md-sys-color-surface-container-lowest: #ffffff;
-  --md-sys-color-surface-container-low: #fbf1f2;
-  --md-sys-color-surface-container: #f5eced;
-  --md-sys-color-surface-container-high: #efe6e7;
-  --md-sys-color-surface-container-highest: #eae0e1;
-  --md-sys-color-inverse-surface: #342f30;
-  --md-sys-color-inverse-on-surface: #f8eeef;
-  --md-sys-color-inverse-primary: #fc5fa5;
-  --md-sys-color-outline: #807477;
-  --md-sys-color-outline-variant: #d2c3c6;
+  --md-sys-color-surface-container-low: #eef4ff;
+  --md-sys-color-surface-container: #e8eefa;
+  --md-sys-color-surface-container-high: #e2e8f4;
+  --md-sys-color-surface-container-highest: #dde3ee;
+  --md-sys-color-inverse-surface: #2a3139;
+  --md-sys-color-inverse-on-surface: #ebf1fc;
+  --md-sys-color-inverse-primary: #9ccaff;
+  --md-sys-color-outline: #6f7884;
+  --md-sys-color-outline-variant: #bec7d5;
   --md-sys-color-scrim: #000000;
   --md-sys-color-shadow: #000000;
 }
 
 .dark {
-  --md-sys-color-primary: #ff88b7;
-  --md-sys-color-on-primary: #600036;
-  --md-sys-color-primary-container: #ff6eac;
-  --md-sys-color-on-primary-container: #4b0028;
-  --md-sys-color-primary-fixed: #ff6eac;
-  --md-sys-color-primary-fixed-dim: #f55aa0;
-  --md-sys-color-on-primary-fixed: #000000;
-  --md-sys-color-on-primary-fixed-variant: #5c0033;
-  --md-sys-color-secondary: #f88cd6;
-  --md-sys-color-on-secondary: #5f024d;
-  --md-sys-color-secondary-container: #7b2166;
-  --md-sys-color-on-secondary-container: #ffbde5;
-  --md-sys-color-secondary-fixed: #ffbfe6;
-  --md-sys-color-secondary-fixed-dim: #ffa9e1;
-  --md-sys-color-on-secondary-fixed: #630851;
-  --md-sys-color-on-secondary-fixed-variant: #872c70;
-  --md-sys-color-tertiary: #9496ff;
-  --md-sys-color-on-tertiary: #0d037e;
-  --md-sys-color-tertiary-container: #8688f4;
-  --md-sys-color-on-tertiary-container: #050054;
-  --md-sys-color-tertiary-fixed: #a7a9ff;
-  --md-sys-color-tertiary-fixed-dim: #9799ff;
-  --md-sys-color-on-tertiary-fixed: #060061;
-  --md-sys-color-on-tertiary-fixed-variant: #292993;
-  --md-sys-color-error: #ff6e84;
-  --md-sys-color-on-error: #490013;
-  --md-sys-color-error-container: #a70138;
-  --md-sys-color-on-error-container: #ffb2b9;
-  --md-sys-color-background: #161213;
-  --md-sys-color-on-background: #eae0e1;
-  --md-sys-color-surface: #161213;
-  --md-sys-color-on-surface: #eae0e1;
-  --md-sys-color-surface-variant: #4e4447;
-  --md-sys-color-on-surface-variant: #d2c3c6;
-  --md-sys-color-surface-tint: #ff88b7;
-  --md-sys-color-surface-dim: #161213;
-  --md-sys-color-surface-bright: #3d3839;
-  --md-sys-color-surface-container-lowest: #110d0e;
-  --md-sys-color-surface-container-low: #1f1a1c;
-  --md-sys-color-surface-container: #231e20;
-  --md-sys-color-surface-container-high: #2d292a;
-  --md-sys-color-surface-container-highest: #383335;
-  --md-sys-color-inverse-surface: #eae0e1;
-  --md-sys-color-inverse-on-surface: #342f30;
-  --md-sys-color-inverse-primary: #b1216a;
-  --md-sys-color-outline: #9b8d90;
-  --md-sys-color-outline-variant: #4e4447;
+  --md-sys-color-primary: #9ccaff;
+  --md-sys-color-on-primary: #003257;
+  --md-sys-color-primary-container: #00497b;
+  --md-sys-color-on-primary-container: #d0e4ff;
+  --md-sys-color-primary-fixed: #d0e4ff;
+  --md-sys-color-primary-fixed-dim: #9ccaff;
+  --md-sys-color-on-primary-fixed: #001d35;
+  --md-sys-color-on-primary-fixed-variant: #00497b;
+  --md-sys-color-secondary: #b9c6ea;
+  --md-sys-color-on-secondary: #23304d;
+  --md-sys-color-secondary-container: #394664;
+  --md-sys-color-on-secondary-container: #d8e2ff;
+  --md-sys-color-secondary-fixed: #d8e2ff;
+  --md-sys-color-secondary-fixed-dim: #b9c6ea;
+  --md-sys-color-on-secondary-fixed: #0c1b36;
+  --md-sys-color-on-secondary-fixed-variant: #394664;
+  --md-sys-color-tertiary: #bfc2fa;
+  --md-sys-color-on-tertiary: #282c5a;
+  --md-sys-color-tertiary-container: #3f4372;
+  --md-sys-color-on-tertiary-container: #e0e0ff;
+  --md-sys-color-tertiary-fixed: #e0e0ff;
+  --md-sys-color-tertiary-fixed-dim: #bfc2fa;
+  --md-sys-color-on-tertiary-fixed: #121644;
+  --md-sys-color-on-tertiary-fixed-variant: #3f4372;
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+  --md-sys-color-background: #0d141c;
+  --md-sys-color-on-background: #dde3ee;
+  --md-sys-color-surface: #0d141c;
+  --md-sys-color-on-surface: #dde3ee;
+  --md-sys-color-surface-variant: #3f4753;
+  --md-sys-color-on-surface-variant: #bec7d5;
+  --md-sys-color-surface-tint: #9ccaff;
+  --md-sys-color-surface-dim: #0d141c;
+  --md-sys-color-surface-bright: #333a42;
+  --md-sys-color-surface-container-lowest: #080f16;
+  --md-sys-color-surface-container-low: #161c24;
+  --md-sys-color-surface-container: #1a2028;
+  --md-sys-color-surface-container-high: #242b33;
+  --md-sys-color-surface-container-highest: #2f353e;
+  --md-sys-color-inverse-surface: #dde3ee;
+  --md-sys-color-inverse-on-surface: #2a3139;
+  --md-sys-color-inverse-primary: #0062a1;
+  --md-sys-color-outline: #89919e;
+  --md-sys-color-outline-variant: #3f4753;
   --md-sys-color-scrim: #000000;
   --md-sys-color-shadow: #000000;
 }
 
 /*
  * High contrast, for a system that asks for more contrast. The accent roles, the fixed roles
- * and the text and outline roles come from the official OLF table at contrast 1.0
- * (SchemeVibrant). The surfaces keep their standard values, so the page does not change
- * colour, only the contrast of the content on it. The fixed roles switch here as well, since
- * the standard ones are the only theme-invariant values.
+ * and the text and outline roles come from the steel seed scheme at contrast 1.0 (SchemeVibrant,
+ * the same generator as the standard set). The surfaces keep their standard values, so the page
+ * does not change colour, only the contrast of the content on it. The fixed roles switch here as
+ * well, since the standard ones are the only theme-invariant values.
  *
  * Medium contrast (0.5) was generated too, but prefers-contrast has no middle step, so it is
  * not emitted. DESIGN.md records the values. The light rule is :root:not(.dark), so a root
@@ -142,77 +140,77 @@
  */
 @media (prefers-contrast: more) {
   :root:not(.dark) {
-    --md-sys-color-primary: #450025;
-    --md-sys-color-on-primary: #ffc5d8;
-    --md-sys-color-primary-container: #9a0559;
+    --md-sys-color-primary: #002e50;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-primary-container: #004c7f;
     --md-sys-color-on-primary-container: #ffffff;
-    --md-sys-color-inverse-primary: #ffadca;
-    --md-sys-color-secondary: #410035;
-    --md-sys-color-on-secondary: #ffc3e7;
-    --md-sys-color-secondary-container: #842a6e;
+    --md-sys-color-inverse-primary: #9ccaff;
+    --md-sys-color-secondary: #1e2c48;
+    --md-sys-color-on-secondary: #ffffff;
+    --md-sys-color-secondary-container: #3c4967;
     --md-sys-color-on-secondary-container: #ffffff;
-    --md-sys-color-tertiary: #0a0077;
-    --md-sys-color-on-tertiary: #d1d0ff;
-    --md-sys-color-tertiary-container: #4041a9;
+    --md-sys-color-tertiary: #242855;
+    --md-sys-color-on-tertiary: #ffffff;
+    --md-sys-color-tertiary-container: #414574;
     --md-sys-color-on-tertiary-container: #ffffff;
-    --md-sys-color-error: #470013;
-    --md-sys-color-on-error: #ffc6cb;
-    --md-sys-color-error-container: #a00035;
+    --md-sys-color-error: #600004;
+    --md-sys-color-on-error: #ffffff;
+    --md-sys-color-error-container: #98000a;
     --md-sys-color-on-error-container: #ffffff;
-    --md-sys-color-surface-tint: #450025;
-    --md-sys-color-primary-fixed: #9a0559;
-    --md-sys-color-primary-fixed-dim: #86004d;
+    --md-sys-color-surface-tint: #0062a1;
+    --md-sys-color-primary-fixed: #004c7f;
+    --md-sys-color-primary-fixed-dim: #00355a;
     --md-sys-color-on-primary-fixed: #ffffff;
     --md-sys-color-on-primary-fixed-variant: #ffffff;
-    --md-sys-color-secondary-fixed: #842a6e;
-    --md-sys-color-secondary-fixed-dim: #761d62;
+    --md-sys-color-secondary-fixed: #3c4967;
+    --md-sys-color-secondary-fixed-dim: #25324f;
     --md-sys-color-on-secondary-fixed: #ffffff;
     --md-sys-color-on-secondary-fixed-variant: #ffffff;
-    --md-sys-color-tertiary-fixed: #4041a9;
-    --md-sys-color-tertiary-fixed-dim: #34349d;
+    --md-sys-color-tertiary-fixed: #414574;
+    --md-sys-color-tertiary-fixed-dim: #2a2e5c;
     --md-sys-color-on-tertiary-fixed: #ffffff;
     --md-sys-color-on-tertiary-fixed-variant: #ffffff;
     --md-sys-color-on-surface: #000000;
-    --md-sys-color-on-background: #000000;
-    --md-sys-color-on-surface-variant: #372e31;
-    --md-sys-color-outline: #675b5e;
+    --md-sys-color-on-background: #161c24;
+    --md-sys-color-on-surface-variant: #000000;
+    --md-sys-color-outline: #242d37;
   }
 
   .dark {
-    --md-sys-color-primary: #ffdde6;
-    --md-sys-color-on-primary: #5c0033;
-    --md-sys-color-primary-container: #ff74af;
-    --md-sys-color-on-primary-container: #000000;
-    --md-sys-color-inverse-primary: #720040;
-    --md-sys-color-secondary: #ffdcef;
-    --md-sys-color-on-secondary: #570047;
-    --md-sys-color-secondary-container: #e980c8;
-    --md-sys-color-on-secondary-container: #000000;
-    --md-sys-color-tertiary: #e5e3ff;
-    --md-sys-color-on-tertiary: #1a1686;
-    --md-sys-color-tertiary-container: #989aff;
-    --md-sys-color-on-tertiary-container: #000000;
-    --md-sys-color-error: #ffdddf;
-    --md-sys-color-on-error: #5f001c;
-    --md-sys-color-error-container: #ff798c;
-    --md-sys-color-on-error-container: #000000;
-    --md-sys-color-surface-tint: #ffdde6;
-    --md-sys-color-primary-fixed: #ff74af;
-    --md-sys-color-primary-fixed-dim: #f95da3;
+    --md-sys-color-primary: #e8f1ff;
+    --md-sys-color-on-primary: #000000;
+    --md-sys-color-primary-container: #94c7ff;
+    --md-sys-color-on-primary-container: #000c1b;
+    --md-sys-color-inverse-primary: #004b7d;
+    --md-sys-color-secondary: #ecefff;
+    --md-sys-color-on-secondary: #000000;
+    --md-sys-color-secondary-container: #b5c2e6;
+    --md-sys-color-on-secondary-container: #000a23;
+    --md-sys-color-tertiary: #f0eeff;
+    --md-sys-color-on-tertiary: #000000;
+    --md-sys-color-tertiary-container: #bbbef6;
+    --md-sys-color-on-tertiary-container: #020434;
+    --md-sys-color-error: #ffece9;
+    --md-sys-color-on-error: #000000;
+    --md-sys-color-error-container: #ffaea4;
+    --md-sys-color-on-error-container: #220001;
+    --md-sys-color-surface-tint: #9ccaff;
+    --md-sys-color-primary-fixed: #d0e4ff;
+    --md-sys-color-primary-fixed-dim: #9ccaff;
     --md-sys-color-on-primary-fixed: #000000;
-    --md-sys-color-on-primary-fixed-variant: #000000;
-    --md-sys-color-secondary-fixed: #ffbfe6;
-    --md-sys-color-secondary-fixed-dim: #ffa9e1;
+    --md-sys-color-on-primary-fixed-variant: #001224;
+    --md-sys-color-secondary-fixed: #d8e2ff;
+    --md-sys-color-secondary-fixed-dim: #b9c6ea;
     --md-sys-color-on-secondary-fixed: #000000;
-    --md-sys-color-on-secondary-fixed-variant: #21001a;
-    --md-sys-color-tertiary-fixed: #a7a9ff;
-    --md-sys-color-tertiary-fixed-dim: #9799ff;
+    --md-sys-color-on-secondary-fixed-variant: #02102c;
+    --md-sys-color-tertiary-fixed: #e0e0ff;
+    --md-sys-color-tertiary-fixed-dim: #bfc2fa;
     --md-sys-color-on-tertiary-fixed: #000000;
-    --md-sys-color-on-tertiary-fixed-variant: #000000;
+    --md-sys-color-on-tertiary-fixed-variant: #070a39;
     --md-sys-color-on-surface: #ffffff;
-    --md-sys-color-on-background: #ffffff;
-    --md-sys-color-on-surface-variant: #eedfe2;
-    --md-sys-color-outline: #b6a8ab;
+    --md-sys-color-on-background: #dde3ee;
+    --md-sys-color-on-surface-variant: #ffffff;
+    --md-sys-color-outline: #e8f1ff;
   }
 }
 
@@ -292,43 +290,48 @@
 }
 
 /*
- * Series colours for the charts: eight hues spaced about 45 degrees apart, so that the series
- * stay apart from one another. The first series is the OLF pink itself. Each other hue was
- * harmonised toward #ec008b with Blend.harmonize, and the light values take tone 40 and the
- * dark values tone 80 of its tonal palette. src/store/palette.js reads them by name, in order.
+ * Series colours for the charts: eight hues spaced 30 degrees apart from 29 to 239 degrees, so
+ * that the series stay apart from one another (at least 15 CIE76 units in both themes). Series 1
+ * is the steel blue and the rose-red sits last, so no magenta or pink opens a chart. Each hue was
+ * harmonised toward the steel seed #3A5F85 with Blend.harmonize, chroma 52; the light values take
+ * tone 40 and the dark values tone 80. src/store/palette.js reads them by name, in order.
  * Generated once with a throwaway script; the values here are the source of truth. They are
  * not role colours, so they have no Tailwind utility. DESIGN.md has the table.
  */
 :root {
-  --md-ext-color-chart-1: #b8006b;
-  --md-ext-color-chart-2: #006590;
-  --md-ext-color-chart-3: #815500;
-  --md-ext-color-chart-4: #566500;
-  --md-ext-color-chart-5: #006a68;
-  --md-ext-color-chart-6: #9c4504;
-  --md-ext-color-chart-7: #4253c3;
-  --md-ext-color-chart-8: #8040ad;
+  --md-ext-color-chart-1: #186393;
+  --md-ext-color-chart-2: #13677d;
+  --md-ext-color-chart-3: #006a67;
+  --md-ext-color-chart-4: #006c48;
+  --md-ext-color-chart-5: #42681d;
+  --md-ext-color-chart-6: #695f08;
+  --md-ext-color-chart-7: #96481f;
+  --md-ext-color-chart-8: #a03c4a;
 }
 
 .dark {
-  --md-ext-color-chart-1: #ffb0cc;
-  --md-ext-color-chart-2: #88ceff;
-  --md-ext-color-chart-3: #feba50;
-  --md-ext-color-chart-4: #bad14d;
-  --md-ext-color-chart-5: #69d8d5;
-  --md-ext-color-chart-6: #ffb690;
-  --md-ext-color-chart-7: #bbc3ff;
-  --md-ext-color-chart-8: #e3b5ff;
+  --md-ext-color-chart-1: #92cdff;
+  --md-ext-color-chart-2: #51d6ff;
+  --md-ext-color-chart-3: #2ddcd8;
+  --md-ext-color-chart-4: #63dca5;
+  --md-ext-color-chart-5: #a1d66f;
+  --md-ext-color-chart-6: #d8c843;
+  --md-ext-color-chart-7: #ffb593;
+  --md-ext-color-chart-8: #fdb3b8;
 }
 
 /*
- * The OLF gradient is a brand element, not a UI role, so it has no Tailwind colour utility.
- * It is for the hero and the brand bar. Components stay on the MD3 roles: a button on a
- * gradient hero is still a primary filled button. The gradient is the four-stop standard
- * from the brand guide, running at 135 degrees.
+ * The brand gradient is not a UI role, so it has no Tailwind colour utility. It is for the hero
+ * and the brand bar. Components stay on the MD3 roles: a button on a gradient hero is still a
+ * primary filled button. It runs at 135 degrees from the primary to the tertiary of the default
+ * scheme, the same stops the seed path uses, so it no longer carries the OLF pink.
  */
 :root {
-  --olf-gradient: linear-gradient(135deg, #f7931d 0%, #ec008b 33%, #91268f 66%, #2a388f 100%);
+  --olf-gradient: linear-gradient(135deg, #0062a1 0%, #565a8b 100%);
+}
+
+.dark {
+  --olf-gradient: linear-gradient(135deg, #9ccaff 0%, #bfc2fa 100%);
 }
 
 /* A 4px band at the top edge of a section, the brand bar from the brand guide. */

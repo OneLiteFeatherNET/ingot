@@ -135,3 +135,7 @@ The image ships `nexus-import-plugin.jar` in `/app/bundled-plugins/`. It is load
 * The audit action `NEXUS_IMPORT_RUN` is new. Its name is stored, so it is never renamed.
 
 See [Import from Nexus](../how-to/import-from-nexus.md) for the flow.
+
+### The default colour is steel blue
+
+An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](settings-domains.md)). No configuration file, environment variable, volume or plugin changes.
