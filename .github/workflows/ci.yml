@@ -200,6 +200,11 @@ jobs:
       - name: "Set up Buildx"
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
+      # The workflow script tests import PyYAML, which the runner image does not guarantee.
+      # The version matches the chart job.
+      - name: "Install test dependencies"
+        run: python3 -m pip install "pyyaml==6.0.3"
+
       # The annotation check that the release job runs on pushed images. Its tests use
       # fixture files only, so they need neither a registry nor the Docker daemon.
       - name: "Run the image annotation check tests"
