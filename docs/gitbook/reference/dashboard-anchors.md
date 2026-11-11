@@ -33,6 +33,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `account-view` | experimental | `src/components/account/AccountView.vue` | none | none |
 | `add-member-dialog` | experimental | `src/components/access/AddMemberDialog.vue` | none | `error` |
 | `adjustments-modal` | experimental | `src/components/browser/AdjustmentsModal.vue` | none | none |
+| `administration-frame` | stable | `src/components/layout/AdministrationFrame.vue` | none | none |
 | `all-of-renderer` | stable | `src/components/renderers/AllOfRenderer.vue` | none | none |
 | `analytics-view` | experimental | `src/components/dashboard/AnalyticsView.vue` | none | none |
 | `app-shell` | experimental | `src/App.vue` | none | none |
@@ -171,7 +172,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `settings-hub` | stable | `src/components/settings/SettingsHub.vue` | none | none |
 | `settings-import-errors` | stable | `src/components/settings/SettingsImportErrors.vue` | none | none |
 | `settings-review-sheet` | stable | `src/components/settings/SettingsReviewSheet.vue` | `header` | none |
-| `settings-view` | stable | `src/components/settings/SettingsView.vue` | `header` | none |
+| `settings-view` (no element of its own) | stable | `src/components/settings/SettingsView.vue` | none | none |
 | `side-nav-layout` | stable | `src/components/layout/SideNavLayout.vue` | `nav`, `page` | none |
 | `site-footer` | stable | `src/components/footer/SiteFooter.vue` | none | none |
 | `site-legal` | stable | `src/components/footer/SiteLegal.vue` | none | none |
