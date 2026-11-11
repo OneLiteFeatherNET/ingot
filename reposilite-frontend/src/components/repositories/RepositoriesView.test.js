@@ -229,3 +229,26 @@ describe('the repositories table', () => {
     expect(rowOf('fresh'), 'the discarded repository is gone').toBeUndefined()
   })
 })
+
+// The served maven schema with the domain-level field, which the Maven options section of the page shows.
+const schemaWithOption = () => {
+  const schema = repositorySchema({ versionPolicy: true, readOnly: true })
+  schema.properties.resolutionCacheClusterMaxAgeSeconds = { type: 'integer', title: 'Resolution cache maximum age in cluster mode' }
+  return schema
+}
+
+describe('the Maven options section of the page', () => {
+  it('comes after the table, below the repositories', async () => {
+    await mountPage({ schema: schemaWithOption() })
+
+    const section = wrapper.get('[data-test="maven-options"]')
+    const table = wrapper.get('table')
+    expect(table.element.compareDocumentPosition(section.element) & Node.DOCUMENT_POSITION_FOLLOWING, 'the section follows the table').toBeTruthy()
+  })
+
+  it('is not shown when the served schema has no domain-level field', async () => {
+    await mountPage()
+
+    expect(wrapper.find('[data-test="maven-options"]').exists()).toBe(false)
+  })
+})
