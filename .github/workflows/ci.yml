@@ -537,11 +537,67 @@ jobs:
       - name: "Run the two-replica smoke test"
         run: python3 charts/ingot/tests/ha_smoke.py
 
+  # Decides whether the Coverage job has to run. Pull requests that only touch documentation,
+  # OpenSpec proposals or repository metadata skip the roughly 80 minute backend suite. Pushes
+  # always run it, and so does any path the deny list in coverage_changes.sh does not name.
+  coverage-changes:
+    name: "Detect coverage changes"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # Both ends of the pull request have to be present for the diff below.
+          fetch-depth: 0
+
+      - name: "Check whether the backend changed"
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Pushes to main always run the coverage job, so the default is the full run.
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "Not a pull request, running the coverage job."
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # A missing or unreadable range is no reason to skip the tests.
+          if [ -z "$BASE" ] || [ -z "$HEAD" ] \
+             || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null \
+             || ! git cat-file -e "${HEAD}^{commit}" 2>/dev/null; then
+            echo "No usable pull request range, running the coverage job."
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! git diff --name-only "$BASE" "$HEAD" > "$RUNNER_TEMP/changed.txt"; then
+            echo "Could not diff the pull request, running the coverage job."
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          bash .github/scripts/coverage_changes.sh < "$RUNNER_TEMP/changed.txt" >> "$GITHUB_OUTPUT"
+
   # Second JDK leg, combined with the JaCoCo report so the test suite is not run three times.
   # This job is intentionally repo-specific: the shared gradle-build-pr workflow has no
   # coverage upload, and the Codecov integration is a Reposilite-only mechanic.
+  #
+  # It is gated on coverage-changes. A job skipped by its `if` counts as success for the
+  # required "Coverage" status check, the same way the Build aggregate already relies on, so
+  # skipping does not block a merge. The job name stays "Coverage" for that reason.
   coverage:
     name: "Coverage"
+    needs: coverage-changes
+    if: needs.coverage-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
