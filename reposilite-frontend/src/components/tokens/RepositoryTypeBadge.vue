@@ -51,6 +51,7 @@ const TONES = {
     :title="badge.hint || undefined"
     class="md-label-medium inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-corner-small px-2"
     :class="TONES[badge.key]"
+    data-ingot-component="repository-type-badge"
   >
     {{ badge.label }}
     <span

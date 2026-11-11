@@ -95,6 +95,7 @@ const submit = async () => {
     <h2
       id="new-team-title"
       class="md-headline-small"
+      data-ingot-component="new-team-dialog"
     >
       New team
     </h2>

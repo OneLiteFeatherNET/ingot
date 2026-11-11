@@ -88,6 +88,7 @@ const revoke = async () => {
     <h2
       id="revoke-token-title"
       class="md-headline-small"
+      data-ingot-component="revoke-token-dialog"
     >
       Revoke token
     </h2>
@@ -110,6 +111,7 @@ const revoke = async () => {
       />
       <p
         v-if="failure"
+        data-ingot-state="error"
         role="alert"
         class="md-body-medium text-error"
       >

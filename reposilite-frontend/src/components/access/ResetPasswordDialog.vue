@@ -95,6 +95,7 @@ const submit = async () => {
     <h2
       id="reset-password-title"
       class="md-headline-small"
+      data-ingot-component="reset-password-dialog"
     >
       Reset password
     </h2>

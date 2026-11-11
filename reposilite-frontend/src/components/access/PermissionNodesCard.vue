@@ -117,6 +117,7 @@ const overwrite = async () => settle(await nodes.overwriteConflict())
     class="flex flex-col gap-3 rounded-corner-large bg-surface-container-low px-4 py-4"
     :aria-labelledby="titleId"
     data-test="permission-nodes"
+    data-ingot-component="permission-nodes-card"
   >
     <div class="flex flex-col gap-1">
       <h4

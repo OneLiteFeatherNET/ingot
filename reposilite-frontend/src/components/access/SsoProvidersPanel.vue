@@ -166,6 +166,7 @@ onMounted(load)
     aria-labelledby="sso-title"
     class="flex flex-col gap-4"
     data-test="sso"
+    data-ingot-component="sso-providers-panel"
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="flex min-w-0 flex-col gap-1">

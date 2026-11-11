@@ -137,9 +137,11 @@ const stateWord = (allowed) => (allowed ? 'Allow' : 'Deny')
   <section
     class="flex flex-col gap-4"
     data-test="node-editor"
+    data-ingot-component="node-editor"
   >
     <p
       v-if="loading"
+      data-ingot-state="loading"
       role="status"
       class="md-body-large text-on-surface-variant"
       data-test="nodes-loading"

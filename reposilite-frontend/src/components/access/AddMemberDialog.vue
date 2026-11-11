@@ -103,6 +103,7 @@ const submit = () => {
     <h2
       :id="titleId"
       class="md-headline-small"
+      data-ingot-component="add-member-dialog"
     >
       Add members to {{ teamName }}
     </h2>
@@ -171,6 +172,7 @@ const submit = () => {
 
       <p
         v-if="failure"
+        data-ingot-state="error"
         role="alert"
         data-test="add-failure"
         class="md-body-medium text-error"

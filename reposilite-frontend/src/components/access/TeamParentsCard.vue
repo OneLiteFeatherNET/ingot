@@ -236,6 +236,7 @@ const save = async () => {
     class="flex flex-col gap-3 rounded-corner-large bg-surface-container-low px-4 py-4"
     :aria-labelledby="titleId"
     data-test="team-parents"
+    data-ingot-component="team-parents-card"
   >
     <div class="flex flex-col gap-1">
       <h4
@@ -251,6 +252,7 @@ const save = async () => {
 
     <p
       v-if="status === 'loading'"
+      data-ingot-state="loading"
       role="status"
       class="md-body-medium text-on-surface-variant"
     >

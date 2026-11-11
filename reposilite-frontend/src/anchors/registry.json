@@ -2,6 +2,251 @@
   "contract": 1,
   "components": [
     {
+      "name": "access-view",
+      "file": "src/components/access/AccessView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "add-member-dialog",
+      "file": "src/components/access/AddMemberDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "authentication-group-form",
+      "file": "src/components/access/AuthenticationGroupForm.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "confirm-action-dialog",
+      "file": "src/components/access/ConfirmActionDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "ldap-panel",
+      "file": "src/components/access/LdapPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "legacy-grants-panel",
+      "file": "src/components/access/LegacyGrantsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-machine-dialog",
+      "file": "src/components/access/NewMachineDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-team-dialog",
+      "file": "src/components/access/NewTeamDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-user-dialog",
+      "file": "src/components/access/NewUserDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "permission-nodes-card",
+      "file": "src/components/access/PermissionNodesCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "principal-actions-menu",
+      "file": "src/components/access/PrincipalActionsMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "principal-detail",
+      "file": "src/components/access/PrincipalDetail.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "principals-panel",
+      "file": "src/components/access/PrincipalsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "reset-password-dialog",
+      "file": "src/components/access/ResetPasswordDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "security-panel",
+      "file": "src/components/access/SecurityPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "sso-provider-dialog",
+      "file": "src/components/access/SsoProviderDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "sso-providers-panel",
+      "file": "src/components/access/SsoProvidersPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "team-detail",
+      "file": "src/components/access/TeamDetail.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "team-legacy-grants",
+      "file": "src/components/access/TeamLegacyGrants.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "team-members-card",
+      "file": "src/components/access/TeamMembersCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "team-parents-card",
+      "file": "src/components/access/TeamParentsCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "teams-panel",
+      "file": "src/components/access/TeamsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "check-permission-view",
+      "file": "src/components/access/check/CheckPermissionView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "combobox-field",
+      "file": "src/components/access/check/ComboboxField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-add-field",
+      "file": "src/components/access/nodes/NodeAddField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-editor",
+      "file": "src/components/access/nodes/NodeEditor.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "node-inherited-section",
+      "file": "src/components/access/nodes/NodeInheritedSection.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-row",
+      "file": "src/components/access/nodes/NodeRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "node-template-menu",
+      "file": "src/components/access/nodes/NodeTemplateMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-tree-view",
+      "file": "src/components/access/nodes/NodeTreeView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "account-view",
+      "file": "src/components/account/AccountView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "password-card",
+      "file": "src/components/account/PasswordCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "profile-card",
+      "file": "src/components/account/ProfileCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "adjustments-modal",
       "file": "src/components/browser/AdjustmentsModal.vue",
       "stability": "experimental",
@@ -156,6 +401,52 @@
       "name": "menu-panel",
       "file": "src/components/header/MenuPanel.vue",
       "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "create-token-dialog",
+      "file": "src/components/identity/CreateTokenDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "dialog-shell",
+      "file": "src/components/identity/DialogShell.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "revoke-token-dialog",
+      "file": "src/components/identity/RevokeTokenDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "rotate-token-dialog",
+      "file": "src/components/identity/RotateTokenDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "secret-once-dialog",
+      "file": "src/components/identity/SecretOnceDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "token-list",
+      "file": "src/components/identity/TokenList.vue",
+      "stability": "experimental",
       "parts": [],
       "states": []
     },
@@ -538,6 +829,34 @@
       "name": "unsaved-changes-bar",
       "file": "src/components/settings/UnsavedChangesBar.vue",
       "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-type-badge",
+      "file": "src/components/tokens/RepositoryTypeBadge.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "segmented-control",
+      "file": "src/components/tokens/SegmentedControl.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "segmented-option",
+      "file": "src/components/tokens/SegmentedOption.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "token-tag",
+      "file": "src/components/tokens/TokenTag.vue",
+      "stability": "experimental",
       "parts": [],
       "states": []
     }

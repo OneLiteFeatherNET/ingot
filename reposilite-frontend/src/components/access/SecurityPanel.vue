@@ -23,6 +23,7 @@ import AuthenticationGroupForm from './AuthenticationGroupForm.vue'
     aria-labelledby="security-title"
     class="flex flex-col gap-6"
     data-test="security"
+    data-ingot-component="security-panel"
   >
     <div class="flex flex-col gap-1">
       <h3

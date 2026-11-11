@@ -206,6 +206,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
   <section
     class="flex min-w-0 flex-col gap-4"
     aria-labelledby="team-title"
+    data-ingot-component="team-detail"
   >
     <MdButton
       variant="text"
@@ -218,6 +219,7 @@ const manualCount = computed(() => (detail.value ? manualMembers(detail.value).l
 
     <p
       v-if="status === 'loading'"
+      data-ingot-state="loading"
       role="status"
       class="md-body-medium text-on-surface-variant"
     >

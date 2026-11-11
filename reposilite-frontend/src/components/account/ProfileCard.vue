@@ -52,6 +52,7 @@ const displayName = computed(() => props.principal.displayName || props.principa
   <section
     class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4"
     aria-labelledby="profile-title"
+    data-ingot-component="profile-card"
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h3

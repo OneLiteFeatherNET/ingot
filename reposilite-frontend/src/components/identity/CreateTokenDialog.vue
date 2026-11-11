@@ -186,6 +186,7 @@ const submit = async () => {
     <h2
       id="create-token-title"
       class="md-headline-small"
+      data-ingot-component="create-token-dialog"
     >
       Create token
     </h2>
@@ -371,6 +372,7 @@ const submit = async () => {
 
       <p
         v-if="failure"
+        data-ingot-state="error"
         role="alert"
         class="md-body-medium text-error"
       >

@@ -100,6 +100,7 @@ onMounted(load)
     aria-labelledby="ldap-title"
     class="flex flex-col gap-6"
     data-test="ldap"
+    data-ingot-component="ldap-panel"
   >
     <div class="flex flex-col gap-1">
       <h3
