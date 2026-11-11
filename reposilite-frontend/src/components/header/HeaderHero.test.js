@@ -21,22 +21,10 @@ import useTheme from '../../store/theme'
 import { setAppearance } from '../../store/appearance'
 
 describe('HeaderHero', () => {
-  it('draws exactly one OneLiteFeather brand bar in the hero', () => {
+  it('draws no brand bar of its own, since the top bar carries the rule across the window', () => {
     const wrapper = mount(HeaderHero)
 
-    expect(wrapper.findAll('.olf-brand-bar'), 'the hero should carry a single brand bar').toHaveLength(1)
-  })
-
-  it('places the brand bar on the top edge of the hero, before the content', () => {
-    const wrapper = mount(HeaderHero)
-
-    expect(wrapper.element.firstElementChild?.classList.contains('olf-brand-bar'), 'the brand bar should be the first child of the hero').toBe(true)
-  })
-
-  it('hides the decorative brand bar from assistive technology', () => {
-    const bar = mount(HeaderHero).find('.olf-brand-bar')
-
-    expect(bar.attributes('aria-hidden'), 'the brand bar carries no information, so it is hidden').toBe('true')
+    expect(wrapper.findAll('.olf-brand-bar'), 'the hero must not draw a second rule under the top bar').toHaveLength(0)
   })
 })
 

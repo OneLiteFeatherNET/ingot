@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import MdNavigationRail from './MdNavigationRail.vue'
 import { RAIL_WIDTH_VARIABLE } from '../../helpers/navigation-rail'
 
@@ -23,7 +23,7 @@ describe('MdNavigationRail width variable', () => {
   it('publishes its width on the document root while it is mounted', () => {
     const wrapper = mount(MdNavigationRail, { props: { items: SECTIONS, modelValue: 'overview' } })
 
-    expect(document.documentElement.style.getPropertyValue(RAIL_WIDTH_VARIABLE), 'the rail is 80px wide').toBe('80px')
+    expect(document.documentElement.style.getPropertyValue(RAIL_WIDTH_VARIABLE), 'the rail is 96px wide, the Material 3 rail width').toBe('96px')
 
     wrapper.unmount()
   })
@@ -128,14 +128,53 @@ describe('MdNavigationRail', () => {
     expect(wrapper.find('i[data-key="tokens"]').attributes('data-active')).toBe('false')
   })
 
-  it('lets a long label wrap inside the rail, so it cannot overflow the 80 pixel width', () => {
+  it('keeps every label on one line, so no word is ever broken', () => {
     const wrapper = mount(MdNavigationRail, {
       props: { items: [{ key: 'settings', label: 'Administration' }], modelValue: 'settings' }
     })
 
     const label = wrapper.find('a, button').findAll('span').at(-1)
     expect(label.text(), 'the label text').toBe('Administration')
-    expect(label.classes(), 'the label may not be wider than the rail').toEqual(expect.arrayContaining(['max-w-full', 'break-words']))
+    expect(label.classes(), 'a label is one line and is cut with an ellipsis').toEqual(
+      expect.arrayContaining(['whitespace-nowrap', 'truncate'])
+    )
+    expect(label.classes(), 'a label may not break inside a word').not.toContain('break-words')
+  })
+
+  it('gives a label that does not fit a title, so the full name can be read on hover', async () => {
+    const widths = stubTextWidths({ Administration: 120 })
+    const wrapper = mount(MdNavigationRail, {
+      props: { items: [{ key: 'settings', label: 'Administration' }, { key: 'console', label: 'Console' }], modelValue: 'settings' }
+    })
+    await flushPromises()
+
+    const [long, short] = wrapper.findAll('a, button').map(entry => entry.findAll('span').at(-1).element)
+    expect(long.getAttribute('title'), 'the cut label names itself in full').toBe('Administration')
+    expect(short.getAttribute('title'), 'a label that fits has no title').toBeNull()
+    widths.restore()
+  })
+
+  it('draws the state layer on the active indicator, not on the whole entry', () => {
+    const wrapper = mount(MdNavigationRail, { props: { items: SECTIONS, modelValue: 'tokens' } })
+
+    for (const entry of wrapper.findAll('a, button')) {
+      const indicator = entry.findAll('span')[0]
+      expect(indicator.classes(), `${entry.text()} has its hover layer on the indicator pill`).toEqual(
+        expect.arrayContaining(['md-state-layer', 'rounded-corner-full'])
+      )
+    }
+  })
+
+  it('draws the top slot above the entries, in the corner the top bar leaves free', () => {
+    const wrapper = mount(MdNavigationRail, {
+      props: { items: SECTIONS, modelValue: 'overview' },
+      slots: { top: '<a data-test="corner" href="/">Home</a>' }
+    })
+
+    const corner = wrapper.find('[data-test="corner"]')
+    expect(corner.exists(), 'the corner content is drawn').toBe(true)
+    expect(corner.element.compareDocumentPosition(wrapper.find('li').element) & Node.DOCUMENT_POSITION_FOLLOWING,
+      'the entries follow the corner').toBeTruthy()
   })
 
   it('keeps the full label as the accessible name of a shortened entry', () => {
@@ -146,3 +185,24 @@ describe('MdNavigationRail', () => {
     expect(wrapper.find('button').text(), 'the entry is named by its full label').toContain('Administration')
   })
 })
+
+// jsdom lays nothing out, so the width of each label is stated for the test: text wider than the stated
+// width is cut, as the browser would cut it.
+function stubTextWidths(widths) {
+  const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth')
+  Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+    configurable: true,
+    get() { return widths[this.textContent] ?? 0 }
+  })
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+    configurable: true,
+    get() { return 88 }
+  })
+  return {
+    restore() {
+      if (original) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', original)
+      else delete HTMLElement.prototype.scrollWidth
+      delete HTMLElement.prototype.clientWidth
+    }
+  }
+}

@@ -379,7 +379,8 @@ describe('IndexPage navigation', () => {
     session.isManager = null
   })
 
-  const railLabels = (wrapper) => navigations(wrapper)[1].findAll('a').map(link => link.text())
+  // The corner of the rail is a link to the start page with a logo and no text, so it is not one of the entries.
+  const railLabels = (wrapper) => navigations(wrapper)[1].findAll('a').map(link => link.text()).filter(Boolean)
   const barLabels = (wrapper) => navigations(wrapper)[0].findAll('a').map(link => link.text())
   const barButtons = (wrapper) => navigations(wrapper)[0].findAll('button')
 

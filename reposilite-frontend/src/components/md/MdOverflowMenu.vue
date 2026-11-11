@@ -29,6 +29,12 @@ import MdButton from './MdButton.vue'
  *          link with the menuitem role, so middle click and open in new tab work. A plain click on it is reported
  *          through `select` and not followed by the browser (the router takes it); a click with a modifier key is
  *          left to the browser, and the menu closes.
+ *          An item with `type: 'radio'` and `checked` is a menu radio button, drawn as the choice in use. An item
+ *          with `type: 'separator'` is a divider between groups, and takes no focus.
+ * Slots:
+ *   trigger  the content of the button, in place of the word Actions. The button is then named by its content,
+ *            so the label names the menu alone; a visible name must not differ from the label of the button
+ *   header   a line above the items, such as the name of the signed in user; it is not a menu item
  * Emits:
  *   select  the value of the chosen item; the menu closes and the focus returns to the button
  *
@@ -44,6 +50,11 @@ defineProps({
   items: {
     type: Array,
     required: true
+  },
+  // Classes for the trigger button, such as the width of an account button.
+  triggerClass: {
+    type: String,
+    default: ''
   }
 })
 
@@ -56,7 +67,7 @@ const placement = ref({})
 
 const GAP = 4
 const triggerElement = () => root.value?.querySelector('button')
-const menuItems = () => [...(menuElement.value?.querySelectorAll('[role="menuitem"]') ?? [])]
+const menuItems = () => [...(menuElement.value?.querySelectorAll('[role="menuitem"], [role="menuitemradio"]') ?? [])]
 
 const place = async () => {
   const trigger = triggerElement()
@@ -164,13 +175,16 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
     <MdButton
       variant="text"
       type="button"
-      :aria-label="label"
+      :class="triggerClass"
+      :aria-label="$slots.trigger ? undefined : label"
       aria-haspopup="menu"
       :aria-expanded="menuOpen ? 'true' : 'false'"
       @click="toggle"
       @keydown.down="openFromKeyboard"
     >
-      Actions
+      <slot name="trigger">
+        Actions
+      </slot>
     </MdButton>
     <Teleport to="body">
       <div
@@ -183,12 +197,24 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
         @keydown="onMenuKeydown"
         @focusout="onFocusout"
       >
-        <template
-          v-for="item in items"
-          :key="item.value"
+        <div
+          v-if="$slots.header"
+          role="none"
+          class="px-3 pb-2 pt-1"
         >
+          <slot name="header" />
+        </div>
+        <template
+          v-for="(item, index) in items"
+          :key="item.value ?? `separator-${index}`"
+        >
+          <div
+            v-if="item.type === 'separator'"
+            role="separator"
+            class="my-1 h-px bg-outline-variant"
+          />
           <a
-            v-if="item.href"
+            v-else-if="item.href"
             :href="item.href"
             role="menuitem"
             :aria-label="item.ariaLabel"
@@ -197,6 +223,17 @@ const itemClass = 'md-state-layer md-focus-ring relative flex w-full items-cente
           >
             {{ item.label }}
           </a>
+          <button
+            v-else-if="item.type === 'radio'"
+            type="button"
+            role="menuitemradio"
+            :aria-checked="item.checked ? 'true' : 'false'"
+            :aria-label="item.ariaLabel"
+            :class="[itemClass, item.checked ? '!bg-secondary-container !text-on-secondary-container' : '']"
+            @click="choose(item.value)"
+          >
+            {{ item.label }}
+          </button>
           <button
             v-else
             type="button"

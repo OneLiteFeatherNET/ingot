@@ -183,4 +183,95 @@ describe('MdOverflowMenu', () => {
       expect(wrapper.emitted('select'), 'nothing is reported for the same page').toBeUndefined()
     })
   })
+
+  describe('trigger and header slots', () => {
+    it('draws the trigger slot in place of the Actions text, and leaves the name to the visible content', async () => {
+      wrapper = mount(MdOverflowMenu, {
+        props: { label: 'Account menu', items: ITEMS },
+        slots: { trigger: '<span data-test="custom-trigger">Alice</span>' },
+        attachTo: document.body
+      })
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="custom-trigger"]').exists(), 'the slot content is the trigger').toBe(true)
+      expect(trigger().text(), 'the default text is not drawn').not.toBe('Actions')
+      expect(trigger().attributes('aria-label'), 'a label that differs from the visible name would mismatch it').toBeUndefined()
+    })
+
+    it('names the menu by the label when the trigger carries its own content', async () => {
+      wrapper = mount(MdOverflowMenu, {
+        props: { label: 'Account menu', items: ITEMS },
+        slots: { trigger: '<span>Alice</span>' },
+        attachTo: document.body
+      })
+      await flushPromises()
+      await trigger().trigger('click')
+      await flushPromises()
+
+      expect(menu().getAttribute('aria-label')).toBe('Account menu')
+    })
+
+    it('draws the header slot above the items without making it a menu item', async () => {
+      wrapper = mount(MdOverflowMenu, {
+        props: { label: 'Account menu', items: ITEMS },
+        slots: { header: '<p data-test="menu-heading">alice</p>' },
+        attachTo: document.body
+      })
+      await flushPromises()
+      await trigger().trigger('click')
+      await flushPromises()
+
+      const heading = document.querySelector('[data-test="menu-heading"]')
+      expect(heading, 'the header is drawn while the menu is open').not.toBeNull()
+      expect(heading.closest('[role="menuitem"]'), 'the heading is not a menu item').toBeNull()
+      expect(menuItems()).toHaveLength(ITEMS.length)
+    })
+  })
+
+  describe('radio and separator items', () => {
+    const CHOICE_ITEMS = [
+      { value: 'theme:light', label: 'Light', type: 'radio', checked: false },
+      { value: 'theme:dark', label: 'Dark', type: 'radio', checked: true },
+      { type: 'separator' },
+      { value: 'logout', label: 'Logout' }
+    ]
+
+    it('draws radio items with the menuitemradio role and their checked state', async () => {
+      await mountMenu({ items: CHOICE_ITEMS })
+      await trigger().trigger('click')
+      await flushPromises()
+
+      const radios = document.querySelectorAll('[role="menu"] [role="menuitemradio"]')
+      expect(radios).toHaveLength(2)
+      expect(radios[0].getAttribute('aria-checked'), 'the unchecked choice').toBe('false')
+      expect(radios[1].getAttribute('aria-checked'), 'the checked choice').toBe('true')
+    })
+
+    it('draws the separator as a separator that is not focusable', async () => {
+      await mountMenu({ items: CHOICE_ITEMS })
+      await trigger().trigger('click')
+      await flushPromises()
+
+      const separator = document.querySelector('[role="menu"] [role="separator"]')
+      expect(separator, 'a separator is drawn between the groups').not.toBeNull()
+      expect(separator.hasAttribute('tabindex'), 'the separator takes no focus').toBe(false)
+    })
+
+    it('moves through radio items with the arrow keys and reports the chosen radio by its value', async () => {
+      await mountMenu({ items: CHOICE_ITEMS })
+      await trigger().trigger('click')
+      await flushPromises()
+
+      const light = document.querySelector('[role="menuitemradio"]')
+      expect(document.activeElement, 'the first item has the focus').toBe(light)
+
+      light.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await flushPromises()
+      expect(document.activeElement.textContent.trim(), 'the arrow key moves to the next radio').toBe('Dark')
+
+      document.activeElement.click()
+      await flushPromises()
+      expect(wrapper.emitted('select'), 'the value of the chosen radio is reported').toEqual([['theme:dark']])
+    })
+  })
 })

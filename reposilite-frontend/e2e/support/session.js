@@ -23,6 +23,9 @@ import { siteUrl } from './api.js'
  * cookie session. The access token form is driven by its own test (see sign-in.spec.js).
  */
 
+// The name the account button of the top bar shows for the password account of this run (global-setup.js).
+const ACCOUNT_NAME = 'e2e-operator'
+
 const openSignIn = async (page) => {
   await page.goto(siteUrl('/'))
   await page.getByRole('button', { name: 'Sign in', exact: true }).first().click()
@@ -37,7 +40,7 @@ const signInAsAdmin = async (page) => {
   await dialog.getByLabel('Password', { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD)
   await dialog.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByRole('button', { name: 'Logout', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: ACCOUNT_NAME, exact: true })).toBeVisible()
 }
 
 const signInWithAccessToken = async (page) => {
@@ -49,9 +52,10 @@ const signInWithAccessToken = async (page) => {
 }
 
 const signOut = async (page) => {
-  await page.getByRole('button', { name: 'Logout', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Logout', exact: true })).toBeHidden()
+  await page.getByRole('button', { name: ACCOUNT_NAME, exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Logout', exact: true }).click()
+  await expect(page.getByRole('button', { name: ACCOUNT_NAME, exact: true })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Sign in', exact: true }).first()).toBeVisible()
 }
 
-export { signInAsAdmin, signInWithAccessToken, signOut }
+export { signInAsAdmin, signInWithAccessToken, signOut, ACCOUNT_NAME }
