@@ -28,6 +28,7 @@ import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.RepositoryAccess
 import net.onelitefeather.ingot.search.access.SearchAccess
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -166,6 +167,73 @@ internal abstract class ArtifactSearchBackendContract {
             .hasSize(1)
     }
 
+    /** Whether the backend implements the text of `q`. The in-memory fake ignores it, so the word cases are skipped there. */
+    protected open val supportsTextQuery: Boolean = true
+
+    private fun searchNamed(backend: ArtifactSearchBackend, q: String): List<String> =
+        backend.search(ArtifactSearchQuery(q = q), ALL_REPOSITORIES).items.map { it.groupId }
+
+    @Test
+    fun `a word matches a token of the artifactId`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "core"))
+            .`as`("groups found by the word core")
+            .containsExactly("org.springframework")
+    }
+
+    @Test
+    fun `a query with two words needs both to match`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "spring kafka"))
+            .`as`("groups found by spring and kafka, where only spring-core is indexed")
+            .isEmpty()
+    }
+
+    @Test
+    fun `a word of more than four parts keeps the prefix match it had before`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, LONG_GROUP_JAR))))
+
+        assertThat(searchNamed(backend, "com.example.app.one.two"))
+            .`as`("groups of a five part word that prefixes the groupId, as on main")
+            .containsExactly("com.example.app.one.two")
+    }
+
+    @Test
+    fun `a word of more than four parts that prefixes nothing finds nothing and is not refused`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, LONG_GROUP_JAR))))
+
+        assertThat(searchNamed(backend, "a.b.c.d.e"))
+            .`as`("groups found by a five part word that matches nothing")
+            .isEmpty()
+    }
+
+    @Test
+    fun `a group matched by the version before still matches`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "6.1.0"))
+            .`as`("groups found by the exact version")
+            .containsExactly("org.springframework")
+    }
+
+    @Test
+    fun `the token of a removed GAV returns nothing`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+        backend.apply(listOf(IndexAction.RemovePath(REPOSITORY, SPRING_CORE)))
+
+        assertThat(searchNamed(backend, "core"))
+            .`as`("groups found by a word of a removed GAV")
+            .isEmpty()
+    }
+
     private fun row(repository: String, path: String, indexedAt: Long = NOW_MILLIS): IndexRow {
         val parsed = ArtifactPathParser.parse(repository, path) as ArtifactPathResult.Row
         return IndexRow(
@@ -194,6 +262,8 @@ internal abstract class ArtifactSearchBackendContract {
         const val MIRRORED_JAR = "com/example/mirrored/1.0/mirrored-1.0.jar"
         const val HOSTED_JAR = "com/example/hosted/1.0/hosted-1.0.jar"
         const val UPSTREAM = "upstream.example"
+        const val SPRING_CORE = "org/springframework/spring-core/6.1.0/spring-core-6.1.0.jar"
+        const val LONG_GROUP_JAR = "com/example/app/one/two/lib/1.0/lib-1.0.jar"
         val CUTOFF: Long = Instant.parse("2026-10-17T12:00:00Z").toEpochMilli()
         val BEFORE_CUTOFF: Long = Instant.parse("2026-10-17T11:00:00Z").toEpochMilli()
         val AFTER_CUTOFF: Long = Instant.parse("2026-10-17T13:00:00Z").toEpochMilli()
