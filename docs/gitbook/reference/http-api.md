@@ -10,6 +10,17 @@ The document declares two security schemes. `tokenBasic` is HTTP Basic with an a
 
 Paths in braces are path parameters. `<gav>` stands for the rest of a Maven path, such as `net/onelitefeather/mycelium/1.0.0/`.
 
+## OpenAPI document
+
+The document describes the REST API above. It covers the endpoints, their parameters, request and response schemas and the security schemes. It does not cover the Maven repository protocol, the dashboard routes or the plugin API.
+
+Get the document in one of two ways:
+
+- From a running instance, at `GET /openapi`. It is the document of that instance and its version field names the running release.
+- From a release page, as `ingot-<version>-openapi.json` next to the jar. Its version field holds the release version. Use it to generate a client for that release without starting an instance.
+
+The compatibility rule is the one the pull request check enforces. Removing an endpoint or method, renaming a required parameter, requiring a request field that was optional, or narrowing a response is a breaking change. Such a change is declared with `!` after the type or scope of its pull request title and with a `BREAKING CHANGE:` footer in the commit, and release-please turns it into a major version. Additions do not break the rule.
+
 ## Authentication requirements
 
 | Label | Meaning |
@@ -276,3 +287,17 @@ For the shape of error answers, see [API errors](api-errors.md).
 ### Read-only refusals
 
 While the instance is read-only, `PUT`, `POST`, `PATCH` and `DELETE` on the API and on the repository protocol answer `503` with a `Retry-After` header, and nothing is written. Authentication and authorization are checked first, so a caller without access still gets `401` or `403`. The exceptions are login, session refresh and the read-only toggle. `GET` and `HEAD` are served as before. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
+
+## Contributing: keeping the snapshot current
+
+The committed snapshot is `docs/openapi/ingot-openapi.json`. It is the document the server serves at `/openapi`, with sorted keys and the version field set to the placeholder `snapshot`, so a release does not change the file. The test `OpenApiSnapshotIntegrationTest` fails when the served document differs from the snapshot, and the pull request check compares the snapshot of the pull request with the one on `main`.
+
+When a change alters the API on purpose, refresh the snapshot in the same pull request:
+
+```
+./gradlew :reposilite-backend:integration --tests 'com.reposilite.web.OpenApiSnapshotIntegrationTest' -PrefreshOpenApiSnapshot
+```
+
+Commit the rewritten file with the change. Its diff is the API change that reviewers read.
+
+The pull request check fails when the change breaks the API. To declare an intended break, put `!` after the type or scope of the pull request title, for example `fix(api)!: drop the route`, and add a `BREAKING CHANGE:` footer to the commit. With the `!` the check only reports the changes and passes. Editing the title reruns the check without a new push. Adding an endpoint or an optional field does not need the marker.
