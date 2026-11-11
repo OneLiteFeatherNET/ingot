@@ -148,7 +148,8 @@ onBeforeUnmount(stopPolling)
       The figures have not been computed yet. Refresh to compute them.
     </p>
 
-    <template v-else-if="storage">
+    <!-- While the server computes, the zero totals of the response are not results: only the progress is shown. -->
+    <template v-else-if="storage && !computing">
       <p class="md-body-large text-on-surface">
         Total <span class="md-title-medium">{{ formatBytes(storage.totalBytes) }}</span>
         across {{ countLabel(rows.length, 'repository', 'repositories') }}
