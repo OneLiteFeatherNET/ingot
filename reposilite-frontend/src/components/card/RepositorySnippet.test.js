@@ -32,6 +32,37 @@ describe('RepositorySnippet Maven text', () => {
   })
 })
 
+describe('RepositorySnippet url wrapping', () => {
+  it.each(['xml', 'groovy', 'kotlin', 'scala'])('marks the url of the %s snippet as the part that may wrap', (lang) => {
+    const url = render(lang).find('pre').element.querySelector('.snippet-url')
+
+    expect(url, 'the url is wrapped in its own element').not.toBeNull()
+    expect(url.textContent, 'the wrapped element holds the url and nothing else').toBe('http://localhost/releases')
+    expect(url.classList, 'the url may break at any character').toContain('wrap-anywhere')
+    expect(url.classList, 'the url is not held on one line').toContain('whitespace-normal')
+  })
+
+  it('wraps only the url, so the rest of the snippet keeps its line structure', () => {
+    const pre = render('kotlin').find('pre').element
+
+    expect(pre.querySelectorAll('.snippet-url'), 'exactly one wrapped part for one url').toHaveLength(1)
+    expect(pre.textContent, 'the wrapper adds no character to the copied text').toContain('url = uri("http://localhost/releases")')
+  })
+
+  it('adds no zero-width space and no line break to the copied text', () => {
+    const text = render('xml').find('pre').element.textContent
+
+    expect(text, 'no zero-width space is copied with the url').not.toMatch(/\u200b/)
+    expect(text).toBe(
+      '<repository>\n' +
+      '  <id>releases-x</id>\n' +
+      '  <name>Ingot Repository</name>\n' +
+      '  <url>http://localhost/releases</url>\n' +
+      '</repository>\n'
+    )
+  })
+})
+
 describe('RepositorySnippet Gradle and SBT text', () => {
   it('indents the Gradle Groovy block by four spaces and keeps its url whole', () => {
     const text = render('groovy').find('pre').element.textContent

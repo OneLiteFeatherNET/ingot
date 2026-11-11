@@ -60,7 +60,8 @@ const repositoryList = [
 
 const routes = [
   { name: 'overview', path: '/' },
-  { name: 'browse', path: '/browse/:qualifier(.*)*' }
+  { name: 'browse', path: '/browse/:qualifier(.*)*' },
+  { name: 'search', path: '/search' }
 ]
 
 const clientAnswering = (answer) => ({
@@ -255,6 +256,51 @@ describe('RepositoryOverview search', () => {
   })
 })
 
+describe('RepositoryOverview filter text', () => {
+  it('reads a tag:name word as a tag, as the Administration page does', async () => {
+    await mountAt('/')
+
+    await search().setValue('tag:ci')
+    await flushPromises()
+
+    expect(rowIds(), 'only the repository with the tag ci is shown').toEqual(['snapshots'])
+    expect(wrapper.find('[role="status"]').text()).toBe('1 of 4 repositories')
+  })
+
+  it('still matches the other words of the text next to a tag word', async () => {
+    await mountAt('/')
+
+    await search().setValue('tag:team-core nightly')
+    await flushPromises()
+
+    expect(rowIds()).toEqual(['snapshots'])
+  })
+})
+
+describe('RepositoryOverview no match', () => {
+  it('offers a link to the artifact search with the text already entered', async () => {
+    await mountAt('/?q=guava')
+
+    const link = wrapper.findAll('a').find(anchor => anchor.text() === 'Search artifacts for guava')
+    expect(link, 'the empty state links to the artifact search').toBeDefined()
+    expect(link.attributes('href')).toBe('/search?q=guava')
+  })
+
+  it('keeps Clear filters next to the artifact search link', async () => {
+    await mountAt('/?q=guava')
+
+    expect(clearButton()).toBeDefined()
+  })
+
+  it('offers no artifact search link when only a tag is selected, because the search cannot express it', async () => {
+    await mountAt('/?tag=nothing-carries-this')
+
+    expect(wrapper.text()).toContain('No repository matches these filters.')
+    expect(wrapper.findAll('a').find(anchor => anchor.text().startsWith('Search artifacts'))).toBeUndefined()
+    expect(clearButton()).toBeDefined()
+  })
+})
+
 describe('RepositoryOverview tag filter', () => {
   it('shows the most used tags as filter chips, most used first and then by name', async () => {
     await mountAt('/')
@@ -353,10 +399,33 @@ describe('RepositoryOverview empty and failing states', () => {
 })
 
 describe('RepositoryOverview Material 3 structure', () => {
-  it('draws the search input with the embedded-input reset, so the pill is the only box', async () => {
+  it('draws the filter as the outlined field of the Administration page, with the filter icon', async () => {
     await mountAt('/')
 
-    expect(search().classes()).toContain('md-embedded-input')
+    expect(wrapper.find('label').text(), 'the field is labelled as a filter').toBe('Filter repositories')
+    expect(search().classes(), 'the field has the outlined border').toContain('rounded-corner-extra-small')
+    expect(wrapper.find('.md-embedded-input').exists(), 'the pill of the search bar is gone').toBe(false)
+  })
+
+  it('does not make the filter a search landmark', async () => {
+    await mountAt('/')
+
+    expect(wrapper.find('[role="search"]').exists(), 'the rail owns the only search landmark').toBe(false)
+  })
+
+  it('explains the filter under the field, with the tag syntax', async () => {
+    await mountAt('/')
+
+    expect(wrapper.text()).toContain('Search by id, description or tag. Use tag:name for one tag.')
+    expect(search().attributes('aria-describedby'), 'the supporting text is linked to the field').toBeTruthy()
+  })
+
+  it('keeps the count in a status region that is already there while the list loads', async () => {
+    await mountAt('/', { answer: () => new Promise(() => {}) })
+
+    const status = wrapper.find('[role="status"]')
+    expect(status.exists(), 'the region exists while the list is loading').toBe(true)
+    expect(status.text()).toBe('')
   })
 
   it('makes each repository row a link named after the repository, covering the whole row', async () => {
@@ -404,6 +473,32 @@ describe('RepositoryOverview Material 3 structure', () => {
   })
 })
 
+describe('RepositoryOverview layout order', () => {
+  it('lists the repositories before the snippet card in the reading order', async () => {
+    await mountAt('/')
+
+    const [first, second] = wrapper.element.children
+    expect(first.tagName, 'the list is the first block, so a narrow screen shows it first').toBe('SECTION')
+    expect(second.className, 'the snippet card follows the list').toContain('lg:col-start-2')
+  })
+})
+
+describe('RepositoryOverview row marks', () => {
+  it('keeps the type badge and the visibility label in one wrapping element after the text', async () => {
+    await mountAt('/')
+
+    const row = rowFor('private')
+    const marks = row.find('[data-test="marks"]')
+    expect(marks.classes(), 'the marks wrap onto a line of their own at compact widths').toContain('flex-wrap')
+    expect(marks.find('[data-test="type-badge"]').exists(), 'the type badge is one of the marks').toBe(true)
+    expect(marks.find('[data-test="visibility"]').exists(), 'the visibility label is one of the marks').toBe(true)
+
+    const children = [...row.element.children]
+    const text = children.find(child => child.classList.contains('flex-1'))
+    expect(children.indexOf(marks.element), 'the marks come after the text column').toBeGreaterThan(children.indexOf(text))
+  })
+})
+
 describe('RepositoryOverview repository types', () => {
   const typedList = [
     { id: 'releases', visibility: 'PUBLIC', type: 'HOSTED', typeExplicit: true },
@@ -433,6 +528,24 @@ describe('RepositoryOverview repository types', () => {
 
     const typeChips = wrapper.findAll('[data-test="filter-type"]').map(chip => chip.text())
     expect(typeChips).toEqual(['Hosted', 'Proxy', 'Group', 'Mixed'])
+  })
+
+  it('groups the declared types apart from the derived Mixed', async () => {
+    await mountAt('/', { answer: answerWith(typedList) })
+
+    const declared = wrapper.find('[role="group"][aria-label="Repository type"]')
+    const derived = wrapper.find('[role="group"][aria-label="Derived type"]')
+    expect(declared.findAll('[data-test="filter-type"]').map(chip => chip.text()), 'the declared types').toEqual(['Hosted', 'Proxy', 'Group'])
+    expect(derived.findAll('[data-test="filter-type"]').map(chip => chip.text()), 'the derived type').toEqual(['Mixed'])
+  })
+
+  it('says in the derived group what Mixed means, and links the sentence to the group', async () => {
+    await mountAt('/', { answer: answerWith(typedList) })
+
+    const derived = wrapper.find('[role="group"][aria-label="Derived type"]')
+    const described = wrapper.find(`[id="${derived.attributes('aria-describedby')}"]`)
+    expect(described.exists(), 'the group points at its explanation').toBe(true)
+    expect(described.text()).toBe('Mixed: no type is declared, and the repository proxies both local and remote repositories.')
   })
 
   it('shows only the repositories of the chosen type and writes the choice to the address', async () => {

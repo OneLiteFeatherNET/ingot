@@ -19,21 +19,23 @@ import { mount, flushPromises } from '@vue/test-utils'
 import SnippetsCard from './SnippetsCard.vue'
 import { DETAILS_COLLAPSED_KEY } from './detailsCollapsed'
 
-// The repository level needs no request, so the card never touches the network here.
+// By default the metadata request never answers, so the card stays in its loading state. A test that
+// needs the repository level makes the request fail with a 404, as a repository path without artifacts does.
+const { content } = vi.hoisted(() => ({ content: vi.fn(() => new Promise(() => {})) }))
 vi.mock('../../store/session', async () => {
   const { ref } = await import('vue')
   return {
     useSession: () => ({
-      client: ref({ maven: { content: () => new Promise(() => {}) } })
+      client: ref({ maven: { content: (...args) => content(...args) } })
     })
   }
 })
 
 let wrapper
 
-const mountCard = async () => {
+const mountCard = async (path = '') => {
   wrapper = mount(SnippetsCard, {
-    props: { qualifier: { path: '' } },
+    props: { qualifier: { path } },
     attachTo: document.body
   })
   await flushPromises()
@@ -167,7 +169,7 @@ describe('SnippetsCard collapsible details', () => {
     expect(header().exists(), 'the header is a button').toBe(true)
     expect(header().element.tagName, 'a native button answers the keyboard by itself').toBe('BUTTON')
     expect(header().attributes('type')).toBe('button')
-    expect(header().text(), 'the button is named after the card').toContain('Repository details')
+    expect(header().text(), 'the root page names what to do with the card').toContain('Use a repository')
     expect(header().attributes('aria-expanded'), 'the details are open on a wide screen').toBe('true')
   })
 
@@ -194,7 +196,7 @@ describe('SnippetsCard collapsible details', () => {
 
     await header().trigger('click')
 
-    expect(header().text(), 'a collapsed card still shows what it is').toContain('Repository details')
+    expect(header().text(), 'a collapsed card still shows what it is').toContain('Use a repository')
   })
 
   it('opens the body again on a second press', async () => {
@@ -248,6 +250,74 @@ describe('SnippetsCard collapsible details', () => {
     await header().trigger('click')
 
     expect(header().attributes('aria-expanded'), 'the toggle works without storage').toBe('false')
+  })
+})
+
+describe('SnippetsCard heading', () => {
+  const heading = () => wrapper.find('h1 button').text()
+
+  beforeEach(() => {
+    content.mockImplementation(() => Promise.reject({ response: { status: 404 } }))
+  })
+
+  afterEach(() => {
+    content.mockImplementation(() => new Promise(() => {}))
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('names the repository the snippet is for on a repository path', async () => {
+    await mountCard('releases')
+
+    expect(heading(), 'the heading says which repository the snippet describes').toContain('Repository details: releases')
+  })
+
+  it('names only the first segment of a deeper repository path', async () => {
+    await mountCard('releases/com/example')
+
+    expect(heading(), 'the repository is the first segment of the path').toContain('Repository details: releases')
+    expect(heading()).not.toContain('example')
+  })
+
+  it('says what to replace on the root page, outside the snippet text', async () => {
+    await mountCard('')
+
+    expect(wrapper.text(), 'the root page tells the visitor to replace the placeholder').toContain('Replace <repository> with the id of a repository from the list')
+    expect(wrapper.find('.card-editor').text(), 'the caption is not part of the copied snippet').not.toContain('Replace')
+  })
+
+  it('does not say what to replace on a repository path', async () => {
+    await mountCard('releases')
+
+    expect(wrapper.text()).not.toContain('Replace <repository>')
+  })
+})
+
+describe('SnippetsCard copy status region', () => {
+  afterEach(() => {
+    delete navigator.clipboard
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('is present and empty before anything is copied, so the first message is announced', async () => {
+    await mountCard()
+
+    const status = wrapper.find('[role="status"]')
+    expect(status.exists(), 'the status region exists before the first copy').toBe(true)
+    expect(status.text()).toBe('')
+  })
+
+  it('is the same element after a copy, so the message changes inside the region', async () => {
+    withClipboard({ writeText: vi.fn(() => Promise.resolve()) })
+    await mountCard()
+    const before = wrapper.find('[role="status"]').element
+
+    await copyButton().trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="status"]').element, 'the region is not replaced by the message').toBe(before)
+    expect(before.textContent).toBe('Copied')
   })
 })
 
