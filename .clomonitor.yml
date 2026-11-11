@@ -1,0 +1,17 @@
+# CLOMonitor metadata file
+# This file must be located at the root of the repository
+
+# Checks exemptions. Only checks that do not apply yet are exempt, and each reason is shown in the report.
+exemptions:
+  - check: summary_table
+    reason: "The project is not listed in the CNCF landscape"
+  - check: community_meeting
+    reason: "No recurring community meeting exists"
+  - check: slack_presence
+    reason: "No Slack or Kubernetes Slack channel is used"
+  - check: analytics
+    reason: "The project website, when it exists, uses no analytics"
+  - check: cla
+    reason: "The project uses the Developer Certificate of Origin, not a CLA"
+  - check: artifacthub_badge
+    reason: "The Helm chart is not yet published on Artifact Hub"
