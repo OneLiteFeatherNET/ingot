@@ -35,6 +35,8 @@ import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.union
+import org.jetbrains.exposed.v1.jdbc.except
+import org.jetbrains.exposed.v1.core.AbstractQuery
 import java.util.Locale
 
 /**
@@ -59,6 +61,12 @@ internal class SearchFilters(
         val wordMatch: Boolean get() = match != null
 
         /** `id IN (main rows UNION word rows)` for a plain token, [main] for the others. Call inside a transaction. */
+        fun overallIds(): AbstractQuery<*> {
+            val mainIds = artifacts.select(artifacts.id).where { main }
+            val word = match ?: return mainIds
+            return mainIds.union(artifacts.select(artifacts.id).where { word })
+        }
+
         fun overall(): Op<Boolean> {
             val word = match ?: return main
             val mainRows = artifacts.select(artifacts.id).where { main }
@@ -108,6 +116,12 @@ internal class SearchFilters(
      * main returns. A search lists them after main's rows. Requires [usesTokenTable].
      */
     fun wordOnlyPredicate(): Op<Boolean> {
+        if (tokenPredicates.size == 1 && tokenPredicates.single().wordMatch) {
+            // Single token: the word-only ids are (union of main and word ids) EXCEPT main ids, driven by the index lookups.
+            val only = tokenPredicates.single()
+            val wordOnlyIds = only.overallIds().except(artifacts.select(artifacts.id).where { only.main })
+            return (artifacts.id inSubQuery wordOnlyIds) and others()
+        }
         val mainRows = artifacts.select(artifacts.id).where { coordinatePredicate() }
         return (tokenText ?: Op.FALSE) and others() and (artifacts.id notInSubQuery mainRows)
     }
@@ -124,6 +138,7 @@ internal class SearchFilters(
 
         /** The most token constraints of one loose query. A query above it gets no word match. */
         const val MAX_CONSTRAINTS = 8
+
         val WHITESPACE = Regex("\\s+")
         val SHA1 = Regex("[0-9a-fA-F]{40}")
 
