@@ -23,6 +23,9 @@ import ConnectStep from './ConnectStep.vue'
 import DiscoverStep from './DiscoverStep.vue'
 import MappingStep from './MappingStep.vue'
 import DryRunStep from './DryRunStep.vue'
+import SyncStep from './SyncStep.vue'
+import VerifyStep from './VerifyStep.vue'
+import CutOverStep from './CutOverStep.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import { migrationApi } from '../../store/migration/migrationApi'
 import { STEPS, STEP_LABELS, stepTarget, nextClosedReason } from '../../store/migration/gating'
@@ -49,6 +52,9 @@ const STEP_VIEWS = {
   discover: DiscoverStep,
   mapping: MappingStep,
   'dry-run': DryRunStep,
+  sync: SyncStep,
+  verify: VerifyStep,
+  'cut-over': CutOverStep,
 }
 
 const current = computed(() => (STEPS.includes(props.step) ? props.step : STEPS[0]))

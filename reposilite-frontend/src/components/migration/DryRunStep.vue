@@ -55,6 +55,7 @@ const textFilter = ref('')
 const watched = useJobWatch({
   api,
   runtime,
+  onUpdate: (value) => wizard.upsertJob(value),
   onFinished: (finished) => {
     if (finished.kind === 'DRY_RUN') loadReport(finished.id)
   },
@@ -123,6 +124,7 @@ const start = async () => {
   try {
     const created = await api.createJob(body)
     typedPassword.value = ''
+    wizard.upsertJob({ id: created.id, kind: created.kind, status: created.status, pauseReason: null, repositories: [], results: {}, summary: null })
     watched.follow(created.id)
   } catch (failure) {
     problem.value = failure

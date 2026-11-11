@@ -20,7 +20,7 @@ import { onBeforeUnmount, ref } from 'vue'
 import { createPoller } from '../../store/migration/poller'
 import { isFinished } from '../../store/migration/gating'
 
-const useJobWatch = ({ api, runtime, onFinished = () => {}, onUnauthorized = () => {} }) => {
+const useJobWatch = ({ api, runtime, onUpdate = () => {}, onFinished = () => {}, onUnauthorized = () => {} }) => {
   const job = ref(null)
   const error = ref(null)
   const watching = ref(false)
@@ -44,11 +44,13 @@ const useJobWatch = ({ api, runtime, onFinished = () => {}, onUnauthorized = () 
       onUpdate: (value) => {
         job.value = value
         error.value = null
+        onUpdate(value)
       },
       onFinished: (value) => {
         job.value = value
         poller = null
         watching.value = false
+        onUpdate(value)
         onFinished(value)
       },
       onError: (failure) => {

@@ -19,18 +19,32 @@
  * no store, devtools view, serialised state or template can show it. It is needed again for each call that
  * carries the credential, and it is forgotten when the visitor leaves the wizard, signs out, gets a 401 or
  * asks for it. Nothing is written to storage or to the address.
+ *
+ * Only a counter is reactive: it changes when the holder changes, so a view that asks whether a password is
+ * held is updated. The password itself is never read through the counter.
  */
+
+import { ref } from 'vue'
+
 const createPasswordHolder = () => {
   let value = null
+  const changes = ref(0)
+  const changed = () => {
+    changes.value += 1
+  }
   return {
     remember(password) {
       value = password ? String(password) : null
+      changed()
     },
     recall() {
+      // Reading the counter makes a computed that asks whether a password is held follow the holder.
+      void changes.value
       return value
     },
     forget() {
       value = null
+      changed()
     },
   }
 }

@@ -56,6 +56,10 @@ const createWizardStore = ({ passwords = createPasswordHolder() } = {}) => {
     setJobs(jobs) {
       state.jobs = jobs
     },
+    // A job of this visit, or a newer state of one, so every step sees the same list.
+    upsertJob(job) {
+      state.jobs = [...state.jobs.filter(entry => entry.id !== job.id), job]
+    },
     // The page facts the gating rules read.
     gate() {
       return {
