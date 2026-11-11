@@ -25,7 +25,7 @@ import {
   sideNavOf,
   unlistedRoutes
 } from './registry'
-import { ADMIN_NODES, INSTANCE_ADMIN_NODE } from '../store/nodeAccess'
+import { ADMIN_NODES } from '../store/nodeAccess'
 
 // `can` answers for a set of nodes. Each test builds its own, so none shares state.
 const everything = () => true
