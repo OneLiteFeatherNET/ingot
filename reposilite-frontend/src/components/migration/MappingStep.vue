@@ -21,6 +21,7 @@ import { computed, inject, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
+import MigrationDialog from './MigrationDialog.vue'
 import { formatBytes } from '../maintenance/format'
 import { mappingWarnings } from '../../store/migration/gating'
 import { MIGRATION_WIZARD } from '../../store/migration/runtime'
@@ -70,15 +71,19 @@ watch(chosen, (value) => {
 
 const setPolicy = (value) => wizard.setMapping(rows.value, value)
 
+// The policy is written before the dialog closes, so closing it any other way keeps the policy in force.
 const confirmOverwrite = () => {
-  overwriteOpen.value = false
   setPolicy('overwrite')
+  overwriteOpen.value = false
 }
 
 const cancelOverwrite = () => {
   overwriteOpen.value = false
-  chosen.value = policy.value
 }
+
+watch(overwriteOpen, (open) => {
+  if (!open && policy.value !== 'overwrite') chosen.value = policy.value
+})
 
 const updateRow = (nexusName, patch) => {
   const next = rows.value.map(row => (row.nexusName === nexusName ? { ...row, ...patch } : row))
@@ -241,44 +246,30 @@ const rowId = (nexusName) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
       </div>
     </template>
 
-    <Teleport to="body">
-      <div
-        v-if="overwriteOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="migration-overwrite-title"
-          class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface"
+    <MigrationDialog
+      v-model="overwriteOpen"
+      title-id="migration-overwrite-title"
+      title="Replace existing files?"
+    >
+      <p>
+        Existing files will be replaced in every repository that conflicts. This cannot be undone.
+      </p>
+      <template #actions>
+        <MdButton
+          id="migration-overwrite-cancel"
+          variant="text"
+          @click="cancelOverwrite"
         >
-          <h2
-            id="migration-overwrite-title"
-            class="md-headline-small"
-          >
-            Replace existing files?
-          </h2>
-          <p class="mt-3 md-body-medium text-on-surface-variant">
-            Existing files will be replaced in every repository that conflicts. This cannot be undone.
-          </p>
-          <div class="mt-6 flex justify-end gap-2">
-            <MdButton
-              id="migration-overwrite-cancel"
-              variant="text"
-              @click="cancelOverwrite"
-            >
-              Cancel
-            </MdButton>
-            <MdButton
-              id="migration-overwrite-confirm"
-              variant="filled"
-              @click="confirmOverwrite"
-            >
-              Replace files
-            </MdButton>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+          Cancel
+        </MdButton>
+        <MdButton
+          id="migration-overwrite-confirm"
+          variant="filled"
+          @click="confirmOverwrite"
+        >
+          Replace files
+        </MdButton>
+      </template>
+    </MigrationDialog>
   </section>
 </template>

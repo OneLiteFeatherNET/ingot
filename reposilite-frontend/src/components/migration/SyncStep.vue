@@ -20,6 +20,7 @@
 import { computed, inject, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
+import MigrationDialog from './MigrationDialog.vue'
 import PasswordField from './PasswordField.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import JobProgress from './JobProgress.vue'
@@ -419,44 +420,30 @@ onMounted(() => {
       </RouterLink>
     </p>
 
-    <Teleport to="body">
-      <div
-        v-if="cancelOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="migration-cancel-title"
-          class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface"
+    <MigrationDialog
+      v-model="cancelOpen"
+      title-id="migration-cancel-title"
+      title="Cancel the import?"
+    >
+      <p>
+        Repositories already copied stay in Ingot. The rest is not copied.
+      </p>
+      <template #actions>
+        <MdButton
+          id="migration-sync-cancel-keep"
+          variant="text"
+          @click="cancelOpen = false"
         >
-          <h2
-            id="migration-cancel-title"
-            class="md-headline-small"
-          >
-            Cancel the import?
-          </h2>
-          <p class="mt-3 md-body-medium text-on-surface-variant">
-            Repositories already copied stay in Ingot. The rest is not copied.
-          </p>
-          <div class="mt-6 flex justify-end gap-2">
-            <MdButton
-              id="migration-sync-cancel-keep"
-              variant="text"
-              @click="cancelOpen = false"
-            >
-              Keep running
-            </MdButton>
-            <MdButton
-              id="migration-sync-cancel-confirm"
-              variant="filled"
-              @click="confirmCancel"
-            >
-              Cancel import
-            </MdButton>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+          Keep running
+        </MdButton>
+        <MdButton
+          id="migration-sync-cancel-confirm"
+          variant="filled"
+          @click="confirmCancel"
+        >
+          Cancel import
+        </MdButton>
+      </template>
+    </MigrationDialog>
   </section>
 </template>

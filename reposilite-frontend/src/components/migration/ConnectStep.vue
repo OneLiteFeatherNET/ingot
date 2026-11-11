@@ -17,7 +17,7 @@
 
 // Step 1: the Nexus address and the credential. The connection test is the one call that answers whether the
 // credential works; on success the connection is kept in the page and the literal password in the holder.
-import { computed, inject, reactive, ref } from 'vue'
+import { computed, inject, nextTick, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import MdButton from '../md/MdButton.vue'
 import MdTextField from '../md/MdTextField.vue'
@@ -41,6 +41,19 @@ const problem = ref(null)
 const pending = ref(false)
 
 const connected = computed(() => wizard.state.connection !== null)
+const summary = ref(null)
+
+// The fields that are invalid, each with its message. The summary links to them and takes the focus on a failed submit.
+const errorItems = computed(() => [
+  { id: 'migration-connect-url', text: errors.url },
+  { id: 'migration-connect-user', text: errors.user },
+  { id: 'migration-connect-password', text: errors.password },
+  { id: 'migration-connect-reference', text: errors.reference },
+].filter(item => item.text !== ''))
+
+const focusField = (id) => {
+  document.getElementById(id)?.focus()
+}
 
 // The trust failure names the one setting that fixes it. The page has no trust control of its own.
 const TRUST_PATTERN = /certificate|trust|pkix|ssl/i
@@ -56,7 +69,11 @@ const validate = () => {
 }
 
 const submit = async () => {
-  if (!validate()) return
+  if (!validate()) {
+    await nextTick()
+    summary.value?.focus()
+    return
+  }
   pending.value = true
   problem.value = null
   report.value = null
@@ -112,6 +129,30 @@ const submit = async () => {
       novalidate
       @submit.prevent="submit"
     >
+      <div
+        v-if="errorItems.length"
+        id="migration-connect-errors"
+        ref="summary"
+        tabindex="-1"
+        role="alert"
+        class="flex flex-col gap-1 rounded-corner-small bg-error-container p-3 text-on-error-container"
+      >
+        <p class="md-title-small">
+          Fix the fields below before the connection can be tested.
+        </p>
+        <ul class="list-disc pl-6">
+          <li
+            v-for="item in errorItems"
+            :key="item.id"
+          >
+            <a
+              :href="`#${item.id}`"
+              class="underline"
+              @click.prevent="focusField(item.id)"
+            >{{ item.text }}</a>
+          </li>
+        </ul>
+      </div>
       <MdTextField
         id="migration-connect-url"
         label="Nexus URL"
@@ -122,6 +163,7 @@ const submit = async () => {
         :model-value="url"
         :error="errors.url !== ''"
         :error-text="errors.url"
+        :aria-invalid="errors.url !== '' ? 'true' : undefined"
         @update:model-value="url = $event"
       />
       <MdTextField

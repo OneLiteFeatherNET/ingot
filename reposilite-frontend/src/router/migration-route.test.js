@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { nextTick } from 'vue'
 import { createMemoryHistory } from 'vue-router'
 import { createAppRouter } from './create'
 import { INSTANCE_ADMIN_NODE } from '../store/nodeAccess'
@@ -68,6 +69,23 @@ describe('the Migration addresses', () => {
     expect(resolved.meta.section).toBe('migration')
     expect(resolved.meta.manager).toBe(true)
     expect(resolved.meta.node).toBe(INSTANCE_ADMIN_NODE)
+  })
+
+  it('does not move the focus to the page when the visitor moves between two steps', async () => {
+    const main = document.createElement('main')
+    main.id = 'main'
+    main.tabIndex = -1
+    document.body.appendChild(main)
+    const router = makeRouter()
+    await router.push('/settings/migration/connect')
+    await nextTick()
+    main.blur()
+
+    await router.push('/settings/migration/discover')
+    await nextTick()
+
+    expect(document.activeElement?.id, 'the step heading takes the focus, not the page').not.toBe('main')
+    main.remove()
   })
 
   it('keeps an anonymous visitor at the address, where the page asks for a sign in', async () => {

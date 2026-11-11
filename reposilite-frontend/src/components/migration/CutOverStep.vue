@@ -19,6 +19,7 @@
 // freeze of Nexus is done in Nexus and is text here, and the two manual ticks are not stored anywhere.
 import { computed, inject, onMounted, ref } from 'vue'
 import MdButton from '../md/MdButton.vue'
+import MigrationDialog from './MigrationDialog.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import { repositoryResultText } from './jobText'
 import { isFinished } from '../../store/migration/gating'
@@ -309,44 +310,30 @@ onMounted(() => {
       :problem="problem"
     />
 
-    <Teleport to="body">
-      <div
-        v-if="deleteOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="migration-delete-title"
-          class="w-full max-w-md rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface"
+    <MigrationDialog
+      v-model="deleteOpen"
+      title-id="migration-delete-title"
+      title="Remove the verify job?"
+    >
+      <p>
+        The job and its results are removed from Ingot. The repositories stay.
+      </p>
+      <template #actions>
+        <MdButton
+          id="migration-cutover-delete-keep"
+          variant="text"
+          @click="deleteOpen = false"
         >
-          <h2
-            id="migration-delete-title"
-            class="md-headline-small"
-          >
-            Remove the verify job?
-          </h2>
-          <p class="mt-3 md-body-medium text-on-surface-variant">
-            The job and its results are removed from Ingot. The repositories stay.
-          </p>
-          <div class="mt-6 flex justify-end gap-2">
-            <MdButton
-              id="migration-cutover-delete-keep"
-              variant="text"
-              @click="deleteOpen = false"
-            >
-              Keep it
-            </MdButton>
-            <MdButton
-              id="migration-cutover-delete-confirm"
-              variant="filled"
-              @click="removeVerifyJob"
-            >
-              Remove
-            </MdButton>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+          Keep it
+        </MdButton>
+        <MdButton
+          id="migration-cutover-delete-confirm"
+          variant="filled"
+          @click="removeVerifyJob"
+        >
+          Remove
+        </MdButton>
+      </template>
+    </MigrationDialog>
   </section>
 </template>

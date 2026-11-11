@@ -76,12 +76,23 @@ const statusCounts = computed(() => LOSS_STATUSES.map(status => ({
   count: rows.value.filter(row => row.status === status).length,
 })))
 
-const visibleRows = computed(() => rows.value.filter(row => {
-  if (statusFilter.value && row.status !== statusFilter.value) return false
-  const text = textFilter.value.trim().toLowerCase()
-  if (!text) return true
-  return [row.objectType, row.nexusId, row.target, row.reason].some(value => String(value ?? '').toLowerCase().includes(text))
-}))
+// The Nexus id column sorts from its header button; aria-sort on the header states the order.
+const sortByNexusId = ref('none')
+const toggleSort = () => {
+  sortByNexusId.value = sortByNexusId.value === 'ascending' ? 'descending' : 'ascending'
+}
+
+const visibleRows = computed(() => {
+  const filtered = rows.value.filter(row => {
+    if (statusFilter.value && row.status !== statusFilter.value) return false
+    const text = textFilter.value.trim().toLowerCase()
+    if (!text) return true
+    return [row.objectType, row.nexusId, row.target, row.reason].some(value => String(value ?? '').toLowerCase().includes(text))
+  })
+  if (sortByNexusId.value === 'none') return filtered
+  const direction = sortByNexusId.value === 'ascending' ? 1 : -1
+  return [...filtered].sort((a, b) => direction * String(a.nexusId).localeCompare(String(b.nexusId)))
+})
 
 // A name that is taken comes with the name Ingot proposes instead. Taking the proposal changes the mapping.
 const proposals = computed(() => rows.value.filter(row => /is taken/i.test(row.reason ?? '') && row.target && row.target !== row.nexusId))
@@ -364,8 +375,16 @@ onMounted(() => {
               <th
                 scope="col"
                 class="py-2 pr-4"
+                :aria-sort="sortByNexusId"
               >
-                Nexus id
+                <button
+                  id="migration-sort-nexus-id"
+                  type="button"
+                  class="md-focus-ring text-left font-medium"
+                  @click="toggleSort"
+                >
+                  Nexus id
+                </button>
               </th>
               <th
                 scope="col"

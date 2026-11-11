@@ -17,7 +17,7 @@
 
 // The page of the nexus import wizard: one heading, the step list and the step on screen. It reads the jobs of the
 // server once when it opens, and a step address that is not open goes to the step the visitor has to finish next.
-import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ConnectStep from './ConnectStep.vue'
 import DiscoverStep from './DiscoverStep.vue'
@@ -28,7 +28,7 @@ import VerifyStep from './VerifyStep.vue'
 import CutOverStep from './CutOverStep.vue'
 import ProblemAlert from './ProblemAlert.vue'
 import { migrationApi } from '../../store/migration/migrationApi'
-import { STEPS, STEP_LABELS, stepTarget, nextClosedReason } from '../../store/migration/gating'
+import { STEPS, STEP_LABELS, stepStates, stepTarget, nextClosedReason } from '../../store/migration/gating'
 import { MIGRATION_API, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
 
@@ -57,8 +57,13 @@ const STEP_VIEWS = {
   'cut-over': CutOverStep,
 }
 
+const root = ref(null)
 const current = computed(() => (STEPS.includes(props.step) ? props.step : STEPS[0]))
 const view = computed(() => STEP_VIEWS[current.value] ?? null)
+const states = computed(() => stepStates(wizard.gate(), wizard.state.jobs))
+
+// A step that is not open yet is still listed, with the reason in its text, so the list says what is missing.
+const reasonOf = (id) => (states.value[id].open ? '' : states.value[id].reason ?? '')
 
 const goTo = (step) => router.replace({ name: 'settings-migration', params: { step } })
 
@@ -89,14 +94,23 @@ onMounted(async () => {
   decide()
 })
 
-watch(() => props.step, decide)
+// A new step takes the focus on its heading, so a screen reader announces the step. The router leaves the focus
+// of a move between migration steps alone (see router/create.js).
+watch(() => props.step, async () => {
+  decide()
+  await nextTick()
+  root.value?.querySelector('h2')?.focus()
+})
 
 // Leaving the wizard drops the literal password (design D4). The rest of the page state stays in memory.
 onBeforeUnmount(() => wizard.passwords.forget())
 </script>
 
 <template>
-  <div class="container mx-auto flex flex-col gap-6 py-8">
+  <div
+    ref="root"
+    class="container mx-auto flex flex-col gap-6 py-8"
+  >
     <h1 class="md-headline-medium text-on-surface">
       Migration
     </h1>
@@ -109,10 +123,18 @@ onBeforeUnmount(() => wizard.passwords.forget())
           <RouterLink
             :to="{ name: 'settings-migration', params: { step: id } }"
             :aria-current="id === current ? 'step' : undefined"
+            :aria-disabled="states[id].open ? undefined : 'true'"
             class="md-focus-ring md-label-large inline-flex min-h-6 items-center rounded-corner-small px-3 py-2 no-underline"
-            :class="id === current ? 'bg-secondary-container text-on-secondary-container' : 'text-primary'"
+            :class="[
+              id === current ? 'bg-secondary-container text-on-secondary-container' : 'text-primary',
+              states[id].open ? '' : 'opacity-60'
+            ]"
           >
             {{ index + 1 }}. {{ STEP_LABELS[id] }}
+            <span
+              v-if="reasonOf(id)"
+              class="sr-only"
+            >(not open yet: {{ reasonOf(id) }})</span>
           </RouterLink>
         </li>
       </ol>

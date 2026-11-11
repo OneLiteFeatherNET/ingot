@@ -16,10 +16,13 @@
  */
 
 // The progress of a job: its state in words, the bar, and the reason of a pause in words. The bar is indeterminate
-// while the job reports no repositories, so no percentage is shown for an unknown total.
-import { computed } from 'vue'
+// while the job reports no repositories, so no percentage is shown for an unknown total. A polite live region tells
+// a screen reader about a change, at most once in ten seconds (see store/migration/announcer.js).
+import { computed, inject, ref, watch } from 'vue'
 import MdLinearProgress from '../md/MdLinearProgress.vue'
 import { SETTLED_RESULTS, statusText, pauseText } from './jobText'
+import { createAnnouncer } from '../../store/migration/announcer'
+import { browserRuntime, MIGRATION_RUNTIME } from '../../store/migration/runtime'
 
 const props = defineProps({
   job: {
@@ -32,11 +35,22 @@ const props = defineProps({
   }
 })
 
+const runtime = inject(MIGRATION_RUNTIME, browserRuntime())
+
 const total = computed(() => props.job.repositories?.length ?? 0)
 const settled = computed(() => (props.job.repositories ?? []).filter(repository => SETTLED_RESULTS.includes(repository.status)).length)
 const indeterminate = computed(() => total.value === 0)
-const percent = computed(() => (indeterminate.value ? 0 : Math.round((settled.value / total.value) * 100)))
+const fraction = computed(() => (indeterminate.value ? 0 : settled.value / total.value))
+const percent = computed(() => (indeterminate.value ? null : Math.round(fraction.value * 100)))
 const reason = computed(() => (props.job.status === 'PAUSED' ? pauseText(props.job.pauseReason) : ''))
+
+const announcer = createAnnouncer()
+const announced = ref('')
+
+watch(() => [props.job.status, percent.value], ([state, value]) => {
+  const text = announcer.offer({ state, percent: value, now: runtime.now() })
+  if (text) announced.value = text
+}, { immediate: true })
 </script>
 
 <template>
@@ -48,10 +62,16 @@ const reason = computed(() => (props.job.status === 'PAUSED' ? pauseText(props.j
       </template>
     </p>
     <MdLinearProgress
-      :value="percent"
+      :value="fraction"
       :indeterminate="indeterminate"
       :label="label"
     />
+    <p
+      role="status"
+      class="sr-only"
+    >
+      {{ announced }}
+    </p>
     <p
       v-if="reason"
       class="md-body-medium text-on-surface-variant"

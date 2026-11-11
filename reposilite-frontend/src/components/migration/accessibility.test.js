@@ -21,7 +21,6 @@ import ConnectStep from './ConnectStep.vue'
 import DryRunStep from './DryRunStep.vue'
 import JobProgress from './JobProgress.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
-import { planFingerprint } from '../../store/migration/gating'
 import { fakeApi, mountWith, cleanup, manualRuntime, discovery } from './testing'
 
 afterEach(cleanup)
