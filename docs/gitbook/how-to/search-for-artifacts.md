@@ -16,7 +16,7 @@ The search page finds a Maven artifact by name, group, version or file type acro
 1. Open `/search` on the instance, or select **Search** in the navigation.
 2. Type part of the name in the search box and press Enter. Every word you type must match.
 
-Matching works from the start of a value, so `core` finds `core-api` but not `spring-core`.
+Matching works from the start of a value, so `core` finds `core-api`. A word also matches a part of a name that starts after a dot, a dash or another separator, so `core` finds `spring-core` too. Every word has to match, so `spring core` finds `spring-core` but not `spring-boot`. Upper and lower case do not matter. Version one has limits: quotes do not make a phrase, there are no wildcards, and `OR` and `NOT` are read as plain words. The results are not ranked by relevance; the sort order is the one you pick.
 
 To search by coordinates, separate the parts with colons. `org.apache:commons-lang3` matches artifacts whose group starts with `org.apache` and whose artifact starts with `commons-lang3`. `:commons-lang3` matches that artifact name in any group, and `org.apache:` matches everything in the group. The version is optional and must match exactly, as in `org.apache:commons-lang3:3.14.0`.
 

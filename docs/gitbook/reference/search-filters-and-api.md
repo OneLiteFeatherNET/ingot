@@ -14,7 +14,7 @@ Artifact search is available from Ingot 1.2.0. It has a public query API, an adm
 
 | Parameter | Type | Meaning |
 |-----------|------|---------|
-| `q` | text, at most 200 characters | Free text. Split on whitespace, at most 5 words, and every word must match. A word matches when the group or artifact starts with it, or the version equals it. A word of the form `group:artifact:version` is a coordinates word. Each part is optional. |
+| `q` | text, at most 200 characters | Free text. Split on whitespace, at most 5 words, and every word must match. A word matches when the group or artifact starts with it, or the version equals it. It also matches when every part of the word starts a word of the coordinates: the parts are the runs of letters and digits, so `core` finds `spring-core`, and `spring core` needs both. Case does not matter. A word of the form `group:artifact:version` is a coordinates word. Each part is optional. Quotes are ignored, `OR`, `NOT` and `AND` are plain words that must match, and a word without letters or digits, such as `*`, matches nothing, as before. A word of more than four parts matches as before, as a prefix of the group or artifact. There is no phrase search and no ranking by relevance. |
 | `groupId` | text | Prefix of the group. |
 | `artifactId` | text | Prefix of the artifact. |
 | `version` | text | Exact version, case insensitive. |
@@ -90,11 +90,11 @@ The `indexStatus` field reports the state of the index with each answer:
 | State | Meaning |
 |-------|---------|
 | `READY` | A full rebuild has completed, and the lag and the drift are within limits. |
-| `BUILDING` | No full rebuild has completed yet, so results may be partial. |
+| `BUILDING` | No full rebuild has completed yet, so results may be partial. Also while `tokensComplete` is `false`: after an upgrade, the words of rows indexed before it match once the background sweep has filled them in. |
 | `MISSING` | The index is empty and no rebuild is queued. |
 | `DEGRADED` | The index is usable, but it lags by more than 5 minutes, has dead letters or dropped changes, has drift above 5 percent, or its last rebuild failed. |
 
-`lagSeconds` is the age of the oldest change that has not been applied yet. `lastFullRebuild` is the time of the last completed rebuild. `deadLetters` counts changes that failed too often, and `droppedEnqueues` counts changes that could not be queued since the last rebuild.
+`tokensComplete` is `false` while some rows have no word tokens yet. A field that an older client does not know is ignored. `lagSeconds` is the age of the oldest change that has not been applied yet. `lastFullRebuild` is the time of the last completed rebuild. `deadLetters` counts changes that failed too often, and `droppedEnqueues` counts changes that could not be queued since the last rebuild.
 
 ### Files of a version
 
