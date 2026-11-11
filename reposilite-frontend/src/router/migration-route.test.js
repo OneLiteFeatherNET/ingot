@@ -55,10 +55,10 @@ describe('the Migration addresses', () => {
   it('keeps a settings domain on the settings route', async () => {
     const router = makeRouter()
 
-    await router.push('/settings/maven')
+    await router.push('/settings/web')
 
     expect(router.currentRoute.value.name).toBe('settings')
-    expect(router.currentRoute.value.params.domain).toBe('maven')
+    expect(router.currentRoute.value.params.domain).toBe('web')
   })
 
   it('marks the page as a manager page that needs the instance admin node', async () => {
