@@ -422,6 +422,19 @@ tasks.register<JapicmpTask>("pluginApiReport") {
     mdOutputFile.set(layout.buildDirectory.file("reports/plugin-api/report.md"))
 }
 
+// The OpenAPI annotation processor writes an index into the output of every source set it runs on. The test source sets
+// have no @OpenApi annotations, so their index is empty, and it comes first on the test classpath and hides the index of
+// main. The served /openapi document is built from that index, so every test would see {}. Only main is indexed.
+//
+// The processor also writes json-schemes/index, the compile-time settings schemes. That index was hidden by the same
+// empty test index, so the tests used the runtime generator, which the settings tests assert on. Without the processor
+// main's compile-time schemes would reach the tests instead, so the empty json-schemes indexes in the test resources
+// keep the tests on the runtime generator.
+configurations.matching { it.name == "kaptTest" || it.name == "kaptIntegration" }.configureEach {
+    exclude(group = "io.javalin.community.openapi", module = "openapi-annotation-processor")
+}
+
+
 // Tests that run the published container images rather than the code inside them.
 //
 // They are a suite of their own, and deliberately not wired into `check`, because they

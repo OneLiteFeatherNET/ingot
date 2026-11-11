@@ -26,12 +26,15 @@ import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
 import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.openapi.HttpMethod
 import io.javalin.openapi.OpenApi
+import io.javalin.openapi.OpenApiSecurity
 import net.onelitefeather.ingot.identity.api.CreatedTokenDto
 import net.onelitefeather.ingot.identity.api.TokenDto
 import com.reposilite.audit.api.auditActor
@@ -66,6 +69,7 @@ internal class SelfServiceEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/identity/me/password",
         methods = [HttpMethod.POST],
         summary = "Change own password",
@@ -90,6 +94,7 @@ internal class SelfServiceEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/identity/me/tokens",
         methods = [HttpMethod.GET],
         summary = "List own tokens",
@@ -103,6 +108,7 @@ internal class SelfServiceEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/identity/me/tokens",
         methods = [HttpMethod.POST],
         summary = "Create an own token",
@@ -120,6 +126,7 @@ internal class SelfServiceEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/identity/me/tokens/{name}/rotate",
         methods = [HttpMethod.POST],
         summary = "Rotate an own token",
@@ -137,6 +144,7 @@ internal class SelfServiceEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/identity/me/tokens/{name}",
         methods = [HttpMethod.DELETE],
         summary = "Delete an own token",
@@ -157,6 +165,7 @@ internal class SelfServiceEndpoints(
     }
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/identity/principals/{name}/password",
         methods = [HttpMethod.POST],
         summary = "Reset a user's password",

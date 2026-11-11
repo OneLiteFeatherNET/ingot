@@ -19,6 +19,9 @@ import com.reposilite.console.ConsoleFacade
 import com.reposilite.console.MAX_COMMAND_LENGTH
 import com.reposilite.console.api.ExecutionResponse
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.TOKEN_BASIC_SCHEME
+import io.javalin.openapi.OpenApiSecurity
 import panda.std.asError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
@@ -33,6 +36,7 @@ import io.javalin.openapi.OpenApiResponse
 internal class ConsoleEndpoint(private val consoleFacade: ConsoleFacade) : ReposiliteRoutes() {
 
     @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
         path = "/api/console/execute",
         methods = [HttpMethod.POST],
         summary = "Remote command execution",
