@@ -1,0 +1,123 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.onelitefeather.ingot.search.backend
+
+import net.onelitefeather.ingot.search.ArtifactSearchEngine
+import net.onelitefeather.ingot.search.IndexRow
+import net.onelitefeather.ingot.search.Origin
+import net.onelitefeather.ingot.search.Provenance
+import java.time.Instant
+import kotlin.random.Random
+
+/**
+ * Where the artifact index lives (search backend seam). The core runs the outbox, the rebuild, the verify job and the
+ * startup rules against this interface only. The read side is [ArtifactSearchEngine], so the REST layer is unchanged.
+ *
+ * Internal in this change: the registration of a second backend makes it public and experimental.
+ */
+internal interface ArtifactSearchBackend : ArtifactSearchEngine {
+
+    /**
+     * True when a write made with [apply] commits in the same transaction as the cursor and counters of a rebuild page. The
+     * database backend does; an external index cannot, so the rebuild applies its page first and commits the cursor after.
+     */
+    val joinsDatabaseTransaction: Boolean
+
+    /** Whether the backend answers. The core does not poll it yet; it is part of the contract every backend fills in. */
+    fun health(): BackendHealth
+
+    /** Applies [actions] in order. Every action is idempotent, so a batch can be applied again after a crash. */
+    fun apply(actions: List<IndexAction>)
+
+    /** The paths of the rows at [prefix] and below it, in path order, after [after], at most [limit]. */
+    fun pathsAt(repository: String, prefix: String, after: String?, limit: Int): List<String>
+
+    /** The stored state of the rows of [paths] in [repository], by path. Paths without a row are absent. */
+    fun existing(repository: String, paths: Collection<String>): Map<String, StoredRow>
+
+    /** Marks the rows of [paths] as seen at [indexedAt] without changing anything else. Returns how many rows exist. */
+    fun touch(repository: String, paths: Collection<String>, indexedAt: Long): Int
+
+    /** Deletes up to [limit] rows of [repository] that were indexed before [before]. Returns how many were deleted. */
+    fun deleteStale(repository: String, before: Long, limit: Int): Int
+
+    /** Deletes up to [limit] rows of [repository]. Returns how many were deleted. */
+    fun deleteRepository(repository: String, limit: Int): Int
+
+    /** The names of the repositories that have at least one row. */
+    fun repositories(): List<String>
+
+    /** The number of rows. */
+    fun count(): Long
+
+    /**
+     * A cursor where a verify sample starts, drawn from [random], or null for an empty index. The core keeps the random
+     * source, so a seeded test gets the same sample as before the seam existed.
+     */
+    fun sampleStart(random: Random): String?
+
+    /** Up to [limit] rows from [cursor] on, and the cursor of the row after the last one. A null cursor starts at the first row. */
+    fun sample(cursor: String?, limit: Int): SamplePage
+
+}
+
+/** The answer of a health check. */
+internal sealed interface BackendHealth {
+
+    data object Up : BackendHealth
+
+    data class Down(val message: String) : BackendHealth
+
+}
+
+/** One change the core asks a backend to make. A batch is applied in order. */
+internal sealed interface IndexAction {
+
+    data class Upsert(val row: IndexRow) : IndexAction
+
+    data class RemovePath(val repository: String, val path: String) : IndexAction
+
+    /** Removes the rows at [prefix] and below it that were indexed at or before [notAfter] (3.3). */
+    data class RemovePrefix(val repository: String, val prefix: String, val notAfter: Instant) : IndexAction
+
+    data class Reorigin(val repository: String, val directory: String, val provenance: Provenance) : IndexAction
+
+}
+
+/** What a rebuild needs to know about a stored row: enough to tell whether the file changed, and the checksums to keep. */
+internal data class StoredRow(
+    val sizeBytes: Long,
+    val lastModified: Long,
+    val sha1: String?,
+    val sha256: String?,
+)
+
+/** A row as a verify run reads it: what storage and the mirror ledger are compared with. */
+internal data class SampledRow(
+    val repository: String,
+    val path: String,
+    val sizeBytes: Long,
+    val lastModified: Long,
+    val origin: Origin,
+    val sourceHost: String?,
+)
+
+/** One sample of rows and the cursor the next sample continues from, or null when the index has no rows. */
+internal data class SamplePage(
+    val rows: List<SampledRow>,
+    val next: String?,
+)

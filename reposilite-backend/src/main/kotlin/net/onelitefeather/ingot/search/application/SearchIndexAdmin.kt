@@ -17,7 +17,7 @@
 package net.onelitefeather.ingot.search.application
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import net.onelitefeather.ingot.search.database.IndexRowStore
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.outbox.OutboxStore
@@ -42,7 +42,7 @@ internal class SearchIndexAdmin(
     private val verify: VerifyService,
     private val outbox: OutboxStore,
     private val worker: OutboxWorker,
-    private val rows: IndexRowStore,
+    private val backend: ArtifactSearchBackend,
     private val state: SearchStateStore,
     private val repositories: RepositoryEntries,
     dispatch: (() -> Unit) -> Unit,
@@ -83,7 +83,7 @@ internal class SearchIndexAdmin(
 
     /** The counts and the last verify report that the index status adds to the engine status. */
     fun details(): IndexDetails = IndexDetails(
-        rows = rows.count(),
+        rows = backend.count(),
         outboxPending = outbox.pending(),
         repositories = repositories.names().sorted(),
         lastVerify = state.get(SearchStateKey.VERIFY_LAST_REPORT)?.let(::parseVerifyReport),

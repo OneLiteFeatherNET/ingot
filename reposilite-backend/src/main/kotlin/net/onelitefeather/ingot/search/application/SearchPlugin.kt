@@ -34,9 +34,7 @@ import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.repository.index.NoOpArtifactIndexSink
 import net.onelitefeather.ingot.search.api.SearchApiEndpoints
-import net.onelitefeather.ingot.search.database.DatabaseArtifactIndex
-import net.onelitefeather.ingot.search.database.DatabaseArtifactSearchEngine
-import net.onelitefeather.ingot.search.database.IndexRowStore
+import net.onelitefeather.ingot.search.backend.SearchBackendRegistry
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
@@ -89,10 +87,12 @@ internal class SearchPlugin : ReposilitePlugin() {
             return SearchFacade(NoOpArtifactIndexSink)
         }
         val engine = local.searchEngine.get()
-        if (engine != DATABASE_ENGINE) {
+        val factory = SearchBackendRegistry.factoryOf(engine)
+        if (factory == null) {
             logger.warn("SEARCH | Unknown search engine '$engine', artifact search stays disabled")
             return SearchFacade(NoOpArtifactIndexSink)
         }
+        val backend = factory(database, clock)
 
         val state = SearchStateStore(database, clock)
         val outbox = OutboxStore(database, clock)
@@ -100,11 +100,10 @@ internal class SearchPlugin : ReposilitePlugin() {
         val repositoryRegistry = facade<RepositoryRegistry>()
         val readOnlyFacade = facade<ReadOnlyFacade>()
         val ledger = SqlMirrorCacheLedger(database)
-        val index = DatabaseArtifactIndex(database)
         val worker = OutboxWorker(
             owner = instanceId,
             outbox = outbox,
-            index = index,
+            index = backend,
             storage = MavenIndexStorage(repositoryRegistry, clock),
             origins = LedgerOriginLookup(ledger),
             state = state,
@@ -112,15 +111,13 @@ internal class SearchPlugin : ReposilitePlugin() {
         )
 
         val runs = RunStore(database, clock)
-        val rows = IndexRowStore(database)
         val repositories = MavenRepositoryEntries(repositoryRegistry, facade<FailureFacade>())
         val claims = SqlScheduledJobClaims(database, clock, instanceId)
         val settings = facade<SharedConfigurationFacade>().getDomainSettings<SearchSettings>()
         val rebuild = RebuildService(
             owner = instanceId,
             runs = runs,
-            rows = rows,
-            index = index,
+            backend = backend,
             outbox = outbox,
             repositories = repositories,
             ledger = ledger,
@@ -130,8 +127,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         val verify = VerifyService(
             owner = instanceId,
             runs = runs,
-            rows = rows,
-            index = index,
+            backend = backend,
             outbox = outbox,
             repositories = repositories,
             ledger = ledger,
@@ -180,20 +176,19 @@ internal class SearchPlugin : ReposilitePlugin() {
         event(DeployIndexListener(sink, onListenerFailure))
         event(DeleteIndexListener(sink, onListenerFailure))
 
-        val search = DatabaseArtifactSearchEngine(database, clock)
         val admin = SearchIndexAdmin(
             runs = runs,
             rebuild = rebuild,
             verify = verify,
             outbox = outbox,
             worker = worker,
-            rows = rows,
+            backend = backend,
             state = state,
             repositories = repositories,
             dispatch = execute,
             paused = pollingPaused,
         )
-        return SearchFacade(sink, runs::status, search, admin)
+        return SearchFacade(sink, runs::status, backend, admin)
     }
 
     /** Ticks the rebuild and verify schedulers every 30 seconds, as the cleanup scheduler does. The runs themselves use the IO pool. */
@@ -228,7 +223,6 @@ internal class SearchPlugin : ReposilitePlugin() {
     }
 
     private companion object {
-        const val DATABASE_ENGINE = "database"
         const val SCHEDULER_TICK_SECONDS = 30L
     }
 

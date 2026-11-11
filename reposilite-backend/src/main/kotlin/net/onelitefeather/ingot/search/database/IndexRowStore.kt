@@ -17,6 +17,9 @@
 package net.onelitefeather.ingot.search.database
 
 import net.onelitefeather.ingot.search.Origin
+import net.onelitefeather.ingot.search.backend.SampledRow
+import net.onelitefeather.ingot.search.backend.SamplePage
+import net.onelitefeather.ingot.search.backend.StoredRow
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -32,25 +35,6 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
-
-/** What a rebuild needs to know about a row that exists: enough to tell whether the file changed, and the checksums to keep. */
-internal data class StoredRow(
-    val sizeBytes: Long,
-    val lastModified: Long,
-    val sha1: String?,
-    val sha256: String?,
-)
-
-/** A row as a verify run reads it: what storage and the mirror ledger are compared with. */
-internal data class SampledRow(
-    val id: Long,
-    val repository: String,
-    val path: String,
-    val sizeBytes: Long,
-    val lastModified: Long,
-    val origin: Origin,
-    val sourceHost: String?,
-)
 
 /**
  * The reads and bulk deletes of `search_artifact` that rebuild and verify runs make, beyond the upserts of
@@ -118,19 +102,23 @@ internal class IndexRowStore(private val database: Database) {
 
     /**
      * Up to [limit] rows with consecutive ids from [startId] upwards. When the table ends before [limit] rows are found, the
-     * sample continues from the smallest id, so it never repeats a row and covers a small table completely.
+     * sample continues from the smallest id, so it never repeats a row and covers a small table completely. The cursor of
+     * the page is the id after its last row.
      */
-    fun sample(startId: Long, limit: Int): List<SampledRow> = transaction(database) {
-        val upper = rows.selectAll().where { rows.id greaterEq startId }.orderBy(rows.id, SortOrder.ASC).limit(limit).map { it.toSampled() }
-        if (upper.size >= limit) {
+    fun sample(startId: Long, limit: Int): SamplePage = transaction(database) {
+        val upper = rows.selectAll().where { rows.id greaterEq startId }.orderBy(rows.id, SortOrder.ASC).limit(limit).toList()
+        val found = if (upper.size >= limit) {
             upper
         } else {
-            upper + rows.selectAll().where { rows.id less startId }.orderBy(rows.id, SortOrder.ASC).limit(limit - upper.size).map { it.toSampled() }
+            upper + rows.selectAll().where { rows.id less startId }.orderBy(rows.id, SortOrder.ASC).limit(limit - upper.size).toList()
         }
+        SamplePage(
+            rows = found.map { it.toSampled() },
+            next = found.lastOrNull()?.let { (it[rows.id] + 1).toString() },
+        )
     }
 
     private fun ResultRow.toSampled() = SampledRow(
-        id = this[rows.id],
         repository = this[rows.repository],
         path = this[rows.path],
         sizeBytes = this[rows.sizeBytes],
