@@ -1,0 +1,4946 @@
+{
+  "components" : {
+    "schemas" : {
+      "AccessTokenDto" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "expired" : {
+            "type" : "boolean"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "identifier" : {
+            "$ref" : "#/components/schemas/AccessTokenIdentifier"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "identifier", "name", "createdAt", "description", "expired" ],
+        "type" : "object"
+      },
+      "AccessTokenIdentifier" : {
+        "properties" : {
+          "type" : {
+            "$ref" : "#/components/schemas/AccessTokenType"
+          },
+          "value" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "type", "value" ],
+        "type" : "object"
+      },
+      "AccessTokenPermission" : {
+        "enum" : [ "MANAGER" ],
+        "type" : "string"
+      },
+      "AccessTokenType" : {
+        "enum" : [ "PERSISTENT", "TEMPORARY", "PRINCIPAL" ],
+        "type" : "string"
+      },
+      "AllResolvedResponse" : {
+        "properties" : {
+          "repositories" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepositoryStatistics"
+            },
+            "type" : "array"
+          },
+          "statisticsEnabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "statisticsEnabled", "repositories" ],
+        "type" : "object"
+      },
+      "AppearanceSettings" : {
+        "description" : "Colours, logos, favicon and footer of the dashboard.",
+        "properties" : {
+          "errorColor" : {
+            "description" : "Hex colour in the form #RRGGBB that overrides the error key colour. Leave empty to derive it.",
+            "title" : "Error colour",
+            "type" : "string"
+          },
+          "favicon" : {
+            "description" : "Link to the favicon of the dashboard. Leave empty to use the bundled favicon.",
+            "title" : "Favicon",
+            "type" : "string"
+          },
+          "footerText" : {
+            "description" : "Plain text shown in the footer of the dashboard. HTML is not rendered.",
+            "title" : "Footer text",
+            "type" : "string"
+          },
+          "logoDark" : {
+            "description" : "Link to a logo shown in the dark theme. Leave empty to use the organisation logo.",
+            "title" : "Logo for dark theme",
+            "type" : "string"
+          },
+          "primaryColor" : {
+            "description" : "Hex colour in the form #RRGGBB that overrides the primary key colour. Leave empty to derive it.",
+            "title" : "Primary colour",
+            "type" : "string"
+          },
+          "schemeVariant" : {
+            "$ref" : "#/components/schemas/SchemeVariant",
+            "description" : "How the palette is derived from the seed colour. Only applies when a seed colour is set.",
+            "title" : "Scheme variant"
+          },
+          "secondaryColor" : {
+            "description" : "Hex colour in the form #RRGGBB that overrides the secondary key colour. Leave empty to derive it.",
+            "title" : "Secondary colour",
+            "type" : "string"
+          },
+          "seedColor" : {
+            "description" : "Hex colour in the form #RRGGBB that the dashboard palette is derived from.\nLeave empty to keep the built-in Ingot theme.",
+            "title" : "Seed colour",
+            "type" : "string"
+          },
+          "tertiaryColor" : {
+            "description" : "Hex colour in the form #RRGGBB that overrides the tertiary key colour. Leave empty to derive it.",
+            "title" : "Tertiary colour",
+            "type" : "string"
+          }
+        },
+        "required" : [ "seedColor", "schemeVariant", "primaryColor", "secondaryColor", "tertiaryColor", "errorColor", "logoDark", "favicon", "footerText" ],
+        "title" : "Appearance",
+        "type" : "object"
+      },
+      "ArtifactFileItem" : {
+        "properties" : {
+          "browseLink" : {
+            "type" : "string"
+          },
+          "classifier" : {
+            "type" : [ "string", "null" ]
+          },
+          "extension" : {
+            "type" : "string"
+          },
+          "lastModified" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "origin" : {
+            "$ref" : "#/components/schemas/Origin"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "repository" : {
+            "type" : "string"
+          },
+          "sha1" : {
+            "type" : [ "string", "null" ]
+          },
+          "size" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sourceHost" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "repository", "path", "name", "extension", "size", "lastModified", "origin", "browseLink" ],
+        "type" : "object"
+      },
+      "ArtifactFilesResponse" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ArtifactFileItem"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "items", "page", "size", "total" ],
+        "type" : "object"
+      },
+      "ArtifactSearchItem" : {
+        "properties" : {
+          "artifactId" : {
+            "type" : "string"
+          },
+          "browseLink" : {
+            "type" : "string"
+          },
+          "fileCount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "groupId" : {
+            "type" : "string"
+          },
+          "lastModified" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "latestVersion" : {
+            "type" : [ "string", "null" ]
+          },
+          "repositories" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepositoryPresence"
+            },
+            "type" : "array"
+          },
+          "snapshot" : {
+            "type" : "boolean"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "groupId", "artifactId", "version", "snapshot", "repositories", "fileCount", "lastModified", "browseLink" ],
+        "type" : "object"
+      },
+      "ArtifactSearchResponse" : {
+        "properties" : {
+          "facets" : {
+            "$ref" : "#/components/schemas/SearchFacets"
+          },
+          "indexStatus" : {
+            "$ref" : "#/components/schemas/IndexStatus"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ArtifactSearchItem"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalCapped" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "items", "page", "size", "total", "totalCapped", "facets", "indexStatus" ],
+        "type" : "object"
+      },
+      "CleanupPreviewResponse" : {
+        "properties" : {
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "deletions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PlannedDeletion"
+            },
+            "type" : "array"
+          },
+          "evaluatedAt" : {
+            "type" : "string"
+          },
+          "policyId" : {
+            "type" : "string"
+          },
+          "totalBytes" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "policyId", "evaluatedAt", "count", "totalBytes", "deletions", "warnings" ],
+        "type" : "object"
+      },
+      "CleanupRunResponse" : {
+        "properties" : {
+          "deletedBytes" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "deletedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "failures" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "finishedAt" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "policyId" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CleanupRunStatus"
+          },
+          "trigger" : {
+            "$ref" : "#/components/schemas/CleanupTrigger"
+          }
+        },
+        "required" : [ "id", "policyId", "trigger", "startedAt", "finishedAt", "status", "deletedCount", "deletedBytes", "failures" ],
+        "type" : "object"
+      },
+      "CleanupRunStatus" : {
+        "enum" : [ "SUCCEEDED", "PARTIAL", "FAILED" ],
+        "type" : "string"
+      },
+      "CleanupTrigger" : {
+        "enum" : [ "MANUAL", "SCHEDULED" ],
+        "type" : "string"
+      },
+      "ClusterBusResponse" : {
+        "properties" : {
+          "applied" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "dropped" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "ignored" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lastReceivedAt" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "published" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "transport" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "state", "transport", "url", "published", "applied", "ignored" ],
+        "type" : "object"
+      },
+      "ClusterInstanceResponse" : {
+        "properties" : {
+          "failuresCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "health" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "interval" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "maxMemory" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxThreads" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "samples" : {
+            "items" : {
+              "$ref" : "#/components/schemas/StatusSnapshot"
+            },
+            "type" : "array"
+          },
+          "stale" : {
+            "type" : "boolean"
+          },
+          "uptimeStart" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "usedMemory" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "usedThreads" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "version", "uptimeStart", "usedMemory", "maxMemory", "usedThreads", "maxThreads", "failuresCount", "health", "stale", "interval", "samples" ],
+        "type" : "object"
+      },
+      "ClusterStatusResponse" : {
+        "properties" : {
+          "bus" : {
+            "$ref" : "#/components/schemas/ClusterBusResponse"
+          },
+          "instances" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ClusterInstanceResponse"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "bus", "instances" ],
+        "type" : "object"
+      },
+      "CommandStatus" : {
+        "enum" : [ "SUCCEEDED", "FAILED" ],
+        "type" : "string"
+      },
+      "CreateAccessTokenWithNoNameRequest" : {
+        "properties" : {
+          "description" : {
+            "description" : "Human-readable description of the token",
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "description" : "Expiration timestamp (ISO-8601 Instant). If not provided, the token never expires",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "permissions" : {
+            "description" : "Permissions assigned to the created token: [MANAGER]",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "routes" : {
+            "description" : "Route permissions assigned to the created token",
+            "items" : {
+              "$ref" : "#/components/schemas/CreateAccessTokenWithNoNameRequestRoute"
+            },
+            "type" : "array"
+          },
+          "secret" : {
+            "description" : "If not provided, the secret will be generated automatically",
+            "type" : [ "string", "null" ]
+          },
+          "secretType" : {
+            "$ref" : "#/components/schemas/SecretType",
+            "description" : "Determines whether the provided secret is raw or already encrypted"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/AccessTokenType",
+            "description" : "Type of the created token (persistent or temporary)"
+          }
+        },
+        "required" : [ "type", "secretType", "permissions", "routes", "description" ],
+        "type" : "object"
+      },
+      "CreateAccessTokenWithNoNameRequestRoute" : {
+        "properties" : {
+          "path" : {
+            "description" : "The path to which the permissions apply",
+            "type" : "string"
+          },
+          "permissions" : {
+            "description" : "Permissions assigned to the provided path: [READ, WRITE]",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "path", "permissions" ],
+        "type" : "object"
+      },
+      "CreatePrincipalRequest" : {
+        "properties" : {
+          "disabled" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "displayName" : {
+            "type" : [ "string", "null" ]
+          },
+          "kind" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "CreateTeamRequest" : {
+        "properties" : {
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "externalRef" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "CreateTokenRequest" : {
+        "properties" : {
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "nodes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/NodeDto"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "scopes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "secret" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "DatabaseSnapshotResponse" : {
+        "properties" : {
+          "createdAt" : {
+            "type" : "string"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "sizeBytes" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "fileName", "sizeBytes", "createdAt" ],
+        "type" : "object"
+      },
+      "DirectoryInfo" : {
+        "properties" : {
+          "files" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FileDetails"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/FileType"
+          }
+        },
+        "required" : [ "type", "name", "files" ],
+        "type" : "object"
+      },
+      "ErrorProblem" : {
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          },
+          "node" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "node", "message" ],
+        "type" : "object"
+      },
+      "ErrorResponse" : {
+        "properties" : {
+          "detail" : {
+            "type" : "string"
+          },
+          "instance" : {
+            "type" : [ "string", "null" ]
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "problems" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ErrorProblem"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "status" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : [ "string", "null" ]
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status", "message", "type", "detail" ],
+        "type" : "object"
+      },
+      "ExecutionResponse" : {
+        "properties" : {
+          "response" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CommandStatus"
+          }
+        },
+        "required" : [ "status", "response" ],
+        "type" : "object"
+      },
+      "FacetBucket" : {
+        "properties" : {
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "value", "count" ],
+        "type" : "object"
+      },
+      "FailureResponse" : {
+        "properties" : {
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "message" : {
+            "type" : [ "string", "null" ]
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "stacktrace" : {
+            "type" : "string"
+          },
+          "timestamp" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "timestamp", "source", "type", "stacktrace", "count" ],
+        "type" : "object"
+      },
+      "FailuresResponse" : {
+        "properties" : {
+          "failures" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FailureResponse"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "failures" ],
+        "type" : "object"
+      },
+      "FileDetails" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/FileType"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "FileType" : {
+        "enum" : [ "FILE", "DIRECTORY" ],
+        "type" : "string"
+      },
+      "FrontendSettingsResponse" : {
+        "properties" : {
+          "appearance" : {
+            "$ref" : "#/components/schemas/AppearanceSettings"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "icpLicense" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "organizationLogo" : {
+            "type" : "string"
+          },
+          "organizationWebsite" : {
+            "type" : "string"
+          },
+          "placeholders" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "privacyPolicy" : {
+            "type" : "string"
+          },
+          "secretsHidden" : {
+            "type" : "boolean"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "placeholders", "id", "title", "description", "organizationWebsite", "organizationLogo", "privacyPolicy", "icpLicense", "appearance", "secretsHidden" ],
+        "type" : "object"
+      },
+      "GrantRequest" : {
+        "properties" : {
+          "pathPrefix" : {
+            "type" : [ "string", "null" ]
+          },
+          "repository" : {
+            "type" : [ "string", "null" ]
+          },
+          "role" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "HealthResponse" : {
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status" ],
+        "type" : "object"
+      },
+      "IndexState" : {
+        "enum" : [ "READY", "BUILDING", "MISSING", "DEGRADED" ],
+        "type" : "string"
+      },
+      "IndexStatus" : {
+        "properties" : {
+          "deadLetters" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "droppedEnqueues" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lagSeconds" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lastFullRebuild" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "pendingEntries" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/IndexState"
+          }
+        },
+        "required" : [ "state", "lagSeconds", "deadLetters", "droppedEnqueues", "pendingEntries" ],
+        "type" : "object"
+      },
+      "InstanceStatusResponse" : {
+        "properties" : {
+          "cluster" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ClusterStatusResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "failuresCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "latestVersion" : {
+            "type" : "string"
+          },
+          "maxMemory" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxThreads" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "readOnly" : {
+            "type" : "boolean"
+          },
+          "readOnlySource" : {
+            "type" : "string"
+          },
+          "uptime" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "usedMemory" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "usedThreads" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "version", "latestVersion", "uptime", "usedMemory", "maxMemory", "usedThreads", "maxThreads", "failuresCount", "readOnly", "readOnlySource" ],
+        "type" : "object"
+      },
+      "IntervalRecord" : {
+        "properties" : {
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "date" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "date", "count" ],
+        "type" : "object"
+      },
+      "LastVerifyReport" : {
+        "properties" : {
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "changed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "drift" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "missing" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "removedRepositoryRows" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "reorigined" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "runId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sampled" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "runId", "at", "sampled", "missing", "changed", "reorigined", "removedRepositoryRows", "drift" ],
+        "type" : "object"
+      },
+      "LatestVersionResponse" : {
+        "properties" : {
+          "snapshot" : {
+            "type" : "boolean"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "snapshot", "version" ],
+        "type" : "object"
+      },
+      "LdapConnectionReport" : {
+        "properties" : {
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "groups" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "ok" : {
+            "type" : "boolean"
+          },
+          "userDn" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "ok" ],
+        "type" : "object"
+      },
+      "LdapTestRequest" : {
+        "properties" : {
+          "password" : {
+            "type" : [ "string", "null" ]
+          },
+          "username" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "LoginPrincipalDto" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "LoginProviderDto" : {
+        "properties" : {
+          "icon" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "loginUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "LoginProvidersResponse" : {
+        "properties" : {
+          "providers" : {
+            "items" : {
+              "$ref" : "#/components/schemas/LoginProviderDto"
+            },
+            "type" : "array"
+          },
+          "setupRequired" : {
+            "type" : "boolean"
+          },
+          "tokenLogin" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "LoginRequest" : {
+        "properties" : {
+          "password" : {
+            "type" : [ "string", "null" ]
+          },
+          "provider" : {
+            "type" : [ "string", "null" ]
+          },
+          "username" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "LoginResponse" : {
+        "properties" : {
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "mustChangePassword" : {
+            "type" : "boolean"
+          },
+          "principal" : {
+            "$ref" : "#/components/schemas/LoginPrincipalDto"
+          }
+        },
+        "type" : "object"
+      },
+      "NodeDto" : {
+        "properties" : {
+          "allowed" : {
+            "type" : "boolean"
+          },
+          "node" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "node", "allowed" ],
+        "type" : "object"
+      },
+      "OidcConnectionReport" : {
+        "properties" : {
+          "endpoints" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/OidcEndpointsReport"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "issuer" : {
+            "type" : [ "string", "null" ]
+          },
+          "ok" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "ok" ],
+        "type" : "object"
+      },
+      "OidcEndpointsReport" : {
+        "properties" : {
+          "authorization" : {
+            "type" : "string"
+          },
+          "jwks" : {
+            "type" : [ "string", "null" ]
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "userinfo" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "authorization", "token" ],
+        "type" : "object"
+      },
+      "Origin" : {
+        "enum" : [ "HOSTED", "MIRROR" ],
+        "type" : "string"
+      },
+      "OutboxCounts" : {
+        "properties" : {
+          "deadLetters" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "droppedEnqueues" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "pending" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "pending", "deadLetters", "droppedEnqueues" ],
+        "type" : "object"
+      },
+      "PlannedDeletion" : {
+        "properties" : {
+          "path" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "repository" : {
+            "type" : "string"
+          },
+          "sizeBytes" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "repository", "path", "version", "sizeBytes", "reason" ],
+        "type" : "object"
+      },
+      "PluginUiBlock" : {
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "PluginUiManifest" : {
+        "properties" : {
+          "enabledPlugins" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "pages" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PluginUiManifestPage"
+            },
+            "type" : "array"
+          },
+          "sections" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PluginUiManifestSection"
+            },
+            "type" : "array"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "version", "pages", "sections", "enabledPlugins" ],
+        "type" : "object"
+      },
+      "PluginUiManifestPage" : {
+        "properties" : {
+          "area" : {
+            "type" : "string"
+          },
+          "blocks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PluginUiBlock"
+            },
+            "type" : "array"
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "group" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "plugin" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "plugin", "id", "title", "group", "area", "blocks" ],
+        "type" : "object"
+      },
+      "PluginUiManifestSection" : {
+        "properties" : {
+          "domain" : {
+            "type" : "string"
+          },
+          "group" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "plugin" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "plugin", "domain", "label", "group" ],
+        "type" : "object"
+      },
+      "PomDetails" : {
+        "properties" : {
+          "artifactId" : {
+            "type" : "string"
+          },
+          "groupId" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "groupId", "artifactId", "version" ],
+        "type" : "object"
+      },
+      "ReadinessResponse" : {
+        "properties" : {
+          "failing" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status", "failing" ],
+        "type" : "object"
+      },
+      "RebuildRequest" : {
+        "properties" : {
+          "repositories" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ReplaceGrantsRequest" : {
+        "properties" : {
+          "grants" : {
+            "items" : {
+              "$ref" : "#/components/schemas/GrantRequest"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ReplaceMembersRequest" : {
+        "properties" : {
+          "members" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ReplaceNodesRequest" : {
+        "properties" : {
+          "nodes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/NodeDto"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ReplaceParentsRequest" : {
+        "properties" : {
+          "parents" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "RepositoryListResponse" : {
+        "properties" : {
+          "repositories" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepositorySummary"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "repositories" ],
+        "type" : "object"
+      },
+      "RepositoryMembersResponse" : {
+        "properties" : {
+          "members" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "members" ],
+        "type" : "object"
+      },
+      "RepositoryPresence" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "origin" : {
+            "$ref" : "#/components/schemas/Origin"
+          }
+        },
+        "required" : [ "name", "origin" ],
+        "type" : "object"
+      },
+      "RepositoryStatistics" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/IntervalRecord"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "data" ],
+        "type" : "object"
+      },
+      "RepositoryStorageUsage" : {
+        "properties" : {
+          "fileCount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "group" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "quota" : {
+            "type" : [ "string", "null" ]
+          },
+          "quotaBytes" : {
+            "format" : "int64",
+            "type" : [ "integer", "null" ]
+          },
+          "storageType" : {
+            "type" : "string"
+          },
+          "usedBytes" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "id", "usedBytes", "fileCount", "storageType", "group" ],
+        "type" : "object"
+      },
+      "RepositorySummary" : {
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "typeExplicit" : {
+            "type" : "boolean"
+          },
+          "visibility" : {
+            "$ref" : "#/components/schemas/RepositoryVisibility"
+          }
+        },
+        "required" : [ "id", "visibility", "description", "tags", "type", "typeExplicit" ],
+        "type" : "object"
+      },
+      "RepositoryVisibility" : {
+        "enum" : [ "PUBLIC", "HIDDEN", "PRIVATE" ],
+        "type" : "string"
+      },
+      "ResolvedCountResponse" : {
+        "properties" : {
+          "requests" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ResolvedEntry"
+            },
+            "type" : "array"
+          },
+          "sum" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "sum", "requests" ],
+        "type" : "object"
+      },
+      "ResolvedEntry" : {
+        "properties" : {
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "gav" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "gav", "count" ],
+        "type" : "object"
+      },
+      "Route" : {
+        "properties" : {
+          "path" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "$ref" : "#/components/schemas/RoutePermission"
+          }
+        },
+        "required" : [ "path", "permission" ],
+        "type" : "object"
+      },
+      "RoutePermission" : {
+        "enum" : [ "READ", "WRITE" ],
+        "type" : "string"
+      },
+      "RunCounters" : {
+        "properties" : {
+          "deleted" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "errors" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "processed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "skippedTooLong" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "unparsed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "upserted" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "processed", "upserted", "deleted", "unparsed", "skippedTooLong", "errors" ],
+        "type" : "object"
+      },
+      "RunKind" : {
+        "enum" : [ "REBUILD", "VERIFY" ],
+        "type" : "string"
+      },
+      "RunStatus" : {
+        "enum" : [ "RUNNING", "COMPLETED", "FAILED", "CANCELLED" ],
+        "type" : "string"
+      },
+      "RunTrigger" : {
+        "enum" : [ "MANUAL", "SCHEDULED", "STARTUP", "GAP" ],
+        "type" : "string"
+      },
+      "SchemeVariant" : {
+        "enum" : [ "TONAL_SPOT", "VIBRANT", "EXPRESSIVE", "NEUTRAL", "FIDELITY", "CONTENT", "MONOCHROME" ],
+        "type" : "string"
+      },
+      "SearchFacets" : {
+        "properties" : {
+          "classifier" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FacetBucket"
+            },
+            "type" : "array"
+          },
+          "extension" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FacetBucket"
+            },
+            "type" : "array"
+          },
+          "origin" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FacetBucket"
+            },
+            "type" : "array"
+          },
+          "repository" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FacetBucket"
+            },
+            "type" : "array"
+          },
+          "snapshot" : {
+            "items" : {
+              "$ref" : "#/components/schemas/FacetBucket"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "repository", "extension", "classifier", "origin", "snapshot" ],
+        "type" : "object"
+      },
+      "SearchIndexResponse" : {
+        "properties" : {
+          "activeRun" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/SearchRunResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "engine" : {
+            "type" : "string"
+          },
+          "lagSeconds" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lastFullRebuild" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "lastVerify" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/LastVerifyReport"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "outbox" : {
+            "$ref" : "#/components/schemas/OutboxCounts"
+          },
+          "repositories" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "rows" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "runs" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SearchRunResponse"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/IndexState"
+          }
+        },
+        "required" : [ "state", "lagSeconds", "rows", "outbox", "repositories", "engine", "runs" ],
+        "type" : "object"
+      },
+      "SearchRunResponse" : {
+        "properties" : {
+          "counters" : {
+            "$ref" : "#/components/schemas/RunCounters"
+          },
+          "cursorPath" : {
+            "type" : [ "string", "null" ]
+          },
+          "cursorRepository" : {
+            "type" : [ "string", "null" ]
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/RunKind"
+          },
+          "lastError" : {
+            "type" : [ "string", "null" ]
+          },
+          "leaseOwner" : {
+            "type" : [ "string", "null" ]
+          },
+          "leaseUntil" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "repositories" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/RunStatus"
+          },
+          "trigger" : {
+            "$ref" : "#/components/schemas/RunTrigger"
+          }
+        },
+        "required" : [ "id", "kind", "trigger", "status", "startedAt", "counters" ],
+        "type" : "object"
+      },
+      "SecretType" : {
+        "enum" : [ "RAW", "ENCRYPTED" ],
+        "type" : "string"
+      },
+      "SessionDetails" : {
+        "properties" : {
+          "accessToken" : {
+            "$ref" : "#/components/schemas/AccessTokenDto"
+          },
+          "grants" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SessionGrant"
+            },
+            "type" : "array"
+          },
+          "nodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "permissions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AccessTokenPermission"
+            },
+            "type" : "array"
+          },
+          "principal" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/SessionPrincipal"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "routes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Route"
+            },
+            "type" : "array"
+          },
+          "teams" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "accessToken", "permissions", "routes", "teams", "grants", "nodes" ],
+        "type" : "object"
+      },
+      "SessionGrant" : {
+        "properties" : {
+          "pathPrefix" : {
+            "type" : [ "string", "null" ]
+          },
+          "repository" : {
+            "type" : [ "string", "null" ]
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "team" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "team", "role" ],
+        "type" : "object"
+      },
+      "SessionPrincipal" : {
+        "properties" : {
+          "id" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "kind", "name" ],
+        "type" : "object"
+      },
+      "SessionResponse" : {
+        "properties" : {
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "principal" : {
+            "$ref" : "#/components/schemas/LoginPrincipalDto"
+          }
+        },
+        "type" : "object"
+      },
+      "SetupRequest" : {
+        "properties" : {
+          "displayName" : {
+            "type" : [ "string", "null" ]
+          },
+          "password" : {
+            "type" : [ "string", "null" ]
+          },
+          "setupCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "username" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "SetupStatusResponse" : {
+        "properties" : {
+          "required" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "StartedRunResponse" : {
+        "properties" : {
+          "runId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "runId" ],
+        "type" : "object"
+      },
+      "StatusSnapshot" : {
+        "properties" : {
+          "at" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "memory" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "threads" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "at", "memory", "threads" ],
+        "type" : "object"
+      },
+      "StorageUsageResponse" : {
+        "properties" : {
+          "computedAt" : {
+            "type" : [ "string", "null" ]
+          },
+          "computing" : {
+            "type" : "boolean"
+          },
+          "repositories" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepositoryStorageUsage"
+            },
+            "type" : "array"
+          },
+          "totalBytes" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "computing", "totalBytes", "repositories" ],
+        "type" : "object"
+      },
+      "UpdateAccessTokenWithNoNameRequest" : {
+        "properties" : {
+          "description" : {
+            "description" : "Human-readable description of the token. If not provided, the current description is kept",
+            "type" : [ "string", "null" ]
+          },
+          "expiresAt" : {
+            "description" : "Expiration timestamp (ISO-8601 Instant). If not provided, the current expiration is kept. A null value clears it",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "permissions" : {
+            "description" : "Permissions assigned to the token: [MANAGER]. If not provided, the current permissions are kept",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
+          "routes" : {
+            "description" : "Route permissions assigned to the token. If not provided, the current routes are kept",
+            "items" : {
+              "$ref" : "#/components/schemas/CreateAccessTokenWithNoNameRequestRoute"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "UpdatePrincipalRequest" : {
+        "properties" : {
+          "disabled" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "displayName" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "UpdateTeamRequest" : {
+        "properties" : {
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "externalRef" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      }
+    },
+    "securitySchemes" : {
+      "sessionBearer" : {
+        "scheme" : "bearer",
+        "type" : "http"
+      },
+      "tokenBasic" : {
+        "scheme" : "basic",
+        "type" : "http"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Public Maven repository hosted through Ingot",
+    "title" : "Ingot Repository",
+    "version" : "snapshot"
+  },
+  "openapi" : "3.1.0",
+  "paths" : {
+    "/api/admin/read-only" : {
+      "delete" : {
+        "responses" : {
+          "200" : {
+            "description" : "The state after the change"
+          },
+          "403" : {
+            "description" : "Token without the maintenance area (ingot.admin.maintenance) has been used"
+          },
+          "409" : {
+            "description" : "The environment forces the state, or another change happened at the same time"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Turns read-only off again. Note: Requires the maintenance area",
+        "tags" : [ "Maintenance" ]
+      },
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "The state and its source, environment or stored"
+          },
+          "403" : {
+            "description" : "Token without the maintenance area (ingot.admin.maintenance) has been used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Reports whether the instance is read-only and where that state comes from. Note: Requires the maintenance area",
+        "tags" : [ "Maintenance" ]
+      },
+      "post" : {
+        "responses" : {
+          "200" : {
+            "description" : "The state after the change"
+          },
+          "403" : {
+            "description" : "Token without the maintenance area (ingot.admin.maintenance) has been used"
+          },
+          "409" : {
+            "description" : "The environment forces the state, or another change happened at the same time"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Turns read-only on: writes are refused with 503 on every replica until it is turned off. Note: Requires the maintenance area",
+        "tags" : [ "Maintenance" ]
+      }
+    },
+    "/api/audit" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "A page of events and the cursor of the next page, or null on the last page"
+          },
+          "400" : {
+            "description" : "A filter, limit or cursor is not valid"
+          },
+          "403" : {
+            "description" : "Token without the audit area (ingot.admin.audit) has been used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns audited events, newest first. Filters: actor, action (one or more, comma separated or repeated), repository, q, from, to. Pages with cursor and limit. Note: Requires manager",
+        "tags" : [ "Audit" ]
+      }
+    },
+    "/api/audit/export" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "The matching events as text/csv"
+          },
+          "400" : {
+            "description" : "A filter is not valid"
+          },
+          "403" : {
+            "description" : "Token without the audit area (ingot.admin.audit) has been used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Exports the audited events that match the filters of /api/audit as CSV, newest first. Note: Requires manager",
+        "tags" : [ "Audit" ]
+      }
+    },
+    "/api/auth/login" : {
+      "post" : {
+        "description" : "Checks the credentials of a human user and starts a browser session. Wrong credentials and unknown users get the same answer",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "summary" : "Log in with a login provider",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/logout" : {
+      "post" : {
+        "description" : "Revokes the refresh token family of the session and clears the session cookies",
+        "responses" : {
+          "200" : {
+            "description" : "Logged out"
+          }
+        },
+        "summary" : "End the browser session",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/me" : {
+      "get" : {
+        "description" : "Returns details about the requested token",
+        "parameters" : [ {
+          "description" : "Name and secret provided as basic auth credentials",
+          "in" : "header",
+          "name" : "Authorization",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionDetails"
+                }
+              }
+            },
+            "description" : "Details about the token for succeeded authentication"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Error message related to the unauthorized access in case of any failure"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Get token details",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/oidc/{id}/callback" : {
+      "get" : {
+        "description" : "Exchanges the code, validates the ID token, starts the browser session and redirects to the UI, or to /?loginError=<code>",
+        "parameters" : [ {
+          "description" : "Id of the provider",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "302" : {
+            "description" : "Redirect back to the UI, with the session cookies or with a login error"
+          }
+        },
+        "summary" : "Finish a login with an OpenID Connect provider",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/oidc/{id}/login" : {
+      "get" : {
+        "description" : "Redirects to the provider with PKCE, state and nonce. The state travels in the ingot_oidc cookie for ten minutes",
+        "parameters" : [ {
+          "description" : "Id of the provider",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "302" : {
+            "description" : "Redirect to the authorization endpoint of the provider"
+          },
+          "404" : {
+            "description" : "No enabled provider has this id"
+          },
+          "503" : {
+            "description" : "The provider lacks a required setting, named in the message"
+          }
+        },
+        "summary" : "Start a login with an OpenID Connect provider",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/providers" : {
+      "get" : {
+        "description" : "Public. Lists the configured login providers and whether the first admin still has to be set up",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginProvidersResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "List login providers",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/providers/ldap/test" : {
+      "post" : {
+        "description" : "Instance admins only. Binds with the service account and, when a user name is given, looks the user up, binds as the user with the password and reads the groups",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LdapTestRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LdapConnectionReport"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Test the LDAP login",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/providers/oidc/{id}/test" : {
+      "post" : {
+        "description" : "Instance admins only. Reads the discovery document and the key set again and reports the endpoints",
+        "parameters" : [ {
+          "description" : "Id of the provider",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OidcConnectionReport"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "description" : "No enabled provider has this id"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Test an OpenID Connect provider",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/refresh" : {
+      "post" : {
+        "description" : "Exchanges the refresh cookie for a new session. The refresh token is single use: presenting a spent one revokes the whole session",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          }
+        },
+        "summary" : "Renew the browser session",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/auth/setup" : {
+      "get" : {
+        "description" : "Public. Tells whether the first administrator still has to be created",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SetupStatusResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Setup status",
+        "tags" : [ "Auth" ]
+      },
+      "post" : {
+        "description" : "Creates the first user as an instance administrator, using the one-time setup code from the log, and starts a session. Only while no user exists",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetupRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "409" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "429" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          }
+        },
+        "summary" : "Create the first administrator",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/badge/latest/{repository}/{gav}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Artifact's repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Artifacts' GAV",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "tags" : [ "Maven", "Badge" ]
+      }
+    },
+    "/api/cleanup/policies/{id}/dry-run" : {
+      "post" : {
+        "description" : "Lists the versions the policy would delete, with totals and warnings. Nothing is deleted.",
+        "parameters" : [ {
+          "description" : "Id of the cleanup policy",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CleanupPreviewResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          },
+          "404" : {
+            "description" : "The policy does not exist"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Preview a cleanup policy",
+        "tags" : [ "Cleanup" ]
+      }
+    },
+    "/api/cleanup/policies/{id}/run" : {
+      "post" : {
+        "description" : "Deletes the versions the policy plans right now, through the repository delete service, and records the run.",
+        "parameters" : [ {
+          "description" : "Id of the cleanup policy",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CleanupRunResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          },
+          "404" : {
+            "description" : "The policy does not exist"
+          },
+          "409" : {
+            "description" : "The policy is already running"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Run a cleanup policy",
+        "tags" : [ "Cleanup" ]
+      }
+    },
+    "/api/cleanup/runs" : {
+      "get" : {
+        "description" : "The recorded runs, newest first. Each policy keeps its last 20 runs.",
+        "responses" : {
+          "200" : {
+            "description" : "Returns the runs as an array of CleanupRunResponse"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "List cleanup runs",
+        "tags" : [ "Cleanup" ]
+      }
+    },
+    "/api/console/execute" : {
+      "post" : {
+        "description" : "Execute command using POST request. The commands are the same as in the console and can be listed using the 'help' command.",
+        "parameters" : [ {
+          "description" : "Name and secret provided as basic auth credentials",
+          "in" : "header",
+          "name" : "Authorization",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExecutionResponse"
+                }
+              }
+            },
+            "description" : "Status of the executed command"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Error message related to the invalid command format (0 < command length < 1024)"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Error message related to the unauthorized access"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Error message when the token has no console area (ingot.admin.console)"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Remote command execution",
+        "tags" : [ "Cli" ]
+      }
+    },
+    "/api/console/log" : {
+      "get" : {
+        "description" : "Streams the output of logs through an SSE Connection.",
+        "parameters" : [ {
+          "description" : "Name and secret provided as basic auth credentials. Without it, the session cookie of a browser login is used.",
+          "in" : "header",
+          "name" : "Authorization",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Continuously sends out the log as messages under the `log` event. Sends a keepalive ping through comments."
+          }
+        },
+        "tags" : [ "Console" ]
+      }
+    },
+    "/api/console/sock" : {
+      "patch" : {
+        "responses" : { },
+        "tags" : [ "Console" ]
+      }
+    },
+    "/api/database/snapshots" : {
+      "post" : {
+        "description" : "Writes a consistent copy of the SQLite database into the backups directory of the working directory while the instance keeps serving requests. The answer names the file only. Other databases are refused: use their dump tool.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DatabaseSnapshotResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          },
+          "409" : {
+            "description" : "The database is not SQLite, or the file name is already taken"
+          },
+          "500" : {
+            "description" : "The snapshot could not be written. The partial file is removed."
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Take a database snapshot",
+        "tags" : [ "Database" ]
+      }
+    },
+    "/api/frontend/plugin-ui" : {
+      "get" : {
+        "description" : "Returns the pages and settings sections the caller may open, and the names of the enabled plugins. Requires a signed in caller.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PluginUiManifest"
+                }
+              }
+            },
+            "description" : "The manifest of version 1"
+          },
+          "401" : {
+            "description" : "The caller is not signed in"
+          }
+        },
+        "summary" : "Fetch the dashboard pages and settings sections contributed by plugins",
+        "tags" : [ "Frontend" ]
+      }
+    },
+    "/api/frontend/settings" : {
+      "get" : {
+        "description" : "Returns the values a dashboard needs to render itself, including its appearance. Public, because a bundled dashboard already exposes all of them to anonymous visitors.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FrontendSettingsResponse"
+                }
+              }
+            },
+            "description" : "Presentation settings, as plain fields and as placeholder tokens"
+          }
+        },
+        "summary" : "Fetch the dashboard presentation settings",
+        "tags" : [ "Frontend" ]
+      }
+    },
+    "/api/identity/check" : {
+      "get" : {
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Decides one node for a principal, optionally narrowed by one of its tokens, with the candidates considered. Or decides a repository path with the query parameters repository, path and action (or the action of a node). Instance admins may check any principal, others only their own.",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/password" : {
+      "post" : {
+        "description" : "Changes the password of the signed-in user after checking the current one. Every session of the user ends",
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Change own password",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/tokens" : {
+      "get" : {
+        "description" : "The tokens of the signed-in user, without their secrets",
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "List own tokens",
+        "tags" : [ "Identity" ]
+      },
+      "post" : {
+        "description" : "Creates a token for the signed-in user. The secret is returned once, in this response",
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Create an own token",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/tokens/{name}" : {
+      "delete" : {
+        "description" : "Deletes an own token. It stops working at once",
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Delete an own token",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/tokens/{name}/rotate" : {
+      "post" : {
+        "description" : "Replaces the secret of an own token. The new secret is returned once, the old one stops working at once",
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Rotate an own token",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/nodes/catalog" : {
+      "get" : {
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Lists the permission nodes an operator can pick, optionally by prefix. Note: Requires the instance admin (ingot.admin.*)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/nodes/templates" : {
+      "get" : {
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Lists the predefined node bundles of the user interface. Note: Requires the instance admin (ingot.admin.*)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals" : {
+      "get" : {
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Lists the principals (users and machine accounts). Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePrincipalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Creates a principal. Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}" : {
+      "delete" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Deletes a principal with its tokens, memberships and instance role. Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns a principal with its teams and tokens (without secrets). Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      },
+      "patch" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdatePrincipalRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Updates the display name or the disabled flag of a principal. Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}/instance-admin" : {
+      "delete" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
+        "tags" : [ "Identity" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Grants the instance role to a principal. Granting it again changes nothing. Note: Requires the instance admin (ingot.admin.*)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}/nodes" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns the permission nodes of a principal, with its entity tag. Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceNodesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Replaces the whole permission node list of a principal. A caller may only give rights it holds. Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}/password" : {
+      "post" : {
+        "description" : "Instance admins only. Sets a new password for a user, which must be changed at the next login. Every session of the user ends",
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Reset a user's password",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}/tokens" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Lists the tokens of a principal. Note: Requires the tokens area (ingot.admin.tokens)",
+        "tags" : [ "Identity" ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTokenRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Creates a token for a principal. The secret is returned once. Note: Requires the tokens area (ingot.admin.tokens)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}/tokens/{tokenName}" : {
+      "delete" : {
+        "parameters" : [ {
+          "description" : "Name of the principal",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Name of the token",
+          "in" : "path",
+          "name" : "tokenName",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Deletes a token of a principal. Note: Requires the tokens area (ingot.admin.tokens)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/repositories/{repository}/access" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Explains who has which access on a repository, and why. Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/teams" : {
+      "get" : {
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Lists the teams with their member and grant counts. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTeamRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Creates a team. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/teams/{name}" : {
+      "delete" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Deletes a team with its memberships and grants. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns a team with its members and grants. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      },
+      "patch" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateTeamRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Updates the description or the external reference of a team. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/teams/{name}/grants" : {
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceGrantsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Replaces all grants of a team. Roles: READ, DEPLOY, MAINTAIN, ADMIN. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/teams/{name}/instance-admin" : {
+      "delete" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
+        "tags" : [ "Identity" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Grants the instance role to a team: its members with a valid token become instance admins. Note: Requires the instance admin (ingot.admin.*)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/teams/{name}/members" : {
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceMembersRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Replaces the manual members of a team. Synchronised members are kept. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/teams/{name}/nodes" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns the permission nodes of a team, with its entity tag. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceNodesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Replaces the whole permission node list of a team. A caller may only give rights it holds. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/teams/{name}/parents" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns the parent teams of a team, with its entity tag. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the team",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceParentsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Replaces the parent teams of a team. A cycle or a depth above 8 levels is refused with 409. Note: Requires the teams area (ingot.admin.teams)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/maven/details" : {
+      "get" : {
+        "description" : "Get the repositories the requesting token is allowed to see as JSON response. Every entry is a RepositoryDirectoryInfo and carries the repository visibility (PUBLIC, HIDDEN or PRIVATE) in addition to the fields of a regular directory. Repositories the token cannot access are not listed at all.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DirectoryInfo"
+                }
+              }
+            },
+            "description" : "Returns a directory listing where every file entry describes one accessible repository"
+          }
+        },
+        "summary" : "List the available repositories",
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/details/{repository}" : {
+      "get" : {
+        "description" : "Get the root directory of the requested repository as JSON response, the same document as the file path form returns for an empty path",
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileDetails"
+                }
+              }
+            },
+            "description" : "Returns the root directory of the repository"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Returns 401 in case of unauthorized attempt of access to private repository"
+          },
+          "404" : {
+            "description" : "Returns 404 when the repository does not exist"
+          }
+        },
+        "summary" : "Browse the root of a repository using API",
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/details/{repository}/{gav}" : {
+      "get" : {
+        "description" : "Get details about the requested file as JSON response",
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "allowEmptyValue" : true,
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileDetails"
+                }
+              }
+            },
+            "description" : "Returns document (different for directory and file) that describes requested resource"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Returns 401 in case of unauthorized attempt of access to private repository"
+          },
+          "404" : {
+            "description" : "Returns 404 (for Maven) and frontend (for user) as a response if requested artifact is not in the repository"
+          }
+        },
+        "summary" : "Browse the contents of repositories using API",
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/generate/pom/{repository}/{gav}" : {
+      "post" : {
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PomDetails"
+              }
+            }
+          },
+          "description" : "GroupId, ArtifactId and Version of the stub POM",
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/latest/details/{repository}/{gav}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "allowEmptyValue" : true,
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Changes extension of matched file (by default matches 'jar'). Pass an empty value to match files without an extension.",
+          "in" : "query",
+          "name" : "extension",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Appends classifier suffix to matched file",
+          "in" : "query",
+          "name" : "classifier",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Version (prefix) filter to apply",
+          "in" : "query",
+          "name" : "filter",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileDetails"
+                }
+              }
+            },
+            "description" : "Details about the given file"
+          }
+        },
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/latest/file/{repository}/{gav}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "allowEmptyValue" : true,
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Changes extension of matched file (by default matches 'jar'). Pass an empty value to match files without an extension.",
+          "in" : "query",
+          "name" : "extension",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Appends classifier suffix to matched file",
+          "in" : "query",
+          "name" : "classifier",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Version (prefix) filter to apply",
+          "in" : "query",
+          "name" : "filter",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/latest/version/{repository}/{gav}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "allowEmptyValue" : true,
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Changes extension of matched file (by default matches 'jar'). Pass an empty value to match files without an extension.",
+          "in" : "query",
+          "name" : "extension",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Appends classifier suffix to matched file",
+          "in" : "query",
+          "name" : "classifier",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Version (prefix) filter to apply",
+          "in" : "query",
+          "name" : "filter",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Format of expected response type: empty (default) for json; 'raw' for plain text",
+          "in" : "query",
+          "name" : "type",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Whether to sort versions using built-in comparator (default: true). Set to false to preserve raw order from maven-metadata.xml",
+          "in" : "query",
+          "name" : "sorted",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LatestVersionResponse"
+                }
+              },
+              "text/plain" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : ""
+          }
+        },
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/repositories" : {
+      "get" : {
+        "description" : "List the repositories the requesting token may see, sorted by id, each with its visibility, description and tags. PUBLIC repositories are listed for everyone, PRIVATE repositories for tokens with access to them and HIDDEN repositories for managers only.",
+        "parameters" : [ {
+          "description" : "Case-insensitive text matched against the id, the description and the tags of a repository",
+          "in" : "query",
+          "name" : "q",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "A tag the repository has to carry. Repeat the parameter to require several tags.",
+          "in" : "query",
+          "name" : "tag",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RepositoryListResponse"
+                }
+              }
+            },
+            "description" : "Returns the visible repositories that match the query"
+          }
+        },
+        "summary" : "Search the repositories",
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/repositories/{repository}/members" : {
+      "get" : {
+        "description" : "List the ids of the repositories that a group mirrors through loopback references, in configuration order. Only references the requesting token may list are included, and external proxies are never listed. A repository without loopback references has an empty list.",
+        "parameters" : [ {
+          "description" : "Repository to inspect",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RepositoryMembersResponse"
+                }
+              }
+            },
+            "description" : "Returns the visible repositories the group references"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Returns 401 when the group itself is not visible to the caller"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Returns 404 when the repository does not exist"
+          }
+        },
+        "summary" : "List the repositories a group references",
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/search" : {
+      "get" : {
+        "description" : "One page of groups (GAVs), each with the repositories that hold it, the facets over the visible files and the state of the index. A row is returned exactly when the caller may browse its path: PUBLIC repositories to everyone, HIDDEN and PRIVATE ones to callers with READ on the path.",
+        "parameters" : [ {
+          "description" : "Free text, at most 200 characters. Tokens are matched by prefix; a token of the form group:artifact:version matches coordinates.",
+          "in" : "query",
+          "name" : "q",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Prefix of the groupId",
+          "in" : "query",
+          "name" : "groupId",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Prefix of the artifactId",
+          "in" : "query",
+          "name" : "artifactId",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Exact version, case-insensitive. Cannot be combined with versionPrefix.",
+          "in" : "query",
+          "name" : "version",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Prefix of the version",
+          "in" : "query",
+          "name" : "versionPrefix",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Exact repository name, repeatable",
+          "in" : "query",
+          "name" : "repository",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Exact file extension, repeatable",
+          "in" : "query",
+          "name" : "extension",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Exact classifier, repeatable; - selects files without a classifier",
+          "in" : "query",
+          "name" : "classifier",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "40 hexadecimal characters of the SHA-1 of a file",
+          "in" : "query",
+          "name" : "sha1",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "true, false or all (default all)",
+          "in" : "query",
+          "name" : "snapshot",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "hosted, mirror or all (default all)",
+          "in" : "query",
+          "name" : "origin",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ISO-8601 instant, inclusive",
+          "in" : "query",
+          "name" : "modifiedAfter",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ISO-8601 instant, exclusive",
+          "in" : "query",
+          "name" : "modifiedBefore",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Minimum size in bytes, inclusive",
+          "in" : "query",
+          "name" : "sizeMin",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Maximum size in bytes, inclusive",
+          "in" : "query",
+          "name" : "sizeMax",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "groupId, artifactId, version, modified or size (default groupId)",
+          "in" : "query",
+          "name" : "sort",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "asc or desc (default asc)",
+          "in" : "query",
+          "name" : "order",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "0-based page (default 0)",
+          "in" : "query",
+          "name" : "page",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Groups per page, 1 to 100 (default 20)",
+          "in" : "query",
+          "name" : "size",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ArtifactSearchResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "description" : "Invalid parameter or result window exceeded. The message names the parameter."
+          },
+          "404" : {
+            "description" : "Search is turned off on this instance"
+          },
+          "503" : {
+            "description" : "Statement timeout or grant set too large for search"
+          }
+        },
+        "summary" : "Search artifacts across all repositories the caller may browse",
+        "tags" : [ "Search" ]
+      }
+    },
+    "/api/maven/search/files" : {
+      "get" : {
+        "description" : "The stored files of one GAV, ordered by path. The coordinates are required and compared case-insensitively. The access rules of the search apply: files the caller may not browse are not listed.",
+        "parameters" : [ {
+          "description" : "GroupId of the artifact",
+          "in" : "query",
+          "name" : "groupId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ArtifactId of the artifact",
+          "in" : "query",
+          "name" : "artifactId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Version of the artifact",
+          "in" : "query",
+          "name" : "version",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "hosted, mirror or all (default all)",
+          "in" : "query",
+          "name" : "origin",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Exact repository name, repeatable",
+          "in" : "query",
+          "name" : "repository",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "0-based page (default 0)",
+          "in" : "query",
+          "name" : "page",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Files per page, 1 to 200 (default 50)",
+          "in" : "query",
+          "name" : "size",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ArtifactFilesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "description" : "A coordinate is missing or a parameter is invalid. The message names it."
+          },
+          "404" : {
+            "description" : "Search is turned off on this instance"
+          },
+          "503" : {
+            "description" : "Statement timeout or grant set too large for search"
+          }
+        },
+        "summary" : "List the files of one artifact version found by search",
+        "tags" : [ "Search" ]
+      }
+    },
+    "/api/maven/search/index" : {
+      "get" : {
+        "description" : "The state, lag and last full rebuild, the row and outbox counts, the repositories, the active run, the last 20 runs and the last verify report. Requires the maintenance area.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SearchIndexResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          },
+          "404" : {
+            "description" : "Search is turned off on this instance"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Get the state of the search index",
+        "tags" : [ "Search" ]
+      }
+    },
+    "/api/maven/search/index/rebuild" : {
+      "post" : {
+        "description" : "Reads the stored files of the given repositories again and corrects the index. Without a body, or with an empty object, every repository is rebuilt. Requires the maintenance area.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RebuildRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StartedRunResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          },
+          "400" : {
+            "description" : "A repository is unknown or the body is not an object of that shape"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          },
+          "404" : {
+            "description" : "Search is turned off on this instance"
+          },
+          "409" : {
+            "description" : "A rebuild or verify run is already running"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Start a rebuild of the index from storage",
+        "tags" : [ "Search" ]
+      }
+    },
+    "/api/maven/search/index/runs/{id}/cancel" : {
+      "post" : {
+        "description" : "The instance that runs the job stops after the batch in flight. A run that has finished cannot be cancelled. Requires the maintenance area.",
+        "parameters" : [ {
+          "description" : "Id of the run",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The run was cancelled"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          },
+          "404" : {
+            "description" : "Search is turned off on this instance, or the run does not exist"
+          },
+          "409" : {
+            "description" : "The run has already finished"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Cancel a live index run",
+        "tags" : [ "Search" ]
+      }
+    },
+    "/api/maven/search/index/verify" : {
+      "post" : {
+        "description" : "Compares a sample of index rows with storage and repairs what differs. Requires the maintenance area.",
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StartedRunResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          },
+          "404" : {
+            "description" : "Search is turned off on this instance"
+          },
+          "409" : {
+            "description" : "A rebuild or verify run is already running"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Start a verify run",
+        "tags" : [ "Search" ]
+      }
+    },
+    "/api/maven/storage" : {
+      "get" : {
+        "description" : "Returns the last computed usage. The first request starts a computation in the background, and computing is true until it finishes. The quota is reported as configured, and quotaBytes is its size in bytes when that is known.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StorageUsageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Get the storage usage of the repositories",
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/storage/refresh" : {
+      "post" : {
+        "description" : "Starts a new computation in the background and answers at once with the previous figures, flagged as computing. A computation that is already running is not started twice.",
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StorageUsageResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          },
+          "403" : {
+            "description" : "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Recompute the storage usage",
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/maven/versions/{repository}/{gav}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Version (prefix) filter to apply",
+          "in" : "query",
+          "name" : "filter",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Whether to sort versions using built-in comparator (default: true). Set to false to preserve raw order from maven-metadata.xml",
+          "in" : "query",
+          "name" : "sorted",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "tags" : [ "Maven" ]
+      }
+    },
+    "/api/settings/domain/{name}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of configuration to fetch",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Returns dto representing configuration"
+          },
+          "403" : {
+            "description" : "Returns 403 if a token without the settings area (ingot.admin.settings) is used"
+          },
+          "404" : {
+            "description" : "Returns 404 if non-existing configuration is requested"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Find configuration",
+        "tags" : [ "Settings" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of configuration to update",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Returns 200 if configuration has been updated successfully"
+          },
+          "401" : {
+            "description" : "Returns 403 if a token without the settings area (ingot.admin.settings) is used"
+          },
+          "404" : {
+            "description" : "Returns 404 if non-existing configuration is requested"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Update configuration",
+        "tags" : [ "Settings" ]
+      }
+    },
+    "/api/settings/domains" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "Returns list of configuration names"
+          },
+          "403" : {
+            "description" : "Returns 403 if a token without the settings area (ingot.admin.settings) is used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "List configurations",
+        "tags" : [ "Settings" ]
+      }
+    },
+    "/api/settings/schema/{name}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of schema to get",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "text/plain" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Returns dto representing configuration schema"
+          },
+          "401" : {
+            "description" : "Returns 403 if a token without the settings area (ingot.admin.settings) is used"
+          },
+          "404" : {
+            "description" : "Returns 404 if non-existing configuration schema is requested"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Get schema",
+        "tags" : [ "Settings" ]
+      }
+    },
+    "/api/statistics/resolved/all" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AllResolvedResponse"
+                }
+              }
+            },
+            "description" : "Aggregated list of statistics per each repository"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "When a token without the dashboard area (ingot.admin.dashboard) is used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "tags" : [ "Statistics" ]
+      }
+    },
+    "/api/statistics/resolved/phrase/{limit}/{repository}/{gav}" : {
+      "get" : {
+        "parameters" : [ {
+          "description" : "Amount of records to find (Maximum: 100)",
+          "in" : "path",
+          "name" : "limit",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Repository to search in",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "allowEmptyValue" : true,
+          "description" : "Phrase to search for",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ResolvedCountResponse"
+                }
+              }
+            },
+            "description" : "Aggregated sum of resolved requests with list a list of them all"
+          },
+          "400" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "When the limit is not a number between 1 and 100"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "When invalid token is used"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "When token cannot access the requested path"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "tags" : [ "Statistics" ]
+      }
+    },
+    "/api/statistics/resolved/unique" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "format" : "int64",
+                  "type" : "integer"
+                }
+              }
+            },
+            "description" : "Number of all unique requests"
+          },
+          "403" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "When a token without the dashboard area (ingot.admin.dashboard) is used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "tags" : [ "Statistics" ]
+      }
+    },
+    "/api/status/failures" : {
+      "delete" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Clears all recorded failures. Note: Requires Manager",
+        "tags" : [ "Status" ]
+      },
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FailuresResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Lists the recorded failures, newest first. Note: Requires Manager",
+        "tags" : [ "Status" ]
+      }
+    },
+    "/api/status/health" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/status/instance" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InstanceStatusResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ]
+      }
+    },
+    "/api/status/ready" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "Answers whether this instance can serve requests now. Lists the failing checks when it cannot.",
+        "tags" : [ "Status" ]
+      }
+    },
+    "/api/status/snapshots" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/StatusSnapshot"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ]
+      }
+    },
+    "/api/tokens" : {
+      "get" : {
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns all existing tokens and data such as their permissions. Note: Requires the tokens area (ingot.admin.tokens)",
+        "tags" : [ "Tokens" ]
+      }
+    },
+    "/api/tokens/{name}" : {
+      "delete" : {
+        "parameters" : [ {
+          "description" : "Name of the token to be deleted",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Deletes the token specified via it's name. Note: Requires the tokens area (ingot.admin.tokens)",
+        "tags" : [ "Tokens" ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "description" : "Name of the token to be deleted",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Returns data about the token given via it's name. Note: Requires manager or you must be the token owner",
+        "tags" : [ "Tokens" ]
+      },
+      "patch" : {
+        "parameters" : [ {
+          "description" : "Name of the token to be updated",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateAccessTokenWithNoNameRequest"
+              }
+            }
+          },
+          "description" : "Token metadata to update. Any field that is not provided is left unchanged",
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Updates token metadata (description, permissions, routes, expiry) without regenerating the secret. Note: Requires the tokens area (ingot.admin.tokens)",
+        "tags" : [ "Tokens" ]
+      },
+      "put" : {
+        "parameters" : [ {
+          "description" : "Name of the token to be created or updated",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAccessTokenWithNoNameRequest"
+              }
+            }
+          },
+          "description" : "Data about the account including the secret and it's permissions",
+          "required" : true
+        },
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Creates / Updates a token via the specified body. Note: Requires manager permission.",
+        "tags" : [ "Tokens" ]
+      }
+    },
+    "/api/tokens/{name}/secret" : {
+      "post" : {
+        "parameters" : [ {
+          "description" : "Name of the token whose secret is regenerated",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : { },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Regenerates and returns a new secret for the token, invalidating the previous one. Note: Requires the tokens area (ingot.admin.tokens)",
+        "tags" : [ "Tokens" ]
+      }
+    },
+    "/{repository}/{gav}" : {
+      "delete" : {
+        "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads and no deletions.",
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "405" : {
+            "description" : "Returns 405 if the repository is a proxy or a group, which take no deletions"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Delete the given file from repository",
+        "tags" : [ "Maven" ]
+      },
+      "get" : {
+        "description" : "The route may return various responses to properly handle Maven specification and frontend application using the same path.",
+        "parameters" : [ {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "allowEmptyValue" : true,
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "multipart/form-data" : { }
+            },
+            "description" : "Input stream of requested file"
+          },
+          "404" : {
+            "description" : "Returns 404 (for Maven) with frontend (for user) as a response if requested resource is not located in the current repository"
+          }
+        },
+        "summary" : "Browse the contents of repositories",
+        "tags" : [ "Maven" ]
+      },
+      "post" : {
+        "description" : "Deploy supports both, POST and PUT, methods and allows to deploy artifact builds",
+        "parameters" : [ {
+          "description" : "Determines if Ingot should generate checksums for this file",
+          "in" : "header",
+          "name" : "X-Generate-Checksums",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "multipart/form-data" : { }
+            },
+            "description" : "Input stream of requested file"
+          },
+          "401" : {
+            "description" : "Returns 401 for invalid credentials"
+          },
+          "405" : {
+            "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads"
+          },
+          "507" : {
+            "description" : "Returns 507 if Ingot does not have enough disk space to store the uploaded file"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Deploy artifact to the repository",
+        "tags" : [ "Maven" ]
+      },
+      "put" : {
+        "description" : "Deploy supports both, POST and PUT, methods and allows to deploy artifact builds",
+        "parameters" : [ {
+          "description" : "Determines if Ingot should generate checksums for this file",
+          "in" : "header",
+          "name" : "X-Generate-Checksums",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Destination repository",
+          "in" : "path",
+          "name" : "repository",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Artifact path qualifier",
+          "in" : "path",
+          "name" : "gav",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "multipart/form-data" : { }
+            },
+            "description" : "Input stream of requested file"
+          },
+          "401" : {
+            "description" : "Returns 401 for invalid credentials"
+          },
+          "405" : {
+            "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads"
+          },
+          "507" : {
+            "description" : "Returns 507 if Ingot does not have enough disk space to store the uploaded file"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Deploy artifact to the repository",
+        "tags" : [ "Maven" ]
+      }
+    }
+  }
+}

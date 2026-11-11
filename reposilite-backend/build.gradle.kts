@@ -386,6 +386,16 @@ tasks.named<Test>("integration") {
     // to the container's random port, so the AWS SDK must use path-style addressing.
     systemProperty("reposilite.s3.pathStyleAccessEnabled", "true")
 
+    // Rewrites docs/openapi/ingot-openapi.json from the served document instead of comparing it. Pass it with
+    //   ./gradlew :reposilite-backend:integration --tests 'com.reposilite.web.OpenApiSnapshotIntegrationTest' -PrefreshOpenApiSnapshot
+    // after an intended API change, and commit the rewritten file with that change.
+    systemProperty(
+        "ingot.openapi.refresh",
+        if (providers.gradleProperty("refreshOpenApiSnapshot").isPresent) "true" else "false"
+    )
+    // The snapshot test reads this file, so an edit to it must rerun the test rather than reuse a passing result.
+    inputs.files(rootProject.file("docs/openapi/ingot-openapi.json"))
+
     // Resolved at execution time, so the canary jars are only fetched when the integration suite runs.
     inputs.files(pluginCanary)
     inputs.files(nexusImportPlugin)
