@@ -42,9 +42,6 @@ const administrationLinks = async (page) => {
 
 test.describe('administration navigation', () => {
   test('lists the same Administration entries in the same order on every page', async ({ page }) => {
-    // Known regression on main: the entries differ between /settings and /access. The fixing change is
-    // fix-administration-navigation, which removes this marker in the same pull request.
-    test.fail(true, 'fix-administration-navigation')
     await signInAsAdmin(page)
 
     const listings = {}
@@ -59,8 +56,6 @@ test.describe('administration navigation', () => {
   })
 
   test('marks exactly one Administration entry as current on the audit page', async ({ page }) => {
-    // Known regression on main: /settings/audit marks the Audit log and the Audit entry at the same time.
-    test.fail(true, 'fix-administration-navigation')
     await signInAsAdmin(page)
 
     await page.goto(siteUrl('/settings/audit'))
