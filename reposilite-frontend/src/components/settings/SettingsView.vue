@@ -143,18 +143,9 @@ const hubShown = computed(() => !props.domain && tabDomains.value.length > 1 && 
 
 const collectionsFor = (domain) => collectionsOf(store.schemas.value[domain])
 
-// The repositories of the maven domain are listed on their own page, so the domain page leaves them out.
-const movedToRepositories = (domain, list) => domain === 'maven' && list.key === 'repositories'
 const activeCollections = computed(() => (activeDomain.value && !isAccessDomain(activeDomain.value)
-  ? collectionsFor(activeDomain.value).filter(list => !movedToRepositories(activeDomain.value, list))
+  ? collectionsFor(activeDomain.value)
   : []))
-
-// The maven domain page links to the Repositories page, and says how many there are.
-const mavenDomain = computed(() => activeDomain.value === 'maven' && !repositoriesRoute.value)
-const repositoriesHref = computed(() => router.resolve({ name: 'settings-repositories' }).href)
-const repositoryCount = computed(() => store.configurations.value.maven?.repositories?.length ?? 0)
-const repositoryCountText = computed(() => (repositoryCount.value === 1 ? '1 repository' : `${repositoryCount.value} repositories`))
-const openRepositories = () => router.push({ name: 'settings-repositories' })
 
 const entriesOf = (domain, collection) => configurations.value[domain]?.[collection.key] ?? []
 
@@ -498,30 +489,6 @@ watch(
             :id="route.params.id"
           />
           <template v-else>
-            <section
-              v-if="mavenDomain"
-              aria-labelledby="maven-repositories-link-title"
-              class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-low p-4"
-            >
-              <h2
-                id="maven-repositories-link-title"
-                class="md-title-medium text-on-surface"
-              >
-                Repositories
-              </h2>
-              <p class="md-body-medium text-on-surface-variant">
-                {{ repositoryCountText }} of this instance. Each one is edited on its own page.
-              </p>
-              <MdButton
-                variant="tonal"
-                type="button"
-                class="self-start"
-                :href="repositoriesHref"
-                @click.prevent="openRepositories"
-              >
-                Open the Repositories page
-              </MdButton>
-            </section>
             <AccessDomainCard
               v-if="isAccessDomain(activeDomain)"
               :domain="activeDomain"
