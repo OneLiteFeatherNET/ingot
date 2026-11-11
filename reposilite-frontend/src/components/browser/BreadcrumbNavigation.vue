@@ -50,6 +50,7 @@ const parentLocation = computed(() => browseLocation(parentPathOf(props.path)))
   <nav
     aria-label="Breadcrumb"
     class="flex min-w-0 flex-wrap items-center gap-y-1 md-title-medium"
+    data-ingot-component="breadcrumb-navigation"
   >
     <ol class="flex min-w-0 max-w-full flex-wrap items-center">
       <li

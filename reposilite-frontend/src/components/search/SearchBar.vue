@@ -44,6 +44,7 @@ defineExpose({
   <form
     role="search"
     class="flex flex-col gap-3"
+    data-ingot-component="search-bar"
     @submit.prevent="emit('submit')"
   >
     <div class="flex h-14 items-center gap-2 rounded-corner-full bg-surface-container-high pl-4 pr-2 text-on-surface has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-secondary">

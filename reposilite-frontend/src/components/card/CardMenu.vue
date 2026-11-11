@@ -49,6 +49,7 @@ const selectConfiguration = (configuration) =>
   <div
     id="card-menu"
     class="-mx-2 overflow-x-auto border-b border-outline-variant [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    data-ingot-component="card-menu"
   >
     <div class="flex flex-nowrap">
       <button

@@ -67,6 +67,7 @@ const sourceOf = (file) => (file.origin === 'MIRROR'
   <li
     class="relative border-b border-outline-variant last:border-b-0"
     data-test="result"
+    data-ingot-component="search-result-row"
   >
     <div class="flex items-start gap-2 px-2 py-3 sm:px-4">
       <div class="flex min-w-0 flex-1 flex-col gap-2">

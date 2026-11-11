@@ -41,6 +41,7 @@ defineExpose({ content })
   <pre
     v-if="configuration.lang === 'xml'"
     ref="preElement"
+    data-ingot-component="artifact-snippet"
   >
 <XmlTag name="dependency">
   <XmlTag name="groupId">{{ data.groupId }}</XmlTag>
@@ -51,12 +52,14 @@ defineExpose({ content })
   <pre
     v-else-if="configuration.lang === 'groovy'"
     ref="preElement"
+    data-ingot-component="artifact-snippet"
   >
 implementation <CodeString>{{ `${data.groupId}:${data.artifactId}:${data.version}` }}</CodeString>
 </pre>
   <pre
     v-else-if="configuration.lang === 'kotlin'"
     ref="preElement"
+    data-ingot-component="artifact-snippet"
   >
 implementation<CodeBrackets
 start="("
@@ -66,6 +69,7 @@ end=")"
   <pre
     v-else-if="configuration.lang === 'scala'"
     ref="preElement"
+    data-ingot-component="artifact-snippet"
   >
 <CodeString>{{ data.groupId }}</CodeString> %% <CodeString>{{ data.artifactId }}</CodeString> %% <CodeString>{{ data.version }}</CodeString>
 </pre>

@@ -2,6 +2,113 @@
   "contract": 1,
   "components": [
     {
+      "name": "adjustments-modal",
+      "file": "src/components/browser/AdjustmentsModal.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "breadcrumb-navigation",
+      "file": "src/components/browser/BreadcrumbNavigation.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "browser-icon",
+      "file": "src/components/browser/BrowserIcon.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "delete-entry-modal",
+      "file": "src/components/browser/DeleteEntryModal.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "detailed-list-entry",
+      "file": "src/components/browser/DetailedListEntry.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "file-browser-view",
+      "file": "src/components/browser/FileBrowserView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "file-list",
+      "file": "src/components/browser/FileList.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "file-upload",
+      "file": "src/components/browser/FileUpload.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "artifact-snippet",
+      "file": "src/components/card/ArtifactSnippet.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "card-menu",
+      "file": "src/components/card/CardMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "code-brackets",
+      "file": "src/components/card/CodeBrackets.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "code-string",
+      "file": "src/components/card/CodeString.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-snippet",
+      "file": "src/components/card/RepositorySnippet.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "snippets-card",
+      "file": "src/components/card/SnippetsCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "xml-tag",
+      "file": "src/components/card/XmlTag.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "page-footer",
       "file": "src/components/footer/PageFooter.vue",
       "stability": "stable",
@@ -68,6 +175,99 @@
       "stability": "stable",
       "parts": [],
       "states": []
+    },
+    {
+      "name": "repository-overview",
+      "file": "src/components/overview/RepositoryOverview.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "declare-type-dialog",
+      "file": "src/components/repositories/DeclareTypeDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repositories-table",
+      "file": "src/components/repositories/RepositoriesTable.vue",
+      "stability": "experimental",
+      "parts": [
+        "header",
+        "row",
+        "cell-name",
+        "empty"
+      ],
+      "states": [
+        "empty"
+      ]
+    },
+    {
+      "name": "repositories-view",
+      "file": "src/components/repositories/RepositoriesView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-detail",
+      "file": "src/components/repositories/RepositoryDetail.vue",
+      "stability": "experimental",
+      "parts": [
+        "header"
+      ],
+      "states": [
+        "empty",
+        "loading"
+      ]
+    },
+    {
+      "name": "type-badge",
+      "file": "src/components/repositories/TypeBadge.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "write-policy-field",
+      "file": "src/components/repositories/WritePolicyField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-bar",
+      "file": "src/components/search/SearchBar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-filters",
+      "file": "src/components/search/SearchFilters.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-result-row",
+      "file": "src/components/search/SearchResultRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-view",
+      "file": "src/components/search/SearchView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
     }
   ],
   "aliases": []

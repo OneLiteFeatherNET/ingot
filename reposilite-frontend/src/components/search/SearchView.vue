@@ -246,7 +246,7 @@ const toggleRow = (item) => {
 </script>
 
 <template>
-  <div class="container mx-auto mb-12 pt-7">
+  <div class="container mx-auto mb-12 pt-7" data-ingot-component="search-view">
     <h1 class="md-headline-small text-on-surface">
       Search
     </h1>
@@ -408,6 +408,7 @@ const toggleRow = (item) => {
 
           <ul
             v-if="loading"
+            data-ingot-state="loading"
             class="mt-4 m-0 list-none overflow-hidden rounded-corner-medium bg-surface-container-low p-0"
             data-test="skeleton"
             aria-hidden="true"

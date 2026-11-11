@@ -44,7 +44,7 @@ const ICONS = {
 </script>
 
 <template>
-  <span class="inline-flex flex-wrap items-center gap-2">
+  <span class="inline-flex flex-wrap items-center gap-2" data-ingot-component="type-badge">
     <span
       data-test="type-badge"
       :data-type="type.key"

@@ -51,6 +51,7 @@ defineExpose({ content })
     v-if="configuration.lang === 'xml'"
     ref="preElement"
     class="whitespace-pre-wrap wrap-anywhere"
+    data-ingot-component="repository-snippet"
   >
 <XmlTag name="repository">
   <XmlTag name="id">{{ data.repoId }}</XmlTag>
@@ -62,6 +63,7 @@ defineExpose({ content })
     v-else-if="configuration.lang === 'groovy'"
     ref="preElement"
     class="whitespace-pre-wrap wrap-anywhere"
+    data-ingot-component="repository-snippet"
   >
 maven <CodeBrackets
 start="{"
@@ -75,6 +77,7 @@ end="}"
     v-else-if="configuration.lang === 'kotlin'"
     ref="preElement"
     class="whitespace-pre-wrap wrap-anywhere"
+    data-ingot-component="repository-snippet"
   >
 maven <CodeBrackets
 start="{"
@@ -91,6 +94,7 @@ end=")"
     v-else-if="configuration.lang === 'scala'"
     ref="preElement"
     class="whitespace-pre-wrap wrap-anywhere"
+    data-ingot-component="repository-snippet"
   >
 resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString>
 </pre>

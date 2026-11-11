@@ -155,6 +155,7 @@ const entryUrl = (file) =>
   <div
     id="browser-list"
     class="pt-3"
+    data-ingot-component="file-list"
   >
     <DeleteEntryModal
       :value="deleteModalValue"
@@ -259,6 +260,7 @@ const entryUrl = (file) =>
     </section>
     <section
       v-if="!loading && files.error"
+      data-ingot-state="error"
       role="alert"
       class="mt-3 flex flex-col items-start gap-3 rounded-corner-extra-large bg-surface-container-low p-6"
     >

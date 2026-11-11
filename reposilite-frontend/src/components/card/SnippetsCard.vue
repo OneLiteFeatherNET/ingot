@@ -170,7 +170,7 @@ const selectTab = (tab) =>
     variant="outlined"
     class="w-full min-w-0"
   >
-    <div class="px-2 pb-2">
+    <div class="px-2 pb-2" data-ingot-component="snippets-card">
       <div class="flex flex-row justify-between">
         <h1 class="flex w-full items-center md-title-large">
           <button

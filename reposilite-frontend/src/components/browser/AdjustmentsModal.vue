@@ -29,7 +29,7 @@ const titleId = useId()
 </script>
 
 <template>
-  <div>
+  <div data-ingot-component="adjustments-modal">
     <MdIconButton
       aria-label="File browser adjustments"
       title="File browser adjustments"

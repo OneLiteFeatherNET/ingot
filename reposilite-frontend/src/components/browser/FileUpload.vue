@@ -152,6 +152,7 @@ const uploadFiles = () => {
   <section
     id="browser-upload"
     class="pt-8"
+    data-ingot-component="file-upload"
   >
     <h2 class="md-title-small text-on-surface-variant">
       Upload to <span class="font-mono normal-case text-on-surface">{{ '/' + destination }}</span>
