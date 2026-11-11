@@ -88,12 +88,39 @@ describe('the repository routes', () => {
     expect(router.currentRoute.value.name).toBe('settings-entry')
   })
 
-  it('does not redirect the maven domain page', async () => {
+  it('redirects the Maven page address to the Repositories page', async () => {
     const router = makeRouter({ can: administrator, isManager: administrator })
 
     await router.push('/settings/maven')
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
+    expect(router.currentRoute.value.fullPath).toBe('/settings/repositories')
+    expect(router.currentRoute.value.name).toBe('settings-repositories')
+  })
+
+  it('keeps the query of the Maven page address on the Repositories page', async () => {
+    const router = makeRouter({ can: administrator, isManager: administrator })
+
+    await router.push('/settings/maven?x=1')
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/repositories?x=1')
+  })
+
+  it('redirects the Maven repositories list, which had no page, to the Repositories page', async () => {
+    const router = makeRouter({ can: administrator, isManager: administrator })
+
+    await router.push('/settings/maven/repositories')
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/repositories')
+    expect(router.currentRoute.value.name).toBe('settings-repositories')
+  })
+
+  it('does not redirect the page of another domain', async () => {
+    const router = makeRouter({ can: administrator, isManager: administrator })
+
+    await router.push('/settings/cleanup')
+
+    expect(router.currentRoute.value.fullPath).toBe('/settings/cleanup')
+    expect(router.currentRoute.value.name).toBe('settings')
   })
 })
 

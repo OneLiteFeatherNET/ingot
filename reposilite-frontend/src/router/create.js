@@ -58,13 +58,13 @@ const createAppRouter = ({
     return legacy(to.hash) ?? true
   })
 
-  // The old addresses of the repositories move to the Repositories page, with their query kept. Other collections
-  // of other domains are not redirected: only the maven repositories moved.
+  // The old addresses of the maven domain move to the Repositories page, with their query kept. The Maven page is gone:
+  // its repositories and its domain-level options are edited there. Other collections of other domains are not redirected.
   router.beforeEach((to) => {
     if (to.name === 'settings-entry' && to.params.domain === 'maven' && to.params.collection === 'repositories') {
       return { name: 'settings-repository', params: { id: to.params.entry }, query: to.query, replace: true }
     }
-    if (to.name === 'settings' && to.params.domain === 'maven' && to.query.new === 'repository') {
+    if (to.name === 'settings' && to.params.domain === 'maven') {
       return { name: 'settings-repositories', query: to.query, replace: true }
     }
     return true

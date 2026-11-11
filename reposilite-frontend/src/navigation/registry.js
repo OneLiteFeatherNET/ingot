@@ -149,7 +149,11 @@ const BAR_SIZE = 4
 
 // The settings domains that belong to the Repository group of the Administration tree. Any other domain, a plugin
 // domain included, is listed under System, so it never fails to show.
-const REPOSITORY_DOMAINS = ['maven', 'javadoc', 'cleanup']
+const REPOSITORY_DOMAINS = ['javadoc', 'cleanup']
+
+// The settings domains that have a page of their own, so they are not a settings tab or a settings card. The maven domain is
+// edited on the Repositories page. It is still loaded, saved, exported and imported with the other domains.
+const DOMAINS_ON_OTHER_PAGES = ['maven']
 
 // The page names under /settings that a settings domain may not take as its id, since the page is served first.
 const RESERVED_SETTINGS_PAGES = ['repositories']
@@ -254,7 +258,7 @@ const PAGES = [
 // Routes that have no page of their own: the browser of a repository path (the overview page), the
 // legacy token redirects, the Settings entry below a domain, the authentication settings redirect and
 // the not found page. The detail routes of Access are not listed here: each one is the `detail` of its child.
-const EXEMPT_ROUTES = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'not-found']
+const EXEMPT_ROUTES = ['browse', 'tokens', 'token-new', 'token', 'settings-authentication', 'settings-login', 'settings-entry', 'settings-plugin', 'settings-maven-repositories', 'not-found']
 
 const pageByKey = (key) => PAGES.find(page => page.key === key)
 
@@ -296,20 +300,23 @@ const currentTreeKey = (routeName, domain) => {
   return entry ? pageTreeKey(entry.key) : undefined
 }
 
-const adminGroups = (can, { domains = [], titleOf = (domain) => domain } = {}) => ADMIN_TREE
-  .map(group => {
-    const pages = group.entries
-      .filter(entry => entryAvailable(entry) && allowedBy(entry.permission, can))
-      .map(entry => ({ key: pageTreeKey(entry.key), label: entry.label, to: { name: entry.route } }))
-    const settingsLinks = can(ADMIN_NODES.settings)
-      ? domains
-        .filter(domain => treeGroupOf(domain) === group.heading)
-        .map(domain => ({ key: settingsTreeKey(domain), label: titleOf(domain), to: { name: 'settings', params: { domain } } }))
-      : []
-    return { heading: group.heading, links: [...pages, ...settingsLinks, ...pluginLinksOf(can, group.heading)] }
-  })
-  .concat([{ heading: PLUGINS_HEADING, links: pluginLinksOf(can, PLUGINS_HEADING) }])
-  .filter(group => group.links.length > 0)
+const adminGroups = (can, { domains: allDomains = [], titleOf = (domain) => domain } = {}) => {
+  const domains = allDomains.filter(domain => !DOMAINS_ON_OTHER_PAGES.includes(domain))
+  return ADMIN_TREE
+    .map(group => {
+      const pages = group.entries
+        .filter(entry => entryAvailable(entry) && allowedBy(entry.permission, can))
+        .map(entry => ({ key: pageTreeKey(entry.key), label: entry.label, to: { name: entry.route } }))
+      const settingsLinks = can(ADMIN_NODES.settings)
+        ? domains
+          .filter(domain => treeGroupOf(domain) === group.heading)
+          .map(domain => ({ key: settingsTreeKey(domain), label: titleOf(domain), to: { name: 'settings', params: { domain } } }))
+        : []
+      return { heading: group.heading, links: [...pages, ...settingsLinks, ...pluginLinksOf(can, group.heading)] }
+    })
+    .concat([{ heading: PLUGINS_HEADING, links: pluginLinksOf(can, PLUGINS_HEADING) }])
+    .filter(group => group.links.length > 0)
+}
 
 /*
  * Where the Administration entry of the rail opens: the hub when the visitor may open it, otherwise the first
@@ -338,7 +345,7 @@ const treeGroupOf = (domain) => {
 }
 
 const SETTINGS_GROUPS = [
-  { heading: 'Repository', domains: ['maven', 'javadoc', 'cleanup'] },
+  { heading: 'Repository', domains: ['javadoc', 'cleanup'] },
   { heading: 'Instance', domains: ['web', 'frontend'] },
   { heading: 'Data', domains: ['statistics', 'audit', 'search'] },
   { heading: 'Plugins', domains: [] }
@@ -432,6 +439,7 @@ export {
   visiblePages,
   visibleChildren,
   adminGroups,
+  DOMAINS_ON_OTHER_PAGES,
   currentTreeKey,
   pageTreeKey,
   administrationLocation,

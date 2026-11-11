@@ -103,6 +103,7 @@ const mountCard = async ({ client = fakeClient() } = {}) => {
     routes: [
       { path: '/', component: { render: () => null } },
       { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
+      { name: 'settings-repositories', path: '/settings/repositories', component: { render: () => null } },
       { name: 'token', path: '/tokens/:name', component: { render: () => null } },
       { path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
     ]
@@ -143,7 +144,7 @@ describe('GettingStartedCard', () => {
     await mountCard()
 
     expect($('[data-step-action="deploy-token"]').getAttribute('href')).toBe('/tokens/new')
-    expect($('[data-step-action="repository"]').getAttribute('href')).toBe('/settings/maven?new=repository')
+    expect($('[data-step-action="repository"]').getAttribute('href')).toBe('/settings/repositories?new=repository')
   })
 
   it('does not show itself to someone who does not manage the instance', async () => {

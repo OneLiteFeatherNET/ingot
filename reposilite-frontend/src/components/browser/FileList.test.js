@@ -316,8 +316,8 @@ describe('FileList edit members of a group', () => {
     await edit.trigger('click')
 
     expect(routerPush).toHaveBeenCalledWith({
-      name: 'settings-entry',
-      params: { domain: 'maven', collection: 'repositories', entry: 'releases' }
+      name: 'settings-repository',
+      params: { id: 'releases' }
     })
   })
 

@@ -109,7 +109,7 @@ describe('the settings hub at /settings', () => {
     await mountHub()
 
     expect(hub().findAll('[role="group"]').map(entry => entry.attributes('aria-label'))).toEqual(expect.arrayContaining(['Repository', 'System']))
-    expect(cardTitles('Repository'), 'the page of the repositories, then the domains of the group').toEqual(['Repositories', SCHEMAS.maven.title, SCHEMAS.javadoc.title, SCHEMAS.cleanup.title])
+    expect(cardTitles('Repository'), 'the page of the repositories, then the domains of the group').toEqual(['Repositories', SCHEMAS.javadoc.title, SCHEMAS.cleanup.title])
     expect(cardTitles('System'), 'the other domains, plugin domains included').toEqual([SCHEMAS.web.title, SCHEMAS.frontend.title, SCHEMAS.statistics.title, SCHEMAS.audit.title, 'Acme'])
   })
 
@@ -127,14 +127,14 @@ describe('the settings hub at /settings', () => {
     expect(group('Repository').text()).toContain('6 repositories')
   })
 
-  it('marks a domain with a draft change as unsaved and keeps its saved value', async () => {
+  it('marks the Repositories card as unsaved when the maven draft differs, and keeps its saved value', async () => {
     const { store } = await mountHub()
     store.setDomainData('maven', { repositories: sixRepositories().slice(0, 2) })
     await flushPromises()
 
-    const mavenCard = group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === SCHEMAS.maven.title)
-    expect(mavenCard.text()).toContain('Unsaved changes')
-    expect(mavenCard.text(), 'the card shows the saved value, not the draft').toContain('6 repositories')
+    const repositoriesCard = group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === 'Repositories')
+    expect(repositoriesCard.text()).toContain('Unsaved changes')
+    expect(repositoriesCard.text(), 'the card shows the saved value, not the draft').toContain('6 repositories')
     expect(group('System').text(), 'a domain without a change is not marked').not.toContain('Unsaved changes')
   })
 
@@ -154,14 +154,14 @@ describe('the settings hub at /settings', () => {
     expect(link.attributes('href')).toBe(router.resolve({ name: 'access' }).href)
   })
 
-  it('opens a domain from its card without writing the draft', async () => {
+  it('opens the Repositories card without writing the draft', async () => {
     const { store, router, client } = await mountHub()
     const before = JSON.stringify(store.configurations.value)
 
-    await group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === SCHEMAS.maven.title).trigger('click')
+    await group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === 'Repositories').trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
+    expect(router.currentRoute.value.fullPath).toBe('/settings/repositories')
     expect(JSON.stringify(store.configurations.value), 'the draft is unchanged').toBe(before)
     expect(store.hasUnsavedChanges.value).toBe(false)
     expect(client.update, 'nothing is saved').not.toHaveBeenCalled()

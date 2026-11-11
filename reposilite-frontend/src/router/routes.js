@@ -81,6 +81,9 @@ const ROUTES = [
   { name: 'settings-plugin', path: '/settings/plugins/:plugin/:page?', meta: { section: 'settings', manager: true } },
   // The repositories are a page of their own under /settings. Placed before the generic settings route, which would take `repositories` as a domain.
   { name: 'settings-repositories', path: '/settings/repositories', meta: routeMeta('settings') },
+  // The list address of the Maven page, which had no page of its own. The Repositories page replaces it, so the address leads there.
+  // The generic settings route takes /settings/maven itself, and the guard in create.js moves that one, with its query.
+  { name: 'settings-maven-repositories', path: '/settings/maven/repositories', redirect: { name: 'settings-repositories' } },
   { name: 'settings-repository', path: '/settings/repositories/:id', meta: routeMeta('settings') },
   // The support pages are listed before the generic settings route, which would otherwise take their names as domains.
   { name: 'system-info', path: '/settings/system-info', meta: adminRouteMeta('system-info') },

@@ -44,8 +44,9 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/audit` | `audit` | Audit log. The audit events. The filters are kept in the query string. | Node `ingot.admin.audit`. | Router and Backend |
 | `/settings` and `/settings/:domain` | `settings` | Settings. The shared configuration. Without `:domain` the page is the settings hub; the optional `:domain` opens that settings domain. When the user sees only one domain, `/settings` is replaced with that domain. | Node `ingot.admin.settings`. | Router (`/settings/:domain?`) and Backend (`/settings`, `/settings/<path>`) |
 | `/settings/plugins/<plugin>/<page>` | `settings-plugin` | A dashboard page a server plugin contributed, drawn from the blocks the plugin registered. See [Plugin API](plugin-api.md#dashboard-pages). | The area the plugin gave the page, or the instance admin for `*`. Checked by the dashboard and by the server. | Router and Backend (below `/settings`, so no change is needed in `APP_ROUTES`) |
-| `/settings/repositories` | `settings-repositories` | Administration, Repository, **Repositories**. The table of the repositories of the `maven` domain. `?new=repository` opens the wizard once. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
+| `/settings/repositories` | `settings-repositories` | Administration, Repository, **Repositories**. The table of the repositories of the `maven` domain, and below it the **Maven options** of the domain. `?new=repository` opens the wizard once. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
 | `/settings/repositories/:id` | `settings-repository` | Repositories, the page of one repository. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
+| `/settings/maven` and `/settings/maven/repositories` | `settings-maven-repositories` | The Maven page is retired. Both addresses redirect to `/settings/repositories`, and `/settings/maven` keeps its query. | Node `ingot.admin.settings`, checked on the Repositories page. | Router. Backend (`/settings/<path>`) |
 | `/settings/:domain/:collection/:entry` | `settings-entry` | Settings, one entry of a collection in a domain. `/settings/maven/repositories/<id>` redirects to `/settings/repositories/<id>`. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
 | `/settings/login` | `settings-login` | Redirects to `/access/sso`. The sign in settings are edited under Access. | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/settings/<path>`) |
 | `/settings/system-info` | `system-info` | System information. The version and build, the JVM, the operating system, the database kind and endpoint, the storage, the cluster, the plugins, and the redacted environment and configuration of the instance. Listed under Administration, in the group Support. | Node `ingot.admin.console`, and only while the support bundle is on. | Router and Backend (`/settings/<path>`) |
@@ -72,7 +73,7 @@ The heading and the page actions form one row above the columns from 600 pixels.
 
 | Group | Pages and addresses |
 | --- | --- |
-| **Repository** | **Repositories** (`/settings/repositories`), **Cleanup policies** (`/settings/cleanup`), **Maven settings** (`/settings/maven`, the rest of the `maven` domain), **Javadoc** (`/settings/javadoc`) |
+| **Repository** | **Repositories** (`/settings/repositories`, which also edits the `maven` domain), **Cleanup policies** (`/settings/cleanup`), **Javadoc** (`/settings/javadoc`) |
 | **Security** | **Users** (`/access/users`), **Machine accounts** (`/access/machines`), **Teams** (`/access/teams`), **SSO** (`/access/sso`), **LDAP** (`/access/ldap`), **Security settings** (`/access/security`), **Permission check** (`/access/check`), **Audit log** (`/audit`) |
 | **System** | Every other settings domain, including the domains that plugins add, each at `/settings/<domain>` |
 | **Support** | **Console** (`/console`), **Maintenance** (`/maintenance`), **Analytics** (`/analytics`) |
@@ -81,10 +82,12 @@ On a screen narrower than 600px the tree is an index list of the groups. A page 
 
 ### Redirects to the Repositories page
 
-Repositories used to be edited under **Settings**, then **Maven**. Those addresses keep working:
+Repositories used to be edited under **Settings**, then **Maven**. The Maven page is retired, and everything an operator does with it is on the Repositories page. Those addresses keep working:
 
 | Old address | Opens |
 | --- | --- |
+| `/settings/maven` | `/settings/repositories`, with the query kept. |
+| `/settings/maven/repositories` | `/settings/repositories`. |
 | `/settings/maven/repositories/<id>` | `/settings/repositories/<id>`, the page of the same repository. |
 | `/settings/maven?new=repository` | `/settings/repositories?new=repository`, which opens the wizard once. The query is kept. |
 
@@ -96,7 +99,7 @@ The name `repositories` is a page under `/settings`, not a settings domain. A se
 
 ### Settings hub
 
-Opened without a domain, `/settings` shows the hub: the settings domains as cards in the groups **Repository** (`maven`, `javadoc`, `cleanup`) and **System** (every other domain, including the domains of plugins). A card shows the title of the domain and its saved value, for example "6 repositories", or the description of the domain when it has no collections. A card of a domain with unsaved draft changes also shows "Unsaved changes". Opening a card only changes the address and does not write the draft. A group without a card is left out. The domains `login` and `authentication` have no card, because they are edited under Access. The last line of the hub, "Sign-in and security live in Access", links to `/access`. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
+Opened without a domain, `/settings` shows the hub: the settings domains as cards in the groups **Repository** (`javadoc`, `cleanup`, after the card of the Repositories page, which edits the `maven` domain) and **System** (every other domain, including the domains of plugins). A card shows the title of the domain and its saved value, for example "6 repositories" on the Repositories card, or the description of the domain when it has no collections. A card of a domain with unsaved draft changes also shows "Unsaved changes". Opening a card only changes the address and does not write the draft. A group without a card is left out. The domains `login` and `authentication` have no card, because they are edited under Access. The last line of the hub, "Sign-in and security live in Access", links to `/access`. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
 
 ### Client-side guards
 

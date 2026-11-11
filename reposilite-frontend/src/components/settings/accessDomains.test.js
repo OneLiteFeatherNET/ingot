@@ -34,11 +34,16 @@ describe('accessDomains', () => {
   })
 
   it('takes the managed domains out of the tabs and keeps the order of the others', () => {
-    expect(settingsTabDomains(['maven', 'login', 'ingot'])).toEqual(['maven', 'ingot'])
+    expect(settingsTabDomains(['javadoc', 'login', 'ingot'])).toEqual(['javadoc', 'ingot'])
     expect(settingsTabDomains(['login'])).toEqual([])
   })
 
+  it('takes the maven domain out of the tabs, because it is edited on the Repositories page', () => {
+    expect(settingsTabDomains(['maven', 'ingot'])).toEqual(['ingot'])
+    expect(settingsTabDomains(['maven'])).toEqual([])
+  })
+
   it('takes the authentication domain out of the tabs, because it is edited under Access', () => {
-    expect(settingsTabDomains(['maven', 'authentication', 'login'])).toEqual(['maven'])
+    expect(settingsTabDomains(['web', 'authentication', 'login'])).toEqual(['web'])
   })
 })

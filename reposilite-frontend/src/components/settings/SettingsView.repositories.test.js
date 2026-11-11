@@ -16,9 +16,11 @@
 
 import { stubRoutes } from './fixtures/routes'
 import { describe, it, expect, vi, afterEach } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createRouter, useRoute } from 'vue-router'
 import { configurationStoreKey } from '../../store/configuration'
+import { createAppRouter } from '../../router/create'
 import SettingsView from './SettingsView.vue'
 import { loadedStore, repositorySchema } from '../repositories/fixtures/repositories'
 
@@ -106,12 +108,54 @@ describe('the Repositories page inside Settings', () => {
     expect(router.currentRoute.value.name, 'the Edit item opens the repository detail').toBe('settings-repository')
   })
 
-  it('links the maven page to the Repositories page instead of listing the repositories there', async () => {
-    await mountSettings({ address: '/settings/maven', props: { domain: 'maven' } })
+})
 
-    expect(wrapper.find('#repositories-title').exists(), 'the maven page does not list the repositories').toBe(false)
-    const link = wrapper.find('a[href="/settings/repositories"]')
-    expect(link.exists(), 'the card links to the Repositories page').toBe(true)
-    expect(link.text(), 'the link is named after the repositories').toContain('Repositories')
+describe('the Maven page address', () => {
+  // The application router, so the redirect of the old address runs as it does in the dashboard.
+  const AppHost = defineComponent({
+    setup() {
+      const route = useRoute()
+      return () => (route.name?.startsWith('settings')
+        ? h(SettingsView, { selectedTab: 'Settings', domain: route.params.domain, collection: route.params.collection, entry: route.params.entry })
+        : null)
+    }
+  })
+
+  const mountAppAt = async (address) => {
+    const router = createAppRouter({
+      history: createMemoryHistory(),
+      component: AppHost,
+      legacy: () => null,
+      siteTitle: 'Ingot Repository',
+      can: () => true,
+      isManager: () => true
+    })
+    await router.push(address)
+    await router.isReady()
+    // The served maven schema declares the one domain-level field, so the Maven options section has a field to show.
+    const schema = repositorySchema({ versionPolicy: true, readOnly: true })
+    schema.properties.resolutionCacheClusterMaxAgeSeconds = { type: 'integer', title: 'Resolution cache maximum age in cluster mode' }
+    const store = await loadedStore({ schema })
+    wrapper = mount(AppHost, {
+      global: { plugins: [router], provide: { [configurationStoreKey]: store } },
+      attachTo: document.body
+    })
+    await flushPromises()
+    return { router }
+  }
+
+  it('opens the Repositories page at the address of the Maven page, with no Maven link card', async () => {
+    const { router } = await mountAppAt('/settings/maven')
+
+    expect(router.currentRoute.value.name).toBe('settings-repositories')
+    expect(wrapper.find('h2').text()).toBe('Repositories')
+    expect(wrapper.find('#maven-repositories-link-title').exists(), 'the card that linked to the page is gone').toBe(false)
+  })
+
+  it('shows the Maven options once, on the Repositories page', async () => {
+    await mountAppAt('/settings/maven')
+
+    const headings = wrapper.findAll('h2').map(heading => heading.text())
+    expect(headings.filter(text => text === 'Maven options'), 'one section of Maven options').toHaveLength(1)
   })
 })

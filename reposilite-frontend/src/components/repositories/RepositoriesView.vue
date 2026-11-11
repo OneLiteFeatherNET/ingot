@@ -26,6 +26,7 @@ import { configurationStoreKey, useConfiguration } from '../../store/configurati
 import usePlaceholders from '../../store/placeholders'
 import { copyToClipboard } from '../card/copySnippet'
 import RepositoriesTable from './RepositoriesTable.vue'
+import MavenOptionsPanel from './MavenOptionsPanel.vue'
 import { captionOf, filterRows, rowsOf, sortRows } from './repositoryRows'
 import { groupsReferencing } from './repositoryReferences'
 
@@ -221,6 +222,7 @@ const confirmDelete = () => {
         @copy="copyAddress"
         @delete="askDelete"
       />
+      <MavenOptionsPanel />
     </template>
 
     <RepositoryWizard v-model="wizardOpen" />

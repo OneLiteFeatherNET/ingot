@@ -46,6 +46,6 @@ describe('plugin page address', () => {
   })
 
   it('keeps a settings domain on its own route', () => {
-    expect(nameOf('/settings/maven')).toBe('settings')
+    expect(nameOf('/settings/web')).toBe('settings')
   })
 })

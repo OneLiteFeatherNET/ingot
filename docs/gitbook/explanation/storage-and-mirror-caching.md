@@ -114,7 +114,7 @@ The cache lives in memory, in each server process. A restart empties it. Each in
 
 ### Maximum age in cluster mode
 
-When a cluster bus is configured, a routing decision expires after a maximum age even if no invalidation arrived. The setting `resolutionCacheClusterMaxAgeSeconds` in the `maven` domain sets that age in seconds. A value of `0` uses the cluster default of 300 seconds. The age is measured from when the decision was recorded, and a lookup does not renew it. An expired decision is dropped, and the next request resolves the file again.
+When a cluster bus is configured, a routing decision expires after a maximum age even if no invalidation arrived. The setting `resolutionCacheClusterMaxAgeSeconds` in the `maven` domain sets that age in seconds. It is edited on the Repositories page, under Maven options. A value of `0` uses the cluster default of 300 seconds. The age is measured from when the decision was recorded, and a lookup does not renew it. An expired decision is dropped, and the next request resolves the file again.
 
 Without a cluster bus the setting has no effect, so a single instance keeps the lifetime described above.
 

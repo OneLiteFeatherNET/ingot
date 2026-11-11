@@ -21,6 +21,10 @@ The **Repositories** page of the dashboard, at `/settings/repositories`, lists t
 
 The page edits the same draft as the rest of **Settings**. A change made on the page waits in the save bar with every other unsaved change, and **Save** writes the `maven` domain. The page adds no endpoint of its own.
 
+### Maven options
+
+Below the table, the section **Maven options** edits the fields of the `maven` domain that are not repositories. Today that is one field, `resolutionCacheClusterMaxAgeSeconds`, the maximum age of a cached routing decision in cluster mode. See [Maven domain](settings-domains.md#maven). The section is saved with the repositories, and a change to it does not change any repository.
+
 ### Columns
 
 The table lists every repository of the draft. A repository that is not saved yet has the text **Unsaved** in its row.

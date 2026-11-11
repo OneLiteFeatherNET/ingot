@@ -50,7 +50,7 @@ const open = computed({
 
 const hrefOf = (repository) => router.resolve(visibilityRoute(repository)).href
 
-const visibilityRoute = (repository) => `/settings/maven/repositories/${encodeURIComponent(repository.id)}`
+const visibilityRoute = (repository) => `/settings/repositories/${encodeURIComponent(repository.id)}`
 
 const follow = (repository) => {
   open.value = false
