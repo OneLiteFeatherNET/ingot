@@ -81,11 +81,11 @@ describe('configuration store with the schema dialect of the backend', () => {
 })
 
 describe('configuration store', () => {
-  it('selects the first settings tab by default, never the domain that is managed under Access', async () => {
-    const server = { login: { ldap: {} }, maven: { name: 'server-maven' } }
+  it('selects the first settings tab by default, never the domain that is managed under Access or on another page', async () => {
+    const server = { login: { ldap: {} }, maven: { name: 'server-maven' }, ingot: { name: 'server-ingot' } }
     const client = {
       settings: {
-        domains: async () => ({ data: ['login', 'maven'] }),
+        domains: async () => ({ data: ['login', 'maven', 'ingot'] }),
         schema: async (domain) => ({ data: { ...SCHEMA, title: domain } }),
         fetch: async (domain) => ({ data: { ...server[domain] } }),
         update: async () => ({ data: {} })
@@ -94,7 +94,7 @@ describe('configuration store', () => {
 
     const store = await loadedStore(client)
 
-    expect(store.selectedDomain.value).toBe('maven')
+    expect(store.selectedDomain.value, 'maven is edited on the Repositories page, so the first tab is ingot').toBe('ingot')
   })
 
   it('keeps the edited values dirty when saving fails', async () => {

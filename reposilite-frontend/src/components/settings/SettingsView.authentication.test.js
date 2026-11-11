@@ -81,11 +81,12 @@ const mountSettings = async (domain = 'maven') => {
 
 describe('settings tabs without authentication', () => {
   it('does not offer an Authentication tab, because the domain is edited under Access', async () => {
-    await mountSettings('maven')
+    await mountSettings('ingot')
 
     const links = wrapper.findAll('[aria-label="Administration"] a').map(link => link.text())
-    expect(links, 'the domains are in the Administration tree').toEqual(expect.arrayContaining(['Maven', 'Ingot']))
+    expect(links, 'the domains are in the Administration tree').toEqual(expect.arrayContaining(['Ingot']))
     expect(links, 'no Authentication link, the domain is edited under Access').not.toContain('Authentication')
+    expect(links, 'no Maven link, the domain is edited on the Repositories page').not.toContain('Maven')
   })
 
   it('still renders the danger zone below the page', async () => {

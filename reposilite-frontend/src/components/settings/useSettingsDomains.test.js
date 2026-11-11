@@ -67,7 +67,7 @@ describe('useSettingsDomains', () => {
     const mounted = await mountProbe()
     wrapper = mounted.wrapper
 
-    expect(mounted.result.domains.value, 'the authentication domain is edited under Access, so it is left out').toEqual(['web', 'maven'])
+    expect(mounted.result.domains.value, 'the authentication domain is edited under Access and maven on the Repositories page, so both are left out').toEqual(['web'])
   })
 
   it('takes the title of a domain from its schema, as the settings page does', async () => {

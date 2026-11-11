@@ -87,7 +87,7 @@ const MIRRORS_SERVER = {
   ingot: { name: 'ingot', mirrors: [{ id: 'releases', visibility: 'PUBLIC' }, { id: 'snapshots', visibility: 'PRIVATE' }] }
 }
 
-const SCHEMAS = { maven: MAVEN_SCHEMA, ingot: INGOT_SCHEMA }
+const SCHEMAS = { maven: MAVEN_SCHEMA, ingot: INGOT_SCHEMA, web: { title: 'Web', description: 'General web settings', properties: {} } }
 
 const fakeClient = (server = SERVER) => ({
   server,
@@ -166,12 +166,13 @@ describe('SettingsView page', () => {
     const store = await loadedStore()
     store.domains.value = ['login', 'maven', 'ingot']
     store.schemas.value.login = { title: 'Login' }
-    await mountSettings({ store, props: { domain: 'maven' } })
+    await mountSettings({ store, props: { domain: 'ingot' } })
 
     // The Administration tree replaces the tabs of the domains (administration-navigation spec).
     const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
-    expect(links, 'Maven and Ingot are in the tree').toEqual(expect.arrayContaining(['Maven', 'Ingot']))
+    expect(links, 'Ingot is in the tree').toEqual(expect.arrayContaining(['Ingot']))
     expect(links, 'Login is edited under Access, not in the tree').not.toContain('Login')
+    expect(links, 'Maven is edited on the Repositories page, not in the tree').not.toContain('Maven')
   })
 
   it('shows the login domain as a card with links to its pages under Access when it is opened', async () => {
@@ -188,10 +189,11 @@ describe('SettingsView page', () => {
   })
 
   it('shows one link per domain when there is more than one, in the Administration tree', async () => {
-    await mountSettings({ props: { domain: 'maven' } })
+    await mountSettings({ props: { domain: 'ingot' } })
 
     const links = wrapper.findAll('[aria-label="Administration"] a').map(tab => tab.text())
-    expect(links, 'the domains are links of the tree').toEqual(expect.arrayContaining(['Maven', 'Ingot']))
+    expect(links, 'the domains are links of the tree, the Maven domain is on the Repositories page').toEqual(expect.arrayContaining(['Ingot']))
+    expect(links).not.toContain('Maven')
   })
 
   it('puts the factory reset in a danger zone at the end of the page', async () => {
@@ -200,9 +202,6 @@ describe('SettingsView page', () => {
     const zone = wrapper.get('section[aria-labelledby="settings-danger-title"]')
     expect(zone.text()).toContain('Danger zone')
     expect(zone.findAll('button').map(button => button.text())).toContain('Factory reset')
-    // The maven domain page links to the Repositories page instead of listing the repositories (spec: Table columns).
-    const collection = wrapper.get('section[aria-labelledby="maven-repositories-link-title"]')
-    expect(collection.element.compareDocumentPosition(zone.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('hides the action bar while nothing is unsaved', async () => {
@@ -385,7 +384,7 @@ describe('SettingsView driven by the router', () => {
   })
 
   it('keeps an address that names no domain and shows the hub when there are several domains', async () => {
-    const { router } = await mountAt(['/', '/settings'])
+    const { router } = await mountAt(['/', '/settings'], { ...SERVER, web: {} })
 
     expect(router.currentRoute.value.fullPath).toBe('/settings')
     expect(wrapper.find('[data-test="settings-hub"]').exists()).toBe(true)
@@ -420,8 +419,8 @@ describe('SettingsView driven by the router', () => {
   it('corrects an address that names a domain the server does not have, once, to the first domain', async () => {
     const { router } = await mountAt(['/', '/settings/ghost'])
 
-    expect(router.currentRoute.value.fullPath).toBe('/settings/maven')
-    expect(wrapper.find('#maven-repositories-link-title').exists(), 'the first domain is the one on screen').toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/settings/ingot')
+    expect(wrapper.find('#maven-repositories-link-title').exists(), 'the Maven page is not the first domain any more').toBe(false)
   })
 
   it('leads the not-found pane back to the domain list through the router', async () => {
