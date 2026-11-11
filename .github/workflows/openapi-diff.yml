@@ -1,0 +1,108 @@
+# Compares the OpenAPI snapshot of a pull request with the one on its base branch and fails when the REST API breaks.
+#
+# A breaking change fails the check unless the pull request title declares it with `!` after the type or scope. That is the
+# same marker release-please reads as a major version, so the title and the release agree. With the marker the changes are
+# reported and the check passes. The snapshot itself is kept equal to the served document by OpenApiSnapshotIntegrationTest,
+# so this workflow compares two committed files and builds nothing.
+#
+# The tool runs from the image digest below, not through the oasdiff GitHub action. The action's own image is built from a
+# floating tag, and its entrypoint can upload the specs for a review link. Here the specs stay in the runner.
+name: "OpenAPI diff"
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    # edited: fixing the title to add or remove the marker reruns the check without a new push.
+    types: [ "opened", "synchronize", "reopened", "edited" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "openapi-diff-${{ github.event.pull_request.number }}"
+  cancel-in-progress: true
+
+jobs:
+  breaking:
+    name: "OpenAPI breaking changes"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      # Reads the snapshot of the base branch from its commit and the snapshot of the pull request from the checkout. A
+      # missing snapshot on the base branch means there is nothing to compare yet. A pull request that deletes the
+      # snapshot fails here, whatever its title says, because the freshness test would fail on it too.
+      - name: "Read the snapshots of the base branch and the pull request"
+        id: snapshots
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          snapshot="docs/openapi/ingot-openapi.json"
+
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+
+          if ! git cat-file -e "$BASE_SHA:$snapshot" 2>/dev/null; then
+            echo "The base branch has no OpenAPI snapshot yet, there is nothing to compare."
+            echo "compare=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ ! -f "$snapshot" ]; then
+            echo "::error::This pull request removes $snapshot. Restore it, or refresh it with -PrefreshOpenApiSnapshot as described in the contributing docs."
+            exit 1
+          fi
+
+          mkdir -p openapi-diff
+          git show "$BASE_SHA:$snapshot" > openapi-diff/base.json
+          cp "$snapshot" openapi-diff/revision.json
+
+          if cmp -s openapi-diff/base.json openapi-diff/revision.json; then
+            echo "The snapshot is unchanged, there is nothing to compare."
+            echo "compare=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "compare=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The title is read through the environment and never written into the script, so a title cannot change what runs.
+      # The rule is the one release-please applies: a type, an optional scope, and `!` before the colon.
+      - name: "Read the breaking marker of the pull request title"
+        id: title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          marker='^[a-z]+(\([^)]+\))?!:'
+          if [[ "$PR_TITLE" =~ $marker ]]; then
+            echo "declared=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "declared=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Without the marker, error-level changes fail the check. oasdiff's default levels decide what is an error: removed
+      # endpoints and methods, new required request fields, changed types and narrowed responses.
+      - name: "Report breaking changes, failing on error level"
+        id: enforced
+        if: steps.snapshots.outputs.compare == 'true' && steps.title.outputs.declared == 'false'
+        uses: docker://tufin/oasdiff@sha256:ff02af37a254b5199b9d72e7bba93dae5837a9119d59459168d1398893b47aea  # v1.37.0
+        with:
+          args: breaking /github/workspace/openapi-diff/base.json /github/workspace/openapi-diff/revision.json --fail-on ERR
+
+      # With the marker the same changes are reported and do not fail the check, which is what the title declared.
+      - name: "Report breaking changes, declared in the title"
+        id: declared
+        if: steps.snapshots.outputs.compare == 'true' && steps.title.outputs.declared == 'true'
+        uses: docker://tufin/oasdiff@sha256:ff02af37a254b5199b9d72e7bba93dae5837a9119d59459168d1398893b47aea  # v1.37.0
+        with:
+          args: breaking /github/workspace/openapi-diff/base.json /github/workspace/openapi-diff/revision.json
+
+      - name: "Explain how to declare an intended break"
+        if: failure() && steps.enforced.outcome == 'failure'
+        run: |
+          echo "::error::This pull request breaks the REST API without a marker."
+          echo "If the break is intended, add ! after the type or scope of the title, for example fix(api)!: drop the route,"
+          echo "add a BREAKING CHANGE: footer to the commit, and refresh docs/openapi/ingot-openapi.json. The contributing"
+          echo "section of docs/gitbook/reference/http-api.md describes the refresh command."
