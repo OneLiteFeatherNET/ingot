@@ -103,6 +103,7 @@ const mountCard = async ({ client = fakeClient() } = {}) => {
     routes: [
       { path: '/', component: { render: () => null } },
       { name: 'settings', path: '/settings/:domain?', component: { render: () => null } },
+      { name: 'settings-repositories', path: '/settings/repositories', component: { render: () => null } },
       { name: 'token', path: '/tokens/:name', component: { render: () => null } },
       { path: '/settings/:domain/:collection/:entry', component: { render: () => null } }
     ]
