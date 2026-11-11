@@ -77,9 +77,10 @@ describe('the Migration entry of the navigation', () => {
 
 describe('the settings domains', () => {
   it('does not use the name migration for any bundled settings domain', () => {
-    const bundled = ['maven', 'javadoc', 'cleanup', 'web', 'frontend', 'statistics', 'audit', 'search']
+    // The maven domain is edited on the Repositories page, so it has no link of its own in the tree.
+    const bundled = ['javadoc', 'cleanup', 'web', 'frontend', 'statistics', 'audit', 'search']
 
-    const domainLinks = adminGroups(instanceAdmin, { domains: bundled })
+    const domainLinks = adminGroups(instanceAdmin, { domains: [...bundled, 'maven'] })
       .flatMap(group => group.links)
       .filter(link => link.to.name === 'settings')
 

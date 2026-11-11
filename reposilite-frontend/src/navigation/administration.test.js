@@ -130,10 +130,18 @@ describe('the Administration tree', () => {
     })
   })
 
-  it('puts the maven, javadoc and cleanup domains under Repository', () => {
-    const groups = adminGroups(everything, { domains: ['maven', 'javadoc', 'cleanup', 'web'] })
-    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['page:repositories', 'settings:maven', 'settings:javadoc', 'settings:cleanup'])
+  it('puts the javadoc and cleanup domains under Repository, after the Repositories page', () => {
+    const groups = adminGroups(everything, { domains: ['javadoc', 'cleanup', 'web'] })
+    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['page:repositories', 'settings:javadoc', 'settings:cleanup'])
     expect(linksOf(groups, 'System').map(link => link.key)).toEqual(['settings:web'])
+  })
+
+  it('lists no Maven entry for the maven domain, which is edited on the Repositories page', () => {
+    const groups = adminGroups(everything, { domains: ['maven', 'javadoc', 'cleanup', 'web'] })
+    expect(allLinks(groups).map(link => link.key), 'no maven key anywhere in the tree').not.toContain('settings:maven')
+    const titles = { javadoc: 'Javadoc', cleanup: 'Cleanup policies' }
+    const labelled = adminGroups(everything, { domains: ['maven', 'javadoc', 'cleanup'], titleOf: (domain) => titles[domain] })
+    expect(linksOf(labelled, 'Repository').map(link => link.label)).toEqual(['Repositories', 'Javadoc', 'Cleanup policies'])
   })
 
   it('lists no settings domain to a visitor without the settings node', () => {

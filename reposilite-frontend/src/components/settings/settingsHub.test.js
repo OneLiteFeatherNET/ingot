@@ -79,31 +79,31 @@ describe('domainSummary', () => {
 })
 
 describe('hubGroups', () => {
-  it('places the maven domain in Repository, and the other domains, unnamed ones too, in System', () => {
+  it('shows no card for the maven domain, and places the other domains, unnamed ones too, in System', () => {
     const groups = hubGroups(fixture())
 
-    expect(domainCards(groups.find(group => group.heading === 'Repository')).map(card => card.key), 'the repository domain').toEqual(['settings:maven'])
+    expect(groups.flatMap(group => domainCards(group).map(card => card.key)), 'no maven card').not.toContain('settings:maven')
     expect(domainCards(groups.find(group => group.heading === 'System')).map(card => card.key), 'the other domains').toEqual(['settings:web', 'settings:acme'])
   })
 
-  it('gives a card its title, the saved summary and the address of its domain', () => {
+  it('gives the Repositories page the saved summary of the maven domain, since the domain is edited there', () => {
     const repository = hubGroups(fixture()).find(group => group.heading === 'Repository')
 
-    expect(repository.cards.find(card => card.key === 'settings:maven')).toEqual({
-      key: 'settings:maven',
-      title: 'Maven',
+    expect(repository.cards.find(card => card.key === 'page:repositories')).toEqual({
+      key: 'page:repositories',
+      title: 'Repositories',
       summary: '6 repositories',
       unsaved: false,
-      to: { name: 'settings', params: { domain: 'maven' } }
+      to: { name: 'settings-repositories' }
     })
   })
 
-  it('marks a domain with a draft change and keeps its saved summary', () => {
+  it('marks the Repositories page when the maven draft differs, and keeps its saved summary', () => {
     const groups = hubGroups(fixture({ unsaved: ['maven'] }))
-    const maven = domainCards(groups.find(group => group.heading === 'Repository'))[0]
+    const repositories = groups.find(group => group.heading === 'Repository').cards.find(card => card.key === 'page:repositories')
 
-    expect(maven.unsaved).toBe(true)
-    expect(maven.summary, 'the card shows the saved value, not the draft').toBe('6 repositories')
+    expect(repositories.unsaved).toBe(true)
+    expect(repositories.summary, 'the card shows the saved value, not the draft').toBe('6 repositories')
   })
 
   it('leaves out every settings domain from a visitor without the settings node', () => {
@@ -112,9 +112,9 @@ describe('hubGroups', () => {
     expect(groups.flatMap(group => domainCards(group)), 'no domain card is offered').toEqual([])
   })
 
-  it('leaves out the domains that are edited under Access', () => {
+  it('leaves out the domains that are edited under Access, and the maven domain', () => {
     const groups = hubGroups(fixture({ domains: ['maven', 'login', 'authentication'] }))
 
-    expect(groups.flatMap(group => domainCards(group).map(card => card.key))).toEqual(['settings:maven'])
+    expect(groups.flatMap(group => domainCards(group).map(card => card.key))).toEqual([])
   })
 })

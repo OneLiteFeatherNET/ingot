@@ -27,6 +27,10 @@ describe('unlistedRoutes', () => {
     expect(unlistedRoutes(['search', 'access-teams', 'access-team'])).toEqual([])
   })
 
+  it('accepts the redirect route of the old Maven page address as exempt', () => {
+    expect(unlistedRoutes(['settings-maven-repositories'])).toEqual([])
+  })
+
   it('accepts a legacy redirect name that the registry lists as exempt', () => {
     expect(unlistedRoutes(['tokens'])).toEqual([])
   })
