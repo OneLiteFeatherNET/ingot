@@ -93,15 +93,12 @@ class PluginLoader(
     }
 
     /**
-     * Loads the jars of [bundledPluginsDirectory] after the plugins directory, and only when the metrics switch is on. A plugin
-     * whose id is already registered, by a jar of the plugins directory or by a built-in plugin, is skipped, so the operator's
-     * own copy keeps working and start-up does not fail on the duplicate id.
+     * Loads the jars of [bundledPluginsDirectory] after the plugins directory. Each jar follows the switch of its own entry in
+     * [BUNDLED_SWITCHES]; a jar the table does not know follows the metrics switch, as every bundled jar did before the table
+     * existed. A plugin whose id is already registered, by a jar of the plugins directory or by a built-in plugin, is skipped,
+     * so the operator's own copy keeps working and start-up does not fail on the duplicate id.
      */
     private fun loadBundledPlugins() {
-        if (!isMetricsSwitchOn()) {
-            return
-        }
-
         if (bundledPluginsDirectory.notExists() || !bundledPluginsDirectory.isDirectory()) {
             extensions.logger.debug("Bundled plugins directory $bundledPluginsDirectory does not exist, nothing to load")
             return
@@ -110,9 +107,14 @@ class PluginLoader(
         val jars = bundledPluginsDirectory.useDirectoryEntries { entries ->
             entries
                 .filter { it.extension == "jar" }
+                .filter { isBundledJarSwitchedOn(it.fileName.toString()) }
                 .filter { isValidJarFile(it.toFile()) }
                 .map { it.toUri().toURL() }
                 .toList()
+        }
+
+        if (jars.isEmpty()) {
+            return
         }
 
         ServiceLoader.load(ReposilitePlugin::class.java, URLClassLoader(jars.toTypedArray(), ReposilitePlugin::class.java.classLoader))
@@ -128,13 +130,8 @@ class PluginLoader(
             }
     }
 
-    private fun isMetricsSwitchOn(): Boolean {
-        val current = environment[METRICS_SWITCH]?.trim()
-        if (current != null) {
-            return current.equals("true", ignoreCase = true)
-        }
-        return environment[LEGACY_METRICS_SWITCH]?.trim().equals("true", ignoreCase = true)
-    }
+    private fun isBundledJarSwitchedOn(fileName: String): Boolean =
+        (BUNDLED_SWITCHES[fileName] ?: METRICS_SWITCH_OF_JAR).isOn(environment)
 
     private fun isValidJarFile(file: File): Boolean =
         supplyThrowing { JarFile(file) }
@@ -142,10 +139,34 @@ class PluginLoader(
             .onError { extensions.logger.warn("Invalid JAR file: ${file.absolutePath}") }
             .isOk
 
+    /**
+     * The switch of one bundled jar. The `INGOT_` name wins whenever it is set, even to `false`; the `REPOSILITE_` name is the
+     * fallback for installations that predate the rename.
+     */
+    class BundledSwitch(private val ingotName: String, private val legacyName: String) {
+        fun isOn(environment: Map<String, String>): Boolean {
+            val current = environment[ingotName]?.trim()
+            if (current != null) {
+                return current.equals("true", ignoreCase = true)
+            }
+            return environment[legacyName]?.trim().equals("true", ignoreCase = true)
+        }
+    }
+
     companion object {
         const val DEFAULT_BUNDLED_PLUGINS_DIRECTORY: String = "/app/bundled-plugins"
         const val METRICS_SWITCH: String = "INGOT_METRICS_ENABLED"
         const val LEGACY_METRICS_SWITCH: String = "REPOSILITE_METRICS_ENABLED"
+        const val NEXUS_IMPORT_SWITCH: String = "INGOT_NEXUS_IMPORT_ENABLED"
+        const val LEGACY_NEXUS_IMPORT_SWITCH: String = "REPOSILITE_NEXUS_IMPORT_ENABLED"
+
+        private val METRICS_SWITCH_OF_JAR = BundledSwitch(METRICS_SWITCH, LEGACY_METRICS_SWITCH)
+
+        /** The bundled jars by file name and the switch each one follows. */
+        val BUNDLED_SWITCHES: Map<String, BundledSwitch> = mapOf(
+            "prometheus-plugin.jar" to METRICS_SWITCH_OF_JAR,
+            "nexus-import-plugin.jar" to BundledSwitch(NEXUS_IMPORT_SWITCH, LEGACY_NEXUS_IMPORT_SWITCH),
+        )
     }
 
 }

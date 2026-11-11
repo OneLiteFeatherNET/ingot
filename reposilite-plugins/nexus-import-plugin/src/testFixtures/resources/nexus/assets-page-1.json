@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "downloadUrl": "{BASE}/repository/releases/com/example/app/1.0.0/app-1.0.0.jar",
+      "path": "com/example/app/1.0.0/app-1.0.0.jar",
+      "id": "cmVsZWFzZXM6YTFiMmMz",
+      "repository": "releases",
+      "format": "maven2",
+      "checksum": {
+        "sha1": "0000000000000000000000000000000000000001",
+        "md5": "00000000000000000000000000000001"
+      },
+      "contentType": "application/java-archive",
+      "lastModified": "2026-01-15T10:00:00.000+00:00",
+      "fileSize": 2048
+    },
+    {
+      "downloadUrl": "{BASE}/repository/releases/com/example/app/1.0.0/app-1.0.0.pom",
+      "path": "com/example/app/1.0.0/app-1.0.0.pom",
+      "id": "cmVsZWFzZXM6ZDRlNWY2",
+      "repository": "releases",
+      "format": "maven2",
+      "checksum": {
+        "sha1": "0000000000000000000000000000000000000002",
+        "md5": "00000000000000000000000000000002"
+      },
+      "contentType": "application/x-maven-pom+xml",
+      "lastModified": "2026-01-15T10:00:01.000+00:00",
+      "fileSize": 1024
+    }
+  ],
+  "continuationToken": "example-continuation-token-page-2"
+}

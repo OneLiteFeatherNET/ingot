@@ -1,0 +1,17 @@
+{
+  "name": "snapshots",
+  "format": "maven2",
+  "type": "hosted",
+  "url": "{BASE}/repository/snapshots",
+  "online": true,
+  "storage": {
+    "blobStoreName": "default",
+    "strictContentTypeValidation": true,
+    "writePolicy": "DENY"
+  },
+  "cleanup": { "policyNames": [] },
+  "maven": {
+    "versionPolicy": "SNAPSHOT",
+    "layoutPolicy": "STRICT"
+  }
+}

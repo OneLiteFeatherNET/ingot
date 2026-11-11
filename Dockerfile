@@ -27,7 +27,7 @@ WORKDIR /home/ingot-build
 # The below line will show an Error in some IDE's, It is valid Dockerfile.
 RUN --mount=type=cache,target=/root/.gradle <<EOF
   export GRADLE_OPTS="-Djdk.lang.Process.launchMechanism=vfork"
-  ./gradlew :reposilite-backend:shadowJar :reposilite-plugins:prometheus-plugin:shadowJar --no-daemon --stacktrace
+  ./gradlew :reposilite-backend:shadowJar :reposilite-plugins:prometheus-plugin:shadowJar :reposilite-plugins:nexus-import-plugin:shadowJar --no-daemon --stacktrace
 EOF
 
 # Image labels are not declared here on purpose. The block that used to sit at this
@@ -84,6 +84,10 @@ COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-bac
 # The metrics plugin ships beside the server, outside /app/data: the data volume survives upgrades, and a copy there would keep
 # an old plugin after an image upgrade. The loader reads this directory only when INGOT_METRICS_ENABLED=true.
 COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-test/workspace/plugins/prometheus-plugin.jar /app/bundled-plugins/prometheus-plugin.jar
+
+# The Nexus importer follows the same rule with its own switch, INGOT_NEXUS_IMPORT_ENABLED. The loader does not read the jar while
+# the switch is off, so an image without the switch behaves exactly as before.
+COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-test/workspace/plugins/nexus-import-plugin.jar /app/bundled-plugins/nexus-import-plugin.jar
 
 # The artifact is named after this project, but /app/reposilite.jar is part of what an
 # upstream deployment may reference: anything that overrides the entrypoint or the command

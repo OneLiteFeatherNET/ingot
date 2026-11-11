@@ -1,0 +1,17 @@
+{
+  "name": "releases",
+  "format": "maven2",
+  "type": "hosted",
+  "url": "{BASE}/repository/releases",
+  "online": true,
+  "storage": {
+    "blobStoreName": "default",
+    "strictContentTypeValidation": true,
+    "writePolicy": "ALLOW_ONCE"
+  },
+  "cleanup": { "policyNames": [] },
+  "maven": {
+    "versionPolicy": "RELEASE",
+    "layoutPolicy": "STRICT"
+  }
+}

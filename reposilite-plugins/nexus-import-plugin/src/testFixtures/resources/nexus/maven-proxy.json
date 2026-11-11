@@ -1,0 +1,31 @@
+{
+  "name": "snapshots-proxy",
+  "format": "maven2",
+  "type": "proxy",
+  "url": "{BASE}/repository/snapshots-proxy",
+  "online": true,
+  "storage": {
+    "blobStoreName": "default",
+    "strictContentTypeValidation": true
+  },
+  "cleanup": { "policyNames": [] },
+  "proxy": {
+    "remoteUrl": "https://repo.example.test/maven2/",
+    "contentMaxAge": 1440,
+    "metadataMaxAge": 1440
+  },
+  "negativeCache": { "enabled": true, "timeToLive": 1440 },
+  "httpClient": {
+    "blocked": false,
+    "autoBlock": true,
+    "authentication": {
+      "type": "username",
+      "username": "importer"
+    }
+  },
+  "routingRule": null,
+  "maven": {
+    "versionPolicy": "SNAPSHOT",
+    "layoutPolicy": "PERMISSIVE"
+  }
+}

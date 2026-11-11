@@ -1,0 +1,51 @@
+[
+  {
+    "name": "releases",
+    "format": "maven2",
+    "type": "hosted",
+    "url": "{BASE}/repository/releases",
+    "attributes": {
+      "storage": { "blobStoreName": "default", "strictContentTypeValidation": true, "writePolicy": "ALLOW_ONCE" },
+      "maven": { "versionPolicy": "RELEASE", "layoutPolicy": "STRICT" }
+    }
+  },
+  {
+    "name": "snapshots-proxy",
+    "format": "maven2",
+    "type": "proxy",
+    "url": "{BASE}/repository/snapshots-proxy",
+    "attributes": {
+      "proxy": { "remoteUrl": "https://repo.example.test/maven2/", "contentMaxAge": 1440, "metadataMaxAge": 1440 },
+      "storage": { "blobStoreName": "default", "strictContentTypeValidation": true },
+      "maven": { "versionPolicy": "SNAPSHOT", "layoutPolicy": "PERMISSIVE" }
+    }
+  },
+  {
+    "name": "public-group",
+    "format": "maven2",
+    "type": "group",
+    "url": "{BASE}/repository/public-group",
+    "attributes": {
+      "storage": { "blobStoreName": "default", "strictContentTypeValidation": true },
+      "group": { "memberNames": ["releases", "snapshots-proxy"] }
+    }
+  },
+  {
+    "name": "npm-hosted",
+    "format": "npm",
+    "type": "hosted",
+    "url": "{BASE}/repository/npm-hosted",
+    "attributes": {
+      "storage": { "blobStoreName": "default", "strictContentTypeValidation": true, "writePolicy": "ALLOW" }
+    }
+  },
+  {
+    "name": "docker-hosted",
+    "format": "docker",
+    "type": "hosted",
+    "url": "{BASE}/repository/docker-hosted",
+    "attributes": {
+      "storage": { "blobStoreName": "default", "strictContentTypeValidation": true, "writePolicy": "ALLOW" }
+    }
+  }
+]
