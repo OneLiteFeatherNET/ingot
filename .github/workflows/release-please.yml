@@ -212,6 +212,27 @@ jobs:
           set -euo pipefail
           gh release upload "$TAG" "reposilite-backend/build/libs/ingot-${VERSION}.jar" --clobber
 
+      # The OpenAPI document of the release, as the server serves it, next to the jar. The committed snapshot carries a
+      # placeholder version, so the release version is written into it here. The asset keeps its name and the upload
+      # follows the jar.
+      - name: "Write the OpenAPI document of the release"
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          document="$RUNNER_TEMP/ingot-${VERSION}-openapi.json"
+          jq --arg version "$VERSION" '.info.version = $version' docs/openapi/ingot-openapi.json > "$document"
+          test "$(jq -r '.info.version' "$document")" = "$VERSION"
+
+      - name: "Upload the OpenAPI document to the release"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "$RUNNER_TEMP/ingot-${VERSION}-openapi.json" --clobber
+
   # Publishes the Helm chart as OCI on releases only, and only after the container job of the
   # same release pushed the images the chart deploys. Release Please writes the release version
   # into Chart.yaml, so the chart carries the version of those images.
