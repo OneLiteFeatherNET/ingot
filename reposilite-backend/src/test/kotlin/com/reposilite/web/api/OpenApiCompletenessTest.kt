@@ -207,6 +207,8 @@ internal class OpenApiCompletenessTest {
                 "a before-handler that logs endpoint access; it answers no request itself",
             "BEFORE /api/*" to
                 "a before-handler that bypasses external caches for API paths; it answers no request itself",
+            "BEFORE /api/plugins/*" to
+                "a before-handler that enforces the admin area of plugin dashboard pages on plugin data routes; it answers no request itself",
             "AFTER /{repository}/{*}" to
                 "an after-handler that adds the WWW-Authenticate challenge to 401 responses; it answers no request itself",
         )
