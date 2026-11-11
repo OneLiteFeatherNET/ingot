@@ -36,7 +36,9 @@ const COVERED_PAGES = [
   { name: 'the search', path: '/search' },
   { name: 'the dashboard', path: '/dashboard', signedIn: true },
   { name: 'the access users page', path: '/access/users', signedIn: true },
-  { name: 'the repositories page', path: '/settings/repositories', signedIn: true },
+  // The header buttons turn enabled when the settings domains arrive, and fade to their enabled colours over a
+  // transition: the check waits for that state (see settled).
+  { name: 'the repositories page', path: '/settings/repositories', signedIn: true, settled: 'Import settings' },
   { name: 'the audit page', path: '/audit', signedIn: true },
 ]
 
@@ -50,6 +52,9 @@ test.describe('accessibility of the covered pages', () => {
         await signInAsAdmin(page)
       }
       await page.goto(siteUrl(covered.path))
+      if (covered.settled) {
+        await expect(page.getByRole('button', { name: covered.settled, exact: true })).toBeEnabled()
+      }
       if (covered.open === 'sign-in') {
         await page.getByRole('button', { name: 'Sign in', exact: true }).first().click()
         await expect(page.getByRole('dialog', { name: 'Sign in' })).toBeVisible()
