@@ -125,7 +125,8 @@ internal class RepositoryDispatchCharacterisationIntegrationTest : ReposiliteSpe
         CharacterisationProbe("hosted file, head", "HEAD", "releases/$JAR"),
         CharacterisationProbe("hosted pom, gradle accept", "GET", "releases/$POM", headers = mapOf("Accept" to "*/*")),
         CharacterisationProbe("settings repository, gradle request", "GET", "settings/$POM", headers = mapOf("Accept" to "*/*")),
-        CharacterisationProbe("settings repository, browser navigation", "GET", "settings", headers = navigation()),
+        // The dashboard page: its bundles and their sizes change with every frontend release, so only its anchor is recorded.
+        CharacterisationProbe("settings repository, browser navigation", "GET", "settings", headers = navigation(), anchor = "<div id=\"app\">"),
         CharacterisationProbe("directory index", "GET", "releases/$GAV/"),
         CharacterisationProbe("missing file", "GET", "releases/$GAV/missing.jar"),
         CharacterisationProbe("unknown repository, read", "GET", "missing/$JAR"),

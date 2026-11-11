@@ -31,12 +31,27 @@ import java.io.File
  */
 internal const val CHARACTERISATION_RECORD_ENVIRONMENT = "INGOT_CHARACTERISATION_RECORD"
 
-private val VOLATILE_HEADERS = setOf("date", "last-modified")
+/**
+ * Date and Last-Modified change on every run. Connection: close is sent by Jetty when it closes the socket after answering a
+ * request whose body it has not read, such as an upload refused with 401. Whether that happens depends on the timing of the
+ * client and the server, not on the route: the same request was answered with and without the header on the same code, so the
+ * header is left out instead of failing the comparison. It appeared once in a CI run and in none of six back-to-back runs, on the
+ * branch and on main alike, so it is not a route difference.
+ */
+private val VOLATILE_HEADERS = setOf("date", "last-modified", "connection")
 
-/** The content hash that the frontend build puts into the names of its bundles, which changes whenever the bundle does. */
-private val BUNDLE_HASH = Regex("(/assets/[^\\s\"'<>]*?)-[A-Za-z0-9_-]{8}\\.(js|css)")
+/**
+ * The file name of a frontend bundle. The frontend build names its bundles after their chunks and adds a content hash, and
+ * both change whenever the frontend changes, so the whole file name is replaced by a placeholder. The path and the extension
+ * stay, so the transcript still shows which kind of asset is served from where.
+ */
+private val BUNDLE_NAME = Regex("(/assets/)[^\\s\"'<>]+?\\.(js|css)(?=[\\s\"'<>])")
 
-/** One request of a transcript. Authenticated probes send the default management token. */
+/**
+ * One request of a transcript. Authenticated probes send the default management token. A probe with an [anchor] is a page
+ * whose body is too volatile to record: the transcript keeps only whether the body contains the anchor, and the
+ * content-length header, which follows the size of that body, is left out.
+ */
 internal class CharacterisationProbe(
     val title: String,
     val method: String,
@@ -44,6 +59,7 @@ internal class CharacterisationProbe(
     val body: String? = null,
     val auth: Boolean = false,
     val headers: Map<String, String> = emptyMap(),
+    val anchor: String? = null,
 ) {
 
     fun send(base: String, name: String, secret: String): CharacterisationExchange {
@@ -71,11 +87,17 @@ internal class CharacterisationExchange(val probe: CharacterisationProbe, val re
         appendLine("status: ${response.status}")
         response.headers.all()
             .filterNot { it.name.lowercase() in VOLATILE_HEADERS }
+            .filterNot { probe.anchor != null && it.name.equals("content-length", ignoreCase = true) }
             .map { "header: ${it.name.lowercase()}: ${normalise(it.name, it.value)}" }
             .sorted()
             .forEach { appendLine(it) }
         appendLine("body:")
-        appendLine(response.body.orEmpty().replace(Regex("localhost:\\d+"), "localhost:<port>").replace(BUNDLE_HASH, "$1-<hash>.$2"))
+        val anchor = probe.anchor
+        if (anchor != null) {
+            appendLine("contains ${anchor}: ${response.body.orEmpty().contains(anchor)}")
+        } else {
+            appendLine(response.body.orEmpty().replace(Regex("localhost:\\d+"), "localhost:<port>").replace(BUNDLE_NAME, "$1<asset>.$2"))
+        }
     }
 
 }
