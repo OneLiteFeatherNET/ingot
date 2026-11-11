@@ -89,6 +89,8 @@ Sign in as the administrator again, then follow these steps.
 For Microsoft Entra ID, use the issuer `https://login.microsoftonline.com/<tenant-id>/v2.0` with the ID of your tenant. The multi-tenant address `common` does not work, because its issuer does not match.
 {% endhint %}
 
+For Keycloak, Authentik, Okta, Google Workspace, Microsoft Entra ID or GitHub, follow the step-by-step guide of the provider instead of the generic steps above. The guides are listed in [Configure generic OIDC login](../how-to/configure-oidc-login.md).
+
 You should see the provider in the list with its **Enabled** switch on.
 
 ## 7. Sign in with the provider

@@ -4,7 +4,15 @@ description: Add a generic OpenID Connect provider to Ingot, register its callba
 
 # Configure generic OIDC login
 
-Ingot can let people sign in to the dashboard with an account from an OpenID Connect (OIDC) provider such as Keycloak, Authentik, Okta, Auth0 or Gitea. This guide adds one provider with the generic settings. Microsoft Entra ID, GitHub and LDAP have their own guides.
+Ingot can let people sign in to the dashboard with an account from an OpenID Connect (OIDC) provider such as Keycloak, Authentik, Okta, Auth0 or Gitea. This guide adds one provider with the generic settings. Microsoft Entra ID, GitHub and LDAP have their own guides, and so do the provider recipes below.
+
+* [Configure Keycloak login](configure-keycloak-login.md)
+* [Configure Authentik login](configure-authentik-login.md)
+* [Configure Okta login](configure-okta-login.md)
+* [Configure Google Workspace login](configure-google-workspace-login.md)
+* [Configure Microsoft Entra ID login](configure-entra-id-login.md)
+* [Configure GitHub login](configure-github-login.md)
+* [Configure LDAP login](configure-ldap-login.md)
 
 ## Before you begin
 
@@ -77,22 +85,7 @@ A provider login never takes over a local account. If a local user has the same 
 
 ## Map groups to teams and admin groups
 
-Each team that should follow a provider group needs an external reference of the form `oidc:<id>:<group>`. Set it in **Access**, then **Teams**, in **New team** under **External reference (optional)**, or in the team detail.
-
-At each login, Ingot does the following for the teams of this provider:
-
-* adds the user to every team whose group the user has,
-* removes the user from the teams whose group the user no longer has.
-
-Memberships that an administrator added by hand are never changed by the sync. Group changes at the provider take effect at the next login of the user.
-
-To make a group an instance admin group, list it under **Admin groups**. Ingot then creates a team named `oidc:<id>:<group>` if it does not exist yet, and gives that team the instance admin right. Members of the team are instance admins. The right follows the list in the settings: after you remove the group from the list, the next login through this provider removes the right from the team.
-
-{% hint style="warning" %}
-A provider that removes its last admin group member can lock every admin out of the dashboard. Ingot still applies the change, logs a warning and writes an audit event `LAST_ADMIN_REVOKED_BY_PROVIDER`. Keep a local instance admin, or keep the admin group populated.
-{% endhint %}
-
-If a team with the same name already exists without an external reference, Ingot does not take it over. It logs `Admin group ... skipped` on each login that synchronises the groups, not at startup. Rename or delete that team.
+Groups are mapped to teams with the external reference `oidc:<id>:<group>`, and a group listed under **Admin groups** grants the instance admin right through a synchronised team. The rules of the sync, the last-admin warning and the recovery path are in [Map provider groups to teams](map-provider-groups-to-teams.md).
 
 ## Check the result
 
@@ -102,7 +95,7 @@ If a team with the same name already exists without an external reference, Ingot
 
 ## When a login fails
 
-After a failed login, Ingot redirects to the dashboard with `?loginError=<code>`. The codes below are the ones this provider can return.
+After a failed login, Ingot redirects to the dashboard with `?loginError=<code>`. The codes below are the ones this provider can return. The messages behind them, and the ones on the test screen and in the log, are in [Troubleshoot external login](troubleshoot-external-login.md).
 
 | Code | Meaning and what to check |
 | --- | --- |
