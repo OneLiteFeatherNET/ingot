@@ -85,6 +85,9 @@ vi.mock('../components/settings/SettingsView.vue', async () => {
 
 const QUALIFIER = { path: '', watchable: 0 }
 
+// Every page a test mounts is taken down after it, so a late async view of one test cannot reach the next.
+let mounted = []
+
 // The page as the application builds it: the router on memory history, the session answered at once.
 const mountAt = async (url, { nodes, logged = true }) => {
   session.isManager = ref(canUse(nodes ?? [], 'ingot.admin.*'))
@@ -102,6 +105,7 @@ const mountAt = async (url, { nodes, logged = true }) => {
   await router.push(url)
   await router.isReady()
   const wrapper = mount(IndexPage, { props: { qualifier: QUALIFIER }, global: { plugins: [router] } })
+  mounted.push(wrapper)
   await flushPromises()
   return { wrapper, router }
 }
@@ -113,6 +117,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  mounted.forEach(wrapper => wrapper.unmount())
+  mounted = []
   setContributions(null)
 })
 

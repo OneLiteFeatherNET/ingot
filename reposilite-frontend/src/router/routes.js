@@ -73,6 +73,9 @@ const ROUTES = [
   { name: 'settings-authentication', path: '/settings/authentication', redirect: { name: 'access-ldap' }, meta: routeMeta('access', 'ldap') },
   // The sign in settings are edited under Access too. Placed before the generic settings route, which would take `login` as a domain.
   { name: 'settings-login', path: '/settings/login', redirect: { name: 'access-sso' }, meta: routeMeta('access', 'sso') },
+  // The nexus import wizard, one address per step. Placed before the settings entry, which would take `migration` as a domain.
+  // It is shown only while the nexus-import plugin is enabled (IndexPage answers the address with not found otherwise).
+  { name: 'settings-migration', path: '/settings/migration/:step?', meta: routeMeta('migration') },
   // A page a server plugin contributed. Placed before the settings entry, which would take the plugin as a collection.
   // Its permission is the area of the page, which the page checks (see IndexPage), so the route needs no node here.
   { name: 'settings-plugin', path: '/settings/plugins/:plugin/:page?', meta: { section: 'settings', manager: true } },
