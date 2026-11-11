@@ -51,12 +51,12 @@ Source files:
 
 ## Colour
 
-Seed `#EC008B`, the OneLiteFeather Pink that the brand uses as its Material 3 source colour.
-The scheme is MD3 `SchemeVibrant` at contrast 0, and the accent roles are the official OLF
-tables from the brand skill (`references/material3.md`). The same generator, the Python
-`materialyoucolor` package, reproduces those tables exactly, so the values can be checked.
-The `@material/material-color-utilities` package for JavaScript does not match them and was
-not used for the accents. Values live in `src/styles/md3/color.css`:
+Default seed `#3A5F85`, a steel blue. The scheme is MD3 `SchemeVibrant` at contrast 0, generated
+with `@material/material-color-utilities` (pinned in `package.json`), the same generator and
+variant the operator seed path uses. The default therefore looks exactly like setting that seed
+(see Operator branding). The previous default was the OneLiteFeather pink (`#ac1c67` light,
+`#ff88b7` dark), which read as too pink for a dashboard of tables and status. Values live in
+`src/styles/md3/color.css`:
 
 - Light values on `:root`, dark values on `.dark`.
 - Each role is a CSS custom property `--md-sys-color-<role>`.
@@ -84,27 +84,66 @@ Roles:
 The fixed roles are not in the official tables. They come from the same generator at
 contrast 0 and do not switch with the theme, which is what a fixed role is for.
 
-### Neutral surfaces (override)
+### Default values
 
-The official table is strongly pink: its light surface is `#fff4f7` and its surface-variant
-`#ffcfeb`. The project does not want tinted surfaces, so the neutral roles are not taken
-from the table. They come from a near-neutral palette at the source hue (357) with chroma 3,
-and the variant roles (`surface-variant`, `on-surface-variant`, `outline`, `outline-variant`)
-from the same hue at chroma 6. Chroma 3 is low enough to read as grey and high enough that a
-surface does not look dead next to the pink accents. Each role takes its tone from the
-standard MD3 mapping:
+The role values of the default scheme, generated from the steel seed. They are the same values an
+operator gets from `seedColor: "#3A5F85"`, and they are the source of truth in `color.css`.
 
-| Theme | Surfaces | Text and outline |
+| Role | Light | Dark |
 | --- | --- | --- |
-| Light | `surface`, `background`, `surface-bright` T98; `surface-container-lowest` T100, `-low` T96, `-container` T94, `-high` T92, `-highest` T90; `surface-dim` T87 | `on-surface` T10; `on-surface-variant` T30; `outline` T50; `outline-variant` T80; `surface-variant` T90 |
-| Dark | `surface`, `background`, `surface-dim` T6; `surface-container-lowest` T4, `-low` T10, `-container` T12, `-high` T17, `-highest` T22; `surface-bright` T24 | `on-surface` T90; `on-surface-variant` T80; `outline` T60; `outline-variant` T30; `surface-variant` T30 |
+| `primary` | `#0062a1` | `#9ccaff` |
+| `on-primary` | `#ffffff` | `#003257` |
+| `primary-container` | `#d0e4ff` | `#00497b` |
+| `on-primary-container` | `#00497b` | `#d0e4ff` |
+| `primary-fixed` | `#d0e4ff` | `#d0e4ff` |
+| `primary-fixed-dim` | `#9ccaff` | `#9ccaff` |
+| `on-primary-fixed` | `#001d35` | `#001d35` |
+| `on-primary-fixed-variant` | `#00497b` | `#00497b` |
+| `secondary` | `#515e7d` | `#b9c6ea` |
+| `on-secondary` | `#ffffff` | `#23304d` |
+| `secondary-container` | `#d8e2ff` | `#394664` |
+| `on-secondary-container` | `#394664` | `#d8e2ff` |
+| `secondary-fixed` | `#d8e2ff` | `#d8e2ff` |
+| `secondary-fixed-dim` | `#b9c6ea` | `#b9c6ea` |
+| `on-secondary-fixed` | `#0c1b36` | `#0c1b36` |
+| `on-secondary-fixed-variant` | `#394664` | `#394664` |
+| `tertiary` | `#565a8b` | `#bfc2fa` |
+| `on-tertiary` | `#ffffff` | `#282c5a` |
+| `tertiary-container` | `#e0e0ff` | `#3f4372` |
+| `on-tertiary-container` | `#3f4372` | `#e0e0ff` |
+| `tertiary-fixed` | `#e0e0ff` | `#e0e0ff` |
+| `tertiary-fixed-dim` | `#bfc2fa` | `#bfc2fa` |
+| `on-tertiary-fixed` | `#121644` | `#121644` |
+| `on-tertiary-fixed-variant` | `#3f4372` | `#3f4372` |
+| `error` | `#ba1a1a` | `#ffb4ab` |
+| `on-error` | `#ffffff` | `#690005` |
+| `error-container` | `#ffdad6` | `#93000a` |
+| `on-error-container` | `#93000a` | `#ffdad6` |
+| `background` | `#f8f9ff` | `#0d141c` |
+| `on-background` | `#161c24` | `#dde3ee` |
+| `surface` | `#f8f9ff` | `#0d141c` |
+| `on-surface` | `#161c24` | `#dde3ee` |
+| `surface-variant` | `#dae3f1` | `#3f4753` |
+| `on-surface-variant` | `#3f4753` | `#bec7d5` |
+| `surface-tint` | `#0062a1` | `#9ccaff` |
+| `surface-dim` | `#d4dae5` | `#0d141c` |
+| `surface-bright` | `#f8f9ff` | `#333a42` |
+| `surface-container-lowest` | `#ffffff` | `#080f16` |
+| `surface-container-low` | `#eef4ff` | `#161c24` |
+| `surface-container` | `#e8eefa` | `#1a2028` |
+| `surface-container-high` | `#e2e8f4` | `#242b33` |
+| `surface-container-highest` | `#dde3ee` | `#2f353e` |
+| `inverse-surface` | `#2a3139` | `#dde3ee` |
+| `inverse-on-surface` | `#ebf1fc` | `#2a3139` |
+| `inverse-primary` | `#9ccaff` | `#0062a1` |
+| `outline` | `#6f7884` | `#89919e` |
+| `outline-variant` | `#bec7d5` | `#3f4753` |
+| `scrim` | `#000000` | `#000000` |
+| `shadow` | `#000000` | `#000000` |
 
-The inverse roles follow the same pattern: `inverse-surface` is T20 in light and T90 in
-dark, and `inverse-on-surface` is T95 and T20.
-
-The brand charcoal `#1f1f23` is at tone 12. The dark `surface-container` is also at tone 12,
-so the charcoal of the brand matches that step, and the dark `surface` (tone 6) sits one step
-darker than it. Light `surface` is `#fff8f8`, near white.
+The neutrals come from the seed's own palette, so they carry a faint steel tint (chroma about 3 on the
+light `surface`, about 6 on the dark one). The earlier near-neutral override of the pink scheme is
+gone. The test in `src/styles/md3/color.test.js` allows that tint and rejects a stronger cast.
 
 ### High contrast
 
@@ -134,8 +173,10 @@ non-fatal notices only.
 ### Brand gradient
 
 The OLF gradient is a brand element, not a role, so it has no Tailwind colour utility. The
-`--olf-gradient` custom property in `color.css` is the four-stop standard from the brand guide
-at 135 degrees: `#f7931d`, `#ec008b`, `#91268f`, `#2a388f`. Use it for brand areas only:
+`--olf-gradient` custom property in `color.css` runs at 135 degrees from the primary to the
+tertiary of the default scheme, in both modes: `#0062a1` to `#565a8b` in light, `#9ccaff` to
+`#bfc2fa` in dark. The OLF pink and the four-stop brand gradient are no longer used by the
+default. The only user is the brand bar, so nothing pink is drawn by the default theme. Use it for brand areas only:
 
 - `.olf-brand-bar` is a 4px band at the top edge of a section. The Overview hero draws one,
   in `HeaderHero.vue`.
@@ -159,8 +200,8 @@ for dark, and the `prefers-contrast: more` block for both high contrast schemes.
 - Invalid hex values and unknown variants are ignored with a `console.warn`.
 - Series 1 to 3 of the chart palette follow primary, tertiary and secondary. The brand
   gradient runs from primary to tertiary. Series 4 to 8 keep their static values. The
-  neutrals of a generated theme come from the seed's hue, not from the near-neutral override
-  described above.
+  default theme is generated from the steel seed with the same method, so the neutrals of the
+  default and of a seed-based theme come from the same palette.
 - `logoDark` replaces the logo in the dark theme, `favicon` replaces the icon, and
   `footerText` is shown as plain text in the footer. `theme-color` is updated when present.
 - The generator is a separate chunk, loaded only when a seed is set (about 20 KB gzipped), so
@@ -183,44 +224,43 @@ for dark, and the `prefers-contrast: more` block for both high contrast schemes.
 ## Charts
 
 Series colours are a dedicated palette, not MD3 roles. The seed's roles sit too close together
-to tell apart as series, so the chart tokens are eight hues spaced about 45 degrees apart on
-the colour wheel. The first series is the OLF pink itself, and the others are the orange,
-gold, green, teal, cyan, blue and violet families that sit beside it.
+to tell apart as series, so the chart tokens are eight hues spaced 30 degrees apart on the
+colour wheel, from 29 to 239 degrees. Series 1 is the steel blue and series 8 is the rose-red,
+so no magenta opens a chart and the pink end sits last.
 
 Each token is a CSS custom property, `--md-ext-color-chart-1` to `-8`, in `color.css`:
 light values on `:root`, dark values on `.dark`. They have no Tailwind utility, because a
 chart reads them through `src/store/palette.js` (`categorical()`), not through a class.
 
-Generation: each hue was harmonised toward `#ec008b` with `Blend.harmonize` from
-`@material/material-color-utilities`, then tone 40 (light) and tone 80 (dark) were taken from
-its `TonalPalette`. The first series is the seed itself. Harmonising pulls each hue a few
-degrees toward the pink, so the hue markers were placed before harmonising to land on their
-names. The generator ran as a throwaway script outside the project, and the library is not a
-project dependency. The hue search was run over a pool of hue markers, and the eight that
-maximised the smallest colour difference were kept.
+Generation: each hue was harmonised toward the steel seed `#3A5F85` with `Blend.harmonize` from
+`@material/material-color-utilities`, chroma 52. Light takes tone 40 and dark tone 80 of the
+resulting hue. The hue search covered start points and spacings in a pool of hue markers, and
+kept the set with the largest smallest colour difference that also clears 3:1 on both surfaces.
+The generator ran as a throwaway script outside the project, and the library is not a project
+dependency.
 
-| Series | Token | Hue (harmonised, HCT) | Light (tone 40) | Dark (tone 80) | Light contrast on `surface` | Dark contrast on `surface` |
+| Series | Token | Hue (CIE LCh, dark) | Light (tone 40) | Dark (tone 80) | Light contrast on `surface` | Dark contrast on `surface` |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `chart-1` | pink, 357 | `#b8006b` | `#ffb0cc` | 6.16:1 | 10.91:1 |
-| 2 | `chart-2` | cyan, 240 | `#006590` | `#88ceff` | 6.14:1 | 10.90:1 |
-| 3 | `chart-3` | gold, 75 | `#815500` | `#feba50` | 6.20:1 | 10.93:1 |
-| 4 | `chart-4` | green, 120 | `#566500` | `#bad14d` | 6.15:1 | 10.90:1 |
-| 5 | `chart-5` | teal, 195 | `#006a68` | `#69d8d5` | 6.14:1 | 10.96:1 |
-| 6 | `chart-6` | orange, 47 | `#9c4504` | `#ffb690` | 6.13:1 | 10.93:1 |
-| 7 | `chart-7` | blue, 280 | `#4253c3` | `#bbc3ff` | 6.15:1 | 10.94:1 |
-| 8 | `chart-8` | violet, 315 | `#8040ad` | `#e3b5ff` | 6.16:1 | 10.90:1 |
+| 1 | `chart-1` | steel blue, 258 | `#186393` | `#92cdff` | 6.16:1 | 10.93:1 |
+| 2 | `chart-2` | blue-cyan, 232 | `#13677d` | `#51d6ff` | 6.12:1 | 10.95:1 |
+| 3 | `chart-3` | teal, 194 | `#006a67` | `#2ddcd8` | 6.14:1 | 10.88:1 |
+| 4 | `chart-4` | green, 160 | `#006c48` | `#63dca5` | 6.17:1 | 10.86:1 |
+| 5 | `chart-5` | olive-green, 127 | `#42681d` | `#a1d66f` | 6.19:1 | 10.90:1 |
+| 6 | `chart-6` | olive, 98 | `#695f08` | `#d8c843` | 6.17:1 | 10.81:1 |
+| 7 | `chart-7` | gold-brown, 51 | `#96481f` | `#ffb593` | 6.16:1 | 10.83:1 |
+| 8 | `chart-8` | rose-red, 17 | `#a03c4a` | `#fdb3b8` | 6.17:1 | 10.86:1 |
 
-Light `surface` is `#fff8f8`, dark `surface` is `#161213`. Every series clears 3:1 on both,
-and on `surface-container-highest` as well, since the test checks it. Between the series,
-the smallest CIE76 difference is 21 in light (orange, series 6, and gold, series 3) and 19 in
-dark (cyan, series 2, and blue, series 7). The previous copper palette managed 28 and 17.
-Series are assigned in the order above, and every pair is checked, adjacent or not. Orange is
-series 6 rather than 2, because in dark mode a pale pink and a pale peach read as one series.
-Cyan takes series 2, so the first three series (pink, cyan and gold) stay apart in both themes. A legend still needs its labels, because colour
-alone does not identify a series for everyone.
+Light `surface` is `#f8f9ff`, dark `surface` is `#0d141c`. Every series clears 3:1 on both, and on
+`surface-container-highest` as well (5.0:1 light, 7.2:1 dark), since the test checks it. Between
+the series, the smallest CIE76 difference is 17.1 in light (series 2 and 3) and 17.3 in dark
+(series 1 and 2). The test requires 15. Series 8 is a rose-red that reads pale pink in dark mode;
+it is the last series on purpose, so a chart with fewer series never shows it first.
+
+Series are assigned in the order above, and every pair is checked, adjacent or not. A legend
+still needs its labels, because colour alone does not identify a series for everyone.
 
 The colour tests in `src/styles/md3/color.test.js` hold the rules above: 3:1 on the surfaces,
-15 CIE76 units between any two series, and a pink first series. `src/store/palette.test.js`
+15 CIE76 units between any two series, and a steel blue first series. `src/store/palette.test.js`
 checks that the palette reads the eight tokens that `color.css` defines.
 
 Charts use these colours for marks only. Text on a chart uses `chrome()` roles.
