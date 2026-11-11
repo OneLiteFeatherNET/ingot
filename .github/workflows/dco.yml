@@ -1,0 +1,73 @@
+# Checks the Developer Certificate of Origin sign-off of the commits of a pull request into main.
+#
+# The check runs with a read-only token on the pull_request event, so a fork's pull request never receives a write
+# scope. Commits cherry-picked from upstream Reposilite pass when the named upstream commit is an ancestor of
+# upstream main. Bot pull requests pass as a whole.
+#
+# The repository variable DCO_MODE selects the behaviour. Unset or "report" warns per failing commit and passes.
+# "enforce" fails the check. Any other value fails the check.
+name: "DCO"
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "dco-${{ github.event.pull_request.number }}"
+  cancel-in-progress: true
+
+jobs:
+  signoff:
+    name: "DCO sign-off"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout pull request head"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # The full history, so that the base commit and the upstream cherry-pick targets are present.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Look for cherry-picked upstream commits"
+        id: trailers
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Captured first: with pipefail, a grep -q that exits early can make git fail with SIGPIPE.
+          messages="$(git log --format=%B "$BASE_SHA..$HEAD_SHA")"
+          if grep -q '^(cherry picked from commit ' <<< "$messages"; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Only needed when a cherry-pick trailer is present. A blobless copy keeps the history and skips the file
+      # contents. If the fetch fails, the trailers are reported as unverified rather than silently accepted.
+      - name: "Fetch upstream main"
+        if: steps.trailers.outputs.found == 'true'
+        continue-on-error: true
+        run: |
+          git fetch --no-tags --quiet --filter=blob:none \
+            https://github.com/dzikoysk/reposilite.git \
+            "+refs/heads/main:refs/dco/upstream-main"
+
+      - name: "Check sign-off of the pull request commits"
+        env:
+          DCO_MODE: ${{ vars.DCO_MODE }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        run: |
+          args=(--repo . --base "$BASE_SHA" --head "$HEAD_SHA" --upstream-ref refs/dco/upstream-main --mode "$DCO_MODE")
+          if [ "$PR_AUTHOR_TYPE" = "Bot" ]; then
+            args+=(--bot)
+          fi
+          python3 .github/scripts/check_dco.py "${args[@]}"
