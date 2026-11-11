@@ -128,7 +128,7 @@ const select = (item, event) => {
               />
             </span>
             <span
-              class="md-label-medium"
+              class="md-label-medium max-w-full break-words text-center"
               :class="isActive(item) ? 'md-label-medium-prominent text-on-surface' : ''"
             >{{ item.label }}</span>
           </component>
