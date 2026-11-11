@@ -249,6 +249,7 @@ const formLayout = computed(() => {
   <div
     v-if="entry === null"
     class="flex flex-col items-start gap-4"
+    data-ingot-component="entry-detail"
   >
     <h3 class="md-headline-small text-on-surface">
       Repository not found
@@ -269,9 +270,11 @@ const formLayout = computed(() => {
   <div
     v-else
     class="flex flex-col gap-6"
+    data-ingot-component="entry-detail"
   >
     <header
       v-if="showHeader"
+      data-ingot-part="header"
       class="flex items-center gap-2"
     >
       <MdIconButton

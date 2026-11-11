@@ -1,5 +1,5 @@
 <template>
-  <div v-if="control.visible">
+  <div v-if="control.visible" data-ingot-component="object-renderer">
     <DispatchRenderer
       :visible="control.visible"
       :enabled="control.enabled"

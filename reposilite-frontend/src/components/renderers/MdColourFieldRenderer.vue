@@ -110,6 +110,7 @@ export default {
   <div
     v-if="control.visible"
     class="flex w-full flex-col gap-1"
+    data-ingot-component="md-colour-field-renderer"
   >
     <MdTextField
       :id="`${control.id}-input`"

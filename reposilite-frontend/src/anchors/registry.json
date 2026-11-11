@@ -186,6 +186,142 @@
       ]
     },
     {
+      "name": "plugin-block",
+      "file": "src/components/plugins/PluginBlock.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [
+        "error",
+        "loading"
+      ]
+    },
+    {
+      "name": "plugin-page",
+      "file": "src/components/plugins/PluginPageView.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "all-of-renderer",
+      "file": "src/components/renderers/AllOfRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "appearance-section-renderer",
+      "file": "src/components/renderers/AppearanceSectionRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "array-list-renderer",
+      "file": "src/components/renderers/ArrayListRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "boolean-switch-renderer",
+      "file": "src/components/renderers/BooleanSwitchRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "constant-renderer",
+      "file": "src/components/renderers/ConstantRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-colour-field-renderer",
+      "file": "src/components/renderers/MdColourFieldRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-select-renderer",
+      "file": "src/components/renderers/MdSelectRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "md-text-area-renderer",
+      "file": "src/components/renderers/MdTextAreaRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "md-text-field-renderer",
+      "file": "src/components/renderers/MdTextFieldRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "object-renderer",
+      "file": "src/components/renderers/ObjectRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "one-of-renderer",
+      "file": "src/components/renderers/OneOfRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "optional-renderer",
+      "file": "src/components/renderers/OptionalRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "section-renderer",
+      "file": "src/components/renderers/SectionRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "switch-field",
+      "file": "src/components/renderers/SwitchField.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "tags-field-renderer",
+      "file": "src/components/renderers/TagsFieldRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "unsupported-renderer",
+      "file": "src/components/renderers/UnsupportedRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "declare-type-dialog",
       "file": "src/components/repositories/DeclareTypeDialog.vue",
       "stability": "experimental",
@@ -268,6 +404,142 @@
       "states": [
         "loading"
       ]
+    },
+    {
+      "name": "access-domain-card",
+      "file": "src/components/settings/AccessDomainCard.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "appearance-preview",
+      "file": "src/components/settings/AppearancePreview.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "collection-editor",
+      "file": "src/components/settings/CollectionEditor.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "conflict-dialog",
+      "file": "src/components/settings/ConflictDialog.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "delete-entry-dialog",
+      "file": "src/components/settings/DeleteEntryDialog.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "entry-detail",
+      "file": "src/components/settings/EntryDetail.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "entry-list",
+      "file": "src/components/settings/EntryList.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "factory-reset-modal",
+      "file": "src/components/settings/FactoryResetModal.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-entry-dialog",
+      "file": "src/components/settings/NewEntryDialog.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-access-card",
+      "file": "src/components/settings/RepositoryAccessCard.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "repository-members-picker",
+      "file": "src/components/settings/RepositoryMembersPicker.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-wizard",
+      "file": "src/components/settings/RepositoryWizard.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "settings-download-menu",
+      "file": "src/components/settings/SettingsDownloadMenu.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "settings-hub",
+      "file": "src/components/settings/SettingsHub.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "settings-import-errors",
+      "file": "src/components/settings/SettingsImportErrors.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "settings-review-sheet",
+      "file": "src/components/settings/SettingsReviewSheet.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "settings-view",
+      "file": "src/components/settings/SettingsView.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "unsaved-changes-bar",
+      "file": "src/components/settings/UnsavedChangesBar.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
     }
   ],
   "aliases": []

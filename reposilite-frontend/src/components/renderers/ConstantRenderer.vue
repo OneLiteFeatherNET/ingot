@@ -4,6 +4,7 @@
     :id="`${control.id}-input`"
     class="flex min-h-14 flex-col justify-center gap-0.5 py-2 pl-4"
     data-test="constant-row"
+    data-ingot-component="constant-renderer"
   >
     <span class="md-body-large text-on-surface">{{ control.label }}</span>
     <span class="md-body-medium text-on-surface-variant">{{ displayValue }}</span>

@@ -33,7 +33,7 @@ export default {
 </script>
 
 <template>
-  <div id="factory-reset">
+  <div id="factory-reset" data-ingot-component="factory-reset-modal">
     <VueFinalModal
       v-model="showFactoryReset"
       v-bind="$attrs"

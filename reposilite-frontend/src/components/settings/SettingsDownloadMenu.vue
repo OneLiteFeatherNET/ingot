@@ -64,6 +64,7 @@ const onFocusout = (event) => {
 <template>
   <div
     class="relative shrink-0"
+    data-ingot-component="settings-download-menu"
     @keydown="onKeydown"
     @focusout="onFocusout"
   >

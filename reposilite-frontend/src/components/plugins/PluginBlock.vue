@@ -153,6 +153,8 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
     v-if="known"
     class="flex flex-col gap-3"
     :data-block="block.type"
+    :data-ingot-block="block.type"
+    data-ingot-component="plugin-block"
   >
     <p
       v-if="refused"
@@ -315,6 +317,7 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
 
     <p
       v-if="error"
+      data-ingot-state="error"
       role="alert"
       class="md-body-medium text-error"
     >
@@ -322,6 +325,7 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
     </p>
     <p
       v-if="loading"
+      data-ingot-state="loading"
       class="md-body-small text-on-surface-variant"
     >
       Loading
@@ -331,6 +335,7 @@ if (props.block?.type === 'keyValue' || props.block?.type === 'table') {
   <p
     v-else
     class="md-body-medium text-on-surface-variant"
+    data-ingot-component="plugin-block"
   >
     Unsupported block: {{ block?.type ?? 'none' }}. This version of the dashboard does not draw it.
   </p>

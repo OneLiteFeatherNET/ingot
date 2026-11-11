@@ -35,6 +35,7 @@ const entry = () => ACCESS_DOMAINS[props.domain]
     aria-labelledby="access-domain-title"
     class="flex flex-col gap-3 rounded-corner-medium border border-outline-variant bg-surface-container-low p-4"
     data-test="access-domain"
+    data-ingot-component="access-domain-card"
   >
     <h3
       id="access-domain-title"

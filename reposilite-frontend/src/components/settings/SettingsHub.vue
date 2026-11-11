@@ -34,6 +34,7 @@ defineProps({
   <div
     class="flex flex-col gap-8"
     data-test="settings-hub"
+    data-ingot-component="settings-hub"
   >
     <section
       v-for="group in groups"

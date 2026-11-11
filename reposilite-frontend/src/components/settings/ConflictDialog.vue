@@ -60,6 +60,7 @@ const onOpenChange = (open) => {
       aria-modal="true"
       aria-labelledby="conflict-title"
       aria-describedby="conflict-body"
+      data-ingot-component="conflict-dialog"
     >
       <h2
         id="conflict-title"

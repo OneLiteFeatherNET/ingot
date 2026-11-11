@@ -108,6 +108,7 @@ const entries = computed(() => access.value?.entries ?? [])
     data-test="repository-access"
     aria-labelledby="repository-access-title"
     class="flex flex-col gap-4 rounded-corner-medium bg-surface-container-low p-4"
+    data-ingot-component="repository-access-card"
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h4
@@ -126,6 +127,7 @@ const entries = computed(() => access.value?.entries ?? [])
 
     <p
       v-if="status === 'loading'"
+      data-ingot-state="loading"
       data-test="loading"
       role="status"
       class="md-body-medium text-on-surface-variant"
