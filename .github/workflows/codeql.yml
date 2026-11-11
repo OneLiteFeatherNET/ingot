@@ -1,0 +1,78 @@
+# CodeQL analysis of the Kotlin backend and of the dashboard sources (TypeScript and Vue).
+#
+# Report only: a finding never fails the run. Findings are uploaded to code scanning and show up on the pull request
+# and in the Security tab. The gate on new high and critical alerts is a repository ruleset, not part of this file.
+#
+# Runs on pull requests into main, on pushes to main and once a week. A fork's pull request runs with a read-only
+# token, so its results are not recorded; the runs on main cover the code that merges.
+name: "CodeQL"
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+  schedule:
+    # Weekly, Monday 14:05 UTC.
+    - cron: "5 14 * * 1"
+
+# Read-only by default. The analyze job declares the one write scope it needs on its own.
+permissions:
+  contents: read
+
+concurrency:
+  group: "codeql-${{ github.workflow }}-${{ github.ref }}"
+  # A newer push to a pull request makes an older analysis of the same branch obsolete.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: "CodeQL (${{ matrix.language }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      # Uploads the results to code scanning.
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CodeQL cannot analyse Kotlin without a build, so the Gradle compile runs first.
+          - language: java-kotlin
+            build-mode: manual
+          # The dashboard is analysed from its sources.
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Set up Java"
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        if: matrix.language == 'java-kotlin'
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Initialise CodeQL"
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066  # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # Compiles the main source sets of every module, so the analysis sees the code that ships. Test sources are
+      # not compiled. --no-daemon keeps the runner clean for the CodeQL tracer.
+      - name: "Build the backend for analysis"
+        if: matrix.language == 'java-kotlin'
+        run: ./gradlew classes --no-daemon --max-workers=2
+
+      - name: "Analyse"
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066  # v4.39.3
+        with:
+          category: "/language:${{ matrix.language }}"
