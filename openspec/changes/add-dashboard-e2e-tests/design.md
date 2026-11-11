@@ -136,6 +136,21 @@ navigation test cover the visible side navigation; a dedicated check for stray v
 The job that runs this suite on pull requests, its required check and its artifact rule are in `add-dashboard-e2e-ci`, type `ci(e2e)`.
 This change ships under `test(e2e)` only. The maintainer's rule that a change mixing types is two changes is applied by splitting.
 
+## Decision 11: selectors
+
+Locators follow one rule, in this order:
+
+1. Accessible role and name first, for example `getByRole('link', { name: 'Repositories' })` or `getByRole('button', { name: 'Sign in' })`.
+   These are the handles a screen reader user has, so a test that finds an element this way also checks that the element is named.
+2. Where no accessible handle exists, a stable anchor added by the proposed change `add-ui-component-anchors`: `[data-ingot-component="..."]`
+   for a component and `[data-ingot-part="..."]` for a part of it. The anchor names a component's role in the design, not its look.
+   It is used only where step 1 cannot reach the element, and the test says in a comment which element has no accessible handle.
+3. Never CSS classes, Tailwind utility names, element positions (`nth`, `:nth-child`) or DOM structure (`div > span`, XPath). A class or a
+   position changes with styling and layout, and the layout faults in this change are exactly the ones such a selector would hide.
+
+The rule applies to every spec of this change, including the expected-failure tests. A test that cannot find its element by role or
+anchor fails for that reason and is not rewritten against a class to make it pass.
+
 ## Open questions with defaults
 
 1. Test target: the jar (default). Open: whether a nightly run should also use the image from the `images` job.
