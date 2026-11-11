@@ -274,4 +274,51 @@ describe('MdOverflowMenu', () => {
       expect(wrapper.emitted('select'), 'the value of the chosen radio is reported').toEqual([['theme:dark']])
     })
   })
+
+  describe('scrolling', () => {
+    // The button's rect is a fixed box, so a test can move it the way a scroll does.
+    const moveButton = (top) => {
+      const rect = { top, bottom: top + 40, left: 0, right: 100, width: 100, height: 40 }
+      trigger().element.getBoundingClientRect = () => rect
+    }
+
+    it('stays open when a scroll event arrives just after it opened', async () => {
+      await mountMenu()
+      moveButton(200)
+      await trigger().trigger('click')
+      await flushPromises()
+
+      window.dispatchEvent(new Event('scroll'))
+      await flushPromises()
+
+      expect(menu(), 'a scroll that began before the menu opened does not close it').not.toBeNull()
+    })
+
+    it('follows its button when the page scrolls', async () => {
+      await mountMenu()
+      moveButton(200)
+      await trigger().trigger('click')
+      await flushPromises()
+      expect(menu().style.top, 'the menu opens below the button').toBe('244px')
+
+      moveButton(300)
+      window.dispatchEvent(new Event('scroll'))
+      await flushPromises()
+
+      expect(menu().style.top, 'the menu moved with the button').toBe('344px')
+    })
+
+    it('closes when its button has scrolled out of the screen', async () => {
+      await mountMenu()
+      moveButton(200)
+      await trigger().trigger('click')
+      await flushPromises()
+
+      moveButton(-80)
+      window.dispatchEvent(new Event('scroll'))
+      await flushPromises()
+
+      expect(menu(), 'a menu without its button on screen closes').toBeNull()
+    })
+  })
 })

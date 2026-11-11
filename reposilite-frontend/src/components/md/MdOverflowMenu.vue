@@ -92,10 +92,19 @@ const onPointerdown = (event) => {
   if (!insideMenu(event.target)) closeMenu()
 }
 
+// A scroll moves the button, so the menu follows it, and it closes only when the button has left the screen. A menu
+// that closed on every scroll lost the race with a scroll that began before it opened: the browser scrolls a row into
+// view for the click, and the scroll event arrives after the menu is drawn.
+const onScroll = () => {
+  const rect = triggerElement()?.getBoundingClientRect()
+  if (!rect || rect.bottom < 0 || rect.top > window.innerHeight) closeMenu()
+  else place()
+}
+
 const listen = (on) => {
   const toggle = on ? 'addEventListener' : 'removeEventListener'
   document[toggle]('pointerdown', onPointerdown)
-  window[toggle]('scroll', closeMenu, true)
+  window[toggle]('scroll', onScroll, true)
   window[toggle]('resize', closeMenu)
 }
 
