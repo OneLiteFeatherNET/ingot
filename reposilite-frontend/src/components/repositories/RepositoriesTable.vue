@@ -17,16 +17,18 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import MdButton from '../md/MdButton.vue'
+import MdOverflowMenu from '../md/MdOverflowMenu.vue'
 import TypeBadge from './TypeBadge.vue'
 import { WRITE_CHOICES } from './writePolicy'
 import { MIXED_WARNING } from './repositoryReferences'
 
 /*
  * The table of the repositories: a plain HTML table, not an ARIA grid, so each row is reached with Tab in the order
- * name link, then its actions, and a screen reader reads it with its table commands. The name cell is the row header,
- * and every column header carries scope="col". Only the sorted column has aria-sort. Every action is named after the
- * repository it acts on. The table itself is the only thing that scrolls on a narrow screen, inside a named region.
+ * name link, then its Actions button, and a screen reader reads it with its table commands. The name cell is the row
+ * header, and every column header carries scope="col". Only the sorted column has aria-sort. The actions of a row are
+ * one menu, and every action is named after the repository it acts on. Columns are hidden by priority at narrower
+ * widths; Name, Type and Actions are always shown. The table itself is the only thing that scrolls on a narrow screen,
+ * inside a named region.
  */
 const props = defineProps({
   // The rows the page shows, already filtered and sorted (see repositoryRows.js).
@@ -81,8 +83,19 @@ const versionLabel = (row) => (row.type.key === 'GROUP' ? '-' : (VERSION_LABELS[
 const writeLabel = (row) => (row.writePolicy ? WRITE_LABELS[row.writePolicy] : '-')
 
 // A row opens its detail at its route: the id, or a key address for an entry without one.
-const detailHref = (route) => router.resolve({ name: 'settings-repository', params: { id: route } }).href
 const openDetail = (route) => router.push({ name: 'settings-repository', params: { id: route } })
+
+// The actions of a row, in one menu. An unnamed entry has no address to copy, so it has no copy action.
+const actionsOf = (row) => [
+  { value: 'edit', label: 'Edit', ariaLabel: `Edit ${row.name}` },
+  ...(row.unnamed ? [] : [{ value: 'copy', label: 'Copy address', ariaLabel: `Copy address of ${row.name}` }]),
+  { value: 'delete', label: 'Delete', ariaLabel: `Delete ${row.name}`, error: true }
+]
+const onAction = (row, value) => {
+  if (value === 'edit') openDetail(row.route)
+  else if (value === 'copy') emit('copy', row)
+  else emit('delete', row)
+}
 </script>
 
 <template>
@@ -126,7 +139,7 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           </th>
           <th
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1600px]:table-cell"
             :aria-sort="ariaSort('visibility')"
           >
             <button
@@ -140,20 +153,20 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           <th
             v-if="versionPolicy"
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1600px]:table-cell"
           >
             Version policy
           </th>
           <th
             v-if="writePolicy"
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="hidden whitespace-nowrap px-3 py-2 text-left md-label-large text-on-surface min-[1240px]:table-cell"
           >
             Write policy
           </th>
           <th
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1920px]:table-cell"
             :aria-sort="ariaSort('storage')"
           >
             <button
@@ -166,7 +179,7 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           </th>
           <th
             scope="col"
-            class="px-3 py-2 text-left md-label-large text-on-surface"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1240px]:table-cell"
           >
             Address
           </th>
@@ -186,11 +199,12 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
         >
           <th
             scope="row"
-            class="px-3 py-3 text-left md-body-large text-on-surface"
+            class="min-w-48 w-full max-w-0 px-3 py-3 text-left md-body-large text-on-surface"
           >
             <RouterLink
               :to="{ name: 'settings-repository', params: { id: row.route } }"
-              class="md-focus-ring md-touch-target relative rounded-corner-small break-all text-primary"
+              :title="row.name"
+              class="md-focus-ring md-touch-target relative block truncate rounded-corner-small text-primary"
             >
               {{ row.name }}
             </RouterLink>
@@ -214,56 +228,36 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
               </p>
             </div>
           </td>
-          <td class="px-3 py-3 md-body-medium text-on-surface">
+          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[1600px]:table-cell">
             {{ row.visibility }}
           </td>
           <td
             v-if="versionPolicy"
-            class="px-3 py-3 md-body-medium text-on-surface"
+            class="hidden px-3 py-3 md-body-medium text-on-surface min-[1600px]:table-cell"
           >
             {{ versionLabel(row) }}
           </td>
           <td
             v-if="writePolicy"
-            class="px-3 py-3 md-body-medium text-on-surface"
+            class="hidden px-3 py-3 md-body-medium text-on-surface min-[1240px]:table-cell"
           >
             {{ writeLabel(row) }}
           </td>
-          <td class="px-3 py-3 md-body-medium text-on-surface">
+          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[1920px]:table-cell">
             {{ row.storage }}
           </td>
-          <td class="px-3 py-3">
-            <code class="break-all md-body-small text-on-surface-variant">{{ row.address }}</code>
+          <td class="hidden w-full max-w-0 px-3 py-3 min-[1240px]:table-cell">
+            <code
+              :title="row.address"
+              class="block truncate md-body-small text-on-surface-variant"
+            >{{ row.address }}</code>
           </td>
           <td class="px-3 py-2">
-            <div class="flex flex-wrap items-center gap-1">
-              <MdButton
-                variant="text"
-                :href="detailHref(row.route)"
-                :aria-label="`Edit ${row.name}`"
-                @click.prevent="openDetail(row.route)"
-              >
-                Edit
-              </MdButton>
-              <MdButton
-                v-if="!row.unnamed"
-                variant="text"
-                type="button"
-                :aria-label="`Copy address of ${row.name}`"
-                @click="emit('copy', row)"
-              >
-                Copy address
-              </MdButton>
-              <MdButton
-                variant="text"
-                type="button"
-                error
-                :aria-label="`Delete ${row.name}`"
-                @click="emit('delete', row)"
-              >
-                Delete
-              </MdButton>
-            </div>
+            <MdOverflowMenu
+              :label="`Actions for ${row.name}`"
+              :items="actionsOf(row)"
+              @select="(value) => onAction(row, value)"
+            />
           </td>
         </tr>
         <tr v-if="rows.length === 0">

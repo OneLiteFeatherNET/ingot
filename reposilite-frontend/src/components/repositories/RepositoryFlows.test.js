@@ -73,6 +73,12 @@ const mountList = async ({ address = '/settings/repositories', store } = {}) => 
 }
 
 const buttonLabelled = (label) => wrapper.find(`button[aria-label="${label}"]`)
+// The Actions menu of a row is teleported to the body: its items are read from the document.
+const openActionsOf = async (name) => {
+  buttonLabelled(`Actions for ${name}`).trigger('click')
+  await flushPromises()
+}
+const menuItemOf = (label) => document.querySelector(`[role="menu"] [aria-label="${label}"]`)
 const wizardDialogs = () => document.querySelectorAll('#repository-wizard')
 const deleteDialog = () => document.querySelector('#delete-entry-form')
 const headingText = () => wrapper.find('h2').text()
@@ -113,7 +119,8 @@ describe('deleting a repository from the page', () => {
   it('asks for the typed name, lists the groups that name the repository, and starts on Cancel', async () => {
     await mountList()
 
-    await buttonLabelled('Delete releases').trigger('click')
+    await openActionsOf('releases')
+    menuItemOf('Delete releases').click()
     await flushPromises()
 
     expect(deleteDialog(), 'the delete dialog opens').not.toBeNull()
@@ -125,7 +132,8 @@ describe('deleting a repository from the page', () => {
 
   it('removes the row after the typed name, moves focus to the list heading and says it is not saved yet', async () => {
     const { store } = await mountList()
-    await buttonLabelled('Delete releases').trigger('click')
+    await openActionsOf('releases')
+    menuItemOf('Delete releases').click()
     await flushPromises()
 
     const input = document.querySelector('#delete-entry-confirm-input')
@@ -142,11 +150,11 @@ describe('deleting a repository from the page', () => {
     expect(headingText(), 'the focus goes to the list heading').toBe('Repositories')
   })
 
-  it('closes on Escape and returns the focus to the Delete button that opened it', async () => {
+  it('closes on Escape and returns the focus to the Actions button that opened the delete', async () => {
     await mountList()
-    const opener = buttonLabelled('Delete snapshots')
-    opener.element.focus()
-    await opener.trigger('click')
+    const opener = buttonLabelled('Actions for snapshots')
+    await openActionsOf('snapshots')
+    menuItemOf('Delete snapshots').click()
     await flushPromises()
     expect(deleteDialog(), 'the dialog is open').not.toBeNull()
 
