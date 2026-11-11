@@ -37,8 +37,9 @@ const createWizardStore = ({ passwords = createPasswordHolder() } = {}) => {
     state,
     passwords,
     setConnection(connection) {
-      const { password: _dropped, ...rest } = connection
-      state.connection = { ...rest }
+      const kept = { ...connection }
+      delete kept.password
+      state.connection = kept
     },
     setDiscovery(report) {
       state.discovery = report

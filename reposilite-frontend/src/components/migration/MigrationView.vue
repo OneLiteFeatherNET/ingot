@@ -15,9 +15,16 @@
  * limitations under the License.
  */
 
-// The page of the nexus import wizard: one heading, the step list and the step on screen.
-import { computed, onBeforeUnmount } from 'vue'
-import { STEPS, STEP_LABELS } from '../../store/migration/gating'
+// The page of the nexus import wizard: one heading, the step list and the step on screen. It reads the jobs of the
+// server once when it opens, and a step address that is not open goes to the step the visitor has to finish next.
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import ConnectStep from './ConnectStep.vue'
+import DiscoverStep from './DiscoverStep.vue'
+import ProblemAlert from './ProblemAlert.vue'
+import { migrationApi } from '../../store/migration/migrationApi'
+import { STEPS, STEP_LABELS, stepTarget, nextClosedReason } from '../../store/migration/gating'
+import { MIGRATION_API, MIGRATION_WIZARD } from '../../store/migration/runtime'
 import { useWizard } from '../../store/migration/wizardStore'
 
 const props = defineProps({
@@ -27,8 +34,52 @@ const props = defineProps({
   }
 })
 
-const wizard = useWizard()
+const api = inject(MIGRATION_API, migrationApi)
+const wizard = inject(MIGRATION_WIZARD, useWizard())
+const router = useRouter()
+
+const loaded = ref(false)
+const loadProblem = ref(null)
+const notice = ref('')
+
+const STEP_VIEWS = {
+  connect: ConnectStep,
+  discover: DiscoverStep,
+}
+
 const current = computed(() => (STEPS.includes(props.step) ? props.step : STEPS[0]))
+const view = computed(() => STEP_VIEWS[current.value] ?? null)
+
+const goTo = (step) => router.replace({ name: 'settings-migration', params: { step } })
+
+// The address decides once the jobs are known. An open step stays. A closed or unknown one goes to the step the
+// jobs open, or to the last open step before the first closed one, and says what that step still needs.
+const decide = () => {
+  if (!loaded.value) return
+  const requested = STEPS.includes(props.step) ? props.step : undefined
+  const target = stepTarget(requested, wizard.gate(), wizard.state.jobs)
+  if (!target.redirected) {
+    notice.value = ''
+    return
+  }
+  notice.value = target.fromJobs
+    ? ''
+    : `${requested ? `${STEP_LABELS[requested]} is not open yet.` : 'That step is not part of the migration.'} ${nextClosedReason(wizard.gate(), wizard.state.jobs) ?? ''}`.trim()
+  if (target.step !== requested) goTo(target.step)
+}
+
+onMounted(async () => {
+  try {
+    wizard.setJobs(await api.listJobs())
+  } catch (error) {
+    loadProblem.value = error
+    wizard.setJobs([])
+  }
+  loaded.value = true
+  decide()
+})
+
+watch(() => props.step, decide)
 
 // Leaving the wizard drops the literal password (design D4). The rest of the page state stays in memory.
 onBeforeUnmount(() => wizard.passwords.forget())
@@ -56,14 +107,26 @@ onBeforeUnmount(() => wizard.passwords.forget())
         </li>
       </ol>
     </nav>
-    <section aria-labelledby="migration-step-title">
-      <h2
-        id="migration-step-title"
-        tabindex="-1"
-        class="md-title-large text-on-surface"
-      >
-        {{ STEP_LABELS[current] }}
-      </h2>
-    </section>
+    <p
+      v-if="notice"
+      role="status"
+      class="md-body-large text-on-surface-variant"
+    >
+      {{ notice }}
+    </p>
+    <ProblemAlert
+      v-if="loadProblem"
+      :problem="loadProblem"
+    />
+    <p
+      v-if="!loaded"
+      class="md-body-large text-on-surface-variant"
+    >
+      Reading the import jobs of this instance.
+    </p>
+    <component
+      :is="view"
+      v-else-if="view"
+    />
   </div>
 </template>

@@ -29,7 +29,7 @@ afterEach(cleanup)
 const fill = async (wrapper, { url = URL_VALUE, user = USER, password = PASSWORD } = {}) => {
   await wrapper.find('#migration-connect-url').setValue(url)
   await wrapper.find('#migration-connect-user').setValue(user)
-  if (password !== undefined) await wrapper.find('#migration-connect-password').setValue(password)
+  if (password !== null) await wrapper.find('#migration-connect-password').setValue(password)
 }
 
 const submit = async (wrapper) => {
@@ -83,8 +83,9 @@ describe('the Connect step', () => {
 
   it('accepts a secret reference as text and sends it as the password', async () => {
     const { wrapper, api } = await mountWith(ConnectStep)
-    await wrapper.find('input[name="migration-password-mode"][value="reference"]').setValue(true)
-    await fill(wrapper, { password: undefined })
+    const referenceChoice = wrapper.findAll('label').find(entry => entry.text().includes('Use a secret reference'))
+    await referenceChoice.find('input').setValue(true)
+    await fill(wrapper, { password: null })
     await wrapper.find('#migration-connect-reference').setValue('${env:NEXUS_PASSWORD}')
 
     await submit(wrapper)

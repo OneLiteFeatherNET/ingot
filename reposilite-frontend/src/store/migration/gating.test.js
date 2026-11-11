@@ -127,7 +127,7 @@ describe('the step a reload opens', () => {
 
 describe('the step a closed address redirects to', () => {
   it('keeps an open step where it is', () => {
-    expect(stepTarget('discover', freshState({ connectionTested: true }), [])).toEqual({ step: 'discover', redirected: false })
+    expect(stepTarget('discover', freshState({ connectionTested: true }), [])).toEqual({ step: 'discover', redirected: false, fromJobs: false })
   })
 
   it('sends a skipped step to the last open step before it, with the reason', () => {

@@ -103,12 +103,19 @@ const stepFromJobs = (jobs) => {
  */
 const stepTarget = (requested, state, jobs) => {
   const states = stepStates(state, jobs)
-  if (states[requested]?.open) return { step: requested, redirected: false }
+  if (states[requested]?.open) return { step: requested, redirected: false, fromJobs: false }
   const reason = states[requested]?.reason ?? null
   const fromJobs = stepFromJobs(jobs)
-  if (fromJobs) return { step: fromJobs, redirected: true, reason }
+  if (fromJobs) return { step: fromJobs, redirected: true, reason, fromJobs: true }
   const firstClosed = STEPS.findIndex(step => !states[step].open)
-  return { step: STEPS[Math.max(0, firstClosed - 1)], redirected: true, reason }
+  return { step: STEPS[Math.max(0, firstClosed - 1)], redirected: true, reason, fromJobs: false }
+}
+
+// What the first closed step needs, in words: the next thing the visitor has to finish. Null when every step is open.
+const nextClosedReason = (state, jobs) => {
+  const states = stepStates(state, jobs)
+  const first = STEPS.find(step => !states[step].open)
+  return first ? states[first].reason : null
 }
 
 /*
@@ -170,6 +177,7 @@ export {
   isFinished,
   stepStates,
   stepTarget,
+  nextClosedReason,
   stepFromJobs,
   planFingerprint,
   acceptanceIsCurrent,

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import MigrationView from './MigrationView.vue'
 import { createWizardStore } from '../../store/migration/wizardStore'
@@ -72,7 +72,7 @@ describe('the Migration page', () => {
   })
 
   it('reads the jobs once when it opens, and not again for each step', async () => {
-    const api = fakeApi({ listJobs: async () => [job(3, 'VERIFY', 'COMPLETED')] })
+    const api = fakeApi({ listJobs: vi.fn(async () => [job(3, 'VERIFY', 'COMPLETED')]) })
     const { wrapper } = await mountWith(MigrationView, { props: { step: 'connect' }, api, at: '/settings/migration/connect' })
     await flushPromises()
 
