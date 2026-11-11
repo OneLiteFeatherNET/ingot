@@ -46,14 +46,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="container mx-auto flex flex-col gap-6 pb-12 pt-7">
-    <h1 class="md-headline-small text-on-surface">
-      System information
-    </h1>
-    <p class="md-body-large text-on-surface-variant">
-      What this instance runs on. Secrets are withheld or masked, and the page only reads.
-    </p>
-
+  <div class="flex flex-col gap-6">
     <p
       v-if="state === 'loading'"
       class="md-body-medium text-on-surface-variant"

@@ -22,10 +22,10 @@ import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { adminGroups, settingsLabelOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, currentTreeKey, settingsLabelOf, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
-import SideNavLayout from '../layout/SideNavLayout.vue'
+import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
 import SettingsHub from './SettingsHub.vue'
 import { hubGroups } from './settingsHub'
@@ -130,6 +130,8 @@ const navGroups = computed(() => adminGroups(can, {
 const repositoriesPage = computed(() => route.name === 'settings-repositories')
 const repositoryPage = computed(() => route.name === 'settings-repository')
 const repositoriesRoute = computed(() => repositoriesPage.value || repositoryPage.value)
+// The entry of the tree on screen: the domain in the address, or the Repositories page. The hub marks none.
+const settingsCurrent = computed(() => currentTreeKey(route.name, props.domain))
 
 // The schema fields of a repository, which decide the columns and the controls the Repositories page shows.
 const repositoryFields = computed(() => Object.keys(store.schemas.value.maven?.properties?.repositories?.items?.properties ?? {}))
@@ -423,50 +425,44 @@ watch(
 </script>
 
 <template>
-  <div
-    class="settings-view container mx-auto pt-7"
+  <AdministrationFrame
+    class="settings-view"
     :style="pageClearance"
+    description="Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance."
+    :label="sideNav.label"
+    :section-label="sideNav.sectionLabel"
+    :groups="hubShown ? [] : navGroups"
+    :current="settingsCurrent"
+    :index-to="sideNav.indexTo"
+    :narrow="narrow"
+    replace
   >
-    <header class="flex flex-col gap-4 pb-6 md:flex-row md:items-end md:justify-between">
-      <div class="flex min-w-0 flex-col gap-1">
-        <!-- On the Repositories pages the page heading is the h1; the settings title is then a heading of its own. -->
-        <component
-          :is="repositoriesRoute ? 'h2' : 'h1'"
-          class="md-headline-medium text-on-surface"
-        >
-          Settings
-        </component>
-        <p class="md-body-medium text-on-surface-variant">
-          Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance.
-        </p>
-      </div>
-      <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <MdButton
-          variant="outlined"
-          type="button"
-          :disabled="!hasDomains"
-          @click="importInput?.click()"
-        >
-          Import settings
-        </MdButton>
-        <input
-          ref="importInput"
-          type="file"
-          accept=".json,application/json"
-          class="hidden"
-          aria-label="Settings file to import"
-          @change="importFile"
-        >
-        <SettingsDownloadMenu
-          :disabled="!hasDomains"
-          :has-unsaved="hasUnsavedChanges"
-          :can-include-unsaved="invalidDomains.length === 0"
-          :secrets-hidden="secretsHidden"
-          @saved="downloadSaved"
-          @draft="downloadDraft"
-        />
-      </div>
-    </header>
+    <template #actions>
+      <MdButton
+        variant="outlined"
+        type="button"
+        :disabled="!hasDomains"
+        @click="importInput?.click()"
+      >
+        Import settings
+      </MdButton>
+      <input
+        ref="importInput"
+        type="file"
+        accept=".json,application/json"
+        class="hidden"
+        aria-label="Settings file to import"
+        @change="importFile"
+      >
+      <SettingsDownloadMenu
+        :disabled="!hasDomains"
+        :has-unsaved="hasUnsavedChanges"
+        :can-include-unsaved="invalidDomains.length === 0"
+        :secrets-hidden="secretsHidden"
+        @saved="downloadSaved"
+        @draft="downloadDraft"
+      />
+    </template>
 
     <p
       v-if="loadError"
@@ -487,15 +483,7 @@ watch(
       :groups="hubCards"
     />
     <template v-else-if="activeDomain">
-      <SideNavLayout
-        :label="sideNav.label"
-        :section-label="sideNav.sectionLabel"
-        :groups="navGroups"
-        :current="repositoriesRoute ? 'repositories' : activeDomain"
-        :index-to="sideNav.indexTo"
-        :narrow="narrow"
-        replace
-      >
+      <div>
         <h2
           v-if="tabDomains.length <= 1 && !isAccessDomain(activeDomain) && !repositoriesRoute"
           class="md-title-large text-on-surface"
@@ -576,7 +564,7 @@ watch(
             />
           </template>
         </div>
-      </SideNavLayout>
+      </div>
     </template>
     <p
       v-else-if="!loadError"
@@ -650,7 +638,7 @@ watch(
       @overwrite="overwriteConflict"
       @dismiss="dismissConflict"
     />
-  </div>
+  </AdministrationFrame>
 </template>
 
 <!--suppress CssInvalidAtRule -->

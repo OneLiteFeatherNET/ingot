@@ -29,7 +29,8 @@ import MdButton from '../components/md/MdButton.vue'
 import MdNavigationBar from '../components/md/MdNavigationBar.vue'
 import MdNavigationRail from '../components/md/MdNavigationRail.vue'
 import PageFooter from '../components/footer/PageFooter.vue'
-import SideNavLayout from '../components/layout/SideNavLayout.vue'
+import AdministrationFrame from '../components/layout/AdministrationFrame.vue'
+import { useSettingsDomains } from '../components/settings/useSettingsDomains'
 import OverviewIcon from '../components/icons/OverviewIcon.vue'
 import SearchIcon from '../components/icons/SearchIcon.vue'
 import DashboardIcon from '../components/icons/DashboardIcon.vue'
@@ -46,7 +47,7 @@ import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
+import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
 import { supportBundleReady, loadSupportBundle, clearSupportBundle } from '../store/supportBundle'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
@@ -97,6 +98,16 @@ defineProps({
 const ADMIN_SIDE_PAGES = ['audit', 'console', 'maintenance', 'analytics', 'migration']
 // The support pages are children of Settings: they share its section, and draw the same tree as the ADMIN_SIDE_PAGES.
 const SUPPORT_ROUTES = ['system-info', 'support']
+// The one-line description each Administration page shows under the frame heading, by route name.
+const ADMIN_DESCRIPTIONS = {
+  audit: 'Deployments, deletions, settings changes, token changes and failed sign ins on this instance, newest first.',
+  console: 'The log lines of this instance, filtered by level and text.',
+  maintenance: 'Storage usage, the search index and cleanup for this Ingot instance.',
+  analytics: 'Traffic and resource use of this instance over time.',
+  'settings-migration': 'Import the repositories of another instance, step by step.',
+  'system-info': 'What this instance runs on. Secrets are withheld or masked, and the page only reads.',
+  support: 'What a maintainer needs to look at this instance, as one zip.',
+}
 // The pages that the Administration entry of the rail and the bar stands for.
 const ADMINISTRATION_SECTIONS = ['settings', 'access', ...ADMIN_SIDE_PAGES]
 
@@ -282,10 +293,14 @@ const replaceQuery = (key, value) => {
 // so the tree here lists the static pages.
 const narrow = useMediaQuery('(max-width: 599px)')
 const adminSideNav = computed(() => {
-  if (ADMIN_SIDE_PAGES.includes(section.value)) return sideNavOf(section.value)
-  return SUPPORT_ROUTES.includes(route.name) ? sideNavOf('settings') : null
+  if (ADMIN_SIDE_PAGES.includes(section.value)) return { ...sideNavOf(section.value), description: ADMIN_DESCRIPTIONS[route.name] }
+  return SUPPORT_ROUTES.includes(route.name) ? { ...sideNavOf('settings'), description: ADMIN_DESCRIPTIONS[route.name] } : null
 })
-const adminTree = computed(() => adminGroups(can, { domains: [] }))
+// The tree is the same on every Administration page: the settings domains the visitor may open, requested only here.
+const settings = useSettingsDomains(() => adminSideNav.value !== null)
+const adminTree = computed(() => adminGroups(can, { domains: settings.domains.value, titleOf: settings.titleOf }))
+// The entry of the tree on screen, from the route: the one page of the tree the address names.
+const adminCurrent = computed(() => currentTreeKey(route.name))
 
 // Access: the tab on screen (users, machines, teams, sso, ldap, security or check; none at /access, which is the index on a narrow screen) and the name of the principal or team that
 // is open. The view moves between them through the router itself. The registry maps each route to its tab.
@@ -433,12 +448,13 @@ const activeLabel = computed(() => pageLabel(section.value))
           :tab="accessTab"
           :name="accessName"
         />
-        <SideNavLayout
+        <AdministrationFrame
           v-else-if="adminSideNav"
+          :description="adminSideNav.description"
           :label="adminSideNav.label"
           :section-label="adminSideNav.sectionLabel"
           :groups="adminTree"
-          :current="route.name"
+          :current="adminCurrent"
           :index-to="adminSideNav.indexTo"
           :narrow="narrow"
         >
@@ -462,7 +478,7 @@ const activeLabel = computed(() => pageLabel(section.value))
           />
           <SystemInfoView v-else-if="route.name === 'system-info'" />
           <SupportView v-else-if="route.name === 'support'" />
-        </SideNavLayout>
+        </AdministrationFrame>
         <SettingsView
           v-else-if="section === 'settings'"
           :selected-tab="activeLabel"

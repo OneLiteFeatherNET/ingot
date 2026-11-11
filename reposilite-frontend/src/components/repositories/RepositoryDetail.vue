@@ -158,13 +158,13 @@ onMounted(() => {
     v-else-if="entry === null"
     class="flex flex-col items-start gap-4"
   >
-    <h1
+    <h2
       ref="heading"
       tabindex="-1"
       class="md-headline-small text-on-surface focus:outline-none"
     >
       Repository not found
-    </h1>
+    </h2>
     <p class="md-body-large text-on-surface-variant">
       There is no repository with the id "{{ id }}" in this configuration.
     </p>
@@ -193,14 +193,14 @@ onMounted(() => {
     </MdButton>
 
     <header class="flex flex-col gap-4">
-      <h1
+      <h2
         ref="heading"
         tabindex="-1"
         data-test="entry-title"
         class="min-w-0 break-all md-headline-small text-on-surface focus:outline-none"
       >
         {{ title }}
-      </h1>
+      </h2>
 
       <section
         aria-labelledby="repository-type-title"

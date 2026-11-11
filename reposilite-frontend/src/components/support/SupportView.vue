@@ -53,11 +53,7 @@ const downloadBundle = async () => {
 </script>
 
 <template>
-  <div class="container mx-auto flex flex-col gap-6 pb-12 pt-7">
-    <h1 class="md-headline-small text-on-surface">
-      Support bundle
-    </h1>
-
+  <div class="flex flex-col gap-6">
     <p
       v-if="state === 'off'"
       class="md-body-medium text-on-surface-variant"

@@ -142,21 +142,9 @@ const countText = computed(() => {
 
 <template>
   <section
-    class="container mx-auto pb-12 pt-7"
-    aria-labelledby="audit-title"
+    class="flex flex-col"
+    aria-label="Audit log"
   >
-    <div class="flex flex-col gap-1 pb-7">
-      <h2
-        id="audit-title"
-        class="md-headline-small text-on-surface"
-      >
-        Audit log
-      </h2>
-      <p class="md-body-large text-on-surface-variant">
-        Deployments, deletions, settings changes, token changes and failed sign ins on this instance, newest first.
-      </p>
-    </div>
-
     <div class="overflow-hidden rounded-corner-large bg-surface-container-low">
       <form
         role="search"

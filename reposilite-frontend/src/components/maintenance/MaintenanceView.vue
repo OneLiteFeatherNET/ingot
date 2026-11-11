@@ -25,10 +25,7 @@ const storageRevision = ref(0)
 </script>
 
 <template>
-  <div class="container mx-auto flex flex-col gap-6 pb-12 pt-7">
-    <p class="md-body-large text-on-surface-variant">
-      Storage usage, the search index and cleanup for this Ingot instance. Only managers can see this page.
-    </p>
+  <div class="flex flex-col gap-6">
     <StorageUsagePanel :revision="storageRevision" />
     <IndexPanel />
     <CleanupPoliciesPanel @ran="storageRevision += 1" />

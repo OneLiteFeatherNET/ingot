@@ -127,11 +127,8 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="root"
-    class="container mx-auto flex flex-col gap-6 py-8"
+    class="flex flex-col gap-6"
   >
-    <h1 class="md-headline-medium text-on-surface">
-      Migration
-    </h1>
     <nav aria-label="Migration steps">
       <ol class="flex flex-wrap gap-2 list-none">
         <li
