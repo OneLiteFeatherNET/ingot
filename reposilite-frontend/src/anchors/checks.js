@@ -44,7 +44,6 @@ export const KNOWN_ATTRIBUTES = Object.freeze([
 // Folders that are not annotated yet. The suite skips their components and fails if a registry entry sits in one.
 // The last batch empties the list.
 export const PENDING_AREAS = Object.freeze([
-  "dashboard", "maintenance", "audit", "console",
   "md", "migration", "util", "support", "pages", "App.vue",
 ])
 

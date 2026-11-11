@@ -83,6 +83,7 @@ const confirm = () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="run-now-title"
+      data-ingot-component="run-now-dialog"
     >
       <h2
         id="run-now-title"
@@ -113,6 +114,7 @@ const confirm = () => {
           />
           <p
             v-if="error"
+            data-ingot-state="error"
             class="md-body-medium text-error"
             role="alert"
           >

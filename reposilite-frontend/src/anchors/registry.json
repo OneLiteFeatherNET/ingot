@@ -247,6 +247,22 @@
       "states": []
     },
     {
+      "name": "audit-event-row",
+      "file": "src/components/audit/AuditEventRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "audit-view",
+      "file": "src/components/audit/AuditView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
       "name": "adjustments-modal",
       "file": "src/components/browser/AdjustmentsModal.vue",
       "stability": "experimental",
@@ -349,6 +365,123 @@
     {
       "name": "xml-tag",
       "file": "src/components/card/XmlTag.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "console-view",
+      "file": "src/components/console/ConsoleView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "analytics-view",
+      "file": "src/components/dashboard/AnalyticsView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "chart-card",
+      "file": "src/components/dashboard/ChartCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "dashboard-view",
+      "file": "src/components/dashboard/DashboardView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "failures-sheet",
+      "file": "src/components/dashboard/FailuresSheet.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "getting-started-card",
+      "file": "src/components/dashboard/GettingStartedCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "instance-health-row",
+      "file": "src/components/dashboard/InstanceHealthRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "instance-status-panel",
+      "file": "src/components/dashboard/InstanceStatusPanel.vue",
+      "stability": "experimental",
+      "parts": [
+        "read-only-banner",
+        "cluster-summary",
+        "cluster-instances",
+        "cluster-instance"
+      ],
+      "states": []
+    },
+    {
+      "name": "public-repositories-dialog",
+      "file": "src/components/dashboard/PublicRepositoriesDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "read-only-toggle",
+      "file": "src/components/dashboard/ReadOnlyToggle.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "resolved-requests-chart",
+      "file": "src/components/dashboard/ResolvedRequestsChart.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "resource-trends",
+      "file": "src/components/dashboard/ResourceTrends.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "stat-tile",
+      "file": "src/components/dashboard/StatTile.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "status-label",
+      "file": "src/components/dashboard/StatusLabel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "time-series-chart",
+      "file": "src/components/dashboard/TimeSeriesChart.vue",
       "stability": "experimental",
       "parts": [],
       "states": []
@@ -464,6 +597,80 @@
       "name": "skip-link",
       "file": "src/components/layout/SkipLink.vue",
       "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "cleanup-policies-panel",
+      "file": "src/components/maintenance/CleanupPoliciesPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "delete-policy-dialog",
+      "file": "src/components/maintenance/DeletePolicyDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "dry-run-result",
+      "file": "src/components/maintenance/DryRunResult.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "index-panel",
+      "file": "src/components/maintenance/IndexPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "maintenance-view",
+      "file": "src/components/maintenance/MaintenanceView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "policy-dialog",
+      "file": "src/components/maintenance/PolicyDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "rebuild-index-dialog",
+      "file": "src/components/maintenance/RebuildIndexDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "run-history",
+      "file": "src/components/maintenance/RunHistory.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "run-now-dialog",
+      "file": "src/components/maintenance/RunNowDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "storage-usage-panel",
+      "file": "src/components/maintenance/StorageUsagePanel.vue",
+      "stability": "experimental",
       "parts": [],
       "states": []
     },

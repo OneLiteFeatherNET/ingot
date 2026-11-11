@@ -69,6 +69,7 @@ const setReadOnly = (next) => {
   <div
     v-if="visible"
     class="flex flex-col gap-1 px-1"
+    data-ingot-component="read-only-toggle"
   >
     <MdSwitch
       :model-value="enabled"
@@ -79,6 +80,7 @@ const setReadOnly = (next) => {
     </MdSwitch>
     <p
       v-if="failure"
+      data-ingot-state="error"
       role="alert"
       class="md-body-small text-error"
     >
