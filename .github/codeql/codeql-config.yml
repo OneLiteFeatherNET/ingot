@@ -1,0 +1,8 @@
+# Paths the CodeQL analysis skips. Dependencies and build output are not code the project wrote, and the Maven
+# artifacts under reposilite-test/workspace are fixtures that hold real packages as test data.
+name: "Ingot CodeQL configuration"
+
+paths-ignore:
+  - "**/node_modules/**"
+  - "**/build/**"
+  - "reposilite-test/workspace/**"
