@@ -33,6 +33,9 @@ internal const val CHARACTERISATION_RECORD_ENVIRONMENT = "INGOT_CHARACTERISATION
 
 private val VOLATILE_HEADERS = setOf("date", "last-modified")
 
+/** The content hash that the frontend build puts into the names of its bundles, which changes whenever the bundle does. */
+private val BUNDLE_HASH = Regex("(/assets/[^\\s\"'<>]*?)-[A-Za-z0-9_-]{8}\\.(js|css)")
+
 /** One request of a transcript. Authenticated probes send the default management token. */
 internal class CharacterisationProbe(
     val title: String,
@@ -72,7 +75,7 @@ internal class CharacterisationExchange(val probe: CharacterisationProbe, val re
             .sorted()
             .forEach { appendLine(it) }
         appendLine("body:")
-        appendLine(response.body.orEmpty().replace(Regex("localhost:\\d+"), "localhost:<port>"))
+        appendLine(response.body.orEmpty().replace(Regex("localhost:\\d+"), "localhost:<port>").replace(BUNDLE_HASH, "$1-<hash>.$2"))
     }
 
 }

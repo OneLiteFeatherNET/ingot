@@ -106,9 +106,9 @@ body:
     <meta property="og:site_name" content="Ingot Repository">
     <meta property="og:type" content="website">
     <meta property="og:description" content="Public Maven repository hosted through Ingot">
-    <script type="module" crossorigin src="/./assets/index-gk5P6qOL.js"></script>
-    <link rel="modulepreload" crossorigin href="/./assets/vue.runtime.esm-bundler-C7M7iduF.js">
-    <link rel="stylesheet" crossorigin href="/./assets/index-DOcj-J5o.css">
+    <script type="module" crossorigin src="/./assets/index-<hash>.js"></script>
+    <link rel="modulepreload" crossorigin href="/./assets/vue.runtime.esm-bundler-<hash>.js">
+    <link rel="stylesheet" crossorigin href="/./assets/index-<hash>.css">
   </head>
   <body>
     <div id="app"></div>
