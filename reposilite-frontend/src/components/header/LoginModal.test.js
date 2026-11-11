@@ -175,6 +175,18 @@ describe('LoginModal', () => {
         .toBe(field('login-username'))
     })
 
+    it('keeps the focus the visitor has put in a field when the dialog reports that it has opened', async () => {
+      // The opened event arrives after the transition. A visitor who has already clicked into the password
+      // field must not find the focus moved to the username field, and what they type must not land there.
+      await openDialog()
+      field('login-password').focus()
+
+      wrapper.findComponent(VueFinalModal).vm.$emit('opened')
+
+      expect(document.activeElement, 'the field the visitor chose keeps the focus')
+        .toBe(field('login-password'))
+    })
+
     it('labels the way out of the dialog as Cancel', async () => {
       await openDialog()
 
