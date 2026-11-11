@@ -39,6 +39,8 @@ import { collectionsOf, idText, validateNewId } from './collections'
 import { barClearance } from './barClearance'
 import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
+import PasswordDialog from './PasswordDialog.vue'
+import { isEncryptedExport } from './settingsEncryption'
 import SettingsReviewSheet from './SettingsReviewSheet.vue'
 import ConflictDialog from './ConflictDialog.vue'
 import { diffSettings, revertChange as revertDraftChange } from './settingsDiff'
@@ -225,20 +227,47 @@ const onDomainChange = (domain, event) => {
 }
 
 /*
- * The file is named after the day it is made, and holds the saved state unless the user asks for the
- * draft. The saved state is what the server confirmed last, so it is valid whatever the draft holds.
+ * The file is named after the day it is made and holds the saved state, which the server reads. It is encrypted
+ * with a password the user types, so a copy of the file does not carry the secrets in clear. The draft is never
+ * downloaded: it is not stored on the server, and it may hold a secret the browser has not seen in clear.
  */
 const clock = inject(settingsClockKey, systemClock)
 const hasDomains = computed(() => domains.value.length > 0)
 
-const downloadSettingsOf = (source) => {
-  const settings = settingsByDomain(domains.value, source)
-  download(serializeSettings(settings), settingsFileName(clock()), 'application/json')
+/* The password dialog: an export or the opening of an import file. `exported` holds the file while it waits for its password. */
+const passwordDialog = ref({ open: false, mode: 'export', busy: false, error: '', exported: null })
+
+const downloadSaved = () => {
+  passwordDialog.value = { open: true, mode: 'export', busy: false, error: '', exported: null }
+}
+// Not reachable: the menu disables the draft, because the draft is not part of the file.
+const downloadDraft = () => {}
+
+const cancelPassword = () => {
+  passwordDialog.value = { open: false, mode: 'export', busy: false, error: '', exported: null }
 }
 
-const downloadSaved = () => downloadSettingsOf(savedSettings.value)
-const downloadDraft = () => {
-  if (invalidDomains.value.length === 0) downloadSettingsOf(configurations.value)
+const submitPassword = async (password) => {
+  const dialog = passwordDialog.value
+  passwordDialog.value = { ...dialog, busy: true, error: '' }
+  try {
+    if (dialog.mode === 'export') {
+      const exported = await store.exportSaved(password)
+      download(serializeSettings(exported), settingsFileName(clock()), 'application/json')
+      cancelPassword()
+      return
+    }
+
+    const document = await store.openExport(password, dialog.exported)
+    cancelPassword()
+    applyImportedDocument(document)
+  } catch (error) {
+    passwordDialog.value = {
+      ...dialog,
+      busy: false,
+      error: error?.response?.data?.message ?? 'The settings file could not be opened.'
+    }
+  }
 }
 
 /*
@@ -379,7 +408,16 @@ const importFile = async (event) => {
     importErrors.value = [{ domain: '', label: '', message: parsed.error }]
     return
   }
-  const result = validateImport(overlayImport(parsed.value, configurations.value), {
+  // An export is opened with its password first. A plain file is applied as it always was.
+  if (isEncryptedExport(parsed.value)) {
+    passwordDialog.value = { open: true, mode: 'import', busy: false, error: '', exported: parsed.value }
+    return
+  }
+  applyImportedDocument(parsed.value)
+}
+
+const applyImportedDocument = (document) => {
+  const result = validateImport(overlayImport(document, configurations.value), {
     domains: domains.value,
     schemas: store.schemas.value,
     validator: store.configurationValidator
@@ -443,10 +481,18 @@ watch(
       <SettingsDownloadMenu
         :disabled="!hasDomains"
         :has-unsaved="hasUnsavedChanges"
-        :can-include-unsaved="invalidDomains.length === 0"
+        :can-include-unsaved="false"
         :secrets-hidden="secretsHidden"
         @saved="downloadSaved"
         @draft="downloadDraft"
+      />
+      <PasswordDialog
+        :open="passwordDialog.open"
+        :mode="passwordDialog.mode"
+        :busy="passwordDialog.busy"
+        :error="passwordDialog.error"
+        @submit="submitPassword"
+        @cancel="cancelPassword"
       />
     </template>
 

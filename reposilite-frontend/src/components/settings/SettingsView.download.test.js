@@ -55,12 +55,20 @@ const SERVER = {
   maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] }
 }
 
+// The encrypted file the server returns for an export. The fixture records the password it was asked with.
+const ENCRYPTED = { format: 'ingot-settings-export', version: 1, ciphertext: 'opaque' }
+const exportRequests = []
+
 const fakeClient = () => ({
   settings: {
     domains: async () => ({ data: Object.keys(SERVER) }),
     schema: async () => ({ data: SCHEMA }),
     fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(SERVER[domain])) }),
-    update: async () => ({ data: {} })
+    update: async () => ({ data: {} }),
+    exportSaved: async (password) => {
+      exportRequests.push(password)
+      return { data: ENCRYPTED }
+    }
   }
 })
 
@@ -100,6 +108,13 @@ const choose = async (name) => {
 
 const downloadedJson = () => JSON.parse(download.mock.calls.at(-1)[0])
 
+const fillPassword = async (password) => {
+  await wrapper.find('#settings-password').setValue(password)
+  await wrapper.find('#settings-password-confirmation').setValue(password)
+  await wrapper.find('form[role="dialog"]').trigger('submit')
+  await flushPromises()
+}
+
 const editFirstRepository = (store) => {
   store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE' })
 }
@@ -112,15 +127,28 @@ afterEach(() => {
 })
 
 describe('SettingsView download', () => {
-  it('downloads the saved state, not the draft, when unsaved edits exist', async () => {
+  it('asks for a password before the saved state is downloaded', async () => {
+    await mountWith()
+
+    await openMenu()
+    await choose('Download saved settings')
+
+    expect(wrapper.find('form[role="dialog"]').exists()).toBe(true)
+    expect(download).not.toHaveBeenCalled()
+  })
+
+  it('downloads the encrypted file of the saved state with the password it was given', async () => {
     const store = await mountWith()
     editFirstRepository(store)
     await flushPromises()
 
     await openMenu()
     await choose('Download saved settings')
+    await fillPassword('twelve-chars!')
 
-    expect(downloadedJson()).toEqual(SERVER)
+    expect(exportRequests).toEqual(['twelve-chars!'])
+    expect(downloadedJson()).toEqual(ENCRYPTED)
+    expect(JSON.stringify(download.mock.calls)).not.toContain('PRIVATE')
   })
 
   it('names the saved download after the day of the injected clock', async () => {
@@ -128,20 +156,20 @@ describe('SettingsView download', () => {
 
     await openMenu()
     await choose('Download saved settings')
+    await fillPassword('twelve-chars!')
 
     expect(download.mock.calls.at(-1)[1]).toBe('ingot-settings-2026-10-15.json')
   })
 
-  it('downloads the draft only when the unsaved option is chosen', async () => {
+  it('does not offer the draft, because the draft is not part of the encrypted file', async () => {
     const store = await mountWith()
     editFirstRepository(store)
     await flushPromises()
 
     await openMenu()
-    await choose('Download including unsaved changes')
+    const draftItem = wrapper.findAll('[role="menuitem"]').find(entry => entry.text().includes('Download including unsaved changes'))
 
-    expect(downloadedJson().maven.repositories[0].visibility).toBe('PRIVATE')
-    expect(download.mock.calls.at(-1)[1]).toBe('ingot-settings-2026-10-15.json')
+    expect(draftItem?.attributes('disabled')).toBeDefined()
   })
 
   it('keeps the saved download available while the draft has invalid entries', async () => {
