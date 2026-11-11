@@ -36,6 +36,10 @@ import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.badRequest
 import com.reposilite.shared.toErrorResult
 import com.reposilite.status.FailureFacade
+import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeCodec
+import net.onelitefeather.ingot.settings.encryption.SettingsEnvelopeException
+import net.onelitefeather.ingot.settings.encryption.SettingsKeySources
+import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
 import io.javalin.http.HttpStatus
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
 import io.javalin.openapi.JsonSchemaLoader
@@ -74,6 +78,11 @@ class SharedConfigurationFacade(
     private val extensions: Extensions = Extensions(journalist),
     private val entityTags: EntityTagSigner = EntityTagSigner.ephemeral(),
     private val secretReferences: SecretReferenceResolver? = null,
+    /**
+     * The keys of this instance. Secret values are stored as envelopes while a key is active, and an envelope is opened when a
+     * document is loaded. Null when no encryption is configured at all.
+     */
+    private val secretCipher: SettingsSecretCipher? = null,
 ) : Facade {
 
     private companion object {
@@ -150,8 +159,7 @@ class SharedConfigurationFacade(
             .orElseGet { emptyMap() }
             .map { (name, obj) ->
                 val ref = getSettingsReference<SharedSettings>(name)!!
-                val settings = DEFAULT_OBJECT_MAPPER.readValue(obj.toString(), ref.type)
-                ref to ref.update(settings)
+                ref to applyDomain(name, ref, obj)
             }
 
         updateResult
@@ -178,6 +186,55 @@ class SharedConfigurationFacade(
     }
 
     /**
+     * Opens the envelopes of one stored domain and applies it. A value that cannot be opened fails only this domain, so the
+     * previous settings of it stay in place.
+     */
+    private fun applyDomain(name: String, ref: SharedSettingsReference<SharedSettings>, node: JsonNode): Result<SharedSettings, out Exception> {
+        val settings = try {
+            DEFAULT_OBJECT_MAPPER.readValue(openSecrets(name, ref.type, node).toString(), ref.type)
+        } catch (exception: SettingsEnvelopeException) {
+            return exception.asError()
+        }
+        return ref.update(settings)
+    }
+
+    /**
+     * Opens every envelope of a stored domain, so consumers and the API work on plain values. The message of a failure names the
+     * domain and the property, never the value.
+     */
+    private fun openSecrets(name: String, type: Class<*>, node: JsonNode): JsonNode =
+        SettingsSecrets.transformSensitive(type, node) { path, value ->
+            if (!SettingsEnvelopeCodec.isEnvelope(value)) {
+                return@transformSensitive value
+            }
+            val cipher = secretCipher
+                ?: throw SettingsEnvelopeException("Settings domain '$name' cannot be read: '$path' is encrypted, but no settings key is configured")
+            try {
+                cipher.open(name, path, value)
+            } catch (exception: SettingsEnvelopeException) {
+                throw SettingsEnvelopeException("Settings domain '$name' cannot be read: ${exception.message}")
+            }
+        }
+
+    /**
+     * Seals the plain secret values of a rendered domain. Empty values and references stay as written.
+     */
+    private fun sealSecrets(name: String, type: Class<*>, node: JsonNode): JsonNode {
+        val cipher = secretCipher?.takeIf { it.sealing } ?: return node
+        return SettingsSecrets.transformSensitive(type, node) { path, value ->
+            if (isPlainSecret(value)) cipher.seal(name, path, value) else value
+        }
+    }
+
+    /**
+     * True for a value that is stored in clear: not empty, not a reference and not an envelope.
+     */
+    private fun isPlainSecret(value: String): Boolean =
+        value.isNotEmpty() &&
+            !SettingsEnvelopeCodec.isEnvelope(value) &&
+            !(secretReferences != null && SecretReferenceResolver.isReferenceOnly(value))
+
+    /**
      * Logs where the parser stopped. The parser message is left out: it can quote the token it rejected, and the document holds
      * credentials. Every domain then falls back to its defaults, as it always did.
      */
@@ -201,6 +258,10 @@ class SharedConfigurationFacade(
 
                 val revision = refreshFromProvider()
                 val before = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
+                if (withoutRequiredKey(name, body)) {
+                    return IllegalStateException(keyRequiredMessage(name)).asError()
+                }
+
                 val result = reference.update(body)
                 if (result.isErr) {
                     return result
@@ -271,6 +332,10 @@ class SharedConfigurationFacade(
                     return badRequest(SettingsViolationException(writeViolations).message).asError()
                 }
 
+                if (withoutRequiredKey(name, transformed.get())) {
+                    return HttpStatus.CONFLICT.toErrorResult(keyRequiredMessage(name))
+                }
+
                 // The message of the exception, never its toString: that would put the class name in front of the rule.
                 val applied = reference.update(transformed.get()).mapErr { badRequest(it.message ?: "Settings domain '$name' cannot be stored") }
                 if (applied.isErr) {
@@ -338,7 +403,7 @@ class SharedConfigurationFacade(
                 val node = document.get(name) ?: return@forEach
                 val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
                 // An unchanged document is not applied again, so its references are not read again on every request.
-                runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(node, reference.type) }
+                runCatching { DEFAULT_OBJECT_MAPPER.treeToValue(openSecrets(name, reference.type, node), reference.type) }
                     .onSuccess { stored -> if (!sameDocument(stored, reference.get())) reference.update(stored) }
                     .onFailure { journalist.logger.warn("Shared configuration | Cannot refresh '$name' from ${sharedConfigurationProvider.name()}: ${it.message}") }
             }
@@ -375,10 +440,119 @@ class SharedConfigurationFacade(
             .mapNotNull { name -> getSettingsReference<SharedSettings>(name)?.let { name to it.type } }
             .toMap()
 
-    private fun renderConfiguration(): String =
-        getDomainNames()
-            .associateWith { getSettingsReference<SharedSettings>(it)!!.get() }
-            .let { DEFAULT_OBJECT_MAPPER.writeValueAsString(it) }
+    /**
+     * The stored document. With [sealed] set, the plain secret values are written as envelopes while a key is active.
+     */
+    private fun renderConfiguration(sealed: Boolean = true): String {
+        val root = DEFAULT_OBJECT_MAPPER.createObjectNode()
+        getDomainNames().forEach { name ->
+            val reference = getSettingsReference<SharedSettings>(name)!!
+            val node = DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(reference.get())
+            root.set<JsonNode>(name, if (sealed) sealSecrets(name, reference.type, node) else node)
+        }
+        return DEFAULT_OBJECT_MAPPER.writeValueAsString(root)
+    }
+
+    /**
+     * The saved state of every domain as plain JSON: secrets in clear, references as written. It is the content of a password
+     * protected export, and it is never written to the stored document.
+     */
+    fun plainDocument(): String =
+        synchronized(stateLock) {
+            refreshFromProvider()
+            renderConfiguration(sealed = false)
+        }
+
+    /**
+     * The number of stored secret values that are still plain text. Empty values, references and envelopes are not counted.
+     */
+    fun plaintextSecretCount(): Int =
+        countSecretValues(sharedConfigurationProvider.fetchConfiguration()) { isPlainSecret(it) }
+
+    /**
+     * Stores the stored document again with the active key, for example at the first start with a key. Only a database can be
+     * written by the instance, so the rewrite is refused for a managed file.
+     *
+     * @return the number of secret values that were sealed, or null when nothing was stored
+     */
+    fun sealStoredSecrets(reason: String, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Int? =
+        rewriteDocument(sealed = true, reason = reason, actor = actor)
+
+    /**
+     * Stores the stored document with plain secret values again, which is the downgrade path. Callers must check for the active key
+     * first, see [sealStoredSecrets].
+     *
+     * @return the number of secret values that were written in clear, or null when nothing was stored
+     */
+    fun unsealStoredSecrets(reason: String, actor: AuditActor = AuditActor.SYSTEM_ACTOR): Int? =
+        rewriteDocument(sealed = false, reason = reason, actor = actor)
+
+    private fun rewriteDocument(sealed: Boolean, reason: String, actor: AuditActor): Int? {
+        synchronized(stateLock) {
+            if (isExternallyManaged()) {
+                return null
+            }
+
+            repeat(MAX_WRITE_ATTEMPTS) {
+                val revision = refreshFromProvider()
+                val rendered = renderConfiguration(sealed)
+                val count = countSecretValues(rendered) { if (sealed) SettingsEnvelopeCodec.isEnvelope(it) else isPlainSecret(it) }
+                if (sharedConfigurationProvider.compareAndUpdateConfiguration(rendered, revision)) {
+                    val details = mapOf(
+                        "reason" to reason,
+                        "values" to count,
+                        "activeKeyId" to secretCipher?.activeKeyId,
+                        "previousKeyId" to secretCipher?.previousKeyId,
+                    )
+                    extensions.emitEvent(AuditEvent(action = AuditAction.SETTINGS_SECRETS_REENCRYPTED, actor = actor, details = details))
+                    return count
+                }
+            }
+
+            return null
+        }
+    }
+
+    private fun keyRequiredMessage(name: String): String =
+        "Settings domain '$name' holds a secret, and the settings encryption is required while no settings key is active. " +
+            "Set ${SettingsKeySources.KEY} or " +
+            "${SettingsKeySources.KEY_FILE} first."
+
+    /**
+     * True when a write would store a plain secret while the mode requires a key and no key is active.
+     */
+    private fun withoutRequiredKey(name: String, value: SharedSettings): Boolean {
+        if (secretCipher?.requiresKey != true) {
+            return false
+        }
+
+        val type = getSettingsReference<SharedSettings>(name)?.type ?: return false
+        var plain = false
+        SettingsSecrets.transformSensitive(type, DEFAULT_OBJECT_MAPPER.valueToTree<JsonNode>(value)) { _, stored ->
+            plain = plain || isPlainSecret(stored)
+            stored
+        }
+        return plain
+    }
+
+    /**
+     * Counts the secret values of a stored document that match [predicate]. Domains without a known type are not counted.
+     */
+    private fun countSecretValues(document: String, predicate: (String) -> Boolean): Int {
+        val root = runCatching { DEFAULT_OBJECT_MAPPER.readTree(document) }.getOrNull() ?: return 0
+        var count = 0
+        getDomainNames().forEach { name ->
+            val reference = getSettingsReference<SharedSettings>(name) ?: return@forEach
+            val node = root.get(name) ?: return@forEach
+            SettingsSecrets.transformSensitive(reference.type, node) { _, value ->
+                if (value.isNotEmpty() && predicate(value)) {
+                    count++
+                }
+                value
+            }
+        }
+        return count
+    }
 
     inline fun <reified T : SharedSettings> getDomainSettings(): MutableReference<T> =
         getDomainSettings(T::class)
