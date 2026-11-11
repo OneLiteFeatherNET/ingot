@@ -127,4 +127,22 @@ describe('MdNavigationRail', () => {
     expect(wrapper.find('i[data-key="dashboard"]').attributes('data-active')).toBe('true')
     expect(wrapper.find('i[data-key="tokens"]').attributes('data-active')).toBe('false')
   })
+
+  it('lets a long label wrap inside the rail, so it cannot overflow the 80 pixel width', () => {
+    const wrapper = mount(MdNavigationRail, {
+      props: { items: [{ key: 'settings', label: 'Administration' }], modelValue: 'settings' }
+    })
+
+    const label = wrapper.find('a, button').findAll('span').at(-1)
+    expect(label.text(), 'the label text').toBe('Administration')
+    expect(label.classes(), 'the label may not be wider than the rail').toEqual(expect.arrayContaining(['max-w-full', 'break-words']))
+  })
+
+  it('keeps the full label as the accessible name of a shortened entry', () => {
+    const wrapper = mount(MdNavigationRail, {
+      props: { items: [{ key: 'settings', label: 'Administration' }], modelValue: 'settings' }
+    })
+
+    expect(wrapper.find('button').text(), 'the entry is named by its full label').toContain('Administration')
+  })
 })

@@ -146,10 +146,10 @@ afterEach(() => {
 })
 
 describe('SettingsView page', () => {
-  it('shows the title Settings and a single line that says the configuration is shared', async () => {
+  it('shows the Administration heading and a single line that says the configuration is shared', async () => {
     await mountSettings()
 
-    expect(wrapper.get('h1').text()).toBe('Settings')
+    expect(wrapper.get('h1').text()).toBe('Administration')
     expect(wrapper.text()).toContain('Shared configuration for all instances.')
   })
 

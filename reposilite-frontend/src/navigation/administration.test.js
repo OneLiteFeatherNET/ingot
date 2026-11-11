@@ -19,6 +19,7 @@ import {
   adminGroups,
   administrationLocation,
   barLayout,
+  currentTreeKey,
   pageLabel,
   railGroups,
   reservedDomainIds,
@@ -36,6 +37,8 @@ const only = (...nodes) => (node) => nodes.includes(node)
 const railLabels = (can) => railGroups(can).flatMap(group => group.pages.map(page => page.label))
 const headingsOf = (groups) => groups.map(group => group.heading)
 const linksOf = (groups, heading) => groups.find(group => group.heading === heading)?.links ?? []
+const allLinks = (groups) => groups.flatMap(group => group.links)
+const keyOfLabel = (groups, label) => allLinks(groups).find(link => link.label === label)?.key
 
 describe('the breadcrumb of an Administration page', () => {
   it('starts with Administration on every Administration page, not with the page itself', () => {
@@ -92,14 +95,14 @@ describe('the Administration tree', () => {
 
   it('lists Repositories under Repository, and the access pages and audit log under Security', () => {
     const groups = adminGroups(everything)
-    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['repositories'])
+    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['page:repositories'])
     expect(linksOf(groups, 'Security').map(link => link.key)).toEqual([
-      'users', 'machines', 'teams', 'sso', 'ldap', 'security', 'check', 'audit'
+      'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check', 'page:audit'
     ])
   })
 
   it('puts Console, Maintenance and Analytics under Support', () => {
-    expect(linksOf(adminGroups(everything), 'Support').map(link => link.key)).toEqual(['console', 'maintenance', 'analytics'])
+    expect(linksOf(adminGroups(everything), 'Support').map(link => link.key)).toEqual(['page:console', 'page:maintenance', 'page:analytics'])
   })
 
   it('leaves out a group that has no visible page', () => {
@@ -112,7 +115,7 @@ describe('the Administration tree', () => {
 
   it('gives each link a router location by route name', () => {
     expect(linksOf(adminGroups(everything), 'Security')[0]).toMatchObject({
-      key: 'users',
+      key: 'page:users',
       label: 'Users',
       to: { name: 'access-users' }
     })
@@ -121,7 +124,7 @@ describe('the Administration tree', () => {
   it('puts a plugin settings domain under System at its settings address', () => {
     const groups = adminGroups(everything, { domains: ['maven', 'acme-plugin'], titleOf: (domain) => `Title of ${domain}` })
     expect(linksOf(groups, 'System')).toContainEqual({
-      key: 'acme-plugin',
+      key: 'settings:acme-plugin',
       label: 'Title of acme-plugin',
       to: { name: 'settings', params: { domain: 'acme-plugin' } }
     })
@@ -129,8 +132,8 @@ describe('the Administration tree', () => {
 
   it('puts the maven, javadoc and cleanup domains under Repository', () => {
     const groups = adminGroups(everything, { domains: ['maven', 'javadoc', 'cleanup', 'web'] })
-    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['repositories', 'maven', 'javadoc', 'cleanup'])
-    expect(linksOf(groups, 'System').map(link => link.key)).toEqual(['web'])
+    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['page:repositories', 'settings:maven', 'settings:javadoc', 'settings:cleanup'])
+    expect(linksOf(groups, 'System').map(link => link.key)).toEqual(['settings:web'])
   })
 
   it('lists no settings domain to a visitor without the settings node', () => {
@@ -141,6 +144,48 @@ describe('the Administration tree', () => {
   it('reserves the page names under /settings against settings domain ids', () => {
     expect(reservedDomainIds(['maven', 'repositories', 'acme-plugin'])).toEqual(['repositories'])
     expect(reservedDomainIds(['maven', 'web'])).toEqual([])
+  })
+})
+
+describe('the keys of the Administration tree', () => {
+  it('gives no two entries the same key, when a settings domain has the id of a page', () => {
+    const groups = adminGroups(everything, { domains: ['audit', 'users', 'security', 'maven'], titleOf: (domain) => domain })
+    const keys = allLinks(groups).map(link => link.key)
+    expect(new Set(keys).size, `the keys ${keys.join(', ')} are unique`).toBe(keys.length)
+  })
+
+  it('gives no two entries the same key, when a plugin page shares its id with a page of the tree', () => {
+    setContributions({
+      version: 1,
+      pages: [{ plugin: 'acme', id: 'users', title: 'Acme users', group: 'Security', area: 'users', blocks: [] }],
+      sections: [],
+      enabledPlugins: ['acme'],
+    })
+    try {
+      const keys = allLinks(adminGroups(everything, { domains: ['users'] })).map(link => link.key)
+      expect(new Set(keys).size, `the keys ${keys.join(', ')} are unique`).toBe(keys.length)
+    } finally {
+      setContributions(null)
+    }
+  })
+
+  it('marks the Audit settings domain on /settings/audit, and not the Audit log entry', () => {
+    const groups = adminGroups(everything, { domains: ['audit'], titleOf: (domain) => (domain === 'audit' ? 'Audit settings' : domain) })
+    expect(currentTreeKey('settings', 'audit'), 'the current entry of /settings/audit').toBe(keyOfLabel(groups, 'Audit settings'))
+    expect(keyOfLabel(groups, 'Audit log')).not.toBe(currentTreeKey('settings', 'audit'))
+  })
+
+  it('marks the Audit log entry on /audit, and no settings domain', () => {
+    const groups = adminGroups(everything, { domains: ['audit'], titleOf: (domain) => (domain === 'audit' ? 'Audit settings' : domain) })
+    expect(currentTreeKey('audit'), 'the current entry of /audit').toBe(keyOfLabel(groups, 'Audit log'))
+  })
+
+  it('marks no entry on the settings hub, which is no entry of the tree', () => {
+    expect(currentTreeKey('settings')).toBeUndefined()
+  })
+
+  it('marks the page of a detail route with the page it belongs to', () => {
+    expect(currentTreeKey('settings-repository')).toBe('page:repositories')
   })
 })
 

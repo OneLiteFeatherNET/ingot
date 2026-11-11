@@ -36,7 +36,7 @@ describe('the Migration entry of the navigation', () => {
   it('lists Migration in the System group of the Administration tree for an instance admin when nexus-import is enabled', () => {
     setContributions(manifest(['nexus-import']))
 
-    const migration = treeLinksOf(instanceAdmin).find(link => link.key === 'migration')
+    const migration = treeLinksOf(instanceAdmin).find(link => link.key === 'page:migration')
 
     expect(migration, 'Migration is listed in the tree').toBeDefined()
     expect(migration.heading, 'and sits in the System group').toBe('System')
@@ -46,19 +46,19 @@ describe('the Migration entry of the navigation', () => {
   it('lists no Migration entry when nexus-import is not enabled', () => {
     setContributions(manifest([]))
 
-    expect(treeKeysOf(instanceAdmin), 'the entry is absent without the plugin').not.toContain('migration')
+    expect(treeKeysOf(instanceAdmin), 'the entry is absent without the plugin').not.toContain('page:migration')
   })
 
   it('lists no Migration entry to a visitor without the instance admin permission', () => {
     setContributions(manifest(['nexus-import']))
 
-    expect(treeKeysOf(dashboardOnly), 'the entry needs the instance admin').not.toContain('migration')
+    expect(treeKeysOf(dashboardOnly), 'the entry needs the instance admin').not.toContain('page:migration')
   })
 
   it('lists Migration while the plugin UI switch is off, because enabledPlugins is always reported', () => {
     setContributions(manifest(['nexus-import'], []))
 
-    expect(treeKeysOf(instanceAdmin)).toContain('migration')
+    expect(treeKeysOf(instanceAdmin)).toContain('page:migration')
   })
 
   it('keeps Migration out of the bottom bar', () => {
@@ -66,8 +66,8 @@ describe('the Migration entry of the navigation', () => {
 
     const layout = barLayout(instanceAdmin)
 
-    expect(layout.bar.map(page => page.key)).not.toContain('migration')
-    expect(layout.more.flatMap(group => group.pages.map(page => page.key))).not.toContain('migration')
+    expect(layout.bar.map(page => page.key)).not.toContain('page:migration')
+    expect(layout.more.flatMap(group => group.pages.map(page => page.key))).not.toContain('page:migration')
   })
 
   it('names the route of the entry in the route table, so the registry suite keeps covering it', () => {
@@ -83,8 +83,8 @@ describe('the settings domains', () => {
       .flatMap(group => group.links)
       .filter(link => link.to.name === 'settings')
 
-    expect(domainLinks.map(link => link.key).sort()).toEqual([...bundled].sort())
-    expect(domainLinks.map(link => link.key)).not.toContain('migration')
+    expect(domainLinks.map(link => link.to.params.domain).sort()).toEqual([...bundled].sort())
+    expect(domainLinks.map(link => link.to.params.domain)).not.toContain('migration')
   })
 })
 

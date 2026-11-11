@@ -78,10 +78,10 @@ describe('the repositories table', () => {
     expect(wrapper.find('table caption').text(), 'the caption counts the rows').toBe('Repositories, 5 of 5 shown')
   })
 
-  it('names the page with an h1 and marks the columns and the name cells as headers', async () => {
+  it('names the page with an h2 and marks the columns and the name cells as headers', async () => {
     await mountPage()
 
-    expect(wrapper.find('h1').text(), 'the page heading').toBe('Repositories')
+    expect(wrapper.find('h2').text(), 'the page heading').toBe('Repositories')
     const columnHeaders = wrapper.findAll('thead th[scope="col"]').map(header => header.text())
     expect(columnHeaders.join(','), 'every column header is a column header').toContain('Name')
     expect(columnHeaders.join(','), 'the type column is named').toContain('Type')

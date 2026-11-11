@@ -31,22 +31,22 @@ describe('support pages in the Administration tree', () => {
   it('lists both support pages in the Support group for a principal with the console area', () => {
     setSupportBundleOffered(true)
 
-    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['console', 'system-info', 'support'])
+    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['page:console', 'page:system-info', 'page:support'])
   })
 
   it('names each page with its label and its route', () => {
     setSupportBundleOffered(true)
 
     expect(linksOf(adminGroups(canWith([CONSOLE])), 'Support').slice(1)).toEqual([
-      { key: 'system-info', label: 'System information', to: { name: 'system-info' } },
-      { key: 'support', label: 'Support bundle', to: { name: 'support' } },
+      { key: 'page:system-info', label: 'System information', to: { name: 'system-info' } },
+      { key: 'page:support', label: 'Support bundle', to: { name: 'support' } },
     ])
   })
 
   it('hides both support pages while the instance does not offer them, whatever the nodes', () => {
     setSupportBundleOffered(false)
 
-    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['console'])
+    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['page:console'])
   })
 
   it('hides both support pages from a principal without the console area', () => {
