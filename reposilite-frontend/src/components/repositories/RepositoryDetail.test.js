@@ -126,9 +126,9 @@ describe('the repository detail page', () => {
     await mountDetail({ id: 'releases' })
 
     const text = wrapper.text()
-    expect(text, 'Allow is explained').toContain('A release may be deployed again over an existing version.')
-    expect(text, 'Allow once is explained').toContain('A release version can be deployed only once.')
-    expect(text, 'Read only is explained').toContain('Nothing can be deployed to this repository.')
+    expect(text, 'Allow is explained').toContain('Deploys are accepted.')
+    expect(text, 'Allow once is explained, with its status code').toContain('refused with 409.')
+    expect(text, 'Read only is explained, with its status codes').toContain('refused with 405 Method Not Allowed.')
   })
 
   it('offers the Version policy field only when the schema has it', async () => {
