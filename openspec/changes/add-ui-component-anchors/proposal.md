@@ -46,8 +46,9 @@ Facts checked against this worktree (main at `db0717b2b`) are in `design.md`, wi
 ### Out of scope
 
 - Insertion points and extension slots, where a plugin adds content to the dashboard. Follow-up change `add-ui-insertion-points`.
-- A way for a plugin to ship a stylesheet into the dashboard. Follow-up change `add-plugin-stylesheet-channel`. It needs a
-  decision on what a stylesheet may read (see `design.md`, Security), so it is not decided here.
+- A way for a plugin to ship a stylesheet into the dashboard. This is the named follow-up `add-plugin-stylesheet-channel`, which
+  ships in the same proposal PR and depends on this change. It is not part of this change's code, so the stylesheet decisions
+  (what a stylesheet may read, and where its rules sit in the cascade) are made there and not here.
 - Any plugin script in the browser. `add-plugin-ui-extension-point` already rules it out for now.
 - A theming tokens API, and any change to colours, the Material 3 components or the appearance settings.
 - Renaming `data-testid`. Existing test ids stay as they are and are not replaced by the new attributes.
@@ -76,7 +77,8 @@ Facts checked against this worktree (main at `db0717b2b`) are in `design.md`, wi
 - **Behaviour that changes by default.** None for users. The bundle grows by the attribute strings (see `design.md`, Build size).
 - **Both deploy modes.** The attributes are compiled into the dashboard build, so the bundled dashboard and the split image
   show the same names.
-- **Dependencies on other changes.** None blocks implementation. See `design.md`, Coordination, for the in-flight navigation and
+- **Dependencies on other changes.** None blocks implementation. `add-plugin-stylesheet-channel` depends on this change and
+  is proposed in the same proposal PR, so the stylesheet channel is named here and not left to a later, unnamed change. See `design.md`, Coordination, for the in-flight navigation and
   settings changes that touch the same files, and for `add-plugin-ui-extension-point`, whose code is merged but whose change
   folder is still on main.
 - **Code.** `reposilite-frontend/src/components/**`, `reposilite-frontend/src/pages/`, `reposilite-frontend/src/App.vue`,

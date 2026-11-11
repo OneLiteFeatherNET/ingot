@@ -64,7 +64,7 @@ from `pendingAreas`. Each batch is one commit and the suite passes after it. The
 ## 6. Documentation (gitbook)
 
 - [ ] 6.1 `docs(gitbook)`: add `docs/gitbook/how-to/extend-the-dashboard-from-a-plugin.md`, with what plugins can target today
-  (declared pages, the placeholders, the appearance settings), what is missing (a stylesheet channel, insertion points, plugin
+  (declared pages, the placeholders, the appearance settings), what is missing (a stylesheet channel, `add-plugin-stylesheet-channel`, insertion points, plugin
   script), an example stylesheet labelled as one for a dashboard build the operator controls, and the selector rule of Decision 11.
   Link it from `docs/gitbook/reference/plugin-api.md` ("Dashboard pages") and `docs/gitbook/how-to/write-a-plugin.md`, and add it to
   `docs/gitbook/SUMMARY.md`.

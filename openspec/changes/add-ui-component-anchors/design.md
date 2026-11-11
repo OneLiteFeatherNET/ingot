@@ -213,11 +213,11 @@ and its attributes are the most reused.
 - **Injection.** The attribute names and the closed values are written in the source. Dynamic values pass through Vue's attribute
   binding, which escapes them. Plugin text never becomes an attribute name, and plugin page ids are validated before they reach
   an attribute.
-- **What a stylesheet could read.** This change does not add a stylesheet channel, but the anchors are what a later channel
-  would select on, and that channel needs a decision. Its CSS can read attribute values and input values through selectors and
-  send them out through `url()`, because `img-src` allows `https:` (`SecurityHeaders.kt:72`). The follow-up must therefore either
-  keep the stylesheet away from data-bearing elements or drop the rule, and it has to say which. This is recorded as a blocker of
-  that follow-up, not of this change.
+- **What a stylesheet could read.** This change does not add a stylesheet channel. The channel is `add-plugin-stylesheet-channel`,
+  proposed in the same PR, and it takes the decision this paragraph needs: its CSS can read attribute values and input values
+  through selectors and send them out through `url()`, because `img-src` allows `https:` (`SecurityHeaders.kt:72`). That change
+  therefore rejects every network-capable construct at registration, so a plugin stylesheet cannot send a value out, and it keeps
+  the rules in a named layer. This change does not depend on that decision and does not ship any stylesheet.
 - **Information.** Only values already on screen are exposed (Decision 4). The attributes add no new data to any response.
 
 ## What plugins can use today, and what is missing
@@ -239,7 +239,7 @@ What exists:
 What is missing:
 
 - A way to deliver a stylesheet into the bundled dashboard. Without it, the attributes are reachable only by an operator who
-  builds a dashboard of their own. Follow-up `add-plugin-stylesheet-channel`.
+  builds a dashboard of their own. Named follow-up `add-plugin-stylesheet-channel`, in the same proposal PR.
 - A way to add content at a named place. Follow-up `add-ui-insertion-points`.
 - Any plugin script in the browser. Not planned (see `add-plugin-ui-extension-point`, `design.md`).
 
