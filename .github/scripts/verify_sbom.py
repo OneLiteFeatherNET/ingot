@@ -98,7 +98,7 @@ def has_hash(component):
     """True when the component carries a hash itself or on its distribution reference, as npm SBOMs do."""
     if component.get("hashes"):
         return True
-    return any(reference.get("hashes") for reference in component.get("externalReferences") or [])
+    return any(reference.get("hashes") for reference in dicts(component.get("externalReferences")))
 
 
 def check_document(document, path="<document>", min_licence_share=DEFAULT_MIN_LICENCE_SHARE):
