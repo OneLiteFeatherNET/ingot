@@ -4,7 +4,7 @@ description: Move a Reposilite release from the upstream Helm chart 1.4.5 to the
 
 # Migrate from the upstream Helm chart
 
-A release installed with the upstream `reposilite` chart can move to the Ingot chart without new resources. The migration is a values diff: the Ingot chart keeps the value keys and defaults of the upstream chart 1.4.5, and two name overrides make the rendered names and the selector equal to those of the upstream release. The Deployment selector cannot change in place, so those overrides are the part that must not be skipped.
+A release installed with the upstream `reposilite` chart can move to the Ingot chart without new resources. The migration is a values diff: the Ingot chart keeps the value keys and defaults of the upstream chart 1.4.5. When the cluster holds the upstream release, the Ingot chart keeps the upstream names and the upstream selector by itself, so `helm install` and `helm upgrade` need no name overrides. The Deployment selector cannot change in place, which is why the chart keeps it. The two name overrides are still needed where the chart is rendered without cluster access, see [Tools that render without a cluster](#tools-that-render-without-a-cluster).
 
 The example throughout is the staging release of Ingot: a Flux `HelmRelease` named `reposilite` in the namespace `reposilite-staging`, which uses the upstream chart and a post renderer that sets the image digest.
 
@@ -30,17 +30,17 @@ For a Flux release, the values are the `spec.values` of the `HelmRelease`. The p
 
 ## 2. Write the migrated values
 
-Start from the saved values and add the two name overrides and the image of the chart:
+Start from the saved values and add the image of the chart:
 
 ```yaml
-nameOverride: reposilite
-fullnameOverride: reposilite
 image:
   name: ghcr.io/onelitefeathernet/ingot
   tag: "nightly"
 ```
 
-Keep the `image.tag` the release already uses. Staging follows the `nightly` tag, and its post renderer pins the digest. If `image.tag` is not set, the chart uses its own version. The name overrides are required. Without them the chart is named `ingot`, and a release called `reposilite` would be rendered as `reposilite-ingot`, with a different selector.
+Keep the `image.tag` the release already uses. Staging follows the `nightly` tag, and its post renderer pins the digest. If `image.tag` is not set, the chart uses its own version.
+
+The name overrides `nameOverride` and `fullnameOverride` are not needed here. If the saved values already set them to `reposilite`, leave them in place: they render the same names. Without them and without cluster access, the chart renders the names of the Ingot chart, see below.
 
 Save the result as `ingot-values.yaml`.
 
@@ -113,7 +113,7 @@ helm diff upgrade reposilite oci://ghcr.io/onelitefeathernet/charts/ingot \
   -f ingot-values.yaml
 ```
 
-The expected changes are the chart label and the version label on the pods, which restart the pods once, and the image of the release. The names of the Deployment, the Service and the claim must not change, and neither may the selector of the Deployment. If the diff shows a changed selector, stop and check the name overrides.
+The expected changes are the chart label and the version label on the pods, which restart the pods once, and the image of the release. The names of the Deployment, the Service and the claim must not change, and neither may the selector of the Deployment. `helm diff` reads the release from the cluster, so it shows the names that the upgrade will keep. If the diff shows a renamed Deployment, Service or claim, or a changed selector, stop. The Ingot chart did not recognise the release as the upstream release. Check the owner annotations `meta.helm.sh/release-name` and `meta.helm.sh/release-namespace` on the claim and the Deployment, and set the two name overrides of step 2 before you go on.
 
 ## 5. Apply the change
 
@@ -132,7 +132,18 @@ For a release that Flux manages, change `spec.chart` of the `HelmRelease` from t
 
 Staging keeps `persistence.enabled: false` and an `emptyDir` at `/app/data`, so nothing has to move.
 
-A release with a claim from the upstream chart keeps that claim. The Ingot chart names its claim after the release, as the upstream chart does, so with the name overrides it is the same `reposilite` claim, mounted at the same path. No new claim is created. Both charts set `helm.sh/resource-policy: keep` on the claim, so an uninstall does not delete the data either.
+A release with a claim from the upstream chart keeps that claim. When the cluster holds the upstream claim, owned by this release, the Ingot chart renders the same `reposilite` claim, mounted at the same path, with no name override. No new claim is created. Both charts set `helm.sh/resource-policy: keep` on the claim, so an uninstall does not delete the data either.
+
+## Tools that render without a cluster
+
+The keeping of the names needs the cluster. `helm template`, and GitOps tools that render a chart without access to the cluster, such as Argo CD in its default mode, see no release objects. They render the Ingot names: the Deployment becomes `reposilite-ingot`, with the selector `app.kubernetes.io/name: ingot`, and a new claim is created. The old claim stays behind under `helm.sh/resource-policy: keep`, so the data looks gone. For these tools, set both overrides in the values of step 2:
+
+```yaml
+nameOverride: reposilite
+fullnameOverride: reposilite
+```
+
+With both overrides the render is the upstream render, and the chart does not consult the cluster for the names. Check the result with `helm template` before the tool applies it: the claim, the Deployment and the Service must be named `reposilite`, and the Deployment selector must be `app.kubernetes.io/name: reposilite`.
 
 ## Roll back to the upstream chart
 
