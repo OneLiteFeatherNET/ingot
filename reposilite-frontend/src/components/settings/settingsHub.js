@@ -36,13 +36,19 @@ const domainSummary = (schema, saved) => {
 // The cards of the hub: the Administration tree the visitor may open, in its groups. A settings domain is a card
 // with its saved summary, and `unsaved` lists the domains whose draft differs from the saved value. A page is a
 // card without a summary. `can(node)` answers for the visitor, and a settings domain is listed only with the settings node.
+// The Repositories page edits the maven domain, so its card carries the summary and the draft mark of that domain.
+const domainOfCard = (link) => {
+  if (link.to.name === 'settings') return link.to.params.domain
+  return link.to.name === 'settings-repositories' ? 'maven' : undefined
+}
+
 const hubGroups = ({ can, domains, schemas, saved, unsaved, titleOf }) => adminGroups(can, {
   domains: settingsTabDomains(domains),
   titleOf,
 }).map(group => ({
   heading: group.heading,
   cards: group.links.map(link => {
-    const domain = link.to.name === 'settings' ? link.to.params.domain : undefined
+    const domain = domainOfCard(link)
     const isDomain = domain !== undefined
     return {
       key: link.key,

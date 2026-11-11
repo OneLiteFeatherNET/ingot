@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { DOMAINS_ON_OTHER_PAGES } from '../../navigation/registry'
+
 /*
  * The settings domains that have a dedicated page under Access. Their settings are edited there, next to the
  * users and teams they affect, so the generic settings form does not offer them. A domain stays loaded
@@ -38,7 +40,8 @@ const ACCESS_DOMAINS = {
 
 const isAccessDomain = (domain) => Object.prototype.hasOwnProperty.call(ACCESS_DOMAINS, domain)
 
-// The domains the settings tabs offer, in the order the server lists them.
-const settingsTabDomains = (domains) => domains.filter(domain => !isAccessDomain(domain))
+// The domains the settings tabs offer, in the order the server lists them. Neither the domains edited under Access nor
+// the domains that have a page of their own (the maven domain, on the Repositories page) are tabs.
+const settingsTabDomains = (domains) => domains.filter(domain => !isAccessDomain(domain) && !DOMAINS_ON_OTHER_PAGES.includes(domain))
 
 export { ACCESS_DOMAINS, isAccessDomain, settingsTabDomains }
