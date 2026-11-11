@@ -129,6 +129,18 @@ describe('the Connect step', () => {
     expect(wrapper.find('#migration-connect-url').element.value, 'the URL is kept').toBe(URL_VALUE)
   })
 
+  it('forgets the remembered password on request, and says so', async () => {
+    const { wrapper, wizard } = await mountWith(ConnectStep)
+    await fill(wrapper)
+    await submit(wrapper)
+    expect(wizard.passwords.recall()).toBe(PASSWORD)
+
+    await wrapper.find('#migration-forget-password').trigger('click')
+
+    expect(wizard.passwords.recall(), 'the password is dropped at once').toBeNull()
+    expect(wrapper.text()).toMatch(/password was forgotten/i)
+  })
+
   it('stores no connection after a failed test', async () => {
     const api = fakeApi({
       testConnection: async () => { throw new ApiProblem({ status: 403, title: 'Forbidden', detail: 'refused' }) },

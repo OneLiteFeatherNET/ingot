@@ -170,6 +170,13 @@ describe('the progress of a job', () => {
     expect(changes, 'a one point a second move is announced at most twice in 25 seconds').toBeLessThanOrEqual(2)
   })
 
+  it('says in words that progress could not be read while the reads fail, and keeps the bar', async () => {
+    const { wrapper } = await mountWith(JobProgress, { props: { job: progressJob(1, 4), label: 'Import progress', unreadable: true } })
+
+    expect(wrapper.text()).toContain('Progress could not be read, trying again.')
+    expect(wrapper.find('[role="progressbar"]').exists()).toBe(true)
+  })
+
   it('announces no percentage while the total is unknown', async () => {
     const { wrapper } = await mountWith(JobProgress, { props: { job: progressJob(0, 0), label: 'Import progress' } })
 

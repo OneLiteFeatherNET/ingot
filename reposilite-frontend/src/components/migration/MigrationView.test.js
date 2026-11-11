@@ -80,6 +80,16 @@ describe('the Migration page', () => {
     expect(wrapper.find('h2').text()).toBe('Connect')
   })
 
+  it('shows an access denied state, and no step, when the jobs cannot be read for the permission', async () => {
+    const { ApiProblem } = await import('../../store/migration/migrationApi')
+    const api = fakeApi({ listJobs: vi.fn(async () => { throw new ApiProblem({ status: 403, title: 'Forbidden', detail: 'refused' }) }) })
+    const { wrapper } = await mountWith(MigrationView, { props: { step: 'connect' }, api, at: '/settings/migration/connect' })
+    await flushPromises()
+
+    expect(wrapper.text()).toMatch(/do not have access to the import/i)
+    expect(wrapper.find('h2').exists(), 'no step is shown without data').toBe(false)
+  })
+
   it('drops the literal password when the visitor leaves the wizard', async () => {
     const wizard = connectedWizard()
     wizard.passwords.remember('literal-pw-7731')
