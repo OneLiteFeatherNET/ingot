@@ -48,7 +48,7 @@ defineProps({
 
 <template>
   <section
-    class="mx-auto w-full max-w-[1280px] px-4 pb-12 pt-7 min-[600px]:px-6 min-[1920px]:max-w-[1600px] min-[1920px]:px-8"
+    class="container mx-auto max-w-[1280px] pb-12 pt-7 min-[1920px]:max-w-[1600px]"
     aria-labelledby="administration-title"
   >
     <header class="flex flex-col gap-4 pb-6 min-[600px]:flex-row min-[600px]:items-end min-[600px]:justify-between">
