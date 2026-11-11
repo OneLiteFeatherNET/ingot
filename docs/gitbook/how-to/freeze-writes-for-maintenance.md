@@ -22,7 +22,7 @@ Pick one of these. The dashboard and the API need the maintenance area (`ingot.a
 
 {% tabs %}
 {% tab title="Dashboard" %}
-Open the status page and switch read-only mode on. The dashboard shows a banner while the state is on.
+Open **Administration**, then **Maintenance** under **Support**. In the **Writes** section, switch **Read-only mode** on and confirm in the dialog, which states what is refused. The dashboard shows a banner while the state is on, and links to the Maintenance page.
 {% endtab %}
 
 {% tab title="API" %}
@@ -46,7 +46,7 @@ The state reaches the other replicas within five seconds through the database. W
 curl -u "<token-name>:<token-secret>" -X DELETE https://ingot.example.com/api/admin/read-only
 ```
 
-Or switch it off on the dashboard. If the state is forced by `INGOT_READ_ONLY`, unset the variable and restart the instance instead. Turning the state on or off writes one audit event with the actor, so you can see who froze writes and when.
+Or switch it off in the **Writes** section of the Maintenance page. Turning it off needs no confirmation. If the state is forced by `INGOT_READ_ONLY`, unset the variable and restart the instance instead. Turning the state on or off writes one audit event with the actor, so you can see who froze writes and when.
 
 ## Mixed clusters
 

@@ -52,13 +52,13 @@ The container image has its own health check. It reads the address that Ingot wr
 | Field | Meaning |
 |-------|---------|
 | `version` | The version of the running Ingot. |
-| `latestVersion` | The newest release that Ingot found, or `<unknown>` when it could not find one. |
+| `latestVersion` | The newest release that Ingot found, or `<unknown>` when it could not find one. The dashboard says "Same as latest release" when it equals `version`. That shows the running version is the newest release, not that the running build is current. With the remote version check off, Ingot reports its own version here, so the dashboard says the same without a check. |
 | `uptime` | Milliseconds since the instance started. |
-| `usedMemory` | Memory in use by the process, in megabytes. |
-| `maxMemory` | The maximum heap, in megabytes. |
-| `usedThreads` | The number of live threads. |
-| `maxThreads` | The sum of the sizes of the web, I/O and database thread pools. |
-| `failuresCount` | The number of recorded failures. Read the list in the next section. |
+| `usedMemory` | Heap in use by this JVM, in megabytes. It is the heap that is not free, including garbage that the collector has not yet removed. |
+| `maxMemory` | The largest heap the JVM may use, in megabytes. It is a limit, not free memory. |
+| `usedThreads` | The number of live threads of this JVM. No limit applies to it. |
+| `maxThreads` | The sum of the sizes of the web, I/O and database thread pools. It counts pool slots, not the threads of the JVM, so it is not comparable with `usedThreads`. The dashboard does not show the two side by side. |
+| `failuresCount` | The number of distinct failure records of this instance since its last restart. The list is in memory. On a cluster the dashboard adds the instances' counts, so one error seen by two instances is counted twice. Read the list in the next section. |
 
 The console command `status` prints the same values, plus whether the instance is active.
 
