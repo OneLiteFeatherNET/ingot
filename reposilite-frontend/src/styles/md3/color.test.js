@@ -174,22 +174,33 @@ describe('colour roles', () => {
       }
     })
 
-    it(`takes the accent roles from the official OneLiteFeather tables in the ${theme} theme`, () => {
+    it(`takes the accent roles from the steel seed scheme in the ${theme} theme`, () => {
       const expected = theme === 'light'
-        ? { '--md-sys-color-primary': '#ac1c67', '--md-sys-color-secondary': '#94387c', '--md-sys-color-tertiary': '#4d4fb7' }
-        : { '--md-sys-color-primary': '#ff88b7', '--md-sys-color-secondary': '#f88cd6', '--md-sys-color-tertiary': '#9496ff' }
+        ? { '--md-sys-color-primary': '#0062a1', '--md-sys-color-secondary': '#515e7d', '--md-sys-color-tertiary': '#565a8b' }
+        : { '--md-sys-color-primary': '#9ccaff', '--md-sys-color-secondary': '#b9c6ea', '--md-sys-color-tertiary': '#bfc2fa' }
 
       for (const [name, value] of Object.entries(expected)) {
-        expect(THEMES[theme][name], `${name} should be the official OLF value`).toBe(value)
+        expect(THEMES[theme][name], `${name} should be the steel seed value`).toBe(value)
       }
+    })
+
+    it(`makes the steel tone the default primary in the ${theme} theme, a blue and not the OLF pink`, () => {
+      const [, a, b] = toLab(THEMES[theme]['--md-sys-color-primary'])
+      const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360
+      expect(hue, `the ${theme} primary is at ${hue.toFixed(0)} degrees, expected the steel blue family (about 230 to 275)`)
+        .toBeGreaterThanOrEqual(230)
+      expect(hue, `the ${theme} primary is at ${hue.toFixed(0)} degrees, expected the steel blue family (about 230 to 275)`)
+        .toBeLessThanOrEqual(275)
     })
   }
 
-  it('keeps the surfaces neutral, without the pink tint of the official table', () => {
+  // The steel seed's neutral palette leaves a slight blue tint on the dark surface (chroma 6.4), so the
+  // bound allows that tint and still rejects a strong colour cast.
+  it('keeps the surfaces near neutral, with at most the slight tint of the seed', () => {
     for (const theme of ['light', 'dark']) {
       const [, a, b] = toLab(THEMES[theme]['--md-sys-color-surface'])
       const chroma = Math.hypot(a, b)
-      expect(chroma, `the ${theme} surface should be near neutral (CIE LCh chroma ${chroma.toFixed(1)})`).toBeLessThan(6)
+      expect(chroma, `the ${theme} surface should be near neutral (CIE LCh chroma ${chroma.toFixed(1)})`).toBeLessThan(8)
     }
   })
 
