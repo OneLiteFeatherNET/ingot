@@ -66,6 +66,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
                         storage = repository.storageProvider,
                         storesMirrors = repository.storesProxiedFiles,
                         cachedVersions = mavenFacade.mirrorCacheEntries(repository.name),
+                        readOnly = mavenFacade.getRepository(repository.name)?.readOnly ?: false,
                     )
                 }
             },

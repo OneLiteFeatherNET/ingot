@@ -47,6 +47,10 @@ class Repository internal constructor(
     val protectedGroupPrefixes: List<String> = emptyList(),
     /** What a checksum file that does not match its stored artifact gets, see [UploadChecksumPolicy]. */
     val uploadChecksumPolicy: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
+    /** The version policy of deploys, [VersionPolicy.MIXED] unless the settings set one. */
+    val versionPolicy: VersionPolicy = VersionPolicy.MIXED,
+    /** Whether deploys and deletes are refused with 405. Reads are not affected. */
+    val readOnly: Boolean = false,
 ) : RegisteredRepository {
 
     init {
@@ -71,6 +75,10 @@ class Repository internal constructor(
     /** Whether deployments and deletions are accepted. A typed proxy or group takes no uploads; see [acceptsUploads]. */
     val acceptsUploads: Boolean
         get() = declaredType.acceptsUploads()
+
+    /** The write policy shown to operators, or null for a repository that takes no uploads at all. */
+    val writePolicy: WritePolicy?
+        get() = if (acceptsUploads) writePolicyOf(redeployment, readOnly) else null
 
     internal val resolutionCache: ResolutionCache? =
         if (resolutionCacheMaxEntries > 0) ResolutionCache(resolutionCacheMaxEntries) else null

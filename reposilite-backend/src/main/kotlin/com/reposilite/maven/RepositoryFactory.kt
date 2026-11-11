@@ -54,6 +54,8 @@ internal class RepositoryFactory(
             preserveSnapshots = configuration.preserveSnapshots,
             declaredType = configuration.type,
             uploadChecksumPolicy = configuration.uploadChecksumPolicy ?: uploadChecksumDefault,
+            versionPolicy = configuration.versionPolicy ?: VersionPolicy.MIXED,
+            readOnly = configuration.readOnly ?: false,
             mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) },
             storageProvider =
                 storageFacade

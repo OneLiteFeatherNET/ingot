@@ -469,3 +469,19 @@ describe('RepositoryOverview repository types', () => {
     expect(rowIds()).toEqual(['all', 'central', 'legacy', 'releases'])
   })
 })
+
+describe('RepositoryOverview write policy', () => {
+  it('shows the write policy of every repository that takes uploads, and none for a proxy or a group', async () => {
+    await mountAt('/', {
+      answer: answerWith([
+        { id: 'releases', visibility: 'PUBLIC', description: '', tags: [], type: 'hosted', typeExplicit: true, writePolicy: 'ALLOW' },
+        { id: 'frozen', visibility: 'PUBLIC', description: '', tags: [], type: 'hosted', typeExplicit: true, writePolicy: 'READ_ONLY' },
+        { id: 'central', visibility: 'PUBLIC', description: '', tags: [], type: 'proxy', typeExplicit: true, writePolicy: null }
+      ])
+    })
+
+    expect(rowFor('releases').find('[data-test="write-policy"]').text()).toBe('Allow redeploy')
+    expect(rowFor('frozen').find('[data-test="write-policy"]').text()).toBe('Read-only')
+    expect(rowFor('central').find('[data-test="write-policy"]').exists()).toBe(false)
+  })
+})

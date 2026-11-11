@@ -42,12 +42,13 @@ internal class RepositoryListIntegrationTest : ReposiliteSpecification() {
         // then: the response has exactly one top-level field
         assertThat(body.fieldNames().asSequence().toList()).containsExactly("repositories")
 
-        // and: every entry has exactly the documented fields
+        // and: every entry has the documented fields, and only those plus the policy fields added with them
         val entries = body.at("/repositories")
         entries.forEach { entry ->
             assertThat(entry.fieldNames().asSequence().toList())
                 .describedAs("fields of '${entry.at("/id").asText()}'")
-                .containsExactlyInAnyOrder("id", "visibility", "description", "tags", "type", "typeExplicit")
+                .containsAll(listOf("id", "visibility", "description", "tags", "type", "typeExplicit"))
+                .allSatisfy { assertThat(it).isIn("id", "visibility", "description", "tags", "type", "typeExplicit", "versionPolicy", "readOnly", "writePolicy") }
         }
 
         // and: the public repository carries its description and tags, the private and hidden ones are absent

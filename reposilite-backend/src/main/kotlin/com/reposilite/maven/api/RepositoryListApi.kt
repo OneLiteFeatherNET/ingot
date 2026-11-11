@@ -34,6 +34,32 @@ data class RepositorySummary(
 )
 
 /**
+ * One entry of the repository list API: a [RepositorySummary] with the version policy, the read-only flag and the write
+ * policy. The fields are additive, so a client that reads the list without them keeps working, and a response written
+ * before they existed reads with them null.
+ */
+data class RepositoryListEntry(
+    val id: String,
+    val visibility: RepositoryVisibility,
+    val description: String,
+    val tags: List<String>,
+    /** The effective type in lowercase: hosted, proxy, group or mixed. */
+    val type: String,
+    /** True when the type is declared in the settings, false when it is derived from the proxied repositories. */
+    val typeExplicit: Boolean,
+    /** The effective version policy: RELEASE, SNAPSHOT or MIXED. */
+    val versionPolicy: String? = null,
+    /** Whether the repository is read-only, see the read-only flag of the settings. */
+    val readOnly: Boolean? = null,
+    /** The write policy: ALLOW, ALLOW_ONCE or READ_ONLY. Null for a declared proxy or group, which take no uploads. */
+    val writePolicy: String? = null,
+)
+
+data class RepositoryListEntriesResponse(
+    val repositories: List<RepositoryListEntry>
+)
+
+/**
  * Search criteria of the repository list.
  *
  * [query] matches case-insensitively against the id, the description and every tag of a repository.

@@ -30,6 +30,7 @@ import MdButton from '../md/MdButton.vue'
 import MdChip from '../md/MdChip.vue'
 import RepositoryTypeBadge from '../tokens/RepositoryTypeBadge.vue'
 import SearchBar from '../search/SearchBar.vue'
+import { writePolicyLabelOf } from '../../store/maven/repositoryPolicy'
 
 /*
  * The root of the file browser as a list of repositories. The list is loaded once from the overview
@@ -75,7 +76,8 @@ const normalise = (repository) => ({
   description: repository.description ?? '',
   tags: Array.isArray(repository.tags) ? repository.tags : [],
   type: repository.type,
-  typeExplicit: repository.typeExplicit === true
+  typeExplicit: repository.typeExplicit === true,
+  writePolicy: repository.writePolicy ?? null
 })
 
 // A repository is one row whatever the answer says: the first entry for an id is kept, so the
@@ -327,6 +329,11 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
               :repository="repository"
               class="self-center"
             />
+            <span
+              v-if="writePolicyLabelOf(repository)"
+              data-test="write-policy"
+              class="inline-flex h-6 shrink-0 items-center self-center whitespace-nowrap rounded-corner-small border border-outline px-2 md-label-medium text-on-surface-variant"
+            >{{ writePolicyLabelOf(repository) }}</span>
             <span
               v-if="badgeOf(repository)"
               data-test="visibility"

@@ -104,6 +104,8 @@ A new instance starts with three repositories. Their other fields have the defau
 | `proxied` | Mirrored repositories | list of [proxied entries](#proxied-entries) | empty | Repositories this repository can fetch files from. |
 | `protectedGroupPrefixes` | Protected group prefixes | list of dotted group ids, such as `net.onelitefeather` | empty | Group ids that a group serves from hosted members only, so that a proxy member never answers for them. Accepted only on a `GROUP`. See [Protect your own namespace](../how-to/create-a-group-repository.md#protect-your-own-namespace). |
 | `uploadChecksumPolicy` | Upload checksum policy | `ignore`, `warn`, `reject`, or absent | absent, which means the instance default | What happens to an uploaded checksum file that does not match its stored artifact. Absent uses `INGOT_UPLOAD_CHECKSUM_POLICY`, which is `ignore` when unset. See [Upload checksum policy](#upload-checksum-policy). |
+| `versionPolicy` | Version policy | `RELEASE`, `SNAPSHOT`, `MIXED`, or absent | absent, which means `MIXED` | Which versions a deploy may carry. Hosted and untyped repositories only. See [Version policy and read-only](#version-policy-and-read-only). |
+| `readOnly` | Read-only | boolean, or absent | absent, which means `false` | Refuses deploys and deletes with `405`. Hosted and untyped repositories only. See [Version policy and read-only](#version-policy-and-read-only). |
 
 The id of a repository should not equal a reserved path segment of the dashboard or the API, such as `api`, `search` or `settings`. Ingot does not reject such an id, it logs a warning at startup and on every settings change. The dashboard creates ids from letters, digits, dots, underscores and hyphens, and compares them without regard to case.
 
@@ -255,6 +257,36 @@ A `reference` that equals the id of a repository on the same instance is a loopb
 A loopback reference reads as an anonymous caller unless `authorization` has the method `LOOPBACK_LINK`. With that method, Ingot authenticates with the token named by `login` and its secret in `password`. A `PRIVATE` repository needs this to be readable through a reference.
 
 Loopback references are how a repository serves other repositories of the instance under one address. The [repository types](repository-types.md) page describes the `GROUP` type and the rules that apply when a type is declared.
+
+## Version policy and read-only
+
+`versionPolicy` and `readOnly` are optional. A repository that does not set them behaves exactly as it did before they existed, and Ingot does not write them back to the settings document. Set them when a repository has a single job: release builds only, snapshot builds only, or a frozen repository that must not change.
+
+`versionPolicy` applies to deploys only. Reads, deletes, mirror cache fills and cleanup runs are not affected, so a repository that changes its policy keeps the files it already holds.
+
+| Value | A deploy into a `-SNAPSHOT` version directory | A deploy into any other version directory |
+| --- | --- | --- |
+| absent or `MIXED` | Accepted | Accepted |
+| `RELEASE` | Refused with `400` | Accepted |
+| `SNAPSHOT` | Accepted | Refused with `400`, except `maven-metadata.xml` and its checksums |
+
+The `400` message names the repository and the policy, for example `Repository 'releases' has version policy RELEASE and does not accept the snapshot version 1.0-SNAPSHOT`. Nothing is stored when a deploy is refused. [Separate releases and snapshots](../how-to/separate-releases-and-snapshots.md) walks through the setup.
+
+`readOnly: true` refuses every deploy, delete and POM generation into the repository with `405`, and the message names the repository. Reads keep working, and mirror cache fills of a proxied entry are not affected. Scheduled cleanup skips the repository, and the cleanup preview lists it as skipped. The flag is distinct from the read-only mode of the whole instance, which answers `503` to every write, and that answer comes first.
+
+Both keys are rejected on a declared `PROXY` or `GROUP`, because those types take no uploads, and `versionPolicy` is rejected on a `GROUP` as well. A group does not inherit a policy: each member enforces its own.
+
+### Write policy
+
+The repository list and the dashboard show one write policy for every hosted and untyped repository. It is computed from `redeployment` and `readOnly` and is not stored.
+
+| Write policy | Condition | Effect |
+| --- | --- | --- |
+| `ALLOW` | `redeployment` is `true` and `readOnly` is not set | Uploads may overwrite existing files. |
+| `ALLOW_ONCE` | `redeployment` is `false` and `readOnly` is not set | An existing file cannot be uploaded again, see [Redeployment](#redeployment). |
+| `READ_ONLY` | `readOnly` is `true` | Every deploy and delete is refused with `405`. |
+
+The settings form edits the write policy as one choice. `ALLOW` and `ALLOW_ONCE` set `redeployment` and remove `readOnly`. `READ_ONLY` sets `readOnly` and leaves `redeployment` as it is, so switching back restores the previous redeploy choice. A proxy or a group has no write policy.
 
 ## Secrets
 

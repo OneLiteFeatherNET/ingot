@@ -29,6 +29,8 @@ import com.reposilite.maven.api.LatestVersionResponse
 import com.reposilite.maven.api.LookupRequest
 import com.reposilite.maven.api.Metadata
 import com.reposilite.maven.api.RepositoryListQuery
+import com.reposilite.maven.api.RepositoryListEntriesResponse
+import com.reposilite.maven.api.RepositoryListEntry
 import com.reposilite.maven.api.RepositoryListResponse
 import com.reposilite.maven.api.RepositoryMembersResponse
 import com.reposilite.maven.api.ResolvedDocument
@@ -45,6 +47,7 @@ import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.token.AccessTokenIdentifier
 import net.onelitefeather.ingot.repository.RepositoryRegistry
+import io.javalin.http.HttpStatus.BAD_REQUEST
 import io.javalin.http.HttpStatus.METHOD_NOT_ALLOWED
 import panda.std.Result
 import com.reposilite.shared.http.ConditionalRequests
@@ -134,19 +137,40 @@ class MavenFacade internal constructor(
     }
 
     /**
-     * Answers 405 when the repository is a typed proxy or group, which take no uploads. Hosted and untyped repositories pass.
-     * Mirror copies never go through here, so a proxy keeps caching. Maintenance such as a cleanup run is not an upload either,
-     * and is not checked by the HTTP routes that delete.
+     * Answers 405 when the repository is a typed proxy or group, which take no uploads, and when it is read-only.
+     * Hosted and untyped repositories that are not read-only pass. Mirror copies never go through here, so a proxy keeps
+     * caching. Maintenance such as a cleanup run is not an upload either, and is not checked by the HTTP routes that delete.
      */
     fun checkAcceptsUploads(repository: Repository): Result<Unit, ErrorResponse> =
-        if (repository.acceptsUploads) {
+        when {
+            !repository.acceptsUploads -> errorResponse(METHOD_NOT_ALLOWED, "Repository '${repository.name}' is a ${repository.effectiveType.wireName} and does not accept uploads")
+            else -> checkNotReadOnly(repository)
+        }
+
+    /** Answers 405 when the repository is read-only, see [Repository.readOnly]. Reads are never checked here. */
+    private fun checkNotReadOnly(repository: Repository): Result<Unit, ErrorResponse> =
+        if (repository.readOnly) {
+            errorResponse(METHOD_NOT_ALLOWED, "Repository '${repository.name}' is read-only and does not accept deployments or deletions")
+        } else {
+            Result.ok(Unit)
+        }
+
+    /**
+     * Answers 400 when the version policy of the repository refuses the version of the deployed path, see [VersionPolicy.refusesDeployOf].
+     * The message names the repository, its policy and the version, and nothing is stored.
+     */
+    private fun checkVersionPolicy(repository: Repository, gav: Location): Result<Unit, ErrorResponse> =
+        if (!repository.versionPolicy.refusesDeployOf(gav)) {
             Result.ok(Unit)
         } else {
-            errorResponse(METHOD_NOT_ALLOWED, "Repository '${repository.name}' is a ${repository.effectiveType.wireName} and does not accept uploads")
+            val version = gav.getParent().getSimpleName()
+            val kind = if (version.endsWith(SNAPSHOT_SUFFIX)) "snapshot" else "release"
+            errorResponse(BAD_REQUEST, "Repository '${repository.name}' has version policy ${repository.versionPolicy.name} and does not accept the $kind version $version")
         }
 
     fun deployFile(deployRequest: DeployRequest): Result<Unit, ErrorResponse> =
         checkAcceptsUploads(deployRequest.repository)
+            .flatMap { checkVersionPolicy(deployRequest.repository, deployRequest.gav) }
             .flatMap { repositoryService.deployFile(deployRequest) }
             .also { operationCounters.recordDeploy(deployOutcomeOf(it)) }
             // a deployment makes the directory hold hosted content, so it is no longer a mirror copy
@@ -165,7 +189,8 @@ class MavenFacade internal constructor(
     }
 
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
-        repositoryService.deleteFile(deleteRequest)
+        checkNotReadOnly(deleteRequest.repository)
+            .flatMap { repositoryService.deleteFile(deleteRequest) }
             .peek { afterDelete(deleteRequest.repository, deleteRequest.gav) }
 
     /**
@@ -262,6 +287,25 @@ class MavenFacade internal constructor(
 
     fun listRepositories(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): RepositoryListResponse =
         RepositoryListResponse(repositoryService.listRepositories(accessToken, query))
+
+    /** The same list as [listRepositories], each entry with the version policy, the read-only flag and the write policy. */
+    fun listRepositoryEntries(accessToken: AccessTokenIdentifier?, query: RepositoryListQuery): RepositoryListEntriesResponse =
+        RepositoryListEntriesResponse(
+            repositoryService.listRepositories(accessToken, query).map { summary ->
+                val repository = getRepository(summary.id)
+                RepositoryListEntry(
+                    id = summary.id,
+                    visibility = summary.visibility,
+                    description = summary.description,
+                    tags = summary.tags,
+                    type = summary.type,
+                    typeExplicit = summary.typeExplicit,
+                    versionPolicy = repository?.versionPolicy?.name,
+                    readOnly = repository?.readOnly,
+                    writePolicy = repository?.writePolicy?.name,
+                )
+            }
+        )
 
     /** The repositories [repository] references through loopback mirrors, as far as the token may see them. */
     fun findMembers(accessToken: AccessTokenIdentifier?, repository: String): Result<RepositoryMembersResponse, ErrorResponse> =
