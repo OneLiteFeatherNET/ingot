@@ -22,8 +22,8 @@ import net.onelitefeather.ingot.search.OriginFilter
 import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.SnapshotFilter
 import org.jetbrains.exposed.v1.core.Column
-import org.jetbrains.exposed.v1.core.Exists
 import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.notInSubQuery
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -34,7 +34,7 @@ import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.union
 import java.util.Locale
 
 /**
@@ -42,11 +42,45 @@ import java.util.Locale
  * kind is kept apart so a facet can leave out its own kind (4.4). Validation happens here, before any SQL is built, and
  * refuses with the name of the parameter.
  */
-internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTable, tokens: SearchTokenTable) {
+internal class SearchFilters(
+    private val query: ArtifactSearchQuery,
+    private val rows: SearchArtifactTable,
+    private val tokens: SearchTokenTable,
+) {
 
-    private val parts: Map<FilterKind, Op<Boolean>> = buildMap {
-        val text = freeText(query.q, rows, tokens)
-        if (text != null) put(FilterKind.TEXT, text)
+    private val artifacts: SearchArtifactTable = rows
+
+    /**
+     * One whitespace token of q (search decision): [main] is main's predicate for it, [match] its word match, or null. The union
+     * of the two is built by [overall] only, because the set operation needs an open transaction to resolve its dialect.
+     */
+    private class TokenPredicate(val main: Op<Boolean>, val match: Op<Boolean>?, val artifacts: SearchArtifactTable) {
+
+        val wordMatch: Boolean get() = match != null
+
+        /** `id IN (main rows UNION word rows)` for a plain token, [main] for the others. Call inside a transaction. */
+        fun overall(): Op<Boolean> {
+            val word = match ?: return main
+            val mainRows = artifacts.select(artifacts.id).where { main }
+            val wordRows = artifacts.select(artifacts.id).where { word }
+            return (artifacts.id inSubQuery mainRows) or (artifacts.id inSubQuery wordRows)
+        }
+    }
+
+    private val tokenPredicates: List<TokenPredicate> = parseTokens(query.q, rows, tokens)
+
+    /** Main's text: the main predicates of the tokens, ANDed, exactly as main matches q. Null when q has no word. */
+    private val text: Op<Boolean>? = tokenPredicates.map { it.main }.reduceOrNull { acc, op -> acc and op }
+
+    /** The text with the word matches: the overall predicates of the tokens, ANDed. Null when q has no word. */
+    private val tokenText: Op<Boolean>?
+        get() = tokenPredicates.map { it.overall() }.reduceOrNull { acc, op -> acc and op }
+
+    /** True when a token has a word match, so the query reads the token table (search decision). */
+    val usesTokenTable: Boolean get() = tokenPredicates.any { it.wordMatch }
+
+    private fun parts(): Map<FilterKind, Op<Boolean>> = buildMap {
+        tokenText?.let { put(FilterKind.TEXT, it) }
         nonBlank(query.groupId)?.let { put(FilterKind.GROUP, prefixRange(rows.groupIdLc, it.lowercase(Locale.ROOT))) }
         nonBlank(query.artifactId)?.let { put(FilterKind.ARTIFACT, prefixRange(rows.artifactIdLc, it.lowercase(Locale.ROOT))) }
         versionFilter(query, rows)?.let { put(FilterKind.VERSION, it) }
@@ -64,7 +98,22 @@ internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTab
 
     /** The AND of every filter, except the kind [except] when a facet asks for its own alternatives. */
     fun predicate(except: FilterKind? = null): Op<Boolean> =
-        parts.filterKeys { it != except }.values.fold<Op<Boolean>, Op<Boolean>>(Op.TRUE) { acc, part -> acc and part }
+        parts().filterKeys { it != except }.values.fold<Op<Boolean>, Op<Boolean>>(Op.TRUE) { acc, part -> acc and part }
+
+    /** Main's rows and the other filters: the groups main returns, which a search lists first, in main's order. */
+    fun coordinatePredicate(): Op<Boolean> = (text ?: Op.TRUE) and others()
+
+    /**
+     * The rows that only a word match returns (search decision): the overall text and the other filters, but none of the rows
+     * main returns. A search lists them after main's rows. Requires [usesTokenTable].
+     */
+    fun wordOnlyPredicate(): Op<Boolean> {
+        val mainRows = artifacts.select(artifacts.id).where { coordinatePredicate() }
+        return (tokenText ?: Op.FALSE) and others() and (artifacts.id notInSubQuery mainRows)
+    }
+
+    private fun others(): Op<Boolean> = parts().filterKeys { it != FilterKind.TEXT }.values
+        .fold<Op<Boolean>, Op<Boolean>>(Op.TRUE) { acc, part -> acc and part }
 
     internal enum class FilterKind { TEXT, GROUP, ARTIFACT, VERSION, REPOSITORY, EXTENSION, CLASSIFIER, SHA1, SNAPSHOT, ORIGIN, MODIFIED, SIZE }
 
@@ -73,8 +122,8 @@ internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTab
         const val MAX_TOKENS = 5
         const val MAX_COORDINATE_PARTS = 3
 
-        /** The most parts of a word that get the token rule, which bounds the EXISTS clauses of one word (D2). */
-        const val MAX_WORD_PARTS = 4
+        /** The most token constraints of one loose query. A query above it gets no word match. */
+        const val MAX_CONSTRAINTS = 8
         val WHITESPACE = Regex("\\s+")
         val SHA1 = Regex("[0-9a-fA-F]{40}")
 
@@ -85,43 +134,47 @@ internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTab
             return value
         }
 
-        /** Free text: every word must match. A word with a colon is a coordinates word (4.2). */
-        fun freeText(q: String?, rows: SearchArtifactTable, tokens: SearchTokenTable): Op<Boolean>? {
-            val text = q?.trim() ?: return null
+        /**
+         * The tokens of q (search decision, per whitespace token). Lengths, the token count and the errors are main's. A token with
+         * a `.` or a `:` keeps main's predicate only. A plain token adds its word match: every part equals a token of the GAV, the
+         * last part of the last token by its prefix. The overall predicate is `id IN (main rows UNION word rows)`, an uncorrelated
+         * IN with no OR and no correlated EXISTS.
+         */
+        fun parseTokens(q: String?, rows: SearchArtifactTable, tokens: SearchTokenTable): List<TokenPredicate> {
+            val text = q?.trim() ?: return emptyList()
             if (text.length > MAX_QUERY_LENGTH) {
                 throw InvalidSearchQueryException("q", "q is limited to $MAX_QUERY_LENGTH characters")
             }
             val words = text.split(WHITESPACE).filter { it.isNotEmpty() }.map { it.lowercase(Locale.ROOT) }
-            if (words.isEmpty()) return null
+            if (words.isEmpty()) return emptyList()
             if (words.size > MAX_TOKENS) throw InvalidSearchQueryException("q", "q is limited to $MAX_TOKENS tokens")
-            return words.map { word ->
-                if (':' in word) coordinates(word, rows) else plainToken(word, rows, tokens)
-            }.reduce { acc, op -> acc and op }
+            return words.mapIndexed { index, word ->
+                val main = if (':' in word) coordinates(word, rows) else plainToken(word, rows)
+                val match = if ('.' in word || ':' in word) null else wordMatch(word, index == words.lastIndex, rows, tokens)
+                TokenPredicate(main, match, rows)
+            }
         }
+
+        /** A word matches the groupId prefix, the artifactId prefix or the exact version. Unchanged from main. */
+        fun plainToken(word: String, rows: SearchArtifactTable): Op<Boolean> =
+            prefixRange(rows.groupIdLc, word) or prefixRange(rows.artifactIdLc, word) or (rows.versionLc eq word)
 
         /**
-         * A word matches the groupId prefix, the artifactId prefix or the exact version (existing rules). It also matches
-         * when every part of it starts a token of the GAV (full text change, D2). A word with no part, or with more than
-         * [MAX_WORD_PARTS] parts, gets no token rule: it keeps the prefix match it had before, and is not refused.
+         * The word match of one plain token: each part is one uncorrelated IN on the token index, ANDed. Null when the word has no
+         * part or more than [MAX_CONSTRAINTS] parts.
          */
-        fun plainToken(word: String, rows: SearchArtifactTable, tokens: SearchTokenTable): Op<Boolean> {
-            val prefixes = prefixRange(rows.groupIdLc, word) or prefixRange(rows.artifactIdLc, word) or (rows.versionLc eq word)
+        fun wordMatch(word: String, last: Boolean, rows: SearchArtifactTable, tokens: SearchTokenTable): Op<Boolean>? {
             val parts = SearchTokens.partsOf(word)
-            if (parts.isEmpty() || parts.size > MAX_WORD_PARTS) return prefixes
-            // The longest part drives the lookup: its uncorrelated IN on the token index is the selective side. The other parts
-            // are probes of one GAV's tokens on the primary key, so no part scans the artifact table (D2, plan check).
-            val drive = parts.maxBy { it.length }
-            val driven: Op<Boolean> = rows.gavKey inSubQuery tokens.select(tokens.gavKey).where { prefixRange(tokens.token, drive) }
-            val probes = parts.filter { it !== drive }.map { part -> tokenExists(part, rows, tokens) }
-            val everyPart = (listOf(driven) + probes).reduce { acc, op -> acc and op }
-            return prefixes or everyPart
+            if (parts.isEmpty() || parts.size > MAX_CONSTRAINTS) return null
+            val lookups: List<Op<Boolean>> = parts.mapIndexed { index, part ->
+                val prefix = last && index == parts.lastIndex
+                val match = tokens.select(tokens.gavKey).where {
+                    if (prefix) prefixRange(tokens.token, part) else tokens.token eq part
+                }
+                rows.gavKey inSubQuery match
+            }
+            return lookups.reduce { acc, op -> acc and op }
         }
-
-        /** Some token of the row's GAV starts with [part]: an EXISTS on `search_token` correlated by `gav_key` (D2). */
-        fun tokenExists(part: String, rows: SearchArtifactTable, tokens: SearchTokenTable): Op<Boolean> =
-            Exists(
-                tokens.selectAll().where { (tokens.gavKey eq rows.gavKey) and prefixRange(tokens.token, part) },
-            )
 
         /** `group:artifact:version`, each part optional: groupId prefix, artifactId prefix, exact version. */
         fun coordinates(token: String, rows: SearchArtifactTable): Op<Boolean> {

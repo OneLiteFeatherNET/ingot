@@ -91,10 +91,13 @@ internal class DatabaseArtifactSearchEngine(
         checkWindow(query.page, query.size)
         val filters = SearchFilters(query, rows, tables.token)
         val visible = access.toCondition(rows)
-        val where = filters.predicate() and visible
         return readOnly {
-            val groups = groupPage(where, query)
-            val total = groupCount(where)
+            val (groups, total) = if (filters.usesTokenTable) {
+                wordGroups(filters, visible, query)
+            } else {
+                val where = filters.predicate() and visible
+                groupPage(where, query, query.size, query.page.toLong() * query.size) to groupCount(where)
+            }
             val presence = repositoriesOf(groups, visible)
             val latest = latestVersionsOf(groups, visible)
             ArtifactSearchPage(
@@ -203,7 +206,35 @@ internal class DatabaseArtifactSearchEngine(
         val version: String,
         val fileCount: Long,
         val lastModified: Long,
+        val sizeBytes: Long,
     )
+
+    /**
+     * A query with a word match (search decision): main's groups first, in main's order, then the groups that only a word match
+     * returns, in the requested order. The page is read from each part with its own offset, so no merging is needed. The total
+     * is main's count plus the word-only count, each capped by the count itself.
+     */
+    private fun wordGroups(filters: SearchFilters, visible: Op<Boolean>, query: ArtifactSearchQuery): Pair<List<Group>, Long> {
+        val mainWhere = filters.coordinatePredicate() and visible
+        val wordWhere = filters.wordOnlyPredicate() and visible
+        val mainCount = groupCount(mainWhere)
+        val wordCount = groupCount(wordWhere)
+        val start = query.page.toLong() * query.size
+        val end = start + query.size
+        val fromMain = if (start < mainCount) {
+            groupPage(mainWhere, query, (minOf(end, mainCount) - start).toInt(), start)
+        } else {
+            emptyList()
+        }
+        val wordStart = maxOf(0L, start - mainCount)
+        val wordEnd = maxOf(0L, end - mainCount)
+        val fromWords = if (wordEnd > wordStart) {
+            groupPage(wordWhere, query, (wordEnd - wordStart).toInt(), wordStart)
+        } else {
+            emptyList()
+        }
+        return (fromMain + fromWords) to (mainCount + wordCount)
+    }
 
     private data class GavKey(val groupLc: String, val artifactLc: String, val versionLc: String) {
         fun artifact() = ArtifactKey(groupLc, artifactLc)
@@ -212,7 +243,7 @@ internal class DatabaseArtifactSearchEngine(
     private data class ArtifactKey(val groupLc: String, val artifactLc: String)
 
     /** One page of groups. The sort ends in the three grouped columns, so the order is total and paging is stable. */
-    private fun groupPage(where: Op<Boolean>, query: ArtifactSearchQuery): List<Group> {
+    private fun groupPage(where: Op<Boolean>, query: ArtifactSearchQuery, limit: Int, offset: Long): List<Group> {
         val g = rows.groupIdLc
         val a = rows.artifactIdLc
         val v = rows.versionLc
@@ -233,11 +264,11 @@ internal class DatabaseArtifactSearchEngine(
         // tie comes first, as in the default order of 4.3.
         val direction = if (query.order == SearchOrder.DESC) SortOrder.DESC else SortOrder.ASC
         val tieDirection = if (direction == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
-        return rows.select(g, a, v, minGroupId, minArtifactId, minVersion, fileCount, lastModified)
+        return rows.select(g, a, v, minGroupId, minArtifactId, minVersion, fileCount, lastModified, size)
             .where { where }
             .groupBy(g, a, v)
             .orderBy(sortKey to direction, g to direction, a to direction, v to tieDirection)
-            .limit(query.size).offset(query.page.toLong() * query.size)
+            .limit(limit).offset(offset)
             .map { row ->
                 Group(
                     key = GavKey(row[g], row[a], row[v]),
@@ -246,6 +277,7 @@ internal class DatabaseArtifactSearchEngine(
                     version = row[minVersion].orEmpty(),
                     fileCount = row[fileCount],
                     lastModified = row[lastModified] ?: 0L,
+                    sizeBytes = row[size] ?: 0L,
                 )
             }
     }
