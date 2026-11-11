@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import {
   adminGroups,
   administrationLocation,
@@ -22,6 +22,7 @@ import {
   pageLabel,
   railGroups,
   reservedDomainIds,
+  setContributions,
   sideNavOf,
   unlistedRoutes
 } from './registry'
@@ -146,5 +147,41 @@ describe('the Administration tree', () => {
 describe('route coverage of the new pages', () => {
   it('covers the repository routes, so the suite accepts them in the route table', () => {
     expect(unlistedRoutes(['settings-repositories', 'settings-repository'])).toEqual([])
+  })
+})
+
+describe('plugin pages in the Administration tree', () => {
+  afterEach(() => setContributions(null))
+
+  const contributed = (group) => ({
+    version: 1,
+    pages: [{ plugin: 'example', id: 'status', title: 'Status', group, area: 'maintenance', blocks: [] }],
+    sections: [],
+    enabledPlugins: ['example'],
+  })
+
+  it('lists a plugin page under the group its manifest names', () => {
+    setContributions(contributed('Support'))
+    expect(linksOf(adminGroups(everything), 'Support').map(link => link.label)).toContain('Status')
+  })
+
+  it('links a plugin page to its settings address', () => {
+    setContributions(contributed('Support'))
+    expect(linksOf(adminGroups(everything), 'Support')).toContainEqual(expect.objectContaining({
+      label: 'Status',
+      to: { name: 'settings-plugin', params: { plugin: 'example', page: 'status' } },
+    }))
+  })
+
+  it('puts a page whose group is unknown in a Plugins group at the end of the tree', () => {
+    setContributions(contributed('Odd'))
+    const groups = adminGroups(everything)
+    expect(headingsOf(groups).at(-1)).toBe('Plugins')
+    expect(linksOf(groups, 'Plugins').map(link => link.label)).toEqual(['Status'])
+  })
+
+  it('leaves a plugin page out of the tree for a visitor without its area', () => {
+    setContributions(contributed('Support'))
+    expect(linksOf(adminGroups(only(ADMIN_NODES.audit)), 'Support')).toEqual([])
   })
 })
