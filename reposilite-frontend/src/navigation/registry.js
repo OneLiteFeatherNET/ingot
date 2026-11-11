@@ -211,9 +211,10 @@ const administrationLocation = (can) => {
 
 // What SideNavLayout needs of a page except the groups: the accessible name of the navigation, the first
 // crumb and the location of the index. The navigation is the Administration tree on every page of it.
+// The first crumb of an Administration page is the section, and the page is the last crumb, so a page never repeats itself.
 const sideNavOf = (key) => {
   const page = pageByKey(key)
-  return { label: 'Administration', sectionLabel: page.label, indexTo: { name: page.route } }
+  return { label: 'Administration', sectionLabel: 'Administration', indexTo: { name: page.route } }
 }
 
 // The group of a Settings domain in the Administration tree: Repository for the repository domains and a plugin section
