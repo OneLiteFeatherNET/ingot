@@ -40,6 +40,21 @@ this project.
 Missing a sign-off is fixable: `git commit --amend -s` for the last commit, or
 `git rebase --signoff <base>` for a branch, then force push.
 
+A check on every pull request into `main` reads the commits and looks for the sign-off. A
+commit passes when its `Signed-off-by` line carries the same address as the commit's author.
+Pull requests opened by a bot account, such as Dependabot or Renovate, pass as a whole.
+
+The check runs in one of two modes, set by the repository variable `DCO_MODE`. In `report`
+mode, which is the default, a commit without a sign-off gets a warning and the check passes.
+In `enforce` mode, the check fails until every commit is signed off. Maintainers announce
+the switch to `enforce` in the release notes.
+
+Commits that the maintainers bring in from upstream Reposilite are the exception. Upstream
+does not use the DCO, so those commits carry no sign-off. The check accepts a commit that
+names an upstream commit with the trailer `(cherry picked from commit <sha>)`, as
+`git cherry-pick -x` writes it, when that commit is part of upstream `main`. If you
+cherry-pick an upstream commit yourself, use `-x`.
+
 ### How to increase the chance of having your PR merged
 
 1. If a related issue does not exist, create a new one to start a discussion about it.

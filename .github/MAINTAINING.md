@@ -94,12 +94,20 @@ never renamed, and it is the one dependency not available from Maven Central.
 ## Sign-off
 
 Contributions carry a [DCO](https://developercertificate.org/) sign-off, documented in
-[CONTRIBUTING.md](CONTRIBUTING.md). It is not enforced by CI yet.
+[CONTRIBUTING.md](CONTRIBUTING.md). The `DCO` workflow checks the commits of every pull
+request into `main` with `.github/scripts/check_dco.py`. A commit passes when its sign-off
+names the author's address, or when it names a commit of upstream `main` with the
+`(cherry picked from commit <sha>)` trailer. Author names are never an exemption, and pull
+requests from bot accounts pass as a whole.
 
-> **TODO(onelitefeather):** add the check. Whatever enforces it has to exempt commits
-> cherry-picked from upstream, which carry no sign-off because Reposilite does not use the
-> DCO, and it has to leave their original authorship alone. A check that simply requires
-> `Signed-off-by` on every commit would make syncing impossible.
+The exemption exists for the sync. Upstream does not use the DCO, so its commits carry no
+sign-off, and a plain "every commit is signed" rule would make syncing impossible. Sync with
+`git cherry-pick -x <sha>`. The trailer that `-x` writes is what the check recognises, and
+it keeps the original authorship. A cherry-pick without `-x` fails the check in `enforce`
+mode. Repeat it with `-x`; `-s` does not help, because the sign-off has to name the author.
+
+The mode is the repository variable `DCO_MODE`: unset or `report` warns, `enforce` fails.
+The switch to `enforce` is a maintainer decision, announced in the release notes.
 
 ## Contributing back
 
