@@ -150,6 +150,10 @@ Compare the two sides after the copy.
 rclone check ingot-s3:my-bucket/reposilite ingot-backup:ingot-backups/$(date +%F)/s3
 ```
 
+## Sealed secrets
+
+When a settings key is set, the secret values in the database and in `configuration.shared.json` are sealed. A backup then holds the sealed values, and it restores only with the key that wrote it. Keep the key with the backup, or in the same secret store, and check that the restored instance is given that key. A restore without the key stops at start with a message that names the domain and the property. See [Settings encryption](../reference/settings-encryption.md).
+
 ## Restore
 
 Restore in this order. The database defines which storage each repository uses, so it must be in place before the instance starts.

@@ -283,7 +283,7 @@ Validated: `verifyAt` and `rebuildSchedule.at` are times `HH:mm`, `verifySampleS
 
 ## Secret fields
 
-These fields are masked when `hideSettingsSecrets` is `true`.
+These fields are masked when `hideSettingsSecrets` is `true`. The dashboard always reads with `GET /api/settings/domain/{name}?secrets=hidden`, which masks them whatever `hideSettingsSecrets` says. The plain read without the parameter is unchanged. A `PUT` that sends `********` for a secret keeps the stored value on every instance, whatever `hideSettingsSecrets` says, and a `********` without a stored value is refused with `400`. Secret values are stored sealed when a settings key is active, see [Settings encryption](settings-encryption.md).
 
 | Domain | Field |
 | --- | --- |
