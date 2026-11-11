@@ -63,7 +63,7 @@ internal class SearchFilters(
             val word = match ?: return main
             val mainRows = artifacts.select(artifacts.id).where { main }
             val wordRows = artifacts.select(artifacts.id).where { word }
-            return (artifacts.id inSubQuery mainRows) or (artifacts.id inSubQuery wordRows)
+            return artifacts.id inSubQuery mainRows.union(wordRows)
         }
     }
 
