@@ -17,19 +17,25 @@
 package net.onelitefeather.ingot.search.database
 
 import net.onelitefeather.ingot.search.IndexRow
+import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.gavKeyOf
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -44,14 +50,20 @@ import java.util.Locale
 internal class DatabaseArtifactIndex(private val database: Database) {
 
     private val dialect = SearchDialect.of(database.vendor)
-    private val rows = SearchTables(dialect).artifact
+    private val tables = SearchTables(dialect)
+    private val rows = tables.artifact
+    private val tokens = tables.token
 
     fun apply(actions: List<IndexAction>) {
         if (actions.isEmpty()) return
         transaction(database) {
             actions.forEach { action ->
                 when (action) {
-                    is IndexAction.Upsert -> upsert(action.row)
+                    is IndexAction.Upsert -> {
+                        val file = action.row.file
+                        upsert(action.row)
+                        insertTokens(file.groupId, file.artifactId, file.version)
+                    }
                     is IndexAction.RemovePath -> rows.deleteWhere {
                         (rows.repository eq action.repository) and (rows.pathHash eq pathHash(action.repository, action.path))
                     }
@@ -62,6 +74,38 @@ internal class DatabaseArtifactIndex(private val database: Database) {
                     })
                 }
             }
+        }
+    }
+
+    /**
+     * Fills the key and the tokens of up to [batchSize] rows that have no key, in one transaction, in id order. Returns how
+     * many rows were keyed; 0 means none is left (full text change, D6).
+     */
+    fun keyRows(batchSize: Int): Int = transaction(database) {
+        val batch = rows.select(rows.id, rows.groupId, rows.artifactId, rows.version)
+            .where { rows.gavKey.isNull() }
+            .orderBy(rows.id to SortOrder.ASC)
+            .limit(batchSize)
+            .toList()
+        batch.forEach { row ->
+            val groupId = row[rows.groupId]
+            val artifactId = row[rows.artifactId]
+            val version = row[rows.version]
+            val key = gavKeyOf(groupId, artifactId, version)
+            rows.update(where = { rows.id eq row[rows.id] }, body = { it[rows.gavKey] = key })
+            insertTokens(groupId, artifactId, version)
+        }
+        batch.size
+    }
+
+    /** The tokens of one GAV, inserted with insert-ignore: a token that exists is left as it is, so a replay adds nothing. */
+    private fun insertTokens(groupId: String, artifactId: String, version: String) {
+        val key = gavKeyOf(groupId, artifactId, version)
+        val words = SearchTokens.of(groupId, artifactId, version)
+        if (words.isEmpty()) return
+        tokens.batchInsert(words, ignore = true) { word ->
+            this[tokens.gavKey] = key
+            this[tokens.token] = word
         }
     }
 
@@ -101,6 +145,7 @@ internal class DatabaseArtifactIndex(private val database: Database) {
             it[rows.sha1] = row.sha1
             it[rows.sha256] = row.sha256
             it[rows.indexedAt] = row.indexedAt
+            it[rows.gavKey] = gavKeyOf(file.groupId, file.artifactId, file.version)
         }
     }
 

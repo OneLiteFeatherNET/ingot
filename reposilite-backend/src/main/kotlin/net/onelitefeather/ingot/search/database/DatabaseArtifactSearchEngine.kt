@@ -51,6 +51,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.core.min
 import org.jetbrains.exposed.v1.core.or
@@ -88,7 +89,7 @@ internal class DatabaseArtifactSearchEngine(
 
     override fun search(query: ArtifactSearchQuery, access: SearchAccess): ArtifactSearchPage {
         checkWindow(query.page, query.size)
-        val filters = SearchFilters(query, rows)
+        val filters = SearchFilters(query, rows, tables.token)
         val visible = access.toCondition(rows)
         val where = filters.predicate() and visible
         return readOnly {
@@ -121,7 +122,7 @@ internal class DatabaseArtifactSearchEngine(
     }
 
     override fun facets(query: ArtifactSearchQuery, access: SearchAccess): SearchFacets {
-        val filters = SearchFilters(query, rows)
+        val filters = SearchFilters(query, rows, tables.token)
         val visible = access.toCondition(rows)
         return readOnly {
             SearchFacets(
@@ -357,6 +358,7 @@ internal class DatabaseArtifactSearchEngine(
         val dropped = stateValue(SearchStateKey.DROPPED_ENQUEUES)?.toLongOrNull() ?: 0L
         val drift = stateValue(SearchStateKey.VERIFY_LAST_REPORT)?.let(::driftOf)
         val rowsExist = rows.select(rows.id).limit(1).firstOrNull() != null
+        val tokensComplete = rows.select(rows.id).where { rows.gavKey.isNull() }.limit(1).firstOrNull() == null
         val rebuildRunning = runs.select(runs.id)
             .where { (runs.kind eq RunKind.REBUILD.name) and (runs.status eq RunStatus.RUNNING.name) }
             .limit(1)
@@ -383,12 +385,14 @@ internal class DatabaseArtifactSearchEngine(
                 deadLetters = deadLetters,
                 droppedEnqueues = dropped,
                 drift = drift,
+                tokensComplete = tokensComplete,
             ),
             lagSeconds = lagSeconds,
             lastFullRebuild = lastFull?.let(Instant::ofEpochMilli),
             deadLetters = deadLetters,
             droppedEnqueues = dropped,
             pendingEntries = outbox.selectAll().where { outbox.attempts less OutboxPolicy.MAX_ATTEMPTS }.count(),
+            tokensComplete = tokensComplete,
         )
     }
 
@@ -460,11 +464,13 @@ internal fun indexStateOf(
     deadLetters: Long,
     droppedEnqueues: Long,
     drift: Double?,
+    tokensComplete: Boolean = true,
 ): IndexState = when {
     lastFullRebuild == null && !rowsExist && !rebuildRunning -> IndexState.MISSING
     lastFullRebuild == null -> if (lastRebuildFailed && !rebuildRunning) IndexState.DEGRADED else IndexState.BUILDING
     lastRebuildFailed || lagSeconds > MAX_LAG_SECONDS || deadLetters > 0 || droppedEnqueues > 0 || (drift ?: 0.0) > MAX_DRIFT ->
         IndexState.DEGRADED
+    !tokensComplete -> IndexState.BUILDING
     else -> IndexState.READY
 }
 

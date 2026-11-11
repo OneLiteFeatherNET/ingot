@@ -66,6 +66,8 @@ internal class DatabaseSearchBackend(
 
     override fun apply(actions: List<IndexAction>) = index.apply(actions)
 
+    override fun keyRows(batchSize: Int): Int = index.keyRows(batchSize)
+
     override fun pathsAt(repository: String, prefix: String, after: String?, limit: Int): List<String> =
         index.pathsAt(repository, prefix, after, limit)
 

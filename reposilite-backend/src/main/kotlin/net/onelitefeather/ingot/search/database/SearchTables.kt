@@ -40,8 +40,11 @@ internal class SearchTables(dialect: SearchDialect) {
     /** Key and value state: heartbeat, schema marker, locks, counters (section 2.7). */
     val state = SearchStateTable()
 
+    /** The tokens of each GAV, keyed by its `gav_key` (full text change, D1). Added by the `schema-2` marker. */
+    val token = SearchTokenTable(binary)
+
     /** Every table in creation order. */
-    fun all(): List<Table> = listOf(state, artifact, outbox, rebuildRun)
+    fun all(): List<Table> = listOf(state, artifact, outbox, rebuildRun, token)
 
 }
 
@@ -68,11 +71,15 @@ internal class SearchArtifactTable(binary: String?) : Table("search_artifact") {
     val sha256 = char("sha256", SHA256_LENGTH).nullable()
     val indexedAt = long("indexed_at")
 
+    /** The key of the row's GAV (full text change, D1). Null for rows written before `schema-2`, until the sweep fills it. */
+    val gavKey = char("gav_key", GAV_KEY_LENGTH).nullable()
+
     override val primaryKey = PrimaryKey(id)
 
     init {
         index(customIndexName = "uq_search_artifact_path", isUnique = true, repository, pathHash)
         index(customIndexName = "ix_search_gav", isUnique = false, groupIdLc, artifactIdLc, versionLc)
+        index(customIndexName = "ix_search_gav_key", isUnique = false, gavKey)
         index(customIndexName = "ix_search_artifact", isUnique = false, artifactIdLc)
         index(customIndexName = "ix_search_version", isUnique = false, versionLc)
         index(customIndexName = "ix_search_repo_origin", isUnique = false, repository, origin)
@@ -89,6 +96,27 @@ internal class SearchArtifactTable(binary: String?) : Table("search_artifact") {
         const val SHA256_LENGTH = 64
         const val ORIGIN_LENGTH = 8
         const val SOURCE_HOST_LENGTH = 255
+        const val GAV_KEY_LENGTH = 64
+    }
+
+}
+
+/**
+ * The tokens of each GAV (full text change, D1). The primary key `(gav_key, token)` makes an insert of a token that exists a
+ * no-op, and serves the correlated lookup of one GAV's tokens. The index on `token` serves the prefix range of a word.
+ */
+internal class SearchTokenTable(binary: String?) : Table("search_token") {
+    val gavKey = char("gav_key", SearchArtifactTable.GAV_KEY_LENGTH)
+    val token = varchar("token", TOKEN_LENGTH, binary)
+
+    override val primaryKey = PrimaryKey(gavKey, token)
+
+    init {
+        index(customIndexName = "ix_search_token_token", isUnique = false, token)
+    }
+
+    companion object {
+        const val TOKEN_LENGTH = 64
     }
 
 }

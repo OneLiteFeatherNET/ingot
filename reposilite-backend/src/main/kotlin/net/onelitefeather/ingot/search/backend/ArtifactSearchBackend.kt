@@ -58,6 +58,13 @@ internal interface ArtifactSearchBackend : ArtifactSearchEngine {
     /** Deletes up to [limit] rows of [repository]. Returns how many were deleted. */
     fun deleteRepository(repository: String, limit: Int): Int
 
+    /**
+     * Fills the key and the word tokens of up to [batchSize] rows that have no key, and returns how many it keyed; 0 when none
+     * is left. A backend without word tokens keeps the default. The backfill sweep calls this until it returns 0 (full text
+     * change, D6).
+     */
+    fun keyRows(batchSize: Int): Int = 0
+
     /** The names of the repositories that have at least one row. */
     fun repositories(): List<String>
 

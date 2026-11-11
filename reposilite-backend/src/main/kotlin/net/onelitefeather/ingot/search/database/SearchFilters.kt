@@ -19,8 +19,10 @@ package net.onelitefeather.ingot.search.database
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
 import net.onelitefeather.ingot.search.InvalidSearchQueryException
 import net.onelitefeather.ingot.search.OriginFilter
+import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.SnapshotFilter
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Exists
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -30,6 +32,7 @@ import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import java.util.Locale
 
 /**
@@ -37,10 +40,10 @@ import java.util.Locale
  * kind is kept apart so a facet can leave out its own kind (4.4). Validation happens here, before any SQL is built, and
  * refuses with the name of the parameter.
  */
-internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTable) {
+internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTable, tokens: SearchTokenTable) {
 
     private val parts: Map<FilterKind, Op<Boolean>> = buildMap {
-        val text = freeText(query.q, rows)
+        val text = freeText(query.q, rows, tokens)
         if (text != null) put(FilterKind.TEXT, text)
         nonBlank(query.groupId)?.let { put(FilterKind.GROUP, prefixRange(rows.groupIdLc, it.lowercase(Locale.ROOT))) }
         nonBlank(query.artifactId)?.let { put(FilterKind.ARTIFACT, prefixRange(rows.artifactIdLc, it.lowercase(Locale.ROOT))) }
@@ -67,6 +70,9 @@ internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTab
         const val MAX_QUERY_LENGTH = 200
         const val MAX_TOKENS = 5
         const val MAX_COORDINATE_PARTS = 3
+
+        /** The most parts of a word that get the token rule, which bounds the EXISTS clauses of one word (D2). */
+        const val MAX_WORD_PARTS = 4
         val WHITESPACE = Regex("\\s+")
         val SHA1 = Regex("[0-9a-fA-F]{40}")
 
@@ -77,22 +83,38 @@ internal class SearchFilters(query: ArtifactSearchQuery, rows: SearchArtifactTab
             return value
         }
 
-        /** Free text: every token must match. A token with a colon is a coordinates token (4.2). */
-        fun freeText(q: String?, rows: SearchArtifactTable): Op<Boolean>? {
+        /** Free text: every word must match. A word with a colon is a coordinates word (4.2). */
+        fun freeText(q: String?, rows: SearchArtifactTable, tokens: SearchTokenTable): Op<Boolean>? {
             val text = q?.trim() ?: return null
             if (text.length > MAX_QUERY_LENGTH) {
                 throw InvalidSearchQueryException("q", "q is limited to $MAX_QUERY_LENGTH characters")
             }
-            val tokens = text.split(WHITESPACE).filter { it.isNotEmpty() }.map { it.lowercase(Locale.ROOT) }
-            if (tokens.isEmpty()) return null
-            if (tokens.size > MAX_TOKENS) throw InvalidSearchQueryException("q", "q is limited to $MAX_TOKENS tokens")
-            return tokens.map { token -> if (':' in token) coordinates(token, rows) else plainToken(token, rows) }
-                .reduce { acc, op -> acc and op }
+            val words = text.split(WHITESPACE).filter { it.isNotEmpty() }.map { it.lowercase(Locale.ROOT) }
+            if (words.isEmpty()) return null
+            if (words.size > MAX_TOKENS) throw InvalidSearchQueryException("q", "q is limited to $MAX_TOKENS tokens")
+            return words.map { word ->
+                if (':' in word) coordinates(word, rows) else plainToken(word, rows, tokens)
+            }.reduce { acc, op -> acc and op }
         }
 
-        /** A token matches the groupId prefix, the artifactId prefix or the exact version. */
-        fun plainToken(token: String, rows: SearchArtifactTable): Op<Boolean> =
-            prefixRange(rows.groupIdLc, token) or prefixRange(rows.artifactIdLc, token) or (rows.versionLc eq token)
+        /**
+         * A word matches the groupId prefix, the artifactId prefix or the exact version (existing rules). It also matches
+         * when every part of it starts a token of the GAV (full text change, D2). A word with no part, or with more than
+         * [MAX_WORD_PARTS] parts, gets no token rule: it keeps the prefix match it had before, and is not refused.
+         */
+        fun plainToken(word: String, rows: SearchArtifactTable, tokens: SearchTokenTable): Op<Boolean> {
+            val prefixes = prefixRange(rows.groupIdLc, word) or prefixRange(rows.artifactIdLc, word) or (rows.versionLc eq word)
+            val parts = SearchTokens.partsOf(word)
+            if (parts.isEmpty() || parts.size > MAX_WORD_PARTS) return prefixes
+            val everyPart = parts.map { part -> tokenExists(part, rows, tokens) }.reduce { acc, op -> acc and op }
+            return prefixes or everyPart
+        }
+
+        /** Some token of the row's GAV starts with [part]: an EXISTS on `search_token` correlated by `gav_key` (D2). */
+        fun tokenExists(part: String, rows: SearchArtifactTable, tokens: SearchTokenTable): Op<Boolean> =
+            Exists(
+                tokens.selectAll().where { (tokens.gavKey eq rows.gavKey) and prefixRange(tokens.token, part) },
+            )
 
         /** `group:artifact:version`, each part optional: groupId prefix, artifactId prefix, exact version. */
         fun coordinates(token: String, rows: SearchArtifactTable): Op<Boolean> {
