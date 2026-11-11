@@ -118,6 +118,11 @@ const running = ref(false)
 const succeeded = ref(false)
 const copied = ref('')
 const heading = ref(null)
+// The step title takes the focus when the wizard is drawn open, so Escape reaches the dialog and the step is announced.
+// The title element is mounted with the dialog, so this runs once per opening, after the element is in the document.
+watch(heading, (element) => {
+  if (element && props.modelValue) element.focus()
+})
 
 // The steps follow the chosen type: a hosted repository has storage, a proxy remotes, a group members.
 const steps = computed(() => stepsFor(draft.type))
@@ -136,6 +141,9 @@ const accessLoadError = ref('')
 const context = computed(() => ({ existingIds: existingIds.value, teams: teams.value, principals: principals.value }))
 const stepErrors = computed(() => validateStep(stepKey.value, draft, context.value))
 const shownErrors = computed(() => (attempted.value ? stepErrors.value : {}))
+// The messages of the refused step, listed in the error summary that takes the focus when a step is refused.
+const errorSummary = ref(null)
+const errorList = computed(() => Object.values(shownErrors.value).filter(message => typeof message === 'string' && message !== ''))
 const summary = computed(() => summaryRows(draft, { optional: optional.value }))
 const addRemote = () => draft.upstream.remotes.push(emptyRemote())
 const removeRemote = (index) => draft.upstream.remotes.splice(index, 1)
@@ -204,10 +212,14 @@ watch(stepKey, (key) => {
 })
 
 const focusHeading = () => nextTick(() => heading.value?.focus())
+const focusErrorSummary = () => nextTick(() => errorSummary.value?.focus())
 
 const next = () => {
   attempted.value = true
-  if (Object.keys(stepErrors.value).length > 0) return
+  if (Object.keys(stepErrors.value).length > 0) {
+    focusErrorSummary()
+    return
+  }
   attempted.value = false
   stepIndex.value += 1
   focusHeading()
@@ -230,7 +242,7 @@ const create = async () => {
     if (invalid) {
       stepIndex.value = steps.value.findIndex(step => step.key === invalid)
       attempted.value = true
-      focusHeading()
+      focusErrorSummary()
       return
     }
     plan.value = { ...buildActions(draft, { optional: optional.value }, ports), mode: draft.access.mode }
@@ -361,6 +373,26 @@ const onModalUpdate = (open) => {
       </header>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4 max-[599px]:px-4">
+        <div
+          v-if="attempted && errorList.length > 0"
+          ref="errorSummary"
+          role="alert"
+          tabindex="-1"
+          data-test="error-summary"
+          class="mb-4 flex flex-col gap-1 rounded-corner-medium bg-error-container p-3 text-on-error-container focus:outline-none"
+        >
+          <p class="md-title-small">
+            Fix the highlighted fields to continue.
+          </p>
+          <ul class="m-0 flex list-disc flex-col gap-1 pl-5 md-body-medium">
+            <li
+              v-for="(message, position) in errorList"
+              :key="position"
+            >
+              {{ message }}
+            </li>
+          </ul>
+        </div>
         <!-- Type -->
         <div
           v-if="stepKey === 'type'"

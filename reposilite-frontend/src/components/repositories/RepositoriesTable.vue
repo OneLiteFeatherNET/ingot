@@ -105,7 +105,7 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           >
             <button
               type="button"
-              class="md-focus-ring rounded-corner-small py-1 text-left"
+              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
               @click="emit('sort', 'name')"
             >
               Name<span aria-hidden="true">{{ arrowOf('name') }}</span>
@@ -118,7 +118,7 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           >
             <button
               type="button"
-              class="md-focus-ring rounded-corner-small py-1 text-left"
+              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
               @click="emit('sort', 'type')"
             >
               Type<span aria-hidden="true">{{ arrowOf('type') }}</span>
@@ -131,7 +131,7 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           >
             <button
               type="button"
-              class="md-focus-ring rounded-corner-small py-1 text-left"
+              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
               @click="emit('sort', 'visibility')"
             >
               Visibility<span aria-hidden="true">{{ arrowOf('visibility') }}</span>
@@ -158,7 +158,7 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           >
             <button
               type="button"
-              class="md-focus-ring rounded-corner-small py-1 text-left"
+              class="md-focus-ring min-h-6 min-w-6 rounded-corner-small py-1 text-left"
               @click="emit('sort', 'storage')"
             >
               Storage<span aria-hidden="true">{{ arrowOf('storage') }}</span>
@@ -190,7 +190,7 @@ const openDetail = (route) => router.push({ name: 'settings-repository', params:
           >
             <RouterLink
               :to="{ name: 'settings-repository', params: { id: row.route } }"
-              class="md-focus-ring rounded-corner-small break-all text-primary"
+              class="md-focus-ring md-touch-target relative rounded-corner-small break-all text-primary"
             >
               {{ row.name }}
             </RouterLink>
