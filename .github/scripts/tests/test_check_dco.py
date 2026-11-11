@@ -284,5 +284,44 @@ class WorkflowShapeTests(unittest.TestCase):
             self.assertRegex(line, pattern)
 
 
+class WorkflowScriptSourceTests(unittest.TestCase):
+    """The checker must come from the base branch, never from the pull request under test."""
+
+    HEAD_SHA = "${{ github.event.pull_request.head.sha }}"
+    BASE_SHA = "${{ github.event.pull_request.base.sha }}"
+
+    def load_steps(self):
+        with open(WORKFLOW, encoding="utf-8") as handle:
+            workflow = yaml.safe_load(handle)
+        return workflow["jobs"]["signoff"]["steps"]
+
+    def checkout_steps(self):
+        return [step for step in self.load_steps()
+                if str(step.get("uses", "")).startswith("actions/checkout@")]
+
+    def test_checkout_uses_the_base_sha(self):
+        [checkout] = self.checkout_steps()
+        self.assertEqual(self.BASE_SHA, checkout["with"]["ref"])
+
+    def test_checkout_keeps_the_full_history(self):
+        [checkout] = self.checkout_steps()
+        self.assertEqual(0, checkout["with"]["fetch-depth"])
+
+    def test_no_checkout_takes_the_head_sha_as_its_ref(self):
+        for checkout in self.checkout_steps():
+            self.assertNotEqual(self.HEAD_SHA, checkout.get("with", {}).get("ref"))
+
+    def test_the_pull_request_head_is_fetched_as_objects_not_checked_out(self):
+        fetches = [step["run"] for step in self.load_steps()
+                   if "git fetch" in step.get("run", "") and "refs/pull/" in step.get("run", "")]
+        self.assertEqual(1, len(fetches), "exactly one step fetches the pull request head")
+
+    def test_the_checker_runs_from_the_workspace_without_a_working_directory_override(self):
+        steps = [step for step in self.load_steps() if "check_dco.py" in step.get("run", "")]
+        self.assertEqual(1, len(steps))
+        self.assertIn("python3 .github/scripts/check_dco.py", steps[0]["run"])
+        self.assertNotIn("working-directory", steps[0])
+
+
 if __name__ == "__main__":
     unittest.main()
