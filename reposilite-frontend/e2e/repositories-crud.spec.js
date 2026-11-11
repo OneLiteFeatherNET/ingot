@@ -49,7 +49,8 @@ test.describe('repositories page writes', () => {
     await expect(page.getByRole('row', { name: new RegExp(repository) }), 'the new repository in the list').toBeVisible()
 
     // Edits are drafts until Save: the save bar appears with the first change and writes it.
-    await page.getByRole('link', { name: `Edit ${repository}`, exact: true }).click()
+    await page.getByRole('button', { name: `Actions for ${repository}`, exact: true }).click()
+    await page.getByRole('menuitem', { name: `Edit ${repository}`, exact: true }).click()
     await page.getByRole('textbox', { name: 'Description', exact: true }).fill(EDITED_DESCRIPTION)
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Save', exact: true }), 'the save bar after saving').toBeHidden()
@@ -57,7 +58,8 @@ test.describe('repositories page writes', () => {
 
     // Deleting asks for the id, and the removal is a draft until Save as well.
     await page.goto(siteUrl('/settings/repositories'))
-    await page.getByRole('button', { name: `Delete ${repository}`, exact: true }).click()
+    await page.getByRole('button', { name: `Actions for ${repository}`, exact: true }).click()
+    await page.getByRole('menuitem', { name: `Delete ${repository}`, exact: true }).click()
     const confirm = page.getByRole('dialog').filter({ hasText: `Delete ${repository}?` })
     await confirm.getByRole('textbox', { name: 'Id', exact: true }).fill(repository)
     await confirm.getByRole('button', { name: 'Delete', exact: true }).click()

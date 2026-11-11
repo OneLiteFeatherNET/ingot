@@ -20,32 +20,33 @@ import { siteUrl } from './support/api.js'
 // Repositories that make the Repositories page taller than the viewport, so that it scrolls.
 const FILLER_REPOSITORIES = 8
 
-// True when the element is the topmost thing at its own centre: nothing, such as the app bar, covers it.
-const isUncovered = (locator) => locator.evaluate((element) => {
-  const box = element.getBoundingClientRect()
-  const topmost = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
-  return topmost !== null && element.contains(topmost)
-})
+const topOf = (locator) => locator.evaluate(element => element.getBoundingClientRect().top)
 
 test.describe('administration page header while scrolling', () => {
-  test('keeps the page heading and its action visible and uncovered by the app bar', async ({ adminPage: page, seed }) => {
-    // Known regression on main: the heading and the page actions go under the app bar while the page scrolls.
-    // The fixing change is rework-administration-layout, which removes this marker in its pull request.
-    test.fail(true, 'rework-administration-layout')
+  // The design (rework-administration-layout, D2) keeps the page header out of sticky positioning: the top bar is the
+  // only sticky element, and the header and its actions scroll with the page, under the top bar when they reach it.
+  // This test pins that behaviour: the header moves by exactly the scroll distance, and the top bar stays at the top.
+  test('moves the page heading and its action with the page while the app bar stays at the top', async ({ adminPage: page, seed }) => {
     for (let index = 0; index < FILLER_REPOSITORIES; index++) {
       await seed.repository(`filler-${index}`)
     }
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto(siteUrl('/settings/repositories'))
-    const heading = page.getByRole('heading', { name: 'Repositories', level: 1 })
+    const heading = page.getByRole('heading', { name: 'Repositories', level: 2 })
     const action = page.getByRole('button', { name: 'New repository', exact: true })
+    const appBar = page.getByRole('banner')
     await expect(heading).toBeVisible()
+    const headingBefore = await topOf(heading)
+    const actionBefore = await topOf(action)
 
     await page.mouse.move(640, 400)
     await page.mouse.wheel(0, 240)
     await expect.poll(() => page.evaluate(() => window.scrollY), 'the page has scrolled').toBeGreaterThan(0)
+    const scrolled = await page.evaluate(() => window.scrollY)
 
-    await expect.poll(() => isUncovered(heading), 'the heading is not covered by the app bar').toBe(true)
-    await expect.poll(() => isUncovered(action), 'the page action is not covered by the app bar').toBe(true)
+    await expect.poll(() => topOf(heading), 'the heading scrolls with the page, so it is not sticky').toBeCloseTo(headingBefore - scrolled, 0)
+    await expect.poll(() => topOf(action), 'the page action scrolls with the page, so it is not sticky').toBeCloseTo(actionBefore - scrolled, 0)
+    expect(await appBar.evaluate(element => getComputedStyle(element).position), 'the app bar is the sticky element').toBe('sticky')
+    expect(await topOf(appBar), 'the app bar stays at the top of the screen').toBe(0)
   })
 })

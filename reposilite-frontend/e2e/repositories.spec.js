@@ -18,19 +18,17 @@ import { test, expect } from './support/fixtures.js'
 import { siteUrl } from './support/api.js'
 import { unbrokenName } from './support/names.js'
 
-// The lines a box of text spans, from its height and its computed line height.
-const linesOf = (locator) => locator.evaluate((element) => {
-  const style = getComputedStyle(element)
-  const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2
-  return Math.round(element.getBoundingClientRect().height / lineHeight)
+// The lines the text of an element occupies, counted from the boxes of its text. The box of a table cell is not
+// used: a cell is as tall as its row, so a tall neighbour would count as lines of the name.
+const linesOfText = (locator) => locator.evaluate((element) => {
+  const range = document.createRange()
+  range.selectNodeContents(element)
+  return new Set([...range.getClientRects()].map(box => Math.round(box.top))).size
 })
 
 test.describe('repositories table layout', () => {
   for (const width of [1280, 1920]) {
-    test(`keeps a long name and address whole and the row actions on one line at ${width} px`, async ({ adminPage: page, seed }, testInfo) => {
-      // Known regression on main: names and addresses break mid-word and the row actions wrap. The fixing
-      // change is rework-administration-layout, which removes this marker.
-      test.fail(true, 'rework-administration-layout')
+    test(`keeps a long name, its address and the Actions button on one line each at ${width} px`, async ({ adminPage: page, seed }, testInfo) => {
       // One word, no hyphen: a break inside it can only be a mid-word break.
       const repository = await seed.create(unbrokenName(testInfo, 'long'), { description: 'Long name for the layout check' })
       await page.setViewportSize({ width, height: 900 })
@@ -38,16 +36,13 @@ test.describe('repositories table layout', () => {
 
       const row = page.getByRole('row', { name: new RegExp(repository) })
       await expect(row).toBeVisible()
-      const name = row.getByRole('rowheader')
+      const name = row.getByRole('link', { name: repository, exact: true })
       const address = row.locator('code')
-      const actions = row.getByRole('link', { name: `Edit ${repository}`, exact: true })
-        .or(row.getByRole('button', { name: `Copy address of ${repository}`, exact: true }))
-        .or(row.getByRole('button', { name: `Delete ${repository}`, exact: true }))
+      const actions = row.getByRole('button', { name: `Actions for ${repository}`, exact: true })
 
-      expect(await linesOf(name), `lines of the name ${repository}`).toBe(1)
-      expect(await linesOf(address), 'lines of the address').toBe(1)
-      const tops = await actions.evaluateAll(elements => elements.map(element => Math.round(element.getBoundingClientRect().top)))
-      expect(new Set(tops).size, `the top edges of the three row actions ${tops}`).toBe(1)
+      expect(await linesOfText(name), `lines of the name ${repository}`).toBe(1)
+      expect(await linesOfText(address), 'lines of the address').toBe(1)
+      expect(await linesOfText(actions), 'lines of the Actions button').toBe(1)
     })
   }
 })
