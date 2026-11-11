@@ -20,6 +20,15 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Base64
 
+/**
+ * A startup refusal of the settings key. The launcher prints its message as one line and exits with code 1, so an operator sees the
+ * variable or the key identifier and no stack trace.
+ */
+interface SettingsKeyRefusal
+
+/** A key source or mode that cannot be used, see [SettingsKeySources]. */
+class SettingsKeyConfigRefusal(message: String) : IllegalArgumentException(message), SettingsKeyRefusal
+
 enum class SettingsEncryptionMode(val wireName: String) {
     /** Encryption starts when a key is configured. Without a key the instance behaves as it did before encryption existed. */
     OPTIONAL("optional"),
@@ -65,7 +74,7 @@ object SettingsKeySources {
         val inlineSetting = setting(environment, inline)
         val fileSetting = setting(environment, file)
         if (inlineSetting != null && fileSetting != null) {
-            throw IllegalArgumentException("Set either ${inlineSetting.first} or ${fileSetting.first}, not both")
+            throw SettingsKeyConfigRefusal("Set either ${inlineSetting.first} or ${fileSetting.first}, not both")
         }
 
         return when {
@@ -79,7 +88,7 @@ object SettingsKeySources {
         val content = try {
             Files.readString(Paths.get(path))
         } catch (exception: Exception) {
-            throw IllegalArgumentException("$name names a file that cannot be read (${exception::class.simpleName})")
+            throw SettingsKeyConfigRefusal("$name names a file that cannot be read (${exception::class.simpleName})")
         }
         // One trailing line break is what editors and secret mounts add, it is not part of the key.
         return content.removeSuffix("\r\n").removeSuffix("\n")
@@ -89,11 +98,11 @@ object SettingsKeySources {
         val bytes = try {
             Base64.getDecoder().decode(encoded.trim())
         } catch (_: IllegalArgumentException) {
-            throw IllegalArgumentException("$name is not valid base64")
+            throw SettingsKeyConfigRefusal("$name is not valid base64")
         }
 
         if (bytes.size != SettingsEnvelopeCodec.KEY_LENGTH) {
-            throw IllegalArgumentException("$name must hold base64 of ${SettingsEnvelopeCodec.KEY_LENGTH} bytes, found ${bytes.size} bytes")
+            throw SettingsKeyConfigRefusal("$name must hold base64 of ${SettingsEnvelopeCodec.KEY_LENGTH} bytes, found ${bytes.size} bytes")
         }
         return bytes
     }
@@ -101,7 +110,7 @@ object SettingsKeySources {
     private fun readMode(environment: Map<String, String>): SettingsEncryptionMode {
         val (name, value) = setting(environment, MODE) ?: return SettingsEncryptionMode.OPTIONAL
         return SettingsEncryptionMode.entries.firstOrNull { it.wireName == value.lowercase() }
-            ?: throw IllegalArgumentException("Unknown value for $name, expected 'optional' or 'required'")
+            ?: throw SettingsKeyConfigRefusal("Unknown value for $name, expected 'optional' or 'required'")
     }
 
     /**

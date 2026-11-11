@@ -44,6 +44,9 @@ data class StoredSettingsKey(val keyId: String, val check: String) {
 
 }
 
+/** A startup refusal of the key check against the stored settings, see [SettingsKeyGuard]. */
+class SettingsKeyGuardRefusal(message: String) : IllegalStateException(message), SettingsKeyRefusal
+
 /** An envelope found in the stored document: where it sits and the key identifier it names. */
 data class SealedSetting(val domain: String, val path: String, val keyId: String)
 
@@ -77,13 +80,13 @@ object SettingsKeyGuard {
         val active = configuration.active
         if (active == null) {
             if (configuration.mode == SettingsEncryptionMode.REQUIRED) {
-                throw IllegalStateException(
+                throw SettingsKeyGuardRefusal(
                     "${SettingsKeySources.MODE} is 'required', but no settings key is configured. " +
                         "Set ${SettingsKeySources.KEY} or ${SettingsKeySources.KEY_FILE}."
                 )
             }
             sealed.firstOrNull()?.let { first ->
-                throw IllegalStateException(
+                throw SettingsKeyGuardRefusal(
                     "Settings domain '${first.domain}', property '${first.path}' is encrypted, but no settings key is configured. " +
                         "Set ${SettingsKeySources.KEY} or ${SettingsKeySources.KEY_FILE} to the key that wrote it."
                 )
@@ -94,7 +97,7 @@ object SettingsKeyGuard {
         val configured = SettingsEnvelopeCodec(key = active)
         if (stored == null) {
             sealed.firstOrNull { it.keyId != configured.keyId }?.let { foreign ->
-                throw IllegalStateException(
+                throw SettingsKeyGuardRefusal(
                     "The settings key does not match the key that sealed the stored settings (key id ${foreign.keyId}). " +
                         "Start the instance with the key the other instances use."
                 )
@@ -112,7 +115,7 @@ object SettingsKeyGuard {
             }
         }
 
-        throw IllegalStateException(
+        throw SettingsKeyGuardRefusal(
             "The settings key does not match the key of this database (key id ${stored.keyId}). " +
                 "Start the instance with the key the other instances use."
         )
