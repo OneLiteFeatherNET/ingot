@@ -175,6 +175,16 @@ describe('the repositories table', () => {
       .toEqual(['Edit releases', 'Copy address of releases', 'Delete releases'])
   })
 
+  it('makes the Edit item a link to the repository detail, so it can open in a new tab', async () => {
+    await mountPage()
+
+    await openActions('releases')
+
+    const edit = menuItems().find(item => item.getAttribute('aria-label') === 'Edit releases')
+    expect(edit.tagName, 'the Edit item is a link').toBe('A')
+    expect(edit.getAttribute('href'), 'the link is the address of the repository detail').toBe('/settings/repositories/releases')
+  })
+
   it('keeps the name link before the Actions button in one row', async () => {
     await mountPage()
 

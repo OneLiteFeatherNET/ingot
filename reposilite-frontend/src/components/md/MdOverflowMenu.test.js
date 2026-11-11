@@ -136,4 +136,51 @@ describe('MdOverflowMenu', () => {
     expect(menuItems()[2].className, 'Delete is drawn as an error item').toContain('!text-error')
     expect(menuItems()[0].className, 'Edit is not drawn as an error item').not.toContain('!text-error')
   })
+
+  describe('link items', () => {
+    const LINK_ITEMS = [
+      { value: 'edit', label: 'Edit', ariaLabel: 'Edit releases', href: '/settings/repositories/releases' },
+      { value: 'delete', label: 'Delete', ariaLabel: 'Delete releases', error: true }
+    ]
+
+    const clickEvent = (init = {}) => new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init })
+
+    it('renders an item with an href as a link that keeps the menuitem role', async () => {
+      await mountMenu({ items: LINK_ITEMS })
+      await trigger().trigger('click')
+      await flushPromises()
+
+      const edit = menuItems()[0]
+      expect(edit.tagName, 'the item is an anchor, so middle click and open in new tab work').toBe('A')
+      expect(edit.getAttribute('role'), 'the link is still a menu item').toBe('menuitem')
+      expect(edit.getAttribute('href'), 'the link goes to the repository detail').toBe('/settings/repositories/releases')
+      expect(menuItems()[1].tagName, 'an item without an href stays a button').toBe('BUTTON')
+    })
+
+    it('reports a plain click on a link item and keeps the browser from following it', async () => {
+      await mountMenu({ items: LINK_ITEMS })
+      await trigger().trigger('click')
+      await flushPromises()
+
+      const event = clickEvent()
+      menuItems()[0].dispatchEvent(event)
+      await flushPromises()
+
+      expect(event.defaultPrevented, 'the router handles the navigation').toBe(true)
+      expect(wrapper.emitted('select'), 'the chosen value is reported').toEqual([['edit']])
+    })
+
+    it('leaves a click with a modifier key to the browser, which opens a new tab', async () => {
+      await mountMenu({ items: LINK_ITEMS })
+      await trigger().trigger('click')
+      await flushPromises()
+
+      const event = clickEvent({ ctrlKey: true })
+      menuItems()[0].dispatchEvent(event)
+      await flushPromises()
+
+      expect(event.defaultPrevented, 'the browser follows the link in a new tab').toBe(false)
+      expect(wrapper.emitted('select'), 'nothing is reported for the same page').toBeUndefined()
+    })
+  })
 })
