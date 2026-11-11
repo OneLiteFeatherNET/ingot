@@ -27,6 +27,23 @@ Every error answer under `/api` is a JSON object that follows RFC 9457 (Problem 
 
 The content type is `application/json`, as before. A client that asks for `application/problem+json` in the `Accept` header, and ranks it at least as high as `application/json`, gets that content type with the same body. A wildcard such as `*/*` keeps `application/json`.
 
+## Checksum file refused
+
+A deploy of a checksum file (`.md5`, `.sha1`, `.sha256` or `.sha512`) answers `400` when the repository has the `reject` [upload checksum policy](repository-settings.md#upload-checksum-policy) and the file does not match the artifact stored before it. The message names the algorithm, and `type` is `urn:ingot:problem:upload-checksum-mismatch`, which tells this refusal apart from other `400` answers. Nothing is stored for the checksum file, and the artifact stays as it is.
+
+```json
+{
+  "status": 400,
+  "message": "SHA1 checksum file lib-1.0.0.jar.sha1 does not match the stored artifact, so it was refused",
+  "type": "urn:ingot:problem:upload-checksum-mismatch",
+  "title": "Bad Request",
+  "detail": "SHA1 checksum file lib-1.0.0.jar.sha1 does not match the stored artifact, so it was refused",
+  "instance": "/releases/com/example/lib/1.0.0/lib-1.0.0.jar.sha1"
+}
+```
+
+The same check under `warn` stores the file and answers as usual. See [Verify uploaded checksums](../how-to/verify-uploaded-checksums.md).
+
 ## Which answers use this shape
 
 * Errors that Ingot and its plugins report through `ErrorResponse`.

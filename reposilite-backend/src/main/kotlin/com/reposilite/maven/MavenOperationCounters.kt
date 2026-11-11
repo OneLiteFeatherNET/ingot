@@ -21,8 +21,11 @@ import java.util.EnumMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-/** The result of one deploy request, as the metrics label it. */
-enum class DeployOutcome { ACCEPTED, REJECTED }
+/**
+ * The result of one deploy request, as the metrics label it. [CHECKSUM_MISMATCH] is a refusal of a checksum file that
+ * did not match its artifact, see the upload checksum policy.
+ */
+enum class DeployOutcome { ACCEPTED, REJECTED, CHECKSUM_MISMATCH }
 
 /** The result of one fetch from an upstream host of a proxy repository, as the metrics label it. */
 enum class UpstreamOutcome {
@@ -92,8 +95,14 @@ class MavenOperationCounters {
         checksumResults[policy]?.get(result)?.incrementAndGet()
     }
 
+    /**
+     * [DeployOutcome.CHECKSUM_MISMATCH] is left out until it has been recorded once, so an instance that never refuses a
+     * checksum file exposes the same series as before.
+     */
     fun snapshot(): MavenOperationTotals = MavenOperationTotals(
-        deploys = deploys.mapValues { it.value.get() },
+        deploys = deploys
+            .filter { (outcome, count) -> outcome != DeployOutcome.CHECKSUM_MISMATCH || count.get() > 0 }
+            .mapValues { it.value.get() },
         upstream = upstream.mapValues { it.value.get() },
         namespaceRefusals = namespaceRefusals.mapValues { it.value.get() },
         checksumResults = checksumResults.mapValues { (_, byResult) -> byResult.mapValues { it.value.get() } },

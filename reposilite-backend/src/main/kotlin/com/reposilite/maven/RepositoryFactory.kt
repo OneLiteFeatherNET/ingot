@@ -39,6 +39,7 @@ internal class RepositoryFactory(
     private val storageFacade: StorageFacade,
     private val repositoriesNames: Collection<String>,
     private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
+    private val uploadChecksumDefault: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
 ) {
 
     private val repositoriesDirectory = Paths.get("repositories")
@@ -52,6 +53,7 @@ internal class RepositoryFactory(
             redeployment = configuration.redeployment,
             preserveSnapshots = configuration.preserveSnapshots,
             declaredType = configuration.type,
+            uploadChecksumPolicy = configuration.uploadChecksumPolicy ?: uploadChecksumDefault,
             mirrorHosts = configuration.proxied.mapNotNull { createMirroredHostConfiguration(it) },
             storageProvider =
                 storageFacade

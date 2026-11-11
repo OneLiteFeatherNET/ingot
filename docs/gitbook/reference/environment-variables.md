@@ -272,6 +272,18 @@ Read once at startup. `INGOT_HTTP_USE_ENV_PROXY` is the switch. When it is `true
 
 The JVM system properties such as `https.proxyHost` in `JAVA_OPTS` still apply to all outgoing connections whatever the switch says. The JDK does not read `HTTPS_PROXY` or `HTTP_PROXY` by itself, so the switch is the only way to take them into account. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#route-mirror-traffic-through-an-egress-proxy).
 
+### Upload checksum policy
+
+Read once at startup. `INGOT_UPLOAD_CHECKSUM_POLICY` sets the policy that a hosted repository uses for an uploaded checksum file that does not match the artifact stored before it. `REPOSILITE_UPLOAD_CHECKSUM_POLICY` is read when the `INGOT_` name is not set. The system property `ingot.uploadChecksumPolicy` is the last source. A repository with its own `uploadChecksumPolicy` ignores all three. The values are `ignore`, `warn` and `reject`, in any letter case, and the default is `ignore`, which stores every file as before. Any other value stops the start with a message that names the variable.
+
+| Value | Behavior |
+| --- | --- |
+| `ignore` | The checksum file is stored without a check. |
+| `warn` | The checksum file is stored, and the mismatch is logged and recorded in the audit log. |
+| `reject` | The checksum file is refused with `400`, nothing is stored for it, and the refusal is recorded in the audit log. |
+
+The check only compares a checksum file with an artifact that is already stored. See [Verify uploaded checksums](../how-to/verify-uploaded-checksums.md).
+
 ### Maven cache control
 
 Read once at startup from `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`, or from the legacy `REPOSILITE_MAVEN_CACHE_PRIVATE_AS_PUBLIC` when the `INGOT_` name is not set. It is not a local configuration key, so it has no `INGOT_LOCAL_` form.

@@ -148,7 +148,7 @@ class MavenFacade internal constructor(
     fun deployFile(deployRequest: DeployRequest): Result<Unit, ErrorResponse> =
         checkAcceptsUploads(deployRequest.repository)
             .flatMap { repositoryService.deployFile(deployRequest) }
-            .also { operationCounters.recordDeploy(if (it.isOk) DeployOutcome.ACCEPTED else DeployOutcome.REJECTED) }
+            .also { operationCounters.recordDeploy(deployOutcomeOf(it)) }
             // a deployment makes the directory hold hosted content, so it is no longer a mirror copy
             .peek {
                 val directory = deployRequest.gav.getParent().provenancePath()
@@ -157,6 +157,12 @@ class MavenFacade internal constructor(
                     artifactIndexSink.reorigin(deployRequest.repository.name, directory)
                 }
             }
+
+    private fun deployOutcomeOf(result: Result<Unit, ErrorResponse>): DeployOutcome = when {
+        result.isOk -> DeployOutcome.ACCEPTED
+        result.error.type == UPLOAD_CHECKSUM_MISMATCH_PROBLEM_TYPE -> DeployOutcome.CHECKSUM_MISMATCH
+        else -> DeployOutcome.REJECTED
+    }
 
     fun deleteFile(deleteRequest: DeleteRequest): Result<Unit, ErrorResponse> =
         repositoryService.deleteFile(deleteRequest)
