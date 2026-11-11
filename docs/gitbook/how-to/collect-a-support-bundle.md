@@ -6,7 +6,7 @@ A support bundle is a zip file that describes one Ingot instance: what it runs o
 
 Only principals with the console area (`ingot.admin.console`) can open the System information page and the Support bundle page, or download the bundle. Anonymous callers get `401`, and principals without the area get `403`. Downloads are recorded in the audit log as `SUPPORT_BUNDLE_DOWNLOADED`, with the name of the person who downloaded it.
 
-Open the pages under **Settings**, in the group **Support**, or call `GET /api/admin/support/bundle` directly with the token of an administrator.
+Open the pages under **Administration**, in the group **Support**, or call `GET /api/admin/support/bundle` directly with the token of an administrator.
 
 ## What the bundle contains
 
