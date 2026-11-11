@@ -27,7 +27,6 @@ import com.reposilite.maven.RepositoryType
 import com.reposilite.maven.application.MavenSettings
 import com.reposilite.maven.application.RepositorySettings
 import kong.unirest.core.Unirest
-import net.onelitefeather.ingot.nexusimport.NexusImportFacade
 import net.onelitefeather.ingot.nexusimport.fake.FakeNexus
 import net.onelitefeather.ingot.nexusimport.fake.FakeReply
 import org.assertj.core.api.Assertions.assertThat
@@ -226,8 +225,13 @@ internal class NexusImportIntegrationTest : ReposiliteSpecification() {
 
     // ---- helpers -----------------------------------------------------------------------------------------------------------
 
+    /**
+     * Runs one scheduler pass of the plugin. The facade is found by its class name and called reflectively, because the plugin
+     * is loaded from its jar like in production and its classes are not on the test classpath.
+     */
     private fun tick() {
-        useFacade<NexusImportFacade>().tick()
+        val facade = reposilite.extensions.getFacades().single { it.javaClass.name == NEXUS_IMPORT_FACADE }
+        facade.javaClass.getMethod("tick").invoke(facade)
     }
 
     private fun admin(request: kong.unirest.core.HttpRequest<*>): kong.unirest.core.HttpRequest<*> {
@@ -277,6 +281,7 @@ internal class NexusImportIntegrationTest : ReposiliteSpecification() {
     private companion object {
         const val PLUGIN_JAR_PROPERTY = "reposilite.nexusImport.plugin"
         const val TICK_PROPERTY = "ingot.nexusImport.tickSeconds"
+        const val NEXUS_IMPORT_FACADE = "net.onelitefeather.ingot.nexusimport.NexusImportFacade"
         const val JOBS = "/api/migration/nexus/jobs"
         const val JSON = "Content-Type"
         const val JSON_TYPE = "application/json"

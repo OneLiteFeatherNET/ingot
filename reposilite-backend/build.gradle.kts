@@ -374,7 +374,11 @@ val nexusImportPlugin by configurations.creating {
 
 dependencies {
     "nexusImportPlugin"(project(path = ":reposilite-plugins:nexus-import-plugin", configuration = "shadow"))
-    "integrationImplementation"(testFixtures(project(":reposilite-plugins:nexus-import-plugin")))
+    // Only the fixtures variant: its transitive main classes would put the plugin and its service file on the integration
+    // classpath, and every integration test would then load the plugin. The migration test loads the shipped jar itself.
+    val nexusImportFixtures = testFixtures(project(":reposilite-plugins:nexus-import-plugin")) as org.gradle.api.artifacts.ModuleDependency
+    nexusImportFixtures.isTransitive = false
+    add("integrationImplementation", nexusImportFixtures)
 }
 
 tasks.named<Test>("integration") {
