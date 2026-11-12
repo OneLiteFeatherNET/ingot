@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotSearchApi::class)
+
 package net.onelitefeather.ingot.search.application
 
 import com.reposilite.configuration.local.LocalConfiguration
@@ -34,7 +36,11 @@ import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.repository.index.NoOpArtifactIndexSink
 import net.onelitefeather.ingot.search.api.SearchApiEndpoints
-import net.onelitefeather.ingot.search.backend.SearchBackendRegistry
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendRegistry
+import net.onelitefeather.ingot.search.backend.BackendResolution
+import net.onelitefeather.ingot.search.backend.CoreSearchBackendContext
+import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
+import net.onelitefeather.ingot.search.backend.DatabaseSearchBackendFactory
 import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
@@ -88,16 +94,24 @@ internal class SearchPlugin : ReposilitePlugin() {
             return SearchFacade(NoOpArtifactIndexSink)
         }
         val engine = local.searchEngine.get()
-        val factory = SearchBackendRegistry.factoryOf(engine)
-        if (factory == null) {
+        val registry = ArtifactSearchBackendRegistry(builtIn = DatabaseSearchBackendFactory(database, clock)) { logger.warn(it) }
+        val resolution = registry.resolve(engine)
+        if (resolution !is BackendResolution.Installed) {
             logger.warn("SEARCH | Unknown search engine '$engine', artifact search stays disabled")
             return SearchFacade(NoOpArtifactIndexSink)
         }
-        val backend = factory(database, clock)
+        val instanceId = UUID.randomUUID().toString()
+        val context = CoreSearchBackendContext(clock, instanceId, engine) { level, message ->
+            when (level) {
+                "error" -> logger.error(message)
+                "warn" -> logger.warn(message)
+                else -> logger.info(message)
+            }
+        }
+        val backend = resolution.factory.create(context)
 
         val state = SearchStateStore(database, clock)
         val outbox = OutboxStore(database, clock)
-        val instanceId = UUID.randomUUID().toString()
         val repositoryRegistry = facade<RepositoryRegistry>()
         val readOnlyFacade = facade<ReadOnlyFacade>()
         val ledger = SqlMirrorCacheLedger(database)

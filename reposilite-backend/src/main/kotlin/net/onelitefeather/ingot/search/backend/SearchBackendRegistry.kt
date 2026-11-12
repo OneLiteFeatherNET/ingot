@@ -14,26 +14,67 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotSearchApi::class)
+
 package net.onelitefeather.ingot.search.backend
 
-import net.onelitefeather.ingot.search.database.DatabaseSearchBackend
-import org.jetbrains.exposed.v1.jdbc.Database
-import java.time.Clock
+/** The states of a search backend (search backend registration, D4). */
+internal enum class SearchBackendState {
+    AVAILABLE,
+    NOT_INSTALLED,
+    REFUSED,
+    OPEN_FAILED,
+    DOWN,
+    CLUSTER_MISMATCH,
+}
 
-/** Builds a backend on the database of the instance. */
-internal typealias SearchBackendFactory = (Database, Clock) -> ArtifactSearchBackend
+/** What the registry answers for a configured id: a factory to create the backend with, or the reason there is none. */
+internal sealed interface BackendResolution {
+
+    data class Installed(val factory: ArtifactSearchBackendFactory) : BackendResolution
+
+    data class Unavailable(val state: SearchBackendState, val reason: String) : BackendResolution
+
+}
 
 /**
- * Resolves the local key `searchEngine` to a backend (search backend seam, D9). The registry holds the database only. An
- * unknown id resolves to null, and the plugin then keeps search switched off, as it always has. The match is exact.
+ * The factories of this server, by id (search backend registration, D2). The built-in `database` factory is registered first,
+ * so a plugin cannot replace it: a second factory with an id that is taken is refused. A factory of another API version is
+ * refused as well, and its id resolves to [SearchBackendState.REFUSED] while no other factory has it.
  */
-internal object SearchBackendRegistry {
+internal class ArtifactSearchBackendRegistry(
+    builtIn: ArtifactSearchBackendFactory,
+    private val warn: (String) -> Unit,
+) {
 
-    private val factories: Map<String, SearchBackendFactory> = mapOf(
-        DatabaseSearchBackend.ID to { database, clock -> DatabaseSearchBackend(database, clock) },
-    )
+    private val factories = linkedMapOf(builtIn.id to builtIn)
+    private val refused = linkedMapOf<String, String>()
 
-    /** The factory of the backend called [id], or null when no backend has that id. */
-    fun factoryOf(id: String): SearchBackendFactory? = factories[id]
+    /** Registers [factory]. Returns false when it was refused, and says why in a warning. */
+    fun register(factory: ArtifactSearchBackendFactory): Boolean {
+        if (factory.apiVersion != SEARCH_BACKEND_API_VERSION) {
+            val reason = "${factory.javaClass.name} declares apiVersion=${factory.apiVersion}, expected $SEARCH_BACKEND_API_VERSION"
+            warn("SEARCH | Refused search backend '${factory.id}': $reason")
+            refused.putIfAbsent(factory.id, reason)
+            return false
+        }
+        val existing = factories[factory.id]
+        if (existing != null) {
+            warn(
+                "SEARCH | Refused search backend '${factory.id}' from ${factory.javaClass.name}: " +
+                    "${existing.javaClass.name} is already registered for this id"
+            )
+            return false
+        }
+        factories[factory.id] = factory
+        return true
+    }
+
+    /** The answer for the configured [id]: the factory that is registered for it, or why none is usable. */
+    fun resolve(id: String): BackendResolution {
+        factories[id]?.let { return BackendResolution.Installed(it) }
+        refused[id]?.let { return BackendResolution.Unavailable(SearchBackendState.REFUSED, it) }
+        return BackendResolution.Unavailable(SearchBackendState.NOT_INSTALLED, "no search backend is registered for '$id'")
+    }
 
 }

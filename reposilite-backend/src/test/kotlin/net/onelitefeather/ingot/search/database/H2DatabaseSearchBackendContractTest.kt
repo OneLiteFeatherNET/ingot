@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi::class)
+
 package net.onelitefeather.ingot.search.database
 
 import com.zaxxer.hikari.HikariConfig
