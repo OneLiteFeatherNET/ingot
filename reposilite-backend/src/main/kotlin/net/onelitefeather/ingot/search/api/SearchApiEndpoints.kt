@@ -124,7 +124,7 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "200", content = [OpenApiContent(from = ArtifactSearchResponse::class)]),
             OpenApiResponse(status = "400", description = "Invalid parameter or result window exceeded. The message names the parameter."),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
-            OpenApiResponse(status = "503", description = "Statement timeout or grant set too large for search"),
+            OpenApiResponse(status = "503", description = "Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set."),
         ]
     )
     private val searchArtifacts = ReposiliteRoute<ArtifactSearchResponse>("/api/maven/search", GET) {
@@ -170,7 +170,7 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "200", content = [OpenApiContent(from = ArtifactFilesResponse::class)]),
             OpenApiResponse(status = "400", description = "A coordinate is missing or a parameter is invalid. The message names it."),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
-            OpenApiResponse(status = "503", description = "Statement timeout or grant set too large for search"),
+            OpenApiResponse(status = "503", description = "Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set."),
         ]
     )
     private val searchFiles = ReposiliteRoute<ArtifactFilesResponse>("/api/maven/search/files", GET) {
@@ -221,6 +221,7 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
             OpenApiResponse(status = "409", description = "A rebuild or verify run is already running"),
+            OpenApiResponse(status = "503", description = "The search backend is not available. Retry-After is set."),
         ]
     )
     private val startRebuild = ReposiliteRoute<StartedRunResponse>("/api/maven/search/index/rebuild", POST) {
@@ -251,6 +252,7 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
             OpenApiResponse(status = "409", description = "A rebuild or verify run is already running"),
+            OpenApiResponse(status = "503", description = "The search backend is not available. Retry-After is set."),
         ]
     )
     private val startVerify = ReposiliteRoute<StartedRunResponse>("/api/maven/search/index/verify", POST) {
@@ -282,6 +284,7 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance, or the run does not exist"),
             OpenApiResponse(status = "409", description = "The run has already finished"),
+            OpenApiResponse(status = "503", description = "The search backend is not available. Retry-After is set."),
         ]
     )
     private val cancelRun = ReposiliteRoute<Unit>("/api/maven/search/index/runs/{id}/cancel", POST) {
