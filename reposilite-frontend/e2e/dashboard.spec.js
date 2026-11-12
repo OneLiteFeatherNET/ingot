@@ -36,6 +36,9 @@ test.describe('dashboard status', () => {
     await page.goto(siteUrl('/dashboard'))
     await expect(page.getByRole('region', { name: 'Instance status' })).toBeVisible()
 
+    // The meters come with the figures of the status, which load after the region is shown: wait for the first one.
+    await expect(page.locator('meter, [role="meter"]').first()).toBeVisible()
+
     // A meter is a <meter> or an element with role meter. Both carry their value and limit, the ARIA way for the role.
     const meters = await page.locator('meter, [role="meter"]').evaluateAll(elements => elements.map(element => ({
       label: element.getAttribute('aria-label'),
