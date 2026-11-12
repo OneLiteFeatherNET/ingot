@@ -64,6 +64,8 @@ The backend implements `ArtifactSearchBackend`. It writes the index, answers the
 
 The interface also has the methods that read the index for the search and for the maintenance runs. The contract suite, described below, checks each of them.
 
+The core calls `close()` when the server stops, after the backend was opened.
+
 ## The registration event
 
 A factory does not need a service file of its own. It is registered in the plugin event `ArtifactSearchBackendRegistrationEvent`, which carries `register(factory)`. The search plugin emits the event after every plugin has initialized. Register the listener in `initialize` or in `load`, as for any other event:
@@ -95,11 +97,11 @@ The registry checks each factory when it is registered:
 * A factory whose id is already registered is refused. The warning names both classes. The first factory registered keeps the id.
 * The built-in `database` factory is registered before any plugin, so a plugin cannot replace it.
 
-A plugin whose listener runs after the event has been emitted is not seen. The jar still has to be loaded by the plugin loader, which it is when it sits in the plugins directory, or in the bundled directory with its switch on. A backend that is not registered shows the state `NOT_INSTALLED` on the server.
+The plugin can also register in `load`, which runs before the event is emitted. A plugin whose listener runs after the event has been emitted is not seen. The jar still has to be loaded by the plugin loader, which it is when it sits in the plugins directory, or in the bundled directory with its switch on. A backend that is not registered shows the state `NOT_INSTALLED` on the server.
 
 ## The contract suite
 
-The server ships a contract suite for search backends. It is an abstract test suite that checks a backend against what the core expects from it: the writes and reads of the index, the paging, the word search and the access checks. The suite is part of the test fixtures of `reposilite-backend`. A plugin module in the same Gradle build depends on it the way `nexus-import-plugin` does:
+The server ships a contract suite for search backends. It is an abstract test suite that checks a backend against what the core expects from it: the writes and reads of the index, the paging, the word search and the access checks. The suite is the abstract class `net.onelitefeather.ingot.search.backend.ArtifactSearchBackendContract`, in the test fixtures of `reposilite-backend`. A plugin module in the same Gradle build depends on it the way `nexus-import-plugin` does:
 
 ```kotlin
 dependencies {
@@ -107,11 +109,11 @@ dependencies {
 }
 ```
 
-A test class of the plugin extends the abstract suite and provides the backend under test. Run it before every release. Do not change the suite to make a backend pass. One requirement of the suite is that the access-mismatch count stays at zero for every backend. A backend that returns a row the caller may not see fails the suite. See [The access check in the core](#the-access-check-in-the-core).
+A test class of the plugin extends the abstract class and provides the backend under test by overriding `open(directory, clock)`, which returns the backend opened on an empty index together with the action that closes it. Run it before every release. Do not change the suite to make a backend pass. One requirement of the suite is that the access-mismatch count stays at zero for every backend. A backend that returns a row the caller may not see fails the suite. See [The access check in the core](#the-access-check-in-the-core).
 
 ## The busy signal
 
-A backend that cannot take a batch right now says so by throwing `BackendBusyException` from `apply`. The exception takes a message and a `retryAfter` delay, the time before the next try. Ingot then releases the claims of that batch and retries it after the delay. A busy answer does not count as an attempt, so the entries of the batch do not move towards the dead-letter state. The release covers only the batch that failed, so the rest of the queue continues. Any other exception counts as an attempt. After ten failed attempts an entry becomes a dead letter, as it does for the database backend. A rebuild or a verify repairs dead letters.
+A backend that cannot take a batch right now says so by throwing `BackendBusyException` from `apply`. The exception takes a message and a `retryAfter` delay, the time before the next try. Ingot then releases the claims of that batch and retries it after the delay. A busy answer does not count as an attempt, so the entries of the batch do not move towards the dead-letter state. The release covers only the batch that failed, so the rest of the queue continues. Any other exception counts as an attempt. After ten failed attempts an entry becomes a dead letter, as it does for the database backend.
 
 ## The blocking open
 
@@ -128,12 +130,9 @@ The core checks every file and repository a backend returns against the access v
 
 ## The redaction rule
 
-A message of a backend can reach the status, the body of a `503` answer and the log. Ingot removes two things from those messages before they leave the server:
+The reason of a state and the message of a down health reach the status and the body of a `503` answer. Ingot removes the user information of every URL in them before they are shown, that is the part before the `@` in `scheme://user:password@host`. The `detail` and `healthDetail` fields and the log lines of the state pass the same removal.
 
-* the user information of any URL, that is the part before the `@` in `scheme://user:password@host`,
-* every value that the backend read through `secret()`.
-
-The rule covers only what the backend reads through the context. Read every password, token and key through `secret()`. The `detail` and `healthDetail` fields pass the same removal before they are shown, so a secret never appears there.
+Ingot does not yet remove the values that the backend reads through `secret()` from its messages. A backend must not put a secret into an exception message or a log line. Put a secret into a URL only as user information, so that the rule above removes it.
 
 ## Before you release
 
@@ -142,7 +141,7 @@ The rule covers only what the backend reads through the context. Read every pass
 * The contract suite passes, and the access-mismatch count stays zero.
 * `open()` sets a timeout on every connection, and a second call after a failure is safe.
 * Busy answers are thrown as `BackendBusyException`, and no other exception is used for back pressure.
-* Secrets are read through `secret()`.
+* No secret goes into an exception message or a log line.
 
 ## Related
 

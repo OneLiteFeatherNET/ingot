@@ -14,7 +14,7 @@ A rebuild only reads storage. It never deletes or changes a file. Search keeps a
 
 * A manager account, which is the only account that sees the Maintenance page and the index endpoints.
 * Search turned on. If the Maintenance page says that search is turned off, set `INGOT_LOCAL_SEARCHENABLED` to `true` and restart Ingot. The [configuration keys](../reference/search-filters-and-api.md#configuration-keys) list the names.
-* A search backend that is available. While the backend is not available, the rebuild and verify endpoints answer `503`. See [Backend states](choose-a-search-backend.md#backend-states).
+* A search backend that is available. While the backend is not available, the rebuild, verify and cancel endpoints answer `503`. See [Backend states](choose-a-search-backend.md#backend-states).
 
 ## Rebuild from the Maintenance page
 

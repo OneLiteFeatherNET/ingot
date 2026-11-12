@@ -150,7 +150,7 @@ At most one run is live at a time, whether it is a rebuild or a verify. Cancelli
 | `403` | The caller is not an instance admin. |
 | `404` | Search is turned off on this instance, or, for cancel, the run does not exist. |
 | `409` | A rebuild or a verify run is already live, or, for cancel, the run has already finished. |
-| `503` | For rebuild and verify: the search backend is not available. The response carries `Retry-After`. |
+| `503` | For rebuild, verify and cancel: the search backend is not available. The response carries `Retry-After: 30`. |
 
 ### The backend block
 
@@ -160,23 +160,23 @@ The status carries a `backend` block that describes the search backend of the re
 |-------|---------|
 | `id` | The id of the backend, the value of `searchEngine`. |
 | `state` | `AVAILABLE`, `NOT_INSTALLED`, `REFUSED`, `OPEN_FAILED`, `DOWN` or `CLUSTER_MISMATCH`. Each state is described in [Backend states](../how-to/choose-a-search-backend.md#backend-states). |
-| `detail` | The reason for the state, with user information and secrets removed. |
-| `health` | `UP` or `DOWN`, as the backend reported it at its last check. |
-| `healthDetail` | The message of a `DOWN` health, with user information and secrets removed. |
+| `detail` | The reason for the state, with the user information of URLs removed. Empty while the state is `AVAILABLE`. |
+| `health` | `UP` or `DOWN`, as the backend reported it at its last check. `UNKNOWN` while the backend is not open or not installed. |
+| `healthDetail` | The message of a `DOWN` health, with the user information of URLs removed. Empty otherwise. |
 | `accessMismatches` | The number of rows the server dropped because they failed the access check. It stays at zero for a correct backend. |
 
 ```json
 "backend": {
   "id": "database",
   "state": "AVAILABLE",
-  "detail": null,
+  "detail": "",
   "health": "UP",
-  "healthDetail": null,
+  "healthDetail": "",
   "accessMismatches": 0
 }
 ```
 
-The status answers even when the search backend is not available, so the reason can be read here and on the Maintenance page.
+The status answers `200` even when the search backend is not available, so the reason can be read here. While the backend is not available, the index cannot be read: `state` reads `DEGRADED`, the counts `rows` and `outbox` read `0`, `repositories` is empty and `lastVerify` is left out. The `runs` and `activeRun` fields are still read from the database.
 
 ## Configuration keys
 
