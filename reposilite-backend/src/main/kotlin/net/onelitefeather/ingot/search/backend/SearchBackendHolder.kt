@@ -57,6 +57,7 @@ internal class SearchBackendHolder(
     private var nextHealthAt: Instant = clock.instant()
     private var nextDrainAt: Instant = clock.instant()
     private var drainFailures = 0
+    private var nextReportAt: Instant = clock.instant()
 
     init {
         when (resolution) {
@@ -68,17 +69,23 @@ internal class SearchBackendHolder(
             is BackendResolution.Unavailable -> {
                 factory = null
                 state = resolution.state
-                detail = resolution.reason
+                detail = redactBackendDetail(resolution.reason)
+                report()
             }
         }
     }
 
-    /** Runs what is due at the current time: an open that failed, or a health check. Called every few seconds by the scheduler. */
+    /**
+     * Runs what is due at the current time: an open that failed, a health check, or the report of a backend that is not
+     * installed or refused. Called every few seconds by the scheduler.
+     */
+    @Synchronized
     fun tick() {
         val now = clock.instant()
         when (state) {
             SearchBackendState.OPEN_FAILED -> if (factory != null && !now.isBefore(nextOpenAt)) open(factory, now)
             SearchBackendState.AVAILABLE, SearchBackendState.DOWN -> if (!now.isBefore(nextHealthAt)) checkHealth(now)
+            SearchBackendState.NOT_INSTALLED, SearchBackendState.REFUSED -> if (!now.isBefore(nextReportAt)) report()
             else -> Unit
         }
     }
@@ -128,10 +135,17 @@ internal class SearchBackendHolder(
     }
 
     private fun transition(newState: SearchBackendState, newDetail: String) {
-        if (newState == state && newDetail == detail) return
+        val shown = redactBackendDetail(newDetail)
+        if (newState == state && shown == detail) return
         state = newState
-        detail = newDetail
-        log("SEARCH | state $newState${if (newDetail.isEmpty()) "" else ": $newDetail"}")
+        detail = shown
+        log("SEARCH | state $newState${if (shown.isEmpty()) "" else ": $shown"}")
+    }
+
+    /** Logs a backend that is not installed or refused, now and every five minutes, so the cause stays visible in the log. */
+    private fun report() {
+        nextReportAt = clock.instant().plus(REPORT_INTERVAL)
+        log("SEARCH | state $state: $detail")
     }
 
     companion object {
@@ -140,6 +154,9 @@ internal class SearchBackendHolder(
 
         /** How often an open backend is health checked. */
         val HEALTH_INTERVAL: Duration = Duration.ofSeconds(10)
+
+        /** How often a backend that is not installed or refused is reported again. */
+        val REPORT_INTERVAL: Duration = Duration.ofMinutes(5)
 
         private const val NOT_OPENED_YET = "not opened yet"
     }
