@@ -60,6 +60,7 @@
 * [Verify the SBOMs of a release](how-to/verify-release-sboms.md)
 * [Search for artifacts](how-to/search-for-artifacts.md)
 * [Rebuild the search index](how-to/rebuild-search-index.md)
+* [Choose a search backend](how-to/choose-a-search-backend.md)
 * [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
 * [Separate releases and snapshots](how-to/separate-releases-and-snapshots.md)
 * [Set cleanup policies](how-to/set-cleanup-policies.md)
@@ -68,6 +69,7 @@
 * [Use the Nexus import wizard](how-to/use-the-nexus-import-wizard.md)
 * [Install a plugin](how-to/install-a-plugin.md)
 * [Write a plugin](how-to/write-a-plugin.md)
+* [Write a search backend plugin](how-to/write-a-search-backend-plugin.md)
 * [Extend the dashboard from a plugin](how-to/extend-the-dashboard-from-a-plugin.md)
 
 ### Operate and upgrade
