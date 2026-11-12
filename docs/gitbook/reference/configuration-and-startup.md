@@ -112,7 +112,7 @@ Each key is a property of the local configuration. Types are `Boolean`, `Int`, `
 | --- | --- | --- | --- |
 | `hideSettingsSecrets` | Boolean | `false` | Replaces every non-empty secret in the settings API with `********`. Sending `********` back keeps the stored value. See [Settings domains](settings-domains.md#settings-api). |
 | `searchEnabled` | Boolean | `true` | `false` makes the search endpoints answer `404` and stops the index workers. The search tables stay. |
-| `searchEngine` | String | `database` | Engine that answers artifact search. `database` is the only engine that ships with Ingot. |
+| `searchEngine` | String | `database` | Search backend that answers artifact search and holds the index. `database` ships with Ingot, and a plugin can register more ids. Environment variable `INGOT_LOCAL_SEARCHENGINE`, with `REPOSILITE_LOCAL_SEARCHENGINE` as fallback. An id that no backend has registered answers `503` on the search routes, instead of `404`. See [Choose a search backend](../how-to/choose-a-search-backend.md). |
 
 ### Debug
 
