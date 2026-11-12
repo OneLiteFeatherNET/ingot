@@ -24,6 +24,7 @@ import net.onelitefeather.ingot.search.ArtifactSearchEngine
 import net.onelitefeather.ingot.search.ArtifactSearchItem
 import net.onelitefeather.ingot.search.ArtifactSearchPage
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
+import net.onelitefeather.ingot.search.ArtifactVersions
 import net.onelitefeather.ingot.search.FacetBucket
 import net.onelitefeather.ingot.search.IndexState
 import net.onelitefeather.ingot.search.IndexStatus
@@ -40,7 +41,6 @@ import net.onelitefeather.ingot.search.outbox.OutboxPolicy
 import net.onelitefeather.ingot.search.database.SearchFilters.FilterKind
 import net.onelitefeather.ingot.search.runs.RunKind
 import net.onelitefeather.ingot.search.runs.RunStatus
-import org.apache.maven.artifact.versioning.ComparableVersion
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.Op
@@ -345,14 +345,8 @@ internal class DatabaseArtifactSearchEngine(
         return artifacts.associateWith { artifact ->
             val versions = kept[artifact].orEmpty()
             val incomplete = truncated && artifact == lastKey
-            if (incomplete || versions.size > MAX_VERSIONS_PER_ARTIFACT) null else latestOf(versions)
+            if (incomplete || versions.size > MAX_VERSIONS_PER_ARTIFACT) null else ArtifactVersions.latestOf(versions)
         }
-    }
-
-    /** The highest non-snapshot version by Maven's ordering; if there is none, the highest snapshot. */
-    private fun latestOf(versions: List<String>): String? {
-        val releases = versions.filterNot { it.endsWith(SNAPSHOT_SUFFIX, ignoreCase = true) }
-        return (releases.ifEmpty { versions }).maxByOrNull { ComparableVersion(it) }
     }
 
     // ---- facets --------------------------------------------------------------------------------------------------
