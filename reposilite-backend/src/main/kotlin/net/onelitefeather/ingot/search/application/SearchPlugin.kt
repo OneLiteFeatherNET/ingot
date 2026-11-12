@@ -153,7 +153,9 @@ internal class SearchPlugin : ReposilitePlugin() {
             }
         }
         val (resolution, backend) = resolveAndCreate(wiring, context)
-        val holder = SearchBackendHolder(resolution, wiring.clock, { logger.info(it) }, createBackend = { checkNotNull(backend) })
+        val holder = SearchBackendHolder(
+            resolution, wiring.clock, { logger.info(it) }, createBackend = { checkNotNull(backend) }, redact = context::redact,
+        )
         val cluster = backend?.let { ClusterBackendAgreement(wiring.state, wiring.runs, wiring.clock, wiring.instanceId, wiring.engine) }
         val runtime = SearchBackendRuntime(holder, cluster, wiring.clock, wiring.engine) {
             wiring.state.get(SearchStateKey.ACCESS_MISMATCHES)?.toLongOrNull() ?: 0L

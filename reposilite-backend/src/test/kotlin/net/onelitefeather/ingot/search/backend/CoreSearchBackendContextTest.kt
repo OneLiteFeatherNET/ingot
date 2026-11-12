@@ -39,7 +39,7 @@ internal class CoreSearchBackendContextTest {
         clock = MutableClock(Instant.parse("2026-10-16T10:00:00Z")),
         instanceId = "instance",
         backendId = "fake",
-        environment = environment::get,
+        variables = environment::get,
     ) { level, message -> lines.add("$level $message") }
 
     @Test

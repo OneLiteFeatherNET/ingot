@@ -33,13 +33,15 @@ import java.time.Instant
  * - A state that is not installed or refused never changes.
  *
  * [createBackend] creates the backend of a factory. It is called once; a failed open keeps that backend for the next attempt,
- * which opens it again. The holder opens it itself; a throw from either counts as a failed open.
+ * which opens it again. The holder opens it itself; a throw from either counts as a failed open. [redact] is applied to every
+ * reason and health message before it is kept or logged.
  */
 internal class SearchBackendHolder(
     resolution: BackendResolution,
     private val clock: Clock,
     private val log: (String) -> Unit,
     private val createBackend: (ArtifactSearchBackendFactory) -> ArtifactSearchBackend,
+    private val redact: (String) -> String = ::redactBackendDetail,
 ) {
 
     private val factory: ArtifactSearchBackendFactory?
@@ -69,7 +71,7 @@ internal class SearchBackendHolder(
             is BackendResolution.Unavailable -> {
                 factory = null
                 state = resolution.state
-                detail = redactBackendDetail(resolution.reason)
+                detail = redact(resolution.reason)
                 report()
             }
         }
@@ -135,7 +137,7 @@ internal class SearchBackendHolder(
     }
 
     private fun transition(newState: SearchBackendState, newDetail: String) {
-        val shown = redactBackendDetail(newDetail)
+        val shown = redact(newDetail)
         if (newState == state && shown == detail) return
         state = newState
         detail = shown

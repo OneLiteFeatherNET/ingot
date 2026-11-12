@@ -73,7 +73,10 @@ interface SearchBackendContext {
 
 }
 
-/** Log output of a backend. Messages must not contain secrets; the core redacts URL user information in what it shows. */
+/**
+ * Log output of a backend. Messages must not contain secrets; the core removes URL user information and every value read
+ * through `secret()` from what it logs.
+ */
 @ExperimentalIngotSearchApi
 interface BackendLogger {
 

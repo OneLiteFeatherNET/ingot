@@ -29,10 +29,15 @@ private val USER_INFORMATION = Regex("://[^/\\s]*@")
 
 /**
  * The problem answer of a backend that is not available (search backend registration, D4). The detail names the backend and
- * the reason; user information of any URL in them is removed first, so no answer shows a password.
+ * the reason; [redact] is applied to both first, so that no answer shows a password or a secret read by the backend.
  */
-internal fun backendUnavailableProblem(backendId: String, state: SearchBackendState, reason: String): ErrorResponse {
-    val detail = "The search backend `${redactBackendDetail(backendId)}` is ${state.phrase()}: ${redactBackendDetail(reason)}"
+internal fun backendUnavailableProblem(
+    backendId: String,
+    state: SearchBackendState,
+    reason: String,
+    redact: (String) -> String = ::redactBackendDetail,
+): ErrorResponse {
+    val detail = "The search backend `${redact(backendId)}` is ${state.phrase()}: ${redact(reason)}"
     return ErrorResponse(SERVICE_UNAVAILABLE.code, detail).also { it.title = SEARCH_BACKEND_UNAVAILABLE_TITLE }
 }
 
