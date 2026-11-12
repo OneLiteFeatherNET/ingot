@@ -184,11 +184,25 @@ internal class SearchBackendHolderTest {
     }
 
     @Test
-    fun `a backend whose open throws is closed again`() {
+    fun `a failed open is retried on the backend that was created first`() {
+        var created = 0
         fake.openFailure = IllegalStateException("index not reachable")
-        holder().tick()
+        val holder = SearchBackendHolder(
+            resolution = BackendResolution.Installed(factory),
+            clock = clock,
+            log = logs::add,
+            createBackend = {
+                created++
+                fake
+            },
+        )
+        holder.tick()
+        fake.openFailure = null
+        clock.advance(Duration.ofSeconds(30))
+        holder.tick()
 
-        assertThat(fake.closeCalls).`as`("closes of a backend whose open failed").isEqualTo(1)
+        assertThat(created).`as`("backends created across a failed open and its retry").isEqualTo(1)
+        assertThat(holder.state).`as`("state after the retry opened the backend").isEqualTo(SearchBackendState.AVAILABLE)
     }
 
     @Test

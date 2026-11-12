@@ -32,7 +32,8 @@ import java.time.Instant
  *   the backoff of [OutboxPolicy.retryAt] that follows each failed drain.
  * - A state that is not installed or refused never changes.
  *
- * [createBackend] creates the backend of a factory. The holder opens it itself; a throw from either counts as a failed open.
+ * [createBackend] creates the backend of a factory. It is called once; a failed open keeps that backend for the next attempt,
+ * which opens it again. The holder opens it itself; a throw from either counts as a failed open.
  */
 internal class SearchBackendHolder(
     resolution: BackendResolution,
@@ -101,14 +102,8 @@ internal class SearchBackendHolder(
 
     private fun open(factory: ArtifactSearchBackendFactory, now: Instant) {
         try {
-            val created = createBackend(factory)
-            try {
-                created.open()
-            } catch (failure: Exception) {
-                runCatching { created.close() }
-                throw failure
-            }
-            backend = created
+            val created = backend ?: createBackend(factory).also { backend = it }
+            created.open()
         } catch (failure: Exception) {
             nextOpenAt = now.plus(OPEN_RETRY)
             transition(SearchBackendState.OPEN_FAILED, failure.message ?: failure.javaClass.simpleName)

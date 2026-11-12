@@ -76,13 +76,7 @@ internal class FakeArtifactSearchBackend(
         openFailure?.let { throw it }
     }
 
-    override fun close() {
-        closeCalls++
-    }
-
-    /** How many times [close] was called. */
-    var closeCalls = 0
-        private set
+    override fun close() = Unit
 
     /** What [health] answers. */
     var healthAnswer: BackendHealth = BackendHealth.Up
