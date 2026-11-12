@@ -139,6 +139,8 @@ The status answers with these fields:
 
 A run has `id`, `kind` (`REBUILD` or `VERIFY`), `trigger` (`MANUAL`, `SCHEDULED`, `STARTUP` or `GAP`), `status` (`RUNNING`, `COMPLETED`, `FAILED` or `CANCELLED`), `startedAt`, `finishedAt`, `leaseOwner`, `leaseUntil`, `repositories` (the names of a partial rebuild, or `null` for all), `cursorRepository`, `cursorPath`, `counters` (`processed`, `upserted`, `deleted`, `unparsed`, `skippedTooLong`, `errors`) and `lastError`.
 
+The list of triggers may grow, so clients must accept trigger values they do not know.
+
 At most one run is live at a time, whether it is a rebuild or a verify. Cancelling a run that has already ended answers `409`.
 
 | Status | When |
