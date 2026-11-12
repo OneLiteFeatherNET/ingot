@@ -57,6 +57,7 @@ internal class OpenSearchSearchBackend(
     val settings: OpenSearchSettings,
     clock: Clock,
     sslContext: SSLContext?,
+    exchange: HttpExchange? = null,
 ) : ArtifactSearchBackend {
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
@@ -65,7 +66,13 @@ internal class OpenSearchSearchBackend(
     private val redactor = OpenSearchRedactor(listOfNotNull(settings.password, settings.username))
     private val timeout: Duration = Duration.ofSeconds(settings.timeoutSeconds.toLong())
     private val breaker = OpenSearchCircuitBreaker(clock)
-    private val http = OpenSearchHttp(settings.urls, settings.username, settings.password, timeout, JdkHttpExchange(timeout, sslContext))
+    private val http = OpenSearchHttp(
+        settings.urls,
+        settings.username,
+        settings.password,
+        timeout,
+        exchange ?: JdkHttpExchange(timeout, sslContext),
+    )
     private val client = OpenSearchClient(http, breaker, redactor)
     private val writer = OpenSearchWriter(http, breaker, alias, settings.bulkSize, redactor)
     private val reader = OpenSearchReader(client, alias) { status() }

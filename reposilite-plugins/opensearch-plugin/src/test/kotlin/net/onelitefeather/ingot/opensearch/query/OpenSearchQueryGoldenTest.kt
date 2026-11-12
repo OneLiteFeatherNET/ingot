@@ -155,6 +155,11 @@ internal class OpenSearchQueryGoldenTest {
     }
 
     @Test
+    fun `should list the repositories and origins of the groups with the access value only`() {
+        assertGolden("presence", OpenSearchQueries.presence(listOf("abc123"), access))
+    }
+
+    @Test
     fun `should find the versions of each artifact key without the request filters`() {
         assertGolden(
             "latest-version",
