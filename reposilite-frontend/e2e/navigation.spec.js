@@ -32,7 +32,7 @@ const ADMINISTRATION_PAGES = [
 // the tree when the session's domain list arrives, after the page itself, so the read waits for two of them first.
 const administrationLinks = async (page) => {
   const tree = page.getByRole('navigation', { name: 'Administration', exact: true })
-  await expect(tree.getByRole('link', { name: 'Maven', exact: true })).toBeVisible()
+  await expect(tree.getByRole('link', { name: 'Javadoc', exact: true })).toBeVisible()
   await expect(tree.getByRole('link', { name: 'Audit', exact: true })).toBeVisible()
   return tree.getByRole('link').evaluateAll(links => links.map(link => ({
     name: link.textContent.trim(),
