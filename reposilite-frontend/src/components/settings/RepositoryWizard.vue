@@ -332,9 +332,13 @@ const onModalUpdate = (open) => {
       aria-modal="true"
       aria-labelledby="wizard-title"
       novalidate
+      data-ingot-component="repository-wizard"
       @submit.prevent="onSubmit"
     >
-      <header class="flex flex-col gap-4 px-6 pt-6 max-[599px]:px-4 max-[599px]:pt-4">
+      <header
+        data-ingot-part="header"
+        class="flex flex-col gap-4 px-6 pt-6 max-[599px]:px-4 max-[599px]:pt-4"
+      >
         <h2
           id="wizard-title"
           class="md-headline-small text-on-surface"

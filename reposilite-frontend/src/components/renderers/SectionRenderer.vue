@@ -3,6 +3,7 @@
     v-if="layout.visible"
     class="flex min-w-0 flex-col gap-4"
     data-test="section"
+    data-ingot-component="section-renderer"
   >
     <h3
       v-if="layout.label && !layout.uischema.options?.hideTitle"

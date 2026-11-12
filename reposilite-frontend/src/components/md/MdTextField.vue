@@ -168,6 +168,7 @@ const helperClass = computed(() => {
     class="flex w-full flex-col gap-1"
     :class="attrs.class"
     :style="attrs.style"
+    data-ingot-component="md-text-field"
   >
     <div class="relative">
       <span

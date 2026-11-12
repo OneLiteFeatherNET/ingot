@@ -83,6 +83,7 @@ export default {
     class="flex flex-col gap-3 rounded-corner-medium bg-surface-container-low p-4"
     aria-labelledby="appearance-preview-title"
     data-test="appearance-preview"
+    data-ingot-component="appearance-preview"
   >
     <h4
       id="appearance-preview-title"

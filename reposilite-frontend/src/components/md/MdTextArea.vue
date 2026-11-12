@@ -154,7 +154,10 @@ const helperClass = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-w-0 w-full flex-col gap-1">
+  <div
+    class="flex min-w-0 w-full flex-col gap-1"
+    data-ingot-component="md-text-area"
+  >
     <div class="relative">
       <textarea
         :id="inputId"

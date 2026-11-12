@@ -19,6 +19,7 @@
     v-if="control.visible"
     class="flex min-h-14 flex-col justify-center gap-0.5 py-2 pl-4"
     data-test="unsupported-field"
+    data-ingot-component="unsupported-renderer"
   >
     <span class="md-body-large text-on-surface">{{ control.label }}</span>
     <span

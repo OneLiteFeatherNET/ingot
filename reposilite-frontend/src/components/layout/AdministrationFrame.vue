@@ -50,6 +50,7 @@ defineProps({
   <section
     class="container mx-auto max-w-[1280px] pb-12 pt-7 min-[1920px]:max-w-[1600px]"
     aria-labelledby="administration-title"
+    data-ingot-component="administration-frame"
   >
     <header class="flex flex-col gap-4 pb-6 min-[600px]:flex-row min-[600px]:items-end min-[600px]:justify-between">
       <div class="flex min-w-0 flex-col gap-1">

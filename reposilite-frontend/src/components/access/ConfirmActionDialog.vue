@@ -96,6 +96,7 @@ const submit = () => {
     <h2
       :id="titleId"
       class="md-headline-small"
+      data-ingot-component="confirm-action-dialog"
     >
       {{ title }}
     </h2>

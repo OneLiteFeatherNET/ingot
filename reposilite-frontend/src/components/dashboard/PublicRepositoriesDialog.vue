@@ -71,6 +71,7 @@ const follow = (repository) => {
       :aria-labelledby="titleId"
       :aria-describedby="explanationId"
       class="flex w-full max-w-md flex-col gap-4 rounded-corner-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3"
+      data-ingot-component="public-repositories-dialog"
     >
       <div class="flex flex-col gap-2">
         <h2

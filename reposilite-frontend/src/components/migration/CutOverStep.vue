@@ -125,6 +125,7 @@ onMounted(() => {
   <section
     class="flex flex-col gap-6"
     aria-labelledby="migration-cutover-title"
+    data-ingot-component="cut-over-step"
   >
     <h2
       id="migration-cutover-title"

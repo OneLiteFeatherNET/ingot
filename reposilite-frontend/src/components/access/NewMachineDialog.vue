@@ -97,6 +97,7 @@ const submit = async () => {
     <h2
       id="new-machine-title"
       class="md-headline-small"
+      data-ingot-component="new-machine-dialog"
     >
       New machine account
     </h2>

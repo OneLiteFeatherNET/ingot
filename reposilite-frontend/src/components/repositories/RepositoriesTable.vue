@@ -105,12 +105,13 @@ const onAction = (row, value) => {
     aria-label="Repositories table"
     tabindex="0"
     class="overflow-x-auto rounded-corner-medium md-focus-ring"
+    data-ingot-component="repositories-table"
   >
     <table class="w-full min-w-[40rem] border-collapse text-left">
       <caption class="pb-2 text-left md-body-medium text-on-surface-variant">
         {{ caption }}
       </caption>
-      <thead>
+      <thead data-ingot-part="header">
         <tr class="border-b border-outline-variant">
           <th
             scope="col"
@@ -196,10 +197,13 @@ const onAction = (row, value) => {
         <tr
           v-for="row in rows"
           :key="row.route"
+          data-ingot-part="row"
+          :data-ingot-repository="row.name"
           class="border-b border-outline-variant align-top"
         >
           <th
             scope="row"
+            data-ingot-part="cell-name"
             class="min-w-48 w-full max-w-0 px-3 py-3 text-left md-body-large text-on-surface"
           >
             <RouterLink
@@ -261,7 +265,11 @@ const onAction = (row, value) => {
             />
           </td>
         </tr>
-        <tr v-if="rows.length === 0">
+        <tr
+          v-if="rows.length === 0"
+          data-ingot-part="empty"
+          data-ingot-state="empty"
+        >
           <td
             :colspan="columnCount"
             class="px-3 py-6 md-body-medium text-on-surface-variant"

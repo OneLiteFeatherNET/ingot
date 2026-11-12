@@ -94,6 +94,7 @@ const submit = async () => {
   <section
     class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4"
     aria-labelledby="password-title"
+    data-ingot-component="password-card"
   >
     <h3
       id="password-title"

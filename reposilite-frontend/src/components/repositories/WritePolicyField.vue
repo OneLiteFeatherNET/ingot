@@ -55,6 +55,7 @@ const choices = computed(() => WRITE_CHOICES
   <fieldset
     class="flex flex-col gap-4 rounded-corner-medium bg-surface-container-low p-4"
     data-test="write-policy"
+    data-ingot-component="write-policy-field"
   >
     <legend class="md-title-medium text-on-surface">
       Write policy

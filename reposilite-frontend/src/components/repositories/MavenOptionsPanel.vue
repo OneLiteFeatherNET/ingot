@@ -55,6 +55,7 @@ const onChange = (event) => {
     v-if="form && store.configurations.value.maven"
     aria-labelledby="maven-options-title"
     data-test="maven-options"
+    data-ingot-component="maven-options-panel"
     class="flex flex-col gap-3"
   >
     <h2

@@ -205,6 +205,7 @@ const itemClass = 'md-state-layer relative flex w-full items-center rounded-corn
   <div
     ref="root"
     class="relative shrink-0"
+    data-ingot-component="principal-actions-menu"
     @keydown="onKeydown"
     @focusout="onFocusout"
   >

@@ -106,7 +106,10 @@ const empty = computed(() => instances.value
 </script>
 
 <template>
-  <div class="grid gap-3 lg:grid-cols-2">
+  <div
+    class="grid gap-3 lg:grid-cols-2"
+    data-ingot-component="resource-trends"
+  >
     <ChartCard
       title="Memory"
       subtitle="Megabytes in use, recent history"

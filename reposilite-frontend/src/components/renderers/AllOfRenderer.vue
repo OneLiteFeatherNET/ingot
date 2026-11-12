@@ -1,5 +1,8 @@
 <template>
-  <div v-if="control.visible">
+  <div
+    v-if="control.visible"
+    data-ingot-component="all-of-renderer"
+  >
     <template v-if="delegateUISchema">
       <DispatchRenderer
           :schema="control.schema"

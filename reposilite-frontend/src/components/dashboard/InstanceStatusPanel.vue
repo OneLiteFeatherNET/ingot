@@ -214,6 +214,7 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
   <div
     v-else-if="!instanceStatus"
     class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+    data-ingot-component="instance-status-panel"
   >
     <MdCard
       v-for="slot in 5"
@@ -231,10 +232,12 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
   <div
     v-else
     class="flex flex-col gap-3"
+    data-ingot-component="instance-status-panel"
   >
     <div
       v-if="instanceStatus.readOnly"
       data-testid="read-only-banner"
+      data-ingot-part="read-only-banner"
       role="status"
       class="flex flex-col gap-1 rounded-corner-medium bg-tertiary-container p-4 text-on-tertiary-container"
     >
@@ -305,6 +308,7 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
       </h3>
       <div
         data-testid="cluster-summary"
+        data-ingot-part="cluster-summary"
         class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
       >
         <StatTile
@@ -343,6 +347,7 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
       </div>
       <ul
         data-testid="cluster-instances"
+        data-ingot-part="cluster-instances"
         aria-label="Instances in the cluster"
         class="flex flex-col gap-2"
       >
@@ -350,6 +355,7 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
           v-for="row in clusterView.rows"
           :key="row.id"
           data-testid="cluster-instance"
+          data-ingot-part="cluster-instance"
           class="flex flex-col gap-1 rounded-corner-medium border border-outline-variant p-3"
         >
           <div class="flex flex-wrap items-center gap-2">

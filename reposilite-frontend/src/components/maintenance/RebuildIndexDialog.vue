@@ -77,6 +77,7 @@ const confirm = () => {
       aria-modal="true"
       aria-labelledby="search-index-rebuild-title"
       aria-describedby="search-index-rebuild-body"
+      data-ingot-component="rebuild-index-dialog"
     >
       <h2
         id="search-index-rebuild-title"

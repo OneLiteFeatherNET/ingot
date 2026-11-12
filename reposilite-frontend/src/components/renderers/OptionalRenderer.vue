@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div data-ingot-component="optional-renderer">
     <SwitchField
       :id="`${control.id}-present`"
       :label="control.label"

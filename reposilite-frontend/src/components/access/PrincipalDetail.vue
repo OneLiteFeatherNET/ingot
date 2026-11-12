@@ -127,6 +127,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
   <section
     class="flex min-w-0 flex-col gap-4"
     aria-labelledby="principal-title"
+    data-ingot-component="principal-detail"
   >
     <MdButton
       variant="text"
@@ -139,6 +140,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
 
     <p
       v-if="status === 'loading'"
+      data-ingot-state="loading"
       role="status"
       class="md-body-medium text-on-surface-variant"
     >

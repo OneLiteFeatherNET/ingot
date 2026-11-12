@@ -42,6 +42,7 @@ const passwordChanged = () => {
   <section
     class="container mx-auto pb-12 pt-7"
     aria-labelledby="account-title"
+    data-ingot-component="account-view"
   >
     <div class="flex flex-col gap-1 pb-7">
       <h2

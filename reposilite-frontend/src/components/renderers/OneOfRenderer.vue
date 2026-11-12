@@ -2,6 +2,7 @@
   <div
     v-if="control.visible"
     :class="styles.oneOf.root"
+    data-ingot-component="one-of-renderer"
   >
     <MdSelect
       :id="variantSelectId"

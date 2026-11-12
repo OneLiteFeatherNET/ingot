@@ -46,9 +46,13 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div
+    class="flex flex-col gap-6"
+    data-ingot-component="system-info-view"
+  >
     <p
       v-if="state === 'loading'"
+      data-ingot-state="loading"
       class="md-body-medium text-on-surface-variant"
     >
       Reading the system information.

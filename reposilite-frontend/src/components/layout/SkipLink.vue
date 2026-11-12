@@ -27,6 +27,7 @@ const focusMain = (event) => {
   <a
     href="#main"
     class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-corner-medium focus:bg-surface-container-highest focus:px-4 focus:py-2 md-label-large text-on-surface"
+    data-ingot-component="skip-link"
     @click="focusMain"
   >
     Skip to main content

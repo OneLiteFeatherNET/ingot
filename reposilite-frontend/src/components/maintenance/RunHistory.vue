@@ -60,6 +60,7 @@ const visibleRuns = computed(() => sortNewestFirst(
   <section
     class="flex flex-col gap-4"
     aria-labelledby="run-history-title"
+    data-ingot-component="run-history"
   >
     <div class="flex flex-wrap items-end justify-between gap-3">
       <h3

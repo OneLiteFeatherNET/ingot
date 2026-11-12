@@ -98,6 +98,7 @@ const confirm = () => {
       role="alertdialog"
       aria-modal="true"
       novalidate
+      data-ingot-component="delete-entry-dialog"
       @submit.prevent="confirm"
     >
       <h2

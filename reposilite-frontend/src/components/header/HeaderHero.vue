@@ -30,7 +30,10 @@ const logo = computed(() => logoFor(appearance, organizationLogo, theme.isDark))
 </script>
 
 <template>
-  <section class="border-b border-outline-variant bg-surface-container-low text-on-surface">
+  <section
+    class="border-b border-outline-variant bg-surface-container-low text-on-surface"
+    data-ingot-component="header-hero"
+  >
     <!--
       The organisation's own introduction. It sits on a raised surface so that it reads as a
       separate band from the file list below, and it stacks into one centred column on small

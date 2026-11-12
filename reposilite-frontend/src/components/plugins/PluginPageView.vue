@@ -29,6 +29,10 @@ const props = defineProps({
 })
 
 const page = computed(() => contributedPageByRoute(props.plugin, props.pageId))
+
+// The page id reaches the DOM only in the shape the server accepts for a page id, so a plugin cannot put free text there.
+const PAGE_ID = /^[a-z0-9-]{1,32}$/
+const anchoredPageId = computed(() => (page.value && PAGE_ID.test(page.value.id) ? page.value.id : undefined))
 </script>
 
 <template>
@@ -37,8 +41,13 @@ const page = computed(() => contributedPageByRoute(props.plugin, props.pageId))
     v-else
     class="container mx-auto flex flex-col gap-6 py-8"
     :aria-labelledby="`plugin-page-${page.plugin}-${page.id}`"
+    :data-ingot-plugin-page="anchoredPageId"
+    data-ingot-component="plugin-page"
   >
-    <header class="flex flex-col gap-2">
+    <header
+      data-ingot-part="header"
+      class="flex flex-col gap-2"
+    >
       <h2
         :id="`plugin-page-${page.plugin}-${page.id}`"
         class="md-headline-small text-on-surface"

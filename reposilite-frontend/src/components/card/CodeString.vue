@@ -15,5 +15,8 @@
   -->
 
 <template>
-  <span class="text-tertiary">&quot;<slot />&quot;</span>
+  <span
+    class="text-tertiary"
+    data-ingot-component="code-string"
+  >&quot;<slot />&quot;</span>
 </template>

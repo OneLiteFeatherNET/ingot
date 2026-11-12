@@ -35,6 +35,8 @@ defineProps({
     :id="id"
     role="alert"
     class="flex flex-col gap-1 rounded-corner-small bg-error-container p-3 text-on-error-container"
+    data-ingot-component="problem-alert"
+    data-ingot-state="error"
   >
     <p class="md-title-small">
       {{ problem.title || 'The request failed' }}

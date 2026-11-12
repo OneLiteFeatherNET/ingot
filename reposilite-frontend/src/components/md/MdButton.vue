@@ -104,6 +104,7 @@ const classes = computed(() => {
     :aria-disabled="tag === 'a' && disabled ? 'true' : undefined"
     :data-variant="variant"
     :class="[classes, $slots.icon ? 'pl-4' : 'pl-6']"
+    data-ingot-component="md-button"
   >
     <span
       v-if="$slots.icon"

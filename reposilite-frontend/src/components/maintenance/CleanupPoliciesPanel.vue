@@ -170,6 +170,7 @@ load()
   <section
     class="flex flex-col gap-6"
     aria-labelledby="cleanup-policies-title"
+    data-ingot-component="cleanup-policies-panel"
   >
     <MdCard
       variant="filled"
@@ -357,6 +358,7 @@ load()
         <div class="mt-5">
           <p
             v-if="preview.error"
+            data-ingot-state="error"
             class="md-body-medium text-error"
             role="alert"
           >

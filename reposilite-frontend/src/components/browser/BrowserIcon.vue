@@ -36,6 +36,7 @@ const glyph = computed(() => GLYPHS[props.name])
     fill="currentColor"
     aria-hidden="true"
     focusable="false"
+    data-ingot-component="browser-icon"
   >
     <path :d="glyph" />
   </svg>

@@ -49,6 +49,7 @@ const regionId = `inherited-${useId()}`
   <section
     class="flex flex-col gap-2"
     data-test="inherited-section"
+    data-ingot-component="node-inherited-section"
   >
     <button
       type="button"

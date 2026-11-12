@@ -294,6 +294,7 @@ onMounted(() => {
   <section
     class="flex min-w-0 flex-col gap-6"
     aria-labelledby="check-title"
+    data-ingot-component="check-permission-view"
   >
     <div class="flex flex-col gap-1">
       <h3
@@ -418,6 +419,7 @@ onMounted(() => {
 
     <p
       v-if="status === 'loading'"
+      data-ingot-state="loading"
       role="status"
       class="md-body-medium text-on-surface-variant"
       data-test="loading"

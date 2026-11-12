@@ -115,6 +115,7 @@ const commitBytes = (key) => {
   <div
     class="flex flex-col gap-6"
     data-test="filters"
+    data-ingot-component="search-filters"
   >
     <fieldset
       v-for="group in GROUPS"

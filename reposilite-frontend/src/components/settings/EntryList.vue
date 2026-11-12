@@ -95,7 +95,10 @@ const isSelected = (item) => item.key === props.selectedKey
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div
+    class="flex flex-col gap-3"
+    data-ingot-component="entry-list"
+  >
     <MdButton
       data-test="new-entry"
       variant="tonal"

@@ -32,7 +32,10 @@ const attempts = computed(() => (props.event.occurrences > 1 ? `${props.event.oc
 </script>
 
 <template>
-  <li class="border-b border-outline-variant px-4 py-3 last:border-b-0">
+  <li
+    class="border-b border-outline-variant px-4 py-3 last:border-b-0"
+    data-ingot-component="audit-event-row"
+  >
     <div class="grid grid-cols-[minmax(0,1fr)] gap-x-4 gap-y-1 min-[720px]:grid-cols-[11rem_minmax(0,12rem)_minmax(0,13rem)_minmax(0,1fr)_auto] min-[720px]:items-center">
       <time
         :datetime="event.timestamp"

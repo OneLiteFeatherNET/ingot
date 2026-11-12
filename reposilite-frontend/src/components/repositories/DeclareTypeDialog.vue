@@ -92,6 +92,7 @@ const confirm = () => {
       role="alertdialog"
       aria-modal="true"
       novalidate
+      data-ingot-component="declare-type-dialog"
       @submit.prevent="confirm"
     >
       <h2

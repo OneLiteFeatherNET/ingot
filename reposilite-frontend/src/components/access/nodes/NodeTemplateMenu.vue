@@ -134,7 +134,10 @@ const submit = () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div
+    class="flex flex-col gap-2"
+    data-ingot-component="node-template-menu"
+  >
     <div class="flex flex-wrap items-center gap-3">
       <MdButton
         variant="tonal"

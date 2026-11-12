@@ -100,6 +100,7 @@ const submit = async () => {
     <h2
       id="new-user-title"
       class="md-headline-small"
+      data-ingot-component="new-user-dialog"
     >
       New user
     </h2>

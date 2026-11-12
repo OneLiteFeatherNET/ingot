@@ -77,7 +77,10 @@ const meterColor = computed(() => {
     variant="outlined"
     class="flex min-w-0 flex-col"
   >
-    <div class="flex items-center gap-1.5">
+    <div
+      class="flex items-center gap-1.5"
+      data-ingot-component="stat-tile"
+    >
       <span class="md-label-large text-on-surface-variant">{{ label }}</span>
       <a
         v-if="link"

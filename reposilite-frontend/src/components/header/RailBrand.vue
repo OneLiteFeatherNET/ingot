@@ -44,6 +44,7 @@ const logo = computed(() => logoFor(appearance, organizationLogo, theme.isDark))
   >
     <a
       :href="href"
+      data-ingot-component="rail-brand"
       class="md-focus-ring flex size-12 items-center justify-center rounded-corner-full no-underline"
       :aria-label="`${title}, start page`"
       @click="navigate"

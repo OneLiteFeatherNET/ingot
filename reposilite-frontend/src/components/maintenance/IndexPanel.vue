@@ -165,6 +165,7 @@ onBeforeUnmount(stopPolling)
   <section
     class="flex flex-col gap-6"
     aria-labelledby="search-index-title"
+    data-ingot-component="index-panel"
   >
     <MdCard
       variant="filled"

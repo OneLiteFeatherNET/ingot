@@ -28,5 +28,11 @@ defineProps({
 </script>
 
 <template>
-  <span class="text-on-surface-variant">{{ start }}</span><slot /><span class="text-on-surface-variant">{{ end }}</span>
+  <span
+    class="text-on-surface-variant"
+    data-ingot-component="code-brackets"
+  >{{ start }}</span><slot /><span
+    class="text-on-surface-variant"
+    data-ingot-component="code-brackets"
+  >{{ end }}</span>
 </template>

@@ -50,6 +50,7 @@ const rows = computed(() => props.grants.map((grant, index) => ({
     v-if="rows.length > 0"
     class="rounded-corner-large bg-surface-container-low px-4 py-4"
     data-test="legacy-team-grants"
+    data-ingot-component="team-legacy-grants"
   >
     <summary
       :id="titleId"

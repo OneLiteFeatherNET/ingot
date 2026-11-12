@@ -33,7 +33,10 @@ const cluster = ref(null)
   unmounting rather than by checking which tab is selected.
 -->
 <template>
-  <div class="container mx-auto pt-7 pb-12">
+  <div
+    class="container mx-auto pt-7 pb-12"
+    data-ingot-component="dashboard-view"
+  >
     <GettingStartedCard class="mb-6" />
 
     <section aria-labelledby="instance-status-heading">

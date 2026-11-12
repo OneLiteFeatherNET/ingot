@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage --maxWorkers=2",
     "e2e": "playwright test",
+    "anchors:doc": "node scripts/anchors-doc.mjs",
     "build": "vite build",
     "build:dashboard": "INGOT_DASHBOARD_BUILD=1 vite build && nitro build",
     "serve": "vite preview",

@@ -322,6 +322,7 @@ onBeforeUnmount(() => {
     class="flex w-full flex-col gap-1"
     :class="attrs.class"
     :style="attrs.style"
+    data-ingot-component="md-select"
   >
     <div class="relative">
       <!--

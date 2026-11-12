@@ -99,6 +99,7 @@ const submit = () => {
       novalidate
       role="alertdialog"
       aria-modal="true"
+      data-ingot-component="new-entry-dialog"
       @submit.prevent="submit"
     >
       <h2

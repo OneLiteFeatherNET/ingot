@@ -23,7 +23,7 @@ import ResolvedRequestsChart from './ResolvedRequestsChart.vue'
   The chart polls itself and is only mounted while this tab is open.
 -->
 <template>
-  <div>
+  <div data-ingot-component="analytics-view">
     <section aria-labelledby="traffic-heading">
       <h2
         id="traffic-heading"

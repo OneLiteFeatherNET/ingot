@@ -50,6 +50,7 @@ const onClick = (event) => {
     :tabindex="on ? 0 : -1"
     class="md-state-layer md-focus-ring-inset md-label-large relative inline-flex h-10 min-w-max flex-1 basis-0 items-center justify-center gap-1 whitespace-nowrap border-l border-t border-outline px-2 -translate-x-px -translate-y-px first:border-l-0 sm:min-w-0"
     :class="on ? 'bg-secondary-container text-on-secondary-container' : 'bg-transparent text-on-surface'"
+    data-ingot-component="segmented-option"
     @click="onClick"
   >
     <svg

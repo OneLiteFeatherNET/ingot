@@ -57,6 +57,7 @@ const confirm = () => {
       aria-modal="true"
       aria-labelledby="delete-policy-title"
       aria-describedby="delete-policy-body"
+      data-ingot-component="delete-policy-dialog"
     >
       <h2
         id="delete-policy-title"

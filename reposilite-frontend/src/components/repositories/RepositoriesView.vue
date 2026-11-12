@@ -154,7 +154,10 @@ const confirmDelete = () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div
+    class="flex flex-col gap-6"
+    data-ingot-component="repositories-view"
+  >
     <header class="flex flex-wrap items-end justify-between gap-4">
       <div class="flex min-w-0 flex-col gap-1">
         <h2

@@ -121,6 +121,7 @@ const submit = () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="policy-dialog-title"
+      data-ingot-component="policy-dialog"
     >
       <h2
         id="policy-dialog-title"

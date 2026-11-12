@@ -31,6 +31,7 @@ defineProps({
     :class="accent
       ? 'bg-tertiary-container text-on-tertiary-container'
       : 'bg-secondary-container text-on-secondary-container'"
+    data-ingot-component="token-tag"
   >
     <slot />
   </span>

@@ -108,6 +108,7 @@ const copySnippet = async (snippet) => {
     <h2
       id="secret-once-title"
       class="md-headline-small"
+      data-ingot-component="secret-once-dialog"
     >
       {{ heading }}
     </h2>

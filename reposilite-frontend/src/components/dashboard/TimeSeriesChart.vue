@@ -154,7 +154,10 @@ watch(() => theme.isDark, () => nextTick(render))
 </script>
 
 <template>
-  <div class="w-full">
+  <div
+    class="w-full"
+    data-ingot-component="time-series-chart"
+  >
     <div
       ref="container"
       :style="{ height }"

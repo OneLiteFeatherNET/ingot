@@ -25,7 +25,7 @@ const appearance = useAppearance()
 </script>
 
 <template>
-  <div>
+  <div data-ingot-component="page-footer">
     <SiteFooter :text="appearance.footerText" />
     <SiteLegal />
   </div>

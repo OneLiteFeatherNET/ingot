@@ -117,6 +117,7 @@ const classes = computed(() => {
     :aria-pressed="toggle ? String(selected) : undefined"
     :data-variant="variant"
     :class="classes"
+    data-ingot-component="md-icon-button"
   >
     <slot />
   </component>

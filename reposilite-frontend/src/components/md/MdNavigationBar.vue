@@ -65,6 +65,7 @@ const select = (item, event) => {
   <nav
     :aria-label="label"
     class="h-20 w-full bg-surface-container text-on-surface"
+    data-ingot-component="md-navigation-bar"
   >
     <ul
       role="list"

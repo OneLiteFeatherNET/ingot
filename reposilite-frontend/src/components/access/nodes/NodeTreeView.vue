@@ -41,7 +41,10 @@ const emit = defineEmits(['toggle', 'remove'])
 </script>
 
 <template>
-  <ul class="flex flex-col">
+  <ul
+    class="flex flex-col"
+    data-ingot-component="node-tree-view"
+  >
     <li
       v-for="item in items"
       :key="item.key"

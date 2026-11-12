@@ -46,7 +46,10 @@ const labelId = computed(() => `${props.id}-label`)
 </script>
 
 <template>
-  <div class="flex w-full flex-col py-1">
+  <div
+    class="flex w-full flex-col py-1"
+    data-ingot-component="switch-field"
+  >
     <!-- A list row: the label and its description on the left, the switch on the right. -->
     <div class="flex min-h-14 items-center justify-between gap-4 px-4 py-2">
       <div class="flex min-w-0 flex-1 flex-col">

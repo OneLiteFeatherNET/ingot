@@ -98,6 +98,7 @@ const onFileClick = (event) => {
     class="md-state-layer group relative flex items-center gap-4 rounded-corner-medium transition-colors"
     :class="compactMode ? 'min-h-14 px-4' : 'min-h-18 px-4 py-2'"
     :aria-busy="busy ? 'true' : undefined"
+    data-ingot-component="detailed-list-entry"
   >
     <router-link
       v-if="isDirectory"

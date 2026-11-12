@@ -52,6 +52,7 @@ const emit = defineEmits(['toggle', 'remove'])
     class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2"
     :data-node="entry.node"
     :data-allowed="entry.allowed ? 'true' : 'false'"
+    data-ingot-component="node-row"
   >
     <div class="min-w-0 flex-1 basis-56">
       <code
@@ -60,6 +61,7 @@ const emit = defineEmits(['toggle', 'remove'])
       >{{ label || entry.node }}</code>
       <p
         v-if="error"
+        data-ingot-state="error"
         class="md-body-small text-error"
         data-test="row-error"
       >

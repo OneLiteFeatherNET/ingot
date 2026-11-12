@@ -122,6 +122,7 @@ watch([addresses, () => props.keys], () => {
   <section
     :aria-labelledby="`${collection.key}-title`"
     class="flex flex-col gap-4"
+    data-ingot-component="collection-editor"
   >
     <header class="flex flex-col gap-1">
       <h2

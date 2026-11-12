@@ -111,6 +111,7 @@ const labelClass = computed(() =>
     class="flex items-center gap-2"
     :class="attrs.class"
     :style="attrs.style"
+    data-ingot-component="md-checkbox"
   >
     <span class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full">
       <input

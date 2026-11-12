@@ -207,6 +207,7 @@ const toggleCompactMode = () => {
   <div
     class="container mx-auto mb-12 grid min-h-[320px] gap-6 pt-7 lg:items-start"
     :class="detailsCollapsed ? 'grid-cols-[minmax(0,1fr)]' : 'grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'"
+    data-ingot-component="file-browser-view"
   >
     <div
       class="min-w-0"

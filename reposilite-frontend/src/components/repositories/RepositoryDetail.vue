@@ -149,14 +149,18 @@ onMounted(() => {
 <template>
   <div
     v-if="!collection"
+    data-ingot-state="loading"
     class="md-body-large text-on-surface-variant"
+    data-ingot-component="repository-detail"
   >
     Loading configuration
   </div>
 
   <div
     v-else-if="entry === null"
+    data-ingot-state="empty"
     class="flex flex-col items-start gap-4"
+    data-ingot-component="repository-detail"
   >
     <h2
       ref="heading"
@@ -181,6 +185,7 @@ onMounted(() => {
   <div
     v-else
     class="flex flex-col gap-6"
+    data-ingot-component="repository-detail"
   >
     <MdButton
       variant="text"
@@ -192,7 +197,11 @@ onMounted(() => {
       Back to repositories
     </MdButton>
 
-    <header class="flex flex-col gap-4">
+    <header
+      class="flex flex-col gap-4"
+      data-ingot-part="header"
+      :data-ingot-repository="title"
+    >
       <h2
         ref="heading"
         tabindex="-1"

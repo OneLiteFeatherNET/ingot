@@ -3,6 +3,7 @@
     v-if="control.visible"
     class="flex min-w-0 flex-col gap-3"
     data-test="array"
+    data-ingot-component="array-list-renderer"
   >
     <div class="flex flex-row flex-wrap items-center justify-between gap-2">
       <h3

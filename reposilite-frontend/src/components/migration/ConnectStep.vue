@@ -119,6 +119,7 @@ const submit = async () => {
   <section
     class="flex flex-col gap-6"
     aria-labelledby="migration-connect-title"
+    data-ingot-component="connect-step"
   >
     <h2
       id="migration-connect-title"
@@ -141,6 +142,7 @@ const submit = async () => {
         v-if="errorItems.length"
         id="migration-connect-errors"
         ref="summary"
+        data-ingot-state="error"
         tabindex="-1"
         role="alert"
         class="flex flex-col gap-1 rounded-corner-small bg-error-container p-3 text-on-error-container"

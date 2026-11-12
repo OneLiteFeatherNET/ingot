@@ -78,6 +78,7 @@ const onAccountSelect = (value) => {
   <nav
     aria-label="Account"
     class="flex min-w-0 flex-row items-center gap-2"
+    data-ingot-component="menu-panel"
   >
     <MdOverflowMenu
       v-if="isLogged"

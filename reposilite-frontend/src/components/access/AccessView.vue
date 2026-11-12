@@ -72,7 +72,7 @@ const sideNav = sideNavOf('access')
     :index-to="sideNav.indexTo"
     :narrow="narrow"
   >
-    <div>
+    <div data-ingot-component="access-view">
       <PrincipalsPanel
         v-if="tab === 'users'"
         kind="USER"

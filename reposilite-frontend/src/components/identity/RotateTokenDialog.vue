@@ -81,6 +81,7 @@ const rotate = async () => {
     <h2
       id="rotate-token-title"
       class="md-headline-small"
+      data-ingot-component="rotate-token-dialog"
     >
       Rotate secret
     </h2>

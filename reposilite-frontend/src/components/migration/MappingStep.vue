@@ -97,6 +97,7 @@ const rowId = (nexusName) => nexusName.replace(/[^A-Za-z0-9_-]/g, '-')
   <section
     class="flex flex-col gap-6"
     aria-labelledby="migration-mapping-title"
+    data-ingot-component="mapping-step"
   >
     <h2
       id="migration-mapping-title"

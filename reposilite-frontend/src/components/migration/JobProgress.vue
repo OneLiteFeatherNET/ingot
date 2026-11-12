@@ -59,7 +59,10 @@ watch(() => [props.job.status, percent.value], ([state, value]) => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div
+    class="flex flex-col gap-2"
+    data-ingot-component="job-progress"
+  >
     <p class="md-body-large text-on-surface">
       Status: {{ statusText(job.status) }}
       <template v-if="total > 0">

@@ -150,6 +150,7 @@ const lastUsedText = (token) => {
   <section
     class="overflow-hidden rounded-corner-large bg-surface-container-low"
     aria-labelledby="token-list-title"
+    data-ingot-component="token-list"
   >
     <div class="flex flex-wrap items-start justify-between gap-3 px-4 py-4">
       <div class="flex min-w-0 flex-col gap-1">

@@ -101,6 +101,7 @@ const openAdd = () => {
     class="flex flex-col gap-3 rounded-corner-large bg-surface-container-low px-4 py-4"
     aria-labelledby="team-members-title"
     data-test="members"
+    data-ingot-component="team-members-card"
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h4

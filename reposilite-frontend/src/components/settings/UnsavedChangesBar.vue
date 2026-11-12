@@ -48,6 +48,7 @@ const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? '
     role="status"
     aria-live="polite"
     class="flex flex-col gap-3 border-t border-outline-variant bg-surface-container px-4 py-3 shadow-elevation-2 sm:flex-row sm:items-center sm:justify-between md:px-6"
+    data-ingot-component="unsaved-changes-bar"
   >
     <div class="min-w-0 md-body-large">
       <p class="text-on-surface">

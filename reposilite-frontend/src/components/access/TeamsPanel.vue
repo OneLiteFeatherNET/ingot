@@ -84,6 +84,7 @@ const deleted = (name) => {
     aria-label="Teams"
     data-test="teams"
     class="grid overflow-hidden min-[840px]:rounded-corner-large min-[840px]:border min-[840px]:border-outline-variant min-[840px]:grid-cols-[minmax(0,380px)_minmax(0,1fr)]"
+    data-ingot-component="teams-panel"
   >
     <div
       class="flex min-w-0 flex-col gap-3 min-[840px]:border-r min-[840px]:border-outline-variant min-[840px]:p-3"

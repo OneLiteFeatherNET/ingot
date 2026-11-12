@@ -200,6 +200,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
   <div
     v-else
     class="container mx-auto mb-12 grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
+    data-ingot-component="repository-overview"
   >
     <!-- The list comes first in reading order. From 1024px the card keeps its column on the right, and below it follows the list. -->
     <section
@@ -341,6 +342,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
 
       <div
         v-if="loading"
+        data-ingot-state="loading"
         class="mt-4 md-body-large text-on-surface-variant"
       >
         Loading repositories

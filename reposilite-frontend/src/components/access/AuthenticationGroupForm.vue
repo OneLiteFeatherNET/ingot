@@ -95,6 +95,7 @@ onMounted(() => {
   <div
     class="flex flex-col gap-4"
     data-test="authentication-group"
+    data-ingot-component="authentication-group-form"
   >
     <p
       v-if="!loaded && !loadError"

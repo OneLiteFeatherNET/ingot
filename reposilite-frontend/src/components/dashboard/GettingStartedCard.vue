@@ -114,6 +114,7 @@ onMounted(() => {
     <section
       aria-labelledby="getting-started-title"
       class="flex flex-col gap-4"
+      data-ingot-component="getting-started-card"
     >
       <header class="flex flex-wrap items-start justify-between gap-3">
         <div class="flex min-w-0 flex-col gap-1">
@@ -142,6 +143,7 @@ onMounted(() => {
 
       <p
         v-if="failure"
+        data-ingot-state="error"
         role="alert"
         class="md-body-medium text-error"
       >

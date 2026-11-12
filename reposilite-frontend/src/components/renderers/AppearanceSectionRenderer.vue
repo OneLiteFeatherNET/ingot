@@ -49,6 +49,7 @@ export default {
   <div
     class="flex min-w-0 flex-col gap-4"
     data-test="appearance-section"
+    data-ingot-component="appearance-section-renderer"
   >
     <SectionRenderer v-bind="$props" />
     <AppearancePreview :appearance="appearance" />

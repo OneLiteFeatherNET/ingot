@@ -1,0 +1,1347 @@
+{
+  "contract": 1,
+  "components": [
+    {
+      "name": "app-shell",
+      "file": "src/App.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "access-view",
+      "file": "src/components/access/AccessView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "add-member-dialog",
+      "file": "src/components/access/AddMemberDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "authentication-group-form",
+      "file": "src/components/access/AuthenticationGroupForm.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "confirm-action-dialog",
+      "file": "src/components/access/ConfirmActionDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "ldap-panel",
+      "file": "src/components/access/LdapPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "legacy-grants-panel",
+      "file": "src/components/access/LegacyGrantsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-machine-dialog",
+      "file": "src/components/access/NewMachineDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-team-dialog",
+      "file": "src/components/access/NewTeamDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-user-dialog",
+      "file": "src/components/access/NewUserDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "permission-nodes-card",
+      "file": "src/components/access/PermissionNodesCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "principal-actions-menu",
+      "file": "src/components/access/PrincipalActionsMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "principal-detail",
+      "file": "src/components/access/PrincipalDetail.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "principals-panel",
+      "file": "src/components/access/PrincipalsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "reset-password-dialog",
+      "file": "src/components/access/ResetPasswordDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "security-panel",
+      "file": "src/components/access/SecurityPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "sso-provider-dialog",
+      "file": "src/components/access/SsoProviderDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "sso-providers-panel",
+      "file": "src/components/access/SsoProvidersPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "team-detail",
+      "file": "src/components/access/TeamDetail.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "team-legacy-grants",
+      "file": "src/components/access/TeamLegacyGrants.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "team-members-card",
+      "file": "src/components/access/TeamMembersCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "team-parents-card",
+      "file": "src/components/access/TeamParentsCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "teams-panel",
+      "file": "src/components/access/TeamsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "check-permission-view",
+      "file": "src/components/access/check/CheckPermissionView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "combobox-field",
+      "file": "src/components/access/check/ComboboxField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-add-field",
+      "file": "src/components/access/nodes/NodeAddField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-editor",
+      "file": "src/components/access/nodes/NodeEditor.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "node-inherited-section",
+      "file": "src/components/access/nodes/NodeInheritedSection.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-row",
+      "file": "src/components/access/nodes/NodeRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "node-template-menu",
+      "file": "src/components/access/nodes/NodeTemplateMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "node-tree-view",
+      "file": "src/components/access/nodes/NodeTreeView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "account-view",
+      "file": "src/components/account/AccountView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "password-card",
+      "file": "src/components/account/PasswordCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "profile-card",
+      "file": "src/components/account/ProfileCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "audit-event-row",
+      "file": "src/components/audit/AuditEventRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "audit-view",
+      "file": "src/components/audit/AuditView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "adjustments-modal",
+      "file": "src/components/browser/AdjustmentsModal.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "breadcrumb-navigation",
+      "file": "src/components/browser/BreadcrumbNavigation.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "browser-icon",
+      "file": "src/components/browser/BrowserIcon.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "delete-entry-modal",
+      "file": "src/components/browser/DeleteEntryModal.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "detailed-list-entry",
+      "file": "src/components/browser/DetailedListEntry.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "file-browser-view",
+      "file": "src/components/browser/FileBrowserView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "file-list",
+      "file": "src/components/browser/FileList.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "file-upload",
+      "file": "src/components/browser/FileUpload.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "artifact-snippet",
+      "file": "src/components/card/ArtifactSnippet.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "card-menu",
+      "file": "src/components/card/CardMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "code-brackets",
+      "file": "src/components/card/CodeBrackets.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "code-string",
+      "file": "src/components/card/CodeString.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-snippet",
+      "file": "src/components/card/RepositorySnippet.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "snippets-card",
+      "file": "src/components/card/SnippetsCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "xml-tag",
+      "file": "src/components/card/XmlTag.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "console-view",
+      "file": "src/components/console/ConsoleView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "analytics-view",
+      "file": "src/components/dashboard/AnalyticsView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "chart-card",
+      "file": "src/components/dashboard/ChartCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "dashboard-view",
+      "file": "src/components/dashboard/DashboardView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "failures-sheet",
+      "file": "src/components/dashboard/FailuresSheet.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "getting-started-card",
+      "file": "src/components/dashboard/GettingStartedCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "instance-health-row",
+      "file": "src/components/dashboard/InstanceHealthRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "instance-status-panel",
+      "file": "src/components/dashboard/InstanceStatusPanel.vue",
+      "stability": "experimental",
+      "parts": [
+        "read-only-banner",
+        "cluster-summary",
+        "cluster-instances",
+        "cluster-instance"
+      ],
+      "states": []
+    },
+    {
+      "name": "public-repositories-dialog",
+      "file": "src/components/dashboard/PublicRepositoriesDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "read-only-toggle",
+      "file": "src/components/dashboard/ReadOnlyToggle.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "resolved-requests-chart",
+      "file": "src/components/dashboard/ResolvedRequestsChart.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "resource-trends",
+      "file": "src/components/dashboard/ResourceTrends.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "stat-tile",
+      "file": "src/components/dashboard/StatTile.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "status-label",
+      "file": "src/components/dashboard/StatusLabel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "time-series-chart",
+      "file": "src/components/dashboard/TimeSeriesChart.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "page-footer",
+      "file": "src/components/footer/PageFooter.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "site-footer",
+      "file": "src/components/footer/SiteFooter.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "site-legal",
+      "file": "src/components/footer/SiteLegal.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "default-header",
+      "file": "src/components/header/DefaultHeader.vue",
+      "stability": "stable",
+      "parts": [
+        "title"
+      ],
+      "states": []
+    },
+    {
+      "name": "header-hero",
+      "file": "src/components/header/HeaderHero.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "login-modal",
+      "file": "src/components/header/LoginModal.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "menu-panel",
+      "file": "src/components/header/MenuPanel.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "rail-brand",
+      "file": "src/components/header/RailBrand.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "create-token-dialog",
+      "file": "src/components/identity/CreateTokenDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "dialog-shell",
+      "file": "src/components/identity/DialogShell.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "revoke-token-dialog",
+      "file": "src/components/identity/RevokeTokenDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "rotate-token-dialog",
+      "file": "src/components/identity/RotateTokenDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "secret-once-dialog",
+      "file": "src/components/identity/SecretOnceDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "token-list",
+      "file": "src/components/identity/TokenList.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "administration-frame",
+      "file": "src/components/layout/AdministrationFrame.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "side-nav-layout",
+      "file": "src/components/layout/SideNavLayout.vue",
+      "stability": "stable",
+      "parts": [
+        "nav",
+        "page"
+      ],
+      "states": []
+    },
+    {
+      "name": "skip-link",
+      "file": "src/components/layout/SkipLink.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "cleanup-policies-panel",
+      "file": "src/components/maintenance/CleanupPoliciesPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "delete-policy-dialog",
+      "file": "src/components/maintenance/DeletePolicyDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "dry-run-result",
+      "file": "src/components/maintenance/DryRunResult.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "index-panel",
+      "file": "src/components/maintenance/IndexPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "maintenance-view",
+      "file": "src/components/maintenance/MaintenanceView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "policy-dialog",
+      "file": "src/components/maintenance/PolicyDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "rebuild-index-dialog",
+      "file": "src/components/maintenance/RebuildIndexDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "run-history",
+      "file": "src/components/maintenance/RunHistory.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "run-now-dialog",
+      "file": "src/components/maintenance/RunNowDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "storage-usage-panel",
+      "file": "src/components/maintenance/StorageUsagePanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-button",
+      "file": "src/components/md/MdButton.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-card",
+      "file": "src/components/md/MdCard.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-checkbox",
+      "file": "src/components/md/MdCheckbox.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-chip",
+      "file": "src/components/md/MdChip.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-chip-input",
+      "file": "src/components/md/MdChipInput.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-icon-button",
+      "file": "src/components/md/MdIconButton.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-linear-progress",
+      "file": "src/components/md/MdLinearProgress.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-navigation-bar",
+      "file": "src/components/md/MdNavigationBar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-navigation-rail",
+      "file": "src/components/md/MdNavigationRail.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-overflow-menu",
+      "file": "src/components/md/MdOverflowMenu.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-radio",
+      "file": "src/components/md/MdRadio.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-select",
+      "file": "src/components/md/MdSelect.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-snackbar",
+      "file": "src/components/md/MdSnackbar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-switch",
+      "file": "src/components/md/MdSwitch.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-text-area",
+      "file": "src/components/md/MdTextArea.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-text-field",
+      "file": "src/components/md/MdTextField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "connect-step",
+      "file": "src/components/migration/ConnectStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "cut-over-step",
+      "file": "src/components/migration/CutOverStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "discover-step",
+      "file": "src/components/migration/DiscoverStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "dry-run-step",
+      "file": "src/components/migration/DryRunStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "job-progress",
+      "file": "src/components/migration/JobProgress.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "mapping-step",
+      "file": "src/components/migration/MappingStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "migration-dialog",
+      "file": "src/components/migration/MigrationDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "migration-view",
+      "file": "src/components/migration/MigrationView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "password-field",
+      "file": "src/components/migration/PasswordField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "problem-alert",
+      "file": "src/components/migration/ProblemAlert.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "sync-step",
+      "file": "src/components/migration/SyncStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "verify-step",
+      "file": "src/components/migration/VerifyStep.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-overview",
+      "file": "src/components/overview/RepositoryOverview.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "plugin-block",
+      "file": "src/components/plugins/PluginBlock.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [
+        "error",
+        "loading"
+      ]
+    },
+    {
+      "name": "plugin-page",
+      "file": "src/components/plugins/PluginPageView.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "all-of-renderer",
+      "file": "src/components/renderers/AllOfRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "appearance-section-renderer",
+      "file": "src/components/renderers/AppearanceSectionRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "array-list-renderer",
+      "file": "src/components/renderers/ArrayListRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "boolean-switch-renderer",
+      "file": "src/components/renderers/BooleanSwitchRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "constant-renderer",
+      "file": "src/components/renderers/ConstantRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-colour-field-renderer",
+      "file": "src/components/renderers/MdColourFieldRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-select-renderer",
+      "file": "src/components/renderers/MdSelectRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "md-text-area-renderer",
+      "file": "src/components/renderers/MdTextAreaRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "md-text-field-renderer",
+      "file": "src/components/renderers/MdTextFieldRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "object-renderer",
+      "file": "src/components/renderers/ObjectRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "one-of-renderer",
+      "file": "src/components/renderers/OneOfRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "optional-renderer",
+      "file": "src/components/renderers/OptionalRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "section-renderer",
+      "file": "src/components/renderers/SectionRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "switch-field",
+      "file": "src/components/renderers/SwitchField.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "tags-field-renderer",
+      "file": "src/components/renderers/TagsFieldRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "unsupported-renderer",
+      "file": "src/components/renderers/UnsupportedRenderer.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "maven-options-panel",
+      "file": "src/components/repositories/MavenOptionsPanel.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "declare-type-dialog",
+      "file": "src/components/repositories/DeclareTypeDialog.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repositories-table",
+      "file": "src/components/repositories/RepositoriesTable.vue",
+      "stability": "experimental",
+      "parts": [
+        "header",
+        "row",
+        "cell-name",
+        "empty"
+      ],
+      "states": [
+        "empty"
+      ]
+    },
+    {
+      "name": "repositories-view",
+      "file": "src/components/repositories/RepositoriesView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-detail",
+      "file": "src/components/repositories/RepositoryDetail.vue",
+      "stability": "experimental",
+      "parts": [
+        "header"
+      ],
+      "states": [
+        "empty",
+        "loading"
+      ]
+    },
+    {
+      "name": "type-badge",
+      "file": "src/components/repositories/TypeBadge.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "write-policy-field",
+      "file": "src/components/repositories/WritePolicyField.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-bar",
+      "file": "src/components/search/SearchBar.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-filters",
+      "file": "src/components/search/SearchFilters.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-result-row",
+      "file": "src/components/search/SearchResultRow.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "search-view",
+      "file": "src/components/search/SearchView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "access-domain-card",
+      "file": "src/components/settings/AccessDomainCard.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "appearance-preview",
+      "file": "src/components/settings/AppearancePreview.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "collection-editor",
+      "file": "src/components/settings/CollectionEditor.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "conflict-dialog",
+      "file": "src/components/settings/ConflictDialog.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "delete-entry-dialog",
+      "file": "src/components/settings/DeleteEntryDialog.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "entry-detail",
+      "file": "src/components/settings/EntryDetail.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "entry-list",
+      "file": "src/components/settings/EntryList.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "factory-reset-modal",
+      "file": "src/components/settings/FactoryResetModal.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "new-entry-dialog",
+      "file": "src/components/settings/NewEntryDialog.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-access-card",
+      "file": "src/components/settings/RepositoryAccessCard.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "repository-members-picker",
+      "file": "src/components/settings/RepositoryMembersPicker.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "repository-wizard",
+      "file": "src/components/settings/RepositoryWizard.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "settings-download-menu",
+      "file": "src/components/settings/SettingsDownloadMenu.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "settings-hub",
+      "file": "src/components/settings/SettingsHub.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "settings-import-errors",
+      "file": "src/components/settings/SettingsImportErrors.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "settings-review-sheet",
+      "file": "src/components/settings/SettingsReviewSheet.vue",
+      "stability": "stable",
+      "parts": [
+        "header"
+      ],
+      "states": []
+    },
+    {
+      "name": "settings-view",
+      "file": "src/components/settings/SettingsView.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": [],
+      "ownElement": false
+    },
+    {
+      "name": "unsaved-changes-bar",
+      "file": "src/components/settings/UnsavedChangesBar.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "support-view",
+      "file": "src/components/support/SupportView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "system-info-view",
+      "file": "src/components/support/SystemInfoView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "repository-type-badge",
+      "file": "src/components/tokens/RepositoryTypeBadge.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "segmented-control",
+      "file": "src/components/tokens/SegmentedControl.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "segmented-option",
+      "file": "src/components/tokens/SegmentedOption.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "token-tag",
+      "file": "src/components/tokens/TokenTag.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "not-found-view",
+      "file": "src/components/util/NotFoundView.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "view-load-error",
+      "file": "src/components/util/ViewLoadError.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "error"
+      ]
+    },
+    {
+      "name": "view-loading",
+      "file": "src/components/util/ViewLoading.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": [
+        "loading"
+      ]
+    },
+    {
+      "name": "index-page",
+      "file": "src/pages/IndexPage.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    }
+  ],
+  "aliases": []
+}

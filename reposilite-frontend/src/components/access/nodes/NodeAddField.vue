@@ -144,7 +144,10 @@ const onBlur = () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+  <div
+    class="flex flex-col gap-2 sm:flex-row sm:items-start"
+    data-ingot-component="node-add-field"
+  >
     <div class="relative min-w-0 flex-1">
       <MdTextField
         :id="inputId"

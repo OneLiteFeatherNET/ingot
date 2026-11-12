@@ -45,6 +45,7 @@ const groups = computed(() => {
   <section
     role="alert"
     class="mb-6 flex flex-col gap-4 rounded-corner-medium bg-error-container p-4 text-on-error-container"
+    data-ingot-component="settings-import-errors"
   >
     <div class="flex flex-wrap items-start justify-between gap-2">
       <h2 class="md-title-medium">

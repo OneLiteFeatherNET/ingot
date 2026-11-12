@@ -26,6 +26,8 @@ const reload = () => window.location.reload()
   <div
     class="container mx-auto flex flex-col items-start gap-4 py-8"
     role="alert"
+    data-ingot-component="view-load-error"
+    data-ingot-state="error"
   >
     <p class="md-body-large text-on-surface">
       This view could not be loaded.
