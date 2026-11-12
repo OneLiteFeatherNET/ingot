@@ -167,6 +167,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         }
         val stopped = AtomicBoolean(false)
         event { _: ReposiliteDisposeEvent -> stopped.set(true) }
+        backend?.let { installed -> event { _: ReposiliteDisposeEvent -> runCatching { installed.close() } } }
         val tick = reposilite().scheduler.scheduleWithFixedDelay({
             reposilite().ioService.execute {
                 runCatching { runtime.tick() }.onFailure { logger.warn("SEARCH | Backend tick failed: ${it.message}") }
