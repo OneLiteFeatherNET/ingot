@@ -206,6 +206,27 @@ internal class SearchBackendHolderTest {
     }
 
     @Test
+    fun `a secret read through the context is replaced in the status detail of a down backend`() {
+        val environment = mapOf("SEARCH_TOKEN" to "s3cr3t-token")
+        val context = CoreSearchBackendContext(clock, "instance", "fake", environment::get) { _, _ -> }
+        context.secret("SEARCH_TOKEN")
+        fake.healthAnswer = BackendHealth.Down("the index rejected s3cr3t-token")
+        val holder = SearchBackendHolder(
+            resolution = BackendResolution.Installed(factory),
+            clock = clock,
+            log = logs::add,
+            createBackend = { fake },
+            redact = context::redact,
+        )
+
+        holder.tick()
+
+        assertThat(holder.state).`as`("state of the down backend").isEqualTo(SearchBackendState.DOWN)
+        assertThat(holder.detail).`as`("status detail of the down backend").isEqualTo("the index rejected ***")
+        assertThat(logs).`as`("log lines of the down backend").noneMatch { it.contains("s3cr3t-token") }
+    }
+
+    @Test
     fun `a refused backend is logged at start and again every five minutes`() {
         val holder = holder(BackendResolution.Unavailable(SearchBackendState.REFUSED, "apiVersion=2, expected 1"))
         assertThat(logs).`as`("log lines at start").hasSize(1)

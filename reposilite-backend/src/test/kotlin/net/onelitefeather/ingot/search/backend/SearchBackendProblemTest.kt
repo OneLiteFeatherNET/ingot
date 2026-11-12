@@ -16,8 +16,10 @@
 
 package net.onelitefeather.ingot.search.backend
 
+import com.reposilite.audit.MutableClock
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 /** The problem answer of a backend that is not available, and the redaction of what it shows (search backend registration, D4). */
 internal class SearchBackendProblemTest {
@@ -62,6 +64,47 @@ internal class SearchBackendProblemTest {
         )
 
         assertThat(problem.detail).`as`("detail of the problem").doesNotContain("hunter2").contains("search.example:9200/index")
+    }
+
+    @Test
+    fun `a secret read through the context is replaced in the problem detail`() {
+        val environment = mapOf("SEARCH_TOKEN" to "s3cr3t-token")
+        val context = CoreSearchBackendContext(
+            MutableClock(Instant.parse("2026-10-16T10:00:00Z")),
+            "instance",
+            "opensearch",
+            environment::get,
+        ) { _, _ -> }
+        context.secret("SEARCH_TOKEN")
+
+        val problem = backendUnavailableProblem(
+            "opensearch",
+            SearchBackendState.OPEN_FAILED,
+            "login with s3cr3t-token refused",
+            redact = context::redact,
+        )
+
+        assertThat(problem.detail).`as`("detail of the problem").doesNotContain("s3cr3t-token").contains("login with ***")
+    }
+
+    @Test
+    fun `an empty secret causes no replacement in the problem detail`() {
+        val context = CoreSearchBackendContext(
+            MutableClock(Instant.parse("2026-10-16T10:00:00Z")),
+            "instance",
+            "opensearch",
+            emptyMap<String, String>()::get,
+        ) { _, _ -> }
+        context.secret("MISSING_TOKEN")
+
+        val problem = backendUnavailableProblem(
+            "opensearch",
+            SearchBackendState.DOWN,
+            "the cluster is red",
+            redact = context::redact,
+        )
+
+        assertThat(problem.detail).`as`("detail of the problem").contains("the cluster is red")
     }
 
     @Test
