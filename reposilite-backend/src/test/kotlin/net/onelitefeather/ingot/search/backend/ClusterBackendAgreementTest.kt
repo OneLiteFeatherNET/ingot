@@ -21,6 +21,7 @@ import net.onelitefeather.ingot.search.database.SearchSchema
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
 import net.onelitefeather.ingot.search.database.SqliteFileDatabase
+import net.onelitefeather.ingot.search.runs.RunKind
 import net.onelitefeather.ingot.search.runs.RunStore
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import org.assertj.core.api.Assertions.assertThat
@@ -92,6 +93,28 @@ internal class ClusterBackendAgreementTest {
         val decision = replica(state, runs, "instance-b", "opensearch").agree()
 
         assertThat(decision).`as`("decision of the other backend after exactly three minutes").isEqualTo(AgreementDecision.SWITCH)
+    }
+
+    @Test
+    fun `a switch that finds a live rebuild lock is deferred and happens on the next tick`() = withDatabase { state, runs ->
+        replica(state, runs, "instance-a", "database").apply { heartbeat() }
+        replica(state, runs, "instance-a", "database").agree()
+        clock.advance(Duration.ofMinutes(4))
+        runs.start(RunKind.REBUILD, RunTrigger.MANUAL, null, "instance-c")
+        val switching = replica(state, runs, "instance-b", "opensearch")
+
+        val deferred = switching.agree()
+
+        assertThat(deferred).`as`("decision while a rebuild lock is live").isEqualTo(AgreementDecision.SWITCH_DEFERRED)
+        assertThat(state.get(SearchStateKey.BACKEND_ID)).`as`("stored backend id while the switch waits").isEqualTo("database")
+        assertThat(runs.recent(5).count { it.trigger == RunTrigger.BACKEND }).`as`("backend runs while the switch waits").isZero()
+
+        clock.advance(Duration.ofHours(1))
+        val switched = switching.agree()
+
+        assertThat(switched).`as`("decision on the next tick once the lock is free").isEqualTo(AgreementDecision.SWITCH)
+        assertThat(state.get(SearchStateKey.BACKEND_ID)).`as`("stored backend id after the deferred switch").isEqualTo("opensearch")
+        assertThat(runs.recent(5).count { it.trigger == RunTrigger.BACKEND }).`as`("backend runs after the deferred switch").isEqualTo(1)
     }
 
     @Test
