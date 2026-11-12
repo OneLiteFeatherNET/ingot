@@ -34,7 +34,7 @@ const cluster = ref(null)
 -->
 <template>
   <div
-    class="container mx-auto pt-7 pb-12"
+    class="container mx-auto max-w-none pt-7 pb-12"
     data-ingot-component="dashboard-view"
   >
     <GettingStartedCard class="mb-6" />

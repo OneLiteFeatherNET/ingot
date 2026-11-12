@@ -102,4 +102,12 @@ describe('MdNavigationBar links', () => {
 
     expect(wrapper.findAll('a').map(link => link.text())).toEqual(['Overview', 'Tokens'])
   })
+
+  it('truncates a label wider than its item, so the label never runs past the edge of a 320 px window', () => {
+    const wrapper = mount(MdNavigationBar, { props: { items: TABS, modelValue: 'Overview' } })
+
+    const label = wrapper.find('li span.md-label-medium')
+    expect(label.classes(), 'the label is cut with an ellipsis inside its item').toEqual(expect.arrayContaining(['block', 'max-w-full', 'truncate']))
+    expect(label.classes(), 'the label does not wrap onto a second line').toContain('whitespace-nowrap')
+  })
 })

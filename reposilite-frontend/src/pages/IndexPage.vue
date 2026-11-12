@@ -126,9 +126,9 @@ useLoginErrorNotice()
 const section = computed(() => route.meta.section ?? null)
 // The entry of the rail and the bar that is current: every Administration page is under Administration.
 const navigationSection = computed(() => (ADMINISTRATION_SECTIONS.includes(section.value) ? 'settings' : section.value))
-// The administration pages draw their content in the administration frame, which has its own maximum width.
-// The top bar takes the same width, so its title and the frame's content start at one x.
-const framedPage = computed(() => ADMINISTRATION_SECTIONS.includes(section.value))
+// The reading pages of the administration frame (text and forms) keep a 960 pixel measure. The other pages are wide
+// (lists, tables and the charts) and take the full width after the side navigation.
+const readingPage = computed(() => ['maintenance', 'migration'].includes(section.value) || SUPPORT_ROUTES.includes(route.name))
 // A contributed page is judged by the area it names, not by the settings meta of its route. A page the manifest
 // does not name has no node, so it is not allowed and the page below shows it as not found.
 const pluginPageNode = computed(() => (route.name === 'settings-plugin'
@@ -339,7 +339,7 @@ const activeLabel = computed(() => pageLabel(section.value))
       the bottom of the window. From 1600px the sheet also rounds its top right corner and keeps
       a 16px gap to the window edge.
     -->
-    <DefaultHeader :framed="framedPage" />
+    <DefaultHeader />
     <!--
       The corners stay put while the page scrolls: the sheet's own corner scrolls under the top
       bar with the rest of the page, so these two sticky pieces paint the same corners again at the
@@ -455,6 +455,7 @@ const activeLabel = computed(() => pageLabel(section.value))
         />
         <AdministrationFrame
           v-else-if="adminSideNav"
+          :reading="readingPage"
           :description="adminSideNav.description"
           :label="adminSideNav.label"
           :section-label="adminSideNav.sectionLabel"

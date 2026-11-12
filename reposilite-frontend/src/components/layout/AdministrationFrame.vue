@@ -31,6 +31,8 @@ import SideNavLayout from './SideNavLayout.vue'
  *   indexTo      the router location of the index
  *   narrow       true below 1240 pixels, where the tree is an index (see SideNavLayout)
  *   replace      true when a link replaces the history entry
+ *   reading      true for a reading page (text and forms): the content keeps a 960 pixel measure. A wide page (a list
+ *                or a table, the default) takes the full width after the side navigation.
  *
  * Slots: `actions` (buttons of the page, beside the heading) and the default slot (the page content).
  */
@@ -42,13 +44,14 @@ defineProps({
   current: { type: String, default: undefined },
   indexTo: { type: Object, required: true },
   narrow: { type: Boolean, default: false },
-  replace: { type: Boolean, default: false }
+  replace: { type: Boolean, default: false },
+  reading: { type: Boolean, default: false }
 })
 </script>
 
 <template>
   <section
-    class="container mx-auto max-w-[1280px] pb-12 pt-7 min-[1920px]:max-w-[1600px]"
+    :class="reading ? 'container max-w-[960px] pb-12 pt-7' : 'container mx-auto max-w-none pb-12 pt-7'"
     aria-labelledby="administration-title"
     data-ingot-component="administration-frame"
   >

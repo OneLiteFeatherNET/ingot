@@ -50,3 +50,88 @@ test.describe('administration page header while scrolling', () => {
     expect(await topOf(appBar), 'the app bar stays at the top of the screen').toBe(0)
   })
 })
+
+// The wide screens of use-wide-screens (D2 and D4): the repository table shows more columns, the dashboard lays its
+// charts out in more columns, a settings form stays at the reading measure, and the overview keeps the snippet card
+// beside the browse list. The cases run at 1920 and 2560 pixels only.
+test.describe('wide screens', () => {
+  for (const width of [1920, 2560]) {
+    test.describe(`at ${width} pixels`, () => {
+      test.beforeEach(async ({ adminPage: page }) => {
+        await page.setViewportSize({ width, height: 900 })
+      })
+
+      test('shows the address column, and the storage column only from 2560 pixels', async ({ adminPage: page, seed }) => {
+        await seed.repository('wide-columns')
+        await page.goto(siteUrl('/settings/repositories'))
+
+        await expect(page.getByRole('columnheader', { name: 'Address', exact: true }), 'the address is shown').toBeVisible()
+        const storage = page.getByRole('columnheader', { name: 'Storage', exact: true })
+        if (width >= 2560) {
+          await expect(storage, 'the storage column has room at 2560 pixels').toBeVisible()
+        } else {
+          await expect(storage, 'the storage column is still hidden at 1920 pixels').toBeHidden()
+        }
+      })
+
+      test('lays the resource charts out in two columns at this width, with no empty third column', async ({ adminPage: page }) => {
+        await page.goto(siteUrl('/dashboard'))
+        const memory = page.getByRole('heading', { name: 'Memory', exact: true })
+        const threads = page.getByRole('heading', { name: 'Threads', exact: true })
+        await expect(memory).toBeVisible()
+        await expect(threads).toBeVisible()
+
+        // The layout settles while the charts load, so the boxes are read until the two headings share a row.
+        const rowOf = async () => {
+          const first = await memory.boundingBox()
+          const second = await threads.boundingBox()
+          return { sameRow: Math.abs(first.y - second.y) < 2, rightOf: second.x > first.x + first.width / 2 }
+        }
+        await expect.poll(rowOf, 'the two charts share one row, the threads chart to the right').toEqual({ sameRow: true, rightOf: true })
+
+        // The charts sit in one grid: the innermost grid that holds both headings names the columns it draws.
+        const chartGrid = page.locator('div.grid').filter({ has: memory }).filter({ has: threads }).last()
+        const tracks = await chartGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)
+        expect(tracks, 'the number of chart columns at this width').toBe(2)
+      })
+
+      test('gives the getting started checklist the content width, with no blank block beside it', async ({ adminPage: page }) => {
+        await page.goto(siteUrl('/dashboard'))
+        // The checklist's own button sits at its right edge, so its right edge shows how wide the card is.
+        const hide = page.getByRole('button', { name: 'Hide checklist' })
+        await expect(hide).toBeVisible()
+
+        const box = await hide.boundingBox()
+        expect(box.x + box.width, 'the checklist reaches well past the middle of the window').toBeGreaterThan(width * 0.6)
+      })
+
+      test('keeps a settings form at most 960 pixels wide', async ({ adminPage: page }) => {
+        await page.goto(siteUrl('/settings/audit'))
+        const frame = page.getByRole('region', { name: 'Administration', exact: true })
+        await expect(frame).toBeVisible()
+
+        const box = await frame.boundingBox()
+        expect(box.width, 'the width of the settings page in px').toBeLessThanOrEqual(960)
+      })
+
+      test('places the snippet card beside the browse list on the overview', async ({ adminPage: page, seed }) => {
+        await seed.repository('wide-overview')
+        await page.goto(siteUrl('/'))
+        const list = page.getByRole('heading', { name: 'Repositories', exact: true })
+        // The snippet card is found by its copy button, which every snippet of the card has.
+        const card = page.getByRole('button', { name: 'Copy snippet' }).first()
+        await expect(list).toBeVisible()
+        await expect(card).toBeVisible()
+
+        const listBox = await list.boundingBox()
+        const cardBox = await card.boundingBox()
+        expect(cardBox.x, 'the card starts to the right of the list').toBeGreaterThan(listBox.x + 100)
+        expect(cardBox.y, 'the card starts on the same row as the list').toBeLessThan(listBox.y + listBox.height + 200)
+
+        // The list takes the wider column: two thirds of the split, so it is at least 1.5 times the card.
+        const listRegion = await page.getByRole('region', { name: 'Repositories', exact: true }).boundingBox()
+        expect(listRegion.width, 'the browse list is the wider column').toBeGreaterThanOrEqual(cardBox.width * 1.5)
+      })
+    })
+  }
+})

@@ -44,6 +44,18 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-test="resources"]').exists()).toBe(true)
   })
 
+  it('has no maximum width, so the status and the resources use the full window width', () => {
+    const wrapper = mount(DashboardView)
+
+    expect(wrapper.element.classList).toContain('max-w-none')
+  })
+
+  it('gives the getting started checklist the full content width, with no reading cap that leaves a blank block', () => {
+    const wrapper = mount(DashboardView)
+
+    expect(wrapper.find('[data-test="getting-started"]').classes(), 'no 960 pixel cap on the checklist').not.toContain('max-w-[960px]')
+  })
+
   it('no longer renders the resolved requests chart, which moved to analytics', () => {
     const wrapper = mount(DashboardView)
 

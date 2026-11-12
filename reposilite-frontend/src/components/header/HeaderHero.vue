@@ -39,7 +39,7 @@ const logo = computed(() => logoFor(appearance, organizationLogo, theme.isDark))
       separate band from the file list below, and it stacks into one centred column on small
       screens instead of leaving the logo alone on its own line.
     -->
-    <div class="container mx-auto flex flex-col items-center gap-6 py-10 md:flex-row md:items-center md:gap-10 max-sm:py-6">
+    <div class="container mx-auto max-w-none flex flex-col items-center gap-6 py-10 md:flex-row md:items-center md:gap-10 max-sm:py-6">
       <img
         class="size-32 shrink-0 rounded-corner-full border-2 border-outline-variant md:size-40"
         alt=""

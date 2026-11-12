@@ -199,7 +199,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
   />
   <div
     v-else
-    class="container mx-auto mb-12 grid min-h-[320px] grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
+    class="container mx-auto mb-12 grid min-h-[320px] max-w-none grid-cols-[minmax(0,1fr)] gap-6 pt-7 min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] min-[1920px]:grid-cols-[2fr_1fr] lg:items-start"
     data-ingot-component="repository-overview"
   >
     <!-- The list comes first in reading order. From 1024px the card keeps its column on the right, and below it follows the list. -->

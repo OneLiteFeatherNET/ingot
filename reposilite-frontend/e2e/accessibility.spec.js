@@ -31,6 +31,8 @@ const COVERED_PAGES = [
   {
     name: 'the browse overview',
     path: '/',
+    // The repository rows load after the page: the check waits for one row, so the rows it reports are on screen.
+    settledLink: 'Browse releases',
     knownFault: 'issue #160: color-contrast, label-content-name-mismatch and scrollable-region-focusable',
   },
   { name: 'the search', path: '/search' },
@@ -54,6 +56,9 @@ test.describe('accessibility of the covered pages', () => {
       await page.goto(siteUrl(covered.path))
       if (covered.settled) {
         await expect(page.getByRole('button', { name: covered.settled, exact: true })).toBeEnabled()
+      }
+      if (covered.settledLink) {
+        await expect(page.getByRole('link', { name: covered.settledLink, exact: true })).toBeVisible()
       }
       if (covered.open === 'sign-in') {
         await page.getByRole('button', { name: 'Sign in', exact: true }).first().click()

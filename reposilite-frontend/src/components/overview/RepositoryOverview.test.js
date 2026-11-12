@@ -489,6 +489,28 @@ describe('RepositoryOverview layout order', () => {
   })
 })
 
+describe('RepositoryOverview width', () => {
+  it('keeps the list and the snippet card side by side from 1024 pixels, as before', async () => {
+    await mountAt('/')
+
+    expect(wrapper.element.className, 'the card keeps its column on the right from 1024 pixels').toContain(
+      'min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
+    )
+  })
+
+  it('gives the browse list two thirds of the width from 1920 pixels, the card the rest', async () => {
+    await mountAt('/')
+
+    expect(wrapper.element.className, 'the list takes the wider column on wide screens').toContain('min-[1920px]:grid-cols-[2fr_1fr]')
+  })
+
+  it('has no maximum width, so the list uses the full window width', async () => {
+    await mountAt('/')
+
+    expect(wrapper.element.className).toContain('max-w-none')
+  })
+})
+
 describe('RepositoryOverview row marks', () => {
   it('keeps the type badge and the visibility label in one wrapping element after the text', async () => {
     await mountAt('/')

@@ -80,12 +80,21 @@ describe('AdministrationFrame', () => {
     expect(wrapper.find('[aria-label="Administration"]').exists(), 'the side navigation is drawn').toBe(true)
   })
 
-  it('caps the page at 1280 pixels, and at 1600 pixels from 1920 pixels', async () => {
+  it('gives a wide page the full width after the side navigation, with no maximum width', async () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
     const classes = wrapper.element.classList
-    expect(classes, 'the page is capped at 1280 pixels').toContain('max-w-[1280px]')
-    expect(classes, 'the cap grows to 1600 pixels from 1920 pixels').toContain('min-[1920px]:max-w-[1600px]')
+    expect(classes, 'a wide page (a list or a table) takes the width it is given').toContain('max-w-none')
+    expect(classes, 'no 1280 pixel cap').not.toContain('max-w-[1280px]')
+    expect(classes, 'no 1600 pixel cap').not.toContain('min-[1920px]:max-w-[1600px]')
+  })
+
+  it('keeps a reading page at a 960 pixel measure, at the start of the content column', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: true })
+
+    const classes = wrapper.element.classList
+    expect(classes, 'a reading page (text and forms) is at most 960 pixels wide').toContain('max-w-[960px]')
+    expect(classes, 'it stays at the start of the column, not centred').not.toContain('mx-auto')
   })
 
   it('draws the page heading and its actions in one row from 600 pixels', async () => {
