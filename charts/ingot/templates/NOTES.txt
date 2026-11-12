@@ -72,3 +72,9 @@ NOTE: sharedConfiguration sets INGOT_OPTS, with the --shared-configuration argum
 not inspected here. If envFrom sets INGOT_OPTS or REPOSILITE_OPTS, move those arguments into env, where the chart keeps them
 next to the shared file argument. This note does not stop the install.
 {{- end }}
+{{- if eq (include "ingot.upstreamAdoption" .) "true" }}
+
+NOTE: this release keeps the names of the upstream reposilite chart, taken from the objects it already holds in this namespace.
+The claim, the Deployment and the Service are named {{ include "ingot.fullname" . }}, and the server selector stays
+app.kubernetes.io/name: reposilite. This note does not stop the install.
+{{- end }}
