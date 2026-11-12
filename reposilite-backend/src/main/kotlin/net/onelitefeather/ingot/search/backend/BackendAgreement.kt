@@ -38,6 +38,12 @@ internal enum class AgreementDecision {
 
     /** Another id is stored and none of its replicas was seen recently: the id changes and a rebuild starts. */
     SWITCH,
+
+    /**
+     * Another id is stored and none of its replicas was seen recently, but a rebuild or verify run holds the lock, so the
+     * switch could not start its run. Nothing changed: the next agreement tick asks again.
+     */
+    SWITCH_DEFERRED,
 }
 
 /** The cluster rule of the backend id (search backend registration, D5), as a decision on plain values. */
@@ -81,16 +87,22 @@ internal class ClusterBackendAgreement(
     fun agree(): AgreementDecision {
         val stored = state.get(SearchStateKey.BACKEND_ID)
         val decision = BackendAgreementRule.decide(stored, backendId, stored?.let { lastSeenOf(it) }, clock.instant())
-        when (decision) {
-            AgreementDecision.CLAIM -> if (!state.putIfAbsent(SearchStateKey.BACKEND_ID, backendId)) return agree()
-            AgreementDecision.SWITCH -> {
-                state.put(SearchStateKey.BACKEND_ID, backendId)
-                state.remove(SearchStateKey.LAST_FULL_REBUILD)
-                runs.start(RunKind.REBUILD, RunTrigger.BACKEND, null, instanceId)
-            }
-            AgreementDecision.DRAIN, AgreementDecision.MISMATCH -> Unit
+        return when (decision) {
+            AgreementDecision.CLAIM -> if (state.putIfAbsent(SearchStateKey.BACKEND_ID, backendId)) decision else agree()
+            AgreementDecision.SWITCH -> switch()
+            AgreementDecision.DRAIN, AgreementDecision.MISMATCH, AgreementDecision.SWITCH_DEFERRED -> decision
         }
-        return decision
+    }
+
+    /**
+     * Stores this replica's id, clears the last full rebuild and starts the run, all in one transaction. A live rebuild or verify
+     * lock makes the run refuse to start, and then nothing is stored, so the switch is decided again on the next tick.
+     */
+    private fun switch(): AgreementDecision = runs.atomically {
+        if (runs.start(RunKind.REBUILD, RunTrigger.BACKEND, null, instanceId) == null) return@atomically AgreementDecision.SWITCH_DEFERRED
+        state.put(SearchStateKey.BACKEND_ID, backendId)
+        state.remove(SearchStateKey.LAST_FULL_REBUILD)
+        AgreementDecision.SWITCH
     }
 
     private fun lastSeenOf(stored: String): Instant? = state.entries(SearchStateKey.BACKEND_HEARTBEAT_PREFIX)
