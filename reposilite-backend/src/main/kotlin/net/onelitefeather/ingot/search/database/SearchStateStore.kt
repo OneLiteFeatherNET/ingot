@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.search.database
 
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -43,6 +44,12 @@ internal object SearchStateKey {
 
     /** A JSON summary of the last completed verify run: counts of each drift kind and the drift ratio. */
     const val VERIFY_LAST_REPORT = "verify.last_report"
+
+    /** The id of the search backend that owns the index of the cluster (search backend registration, D5). */
+    const val BACKEND_ID = "backend_id"
+
+    /** The prefix of one heartbeat per replica: `backend_heartbeat.<instance>` holds `<backend id>|<epoch milliseconds>`. */
+    const val BACKEND_HEARTBEAT_PREFIX = "backend_heartbeat."
 }
 
 /**
@@ -62,6 +69,25 @@ internal class SearchStateStore(
 
     fun get(key: String): String? = transaction(database) {
         state.selectAll().where { state.key eq key }.map { it[state.value] }.firstOrNull()
+    }
+
+    /** Writes [value] under [key] unless the key exists. Returns true when this call inserted the key. */
+    fun putIfAbsent(key: String, value: String): Boolean = transaction(database) {
+        state.insertIgnore {
+            it[state.key] = key
+            it[state.value] = value
+            it[state.updatedAt] = clock.millis()
+        }.insertedCount == 1
+    }
+
+    /** Removes [key] if it exists. */
+    fun remove(key: String) {
+        transaction(database) { state.deleteWhere { state.key eq key } }
+    }
+
+    /** The entries whose key starts with [prefix]. The table is small, so the prefix is matched in memory. */
+    fun entries(prefix: String): Map<String, String> = transaction(database) {
+        state.selectAll().map { it[state.key] to it[state.value].orEmpty() }.filter { (key, _) -> key.startsWith(prefix) }.toMap()
     }
 
     /** Adds one to the counter [key] and returns the new value. A counter that is not a number starts at zero. */

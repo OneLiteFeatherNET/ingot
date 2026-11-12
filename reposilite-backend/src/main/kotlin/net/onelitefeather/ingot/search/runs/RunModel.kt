@@ -26,7 +26,7 @@ enum class RunKind { REBUILD, VERIFY }
 
 /** What started a run. More triggers are expected, so the API declares this enum extensible. */
 @ExtensibleEnum
-enum class RunTrigger { MANUAL, SCHEDULED, STARTUP, GAP }
+enum class RunTrigger { MANUAL, SCHEDULED, STARTUP, GAP, BACKEND }
 
 enum class RunStatus { RUNNING, COMPLETED, FAILED, CANCELLED }
 
