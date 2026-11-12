@@ -257,6 +257,43 @@ describe('schemeVariant', () => {
   })
 })
 
+describe('built-in scheme and operator seed', () => {
+  const STEEL_SEED = '#3a5f85'
+  const PREVIOUS_SEED = '#ac1c67'
+
+  const builtIn = () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/styles/md3/color.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const [top] = splitMedia(css)
+    const find = (selector) => rulesIn(top).find(rule => rule.selector === selector).declarations
+    return { light: find(':root'), dark: find('.dark') }
+  }
+
+  const hueOf = (hex) => Hct.fromInt(argbFromHex(hex)).hue
+
+  // The static colour file is the built-in scheme. It has to stay what the steel seed generates,
+  // so that an installation without a seed looks the same as one that sets the steel seed.
+  for (const theme of ['light', 'dark']) {
+    it(`matches the steel seed scheme in every ${theme} role of the built-in colour file`, () => {
+      const generated = blocksOf(buildThemeCss(withSettings({ seedColor: STEEL_SEED })))[theme]
+      const stored = builtIn()[theme]
+      for (const role of roleNames(stored)) {
+        expect(stored[`md-sys-color-${role}`], `${role} in the built-in ${theme} scheme differs from the steel seed`)
+          .toBe(generated[`md-sys-color-${role}`])
+      }
+    })
+  }
+
+  it('keeps the previous magenta scheme when an operator sets the previous seed', () => {
+    const { light, dark } = blocksOf(buildThemeCss(withSettings({ seedColor: PREVIOUS_SEED })))
+
+    for (const [theme, block] of [['light', light], ['dark', dark]]) {
+      const hue = hueOf(block['md-sys-color-primary'])
+      expect(hue >= 320 || hue <= 30, `the ${theme} primary from the previous seed is at ${hue.toFixed(0)} degrees, expected a magenta or pink hue`).toBe(true)
+      expect(block['md-sys-color-primary'], `the ${theme} primary should not be the built-in steel primary`).not.toBe(builtIn()[theme]['md-sys-color-primary'])
+    }
+  })
+})
+
 describe('chart palette and brand gradient', () => {
   it('derives chart series 1 to 3 from primary, tertiary and secondary', () => {
     const { light, dark } = blocksOf(buildThemeCss(withSettings({ seedColor: SEED })))

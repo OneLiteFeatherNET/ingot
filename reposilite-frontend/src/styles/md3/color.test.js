@@ -294,4 +294,111 @@ describe('chart series', () => {
       expect(hue >= 200 && hue <= 290, `${theme} chart-1 is at ${hue.toFixed(0)} degrees, expected the steel blue family`).toBe(true)
     }
   })
+
+  for (const theme of ['light', 'dark']) {
+    it(`keeps no series equal to a status colour in the ${theme} theme`, () => {
+      const statuses = [THEMES[theme]['--md-ext-color-success'], THEMES[theme]['--md-ext-color-warning'], THEMES[theme]['--md-sys-color-error']]
+      for (const [index, colour] of chartSeries(THEMES[theme]).entries()) {
+        expect(statuses, `chart-${index + 1} (${colour}) should not reuse a status colour`).not.toContain(colour)
+      }
+    })
+  }
+})
+
+// The names are the public contract: plugins and stylesheets read them by name, so a rename or a
+// removal is a breaking change even when the value is right. Compared sorted, so order does not matter.
+const MD3_ROLE_NAMES = [
+  'background', 'error', 'error-container', 'inverse-on-surface', 'inverse-primary', 'inverse-surface',
+  'on-background', 'on-error', 'on-error-container', 'on-primary', 'on-primary-container', 'on-primary-fixed',
+  'on-primary-fixed-variant', 'on-secondary', 'on-secondary-container', 'on-secondary-fixed',
+  'on-secondary-fixed-variant', 'on-surface', 'on-surface-variant', 'on-tertiary', 'on-tertiary-container',
+  'on-tertiary-fixed', 'on-tertiary-fixed-variant', 'outline', 'outline-variant', 'primary', 'primary-container',
+  'primary-fixed', 'primary-fixed-dim', 'scrim', 'secondary', 'secondary-container', 'secondary-fixed',
+  'secondary-fixed-dim', 'shadow', 'surface', 'surface-bright', 'surface-container', 'surface-container-high',
+  'surface-container-highest', 'surface-container-low', 'surface-container-lowest', 'surface-dim', 'surface-tint',
+  'surface-variant', 'tertiary', 'tertiary-container', 'tertiary-fixed', 'tertiary-fixed-dim'
+].map((name) => `--md-sys-color-${name}`)
+
+const EXT_TOKEN_NAMES = [
+  '--md-ext-color-success',
+  '--md-ext-color-warning',
+  ...Array.from({ length: CHART_SERIES }, (_, i) => `--md-ext-color-chart-${i + 1}`)
+]
+
+describe('token names', () => {
+  for (const theme of ['light', 'dark']) {
+    it(`keeps the 49 MD3 role names unchanged in the ${theme} theme`, () => {
+      const names = Object.keys(THEMES[theme]).filter((name) => name.startsWith('--md-sys-color-')).sort()
+      expect(names, 'a role was renamed or removed; plugins that read it would break').toEqual([...MD3_ROLE_NAMES].sort())
+    })
+
+    it(`defines the status and chart token names in the ${theme} theme`, () => {
+      for (const name of EXT_TOKEN_NAMES) {
+        expect(THEMES[theme][name], `${name} should be defined in the ${theme} theme`).toMatch(/^#[0-9a-f]{6}$/i)
+      }
+    })
+  }
+})
+
+describe('interface contrast', () => {
+  // WCAG 1.4.11: the outline of an interactive control needs 3:1 against the surface it sits on.
+  for (const theme of ['light', 'dark']) {
+    it(`keeps the outline at 3:1 or more on the surfaces in the ${theme} theme`, () => {
+      for (const surface of ['--md-sys-color-surface', '--md-sys-color-surface-container-highest']) {
+        const ratio = contrastRatio(THEMES[theme]['--md-sys-color-outline'], THEMES[theme][surface])
+        expect(ratio, `outline on ${surface} is ${ratio.toFixed(2)}:1, below 3:1 in the ${theme} theme`).toBeGreaterThanOrEqual(3)
+      }
+    })
+
+    it(`keeps the status text at 4.5:1 or more on the surfaces in the ${theme} theme`, () => {
+      const statuses = ['--md-ext-color-success', '--md-ext-color-warning', '--md-sys-color-error']
+      for (const status of statuses) {
+        for (const surface of ['--md-sys-color-surface', '--md-sys-color-surface-container-highest']) {
+          const ratio = contrastRatio(THEMES[theme][status], THEMES[theme][surface])
+          expect(ratio, `${status} on ${surface} is ${ratio.toFixed(2)}:1, below 4.5:1 in the ${theme} theme`).toBeGreaterThanOrEqual(4.5)
+        }
+      }
+    })
+  }
+})
+
+// Machado, Oliveira and Fernandes (2009), severity 1.0, applied to linear RGB. Used only to check
+// that the status colours stay apart for a viewer with a colour vision deficiency.
+const CVD_MATRICES = {
+  protanopia: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  deuteranopia: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]],
+  tritanopia: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]]
+}
+
+const simulate = (hex, matrix) => {
+  const linear = hexToRgb(hex).map(channel)
+  const encode = (c) => {
+    const v = Math.min(1, Math.max(0, c))
+    return v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055
+  }
+  const rgb = matrix.map((row) => encode(row[0] * linear[0] + row[1] * linear[1] + row[2] * linear[2]))
+  return `#${rgb.map((c) => Math.round(c * 255).toString(16).padStart(2, '0')).join('')}`
+}
+
+describe('colour vision', () => {
+  // Every status also has a word beside it, so colour is not the only signal. The colour check keeps
+  // the three statuses from collapsing into one hue for a viewer who cannot tell red from green or
+  // blue from yellow. The threshold is 5 CIE76 units, below the lowest pair in the current palette (5.8).
+  for (const theme of ['light', 'dark']) {
+    for (const [deficiency, matrix] of Object.entries(CVD_MATRICES)) {
+      it(`keeps the success, warning and error colours at least 5 apart under ${deficiency} in the ${theme} theme`, () => {
+        const statuses = {
+          success: THEMES[theme]['--md-ext-color-success'],
+          warning: THEMES[theme]['--md-ext-color-warning'],
+          error: THEMES[theme]['--md-sys-color-error']
+        }
+        const seen = Object.fromEntries(Object.entries(statuses).map(([name, hex]) => [name, simulate(hex, matrix)]))
+        const pairs = [['success', 'warning'], ['success', 'error'], ['warning', 'error']]
+        for (const [a, b] of pairs) {
+          const difference = deltaE(seen[a], seen[b])
+          expect(difference, `${a} and ${b} look ${difference.toFixed(1)} apart under ${deficiency} in the ${theme} theme`).toBeGreaterThanOrEqual(5)
+        }
+      })
+    }
+  }
 })
