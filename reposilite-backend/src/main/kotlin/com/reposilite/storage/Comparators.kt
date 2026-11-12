@@ -32,6 +32,10 @@ class FilesComparator<T>(
 
 }
 
+/**
+ * A natural-order comparator, used to list the entries of a directory so that `1.2` comes before `1.10`. It is generic: it knows
+ * no layout. The version semantics of a format, such as which version is a pre-release, belong to that format and not here.
+ */
 open class VersionComparator<T>(
     private val versionMapper: (T) -> List<String>,
 ) : Comparator<T> {

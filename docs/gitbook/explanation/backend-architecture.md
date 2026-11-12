@@ -513,6 +513,17 @@ Reading the sequence:
 - With checksums requested, the same path is queued twice. The worker collapses duplicate rows, so the second queue entry is harmless.
 - Search is eventually consistent. A deploy returns before the index row exists, and the worker fills in the index on its next tick.
 
+## Repository formats
+
+A repository names its format with the optional `format` key. A repository without the key is `maven2`, and this version has no other format. The format layer is what a second format plugs into, and the code that is shared between formats asks the format instead of naming a layout.
+
+* **The format SPI** lives in `net.onelitefeather.ingot.format`. A `RepositoryFormat` declares its id, its path rules (`PathRules`), where it is mounted (`FormatMount`) and the handler of its requests. All of these types are experimental and carry `@ExperimentalIngotFormatApi`, so a plugin opts in explicitly.
+* **Discovery.** `RepositoryFormats` loads the implementations through `ServiceLoader` once at start. Two formats with the same id stop the start and name both classes. The set is immutable after that, so a rule that depends on the installed formats does not change while the server runs.
+* **Path rules.** `PathRules` answers the questions that the Maven layout used to answer in shared code: which files are generated metadata, which are resolution metadata, which reads count as downloads and which index path a write maps to. `MavenPathRules` gives the answers of the maven2 layout. The repository, the resolution provider, the mirror service and the index listeners ask the rules of their repository's format.
+* **Dispatch.** `RepositoryRouteDispatcher` serves `/{repository}/<gav>` for every format mounted on repository paths. It checks the request as the Maven routes did, then calls the handler of the format that the registry names for the repository. The maven2 handler (`MavenRepositoryRequestHandler`) picks the Maven endpoint by the method of the request, and the dashboard fallback and the redirect plugin reach it through the same dispatcher.
+
+A rule that depends on what the server has installed runs when settings are written, not when a stored document is read. A document written by a later version therefore still loads, and its unknown repositories are left out at start with a recorded failure. See [Repository settings](../reference/repository-settings.md#format).
+
 ## Layer view vs UML
 
 The two views answer different questions and are meant to be read together.
@@ -529,7 +540,7 @@ These deviations were found by reading imports and facade lookups in the code. E
 
 1. **Facades looked up across plugins without a declared dependency.** `FrontendPlugin` resolves `MavenFacade` (`FrontendPlugin.kt`, route lambda). `AccessTokenPlugin` resolves `MavenFacade` in lazy lambdas (`AccessTokenPlugin.kt`). `SearchPlugin` resolves `AccessTokenFacade` in the routing listener (`SearchPlugin.kt`). The declared `dependencies` are not checked against these calls.
 2. **Maven reaches search at runtime with no declared link.** `SearchFacadeArtifactIndexSink` finds `SearchFacade` per call. Maven code calls `ArtifactIndexSink` directly in five places (`RepositoryService.kt`, `MirrorService.kt`, `MetadataService.kt`, `PreservedBuildsListener.kt`, `MavenFacade.kt`) instead of only publishing events.
-3. **Application code imports infrastructure.** `RedirectPlugin` and `FrontendPlugin` import `maven.infrastructure.MavenEndpoints`, and `RedirectPlugin` constructs it. `CleanupPlugin` imports `scheduling.infrastructure.SqlScheduledJobClaims`. `SearchPlugin` imports `maven.infrastructure.SqlMirrorCacheLedger` and `scheduling.infrastructure.SqlScheduledJobClaims`, and takes an Exposed `Database` directly. The `*Components` files in `audit`, `configuration`, `statistics` and `token` take an Exposed `Database` as well.
+3. **Application code imports infrastructure.** `CleanupPlugin` imports `scheduling.infrastructure.SqlScheduledJobClaims`. `SearchPlugin` imports `maven.infrastructure.SqlMirrorCacheLedger` and `scheduling.infrastructure.SqlScheduledJobClaims`, and takes an Exposed `Database` directly. The `*Components` files in `audit`, `configuration`, `statistics` and `token` take an Exposed `Database` as well.
 4. **Cross-domain types in a plugin.** `AccessTokenPlugin` imports `identity.service.IdentityFacade` and `identity.storage.IdentityStore`. The token domain depends on identity internals, which the plugin graph does not declare.
 5. **HTTP types in the service and shared layers.** `identity/service/IdentityFacade.kt` imports `io.javalin.http.HttpStatus` constants (`CONFLICT`, `FORBIDDEN`, `PRECONDITION_FAILED`). `shared/ContextDsl.kt` imports Javalin and `identity.model.Action`. The service layer therefore knows about the web layer.
 6. **Event listeners without isolation.** `Extensions.emitEvent` calls listeners in sequence with no exception handling. Only `DeployIndexListener` and `DeleteIndexListener` wrap their calls in `guarded`.

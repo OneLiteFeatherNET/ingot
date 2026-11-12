@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven.application
 
 import com.reposilite.configuration.local.LocalConfiguration
@@ -30,7 +32,6 @@ import com.reposilite.maven.metadataLocksFor
 import com.reposilite.maven.infrastructure.SqlMirrorCacheLedger
 import com.reposilite.maven.infrastructure.CacheCommand
 import com.reposilite.maven.infrastructure.MavenApiEndpoints
-import com.reposilite.maven.infrastructure.MavenEndpoints
 import com.reposilite.maven.infrastructure.MavenLatestApiEndpoints
 import com.reposilite.maven.infrastructure.MavenStorageEndpoints
 import com.reposilite.plugin.api.Plugin
@@ -43,6 +44,9 @@ import com.reposilite.plugin.reposilite
 import com.reposilite.shared.http.ConfiguredHttpRemoteClientProvider
 import com.reposilite.shared.http.UpstreamStatusMode
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.format.ExtensionsFormatContext
+import net.onelitefeather.ingot.format.RepositoryFormats
+import net.onelitefeather.ingot.format.RepositoryRouteDispatcher
 import net.onelitefeather.ingot.repository.index.SearchFacadeArtifactIndexSink
 import java.time.Clock
 import panda.std.reactive.computed
@@ -86,6 +90,15 @@ internal class MavenPlugin : ReposilitePlugin() {
         // Consumers that start before this plugin look the registry up lazily, so it only has to exist by then.
         extensions().registerFacade(mavenFacade.repositoryRegistry())
 
+        // The routes of every repository format, served by the handler of the format of each repository. Registered as a facade
+        // so that the frontend and the redirect plugin hand their repository requests to the same dispatcher.
+        val repositoryRouteDispatcher = RepositoryRouteDispatcher(
+            registry = mavenFacade.repositoryRegistry(),
+            formats = RepositoryFormats.installed(),
+            context = ExtensionsFormatContext(extensions()),
+        )
+        extensions().registerFacade(repositoryRouteDispatcher)
+
         logger.info("")
         logger.info("--- Repositories")
         mavenFacade.getRepositories().forEach { logger.info("+ ${it.name} (${it.visibility.toString().lowercase()})") }
@@ -98,7 +111,7 @@ internal class MavenPlugin : ReposilitePlugin() {
         event { event: RoutingSetupEvent ->
             val localConfiguration = facade<LocalConfiguration>()
             event.registerRoutes(MavenApiEndpoints(mavenFacade))
-            event.registerRoutes(MavenEndpoints(mavenFacade, facade(), localConfiguration.compressionStrategy.get()))
+            event.registerRoutes(repositoryRouteDispatcher)
             event.registerRoutes(MavenLatestApiEndpoints(mavenFacade, localConfiguration.compressionStrategy.get()))
             event.registerRoutes(MavenStorageEndpoints(mavenFacade))
         }

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package net.onelitefeather.ingot.search.application
 
 import com.reposilite.maven.api.DeleteEvent
@@ -34,7 +36,7 @@ internal class DeployIndexListener(
 ) : EventListener<DeployEvent> {
 
     override fun onCall(event: DeployEvent) =
-        guarded(onFailure) { sink.indexChanged(event.repository.name, event.gav) }
+        guarded(onFailure) { sink.indexChanged(event.repository.name, event.gav, event.repository.repositoryFormat.pathRules) }
 
 }
 
@@ -51,7 +53,7 @@ internal class DeleteIndexListener(
     override fun onCall(event: DeleteEvent) =
         guarded(onFailure) {
             when {
-                event.gav.isChecksumSidecar() -> sink.indexChanged(event.repository.name, event.gav)
+                event.gav.isChecksumSidecar() -> sink.indexChanged(event.repository.name, event.gav, event.repository.repositoryFormat.pathRules)
                 else -> sink.removed(event.repository.name, event.gav.provenancePath())
             }
         }

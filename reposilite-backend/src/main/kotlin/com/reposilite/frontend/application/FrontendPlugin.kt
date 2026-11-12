@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.frontend.application
 
+import net.onelitefeather.ingot.format.RepositoryRouteDispatcher
 import com.reposilite.Reposilite
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.shared.SharedConfigurationFacade
@@ -24,8 +27,6 @@ import com.reposilite.frontend.infrastructure.CustomFrontendHandler
 import com.reposilite.frontend.infrastructure.FrontendSettingsEndpoint
 import com.reposilite.frontend.infrastructure.NotFoundHandler
 import com.reposilite.frontend.infrastructure.ResourcesFrontendHandler
-import com.reposilite.maven.MavenFacade
-import com.reposilite.maven.infrastructure.MavenEndpoints
 import net.onelitefeather.ingot.repository.RepositoryRegistry
 import com.reposilite.plugin.api.EventListener
 import com.reposilite.plugin.api.Plugin
@@ -99,20 +100,15 @@ internal class FrontendPlugin : ReposilitePlugin() {
 
                 if (parameters().deployTarget == DeployTarget.ALL) {
                     // Resolved here and not in initialize: MavenPlugin depends on this plugin, so its facade exists only
-                    // by the time routes are registered. The dashboard routes hand colliding repository requests to Maven.
-                    val mavenFacade = facade<MavenFacade>()
-
+                    // by the time routes are registered. The dashboard routes hand colliding repository requests to the
+                    // repository dispatcher, which serves them as the Maven routes do.
                     routes.add(
                         ResourcesFrontendHandler(
                             failureFacade = failureFacade,
                             frontendFacade = frontendFacade,
                             resourcesDirectory = FRONTEND_DIRECTORY,
                             repositoryRegistry = facade<RepositoryRegistry>(),
-                            mavenEndpoints = MavenEndpoints(
-                                mavenFacade = mavenFacade,
-                                frontendFacade = frontendFacade,
-                                compressionStrategy = localConfiguration.compressionStrategy.get()
-                            ),
+                            repositoryRouteDispatcher = facade<RepositoryRouteDispatcher>(),
                         )
                     )
                 }

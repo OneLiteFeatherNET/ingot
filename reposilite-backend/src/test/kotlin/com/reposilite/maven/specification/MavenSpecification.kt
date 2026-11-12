@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.format.ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven.specification
 
 import com.reposilite.auth.application.AuthenticationComponents
@@ -113,7 +115,7 @@ internal abstract class MavenSpecification {
     protected val logger = InMemoryLogger()
     protected val extensions = Extensions(logger)
 
-    private val failureFacade = FailureComponents(
+    protected val failureFacade = FailureComponents(
         journalist = logger
     ).failureFacade()
 

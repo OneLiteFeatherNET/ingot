@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven.application
 
+import net.onelitefeather.ingot.format.RepositoryFormats
+import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.frontend.application.FrontendSettings
@@ -68,6 +72,7 @@ internal class MavenComponents(
     private val metadataLocks: MetadataLocks = LockingMetadataLocks(clock),
     private val mirrorEnvironment: MirrorEnvironment = MirrorEnvironment.NONE,
     private val uploadChecksumDefault: UploadChecksumPolicy = UploadChecksumPolicy.IGNORE,
+    private val repositoryFormats: RepositoryFormats = RepositoryFormats.installed(),
 ) : PluginComponents {
 
     private val mirrorCache: MirrorCacheService by lazy { MirrorCacheService(mirrorCacheLedger, clock) }
@@ -117,6 +122,7 @@ internal class MavenComponents(
             artifactIndexSink = artifactIndexSink,
             mirrorEnvironment = mirrorEnvironment,
             uploadChecksumDefault = uploadChecksumDefault,
+            repositoryFormats = repositoryFormats,
         )
 
     private fun latestService(): LatestService =

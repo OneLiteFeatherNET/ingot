@@ -16,6 +16,11 @@
 
 package com.reposilite.maven
 
+/**
+ * Who may read a repository. This is a core concept of the server rather than a Maven one: the storage layer names it in its
+ * directory information, and plugins use it, so it keeps this package for binary compatibility. It is the one Maven type that
+ * the storage layer may depend on.
+ */
 enum class RepositoryVisibility {
     PUBLIC,
     HIDDEN,

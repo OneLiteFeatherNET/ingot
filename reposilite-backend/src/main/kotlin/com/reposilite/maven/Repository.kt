@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@file:OptIn(ExperimentalIngotFormatApi::class)
+
 package com.reposilite.maven
 
 import com.reposilite.maven.api.Checksum
-import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.maven.api.REPOSITORY_NAME_MAX_LENGTH
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.storage.StorageProvider
@@ -25,6 +26,8 @@ import com.reposilite.storage.api.Location
 import java.io.File
 import java.io.InputStream
 import java.nio.file.attribute.FileTime
+import net.onelitefeather.ingot.format.ExperimentalIngotFormatApi
+import net.onelitefeather.ingot.format.RepositoryFormat
 import net.onelitefeather.ingot.repository.RegisteredRepository
 import panda.std.Result
 
@@ -51,11 +54,17 @@ class Repository internal constructor(
     val versionPolicy: VersionPolicy = VersionPolicy.MIXED,
     /** Whether deploys and deletes are refused with 405. Reads are not affected. */
     val readOnly: Boolean = false,
+    /** The format of this repository, see [net.onelitefeather.ingot.format.RepositoryFormats]. */
+    internal val repositoryFormat: RepositoryFormat,
 ) : RegisteredRepository {
 
     init {
         check(name.length < REPOSITORY_NAME_MAX_LENGTH) { "Repository name cannot exceed $REPOSITORY_NAME_MAX_LENGTH characters" }
     }
+
+    /** The id of the format of this repository, `maven2` unless the repository names another installed format. */
+    override val format: String
+        get() = repositoryFormat.id
 
     /** Whether the declared type is set. Untyped repositories report the type they are derived as. */
     val typeExplicit: Boolean
@@ -84,10 +93,10 @@ class Repository internal constructor(
         if (resolutionCacheMaxEntries > 0) ResolutionCache(resolutionCacheMaxEntries) else null
 
     fun acceptsDeploymentOf(location: Location): Boolean =
-        redeployment || location.getSimpleName().contains(METADATA_FILE) || !storageProvider.exists(location)
+        redeployment || repositoryFormat.pathRules.isGeneratedMetadata(location) || !storageProvider.exists(location)
 
     fun acceptsCachingOf(gav: Location): Boolean =
-        !redeployment && !gav.getSimpleName().contains(METADATA_FILE)
+        !redeployment && !repositoryFormat.pathRules.isGeneratedMetadata(gav)
 
     fun writeFileChecksums(location: Location, bytes: ByteArray): Result<Unit, ErrorResponse> =
         writeFileChecksums(location, bytes.inputStream())

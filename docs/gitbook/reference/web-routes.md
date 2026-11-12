@@ -53,6 +53,8 @@ Not verified: the order between `/{repository}/<gav>` and the routes under `/api
 
 `GET /{repository}/<gav>` and `HEAD /{repository}/<gav>` read from a repository. `{repository}` is the repository id. `<gav>` is the path inside the repository.
 
+These routes are served by the repository dispatcher, for every format. It looks the repository up and hands the request to the handler of the repository's format. Every repository is a Maven (`maven2`) repository in this version, and a repository that does not exist is answered by the same Maven handler, so the answers below apply to every request under this path. See [Backend architecture](../explanation/backend-architecture.md#repository-formats).
+
 ### How a request is resolved
 
 1. The path is checked as a location. A path with one of the characters `:`, `<`, `>`, `"`, `'`, `\`, `|`, `?` or `*`, with a run of two or more dots, or with a control character answers `400`. Repeated and trailing slashes are removed.

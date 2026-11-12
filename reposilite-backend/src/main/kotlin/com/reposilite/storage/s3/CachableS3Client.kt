@@ -30,6 +30,27 @@ internal fun isMutableS3Key(key: String): Boolean {
 }
 
 /**
+ * The keys that a write makes stale in the head cache, besides the written key. Every returned key is a prefix: each cached entry
+ * whose key starts with it is dropped. A format that stores in an S3 storage names its own keys this way.
+ */
+typealias RelatedKeyRule = (key: String) -> Collection<String>
+
+/**
+ * The rule of earlier versions, which applies when no rule is given: the `maven-metadata.xml` two levels above the written key is
+ * dropped, because a new version may have changed the metadata of its artifact.
+ */
+val defaultRelatedKeys: RelatedKeyRule = { key ->
+    Path.of(key).parent?.parent?.resolve("maven-metadata.xml")?.toString()?.let { listOf(it) }.orEmpty()
+}
+
+/** A storage whose head cache takes the related keys of the format that stores in it, see [RelatedKeyRule]. */
+interface RelatedKeyAware {
+
+    fun useRelatedKeys(rule: RelatedKeyRule)
+
+}
+
+/**
  * This S3 clients caches head object requests
  */
 class CachableS3Client : DelegatingS3Client {
@@ -41,14 +62,21 @@ class CachableS3Client : DelegatingS3Client {
     @Volatile
     private var cache : Cache<String, HeadObjectResponse>
 
+    /** The keys a write makes stale, see [RelatedKeyRule]. Replaced by the format of the repository that stores in this client. */
+    @Volatile
+    private var relatedKeys: RelatedKeyRule = defaultRelatedKeys
+
     /** Guarded by this instance, see [bindToClusterBus]. */
     private var clusterBound = false
 
-    constructor(s3: S3Client, headObjectCache: Cache<String, HeadObjectResponse>) : super(s3) {
+    constructor(s3: S3Client, headObjectCache: Cache<String, HeadObjectResponse>) : this(s3, headObjectCache, defaultRelatedKeys)
+
+    constructor(s3: S3Client, headObjectCache: Cache<String, HeadObjectResponse>, relatedKeys: RelatedKeyRule) : super(s3) {
         this.delegate = s3
         this.settings = null
         this.ticker = Ticker.systemTicker()
         this.cache = headObjectCache
+        this.relatedKeys = relatedKeys
     }
 
     internal constructor(s3: S3Client, settings: S3MetadataCacheSettings, ticker: Ticker = Ticker.systemTicker()) : super(s3) {
@@ -99,14 +127,17 @@ class CachableS3Client : DelegatingS3Client {
         cache = newHeadObjectCache(cacheSettings, clusterBound = true, ticker = ticker)
     }
 
+    /** Replaces the rule of the keys a write makes stale. A format calls it once, when its repository is built. */
+    internal fun useRelatedKeys(rule: RelatedKeyRule) {
+        relatedKeys = rule
+    }
+
     private fun invalidate(s3Key: String) {
         cache.invalidate(s3Key)
-        // If a new object has been written, we also want to invalidate the cache for its maven-metadata.xml file.
-        // We don't look for special suffix, we just go blindly one level up and invalidate the maven-metadata.xml file.
-        // When in doubt, we invalidate the cache a bit too often, but it keeps the logic simple and more robust
-        Path.of(s3Key).parent?.parent?.let { parentPath ->
-            val metadataKey = parentPath.resolve("maven-metadata.xml").toString()
-            cache.asMap().keys.removeIf { s -> s.startsWith(metadataKey) }
+        // The related keys of the format are dropped as well. When in doubt, the cache is invalidated a bit too often.
+        val rule = relatedKeys
+        rule(s3Key).forEach { prefix ->
+            cache.asMap().keys.removeIf { s -> s.startsWith(prefix) }
         }
     }
 }

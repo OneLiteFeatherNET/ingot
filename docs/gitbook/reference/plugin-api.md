@@ -141,6 +141,27 @@ Set `response` to a `Result<R, ErrorResponse>`. Use `notFoundError(message)` fro
 
 If two routes have the same method and path, the first one registered wins.
 
+## Repository formats (experimental)
+
+A repository format is the part of Ingot that knows one layout, such as Maven. The format SPI lives in `net.onelitefeather.ingot.format`, and it is experimental:
+
+| Type | Purpose |
+| --- | --- |
+| `RepositoryFormat` | The id of a format, its path rules, its storage hints, where it is mounted and the handler of its requests. |
+| `RepositoryFormats` | The installed formats, keyed by id. Duplicate ids stop the start and name both classes. |
+| `PathRules` | Which files are generated metadata, which are resolution metadata, which reads count as downloads and which index path a write maps to. |
+| `StorageHints` | The keys that a write makes stale in an S3 head cache. |
+| `FormatMount` | Where a format is served. Only `RepositoryPath` (`/{repository}/<path>`) is served in this version. |
+| `RepositoryRequestHandler`, `RepositoryRequest`, `FormatContext` | The handler of the requests of a format, the request it receives and the facades it may look up. |
+
+Every type carries `@ExperimentalIngotFormatApi`, a Kotlin opt-in marker. Code that implements or calls these types needs `@OptIn(ExperimentalIngotFormatApi::class)`, and the members may change until the format SPI is declared stable.
+
+Limits of this version:
+
+* Formats are found only on the class path of the server, through the service file `META-INF/services/net.onelitefeather.ingot.format.RepositoryFormat`. A format jar in the plugins directory is not loaded yet.
+* The settings classes, `RepositorySettings` and `MavenSettings`, are not covered by the compatibility promise. `RepositorySettings` has a new `format` key as its last constructor parameter. Its previous constructor is kept, so code compiled against it still links, but `copy` has a new signature and a plugin that calls it must be compiled again.
+* `RepositoryRegistry` and `RegisteredRepository` are not stable either. `RegisteredRepository` now reports the `format` id of each repository.
+
 ## Frontend placeholders
 
 The dashboard and the files in the custom frontend directory can contain placeholders such as `{{REPOSILITE.TITLE}}`. The server replaces them when it serves a file. See [Serve a custom frontend](../how-to/serve-custom-frontend.md) for which files are scanned.

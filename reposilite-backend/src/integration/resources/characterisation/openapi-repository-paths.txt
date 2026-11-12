@@ -1,0 +1,4 @@
+/{repository}/{gav} DELETE Maven
+/{repository}/{gav} GET Maven
+/{repository}/{gav} POST Maven
+/{repository}/{gav} PUT Maven

@@ -17,8 +17,6 @@
 
 package com.reposilite.maven
 
-import com.reposilite.maven.api.Checksum
-import com.reposilite.maven.api.METADATA_FILE
 import com.reposilite.storage.api.Location
 import java.net.URI
 import java.net.URISyntaxException
@@ -172,7 +170,3 @@ internal fun upstreamSourceHost(upstream: String): String? {
 /** The key of a location in the ledger: the path without a leading slash, as the storage walk reports it. */
 internal fun Location.provenancePath(): String =
     toString().trimStart('/')
-
-/** Metadata and checksum files are neutral for provenance: they do not make a directory a version. */
-internal fun String.isMetadataOrChecksumFileName(): Boolean =
-    startsWith(METADATA_FILE) || Checksum.entries.any { endsWith(".${it.extension}") }
