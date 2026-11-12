@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+@file:OptIn(ExperimentalIngotSearchApi::class)
+
 package net.onelitefeather.ingot.opensearch.query
 
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -30,10 +33,17 @@ import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.PrecedenceRule
 import net.onelitefeather.ingot.search.access.RepositoryAccess
 import net.onelitefeather.ingot.search.access.SearchAccess
+import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import java.util.Locale
 
 /** The filter kinds of a group search. A facet leaves out the kind it counts (artifact search spec, 4.4). */
 internal enum class FilterKind { TEXT, GROUP, ARTIFACT, VERSION, REPOSITORY, EXTENSION, CLASSIFIER, SHA1, SNAPSHOT, ORIGIN, MODIFIED, SIZE }
+
+/**
+ * Which groups a search reads (search decision): the groups main returns, which are listed first in main's order, or the groups
+ * that only a word match returns, which are listed after them.
+ */
+internal enum class GroupPart { MAIN, WORDS }
 
 /**
  * The OpenSearch bodies of the artifact search (design D5). Each body is built as a tree of maps and lists from the request and
@@ -54,6 +64,7 @@ internal object OpenSearchQueries {
     private const val MAX_FILES_SIZE = 200
     private const val FACET_BUCKETS = 20
     private const val MAX_VERSIONS_PER_ARTIFACT = 5_000
+    private const val MAX_REPOSITORIES = 1_000
     private const val NO_CLASSIFIER = "-"
     private val WHITESPACE = Regex("\\s+")
     private val SHA1 = Regex("[0-9a-fA-F]{40}")
@@ -84,13 +95,21 @@ internal object OpenSearchQueries {
     }
 
     /**
-     * One window of groups in the requested order. Sorts by a key with a field of its own (group, artifact or version) use a
-     * composite aggregation, whose sources are the sort order. Sorts by an aggregate (modification, size) order the terms
-     * aggregation on the GAV key by that aggregate. The window is `page * size + size`, which the plugin then sorts with
-     * [net.onelitefeather.ingot.search.GroupOrder] and slices.
+     * Whether the request reads the word match (search decision): one of its plain words has parts that the token table holds.
+     * The database engine reads the token table in exactly these cases, and the word-only groups exist only then.
      */
-    fun groupWindow(query: ArtifactSearchQuery, access: SearchAccess): ObjectNode {
-        val window = windowOf(query.page, query.size)
+    fun usesWordMatch(query: ArtifactSearchQuery): Boolean = words(query.q).any { word ->
+        ':' !in word && '.' !in word && SearchTokens.partsOf(word).let { parts -> parts.isNotEmpty() && parts.size <= MAX_CONSTRAINTS }
+    }
+
+    /**
+     * One window of the groups of [part] in the requested order, the first [window] of them. Sorts by a key with a field of its
+     * own (group, artifact or version) use a composite aggregation, whose sources are the sort order. Sorts by an aggregate
+     * (modification, size) order the terms aggregation on the GAV key by that aggregate. The plugin sorts the window with
+     * [net.onelitefeather.ingot.search.GroupOrder] and slices the page.
+     */
+    fun groupWindow(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart, window: Int): ObjectNode {
+        require(window in 1..MAX_WINDOW) { "the window must be between 1 and $MAX_WINDOW" }
         val direction = directionOf(query.order)
         val groups = when (query.sort) {
             SearchSort.GROUP_ID, SearchSort.ARTIFACT_ID, SearchSort.VERSION -> compositeGroups(query.sort, direction, window)
@@ -100,29 +119,58 @@ internal object OpenSearchQueries {
         return tree(
             linkedMapOf<String, Any>(
                 "size" to 0,
-                "query" to filterMap(query, access, null),
+                "query" to groupFilter(query, access, part),
                 "aggs" to mapOf("groups" to groups),
             ),
         )
     }
 
-    /** The number of groups, bucketed up to one above the total cap, so the plugin can tell that more exist. */
-    fun total(query: ArtifactSearchQuery, access: SearchAccess): ObjectNode = tree(
+    /** The number of groups of [part], bucketed up to one above the total cap, so the plugin can tell that more exist. */
+    fun groupTotal(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart): ObjectNode = tree(
         linkedMapOf<String, Any>(
             "size" to 0,
-            "query" to filterMap(query, access, null),
+            "query" to groupFilter(query, access, part),
             "aggs" to mapOf("groups" to mapOf("terms" to mapOf("field" to "gav", "size" to TOTAL_BUCKETS))),
         ),
     )
 
     /**
-     * The versions of each artifact key, `groupIdLc:artifactIdLc`, as the writer stores the `artifact_key` field. The request
-     * filters do not apply to the latest version (4.6), only the access value does.
+     * The groups of the repositories of the given GAV keys, with the repositories that hold each one and their origins. The
+     * request's filters do not apply (4.3): a group lists every copy the caller may see, and only the access value filters it.
+     */
+    fun presence(gavKeys: List<String>, access: SearchAccess): ObjectNode {
+        require(gavKeys.isNotEmpty()) { "at least one GAV key is required" }
+        val origins = mapOf("terms" to mapOf("field" to "origin", "size" to 2))
+        val repositories = mapOf(
+            "terms" to mapOf("field" to "repository", "size" to MAX_REPOSITORIES),
+            "aggs" to mapOf("origins" to origins),
+        )
+        return tree(
+            linkedMapOf<String, Any>(
+                "size" to 0,
+                "query" to filterOf(listOf(termsOf("gav", gavKeys), accessClause(access))),
+                "aggs" to mapOf(
+                    "gavs" to mapOf(
+                        "terms" to mapOf("field" to "gav", "size" to gavKeys.size),
+                        "aggs" to mapOf("repositories" to repositories),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    /**
+     * The versions of each artifact key, `groupIdLc:artifactIdLc`, as the writer stores the `artifact_key` field. Under each
+     * lower-cased version the display value is read, as the database does, so that the latest version is the same string.
+     * The request filters do not apply to the latest version (4.6), only the access value does.
      */
     fun latestVersions(artifactKeys: List<String>, access: SearchAccess): ObjectNode {
         require(artifactKeys.isNotEmpty()) { "at least one artifact key is required" }
-        val filter = listOf(termsOf("artifact_key", artifactKeys), accessClause(access))
-        val versions = mapOf("terms" to mapOf("field" to "version_lc", "size" to MAX_VERSIONS_PER_ARTIFACT + 1))
+        val display = mapOf("terms" to mapOf("field" to "version", "size" to 1, "order" to mapOf("_key" to "asc")))
+        val versions = mapOf(
+            "terms" to mapOf("field" to "version_lc", "size" to MAX_VERSIONS_PER_ARTIFACT + 1),
+            "aggs" to mapOf("display" to display),
+        )
         val artifacts = mapOf(
             "terms" to mapOf("field" to "artifact_key", "size" to artifactKeys.size),
             "aggs" to mapOf("versions" to versions),
@@ -130,7 +178,7 @@ internal object OpenSearchQueries {
         return tree(
             linkedMapOf<String, Any>(
                 "size" to 0,
-                "query" to filterOf(filter),
+                "query" to filterOf(listOf(termsOf("artifact_key", artifactKeys), accessClause(access))),
                 "aggs" to mapOf("artifacts" to artifacts),
             ),
         )
@@ -175,20 +223,45 @@ internal object OpenSearchQueries {
     fun describe(access: SearchAccess): String =
         "repositories=${access.repositories.size} terms=${access.repositories.sumOf { termCount(it.path) }}"
 
-    // ---- the filters of a request -------------------------------------------------------------------------------------
-
-    private fun filterMap(query: ArtifactSearchQuery, access: SearchAccess, except: FilterKind?): Map<String, Any> {
-        val clauses = parts(query).filterKeys { it != except }.values.flatten() + accessClause(access)
-        return filterOf(clauses)
+    /** Validates the window of a group request, as the database engine does, before any body is built. */
+    fun checkWindow(page: Int, size: Int) {
+        if (page < 0) throw InvalidSearchQueryException("page", "page must not be negative")
+        if (size !in 1..MAX_SEARCH_SIZE) throw InvalidSearchQueryException("size", "size must be between 1 and $MAX_SEARCH_SIZE")
+        if (page.toLong() * size + size > MAX_SEARCH_WINDOW) {
+            throw InvalidSearchQueryException("page", "Result window is limited to $MAX_SEARCH_WINDOW entries, narrow the filters")
+        }
     }
 
-    /** The clauses of the request per kind, in the order of [FilterKind]. A kind without a clause is absent. */
+    // ---- the filters of a request -------------------------------------------------------------------------------------
+
+    private const val MAX_SEARCH_SIZE = 100
+    private const val MAX_SEARCH_WINDOW = 10_000L
+
+    /** The filter of the groups of [part]: the main groups, or the word-only groups that the main part does not return. */
+    private fun groupFilter(query: ArtifactSearchQuery, access: SearchAccess, part: GroupPart): Map<String, Any> = when (part) {
+        GroupPart.MAIN -> filterOf(textClauses(query.q, overall = false) + others(query) + accessClause(access))
+        GroupPart.WORDS -> mapOf(
+            "bool" to mapOf(
+                "filter" to textClauses(query.q, overall = true) + others(query) + accessClause(access),
+                "must_not" to listOf(filterOf(textClauses(query.q, overall = false) + others(query))),
+            ),
+        )
+    }
+
+    private fun filterMap(query: ArtifactSearchQuery, access: SearchAccess, except: FilterKind?): Map<String, Any> {
+        val text = if (except == FilterKind.TEXT) emptyList() else textClauses(query.q, overall = true)
+        return filterOf(text + others(query, except) + accessClause(access))
+    }
+
+    /** The clauses of the request other than its text, in the order of [FilterKind]. A kind without a clause is absent. */
+    private fun others(query: ArtifactSearchQuery, except: FilterKind? = null): List<Map<String, Any>> =
+        parts(query).filterKeys { it != except }.values.flatten()
+
     private fun parts(query: ArtifactSearchQuery): Map<FilterKind, List<Map<String, Any>>> {
         val parts = LinkedHashMap<FilterKind, List<Map<String, Any>>>()
         fun add(kind: FilterKind, clauses: List<Map<String, Any>>) {
             if (clauses.isNotEmpty()) parts[kind] = clauses
         }
-        add(FilterKind.TEXT, textClauses(query.q))
         add(FilterKind.GROUP, listOfNotNull(nonBlank(query.groupId)?.let { prefixOf("group_id_lc", it.lowercase(Locale.ROOT)) }))
         add(FilterKind.ARTIFACT, listOfNotNull(nonBlank(query.artifactId)?.let { prefixOf("artifact_id_lc", it.lowercase(Locale.ROOT)) }))
         add(FilterKind.VERSION, listOfNotNull(versionClause(query)))
@@ -205,13 +278,23 @@ internal object OpenSearchQueries {
         return parts
     }
 
-    private fun textClauses(q: String?): List<Map<String, Any>> {
+    /** The words of q, lower-cased, after the length and token checks that the database engine makes. */
+    private fun words(q: String?): List<String> {
         val text = q?.trim() ?: return emptyList()
         if (text.length > MAX_QUERY_LENGTH) throw InvalidSearchQueryException("q", "q is limited to $MAX_QUERY_LENGTH characters")
         val words = text.split(WHITESPACE).filter { it.isNotEmpty() }.map { it.lowercase(Locale.ROOT) }
         if (words.size > MAX_TOKENS) throw InvalidSearchQueryException("q", "q is limited to $MAX_TOKENS tokens")
+        return words
+    }
+
+    /**
+     * One clause per word. [overall] adds the word match of a plain word to its main match, so the clause is main's match or the
+     * word match (the overall text); without it the clause is main's own match, which main uses to list its groups.
+     */
+    private fun textClauses(q: String?, overall: Boolean): List<Map<String, Any>> {
+        val words = words(q)
         return words.mapIndexed { index, word ->
-            if (':' in word) coordinates(word) else plainWord(word, last = index == words.lastIndex)
+            if (':' in word) coordinates(word) else plainWord(word, last = index == words.lastIndex, overall = overall)
         }
     }
 
@@ -233,17 +316,13 @@ internal object OpenSearchQueries {
     }
 
     /**
-     * A plain word: a groupId prefix, an artifactId prefix or the exact version, or, when the word splits into tokens, every token
-     * of the word in the token field. The last token of the query and its last part are prefixes.
+     * A plain word: a groupId prefix, an artifactId prefix or the exact version, and, when [overall] is set and the word splits into
+     * tokens, every token of the word in the token field. The last token of the query and its last part are prefixes.
      */
-    private fun plainWord(word: String, last: Boolean): Map<String, Any> = should(
-        listOfNotNull(
-            prefixOf("group_id_lc", word),
-            prefixOf("artifact_id_lc", word),
-            termOf("version_lc", word),
-            wordMatch(word, last),
-        ),
-    )
+    private fun plainWord(word: String, last: Boolean, overall: Boolean): Map<String, Any> {
+        val main = listOf(prefixOf("group_id_lc", word), prefixOf("artifact_id_lc", word), termOf("version_lc", word))
+        return should(if (overall) main + listOfNotNull(wordMatch(word, last)) else main)
+    }
 
     private fun wordMatch(word: String, last: Boolean): Map<String, Any>? {
         if ('.' in word) return null
@@ -407,16 +486,26 @@ internal object OpenSearchQueries {
     )
 
     /**
-     * The values of one group. The display coordinates come from one hit: the display fields have no doc values, so a `min`
-     * cannot read them. The file count is the document count of the bucket.
+     * The values of one group, as the database's `GROUP BY` reads them (4.3). The lower-cased keys come from the first value of
+     * each bucket, since one GAV key has one lower-cased tuple. The display values are the smallest original spelling of the
+     * group, the artifact and the version, read from doc values. The file count is the document count of the bucket.
      */
     private fun groupAggregations(): Map<String, Any> = mapOf(
-        "display" to mapOf(
-            "top_hits" to mapOf("size" to 1, "_source" to mapOf("includes" to listOf("group_id", "artifact_id", "version"))),
-        ),
+        "groupLc" to termsOne("group_id_lc"),
+        "artifactLc" to termsOne("artifact_id_lc"),
+        "versionLc" to termsOne("version_lc"),
+        "group" to termsOne("group_id", ordered = true),
+        "artifact" to termsOne("artifact_id", ordered = true),
+        "version" to termsOne("version", ordered = true),
         "lastModified" to mapOf("max" to mapOf("field" to "last_modified")),
         "sizeBytes" to mapOf("sum" to mapOf("field" to "size_bytes")),
     )
+
+    private fun termsOne(field: String, ordered: Boolean = false): Map<String, Any> {
+        val terms = linkedMapOf<String, Any>("field" to field, "size" to 1)
+        if (ordered) terms["order"] = mapOf("_key" to "asc")
+        return mapOf("terms" to terms)
+    }
 
     // ---- helpers ------------------------------------------------------------------------------------------------------
 

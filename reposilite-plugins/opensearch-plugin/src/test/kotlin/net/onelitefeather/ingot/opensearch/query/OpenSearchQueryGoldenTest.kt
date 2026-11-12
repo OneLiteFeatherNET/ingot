@@ -140,18 +140,18 @@ internal class OpenSearchQueryGoldenTest {
 
     @Test
     fun `should window the groups with a composite aggregation in the requested sort order`() {
-        assertGolden("group-window", OpenSearchQueries.groupWindow(ArtifactSearchQuery(page = 1, size = 20), access))
+        assertGolden("group-window", OpenSearchQueries.groupWindow(ArtifactSearchQuery(page = 1, size = 20), access, GroupPart.MAIN, window = 40))
     }
 
     @Test
     fun `should window the groups by the summed size when the request sorts by size`() {
         val query = ArtifactSearchQuery(sort = SearchSort.SIZE, order = SearchOrder.DESC, page = 1, size = 20)
-        assertGolden("group-window-size", OpenSearchQueries.groupWindow(query, access))
+        assertGolden("group-window-size", OpenSearchQueries.groupWindow(query, access, GroupPart.MAIN, window = 40))
     }
 
     @Test
     fun `should count the groups up to one above the total cap`() {
-        assertGolden("total", OpenSearchQueries.total(ArtifactSearchQuery(groupId = "net"), access))
+        assertGolden("total", OpenSearchQueries.groupTotal(ArtifactSearchQuery(groupId = "net"), access, GroupPart.MAIN))
     }
 
     @Test

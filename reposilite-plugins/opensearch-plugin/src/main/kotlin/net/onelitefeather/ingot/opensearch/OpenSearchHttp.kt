@@ -24,6 +24,7 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.Base64
 import java.util.Locale
+import javax.net.ssl.SSLContext
 
 /** One request as the plugin sends it. Header names are as written here. */
 internal data class HttpCall(
@@ -99,9 +100,9 @@ internal class OpenSearchHttp(
 }
 
 /** The production exchange on the JDK client. The default SSL context of the JVM is used, with hostname verification. */
-internal class JdkHttpExchange(private val timeout: Duration) : HttpExchange {
+internal class JdkHttpExchange(private val timeout: Duration, sslContext: SSLContext? = null) : HttpExchange {
 
-    private val client: HttpClient = HttpClient.newBuilder().connectTimeout(timeout).build()
+    private val client: HttpClient = HttpClient.newBuilder().connectTimeout(timeout).apply { sslContext?.let(::sslContext) }.build()
 
     override fun exchange(call: HttpCall): HttpAnswer {
         val publisher = call.body?.let { HttpRequest.BodyPublishers.ofString(it) } ?: HttpRequest.BodyPublishers.noBody()

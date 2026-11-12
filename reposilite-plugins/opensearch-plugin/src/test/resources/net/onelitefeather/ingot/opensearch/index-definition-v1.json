@@ -33,24 +33,21 @@
         "normalizer": "ingot_lowercase"
       },
       "group_id": {
-        "type": "keyword",
-        "doc_values": false
+        "type": "keyword"
       },
       "group_id_lc": {
         "type": "keyword",
         "normalizer": "ingot_lowercase"
       },
       "artifact_id": {
-        "type": "keyword",
-        "doc_values": false
+        "type": "keyword"
       },
       "artifact_id_lc": {
         "type": "keyword",
         "normalizer": "ingot_lowercase"
       },
       "version": {
-        "type": "keyword",
-        "doc_values": false
+        "type": "keyword"
       },
       "version_lc": {
         "type": "keyword",
