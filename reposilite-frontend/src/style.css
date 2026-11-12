@@ -30,6 +30,12 @@
 @plugin "@tailwindcss/forms";
 
 /*
+ * The layer of plugin stylesheets comes last. Its position is fixed here, so a sheet that loads later cannot reorder the
+ * layers: a plugin rule beats the utilities of the dashboard, and an unlayered rule of the dashboard still beats it.
+ */
+@layer theme, base, components, utilities, ingot-plugins;
+
+/*
  * The dashboard toggles a `dark` class on the document root rather than following the
  * media query, because the theme picker in the header offers an explicit light and dark
  * choice next to `auto`. See src/store/theme.js and src/App.vue.

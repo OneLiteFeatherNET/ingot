@@ -23,6 +23,7 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { createURL, handleRequest } from './client'
 import { setContributions } from '../navigation/registry'
+import { applyPluginStyles } from './pluginStyles'
 
 // False until the manifest of the current session is known, so a page that is waiting for it is not judged.
 const pluginUiReady = ref(false)
@@ -32,8 +33,10 @@ const loadPluginUi = async () => {
   try {
     const { data } = await axios.get(createURL('/api/frontend/plugin-ui'), handleRequest({ withCredentials: true, headers: {} }))
     setContributions(data)
+    applyPluginStyles(data?.stylesheets)
   } catch {
     setContributions(null)
+    applyPluginStyles([])
   } finally {
     pluginUiReady.value = true
   }
@@ -41,6 +44,7 @@ const loadPluginUi = async () => {
 
 const clearPluginUi = () => {
   setContributions(null)
+  applyPluginStyles([])
   pluginUiReady.value = true
 }
 
