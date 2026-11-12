@@ -64,6 +64,13 @@ internal class FakeArtifactSearchBackend(
     /** Called with each batch before it is applied. */
     var onApply: (List<IndexAction>) -> Unit = {}
 
+    /** How many times [open] was called. */
+    var openCalls = 0
+        private set
+
+    /** What [open] throws, or null when it opens. */
+    var openFailure: RuntimeException? = null
+
     /** What [health] answers. */
     var healthAnswer: BackendHealth = BackendHealth.Up
 

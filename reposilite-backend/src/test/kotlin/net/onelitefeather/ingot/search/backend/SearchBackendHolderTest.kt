@@ -165,6 +165,25 @@ internal class SearchBackendHolderTest {
     }
 
     @Test
+    fun `the holder opens the backend it creates before it checks the health`() {
+        val holder = holder()
+        holder.tick()
+
+        assertThat(fake.openCalls).`as`("open calls of the backend the holder created").isEqualTo(1)
+        assertThat(holder.state).`as`("state after the open").isEqualTo(SearchBackendState.AVAILABLE)
+    }
+
+    @Test
+    fun `an open that throws from the backend is a failed open and the backend is not kept`() {
+        fake.openFailure = IllegalStateException("index not reachable")
+        val holder = holder()
+        holder.tick()
+
+        assertThat(holder.state).`as`("state when the backend's open throws").isEqualTo(SearchBackendState.OPEN_FAILED)
+        assertThat(holder.backendOrNull()).`as`("backend of a failed open").isNull()
+    }
+
+    @Test
     fun `the outbox is not drained while the backend cannot open`() {
         failuresBeforeOpen = 1
         val holder = holder()
