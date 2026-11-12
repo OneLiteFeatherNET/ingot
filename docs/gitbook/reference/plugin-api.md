@@ -74,8 +74,11 @@ Listeners run synchronously, on the thread that emitted the event. Listeners for
 | `DeployEvent` (`com.reposilite.maven.api`) | After a file is stored by a deployment. | `repository`, `gav`, `by` |
 | `DeleteEvent` (`com.reposilite.maven.api`) | After a file is removed. | `repository`, `gav`, `by`, `cleanupRunId` |
 | `AuditEvent` (`com.reposilite.audit.api`) | When an audited action happens. | `action`, `actor`, `repository`, `path`, `details`, `success` |
+| `ArtifactSearchBackendRegistrationEvent` (`net.onelitefeather.ingot.search.backend`, experimental) | After every plugin has initialized. Register in `initialize` or `load`. | `register(factory)` |
 
 Do not put secret values in `AuditEvent.details`. Use names, counts and field paths.
+
+The search backend event is experimental, like the other types of the search backend API, which carry `@ExperimentalIngotSearchApi`. A plugin registers a search backend in it, see [Write a search backend plugin](../how-to/write-a-search-backend-plugin.md).
 
 ## Kotlin helpers
 

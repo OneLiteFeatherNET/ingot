@@ -38,6 +38,16 @@ The search index keeps the words of each group, artifact and version in a table 
 
 A plain word of a search now also matches a part of a name that starts after a separator. `core` finds `spring-core`, so **searches can return groups they did not return before**. Every group that matched before still matches. Rows indexed before the upgrade have no word tokens until a background sweep fills them in; the sweep runs on the first tick after the start and then every six hours, and the search answer reports `tokensComplete: false` and the state `BUILDING` until it has finished. A rollback to the previous version works without a step; the previous version ignores the new column and the table.
 
+### Search backends (experimental)
+
+A search backend can be supplied by a plugin, see [Write a search backend plugin](../how-to/write-a-search-backend-plugin.md). The interfaces are experimental: they live in `net.onelitefeather.ingot.search.backend` and carry `@ExperimentalIngotSearchApi`, and their members may change before the API is declared stable. Nothing changes for an installation that keeps `searchEngine` at its default `database`.
+
+One answer changes on purpose. A `searchEngine` value that no backend has registered used to switch search off, with `404` on every search route. It now answers `503` with `Retry-After` and a problem body that names the value, and the Maintenance page shows the reason. An installation that runs such a value sets `searchEngine` to `database`, or to the id of the backend it runs.
+
+The status of `GET /api/maven/search/index` gains a `backend` block. The existing fields keep their meaning. See [Search filters and API](search-filters-and-api.md#the-backend-block).
+
+No configuration key, environment variable, volume, manifest, image or plugin has to change.
+
 ### Configuration file
 
 | Setting | Change |
