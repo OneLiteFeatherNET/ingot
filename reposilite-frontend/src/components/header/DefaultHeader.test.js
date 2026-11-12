@@ -68,19 +68,10 @@ describe('DefaultHeader', () => {
     expect(container.find('h1').exists(), 'the title sits in it').toBe(true)
   })
 
-  it('takes the administration frame width when the page is an administration page', () => {
-    const wrapper = mountHeader({ framed: true })
-
-    const container = wrapper.find('header > .container')
-    expect(container.classes(), 'the same width rule as the administration frame').toEqual(
-      expect.arrayContaining(['max-w-[1280px]', 'min-[1920px]:max-w-[1600px]'])
-    )
-  })
-
-  it('keeps the usual container width on pages without the administration frame', () => {
+  it('spans the full window width on every page, so the title lines up with full-width content', () => {
     const wrapper = mountHeader()
 
-    expect(wrapper.find('header > .container').classes()).not.toContain('max-w-[1280px]')
+    expect(wrapper.find('header > .container').classes(), 'no maximum width, as the wide pages have none').toContain('max-w-none')
   })
 
   it('draws the brand rule under the top bar across its whole width', () => {

@@ -74,6 +74,14 @@ describe('AccountView', () => {
     holder.session = null
   })
 
+  it('keeps the account page at the 960 pixel reading measure', async () => {
+    await mountView()
+
+    expect(wrapper.find('[data-ingot-component="account-view"]').classes(), 'a reading page, at the start of the column').toEqual(
+      expect.arrayContaining(['max-w-[960px]'])
+    )
+  })
+
   it('renders the profile with the teams and the instance admin badge', async () => {
     await mountView({ admin: true, teams: ['developers', 'release'] })
 

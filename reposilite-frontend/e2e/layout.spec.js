@@ -50,3 +50,70 @@ test.describe('administration page header while scrolling', () => {
     expect(await topOf(appBar), 'the app bar stays at the top of the screen').toBe(0)
   })
 })
+
+// The wide screens of use-wide-screens (D2 and D4): the repository table shows more columns, the dashboard lays its
+// charts out in more columns, a settings form stays at the reading measure, and the overview keeps the snippet card
+// beside the browse list. The cases run at 1920 and 2560 pixels only.
+test.describe('wide screens', () => {
+  for (const width of [1920, 2560]) {
+    test.describe(`at ${width} pixels`, () => {
+      test.beforeEach(async ({ adminPage: page }) => {
+        await page.setViewportSize({ width, height: 900 })
+      })
+
+      test('shows the address column, and the storage column only from 2560 pixels', async ({ adminPage: page, seed }) => {
+        await seed.repository('wide-columns')
+        await page.goto(siteUrl('/settings/repositories'))
+
+        await expect(page.getByRole('columnheader', { name: 'Address', exact: true }), 'the address is shown').toBeVisible()
+        const storage = page.getByRole('columnheader', { name: 'Storage', exact: true })
+        if (width >= 2560) {
+          await expect(storage, 'the storage column has room at 2560 pixels').toBeVisible()
+        } else {
+          await expect(storage, 'the storage column is still hidden at 1920 pixels').toBeHidden()
+        }
+      })
+
+      test('lays the resource charts out in two columns from 1920 pixels and three from 2560 pixels', async ({ adminPage: page }) => {
+        await page.goto(siteUrl('/dashboard'))
+        const memory = page.getByRole('heading', { name: 'Memory', exact: true })
+        const threads = page.getByRole('heading', { name: 'Threads', exact: true })
+        await expect(memory).toBeVisible()
+        await expect(threads).toBeVisible()
+
+        const first = await memory.boundingBox()
+        const second = await threads.boundingBox()
+        expect(Math.abs(first.y - second.y), 'the two charts share one row').toBeLessThan(2)
+        expect(second.x, 'the threads chart sits to the right of the memory chart').toBeGreaterThan(first.x + first.width / 2)
+
+        const tracks = await page.locator('[data-ingot-component="resource-trends"]').evaluate(
+          element => getComputedStyle(element).gridTemplateColumns.split(' ').length
+        )
+        expect(tracks, 'the number of chart columns at this width').toBe(width >= 2560 ? 3 : 2)
+      })
+
+      test('keeps a settings form at most 960 pixels wide', async ({ adminPage: page }) => {
+        await page.goto(siteUrl('/settings/audit'))
+        const frame = page.getByRole('main').locator('[data-ingot-component="administration-frame"]')
+        await expect(frame).toBeVisible()
+
+        const box = await frame.boundingBox()
+        expect(box.width, 'the width of the settings page in px').toBeLessThanOrEqual(960)
+      })
+
+      test('places the snippet card beside the browse list on the overview', async ({ adminPage: page, seed }) => {
+        await seed.repository('wide-overview')
+        await page.goto(siteUrl('/'))
+        const list = page.getByRole('heading', { name: 'Repositories', exact: true })
+        const card = page.locator('[data-ingot-component="snippets-card"]')
+        await expect(list).toBeVisible()
+        await expect(card).toBeVisible()
+
+        const listBox = await list.boundingBox()
+        const cardBox = await card.boundingBox()
+        expect(cardBox.x, 'the card starts to the right of the list').toBeGreaterThan(listBox.x + 100)
+        expect(cardBox.y, 'the card starts on the same row as the list').toBeLessThan(listBox.y + listBox.height + 200)
+      })
+    })
+  }
+})

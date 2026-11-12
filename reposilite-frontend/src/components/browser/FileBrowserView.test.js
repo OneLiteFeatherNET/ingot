@@ -426,6 +426,14 @@ describe('FileBrowserView details layout', () => {
     expect(layoutGrid(wrapper).classes(), 'no side column is reserved for a folded card').not.toContain(SIDE_BY_SIDE)
   })
 
+  it('has no maximum width, so the listing takes the full window width after the side navigation', () => {
+    localStorage.setItem(DETAILS_COLLAPSED_KEY, 'false')
+
+    const wrapper = mountView()
+
+    expect(layoutGrid(wrapper).classes(), 'a wide page is not capped at the container width').toContain('max-w-none')
+  })
+
   it('changes the layout when the card is folded from the page', async () => {
     localStorage.setItem(DETAILS_COLLAPSED_KEY, 'false')
     const wrapper = mountView()

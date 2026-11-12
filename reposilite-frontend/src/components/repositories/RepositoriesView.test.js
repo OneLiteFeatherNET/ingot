@@ -236,9 +236,9 @@ describe('the repositories table', () => {
     await mountPage()
 
     const hidden = (label) => headerOf(label).classes()
-    expect(hidden('Storage'), 'Storage is the first to go').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))
-    expect(hidden('Version policy'), 'Version policy is shown from 1600 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1600px]:table-cell']))
-    expect(hidden('Visibility'), 'Visibility is shown from 1600 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1600px]:table-cell']))
+    expect(hidden('Storage'), 'Storage is the first to go, shown from 2560 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[2560px]:table-cell']))
+    expect(hidden('Version policy'), 'Version policy is shown from 1920 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))
+    expect(hidden('Visibility'), 'Visibility is shown from 1920 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1920px]:table-cell']))
     expect(hidden('Write policy'), 'Write policy is shown from 1240 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1240px]:table-cell']))
     expect(hidden('Address'), 'Address is shown from 1240 pixels').toEqual(expect.arrayContaining(['hidden', 'min-[1240px]:table-cell']))
     expect(hidden('Name'), 'Name is always shown').not.toContain('hidden')
