@@ -74,7 +74,7 @@ test.describe('wide screens', () => {
         }
       })
 
-      test('lays the resource charts out in two columns from 1920 pixels and three from 2560 pixels', async ({ adminPage: page }) => {
+      test('lays the resource charts out in two columns at this width, with no empty third column', async ({ adminPage: page }) => {
         await page.goto(siteUrl('/dashboard'))
         const memory = page.getByRole('heading', { name: 'Memory', exact: true })
         const threads = page.getByRole('heading', { name: 'Threads', exact: true })
@@ -92,7 +92,17 @@ test.describe('wide screens', () => {
         // The charts sit in one grid: the innermost grid that holds both headings names the columns it draws.
         const chartGrid = page.locator('div.grid').filter({ has: memory }).filter({ has: threads }).last()
         const tracks = await chartGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)
-        expect(tracks, 'the number of chart columns at this width').toBe(width >= 2560 ? 3 : 2)
+        expect(tracks, 'the number of chart columns at this width').toBe(2)
+      })
+
+      test('gives the getting started checklist the content width, with no blank block beside it', async ({ adminPage: page }) => {
+        await page.goto(siteUrl('/dashboard'))
+        // The checklist's own button sits at its right edge, so its right edge shows how wide the card is.
+        const hide = page.getByRole('button', { name: 'Hide checklist' })
+        await expect(hide).toBeVisible()
+
+        const box = await hide.boundingBox()
+        expect(box.x + box.width, 'the checklist reaches well past the middle of the window').toBeGreaterThan(width * 0.6)
       })
 
       test('keeps a settings form at most 960 pixels wide', async ({ adminPage: page }) => {

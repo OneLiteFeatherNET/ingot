@@ -73,14 +73,14 @@ describe('ResourceTrends', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps two chart columns from 1024 pixels as before, and adds a third from 2560 pixels', async () => {
+  it('keeps the two chart columns at every width, one column below 1024 pixels', async () => {
     session.client = ref(clientWith(() => Promise.resolve({ data: [] })))
     const wrapper = mount(ResourceTrends)
     await flushPromises()
 
     const grid = Array.from(wrapper.element.classList)
     expect(grid, 'two columns from 1024 pixels, as before').toContain('min-[1024px]:grid-cols-2')
-    expect(grid, 'three columns from 2560 pixels').toContain('min-[2560px]:grid-cols-3')
+    expect(grid, 'no third column: an empty track at 2560 pixels is a visible gap').not.toContain('min-[2560px]:grid-cols-3')
     wrapper.unmount()
   })
 
