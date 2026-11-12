@@ -71,6 +71,19 @@ internal class FakeArtifactSearchBackend(
     /** What [open] throws, or null when it opens. */
     var openFailure: RuntimeException? = null
 
+    override fun open() {
+        openCalls++
+        openFailure?.let { throw it }
+    }
+
+    override fun close() {
+        closeCalls++
+    }
+
+    /** How many times [close] was called. */
+    var closeCalls = 0
+        private set
+
     /** What [health] answers. */
     var healthAnswer: BackendHealth = BackendHealth.Up
 

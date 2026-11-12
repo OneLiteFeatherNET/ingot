@@ -39,7 +39,16 @@ interface ArtifactSearchBackend : ArtifactSearchEngine {
      */
     val joinsDatabaseTransaction: Boolean
 
-    /** Whether the backend answers. The core does not poll it yet; it is part of the contract every backend fills in. */
+    /**
+     * Connects to the index and prepares it. May block for as long as it takes; the core calls it off the request threads,
+     * and a throw counts as a failed open that is retried later.
+     */
+    fun open()
+
+    /** Releases what [open] took. The core calls it when an open failed after the backend was created. */
+    fun close()
+
+    /** Whether the backend answers. The core checks it every few seconds while the backend is open. */
     fun health(): BackendHealth
 
     /** Applies [actions] in order. Every action is idempotent, so a batch can be applied again after a crash. */

@@ -27,18 +27,18 @@ import java.time.Instant
  * Holds the backend of this replica and its state (search backend registration, D4). The poller and the routes read
  * [state]; [tick] moves it. A transition is logged once when it happens, never on every tick.
  *
- * - An installed factory is opened on the first tick. A failed open is retried after [OPEN_RETRY].
+ * - An installed factory is created and opened on the first tick. A failed open is retried after [OPEN_RETRY].
  * - A backend that is open is health checked every [HEALTH_INTERVAL]. A down backend may still be drained, but only after
  *   the backoff of [OutboxPolicy.retryAt] that follows each failed drain.
  * - A state that is not installed or refused never changes.
  *
- * [openBackend] creates and opens the backend of a factory. It may throw, which counts as a failed open.
+ * [createBackend] creates the backend of a factory. The holder opens it itself; a throw from either counts as a failed open.
  */
 internal class SearchBackendHolder(
     resolution: BackendResolution,
     private val clock: Clock,
     private val log: (String) -> Unit,
-    private val openBackend: (ArtifactSearchBackendFactory) -> ArtifactSearchBackend,
+    private val createBackend: (ArtifactSearchBackendFactory) -> ArtifactSearchBackend,
 ) {
 
     private val factory: ArtifactSearchBackendFactory?
@@ -101,7 +101,14 @@ internal class SearchBackendHolder(
 
     private fun open(factory: ArtifactSearchBackendFactory, now: Instant) {
         try {
-            backend = openBackend(factory)
+            val created = createBackend(factory)
+            try {
+                created.open()
+            } catch (failure: Exception) {
+                runCatching { created.close() }
+                throw failure
+            }
+            backend = created
         } catch (failure: Exception) {
             nextOpenAt = now.plus(OPEN_RETRY)
             transition(SearchBackendState.OPEN_FAILED, failure.message ?: failure.javaClass.simpleName)

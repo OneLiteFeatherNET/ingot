@@ -48,7 +48,7 @@ internal class SearchBackendHolderTest {
         resolution = resolution,
         clock = clock,
         log = logs::add,
-        openBackend = {
+        createBackend = {
             opens++
             if (opens <= failuresBeforeOpen) throw IllegalStateException("cannot reach the service")
             fake
@@ -181,6 +181,14 @@ internal class SearchBackendHolderTest {
 
         assertThat(holder.state).`as`("state when the backend's open throws").isEqualTo(SearchBackendState.OPEN_FAILED)
         assertThat(holder.backendOrNull()).`as`("backend of a failed open").isNull()
+    }
+
+    @Test
+    fun `a backend whose open throws is closed again`() {
+        fake.openFailure = IllegalStateException("index not reachable")
+        holder().tick()
+
+        assertThat(fake.closeCalls).`as`("closes of a backend whose open failed").isEqualTo(1)
     }
 
     @Test
