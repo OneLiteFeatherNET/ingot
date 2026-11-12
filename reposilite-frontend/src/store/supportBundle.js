@@ -28,10 +28,10 @@ import { setSupportBundleOffered } from '../navigation/registry'
 // False until the answer for the current session is known, so a support page that waits for it is not judged.
 const supportBundleReady = ref(false)
 
-const loadSupportBundle = async () => {
+const loadSupportBundle = async (credentials = {}) => {
   supportBundleReady.value = false
   try {
-    const { data } = await axios.get(createURL('/api/admin/support/availability'), handleRequest({ withCredentials: true, headers: {} }))
+    const { data } = await axios.get(createURL('/api/admin/support/availability'), handleRequest({ withCredentials: true, headers: { ...credentials.headers } }))
     setSupportBundleOffered(data?.enabled === true)
   } catch {
     setSupportBundleOffered(false)

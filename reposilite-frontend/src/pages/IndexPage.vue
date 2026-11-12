@@ -114,7 +114,7 @@ const ADMINISTRATION_SECTIONS = ['settings', 'access', ...ADMIN_SIDE_PAGES]
 
 const route = useRoute()
 const router = useRouter()
-const { isManager, can, isLogged, mustChangePassword } = useSession()
+const { isManager, can, isLogged, mustChangePassword, credentials } = useSession()
 // A single sign on provider that failed sends the visitor back here with the reason in the address.
 useLoginErrorNotice()
 
@@ -156,8 +156,8 @@ watch([pluginUiReady, () => route.fullPath], () => {
   const target = pluginPageRedirect(route.params.plugin, route.params.page)
   if (target) router.replace(target)
 }, { immediate: true })
-watch(isLogged, (logged) => (logged ? loadPluginUi() : clearPluginUi()), { immediate: true })
-watch(isLogged, (logged) => (logged ? loadSupportBundle() : clearSupportBundle()), { immediate: true })
+watch(isLogged, (logged) => (logged ? loadPluginUi(credentials.value) : clearPluginUi()), { immediate: true })
+watch(isLogged, (logged) => (logged ? loadSupportBundle(credentials.value) : clearSupportBundle()), { immediate: true })
 
 // The support pages are not found while the instance does not offer them (an opt-out instance), and wait for the answer.
 const supportPageOpen = computed(() => SUPPORT_ROUTES.includes(route.name) && isLogged.value && sectionAllowed.value)
