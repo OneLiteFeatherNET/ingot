@@ -2,50 +2,120 @@
 
 ## Purpose
 
-A plain word of the search query matches the words of a group's coordinates, on every database Ingot supports, with no extra
-service. Matches that exist today stay. The index is upgraded in place, and an older version can still read the database.
+The `q` parameter of artifact search also matches words of a group's coordinates, on every database Ingot supports, with no extra
+service. Nothing that the previous version returns is lost: every token keeps its previous predicate, and word matches are added
+after the previous results. The index is upgraded in place, and an older version can still read the database.
 
 ## ADDED Requirements
 
-### Requirement: Words match tokens of the coordinates
+### Requirement: Every previous match is kept
 
-A plain word of `q` SHALL match a group when the word matches today's rule, or when every part of the word, split on characters
-that are neither letters nor digits, starts a token of the group's groupId, artifactId or version. Tokens are lower-cased.
+For every query, every group that the previous version returns SHALL still be returned, in the previous relative order, before any
+group that matches only by word. Each whitespace token SHALL keep exactly the previous predicate: a plain token matches the groupId
+prefix, the artifactId prefix or the exact version; a token with a colon is a coordinates token.
 
-#### Scenario: Token of an artifactId matches
+#### Scenario: Two plain tokens keep their prefix matches
 
-- **WHEN** the artifact `spring-core` is indexed and the query is `q=core`
-- **THEN** the group `org.springframework:spring-core` is returned
+- **WHEN** the query is `q=co foo` and the group `com.x:foo-lib` is indexed
+- **THEN** the group is returned, because its groupId starts with `co` and its artifactId starts with `foo`, as on the previous version
 
-#### Scenario: Every part must match
+#### Scenario: Dotted query is unchanged
 
-- **WHEN** the query is `q=spring%20kafka` and only `spring-core` is indexed
+- **WHEN** the query is `q=org.bench1` on an index of one million GAVs
+- **THEN** the groups returned are the groups of the previous version, in the same order, and no group is returned only because
+  one of its tokens starts with `bench1`
+
+#### Scenario: Golden table holds
+
+- **WHEN** the golden table captured on the previous version is run against this version on a fixed fixture
+- **THEN** every dotted-only and colon-only query returns the same groups in the same order, and every other query returns every
+  group of the previous version in the previous order, followed only by word-only groups
+
+### Requirement: Plain tokens also match by word
+
+A whitespace token without `.` or `:` SHALL also match a group by word, as a union with its previous predicate. Each part of the token,
+where parts are the runs of letters and digits, SHALL equal a token of the group exactly. The last part of the last token of the query
+MAY instead be the start of a token. The tokens of a query SHALL be ANDed, as before. A token with no parts, or with more than four
+parts, SHALL NOT have a word match.
+
+#### Scenario: Words match whole tokens
+
+- **WHEN** the query is `q=jackson databind` and the group `com.fasterxml.jackson.core:jackson-databind` is indexed
+- **THEN** the group is returned by word: `jackson` is a whole token and `databind` starts a token, although the groupId does not start
+  with `jackson`
+
+#### Scenario: Earlier token must be a whole token
+
+- **WHEN** the query is `q=frame core` and the group `org.springframework:spring-core` is indexed
+- **THEN** the group is not returned, because `frame` is not a token of it
+
+#### Scenario: Every token must match
+
+- **WHEN** the query is `q=spring kafka` and only `org.springframework:spring-core` is indexed
 - **THEN** that group is not returned
 
-#### Scenario: Existing prefix match still works
+#### Scenario: Word-only groups come after the previous results
 
-- **WHEN** the query is `q=org.spring` and a groupId starts with `org.spring`
-- **THEN** that group is returned as before
+- **WHEN** the query is `q=spring core` and both a group matched by the previous rule and a group matched only by word are indexed
+- **THEN** the group matched by the previous rule is returned first
 
-### Requirement: Results only grow
+### Requirement: A token with a separator gets no word match
 
-Every group that a query matched before this version SHALL still match the same query after the upgrade. The contract suite SHALL
-hold a table of earlier queries and expected groups.
+A token that contains `.` or `:` SHALL match only by its previous predicate.
 
-#### Scenario: Previous match survives
+#### Scenario: Dotted token is not matched by word
 
-- **WHEN** a query matched a group under the previous version and the same data is searched with this version
-- **THEN** the group is still returned
+- **WHEN** the query is `q=org.framework core` and the group `org.springframework:spring-core` is indexed
+- **THEN** the group is not returned, because `org.framework` is a dotted token with no word match and it is not a prefix of the groupId
 
-### Requirement: Same results on every supported database
+### Requirement: Limits and errors are unchanged
 
-The word matching SHALL use the same predicate on SQLite, H2, MariaDB and PostgreSQL. It SHALL NOT use `LIKE`, a database full text
-index or a ranking function. The same cases SHALL pass on each database.
+The limit of five tokens, the limit of 200 characters, the 400 responses and the coordinates limits SHALL be those of the previous
+version. This version SHALL NOT add an error response.
+
+#### Scenario: Token with five parts
+
+- **WHEN** the query is `q=a-b-c-d-e`
+- **THEN** the response is the same as on the previous version, and it is not an error caused by this change
+
+#### Scenario: Six tokens
+
+- **WHEN** the query has six tokens
+- **THEN** the response is the 400 of the previous version, naming `q`
+
+### Requirement: Results only grow, and the same on every supported database
+
+The word predicate SHALL be a union with the previous predicate, built from index-driven subqueries, and SHALL NOT be an SQL `OR` between
+the previous predicate and a correlated `EXISTS`. It SHALL NOT use `LIKE`, a database full text index or a ranking function. The same
+cases SHALL pass on SQLite, H2, MariaDB and PostgreSQL.
 
 #### Scenario: Cross database contract
 
-- **WHEN** the word cases run against SQLite, H2, MariaDB and PostgreSQL
+- **WHEN** the word cases and the golden table run against SQLite, H2, MariaDB and PostgreSQL
 - **THEN** each case returns the same groups on every database
+
+### Requirement: Benchmark gate before the code pull request
+
+Before the code pull request opens, the benchmark gate SHALL be measured on this branch and on main as shipped, in the same hardware,
+with the p95 of each query kind taken in a fresh JVM. The numbers SHALL go in the pull request description. No test SHALL assert a time.
+
+#### Scenario: Gate passes
+
+- **WHEN** the benchmark runs on 200 000 GAVs on SQLite and PostgreSQL
+- **THEN** the coordinate queries (dotted-only) have a p95 at most 1.2 times main's p95, and the one-word queries have a p95 at most
+  1.5 times main's p95, on both databases
+
+#### Scenario: One million GAVs
+
+- **WHEN** the benchmark runs on one million GAVs
+- **THEN** no PostgreSQL statement exceeds the 10 second statement timeout, and the load time, the backfill time and the token table
+  size are recorded next to the query numbers
+
+#### Scenario: Gate fails
+
+- **WHEN** the p95 of a coordinate query on this branch is more than 1.2 times main's, a one-word query is more than 1.5 times main's,
+  or a PostgreSQL statement at one million GAVs exceeds 10 seconds
+- **THEN** the code pull request does not open, and the maintainer decides how to proceed
 
 ### Requirement: Token index is additive and kept with the rows
 
@@ -64,8 +134,9 @@ SHALL write the tokens of its GAV in the same transaction, so a replay leaves on
 
 ### Requirement: Backfill and status while rows lack a key
 
-A periodic sweep SHALL fill the key and the tokens of rows that have none. While any row lacks a key, the index state SHALL be
-`BUILDING` and `tokensComplete` SHALL be false, unless the state is already `DEGRADED`.
+A keyset-paginated backfill SHALL fill the key and the tokens of rows that have none, and one run SHALL drain the whole backlog. A
+re-check SHALL run at a six-hour interval. While any row lacks a key, the index state SHALL be `BUILDING` and `tokensComplete` SHALL be
+false, unless the state is already `DEGRADED`.
 
 #### Scenario: Sweep completes
 
@@ -79,15 +150,15 @@ A periodic sweep SHALL fill the key and the tokens of rows that have none. While
 
 ### Requirement: Query syntax of version one
 
-Quotes SHALL be ignored, `OR`, `NOT` and `AND` SHALL be plain words, and a word with more than four parts SHALL be refused with 400
-that names `q`. No relevance ranking SHALL be added, and the sort keys SHALL stay as they are.
+Quotes SHALL be ignored, and `OR`, `NOT` and `AND` SHALL be plain words. No relevance ranking SHALL be added, and the sort keys SHALL
+stay as they are.
 
-#### Scenario: Too many parts
+#### Scenario: Operator words are plain words
 
-- **WHEN** a word of `q` splits into five parts
-- **THEN** the response is 400 and the message names `q`
+- **WHEN** the query is `q=core OR`
+- **THEN** `or` must match like any other token, by its previous predicate or as a word
 
 #### Scenario: Sort unchanged
 
 - **WHEN** a query has no `sort` parameter
-- **THEN** the groups are ordered by groupId as before
+- **THEN** the groups are ordered by groupId as before, the word-only groups after the previous results
