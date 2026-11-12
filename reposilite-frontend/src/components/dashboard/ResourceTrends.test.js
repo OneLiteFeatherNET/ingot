@@ -73,11 +73,13 @@ describe('ResourceTrends', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps two chart columns from 1024 pixels as before, and adds a third from 2560 pixels', () => {
+  it('keeps two chart columns from 1024 pixels as before, and adds a third from 2560 pixels', async () => {
+    session.client = ref(clientWith(() => Promise.resolve({ data: [] })))
     const wrapper = mount(ResourceTrends)
+    await flushPromises()
 
-    const grid = wrapper.find('[data-ingot-component="resource-trends"]').classes()
-    expect(grid, 'two columns from 1024 pixels, as before').toContain('lg:grid-cols-2')
+    const grid = Array.from(wrapper.element.classList)
+    expect(grid, 'two columns from 1024 pixels, as before').toContain('min-[1024px]:grid-cols-2')
     expect(grid, 'three columns from 2560 pixels').toContain('min-[2560px]:grid-cols-3')
     wrapper.unmount()
   })

@@ -77,7 +77,7 @@ describe('AccountView', () => {
   it('keeps the account page at the 960 pixel reading measure', async () => {
     await mountView()
 
-    expect(wrapper.find('[data-ingot-component="account-view"]').classes(), 'a reading page, at the start of the column').toEqual(
+    expect(Array.from(wrapper.element.classList), 'a reading page, at the start of the column').toEqual(
       expect.arrayContaining(['max-w-[960px]'])
     )
   })

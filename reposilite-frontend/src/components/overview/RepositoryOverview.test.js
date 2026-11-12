@@ -494,7 +494,7 @@ describe('RepositoryOverview width', () => {
     await mountAt('/')
 
     expect(wrapper.element.className, 'the card keeps its column on the right from 1024 pixels').toContain(
-      'lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
+      'min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'
     )
   })
 

@@ -81,20 +81,23 @@ test.describe('wide screens', () => {
         await expect(memory).toBeVisible()
         await expect(threads).toBeVisible()
 
-        const first = await memory.boundingBox()
-        const second = await threads.boundingBox()
-        expect(Math.abs(first.y - second.y), 'the two charts share one row').toBeLessThan(2)
-        expect(second.x, 'the threads chart sits to the right of the memory chart').toBeGreaterThan(first.x + first.width / 2)
+        // The layout settles while the charts load, so the boxes are read until the two headings share a row.
+        const rowOf = async () => {
+          const first = await memory.boundingBox()
+          const second = await threads.boundingBox()
+          return { sameRow: Math.abs(first.y - second.y) < 2, rightOf: second.x > first.x + first.width / 2 }
+        }
+        await expect.poll(rowOf, 'the two charts share one row, the threads chart to the right').toEqual({ sameRow: true, rightOf: true })
 
-        const tracks = await page.locator('[data-ingot-component="resource-trends"]').evaluate(
-          element => getComputedStyle(element).gridTemplateColumns.split(' ').length
-        )
+        // The charts sit in one grid: the innermost grid that holds both headings names the columns it draws.
+        const chartGrid = page.locator('div.grid').filter({ has: memory }).filter({ has: threads }).last()
+        const tracks = await chartGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)
         expect(tracks, 'the number of chart columns at this width').toBe(width >= 2560 ? 3 : 2)
       })
 
       test('keeps a settings form at most 960 pixels wide', async ({ adminPage: page }) => {
         await page.goto(siteUrl('/settings/audit'))
-        const frame = page.getByRole('main').locator('[data-ingot-component="administration-frame"]')
+        const frame = page.getByRole('region', { name: 'Administration', exact: true })
         await expect(frame).toBeVisible()
 
         const box = await frame.boundingBox()
@@ -105,7 +108,8 @@ test.describe('wide screens', () => {
         await seed.repository('wide-overview')
         await page.goto(siteUrl('/'))
         const list = page.getByRole('heading', { name: 'Repositories', exact: true })
-        const card = page.locator('[data-ingot-component="snippets-card"]')
+        // The snippet card is found by its copy button, which every snippet of the card has.
+        const card = page.getByRole('button', { name: 'Copy snippet' }).first()
         await expect(list).toBeVisible()
         await expect(card).toBeVisible()
 
@@ -113,6 +117,10 @@ test.describe('wide screens', () => {
         const cardBox = await card.boundingBox()
         expect(cardBox.x, 'the card starts to the right of the list').toBeGreaterThan(listBox.x + 100)
         expect(cardBox.y, 'the card starts on the same row as the list').toBeLessThan(listBox.y + listBox.height + 200)
+
+        // The list takes the wider column: two thirds of the split, so it is at least 1.5 times the card.
+        const listRegion = await page.getByRole('region', { name: 'Repositories', exact: true }).boundingBox()
+        expect(listRegion.width, 'the browse list is the wider column').toBeGreaterThanOrEqual(cardBox.width * 1.5)
       })
     })
   }

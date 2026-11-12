@@ -47,7 +47,7 @@ describe('DashboardView', () => {
   it('has no maximum width, so the status and the resources use the full window width', () => {
     const wrapper = mount(DashboardView)
 
-    expect(wrapper.find('[data-ingot-component="dashboard-view"]').classes()).toContain('max-w-none')
+    expect(wrapper.element.classList).toContain('max-w-none')
   })
 
   it('no longer renders the resolved requests chart, which moved to analytics', () => {
