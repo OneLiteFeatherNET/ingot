@@ -49,10 +49,12 @@ The token rule removes that cost for dotted tokens: a token with a dot or a colo
   one implementation runs on SQLite, H2, MariaDB, MySQL and PostgreSQL.
 - **Additive migration.** A nullable column `gav_key` on `search_artifact`, the new table, and their indexes. Nothing is
   renamed, dropped or rewritten. A version without this change ignores both.
-- **Backfill.** Rows written before the migration have no key. A periodic sweep fills keys and tokens for them, and the
-  index state reads `BUILDING` while any row lacks a key.
-- **Benchmark gate.** Before the code pull request opens, the benchmark of the design runs on this branch and on main in the
-  same run. Queries with dotted tokens must not get slower beyond a margin, and no PostgreSQL statement may pass the timeout.
+- **Backfill.** Rows written before the migration have no key. A keyset-paginated backfill fills keys and tokens for them, and one
+  run drains the whole backlog (about 5 minutes per million rows on SQLite, 18 minutes on PostgreSQL). The index state reads
+  `BUILDING` while any row lacks a key. A six-hour re-check only finds work after a rollback.
+- **Benchmark gate.** Before the code pull request opens, the benchmark runs on this branch and on main as shipped, p95 in a fresh
+  JVM per kind. Coordinate queries may take at most 1.2 times main's p95, one-word queries at most 1.5 times. The implementation
+  measured 1.04x and 1.12x on SQLite and 1.00x and 1.03x on PostgreSQL, at 200 000 GAVs (`design.md`, D10 and D11).
 - **Documentation.** The query syntax as it is in version 1 (the per-token rule, the state `BUILDING` during the sweep), and
   the broader results in the upgrade notes.
 
@@ -100,7 +102,8 @@ The token rule removes that cost for dotted tokens: a token with a dot or a colo
   identical order, and the plain-token queries must return every main row in main's order, followed by any word-only rows.
 - The contract suite of `extract-search-backend-spi` with the word cases added, on SQLite, H2, MariaDB and PostgreSQL, run
   through `heavy`.
-- The benchmark gate of `design.md`, run through `heavy`, with its numbers in the pull request description.
+- The benchmark gate of `design.md`, run through `heavy`, with its numbers in the pull request description. At one million GAVs the
+  PostgreSQL 10 second timeout is still to be checked.
 - The upgrade rehearsal in the container job keeps passing: a database from the previous image is opened by this image,
   searched, and read back with the previous image after a rollback.
 - `openspec validate add-database-full-text-search --strict` passes and

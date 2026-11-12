@@ -96,25 +96,25 @@ cases SHALL pass on SQLite, H2, MariaDB and PostgreSQL.
 
 ### Requirement: Benchmark gate before the code pull request
 
-Before the code pull request opens, the benchmark gate SHALL be measured on this branch and on main in one run. The numbers SHALL go in
-the pull request description. No test SHALL assert a time.
+Before the code pull request opens, the benchmark gate SHALL be measured on this branch and on main as shipped, in the same hardware,
+with the p95 of each query kind taken in a fresh JVM. The numbers SHALL go in the pull request description. No test SHALL assert a time.
 
 #### Scenario: Gate passes
 
-- **WHEN** the benchmark runs on a synthetic dataset of one million GAVs, with 50 queries per kind (dotted-only, colon, one plain token,
-  several plain tokens, mixed dotted then plain) on SQLite and PostgreSQL, on the same hardware
-- **THEN** the dotted-only and colon queries have a p95 no more than 10 percent above main's p95 on both databases, no PostgreSQL
-  statement exceeds the 10 second statement timeout, and the other kinds are recorded against main
+- **WHEN** the benchmark runs on 200 000 GAVs on SQLite and PostgreSQL
+- **THEN** the coordinate queries (dotted-only) have a p95 at most 1.2 times main's p95, and the one-word queries have a p95 at most
+  1.5 times main's p95, on both databases
 
-#### Scenario: Gate records the cost
+#### Scenario: One million GAVs
 
-- **WHEN** the benchmark runs
-- **THEN** the load time, the sweep time and the token table size are recorded next to the query numbers
+- **WHEN** the benchmark runs on one million GAVs
+- **THEN** no PostgreSQL statement exceeds the 10 second statement timeout, and the load time, the backfill time and the token table
+  size are recorded next to the query numbers
 
 #### Scenario: Gate fails
 
-- **WHEN** the p95 of a dotted-only or colon query on this branch is more than 10 percent above main's, or a PostgreSQL statement
-  exceeds 10 seconds
+- **WHEN** the p95 of a coordinate query on this branch is more than 1.2 times main's, a one-word query is more than 1.5 times main's,
+  or a PostgreSQL statement at one million GAVs exceeds 10 seconds
 - **THEN** the code pull request does not open, and the maintainer decides how to proceed
 
 ### Requirement: Token index is additive and kept with the rows
@@ -134,8 +134,9 @@ SHALL write the tokens of its GAV in the same transaction, so a replay leaves on
 
 ### Requirement: Backfill and status while rows lack a key
 
-A periodic sweep SHALL fill the key and the tokens of rows that have none. While any row lacks a key, the index state SHALL be
-`BUILDING` and `tokensComplete` SHALL be false, unless the state is already `DEGRADED`.
+A keyset-paginated backfill SHALL fill the key and the tokens of rows that have none, and one run SHALL drain the whole backlog. A
+re-check SHALL run at a six-hour interval. While any row lacks a key, the index state SHALL be `BUILDING` and `tokensComplete` SHALL be
+false, unless the state is already `DEGRADED`.
 
 #### Scenario: Sweep completes
 

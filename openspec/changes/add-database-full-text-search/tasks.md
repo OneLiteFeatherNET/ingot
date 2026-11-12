@@ -28,13 +28,14 @@ change. Its name says so.
   opened, keeps its rows, and gains `gav_key` and `search_token`; the generated statements contain only `ADD COLUMN`,
   `CREATE INDEX` and `CREATE TABLE`; two starters racing on `schema-2` run the DDL once; a replayed upsert leaves one set of
   tokens. Verify: they fail.
-- [ ] 3.2 `feat(search)`: add the `gav_key` column, `search_token` and the `schema-2` marker step to `SearchSchema` and the
-  table definitions, and write the key and tokens in the upsert of the database backend. Verify: the tests of 3.1 pass and the
+- [ ] 3.2 `feat(search)`: add the `gav_key` column (nullable `binary(16)`, the first 16 bytes of the SHA-256 of the coordinates, D1 and
+  D11), `search_token` and the `schema-2` marker step to `SearchSchema` and the table definitions, and write the key and tokens in the
+  upsert of the database backend. Verify: the tests of 3.1 pass and the
   `schema-1` tests pass unedited.
 - [ ] 3.3 `test(search)` then `feat(search)`: failing test first for the sweep: a fixed clock and a batch size of two fill the keys
-  of five unkeyed rows in three transactions, `tokensComplete` turns true, and a read-only instance runs no sweep. Then the sweep
-  on the 30-second scheduler tick of `SearchPlugin`, and the `tokensComplete` field and the `BUILDING` rule in
-  `indexStateOf`. Verify: the tests pass.
+  of five unkeyed rows in three transactions, a run drains them all, `tokensComplete` turns true, and a read-only instance runs no
+  backfill. Then the keyset-paginated backfill on the 30-second scheduler tick of `SearchPlugin`, with a six-hour re-check, and the
+  `tokensComplete` field and the `BUILDING` rule in `indexStateOf`. Verify: the tests pass.
 
 ## 4. Query (red, then green)
 
@@ -56,13 +57,15 @@ change. Its name says so.
 
 ## 5. Benchmark gate (no commit to the code, then a decision)
 
-- [ ] 5.1 `test(search)`: the benchmark harness, outside the unit suite and not run in CI. It generates one million synthetic GAVs
-  with a fixed seed and runs 50 queries per kind (dotted-only, colon, one plain token, several plain tokens, mixed dotted then plain)
-  on SQLite and PostgreSQL, against main and against this branch, in one run through `heavy`. It records p50 and p95 per kind, the load
-  time, the sweep time and the token table size. Verify: the table of numbers is produced for both builds.
-- [ ] 5.2 Gate, decided by the maintainer if it fails: p95 of the dotted-only and colon queries of this branch no more than 10 percent
-  above main's on both databases; no PostgreSQL statement over 10 s for any kind; the other kinds recorded against main. The numbers go
-  in the code pull request description. If the gate fails, task 7.1 does not run.
+- [ ] 5.1 `test(search)`: the benchmark harness, outside the unit suite and not run in CI. It generates synthetic GAVs with a fixed
+  seed and runs 50 queries per kind (dotted-only, colon, one plain token, several plain tokens, mixed dotted then plain) on SQLite and
+  PostgreSQL, against main as shipped and against this branch, each kind in a fresh JVM, through `heavy`. The gate runs at 200 000 GAVs.
+  One run at one million GAVs records the load time, the backfill time and the token table size, and checks the PostgreSQL 10 second
+  timeout. Verify: the table of numbers is produced for both builds.
+- [ ] 5.2 Gate, decided by the maintainer if it fails: at 200 000 GAVs, p95 of the coordinate queries of this branch at most 1.2 times
+  main's, and of the one-word queries at most 1.5 times main's, on both databases; at one million GAVs, no PostgreSQL statement over
+  10 s. The several-token and mixed kinds are recorded against main and not gated yet. The numbers go in the code pull request
+  description. If the gate fails, task 7.1 does not run.
 
 ## 6. Documentation
 

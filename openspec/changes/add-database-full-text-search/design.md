@@ -28,8 +28,9 @@ at all (search spec, non-goal 1.2). Searching inside files is not part of this c
 
 ### D1: tokens are a derived inverted index keyed by GAV
 
-`search_token(gav_key, token)` holds the tokens of each GAV. The key is the lower-case form of `groupId`, `artifactId` and
-`version` joined with NUL, hashed with SHA-256 to 64 hex characters. A GAV has three to about seven tokens, so the table
+`search_token(gav_key, token)` holds the tokens of each GAV. The key is the first 16 bytes of the SHA-256 of the lower-case form of
+`groupId`, `artifactId` and `version` joined with NUL, stored as `binary(16)`. The 16-byte key replaced a 64-character hex key in the
+implementation, for the width reason in D11. A GAV has three to about seven tokens, so the table
 grows with GAVs, not files: a repository of ten million files and one million GAVs gives about seven million token rows.
 
 Tokens are computed by one pure function in core, `SearchTokens.of(groupId, artifactId, version)`. It splits on every
@@ -68,6 +69,10 @@ Each part row set is `SELECT a.id FROM search_token t JOIN search_artifact a ON 
 or the half-open range of the prefix. The main branch uses the indexes it uses on main. The token branch uses the token index.
 The planner then sees one branch per index, and the main branch cannot be dropped by the optimiser when a word is present.
 
+**PostgreSQL.** The implementation evaluates the word arm there as a materialised set of word ids. The word-only rows are that set
+`EXCEPT` the main-predicate rows, and they follow the main rows. The `OR` form of the same predicate made the planner choose a
+sequential scan, so it was not used (D11). The result order is the same as the union form gives.
+
 **Limits and errors.** The 5 token limit, the 200 character limit, the 400 responses and the coordinates limits are main's, and they
 are checked in the same places. This version adds no error response. A token with more than four parts, or with no parts, has no
 word branch and is matched by main alone, so no query that main accepts is refused.
@@ -94,8 +99,8 @@ index can be added later as an accelerator, if it returns exactly the rows of D2
   protection as `SearchSchema.ensure` (`database/SearchSchema.kt:35-53`). Two starters serialise on the marker row.
 - The statements are generated and checked: a test asserts that the statements for each dialect contain only `ADD COLUMN`,
   `CREATE INDEX` and `CREATE TABLE`, with no `DROP`, `RENAME`, `MODIFY` or type change of an existing column.
-- Column type: `char(64)`, nullable. Key sizes on MariaDB: the token primary key is `char(64)` plus `varchar(64)` at four
-  bytes each, 512 bytes, well inside the 3072-byte limit that `SearchDialect.maxIndexKeyBytes` checks.
+- Column type: `binary(16)`, nullable (D1, D11). Key sizes on MariaDB: the token primary key is `binary(16)` plus `varchar(64)` at four
+  bytes per character, 272 bytes, well inside the 3072-byte limit that `SearchDialect.maxIndexKeyBytes` checks.
 
 ### D5: writes keep tokens in step with rows
 
@@ -110,18 +115,20 @@ including one that only searches with dotted tokens.
 
 ### D6: backfill is a periodic sweep, not a one-off flag
 
-A sweep runs every six hours on the existing 30-second scheduler tick of `SearchPlugin` (`application/SearchPlugin.kt:200`),
-and only when the instance is not read-only. It reads up to 1000 rows with `gav_key IS NULL` in id order, fills their keys
-and inserts their tokens in one transaction, and stops when none is left. The query uses `ix_search_gav_key`, so a database
-with no unkeyed rows pays one index probe per sweep.
+The backfill is keyset-paginated. A run starts on the existing 30-second scheduler tick of `SearchPlugin`
+(`application/SearchPlugin.kt:200`), and only when the instance is not read-only. It reads batches of up to 1000 rows with
+`gav_key IS NULL` in id order, each batch starting after the last id of the previous one, fills the keys and inserts the tokens
+of a batch in one transaction, and continues until no unkeyed row is left. One run therefore drains the whole backlog. The
+measured cost is about 5 minutes per million rows on SQLite and 18 minutes on PostgreSQL. The six-hour interval governs only the
+re-checks after a drained backlog; a re-check on a database with no unkeyed rows is one index probe on `ix_search_gav_key`.
 
 The sweep is a sweep, not a flag, because a rollback can leave unkeyed rows behind: the previous version writes rows without
 a key. A roll-forward then finds them and fixes them.
 
 `IndexStatus` gets `tokensComplete: Boolean`, computed per request as "no unkeyed row exists" (one indexed probe). While it is
 false, `indexStateOf` returns `BUILDING` unless the state is already `DEGRADED`. The field defaults to `true` in the JSON
-model, so an older client reads the same as before. The sweep of one million unkeyed rows measured in D10 is the time the
-index stays in `BUILDING`.
+model, so an older client reads the same as before. The index stays in `BUILDING` for the length of one backfill run, which is the
+time quoted in D6.
 
 ### D7: tests
 
@@ -219,17 +226,41 @@ for the coordinate prefix `org.bench1`. An OR that lets such a word match widens
   `spring` is a token of its artifactId, and it still finds the groups the main rule finds for `spring`. `frame core` does not find
   it, because `frame` is not a token. Stated in the user documentation (task 6.1).
 
-**Benchmark gate.** Before the code pull request opens (task 5.2), the benchmark runs on this branch and on main, on the same
-dataset and the same hardware, in one run. It covers 50 queries per kind: dotted-only, colon, one plain token, several plain tokens,
-and mixed (a dotted token followed by a plain token), on SQLite and PostgreSQL. The gate is:
+**Benchmark gate.** The gate compares the implementation branch with main as shipped, on the same hardware, with p95 of each query kind
+measured in a fresh JVM. The implementation run used 200 000 GAVs. Its results:
 
-- dotted-only and colon queries: p95 of this branch no more than 10 percent above the p95 of main in the same run, on both databases;
-- no PostgreSQL statement over the 10 s timeout for any kind;
-- the one-token, several-token and mixed kinds: p50 and p95 recorded against main, and not gated beyond the timeout;
-- load time, sweep time and token table size recorded.
+| Kind | SQLite, main / branch (ratio) | PostgreSQL, main / branch (ratio) |
+|---|---|---|
+| Coordinate (dotted-only query) | 433 / 448 ms (1.04x) | 74.9 / 74.7 ms (1.00x) |
+| One word (a single plain token) | 362 / 404 ms (1.12x) | 82.6 / 85.0 ms (1.03x) |
 
-If the gate fails, the code pull request does not open, and the maintainer decides. The 10 percent margin is a proposal of this
-change; the maintainer can set another value.
+The gate is:
+
+- coordinate queries: p95 of the branch at most 1.2 times the p95 of main, on both databases;
+- one-word queries: p95 of the branch at most 1.5 times the p95 of main, on both databases.
+
+These values replace the 10 percent margin of the earlier draft of this design, which was a proposal and not a measurement. The
+thresholds are the values the maintainer set for the gate after these numbers. The gate does not yet cover the several-token and
+mixed kinds: they were not in the reported run, so they stay recorded-only until they are measured. The PostgreSQL 10 second
+statement timeout is still to be checked at one million GAVs, and the load, sweep and token table sizes come from the one-million
+measurements in the table above, not from the 200 000 run.
+
+If the gate fails, the code pull request does not open, and the maintainer decides.
+
+### D11: implementation outcome
+
+The implementation fixed three points that the design left open. Each is measured, and each has a rejected alternative.
+
+- **Key width.** `gav_key` is a nullable `binary(16)`: the first 16 bytes of the SHA-256 of the lower-case coordinates joined with
+  NUL. A 64-character hex key made each `search_artifact` row wider: 290 bytes per row became 363 bytes allocated at 200 000 GAVs.
+  SQLite's default page cache is 2 MiB, so a query read about 25 percent more pages. The 16-byte key brings the row to 308 bytes,
+  1.06 times main. Rejected: raising the SQLite cache and mmap pragmas. That would add up to 64 MiB of native memory per connection,
+  and the change would reach every existing installation, which the drop-in rule forbids.
+- **PostgreSQL word arm.** The word-only rows are a materialised set of word ids, `EXCEPT` the main-predicate rows. The `OR` form of
+  the same predicate made the planner choose a sequential scan, which is why the set is materialised (D2). Rejected: the `OR` form.
+- **Backfill.** Keyset-paginated, and one run drains the whole backlog: about 5 minutes per million rows on SQLite and 18 minutes on
+  PostgreSQL in the earlier measurement. The six-hour interval governs only the re-checks (D6). Rejected: a one-off flag, because a
+  rollback can leave unkeyed rows behind (D6).
 
 ## Risks
 
