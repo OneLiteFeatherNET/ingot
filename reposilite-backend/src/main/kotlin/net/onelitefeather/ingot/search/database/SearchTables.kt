@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.search.database
 
+import net.onelitefeather.ingot.search.GAV_KEY_BYTES
 import net.onelitefeather.ingot.search.SearchColumn
 import org.jetbrains.exposed.v1.core.Table
 
@@ -72,7 +73,7 @@ internal class SearchArtifactTable(binary: String?) : Table("search_artifact") {
     val indexedAt = long("indexed_at")
 
     /** The key of the row's GAV (full text change, D1). Null for rows written before `schema-2`, until the sweep fills it. */
-    val gavKey = char("gav_key", GAV_KEY_LENGTH).nullable()
+    val gavKey = binary("gav_key", GAV_KEY_BYTES).nullable()
 
     override val primaryKey = PrimaryKey(id)
 
@@ -96,7 +97,6 @@ internal class SearchArtifactTable(binary: String?) : Table("search_artifact") {
         const val SHA256_LENGTH = 64
         const val ORIGIN_LENGTH = 8
         const val SOURCE_HOST_LENGTH = 255
-        const val GAV_KEY_LENGTH = 64
     }
 
 }
@@ -106,7 +106,7 @@ internal class SearchArtifactTable(binary: String?) : Table("search_artifact") {
  * no-op, and serves the correlated lookup of one GAV's tokens. The index on `token` serves the prefix range of a word.
  */
 internal class SearchTokenTable(binary: String?) : Table("search_token") {
-    val gavKey = char("gav_key", SearchArtifactTable.GAV_KEY_LENGTH)
+    val gavKey = binary("gav_key", GAV_KEY_BYTES)
     val token = varchar("token", TOKEN_LENGTH, binary)
 
     override val primaryKey = PrimaryKey(gavKey, token)

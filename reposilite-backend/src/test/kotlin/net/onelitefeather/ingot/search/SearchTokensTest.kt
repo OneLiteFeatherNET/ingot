@@ -86,10 +86,27 @@ internal class SearchTokensTest {
     }
 
     @Test
-    fun `the key of a GAV is 64 lower-case hexadecimal characters`() {
+    fun `the key of a GAV is the first 16 bytes of its SHA-256`() {
         assertThat(gavKeyOf("org.example", "lib", "1.0"))
-            .`as`("key of a GAV")
-            .matches("[0-9a-f]{64}")
+            .`as`("key of a GAV, 128 bits")
+            .hasSize(16)
+    }
+
+    @Test
+    fun `coordinates that run together into the same text get different keys`() {
+        assertThat(gavKeyOf("org.example", "lib", "1.0"))
+            .`as`("key when the groupId ends where the artifactId starts")
+            .isNotEqualTo(gavKeyOf("org.examplelib", "", "1.0"))
+        assertThat(gavKeyOf("a", "b.c", "1"))
+            .`as`("key when the artifactId carries a dot of the groupId")
+            .isNotEqualTo(gavKeyOf("a.b", "c", "1"))
+    }
+
+    @Test
+    fun `a key is the same on every call`() {
+        assertThat(gavKeyOf("org.example", "lib", "1.0"))
+            .`as`("key of the same GAV twice")
+            .isEqualTo(gavKeyOf("org.example", "lib", "1.0"))
     }
 
     @Test

@@ -50,13 +50,18 @@ internal object SearchTokens {
         value.lowercase(Locale.ROOT).split(SEPARATOR).filter { it.isNotEmpty() }
 }
 
+/** Bytes of the SHA-256 that form a GAV key: 128 bits, so a row carries 16 bytes instead of 64 hex characters. */
+internal const val GAV_KEY_BYTES = 16
+
 /**
- * The key of a GAV: the SHA-256 of its lower-case groupId, artifactId and version joined with NUL, as 64 lower-case hex
- * characters (full text change, D1). Every row of one GAV has the same key, and the tokens of the GAV are keyed by it.
+ * The key of a GAV: the first [GAV_KEY_BYTES] bytes of the SHA-256 of its lower-case groupId, artifactId and version, joined
+ * with NUL (full text change, D1). The NUL separator keeps coordinates that run together apart. Every row of one GAV has the
+ * same key, and the tokens of the GAV are keyed by it. At 128 bits a collision between two GAVs of a real index is not
+ * expected; the key is a row identifier, not a proof of equality.
  */
-internal fun gavKeyOf(groupId: String, artifactId: String, version: String): String {
+internal fun gavKeyOf(groupId: String, artifactId: String, version: String): ByteArray {
     val joined = listOf(groupId, artifactId, version).joinToString("\u0000") { it.lowercase(java.util.Locale.ROOT) }
     return MessageDigest.getInstance("SHA-256")
         .digest(joined.toByteArray(Charsets.UTF_8))
-        .joinToString("") { "%02x".format(it) }
+        .copyOf(GAV_KEY_BYTES)
 }
