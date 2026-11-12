@@ -18,6 +18,7 @@
 
 package net.onelitefeather.ingot.opensearch
 
+import com.reposilite.plugin.PluginLoader
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
@@ -49,13 +50,18 @@ class OpenSearchPlugin : ReposilitePlugin() {
 }
 
 /**
- * Registers the factory of this plugin through [accept]. The settings are read from [environment] and the password file through
- * [readFile] when the backend is created, so a refused setting reports the backend as `OPEN_FAILED` and does not stop the server.
+ * Registers the factory of this plugin through [accept], and nothing while the switch of this jar is off. The switch is the one
+ * the loader reads, so both agree. The settings are read from [environment] and the password file through [readFile] when the
+ * backend is created, so a refused setting reports the backend as `OPEN_FAILED` and does not stop the server.
  */
 internal fun registerOpenSearch(
     environment: Map<String, String>,
     readFile: (String) -> String,
     accept: (ArtifactSearchBackendFactory) -> Unit,
 ) {
+    if (!OPENSEARCH_JAR_SWITCH.isOn(environment)) return
     accept(OpenSearchBackendFactory { OpenSearchSettings.read(environment, readFile) })
 }
+
+private val OPENSEARCH_JAR_SWITCH: PluginLoader.BundledSwitch =
+    PluginLoader.BUNDLED_SWITCHES.getValue("opensearch-plugin.jar")
