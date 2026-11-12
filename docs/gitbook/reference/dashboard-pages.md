@@ -67,7 +67,9 @@ Rules for the "Who can open it" column:
 
 ### Layout at four widths
 
-The Administration pages use one layout at four widths. Below 600 pixels the navigation is the bottom bar, and the Administration tree is an index with a back arrow on each page. From 600 to 1239 pixels the rail is at the left, and the tree is still an index. From 1240 pixels the tree stands beside the page at 208 pixels wide. It stays in view while the page scrolls, below the top bar and above the save bar, and scrolls inside itself when it is taller than the window. From 1920 pixels the page is at most 1600 pixels wide.
+The Administration pages use one layout at four widths. Below 600 pixels the navigation is the bottom bar, and the Administration tree is an index with a back arrow on each page. From 600 to 1239 pixels the rail is at the left, and the tree is still an index. From 1240 pixels the tree stands beside the page at 208 pixels wide. It stays in view while the page scrolls, below the top bar and above the save bar, and scrolls inside itself when it is taller than the window.
+
+The pages are of two kinds. A **wide** page is a list or a table, such as Repositories, Access, Audit and the file browser listing. It takes the full width after the side navigation at every width, and the table shows more columns as the window grows: Version policy and Visibility from 1920 pixels, and Storage from 2560 pixels. A **reading** page is text or a form, such as the settings domains, Maintenance, Account, the migration steps and the system information. It keeps a measure of at most 960 pixels, at the start of the content column, so a long line does not stretch across a large monitor. The dashboard lays its charts out in two columns from 1024 pixels and in three from 2560 pixels, and the repository overview puts the browse list beside the snippet card, the list taking two thirds of the width, from 1920 pixels.
 
 The heading and the page actions form one row above the columns from 600 pixels. The row is not sticky: it scrolls away with the page, and the top bar stays at the top of the window.
 
