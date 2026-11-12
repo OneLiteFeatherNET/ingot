@@ -125,4 +125,52 @@ internal class BundledPluginSwitchTest {
         assertThat(withImporter.getPlugins()["other-fixture"]).describedAs("an unknown jar must not follow the importer switch").isNull()
     }
 
+    @Test
+    fun `should not load the opensearch jar when no switch is set`() {
+        // given: the opensearch jar in the bundled directory
+        PluginJarFixture.write(bundledDirectory, "opensearch-plugin.jar", FixturePluginOne::class)
+
+        // when: the plugins are loaded without any switch
+        val extensions = load(emptyMap())
+
+        // then: the default installation loads nothing
+        assertThat(extensions.getPlugins()["fixture"]).describedAs("the opensearch jar is off by default").isNull()
+    }
+
+    @Test
+    fun `should load the opensearch jar only when the opensearch switch is on`() {
+        // given: the opensearch jar and its switch on
+        PluginJarFixture.write(bundledDirectory, "opensearch-plugin.jar", FixturePluginOne::class)
+
+        // when: the plugins are loaded
+        val extensions = load(mapOf("INGOT_OPENSEARCH_ENABLED" to "true"))
+
+        // then: the opensearch jar is registered
+        assertThat(extensions.getPlugins()["fixture"]).describedAs("INGOT_OPENSEARCH_ENABLED must load the opensearch jar").isNotNull
+    }
+
+    @Test
+    fun `should load the opensearch jar on the legacy switch when the INGOT name is unset`() {
+        // given: the opensearch jar and only the legacy switch on
+        PluginJarFixture.write(bundledDirectory, "opensearch-plugin.jar", FixturePluginOne::class)
+
+        // when: the plugins are loaded
+        val extensions = load(mapOf("REPOSILITE_OPENSEARCH_ENABLED" to "true"))
+
+        // then: the opensearch jar is registered
+        assertThat(extensions.getPlugins()["fixture"]).describedAs("REPOSILITE_OPENSEARCH_ENABLED must be the fallback").isNotNull
+    }
+
+    @Test
+    fun `should not load the opensearch jar when only the metrics switch is on`() {
+        // given: the opensearch jar and only the metrics switch on
+        PluginJarFixture.write(bundledDirectory, "opensearch-plugin.jar", FixturePluginOne::class)
+
+        // when: the plugins are loaded
+        val extensions = load(mapOf("INGOT_METRICS_ENABLED" to "true"))
+
+        // then: the opensearch jar keeps its own switch and stays off
+        assertThat(extensions.getPlugins()["fixture"]).describedAs("the metrics switch must not load the opensearch jar").isNull()
+    }
+
 }
