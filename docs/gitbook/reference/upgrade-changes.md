@@ -152,6 +152,14 @@ The image ships `nexus-import-plugin.jar` in `/app/bundled-plugins/`. It is load
 
 See [Import from Nexus](../how-to/import-from-nexus.md) for the flow.
 
+### OpenSearch search backend is bundled and off by default (unreleased)
+
+The image ships `opensearch-plugin.jar` in `/app/bundled-plugins/`. It is loaded only when `INGOT_OPENSEARCH_ENABLED=true` (or `REPOSILITE_OPENSEARCH_ENABLED=true` when the `INGOT_` name is absent). With the switch off nothing is loaded and no connection is made, so an existing installation behaves as before. No configuration, environment variable, volume, manifest or plugin changes for existing deployments.
+
+* The search backend stays `database` until `searchEngine` is set to `opensearch` on every replica. Set the switch first and the search backend second, as described in [Use OpenSearch for search](../how-to/use-opensearch-for-search.md).
+
+See [OpenSearch search backend](opensearch-search-backend.md) for the variables and the security obligations of the cluster.
+
 ### The default colour is steel blue
 
 An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](settings-domains.md)). No configuration file, environment variable, volume or plugin changes.
