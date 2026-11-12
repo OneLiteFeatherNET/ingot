@@ -16,7 +16,6 @@
 
 package net.onelitefeather.ingot.search.database
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import net.onelitefeather.ingot.search.ArtifactFilePage
 import net.onelitefeather.ingot.search.ArtifactFileItem
 import net.onelitefeather.ingot.search.ArtifactFilesQuery
@@ -28,6 +27,7 @@ import net.onelitefeather.ingot.search.ArtifactVersions
 import net.onelitefeather.ingot.search.FacetBucket
 import net.onelitefeather.ingot.search.IndexState
 import net.onelitefeather.ingot.search.IndexStatus
+import net.onelitefeather.ingot.search.IndexStatusReader
 import net.onelitefeather.ingot.search.InvalidSearchQueryException
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.OriginFilter
@@ -37,10 +37,7 @@ import net.onelitefeather.ingot.search.SearchFacets
 import net.onelitefeather.ingot.search.SearchSort
 import net.onelitefeather.ingot.search.SearchUnavailableException
 import net.onelitefeather.ingot.search.access.SearchAccess
-import net.onelitefeather.ingot.search.outbox.OutboxPolicy
 import net.onelitefeather.ingot.search.database.SearchFilters.FilterKind
-import net.onelitefeather.ingot.search.runs.RunKind
-import net.onelitefeather.ingot.search.runs.RunStatus
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.Op
@@ -48,8 +45,6 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.greaterEq
-import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.max
@@ -83,9 +78,7 @@ internal class DatabaseArtifactSearchEngine(
 
     private val tables = SearchTables(SearchDialect.of(database.vendor))
     private val rows = tables.artifact
-    private val outbox = tables.outbox
-    private val runs = tables.rebuildRun
-    private val state = tables.state
+    private val statusReader = IndexStatusReader(database, clock)
 
     override fun search(query: ArtifactSearchQuery, access: SearchAccess): ArtifactSearchPage {
         checkWindow(query.page, query.size)
@@ -378,55 +371,12 @@ internal class DatabaseArtifactSearchEngine(
 
     // ---- index status --------------------------------------------------------------------------------------------
 
-    /** The state of the index for this request (4.8): three small reads, nothing cached. */
+    /** The state of the index for this request (4.8): the core counts and the two rows of the backend, nothing cached. */
     private fun statusInTransaction(): IndexStatus {
-        val lastFull = stateValue(SearchStateKey.LAST_FULL_REBUILD)?.toLongOrNull()
-        val dropped = stateValue(SearchStateKey.DROPPED_ENQUEUES)?.toLongOrNull() ?: 0L
-        val drift = stateValue(SearchStateKey.VERIFY_LAST_REPORT)?.let(::driftOf)
         val rowsExist = rows.select(rows.id).limit(1).firstOrNull() != null
         val tokensComplete = rows.select(rows.id).where { rows.gavKey.isNull() }.limit(1).firstOrNull() == null
-        val rebuildRunning = runs.select(runs.id)
-            .where { (runs.kind eq RunKind.REBUILD.name) and (runs.status eq RunStatus.RUNNING.name) }
-            .limit(1)
-            .firstOrNull() != null
-        val lastRebuildFailed = runs.select(runs.status)
-            .where { runs.kind eq RunKind.REBUILD.name }
-            .orderBy(runs.id to SortOrder.DESC)
-            .limit(1)
-            .firstOrNull()?.get(runs.status) == RunStatus.FAILED.name
-        val oldestPending = outbox.select(outbox.createdAt)
-            .where { outbox.attempts less OutboxPolicy.MAX_ATTEMPTS }
-            .orderBy(outbox.id to SortOrder.ASC)
-            .limit(1)
-            .firstOrNull()
-        val lagSeconds = oldestPending?.let { ((clock.millis() - it[outbox.createdAt]) / MILLIS_PER_SECOND).coerceAtLeast(0L) } ?: 0L
-        val deadLetters = outbox.selectAll().where { outbox.attempts greaterEq OutboxPolicy.MAX_ATTEMPTS }.count()
-        return IndexStatus(
-            state = indexStateOf(
-                lastFullRebuild = lastFull?.let(Instant::ofEpochMilli),
-                rowsExist = rowsExist,
-                rebuildRunning = rebuildRunning,
-                lastRebuildFailed = lastRebuildFailed,
-                lagSeconds = lagSeconds,
-                deadLetters = deadLetters,
-                droppedEnqueues = dropped,
-                drift = drift,
-                tokensComplete = tokensComplete,
-            ),
-            lagSeconds = lagSeconds,
-            lastFullRebuild = lastFull?.let(Instant::ofEpochMilli),
-            deadLetters = deadLetters,
-            droppedEnqueues = dropped,
-            pendingEntries = outbox.selectAll().where { outbox.attempts less OutboxPolicy.MAX_ATTEMPTS }.count(),
-            tokensComplete = tokensComplete,
-        )
+        return statusReader.compose(statusReader.coreFacts(), rowsExist = rowsExist, tokensComplete = tokensComplete)
     }
-
-    private fun stateValue(key: String): String? =
-        state.select(state.value).where { state.key eq key }.firstOrNull()?.get(state.value)
-
-    private fun driftOf(report: String): Double? =
-        runCatching { MAPPER.readTree(report).get("drift")?.asDouble() }.getOrNull()
 
     // ---- helpers -------------------------------------------------------------------------------------------------
 
@@ -460,10 +410,8 @@ internal class DatabaseArtifactSearchEngine(
         const val FACET_BUCKETS = 20
         const val MAX_LATEST_ROWS = 100_000
         const val MAX_VERSIONS_PER_ARTIFACT = 5_000
-        const val MILLIS_PER_SECOND = 1000L
         const val SNAPSHOT_SUFFIX = "-SNAPSHOT"
         const val NO_CLASSIFIER = "-"
-        val MAPPER = ObjectMapper()
 
         /** The directory of a groupId in the repository, as the browse route expects it. */
         fun groupDirectory(groupId: String): String = groupId.replace('.', '/')
