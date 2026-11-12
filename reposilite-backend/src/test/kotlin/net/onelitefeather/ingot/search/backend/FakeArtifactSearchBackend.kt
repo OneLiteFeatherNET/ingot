@@ -64,7 +64,17 @@ internal class FakeArtifactSearchBackend(
     /** Called with each batch before it is applied. */
     var onApply: (List<IndexAction>) -> Unit = {}
 
-    override fun health(): BackendHealth = BackendHealth.Up
+    /** What [health] answers. */
+    var healthAnswer: BackendHealth = BackendHealth.Up
+
+    /** How many times [health] was asked. */
+    var healthChecks = 0
+        private set
+
+    override fun health(): BackendHealth {
+        healthChecks++
+        return healthAnswer
+    }
 
     override fun apply(actions: List<IndexAction>) {
         batches += actions
