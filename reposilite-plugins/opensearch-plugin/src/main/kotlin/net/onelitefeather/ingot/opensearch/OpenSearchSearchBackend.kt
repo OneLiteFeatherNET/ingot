@@ -31,15 +31,19 @@ import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.backend.SamplePage
 import net.onelitefeather.ingot.search.backend.StoredRow
+import java.time.Clock
+import javax.net.ssl.SSLContext
 import kotlin.random.Random
 
 /**
- * Placeholder of the `opensearch` backend until the query translation and the write path are implemented. Every operation
- * that would touch the cluster throws, and [health] reports `DOWN`, so an instance that selects this backend answers as
- * unavailable instead of serving partial results.
+ * Placeholder of the `opensearch` backend until the write and read paths are implemented. Every operation that would touch the
+ * cluster throws, and [health] reports `DOWN`, so an instance that selects this backend answers as unavailable instead of
+ * serving partial results.
  */
-internal class OpenSearchStubBackend(
+internal class OpenSearchSearchBackend(
     val settings: OpenSearchSettings,
+    private val clock: Clock,
+    private val sslContext: SSLContext?,
 ) : ArtifactSearchBackend {
 
     override val id: String = OpenSearchBackendFactory.ID

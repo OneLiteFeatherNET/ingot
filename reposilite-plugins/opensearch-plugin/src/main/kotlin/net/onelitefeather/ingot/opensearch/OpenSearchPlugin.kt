@@ -60,7 +60,7 @@ internal fun registerOpenSearch(
     accept: (ArtifactSearchBackendFactory) -> Unit,
 ) {
     if (!OPENSEARCH_JAR_SWITCH.isOn(environment)) return
-    accept(OpenSearchBackendFactory { OpenSearchSettings.read(environment, readFile) })
+    accept(OpenSearchBackendFactory(settings = { OpenSearchSettings.read(environment, readFile) }))
 }
 
 private val OPENSEARCH_JAR_SWITCH: PluginLoader.BundledSwitch =
