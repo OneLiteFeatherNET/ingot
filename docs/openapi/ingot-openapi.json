@@ -436,6 +436,24 @@
         "enum" : [ "SUCCEEDED", "FAILED" ],
         "type" : "string"
       },
+      "ConfigurationInformation" : {
+        "properties" : {
+          "local" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "shared" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/JsonNode"
+            },
+            "type" : "object"
+          }
+        },
+        "required" : [ "local", "shared" ],
+        "type" : "object"
+      },
       "CreateAccessTokenWithNoNameRequest" : {
         "properties" : {
           "description" : {
@@ -553,6 +571,18 @@
             "type" : [ "string", "null" ]
           }
         },
+        "type" : "object"
+      },
+      "DatabaseInformation" : {
+        "properties" : {
+          "endpoint" : {
+            "type" : [ "string", "null" ]
+          },
+          "kind" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "kind" ],
         "type" : "object"
       },
       "DatabaseSnapshotResponse" : {
@@ -812,6 +842,21 @@
         "required" : [ "state", "lagSeconds", "deadLetters", "droppedEnqueues", "pendingEntries" ],
         "type" : "object"
       },
+      "IngotInformation" : {
+        "properties" : {
+          "buildTime" : {
+            "type" : "string"
+          },
+          "commit" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "version", "buildTime", "commit" ],
+        "type" : "object"
+      },
       "InstanceStatusResponse" : {
         "properties" : {
           "cluster" : {
@@ -873,6 +918,123 @@
           }
         },
         "required" : [ "date", "count" ],
+        "type" : "object"
+      },
+      "JsonNode" : {
+        "properties" : {
+          "" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "array" : {
+            "type" : "boolean"
+          },
+          "bigDecimal" : {
+            "type" : "boolean"
+          },
+          "bigInteger" : {
+            "type" : "boolean"
+          },
+          "binary" : {
+            "type" : "boolean"
+          },
+          "boolean" : {
+            "type" : "boolean"
+          },
+          "containerNode" : {
+            "type" : "boolean"
+          },
+          "double" : {
+            "type" : "boolean"
+          },
+          "empty" : {
+            "type" : "boolean"
+          },
+          "float" : {
+            "type" : "boolean"
+          },
+          "floatingPointNumber" : {
+            "type" : "boolean"
+          },
+          "int" : {
+            "type" : "boolean"
+          },
+          "integralNumber" : {
+            "type" : "boolean"
+          },
+          "long" : {
+            "type" : "boolean"
+          },
+          "missingNode" : {
+            "type" : "boolean"
+          },
+          "nodeType" : {
+            "$ref" : "#/components/schemas/JsonNodeType"
+          },
+          "null" : {
+            "type" : "boolean"
+          },
+          "number" : {
+            "type" : "boolean"
+          },
+          "object" : {
+            "type" : "boolean"
+          },
+          "pojo" : {
+            "type" : "boolean"
+          },
+          "short" : {
+            "type" : "boolean"
+          },
+          "textual" : {
+            "type" : "boolean"
+          },
+          "valueNode" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "empty", "empty", "valueNode", "containerNode", "missingNode", "array", "object", "pojo", "number", "integralNumber", "floatingPointNumber", "short", "int", "long", "float", "double", "bigDecimal", "bigInteger", "textual", "boolean", "null", "binary" ],
+        "type" : "object"
+      },
+      "JsonNodeType" : {
+        "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ],
+        "type" : "string"
+      },
+      "JvmInformation" : {
+        "properties" : {
+          "heapMaxMb" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "heapUsedMb" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "inputArguments" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "processors" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "threads" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "uptimeMillis" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "vendor" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "vendor", "version", "uptimeMillis", "heapUsedMb", "heapMaxMb", "processors", "threads", "inputArguments" ],
         "type" : "object"
       },
       "LastVerifyReport" : {
@@ -1093,6 +1255,24 @@
         "required" : [ "authorization", "token" ],
         "type" : "object"
       },
+      "OperatingSystemInformation" : {
+        "properties" : {
+          "architecture" : {
+            "type" : "string"
+          },
+          "container" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "version", "architecture", "container" ],
+        "type" : "object"
+      },
       "Origin" : {
         "enum" : [ "HOSTED", "MIRROR" ],
         "type" : "string"
@@ -1135,6 +1315,24 @@
           }
         },
         "required" : [ "repository", "path", "version", "sizeBytes", "reason" ],
+        "type" : "object"
+      },
+      "PluginInformation" : {
+        "properties" : {
+          "dependencies" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "version", "dependencies" ],
         "type" : "object"
       },
       "PluginUiBlock" : {
@@ -1307,16 +1505,52 @@
         },
         "type" : "object"
       },
-      "RepositoryListResponse" : {
+      "RepositoryListEntriesResponse" : {
         "properties" : {
           "repositories" : {
             "items" : {
-              "$ref" : "#/components/schemas/RepositorySummary"
+              "$ref" : "#/components/schemas/RepositoryListEntry"
             },
             "type" : "array"
           }
         },
         "required" : [ "repositories" ],
+        "type" : "object"
+      },
+      "RepositoryListEntry" : {
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "readOnly" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "typeExplicit" : {
+            "type" : "boolean"
+          },
+          "versionPolicy" : {
+            "type" : [ "string", "null" ]
+          },
+          "visibility" : {
+            "$ref" : "#/components/schemas/RepositoryVisibility"
+          },
+          "writePolicy" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "id", "visibility", "description", "tags", "type", "typeExplicit" ],
         "type" : "object"
       },
       "RepositoryMembersResponse" : {
@@ -1386,33 +1620,6 @@
           }
         },
         "required" : [ "id", "usedBytes", "fileCount", "storageType", "group" ],
-        "type" : "object"
-      },
-      "RepositorySummary" : {
-        "properties" : {
-          "description" : {
-            "type" : "string"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "tags" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array"
-          },
-          "type" : {
-            "type" : "string"
-          },
-          "typeExplicit" : {
-            "type" : "boolean"
-          },
-          "visibility" : {
-            "$ref" : "#/components/schemas/RepositoryVisibility"
-          }
-        },
-        "required" : [ "id", "visibility", "description", "tags", "type", "typeExplicit" ],
         "type" : "object"
       },
       "RepositoryVisibility" : {
@@ -1800,6 +2007,21 @@
         "required" : [ "at", "memory", "threads" ],
         "type" : "object"
       },
+      "StorageInformation" : {
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "region" : {
+            "type" : [ "string", "null" ]
+          },
+          "repository" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "repository", "kind" ],
+        "type" : "object"
+      },
       "StorageUsageResponse" : {
         "properties" : {
           "computedAt" : {
@@ -1820,6 +2042,77 @@
           }
         },
         "required" : [ "computing", "totalBytes", "repositories" ],
+        "type" : "object"
+      },
+      "SupportAvailability" : {
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "enabled" ],
+        "type" : "object"
+      },
+      "SystemInformation" : {
+        "properties" : {
+          "cluster" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ClusterStatusResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "configuration" : {
+            "$ref" : "#/components/schemas/ConfigurationInformation"
+          },
+          "database" : {
+            "$ref" : "#/components/schemas/DatabaseInformation"
+          },
+          "environment" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "generatedAt" : {
+            "type" : "string"
+          },
+          "ingot" : {
+            "$ref" : "#/components/schemas/IngotInformation"
+          },
+          "instance" : {
+            "type" : "string"
+          },
+          "jvm" : {
+            "$ref" : "#/components/schemas/JvmInformation"
+          },
+          "operatingSystem" : {
+            "$ref" : "#/components/schemas/OperatingSystemInformation"
+          },
+          "plugins" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PluginInformation"
+            },
+            "type" : "array"
+          },
+          "redactionRuleVersion" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "storage" : {
+            "items" : {
+              "$ref" : "#/components/schemas/StorageInformation"
+            },
+            "type" : "array"
+          },
+          "systemProperties" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "required" : [ "instance", "generatedAt", "redactionRuleVersion", "ingot", "jvm", "operatingSystem", "database", "storage", "plugins", "environment", "systemProperties", "configuration" ],
         "type" : "object"
       },
       "UpdateAccessTokenWithNoNameRequest" : {
@@ -1948,6 +2241,80 @@
         } ],
         "summary" : "Turns read-only on: writes are refused with 503 on every replica until it is turned off. Note: Requires the maintenance area",
         "tags" : [ "Maintenance" ]
+      }
+    },
+    "/api/admin/support/availability" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SupportAvailability"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Tells whether the system information and the support bundle are offered. Note: Requires the console area",
+        "tags" : [ "Support" ]
+      }
+    },
+    "/api/admin/support/bundle" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "The support bundle as application/zip"
+          },
+          "401" : {
+            "description" : "No credentials were sent"
+          },
+          "403" : {
+            "description" : "The principal has no console area"
+          },
+          "404" : {
+            "description" : "The support bundle is turned off on this instance"
+          },
+          "429" : {
+            "description" : "Another bundle is being built"
+          },
+          "500" : {
+            "description" : "The final redaction check refused the bundle, or it exceeds the size cap"
+          }
+        },
+        "summary" : "Downloads a zip with the system information, the configuration, the cluster, the plugins and the cached log of this instance. Note: Requires the console area",
+        "tags" : [ "Support" ]
+      }
+    },
+    "/api/admin/support/system-info" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SystemInformation"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "No credentials were sent"
+          },
+          "403" : {
+            "description" : "The principal has no console area"
+          },
+          "404" : {
+            "description" : "The support bundle is turned off on this instance"
+          },
+          "500" : {
+            "description" : "The final redaction check refused the answer"
+          }
+        },
+        "summary" : "Returns the system information of this instance, with every secret withheld or masked. Note: Requires the console area",
+        "tags" : [ "Support" ]
       }
     },
     "/api/audit" : {
@@ -3707,7 +4074,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/RepositoryListResponse"
+                  "$ref" : "#/components/schemas/RepositoryListEntriesResponse"
                 }
               }
             },
@@ -4774,7 +5141,7 @@
     },
     "/{repository}/{gav}" : {
       "delete" : {
-        "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads and no deletions.",
+        "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads and no deletions, or if it is read-only.",
         "parameters" : [ {
           "description" : "Destination repository",
           "in" : "path",
@@ -4794,7 +5161,7 @@
         } ],
         "responses" : {
           "405" : {
-            "description" : "Returns 405 if the repository is a proxy or a group, which take no deletions"
+            "description" : "Returns 405 if the repository is a proxy or a group, which take no deletions, or if it is read-only"
           }
         },
         "security" : [ {
@@ -4872,11 +5239,14 @@
             },
             "description" : "Input stream of requested file"
           },
+          "400" : {
+            "description" : "Returns 400 if the version policy of the repository refuses the version of the artifact, e.g. a snapshot into a RELEASE repository"
+          },
           "401" : {
             "description" : "Returns 401 for invalid credentials"
           },
           "405" : {
-            "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads"
+            "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads, or if it is read-only"
           },
           "507" : {
             "description" : "Returns 507 if Ingot does not have enough disk space to store the uploaded file"
@@ -4923,11 +5293,14 @@
             },
             "description" : "Input stream of requested file"
           },
+          "400" : {
+            "description" : "Returns 400 if the version policy of the repository refuses the version of the artifact, e.g. a snapshot into a RELEASE repository"
+          },
           "401" : {
             "description" : "Returns 401 for invalid credentials"
           },
           "405" : {
-            "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads"
+            "description" : "Returns 405 if the repository is a proxy or a group, which take no uploads, or if it is read-only"
           },
           "507" : {
             "description" : "Returns 507 if Ingot does not have enough disk space to store the uploaded file"
