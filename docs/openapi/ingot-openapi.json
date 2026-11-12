@@ -1713,12 +1713,41 @@
         "type" : "string"
       },
       "RunTrigger" : {
-        "enum" : [ "MANUAL", "SCHEDULED", "STARTUP", "GAP" ],
+        "enum" : [ "MANUAL", "SCHEDULED", "STARTUP", "GAP", "BACKEND" ],
         "type" : "string",
-        "x-extensible-enum" : [ "MANUAL", "SCHEDULED", "STARTUP", "GAP" ]
+        "x-extensible-enum" : [ "MANUAL", "SCHEDULED", "STARTUP", "GAP", "BACKEND" ]
       },
       "SchemeVariant" : {
         "enum" : [ "TONAL_SPOT", "VIBRANT", "EXPRESSIVE", "NEUTRAL", "FIDELITY", "CONTENT", "MONOCHROME" ],
+        "type" : "string"
+      },
+      "SearchBackendResponse" : {
+        "properties" : {
+          "accessMismatches" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "health" : {
+            "type" : "string"
+          },
+          "healthDetail" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/SearchBackendState"
+          }
+        },
+        "required" : [ "id", "state", "detail", "health", "healthDetail", "accessMismatches" ],
+        "type" : "object"
+      },
+      "SearchBackendState" : {
+        "enum" : [ "AVAILABLE", "NOT_INSTALLED", "REFUSED", "OPEN_FAILED", "DOWN", "CLUSTER_MISMATCH" ],
         "type" : "string"
       },
       "SearchFacets" : {
@@ -1766,6 +1795,9 @@
               "type" : "null"
             } ]
           },
+          "backend" : {
+            "$ref" : "#/components/schemas/SearchBackendResponse"
+          },
           "engine" : {
             "type" : "string"
           },
@@ -1807,7 +1839,7 @@
             "$ref" : "#/components/schemas/IndexState"
           }
         },
-        "required" : [ "state", "lagSeconds", "rows", "outbox", "repositories", "engine", "runs" ],
+        "required" : [ "state", "lagSeconds", "rows", "outbox", "repositories", "engine", "runs", "backend" ],
         "type" : "object"
       },
       "SearchRunResponse" : {
@@ -4292,7 +4324,7 @@
             "description" : "Search is turned off on this instance"
           },
           "503" : {
-            "description" : "Statement timeout or grant set too large for search"
+            "description" : "Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set."
           }
         },
         "summary" : "Search artifacts across all repositories the caller may browse",
@@ -4373,7 +4405,7 @@
             "description" : "Search is turned off on this instance"
           },
           "503" : {
-            "description" : "Statement timeout or grant set too large for search"
+            "description" : "Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set."
           }
         },
         "summary" : "List the files of one artifact version found by search",
@@ -4444,6 +4476,9 @@
           },
           "409" : {
             "description" : "A rebuild or verify run is already running"
+          },
+          "503" : {
+            "description" : "The search backend is not available. Retry-After is set."
           }
         },
         "security" : [ {
@@ -4479,6 +4514,9 @@
           },
           "409" : {
             "description" : "The run has already finished"
+          },
+          "503" : {
+            "description" : "The search backend is not available. Retry-After is set."
           }
         },
         "security" : [ {
@@ -4512,6 +4550,9 @@
           },
           "409" : {
             "description" : "A rebuild or verify run is already running"
+          },
+          "503" : {
+            "description" : "The search backend is not available. Retry-After is set."
           }
         },
         "security" : [ {
