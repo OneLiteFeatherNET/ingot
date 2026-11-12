@@ -1,0 +1,54 @@
+# Container tests of the search backends that are not the database: the OpenSearch backend of the plugin, which runs a secured
+# OpenSearch 2.x container through Testcontainers.
+#
+# Runs on pull requests that touch the plugin or the backend's search package, and nightly for everything else, so that a
+# change of the server or of the container image shows up on the next night even when no pull request touched the plugin.
+name: "Search backends"
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "reposilite-plugins/opensearch-plugin/**"
+      - "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/search/**"
+      - "reposilite-backend/src/integration/kotlin/net/onelitefeather/ingot/search/opensearch/**"
+  schedule:
+    # Nightly, 03:17 UTC.
+    - cron: "17 3 * * *"
+
+# Read-only. The job needs no write scope: it neither publishes results nor comments on the pull request.
+permissions:
+  contents: read
+
+concurrency:
+  group: "search-backends-${{ github.workflow }}-${{ github.ref }}"
+  # A newer push to a pull request makes an older run of the same branch obsolete.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  search-backends:
+    name: "Search backends"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      # Restores and saves the Gradle caches of the job, as the other backend jobs of this repository do.
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      # The filter selects the OpenSearch contract suite and its container helpers in the integration source set.
+      - name: "Run the OpenSearch backend tests"
+        run: ./gradlew :reposilite-backend:integration --tests '*OpenSearch*' --max-workers=2
