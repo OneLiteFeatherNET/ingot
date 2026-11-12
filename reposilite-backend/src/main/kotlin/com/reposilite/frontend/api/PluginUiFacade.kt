@@ -21,6 +21,7 @@ import com.reposilite.journalist.Logger
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
+import java.nio.charset.StandardCharsets.UTF_8
 
 /**
  * The extension point for dashboard pages. A plugin obtains a registrar for itself with [forPlugin] and registers
@@ -32,24 +33,31 @@ import com.reposilite.plugin.api.ReposilitePlugin
 class PluginUiFacade internal constructor(
     private val logger: Logger,
     private val enabled: () -> Boolean,
+    /** The switch `INGOT_LOCAL_PLUGINSTYLES`. It is read on every request, so a change applies without a restart. */
+    private val stylesheetsEnabled: () -> Boolean = { true },
 ) : Facade {
 
     private val lock = Any()
     private val pagesByPlugin = linkedMapOf<String, MutableList<PluginUiPage>>()
     private val sectionsByPlugin = linkedMapOf<String, MutableList<PluginUiManifestSection>>()
+    private val stylesheetsByPlugin = linkedMapOf<String, PluginStylesheet>()
+    private val stylesheetCallers = mutableSetOf<String>()
 
     /**
      * The registrar of [plugin]. The plugin name and its own settings domain are read from its `@Plugin` annotation,
-     * so a plugin registers under its own name only.
+     * so a plugin registers under its own name only. Its stylesheets are read from its own class loader.
      */
-    fun forPlugin(plugin: ReposilitePlugin): PluginUiRegistrar {
+    fun forPlugin(plugin: ReposilitePlugin): PluginUiRegistrar =
+        forPlugin(plugin) { name -> plugin.javaClass.classLoader.getResourceAsStream(name)?.use { it.readBytes() } }
+
+    internal fun forPlugin(plugin: ReposilitePlugin, readResource: (String) -> ByteArray?): PluginUiRegistrar {
         val annotation = plugin.javaClass.getAnnotation(Plugin::class.java)
             ?: error("${plugin.javaClass.name} has no @Plugin annotation")
         val ownDomain = annotation.settings.java.takeUnless { it == SharedSettings::class.java }?.let { settingsName(it) }
         if (ownDomain == PluginUiModel.RESERVED_DOMAIN) {
             logger.warn("Plugin UI | plugin '${annotation.name}' has a settings domain named '$ownDomain', which collides with the dashboard address /settings/$ownDomain/...")
         }
-        return PluginUiRegistrar(this, annotation.name, ownDomain)
+        return PluginUiRegistrar(this, annotation.name, ownDomain, readResource)
     }
 
     internal fun addPage(plugin: String, page: PluginUiPage): Boolean = synchronized(lock) {
@@ -96,15 +104,49 @@ class PluginUiFacade internal constructor(
      */
     internal fun manifest(canOpen: (String) -> Boolean, enabledPlugins: List<String>): PluginUiManifest {
         if (!enabled()) return PluginUiManifest(pages = emptyList(), sections = emptyList(), enabledPlugins = enabledPlugins)
-        val (pages, sections) = synchronized(lock) {
-            pagesByPlugin.flatMap { (plugin, list) -> list.map { PluginUiManifestPage.of(plugin, it) } } to
-                sectionsByPlugin.values.flatten()
+        val (pages, sections, stylesheets) = synchronized(lock) {
+            Triple(
+                pagesByPlugin.flatMap { (plugin, list) -> list.map { PluginUiManifestPage.of(plugin, it) } },
+                sectionsByPlugin.values.flatten(),
+                stylesheetsByPlugin.values.toList(),
+            )
         }
         return PluginUiManifest(
             pages = pages.filter { canOpen(it.area) },
             sections = if (canOpen("settings")) sections else emptyList(),
             enabledPlugins = enabledPlugins,
+            stylesheets = if (stylesheetsEnabled()) {
+                stylesheets.map { PluginUiManifestStylesheet(plugin = it.plugin, path = it.path, sha256 = it.sha256) }
+            } else {
+                emptyList()
+            },
         )
+    }
+
+    /** Adds the stylesheet [resource] of [plugin], read with [readResource]. Returns false when it was dropped. */
+    internal fun addStylesheet(plugin: String, resource: String, readResource: (String) -> ByteArray?): Boolean = synchronized(lock) {
+        if (!stylesheetCallers.add(plugin)) {
+            logger.warn("Plugin UI | stylesheet '$resource' of plugin '$plugin' is dropped: a plugin takes one stylesheet, and it already registered one")
+            return false
+        }
+        val bytes = runCatching { readResource(resource) }.getOrNull()
+        if (bytes == null) {
+            logger.warn("Plugin UI | stylesheet '$resource' of plugin '$plugin' is dropped: the plugin has no such resource")
+            return false
+        }
+        val problems = PluginStylesheetValidator.problems(plugin, bytes)
+        if (problems.isNotEmpty()) {
+            logger.warn("Plugin UI | stylesheet '$resource' of plugin '$plugin' is dropped: ${problems.joinToString("; ")}")
+            return false
+        }
+        stylesheetsByPlugin[plugin] = PluginStylesheet(plugin, PluginStylesheetValidator.wrap(String(bytes, UTF_8)).toByteArray(UTF_8))
+        true
+    }
+
+    /** The stylesheet of [plugin] whose hash is [hash], or null. Null while either switch is off. */
+    internal fun stylesheet(plugin: String, hash: String): PluginStylesheet? {
+        if (!enabled() || !stylesheetsEnabled()) return null
+        return synchronized(lock) { stylesheetsByPlugin[plugin]?.takeIf { it.hash == hash } }
     }
 
     /** The areas that guard the data routes of [plugin]. Empty for a plugin without a page, or while the switch is off. */
@@ -125,6 +167,7 @@ class PluginUiRegistrar internal constructor(
     /** The name of the registering plugin, the first segment below `/api/plugins/`. */
     val plugin: String,
     private val ownDomain: String?,
+    private val readResource: (String) -> ByteArray?,
 ) {
 
     /** Adds a page. Returns false when the page was dropped; the reason is in the log. */
@@ -134,4 +177,12 @@ class PluginUiRegistrar internal constructor(
     /** Gives one of the plugin's own settings domains a label and a menu group. Returns false when it was dropped. */
     fun registerSettingsSection(section: PluginUiSection): Boolean =
         facade.addSection(plugin, ownDomain, section)
+
+    /**
+     * Registers the stylesheet [resource] of the plugin, a CSS file in the plugin's jar. The sheet is checked now, and a
+     * sheet that fails is dropped with a warning. A plugin takes one call: a second one is dropped, and so is a first
+     * one that failed. Returns false when the sheet was dropped.
+     */
+    fun registerStylesheet(resource: String): Boolean =
+        facade.addStylesheet(plugin, resource, readResource)
 }

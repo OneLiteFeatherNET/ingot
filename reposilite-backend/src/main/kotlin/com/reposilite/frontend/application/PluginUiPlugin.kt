@@ -17,6 +17,7 @@ package com.reposilite.frontend.application
 
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.frontend.api.PluginUiFacade
+import com.reposilite.frontend.infrastructure.PluginStylesheetEndpoint
 import com.reposilite.frontend.infrastructure.PluginUiDataGuard
 import com.reposilite.frontend.infrastructure.PluginUiEndpoint
 import com.reposilite.plugin.api.Plugin
@@ -28,13 +29,15 @@ import com.reposilite.web.api.RoutingSetupEvent
 /**
  * The `plugin-ui` facade: the extension point through which server plugins contribute dashboard pages as data.
  * The switch `INGOT_LOCAL_PLUGINUI` (fallback `REPOSILITE_LOCAL_PLUGINUI`) turns the contributions off.
+ * The switch `INGOT_LOCAL_PLUGINSTYLES` (fallback `REPOSILITE_LOCAL_PLUGINSTYLES`) turns the plugin stylesheets off.
  */
 @Plugin(name = "plugin-ui", dependencies = ["local-configuration"])
 internal class PluginUiPlugin : ReposilitePlugin() {
 
     override fun initialize(): PluginUiFacade {
         val pluginUi = facade<LocalConfiguration>().pluginUi
-        val facade = PluginUiFacade(logger = logger, enabled = { pluginUi.get() })
+        val pluginStyles = facade<LocalConfiguration>().pluginStyles
+        val facade = PluginUiFacade(logger = logger, enabled = { pluginUi.get() }, stylesheetsEnabled = { pluginStyles.get() })
 
         event { event: RoutingSetupEvent ->
             // The manifest is served whatever the switch says, so the dashboard learns the enabled plugins either way.
@@ -44,6 +47,8 @@ internal class PluginUiPlugin : ReposilitePlugin() {
                     enabledPlugins = { event.reposilite.extensions.getPlugins().keys.sorted() },
                 )
             )
+            // The stylesheet path answers 404 while its switch is off, so it is registered whatever the switch says.
+            event.registerRoutes(PluginStylesheetEndpoint(facade))
             if (pluginUi.get()) {
                 event.registerRoutes(PluginUiDataGuard(facade))
             }

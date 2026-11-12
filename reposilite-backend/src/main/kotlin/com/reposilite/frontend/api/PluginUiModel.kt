@@ -126,6 +126,15 @@ data class PluginUiManifest(
     val sections: List<PluginUiManifestSection>,
     /** The names of the loaded server plugins. Names only, for any signed in caller. */
     val enabledPlugins: List<String>,
+    /** One entry per plugin with an accepted stylesheet. Added in version 1, so a dashboard that does not know it ignores it. */
+    val stylesheets: List<PluginUiManifestStylesheet> = emptyList(),
+)
+
+/** A stylesheet the dashboard loads. [path] is served from the server, and [sha256] is the digest of the served bytes. */
+data class PluginUiManifestStylesheet(
+    val plugin: String,
+    val path: String,
+    val sha256: String,
 )
 
 data class PluginUiManifestPage(
