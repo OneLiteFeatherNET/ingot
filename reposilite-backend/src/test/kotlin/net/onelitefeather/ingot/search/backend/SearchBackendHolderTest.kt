@@ -206,6 +206,20 @@ internal class SearchBackendHolderTest {
     }
 
     @Test
+    fun `a refused backend is logged at start and again every five minutes`() {
+        val holder = holder(BackendResolution.Unavailable(SearchBackendState.REFUSED, "apiVersion=2, expected 1"))
+        assertThat(logs).`as`("log lines at start").hasSize(1)
+
+        clock.advance(Duration.ofMinutes(4))
+        holder.tick()
+        assertThat(logs).`as`("log lines four minutes after start").hasSize(1)
+
+        clock.advance(Duration.ofMinutes(1))
+        holder.tick()
+        assertThat(logs).`as`("log lines five minutes after start").hasSize(2)
+    }
+
+    @Test
     fun `the outbox is not drained while the backend cannot open`() {
         failuresBeforeOpen = 1
         val holder = holder()
