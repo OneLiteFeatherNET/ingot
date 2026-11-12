@@ -101,6 +101,7 @@
 * [Cleanup policies](reference/cleanup-policies.md)
 * [Audit events](reference/audit-events.md)
 * [Console commands](reference/console-commands.md)
+* [OpenSearch search backend](reference/opensearch-search-backend.md)
 
 ### Identity and access
 
