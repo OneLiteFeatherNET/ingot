@@ -125,7 +125,7 @@ Fields of `appearance`:
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `seedColor` | String | empty | Colour `#RRGGBB` from which the palette is derived. Empty keeps the built-in theme. |
+| `seedColor` | String | empty | Colour `#RRGGBB` from which the palette is derived. Empty keeps the built-in Ingot theme, a steel blue scheme with neutral surfaces. To get the previous Reposilite magenta look back, set `#ac1c67`. |
 | `schemeVariant` | `TONAL_SPOT`, `VIBRANT`, `EXPRESSIVE`, `NEUTRAL`, `FIDELITY`, `CONTENT` or `MONOCHROME` | `VIBRANT` | How the palette is derived from `seedColor`. Applies only when `seedColor` is set. |
 | `primaryColor` | String | empty | Overrides the primary key colour, `#RRGGBB`. |
 | `secondaryColor` | String | empty | Overrides the secondary key colour, `#RRGGBB`. |
