@@ -49,12 +49,6 @@ object DatabaseConnectionFactory {
         "jdbc:h2" to "org.h2.Driver",
     )
 
-    /** Negative values are a size in KiB: 64 MiB of page cache per connection (SQLite default: 2 MiB). */
-    private const val SQLITE_CACHE_SIZE = "-65536"
-
-    /** Bytes of the database file that SQLite may read through memory mapping (256 MiB). */
-    private const val SQLITE_MMAP_SIZE = "268435456"
-
     fun createConnection(workingDirectory: Path, databaseConfiguration: String, databaseThreadPoolSize: Int): DatabaseConnection =
         when {
             databaseConfiguration.startsWith("mariadb") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:mariadb", databaseThreadPoolSize)
@@ -96,7 +90,7 @@ object DatabaseConnectionFactory {
     private fun createDataSource(url: String, threadPool: Int, username: String? = null, password: String? = null): HikariDataSource =
         HikariDataSource(
             HikariConfig().apply {
-                this.jdbcUrl = if (url.startsWith("jdbc:sqlite")) withSqliteCacheSettings(url) else url
+                this.jdbcUrl = url
                 this.driverClassName = resolveDriver(url)
                 this.maximumPoolSize = threadPool
                 username?.also { this.username = it }
@@ -109,16 +103,6 @@ object DatabaseConnectionFactory {
                 }
             }
         )
-
-    /**
-     * SQLite reads through a small page cache by default, so a query that walks the search index reads the same file pages
-     * again and again. The two settings are per connection, and the sqlite driver applies URL parameters to every pooled
-     * connection, so they go into the URL. Parameters the URL already has are kept.
-     */
-    private fun withSqliteCacheSettings(url: String): String {
-        val separator = if (url.contains('?')) "&" else "?"
-        return "$url${separator}cache_size=$SQLITE_CACHE_SIZE&mmap_size=$SQLITE_MMAP_SIZE"
-    }
 
     private fun resolveDriver(jdbcUrl: String): String =
         DRIVER_MAPPING.entries
