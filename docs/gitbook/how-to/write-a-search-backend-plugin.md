@@ -132,7 +132,7 @@ The core checks every file and repository a backend returns against the access v
 
 The reason of a state and the message of a down health reach the status and the body of a `503` answer. Ingot removes the user information of every URL in them before they are shown, that is the part before the `@` in `scheme://user:password@host`. The `detail` and `healthDetail` fields and the log lines of the state pass the same removal.
 
-Ingot does not yet remove the values that the backend reads through `secret()` from its messages. A backend must not put a secret into an exception message or a log line. Put a secret into a URL only as user information, so that the rule above removes it.
+Ingot also removes every value that the backend reads through `secret()` from its messages, and each occurrence is shown as `***`. The removal covers the values the backend has read so far, and it applies to the reason, the health message and the log lines of the backend. It cannot recognise a value that the backend derives from a secret, such as a prefix or an encoded form, so a backend must still not put such a value into an exception message or a log line. Put a secret into a URL only as user information, so that the rule above removes it.
 
 ## Before you release
 
