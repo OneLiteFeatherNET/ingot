@@ -37,7 +37,7 @@ const cluster = ref(null)
     class="container mx-auto max-w-none pt-7 pb-12"
     data-ingot-component="dashboard-view"
   >
-    <GettingStartedCard class="mb-6 max-w-[960px]" />
+    <GettingStartedCard class="mb-6" />
 
     <section aria-labelledby="instance-status-heading">
       <h2
