@@ -50,7 +50,7 @@ internal class ExtensibleEnumSchemasTest {
 
         assertThat(processed.at("/components/schemas/Other"))
             .describedAs("a schema that is not an extensible enum must not gain an extension")
-            .isEqualTo(mapper.readTree(OTHER_SCHEMA))
+            .isEqualTo(mapper.readTree("""{"type":"string","enum":["A","B"]}"""))
     }
 
     @Test

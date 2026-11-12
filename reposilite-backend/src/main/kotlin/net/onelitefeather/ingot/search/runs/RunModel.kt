@@ -19,11 +19,13 @@ package net.onelitefeather.ingot.search.runs
 import com.reposilite.storage.StorageEntrySource
 import java.time.Duration
 import java.time.Instant
+import net.onelitefeather.ingot.web.openapi.ExtensibleEnum
 
 /** Rebuild and verify runs share `search_rebuild_run` (artifact search spec, 2.6). */
 enum class RunKind { REBUILD, VERIFY }
 
-/** What started a run. */
+/** What started a run. More triggers are expected, so the API declares this enum extensible. */
+@ExtensibleEnum
 enum class RunTrigger { MANUAL, SCHEDULED, STARTUP, GAP }
 
 enum class RunStatus { RUNNING, COMPLETED, FAILED, CANCELLED }
