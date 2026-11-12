@@ -83,7 +83,7 @@ const select = (item, event) => {
           :href="item.href"
           :type="item.href ? undefined : 'button'"
           :aria-current="isActive(item) ? 'page' : undefined"
-          class="md-state-layer md-focus-ring relative flex h-14 min-w-12 flex-1 flex-col items-center justify-center gap-1 rounded-corner-large p-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
+          class="md-state-layer md-focus-ring relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-corner-large p-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
           :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
           @click="select(item, $event)"
         >
@@ -98,7 +98,12 @@ const select = (item, event) => {
               :active="isActive(item)"
             />
           </span>
-          <span class="md-label-medium">{{ item.label }}</span>
+          <!-- The label is cut with an ellipsis when its item is narrower than the text (a 320 px window with a wide
+               fallback font), so the text never runs past the edge of the window. The full name stays in the title. -->
+          <span
+            class="md-label-medium block max-w-full truncate whitespace-nowrap"
+            :title="item.label"
+          >{{ item.label }}</span>
         </component>
       </li>
     </ul>
