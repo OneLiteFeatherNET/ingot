@@ -32,6 +32,7 @@ plugins {
     jacoco
     kotlin("jvm")
     kotlin("kapt")
+    `java-test-fixtures`
     id("com.coditory.integration-test") version "2.2.5"
     id("com.gradleup.shadow") version "9.4.2"
     id("com.github.jk1.dependency-license-report") version "3.1.4"
@@ -401,6 +402,14 @@ dependencies {
     add("integrationImplementation", nexusImportFixtures)
 }
 
+dependencies {
+    // The abstract contract suite of search backends (search backend registration, D9), shared with the integration tests.
+    "integrationImplementation"(testFixtures(project(":reposilite-backend")))
+    // The contract uses JUnit and AssertJ. The versions match the root build, which gives them to the test source sets.
+    testFixturesApi("org.junit.jupiter:junit-jupiter-api:6.1.0")
+    testFixturesApi("org.assertj:assertj-core:4.0.0-M1")
+}
+
 tasks.named<Test>("integration") {
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.
@@ -480,7 +489,7 @@ tasks.register<JapicmpTask>("pluginApiReport") {
 // empty test index, so the tests used the runtime generator, which the settings tests assert on. Without the processor
 // main's compile-time schemes would reach the tests instead, so the empty json-schemes indexes in the test resources
 // keep the tests on the runtime generator.
-configurations.matching { it.name == "kaptTest" || it.name == "kaptIntegration" }.configureEach {
+configurations.matching { it.name == "kaptTest" || it.name == "kaptIntegration" || it.name == "kaptTestFixtures" }.configureEach {
     exclude(group = "io.javalin.community.openapi", module = "openapi-annotation-processor")
 }
 
