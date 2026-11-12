@@ -37,10 +37,11 @@ docker-compose.split.yml
 
 # Not used in running application
 reposilite-test
-# Only the metrics and Nexus import plugins are built into the image, see /app/bundled-plugins in the Dockerfile.
+# Only the metrics, Nexus import and OpenSearch plugins are built into the image, see /app/bundled-plugins in the Dockerfile.
 reposilite-plugins/*
 !reposilite-plugins/build.gradle.kts
 !reposilite-plugins/nexus-import-plugin
+!reposilite-plugins/opensearch-plugin
 !reposilite-plugins/prometheus-plugin
 .github/
 .codecov.yml
