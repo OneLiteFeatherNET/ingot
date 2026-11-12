@@ -15,7 +15,7 @@
  */
 
 import { computed, ref, watch, watchEffect } from "vue"
-import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler } from './client'
+import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler, tokenCredentials } from './client'
 import { openSessionChannel } from './session-channel'
 import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
 import { rateLimitMessage, retryAfterSeconds } from '../helpers/rate-limit'
@@ -231,6 +231,9 @@ const expireSession = () => {
 
 const client = computed(() => createClient(token.value.name, token.value.secret))
 
+// The request config of the current token session, for the requests that are made outside the client.
+const credentials = computed(() => tokenCredentials(token.value.name, token.value.secret))
+
 // A rejected secret stays useless on every later visit, so it is forgotten here. A server
 // that cannot be reached at all says nothing about the credentials and keeps them. Without
 // a stored token the server is asked about a cookie session instead.
@@ -416,6 +419,7 @@ export function useSession() {
     setupFailureMessage,
     isLogged,
     client,
+    credentials,
     isManager,
     nodes,
     can,

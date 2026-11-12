@@ -30,7 +30,7 @@ const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 const migrationMounts = vi.hoisted(() => vi.fn())
 
 vi.mock('../store/session', () => ({
-  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange, can: session.can })
+  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange, can: session.can, credentials: { value: {} } })
 }))
 
 vi.mock('../store/login', () => ({ openLogin: login.openLogin }))

@@ -28,7 +28,7 @@ const session = vi.hoisted(() => ({ isManager: null, isLogged: null, mustChange:
 const login = vi.hoisted(() => ({ openLogin: vi.fn() }))
 
 vi.mock('../store/session', () => ({
-  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange, can: session.can, client: session.client })
+  useSession: () => ({ isManager: session.isManager, isLogged: session.isLogged, mustChangePassword: session.mustChange, can: session.can, client: session.client, credentials: { value: {} } })
 }))
 
 vi.mock('../store/login', () => ({ openLogin: login.openLogin }))

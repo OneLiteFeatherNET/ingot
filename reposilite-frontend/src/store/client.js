@@ -160,17 +160,15 @@ const etagOf = (response) =>
 const isPreconditionFailed = (error) =>
   error?.response?.status === 412
 
-const createClient = (defaultName, defaultSecret) => {
-  const defaultAuthorization = () =>
-    defaultName && defaultSecret
-      ? authorization(defaultName, defaultSecret)
-      : {}
+// The request config that carries an access token, or nothing for a cookie session. Requests made outside
+// createClient (the plugin manifest, the support availability) use it too, so a token session sends its token.
+const tokenCredentials = (name, secret) =>
+  name && secret
+    ? { headers: { Authorization: `xBasic ${btoa(`${name}:${secret}`)}` } }
+    : {}
 
-  const authorization = (name, secret) => ({
-    headers: {
-      Authorization: `xBasic ${btoa(`${name}:${secret}`)}`,
-    },
-  })
+const createClient = (defaultName, defaultSecret) => {
+  const defaultAuthorization = () => tokenCredentials(defaultName, defaultSecret)
 
   // The precondition of an optimistic write. Without a known tag no header is sent, which is what an older server expects.
   const ifMatch = (etag) =>
@@ -704,6 +702,7 @@ const queryString = (params = {}) => {
 export {
   createURL,
   createClient,
+  tokenCredentials,
   setUnauthorizedHandler,
   setCookieMode,
   readCsrfToken,

@@ -26,10 +26,6 @@ test.describe('sign in and sign out', () => {
   })
 
   test('signs in with an access token and keeps the session', async ({ page }) => {
-    // Known regression on main: after the token form signs in, the dashboard requests the plugin manifest and the
-    // support availability without the token, the server answers 401, and the session is ended with "Session expired".
-    // Filed as issue #159. Remove this marker in the pull request that fixes it.
-    test.fail(true, 'issue #159: token sign-in ends the session')
     await page.goto(siteUrl('/'))
     await page.waitForLoadState('networkidle')
 

@@ -27,10 +27,10 @@ import { setContributions } from '../navigation/registry'
 // False until the manifest of the current session is known, so a page that is waiting for it is not judged.
 const pluginUiReady = ref(false)
 
-const loadPluginUi = async () => {
+const loadPluginUi = async (credentials = {}) => {
   pluginUiReady.value = false
   try {
-    const { data } = await axios.get(createURL('/api/frontend/plugin-ui'), handleRequest({ withCredentials: true, headers: {} }))
+    const { data } = await axios.get(createURL('/api/frontend/plugin-ui'), handleRequest({ withCredentials: true, headers: { ...credentials.headers } }))
     setContributions(data)
   } catch {
     setContributions(null)
