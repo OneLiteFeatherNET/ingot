@@ -125,6 +125,15 @@ describe('FileUpload controls', () => {
 
     expect(remove.exists(), 'every remove control says which file it removes').toBe(true)
   })
+
+  it('lets the destination path in the upload heading wrap on a narrow screen', async () => {
+    await mountUpload()
+
+    const destination = wrapper.find('#browser-upload h2 span')
+
+    expect(destination.classes(), 'the path may break anywhere, so a long one stays inside a 320px screen')
+      .toContain('wrap-anywhere')
+  })
 })
 
 describe('FileUpload keyboard access', () => {

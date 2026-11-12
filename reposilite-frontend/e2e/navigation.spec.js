@@ -70,20 +70,42 @@ test.describe('administration navigation', () => {
     await expect(page.getByRole('link', { name: 'Administration', exact: true })).toHaveCount(0)
   })
 
-  test('keeps the side navigation reachable at 320 px without horizontal scrolling', async ({ page }) => {
-    await signInAsAdmin(page)
-    await page.setViewportSize({ width: 320, height: 640 })
-
-    await page.goto(siteUrl('/settings'))
-    const audit = page.getByRole('link', { name: 'Audit log', exact: true })
-    await expect(audit).toBeVisible()
-    const box = await audit.boundingBox()
-    expect(box.x, 'the link starts inside the viewport').toBeGreaterThanOrEqual(0)
-    expect(box.x + box.width, 'the link ends inside the viewport').toBeLessThanOrEqual(320)
-
-    await audit.click()
-    await expect(page).toHaveURL(/\/audit$/)
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-    expect(overflow, 'horizontal overflow of the page in px').toBeLessThanOrEqual(0)
+  // The page is clipped at its sides (the sheet is overflow-x: clip), so the document width alone misses content that is
+  // cut off. This also lists every box that ends beyond the window, unless a scroll container around it can reach it.
+  const contentBeyondWindow = (page) => page.evaluate(() => {
+    const window = document.documentElement.clientWidth
+    const reachable = (element) => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const overflow = getComputedStyle(node).overflowX
+        if (overflow === 'auto' || overflow === 'scroll') return true
+      }
+      return false
+    }
+    return [...document.body.querySelectorAll('*')]
+      .filter(element => {
+        const box = element.getBoundingClientRect()
+        return box.width > 0 && box.height > 0 && box.right > window + 0.5 && !reachable(element)
+      })
+      .map(element => `${element.tagName.toLowerCase()} "${element.textContent.trim().slice(0, 40)}"`)
   })
+
+  for (const width of [320, 375, 600]) {
+    test(`keeps the side navigation reachable at ${width} px without horizontal scrolling`, async ({ page }) => {
+      await signInAsAdmin(page)
+      await page.setViewportSize({ width, height: 640 })
+
+      await page.goto(siteUrl('/settings'))
+      const audit = page.getByRole('link', { name: 'Audit log', exact: true })
+      await expect(audit).toBeVisible()
+      const box = await audit.boundingBox()
+      expect(box.x, 'the link starts inside the viewport').toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width, 'the link ends inside the viewport').toBeLessThanOrEqual(width)
+
+      await audit.click()
+      await expect(page).toHaveURL(/\/audit$/)
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      expect(overflow, 'horizontal overflow of the page in px').toBeLessThanOrEqual(0)
+      expect(await contentBeyondWindow(page), 'boxes cut off at the window edge').toEqual([])
+    })
+  }
 })
