@@ -25,7 +25,7 @@ import java.time.Clock
  */
 @RequiresOptIn(
     message = "The artifact search backend API is experimental and may change until it is declared stable.",
-    level = RequiresOptIn.Level.ERROR,
+    level = RequiresOptIn.Level.WARNING,
 )
 @Retention(AnnotationRetention.BINARY)
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.TYPEALIAS)
