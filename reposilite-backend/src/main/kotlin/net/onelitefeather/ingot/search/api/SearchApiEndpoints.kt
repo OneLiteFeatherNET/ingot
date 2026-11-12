@@ -357,9 +357,9 @@ internal class SearchApiEndpoints(
     private fun indexResponse(): SearchIndexResponse {
         val runs = search.indexRuns()
         val backend = search.backend()
-        val live = search.liveBackend()
-        val status = live?.takeIf { backend.available }?.engine?.status()
-        val details = live?.takeIf { backend.available }?.admin?.details()
+        val live = search.liveBackend()?.takeIf { backend.available }
+        val details = live?.admin?.details()
+        val status = live?.indexStatus?.invoke((details?.rows ?: 0L) > 0L)
         return SearchIndexResponse(
             state = status?.state ?: IndexState.DEGRADED,
             lagSeconds = status?.lagSeconds ?: 0L,

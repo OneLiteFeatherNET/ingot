@@ -57,7 +57,6 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.sql.SQLTimeoutException
 import java.time.Clock
 import java.time.Instant
 import java.util.Locale
@@ -374,24 +373,19 @@ internal class DatabaseArtifactSearchEngine(
     /** The state of the index for this request (4.8): the core counts and the two rows of the backend, nothing cached. */
     private fun statusInTransaction(): IndexStatus {
         val rowsExist = rows.select(rows.id).limit(1).firstOrNull() != null
-        val tokensComplete = rows.select(rows.id).where { rows.gavKey.isNull() }.limit(1).firstOrNull() == null
-        return statusReader.compose(statusReader.coreFacts(), rowsExist = rowsExist, tokensComplete = tokensComplete)
+        return statusReader.compose(statusReader.coreFacts(), rowsExist = rowsExist, tokensComplete = tokensCompleteInTransaction())
     }
+
+    /** Whether every row has its word tokens (full text change, D6). Read on its own for the status of the backend. */
+    internal fun tokensComplete(): Boolean = readOnly { tokensCompleteInTransaction() }
+
+    private fun tokensCompleteInTransaction(): Boolean =
+        rows.select(rows.id).where { rows.gavKey.isNull() }.limit(1).firstOrNull() == null
 
     // ---- helpers -------------------------------------------------------------------------------------------------
 
-    /** Runs [read] in one transaction with the statement timeout, and turns a timeout into [SearchUnavailableException]. */
-    private fun <T> readOnly(read: () -> T): T = try {
-        transaction(database) {
-            queryTimeout = QUERY_TIMEOUT_SECONDS
-            read()
-        }
-    } catch (failure: Exception) {
-        if (generateSequence(failure as Throwable) { it.cause }.any { it is SQLTimeoutException }) {
-            throw SearchUnavailableException("The search took longer than $QUERY_TIMEOUT_SECONDS seconds, narrow the filters")
-        }
-        throw failure
-    }
+    /** Runs [read] in one read-only transaction with the statement timeout (see [searchReadOnly]). */
+    private fun <T> readOnly(read: () -> T): T = searchReadOnly(database) { read() }
 
     private fun checkWindow(page: Int, size: Int) {
         if (page < 0) throw InvalidSearchQueryException("page", "page must not be negative")
@@ -403,7 +397,6 @@ internal class DatabaseArtifactSearchEngine(
 
     private companion object {
         const val ENGINE_ID = "database"
-        const val QUERY_TIMEOUT_SECONDS = 10
         const val MAX_WINDOW = 10_000L
         const val MAX_SEARCH_SIZE = 100
         const val MAX_FILES_SIZE = 200

@@ -14,13 +14,18 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotSearchApi::class)
+
 package net.onelitefeather.ingot.search
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.database.SearchDialect
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchTables
 import net.onelitefeather.ingot.search.database.indexStateOf
+import net.onelitefeather.ingot.search.database.searchReadOnly
 import net.onelitefeather.ingot.search.outbox.OutboxPolicy
 import net.onelitefeather.ingot.search.runs.RunKind
 import net.onelitefeather.ingot.search.runs.RunStatus
@@ -42,7 +47,7 @@ import java.time.Instant
  * every backend shares this part. [coreFacts] reads it in the transaction of the caller; [compose] adds what the backend holds.
  */
 internal class IndexStatusReader(
-    database: Database,
+    private val database: Database,
     private val clock: Clock,
 ) {
 
@@ -50,6 +55,12 @@ internal class IndexStatusReader(
     private val outbox = tables.outbox
     private val runs = tables.rebuildRun
     private val state = tables.state
+
+    /** The status of [backend] for an index whose rows exist or not: the core counts in their own transaction, then the tokens. */
+    fun statusOf(backend: ArtifactSearchBackend, rowsExist: Boolean): IndexStatus {
+        val core = searchReadOnly(database) { coreFacts() }
+        return compose(core, rowsExist = rowsExist, tokensComplete = backend.tokensComplete())
+    }
 
     /** The core counts and history, read in the current transaction. */
     fun coreFacts(): CoreIndexFacts {

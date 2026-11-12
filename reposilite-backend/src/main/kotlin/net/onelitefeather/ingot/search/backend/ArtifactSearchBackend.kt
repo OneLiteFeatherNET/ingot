@@ -51,6 +51,12 @@ interface ArtifactSearchBackend : ArtifactSearchEngine {
     /** Whether the backend answers. The core checks it every few seconds while the backend is open. */
     fun health(): BackendHealth
 
+    /**
+     * Whether every row has the word tokens of the full text search, so that a word of an older row matches. The status of the
+     * index reads it (full text change, D6). A backend without word tokens keeps the default, which is true.
+     */
+    fun tokensComplete(): Boolean = true
+
     /** Applies [actions] in order. Every action is idempotent, so a batch can be applied again after a crash. */
     fun apply(actions: List<IndexAction>)
 

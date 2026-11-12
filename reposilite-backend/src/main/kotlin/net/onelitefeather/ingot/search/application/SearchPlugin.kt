@@ -58,6 +58,7 @@ import net.onelitefeather.ingot.search.outbox.OutboxWorker
 import net.onelitefeather.ingot.search.rebuild.RebuildScheduler
 import net.onelitefeather.ingot.search.rebuild.RebuildService
 import net.onelitefeather.ingot.search.runs.RunStore
+import net.onelitefeather.ingot.search.IndexStatusReader
 import net.onelitefeather.ingot.search.TokenSweep
 import net.onelitefeather.ingot.search.verify.VerifyScheduler
 import net.onelitefeather.ingot.search.verify.VerifyService
@@ -204,6 +205,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         val repositoryRegistry = facade<RepositoryRegistry>()
         val readOnlyFacade = facade<ReadOnlyFacade>()
         val ledger = SqlMirrorCacheLedger(wiring.database)
+        val statusReader = IndexStatusReader(wiring.database, clock)
         val worker = OutboxWorker(
             owner = wiring.instanceId,
             outbox = outbox,
@@ -292,7 +294,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             paused = paused,
         )
         return LiveParts(
-            handle = LiveSearchBackend(checked, admin),
+            handle = LiveSearchBackend(checked, admin, indexStatus = { rowsExist -> statusReader.statusOf(backend, rowsExist) }),
             worker = worker,
             rebuild = rebuildScheduler,
             verify = verifyScheduler,
