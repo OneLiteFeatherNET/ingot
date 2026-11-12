@@ -16,6 +16,7 @@
 
 import { test, expect } from './support/fixtures.js'
 import { siteUrl } from './support/api.js'
+import { signInAsAdmin } from './support/session.js'
 
 test.describe('browse overview', () => {
   test('shows the full repository URL in the build snippet without horizontal scrolling', async ({ page, seed }) => {
@@ -41,5 +42,17 @@ test.describe('browse overview', () => {
   test('labels the repository filter as a filter of the list', async ({ page }) => {
     await page.goto(siteUrl('/'))
     await expect(page.getByRole('searchbox', { name: /filter/i }), 'the repository filter field').toBeVisible()
+  })
+
+  test('keeps the destination path of the upload heading inside a 320 px screen', async ({ page, seed }) => {
+    const repository = await seed.repository('long-upload-heading')
+    await signInAsAdmin(page)
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.goto(siteUrl(`/browse/${repository}`))
+
+    const destination = page.locator('#browser-upload h2 span')
+    await expect(destination, 'the destination of the upload heading').toContainText(repository)
+    const beyond = await destination.evaluate(element => element.getBoundingClientRect().right - document.documentElement.clientWidth)
+    expect(beyond, 'the destination path ends inside the window, in px past the edge').toBeLessThanOrEqual(0)
   })
 })

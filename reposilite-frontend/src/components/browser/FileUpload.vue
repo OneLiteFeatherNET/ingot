@@ -154,7 +154,7 @@ const uploadFiles = () => {
     class="pt-8"
   >
     <h2 class="md-title-small text-on-surface-variant">
-      Upload to <span class="font-mono normal-case text-on-surface">{{ '/' + destination }}</span>
+      Upload to <span class="wrap-anywhere font-mono normal-case text-on-surface">{{ '/' + destination }}</span>
     </h2>
 
     <FileUpload
