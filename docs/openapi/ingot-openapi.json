@@ -1714,7 +1714,8 @@
       },
       "RunTrigger" : {
         "enum" : [ "MANUAL", "SCHEDULED", "STARTUP", "GAP" ],
-        "type" : "string"
+        "type" : "string",
+        "x-extensible-enum" : [ "MANUAL", "SCHEDULED", "STARTUP", "GAP" ]
       },
       "SchemeVariant" : {
         "enum" : [ "TONAL_SPOT", "VIBRANT", "EXPRESSIVE", "NEUTRAL", "FIDELITY", "CONTENT", "MONOCHROME" ],
