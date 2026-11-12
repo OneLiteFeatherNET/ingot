@@ -40,7 +40,7 @@ const passwordChanged = () => {
 
 <template>
   <section
-    class="container mx-auto pb-12 pt-7"
+    class="container max-w-[960px] pb-12 pt-7"
     aria-labelledby="account-title"
     data-ingot-component="account-view"
   >

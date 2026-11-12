@@ -420,6 +420,7 @@ watch(
     :current="settingsCurrent"
     :index-to="sideNav.indexTo"
     :narrow="narrow"
+    :reading="!repositoriesPage"
     replace
   >
     <template #actions>

@@ -20,19 +20,12 @@ import MenuPanel from './MenuPanel.vue'
 
 /*
  * The top bar. It starts at the right edge of the navigation rail and reaches the window edge. Its title
- * row is the container the page content uses, so the title and the content share one left edge, and the
- * account actions end where the content ends. `framed` is set on the administration pages, whose content
- * has its own maximum width; the bar takes the same one.
+ * row is the container the page content uses, so the title and the content share one left edge. Wide pages
+ * have no maximum width, so the title row has none either, and the account actions sit at the window edge.
+ * Reading pages keep their own measure at the start of the content column, and the title row does not follow it.
  *
  * The brand rule runs along the bottom edge of the bar, across all of it.
  */
-defineProps({
-  framed: {
-    type: Boolean,
-    default: false
-  }
-})
-
 const { title } = usePlaceholders()
 </script>
 
@@ -43,8 +36,7 @@ const { title } = usePlaceholders()
   >
     <!-- The top app bar: the title on the left, the account actions on the right. -->
     <div
-      class="container mx-auto flex min-h-16 flex-row items-center justify-between gap-4 py-2"
-      :class="framed ? 'max-w-[1280px] min-[1920px]:max-w-[1600px]' : ''"
+      class="container mx-auto flex min-h-16 max-w-none flex-row items-center justify-between gap-4 py-2"
     >
       <h1
         data-ingot-part="title"

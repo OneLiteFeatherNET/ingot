@@ -141,7 +141,7 @@ const onAction = (row, value) => {
           </th>
           <th
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1600px]:table-cell"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1920px]:table-cell"
             :aria-sort="ariaSort('visibility')"
           >
             <button
@@ -155,7 +155,7 @@ const onAction = (row, value) => {
           <th
             v-if="versionPolicy"
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1600px]:table-cell"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1920px]:table-cell"
           >
             Version policy
           </th>
@@ -168,7 +168,7 @@ const onAction = (row, value) => {
           </th>
           <th
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1920px]:table-cell"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[2560px]:table-cell"
             :aria-sort="ariaSort('storage')"
           >
             <button
@@ -233,12 +233,12 @@ const onAction = (row, value) => {
               </p>
             </div>
           </td>
-          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[1600px]:table-cell">
+          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[1920px]:table-cell">
             {{ row.visibility }}
           </td>
           <td
             v-if="versionPolicy"
-            class="hidden px-3 py-3 md-body-medium text-on-surface min-[1600px]:table-cell"
+            class="hidden px-3 py-3 md-body-medium text-on-surface min-[1920px]:table-cell"
           >
             {{ versionLabel(row) }}
           </td>
@@ -248,7 +248,7 @@ const onAction = (row, value) => {
           >
             {{ writeLabel(row) }}
           </td>
-          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[1920px]:table-cell">
+          <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[2560px]:table-cell">
             {{ row.storage }}
           </td>
           <td class="hidden w-full max-w-0 px-3 py-3 min-[1240px]:table-cell">
