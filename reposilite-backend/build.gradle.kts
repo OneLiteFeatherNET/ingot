@@ -23,6 +23,9 @@ import com.github.jk1.license.render.ReportRenderer
 import com.github.jk1.license.render.JsonReportRenderer
 import me.champeau.gradle.japicmp.JapicmpTask
 import org.apache.tools.ant.filters.ReplaceTokens
+import org.cyclonedx.Version
+import org.cyclonedx.gradle.CyclonedxDirectTask
+import org.cyclonedx.model.Component
 import org.jetbrains.kotlin.gradle.tasks.KaptGenerateStubs
 
 plugins {
@@ -32,6 +35,8 @@ plugins {
     id("com.coditory.integration-test") version "2.2.5"
     id("com.gradleup.shadow") version "9.4.2"
     id("com.github.jk1.dependency-license-report") version "3.1.4"
+    // CycloneDX SBOM of the standalone jar, see cyclonedxDirectBom below. Pinned here, Renovate proposes the updates.
+    id("org.cyclonedx.bom") version "3.5.1"
     // Binary comparison of the plugin API with Reposilite 3.5.28, see pluginApiReport below. Released 2025-02-14.
     id("me.champeau.gradle.japicmp") version "0.4.6"
 //    id("io.gitlab.arturbosch.detekt").version("1.22.0")
@@ -255,6 +260,21 @@ tasks.withType<ShadowJar> {
         // see also https://github.com/ben-manes/caffeine/discussions/762
         exclude(dependency("com.github.ben-manes.caffeine:.*"))
     }
+}
+
+// CycloneDX SBOM of the runtime classpath that the standalone jar contains. The release workflow attaches it to the
+// release as ingot-<version>.cdx.json. It is the Direct task rather than the Aggregate cyclonedxBom, because only the
+// Direct task can scope to the runtime classpath, and this jar is the output of this project alone.
+//
+// The dashboard is a project dependency, so its npm packages are not listed here. The release workflow writes a second
+// SBOM for them from reposilite-frontend/package-lock.json. Both files land in the root build directory.
+tasks.named<CyclonedxDirectTask>("cyclonedxDirectBom") {
+    componentName = "ingot"
+    includeConfigs = listOf("runtimeClasspath")
+    projectType = Component.Type.APPLICATION
+    schemaVersion = Version.VERSION_16
+    xmlOutput.unsetConvention()
+    jsonOutput = rootProject.layout.buildDirectory.file("sbom/ingot-${project.version}.cdx.json")
 }
 
 publishing {

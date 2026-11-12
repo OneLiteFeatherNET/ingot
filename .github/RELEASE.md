@@ -39,6 +39,16 @@ the attribution does not depend on it: that lives in NOTICE, the README and the 
   for the Maven publish. The container push authenticates with the built-in `GITHUB_TOKEN`
   and needs no secret.
 
+## What a release attaches
+
+The release page carries the standalone jar and two CycloneDX 1.6 SBOMs, each attested to the jar:
+
+- `ingot-<version>.jar`, the standalone server.
+- `ingot-<version>.cdx.json`, the libraries of the server jar.
+- `ingot-frontend-<version>.cdx.json`, the npm packages of the dashboard that the jar contains.
+
+How to verify and read the SBOMs is in [Verify the SBOMs of a release](../docs/gitbook/how-to/verify-release-sboms.md).
+
 ## Verify a release
 
 Every release is signed. The server image, the dashboard image and the Helm chart are signed

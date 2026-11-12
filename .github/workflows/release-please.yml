@@ -183,6 +183,57 @@ jobs:
       - name: "Build the standalone jar"
         run: ./gradlew :reposilite-backend:shadowJar
 
+      # CycloneDX SBOMs of what the jar contains. The Gradle one lists the server libraries; the dashboard is inside the
+      # jar as compiled JavaScript, so it gets its own SBOM from the lockfile. Both are generated only here, after the
+      # jar, and every SBOM step of this job carries the release condition.
+      - name: "Generate the SBOM of the standalone jar"
+        if: needs.release-please.outputs.release_created == 'true'
+        run: ./gradlew :reposilite-backend:cyclonedxDirectBom
+
+      - name: "Set up Node"
+        if: needs.release-please.outputs.release_created == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
+        with:
+          node-version: "24"
+
+      # The version is pinned here, and Renovate proposes its updates through renovate.json. --flatten-components keeps
+      # every package of the lockfile: without it the generator leaves the nested versions out of the components while the
+      # dependency graph still points at them.
+      - name: "Generate the SBOM of the dashboard"
+        if: needs.release-please.outputs.release_created == 'true'
+        working-directory: reposilite-frontend
+        env:
+          CYCLONEDX_NPM_VERSION: "6.0.1"
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/build/sbom"
+          npx --yes "@cyclonedx/cyclonedx-npm@${CYCLONEDX_NPM_VERSION}" \
+            --package-lock-only --omit dev --flatten-components \
+            --spec-version 1.6 --output-format JSON \
+            --output-file "$GITHUB_WORKSPACE/build/sbom/ingot-frontend-${VERSION}.cdx.json"
+
+      - name: "Set up Python"
+        if: needs.release-please.outputs.release_created == 'true'
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "Install the SBOM validation dependencies"
+        if: needs.release-please.outputs.release_created == 'true'
+        run: python3 -m pip install "jsonschema==4.26.0"
+
+      # An SBOM that fails the schema or the field checks is never attested, so it never reaches the release.
+      - name: "Validate the SBOMs"
+        if: needs.release-please.outputs.release_created == 'true'
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/verify_sbom.py \
+            "build/sbom/ingot-${VERSION}.cdx.json" \
+            "build/sbom/ingot-frontend-${VERSION}.cdx.json"
+
       # The attestation is created before the upload and checked again after it. If either
       # step fails the jar never reaches the release, so an unattested jar is never published.
       - name: "Attest the standalone jar"
@@ -190,6 +241,21 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
           subject-path: reposilite-backend/build/libs/ingot-${{ needs.release-please.outputs.version }}.jar
+
+      # Each SBOM is attested to the jar, so the jar is the subject and the SBOM the predicate. Both are checked below.
+      - name: "Attest the SBOM of the standalone jar"
+        if: needs.release-please.outputs.release_created == 'true'
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e  # v4.1.0
+        with:
+          subject-path: reposilite-backend/build/libs/ingot-${{ needs.release-please.outputs.version }}.jar
+          sbom-path: build/sbom/ingot-${{ needs.release-please.outputs.version }}.cdx.json
+
+      - name: "Attest the SBOM of the dashboard"
+        if: needs.release-please.outputs.release_created == 'true'
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e  # v4.1.0
+        with:
+          subject-path: reposilite-backend/build/libs/ingot-${{ needs.release-please.outputs.version }}.jar
+          sbom-path: build/sbom/ingot-frontend-${{ needs.release-please.outputs.version }}.cdx.json
 
       - name: "Verify the attestation of the standalone jar"
         if: needs.release-please.outputs.release_created == 'true'
@@ -203,14 +269,35 @@ jobs:
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-please.yml" \
             --source-ref refs/heads/main
 
-      - name: "Upload the jar to the release"
+      # The subject of both SBOM attestations is the jar, so the check runs on the jar with the CycloneDX predicate type.
+      # gh has no subject for the SBOM files themselves and answers 404 for them. Exit status is the whole result.
+      - name: "Verify the SBOM attestations of the standalone jar"
+        if: needs.release-please.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh attestation verify "reposilite-backend/build/libs/ingot-${VERSION}.jar" \
+            --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-please.yml" \
+            --source-ref refs/heads/main \
+            --predicate-type https://cyclonedx.org/bom
+
+      # Nothing reaches the release page before every attestation above has verified.
+      - name: "Upload the jar and its SBOMs to the release"
+        if: needs.release-please.outputs.release_created == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.release-please.outputs.tag_name }}
           VERSION: ${{ needs.release-please.outputs.version }}
         run: |
           set -euo pipefail
-          gh release upload "$TAG" "reposilite-backend/build/libs/ingot-${VERSION}.jar" --clobber
+          gh release upload "$TAG" \
+            "reposilite-backend/build/libs/ingot-${VERSION}.jar" \
+            "build/sbom/ingot-${VERSION}.cdx.json" \
+            "build/sbom/ingot-frontend-${VERSION}.cdx.json" \
+            --clobber
 
       # The OpenAPI document of the release, as the server serves it, next to the jar. The committed snapshot carries a
       # placeholder version, so the release version is written into it here. The asset keeps its name and the upload
