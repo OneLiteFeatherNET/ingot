@@ -36,9 +36,17 @@ internal class OpenSearchBulkPlanTest {
 
     private fun bulkLines(body: String): List<String> = body.trimEnd('\n').split('\n')
 
-    private fun actionIds(body: String): List<String> = bulkLines(body)
-        .filterIndexed { position, _ -> position % 2 == 0 }
-        .map { line -> ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(line).elements().next().path("_id").asText() }
+    /** The document ids of the action lines, in order. An index action is followed by its document line, a delete is not. */
+    private fun actionIds(body: String): List<String> {
+        val lines = bulkLines(body).iterator()
+        val ids = mutableListOf<String>()
+        while (lines.hasNext()) {
+            val action = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.readTree(lines.next())
+            ids.add(action.elements().next().path("_id").asText())
+            if (action.has("index")) lines.next()
+        }
+        return ids
+    }
 
     @Test
     fun `should split bulk requests at the action limit`() {

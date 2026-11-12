@@ -23,7 +23,7 @@ import java.util.Locale
  * The tokens of a GAV for word matching (full text change, D1 and D2). Shared by every search backend, so all of them
  * produce the same tokens and match the same words. Pure: no database and no clock.
  */
-internal object SearchTokens {
+object SearchTokens {
 
     /** The longest token that is stored. A longer one is dropped. */
     const val MAX_TOKEN_LENGTH = 64
@@ -59,7 +59,7 @@ internal const val GAV_KEY_BYTES = 16
  * same key, and the tokens of the GAV are keyed by it. At 128 bits a collision between two GAVs of a real index is not
  * expected; the key is a row identifier, not a proof of equality.
  */
-internal fun gavKeyOf(groupId: String, artifactId: String, version: String): ByteArray {
+fun gavKeyOf(groupId: String, artifactId: String, version: String): ByteArray {
     val joined = listOf(groupId, artifactId, version).joinToString("\u0000") { it.lowercase(java.util.Locale.ROOT) }
     return MessageDigest.getInstance("SHA-256")
         .digest(joined.toByteArray(Charsets.UTF_8))

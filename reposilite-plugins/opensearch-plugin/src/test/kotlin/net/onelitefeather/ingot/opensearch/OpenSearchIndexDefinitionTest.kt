@@ -78,12 +78,12 @@ internal class OpenSearchIndexDefinitionTest {
     }
 
     @Test
-    fun `should declare every field of the document with its type`() {
+    fun `should declare every field of the document`() {
         // when: the field names of the mapping are read
         val fields = OpenSearchIndexDefinition.fieldNames()
 
-        // then: the mapping declares the twenty-three fields of design D3
-        assertThat(fields).`as`("mapped fields").hasSize(23).contains("gav", "artifact_key", "tokens", "snapshot", "indexed_at")
+        // then: the mapping declares the twenty-two fields of design D3
+        assertThat(fields).`as`("mapped fields").hasSize(22).contains("gav", "artifact_key", "tokens", "snapshot", "indexed_at")
     }
 
 }
