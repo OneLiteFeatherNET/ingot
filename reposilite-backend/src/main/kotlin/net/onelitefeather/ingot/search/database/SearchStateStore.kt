@@ -45,6 +45,9 @@ internal object SearchStateKey {
     /** A JSON summary of the last completed verify run: counts of each drift kind and the drift ratio. */
     const val VERIFY_LAST_REPORT = "verify.last_report"
 
+    /** Rows a search backend returned that the caller may not see, dropped by the core (search backend registration, D6). */
+    const val ACCESS_MISMATCHES = "access_mismatches"
+
     /** The id of the search backend that owns the index of the cluster (search backend registration, D5). */
     const val BACKEND_ID = "backend_id"
 

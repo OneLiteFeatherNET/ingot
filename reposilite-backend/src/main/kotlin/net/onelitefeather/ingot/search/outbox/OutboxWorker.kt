@@ -22,6 +22,7 @@ import net.onelitefeather.ingot.search.ArtifactPathParser
 import net.onelitefeather.ingot.search.ArtifactPathResult
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
+import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.database.SearchStateKey
 import net.onelitefeather.ingot.search.database.SearchStateStore
@@ -88,6 +89,9 @@ internal class OutboxWorker(
         return try {
             index.apply(planned.flatMap { it.actions })
             TickResult(claimed = batch.size, completed = outbox.complete(owner, ids), failed = failed)
+        } catch (busy: BackendBusyException) {
+            outbox.release(owner, ids, busy.retryAfter)
+            TickResult(claimed = batch.size, completed = 0, failed = failed)
         } catch (failure: Exception) {
             ids.forEach { outbox.fail(owner, it, failure.describe()) }
             TickResult(claimed = batch.size, completed = 0, failed = failed + ids.size)

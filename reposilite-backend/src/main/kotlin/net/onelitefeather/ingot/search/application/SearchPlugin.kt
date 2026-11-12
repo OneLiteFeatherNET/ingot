@@ -35,6 +35,7 @@ import com.reposilite.scheduling.infrastructure.SqlScheduledJobClaims
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.repository.index.NoOpArtifactIndexSink
+import net.onelitefeather.ingot.search.access.AccessCheckedSearchEngine
 import net.onelitefeather.ingot.search.api.SearchApiEndpoints
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendRegistry
 import net.onelitefeather.ingot.search.backend.BackendResolution
@@ -212,7 +213,11 @@ internal class SearchPlugin : ReposilitePlugin() {
             dispatch = execute,
             paused = pollingPaused,
         )
-        return SearchFacade(sink, runs::status, backend, admin)
+        val checked = AccessCheckedSearchEngine(backend) { repository, location ->
+            logger.error("SEARCH | The search backend returned a row the caller may not see, it was dropped: $repository $location")
+            runCatching { state.increment(SearchStateKey.ACCESS_MISMATCHES) }
+        }
+        return SearchFacade(sink, runs::status, checked, admin)
     }
 
     /** Ticks the rebuild and verify schedulers every 30 seconds, as the cleanup scheduler does. The runs themselves use the IO pool. */

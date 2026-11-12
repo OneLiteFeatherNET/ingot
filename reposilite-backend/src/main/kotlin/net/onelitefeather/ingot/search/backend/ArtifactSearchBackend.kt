@@ -20,6 +20,7 @@ import net.onelitefeather.ingot.search.ArtifactSearchEngine
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
+import java.time.Duration
 import java.time.Instant
 import kotlin.random.Random
 
@@ -138,3 +139,10 @@ data class SamplePage(
 /** One batch of the backfill: the rows it keyed and the id of its last row, the cursor of the next batch (full text change, D6). */
 @ExperimentalIngotSearchApi
 data class KeyBatch(val keyed: Int, val lastId: Long)
+
+/**
+ * Thrown by [ArtifactSearchBackend.apply] when the backend has no capacity right now. The outbox releases the batch with
+ * [retryAfter] and does not count the attempt, so a busy backend never turns its entries into dead letters.
+ */
+@ExperimentalIngotSearchApi
+class BackendBusyException(message: String, val retryAfter: Duration) : RuntimeException(message)

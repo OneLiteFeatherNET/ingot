@@ -26,6 +26,7 @@ import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.minus
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -36,6 +37,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 
 /**
@@ -129,6 +131,21 @@ internal class OutboxStore(
         if (ids.isEmpty()) return 0
         return transaction(database) {
             outbox.deleteWhere { (outbox.id inList ids) and (outbox.leaseOwner eq owner) }
+        }
+    }
+
+    /**
+     * Releases the entries [owner] still holds after a busy backend answered: each lease ends after [retryAfter], and the
+     * attempt of the claim is taken back. One transaction, so no entry is released without its attempt. Returns the count.
+     */
+    fun release(owner: String, ids: Collection<Long>, retryAfter: Duration): Int {
+        if (ids.isEmpty()) return 0
+        val now = clock.instant()
+        return transaction(database) {
+            outbox.update(where = { (outbox.id inList ids) and (outbox.leaseOwner eq owner) }, body = {
+                it[outbox.leaseUntil] = now.plus(retryAfter).toEpochMilli()
+                it[outbox.attempts] = outbox.attempts - 1
+            })
         }
     }
 

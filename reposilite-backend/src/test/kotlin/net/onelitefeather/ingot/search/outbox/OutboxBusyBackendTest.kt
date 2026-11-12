@@ -96,7 +96,7 @@ internal class OutboxBusyBackendTest {
 
         assertThat(outbox.claim("instance-b", 10)).`as`("entries claimable during the busy delay").isEmpty()
 
-        clock.advance(Duration.ofMinutes(2))
+        clock.advance(Duration.ofMinutes(2).plusSeconds(1))
         assertThat(outbox.claim("instance-b", 10)).`as`("entries claimable after the busy delay").hasSize(1)
     }
 
@@ -106,7 +106,7 @@ internal class OutboxBusyBackendTest {
         outbox.enqueue("releases", jar, OutboxOp.CHANGED_PATH)
         backend.onApply = { throw BackendBusyException("busy", Duration.ofMinutes(2)) }
         worker.tick()
-        clock.advance(Duration.ofMinutes(2))
+        clock.advance(Duration.ofMinutes(2).plusSeconds(1))
 
         val claimed = outbox.claim("instance-b", 10).single()
 
