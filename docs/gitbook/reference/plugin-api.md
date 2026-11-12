@@ -258,7 +258,7 @@ The gate becomes blocking in a later change, once the first report has been revi
 
 ## Dashboard pages
 
-A plugin can add pages to the dashboard without shipping JavaScript. It declares each page as data through the `plugin-ui` facade, and the dashboard draws the page with its own components. No plugin code, script, stylesheet, frame or HTML runs in the browser. The administrator's session therefore never runs plugin code, and the browser policy of the dashboard stays as it is. The reasons are in [Security headers](../explanation/security-headers.md#plugin-pages). For what a plugin can target on the dashboard today and what is still missing, see [Extend the dashboard from a plugin](../how-to/extend-the-dashboard-from-a-plugin.md).
+A plugin can add pages to the dashboard without shipping JavaScript. It declares each page as data through the `plugin-ui` facade, and the dashboard draws the page with its own components. No plugin code, script, frame or HTML runs in the browser. A plugin may ship one checked stylesheet, see [Stylesheet](#stylesheet). The administrator's session therefore never runs plugin code, and the browser policy of the dashboard stays as it is. The reasons are in [Security headers](../explanation/security-headers.md#plugin-pages). For what a plugin can target on the dashboard today and what is still missing, see [Extend the dashboard from a plugin](../how-to/extend-the-dashboard-from-a-plugin.md).
 
 ### Register a page
 
@@ -371,6 +371,29 @@ For a plugin with pages, the server requires one of the areas of its pages for e
 
 A page or section that breaks a rule is dropped with a warning in the log that names the plugin and the problem. The server starts and the other pages are served. The warning is the place to look when a page does not appear.
 
+### Stylesheet
+
+A plugin can ship one stylesheet for the dashboard. Put the file in the resources of the plugin jar, and register it on the registrar of the plugin:
+
+```kotlin
+facade<PluginUiFacade>().forPlugin(this).registerStylesheet("dashboard.css")
+```
+
+The server reads the file when the plugin registers it, checks it, and wraps it in the layer `ingot-plugins`, which the dashboard declares after its own utility layers. Registration returns `true` when the sheet was accepted. A plugin makes one call: a second call is dropped, and so is a first call whose sheet failed.
+
+The sheet is checked against these rules, and a sheet that breaks one is dropped with a warning that names the plugin and the rule:
+
+- at most 64 KiB, UTF-8, without a byte order mark and without an `@charset` rule,
+- no `@import`, `@font-face` or `@namespace`,
+- no `src()`, `image-set()` or `-webkit-image-set()`, and `url()` only with a `data:image/` argument,
+- no backslash outside a quoted string,
+- no `expression(`, `behavior:` or `-moz-binding`,
+- balanced braces.
+
+The dashboard loads the sheet after the manifest, only for a signed in caller. The manifest lists it in `stylesheets` with its path and the SHA-256 of the served bytes, and the sheet is served at `/api/frontend/plugin-styles/<plugin>/<hash>.css`, where `<hash>` is the first 16 hexadecimal characters of that digest. The answer is cached for a year. A worked example and the authoring rules are in [Extend the dashboard from a plugin](../how-to/extend-the-dashboard-from-a-plugin.md#ship-a-stylesheet).
+
 ### Switch
 
 `INGOT_LOCAL_PLUGINUI=false` turns the contributions off for the whole instance. The manifest is then empty and the contributed pages are not served. The plugins themselves keep running. The variable defaults to `true`, and a plugin that never registers a page is not affected by it.
+
+`INGOT_LOCAL_PLUGINSTYLES=false` turns off the stylesheets of all plugins. The manifest lists no stylesheet and the stylesheet address answers `404`. Pages and settings sections are not affected. The variable defaults to `true`, and an instance without a plugin stylesheet sees no change.

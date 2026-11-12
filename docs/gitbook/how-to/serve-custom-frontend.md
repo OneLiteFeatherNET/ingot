@@ -96,3 +96,4 @@ Your `index.html` answers the root path when the bundled dashboard is off. When 
 
 * [Plugin API, frontend placeholders](../reference/plugin-api.md#frontend-placeholders): the placeholder list, and how a plugin adds its own.
 * [Write a plugin](write-a-plugin.md): a plugin can register a placeholder for your files to use.
+* [Extend the dashboard from a plugin](extend-the-dashboard-from-a-plugin.md): a plugin can also ship one stylesheet for the bundled dashboard. Your own files in this directory are not affected by it.
