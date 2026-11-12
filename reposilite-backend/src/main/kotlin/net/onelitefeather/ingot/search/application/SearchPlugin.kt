@@ -45,6 +45,7 @@ import net.onelitefeather.ingot.search.outbox.OutboxWorker
 import net.onelitefeather.ingot.search.rebuild.RebuildScheduler
 import net.onelitefeather.ingot.search.rebuild.RebuildService
 import net.onelitefeather.ingot.search.runs.RunStore
+import net.onelitefeather.ingot.search.TokenSweep
 import net.onelitefeather.ingot.search.verify.VerifyScheduler
 import net.onelitefeather.ingot.search.verify.VerifyService
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -166,7 +167,16 @@ internal class SearchPlugin : ReposilitePlugin() {
             onFailure = { logger.warn("SEARCH | $it") },
             readOnly = { readOnlyFacade.isReadOnly() },
         )
-        scheduleRuns(rebuildScheduler, verifyScheduler)
+        val tokenSweep = TokenSweep(
+            clock = clock,
+            batchSize = TOKEN_SWEEP_BATCH,
+            interval = TOKEN_SWEEP_INTERVAL,
+            keyRows = backend::keyRows,
+            readOnly = { readOnlyFacade.isReadOnly() },
+            execute = execute,
+            onFailure = { logger.warn("SEARCH | $it") },
+        )
+        scheduleRuns(rebuildScheduler, verifyScheduler, tokenSweep)
 
         val sink = OutboxArtifactIndexSink(outbox, state) { logger.warn(it) }
         val onListenerFailure: (Throwable) -> Unit = { failure ->
@@ -192,10 +202,11 @@ internal class SearchPlugin : ReposilitePlugin() {
     }
 
     /** Ticks the rebuild and verify schedulers every 30 seconds, as the cleanup scheduler does. The runs themselves use the IO pool. */
-    private fun scheduleRuns(rebuild: RebuildScheduler, verify: VerifyScheduler) {
+    private fun scheduleRuns(rebuild: RebuildScheduler, verify: VerifyScheduler, sweep: TokenSweep) {
         val tick = reposilite().scheduler.scheduleWithFixedDelay({
             runCatching { rebuild.tick() }.onFailure { logger.warn("SEARCH | Rebuild scheduler tick failed: ${it.message}") }
             runCatching { verify.tick() }.onFailure { logger.warn("SEARCH | Verify scheduler tick failed: ${it.message}") }
+            runCatching { sweep.tick() }.onFailure { logger.warn("SEARCH | Token sweep tick failed: ${it.message}") }
         }, SCHEDULER_TICK_SECONDS, SCHEDULER_TICK_SECONDS, SECONDS)
         event { _: ReposiliteDisposeEvent -> tick.cancel(false) }
     }
@@ -224,6 +235,8 @@ internal class SearchPlugin : ReposilitePlugin() {
 
     private companion object {
         const val SCHEDULER_TICK_SECONDS = 30L
+        const val TOKEN_SWEEP_BATCH = 1000
+        val TOKEN_SWEEP_INTERVAL: Duration = Duration.ofHours(6)
     }
 
 }

@@ -18,6 +18,8 @@ package net.onelitefeather.ingot.search.database
 
 import net.onelitefeather.ingot.search.ArtifactFileRecord
 import net.onelitefeather.ingot.search.Origin
+import net.onelitefeather.ingot.search.SearchTokens
+import net.onelitefeather.ingot.search.gavKeyOf
 import net.onelitefeather.ingot.search.outbox.OutboxOp
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.batchInsert
@@ -35,6 +37,15 @@ internal class IndexFixture(private val database: Database, private val clock: C
 
     private val tables = SearchTables(SearchDialect.of(database.vendor))
     private val state = SearchStateStore(database, clock)
+
+    /** The key and the tokens of one GAV, as the production writer stores them. */
+    private fun insertKeyAndTokens(groupId: String, artifactId: String, version: String) {
+        val key = gavKeyOf(groupId, artifactId, version)
+        tables.token.batchInsert(SearchTokens.of(groupId, artifactId, version), ignore = true) { word ->
+            this[tables.token.gavKey] = key
+            this[tables.token.token] = word
+        }
+    }
 
     fun putState(key: String, value: String) = state.put(key, value)
 
@@ -71,7 +82,9 @@ internal class IndexFixture(private val database: Database, private val clock: C
                 it[rows.sha1] = sha1
                 it[rows.sha256] = null
                 it[rows.indexedAt] = indexedAt
+                it[rows.gavKey] = gavKeyOf(file.groupId, file.artifactId, file.version)
             }
+            insertKeyAndTokens(file.groupId, file.artifactId, file.version)
         }
     }
 
@@ -114,7 +127,9 @@ internal class IndexFixture(private val database: Database, private val clock: C
                 this[rows.sha1] = null
                 this[rows.sha256] = null
                 this[rows.indexedAt] = indexedAt
+                this[rows.gavKey] = gavKeyOf("bulk", "lib", "1.0.$version")
             }
+            (1..count).forEach { version -> insertKeyAndTokens("bulk", "lib", "1.0.$version") }
         }
     }
 

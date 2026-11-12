@@ -58,6 +58,13 @@ internal interface ArtifactSearchBackend : ArtifactSearchEngine {
     /** Deletes up to [limit] rows of [repository]. Returns how many were deleted. */
     fun deleteRepository(repository: String, limit: Int): Int
 
+    /**
+     * Fills the key and the word tokens of up to [batchSize] rows that have no key and an id after [after], in id order. Returns
+     * the batch, whose [KeyBatch.lastId] is the cursor of the next call, or null when no such row is left. A backend without
+     * word tokens keeps the default (full text change, D6).
+     */
+    fun keyRows(after: Long, batchSize: Int): KeyBatch? = null
+
     /** The names of the repositories that have at least one row. */
     fun repositories(): List<String>
 
@@ -121,3 +128,6 @@ internal data class SamplePage(
     val rows: List<SampledRow>,
     val next: String?,
 )
+
+/** One batch of the backfill: the rows it keyed and the id of its last row, the cursor of the next batch (full text change, D6). */
+internal data class KeyBatch(val keyed: Int, val lastId: Long)

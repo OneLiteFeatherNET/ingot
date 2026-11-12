@@ -28,6 +28,7 @@ import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.RepositoryAccess
 import net.onelitefeather.ingot.search.access.SearchAccess
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -166,6 +167,163 @@ internal abstract class ArtifactSearchBackendContract {
             .hasSize(1)
     }
 
+    /** Whether the backend implements the text of `q`. The in-memory fake ignores it, so the word cases are skipped there. */
+    protected open val supportsTextQuery: Boolean = true
+
+    private fun searchNamed(backend: ArtifactSearchBackend, q: String): List<String> =
+        backend.search(ArtifactSearchQuery(q = q), ALL_REPOSITORIES).items.map { it.groupId }
+
+    @Test
+    fun `a word matches a token of the artifactId`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "core"))
+            .`as`("groups found by the word core")
+            .containsExactly("org.springframework")
+    }
+
+    @Test
+    fun `a query with two words needs both to match`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "spring kafka"))
+            .`as`("groups found by spring and kafka, where only spring-core is indexed")
+            .isEmpty()
+    }
+
+    @Test
+    fun `a word of more than four parts keeps the prefix match it had before`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, LONG_GROUP_JAR))))
+
+        assertThat(searchNamed(backend, "com.example.app.one.two"))
+            .`as`("groups of a five part word that prefixes the groupId, as on main")
+            .containsExactly("com.example.app.one.two")
+    }
+
+    @Test
+    fun `a word of more than four parts that prefixes nothing finds nothing and is not refused`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, LONG_GROUP_JAR))))
+
+        assertThat(searchNamed(backend, "a.b.c.d.e"))
+            .`as`("groups found by a five part word that matches nothing")
+            .isEmpty()
+    }
+
+    @Test
+    fun `a dotted query is a coordinate prefix and does not match tokens`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "spring.core"))
+            .`as`("groups found by a dotted query whose parts are tokens but not a groupId prefix")
+            .isEmpty()
+    }
+
+    private fun pageNamed(backend: ArtifactSearchBackend, q: String, page: Int, size: Int): List<String> =
+        backend.search(ArtifactSearchQuery(q = q, page = page, size = size), ALL_REPOSITORIES).items.map { it.groupId }
+
+    @Test
+    fun `a token that main matches keeps main's group when a word match is added`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "org spring"))
+            .`as`("groups found by two tokens that main matches by prefix, as main does")
+            .containsExactly("org.springframework")
+    }
+
+    @Test
+    fun `groups main returns come first in main's order, word-only groups after them`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(
+            listOf(
+                IndexAction.Upsert(row(REPOSITORY, "aaa/org/lib/1.0/lib-1.0.jar")),
+                IndexAction.Upsert(row(REPOSITORY, "org/alpha/lib/1.0/lib-1.0.jar")),
+            ),
+        )
+
+        assertThat(searchNamed(backend, "org"))
+            .`as`("groups of q=org: the groupId prefix match first, the token match after it")
+            .containsExactly("org.alpha", "aaa.org")
+    }
+
+    @Test
+    fun `golden queries return main's groups in main's order, the word-only groups after them`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(
+            listOf(
+                IndexAction.Upsert(row(REPOSITORY, "aaa/org/lib/1.0/lib-1.0.jar")),
+                IndexAction.Upsert(row(REPOSITORY, "org/alpha/lib/1.0/lib-1.0.jar")),
+            ),
+        )
+
+        assertThat(searchNamed(backend, "lib"))
+            .`as`("main's groups of q=lib: artifactId prefix for both, ordered by groupId as main orders them")
+            .containsExactly("aaa.org", "org.alpha")
+        assertThat(searchNamed(backend, "org.alpha"))
+            .`as`("main's groups of a dotted query, which gets no word match")
+            .containsExactly("org.alpha")
+        assertThat(searchNamed(backend, "org"))
+            .`as`("main's groups of q=org first, then the word-only group")
+            .containsExactly("org.alpha", "aaa.org")
+    }
+
+    @Test
+    fun `paging crosses from main's groups into word-only groups without gaps or repeats`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(
+            listOf(
+                IndexAction.Upsert(row(REPOSITORY, "aaa/org/lib/1.0/lib-1.0.jar")),
+                IndexAction.Upsert(row(REPOSITORY, "org/alpha/lib/1.0/lib-1.0.jar")),
+            ),
+        )
+
+        assertThat(listOf(pageNamed(backend, "org", 0, 1), pageNamed(backend, "org", 1, 1)).flatten())
+            .`as`("groups of the first two pages of size one")
+            .containsExactly("org.alpha", "aaa.org")
+    }
+
+    @Test
+    fun `a loose word before the last one must equal a token exactly`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "spri core"))
+            .`as`("groups found by a prefix of the artifactId and a prefix second word, both by main or by token")
+            .containsExactly("org.springframework")
+        assertThat(searchNamed(backend, "frame core"))
+            .`as`("groups found by a word that is neither a prefix nor a whole token of the GAV")
+            .isEmpty()
+        assertThat(searchNamed(backend, "spring cor"))
+            .`as`("groups found by an exact first word and a prefix second word")
+            .containsExactly("org.springframework")
+    }
+
+    @Test
+    fun `a group matched by the version before still matches`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+
+        assertThat(searchNamed(backend, "6.1.0"))
+            .`as`("groups found by the exact version")
+            .containsExactly("org.springframework")
+    }
+
+    @Test
+    fun `the token of a removed GAV returns nothing`() = withBackend { backend ->
+        assumeTrue(supportsTextQuery)
+        backend.apply(listOf(IndexAction.Upsert(row(REPOSITORY, SPRING_CORE))))
+        backend.apply(listOf(IndexAction.RemovePath(REPOSITORY, SPRING_CORE)))
+
+        assertThat(searchNamed(backend, "core"))
+            .`as`("groups found by a word of a removed GAV")
+            .isEmpty()
+    }
+
     private fun row(repository: String, path: String, indexedAt: Long = NOW_MILLIS): IndexRow {
         val parsed = ArtifactPathParser.parse(repository, path) as ArtifactPathResult.Row
         return IndexRow(
@@ -194,6 +352,8 @@ internal abstract class ArtifactSearchBackendContract {
         const val MIRRORED_JAR = "com/example/mirrored/1.0/mirrored-1.0.jar"
         const val HOSTED_JAR = "com/example/hosted/1.0/hosted-1.0.jar"
         const val UPSTREAM = "upstream.example"
+        const val SPRING_CORE = "org/springframework/spring-core/6.1.0/spring-core-6.1.0.jar"
+        const val LONG_GROUP_JAR = "com/example/app/one/two/lib/1.0/lib-1.0.jar"
         val CUTOFF: Long = Instant.parse("2026-10-17T12:00:00Z").toEpochMilli()
         val BEFORE_CUTOFF: Long = Instant.parse("2026-10-17T11:00:00Z").toEpochMilli()
         val AFTER_CUTOFF: Long = Instant.parse("2026-10-17T13:00:00Z").toEpochMilli()

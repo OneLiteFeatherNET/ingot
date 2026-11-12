@@ -32,6 +32,12 @@ The identity schema is created on the first start. The legacy token tables are k
 | `access_token`, `permission_access_token`, `permission_route` | Legacy token tables. Kept unchanged. Ingot reads them and never writes them. |
 | `scheduled_job_claim` | Claims of the scheduled cleanup and audit purge. The nullable columns `lease_owner`, `lease_until` and `done_at` are added on the first start. Existing rows keep their values and stay valid. |
 
+### Search finds words of the coordinates
+
+The search index keeps the words of each group, artifact and version in a table named `search_token`, and a column `gav_key` is added to `search_artifact`. The first start only adds them. Nothing is renamed, dropped or rewritten, and the marker `schema-2` in `search_state` records the step.
+
+A plain word of a search now also matches a part of a name that starts after a separator. `core` finds `spring-core`, so **searches can return groups they did not return before**. Every group that matched before still matches. Rows indexed before the upgrade have no word tokens until a background sweep fills them in; the sweep runs on the first tick after the start and then every six hours, and the search answer reports `tokensComplete: false` and the state `BUILDING` until it has finished. A rollback to the previous version works without a step; the previous version ignores the new column and the table.
+
 ### Configuration file
 
 | Setting | Change |

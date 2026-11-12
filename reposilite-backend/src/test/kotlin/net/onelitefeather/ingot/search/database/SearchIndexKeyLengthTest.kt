@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.search.database
 
 import org.assertj.core.api.Assertions.assertThat
 import org.jetbrains.exposed.v1.core.AutoIncColumnType
+import org.jetbrains.exposed.v1.core.BinaryColumnType
 import org.jetbrains.exposed.v1.core.BooleanColumnType
 import org.jetbrains.exposed.v1.core.CharColumnType
 import org.jetbrains.exposed.v1.core.Column
@@ -90,6 +91,7 @@ internal class SearchIndexKeyLengthTest {
             is LongColumnType, is AutoIncColumnType -> LONG_BYTES
             is IntegerColumnType -> INT_BYTES
             is BooleanColumnType -> BOOLEAN_BYTES
+            is BinaryColumnType -> type.length
             else -> error("no key size known for column $name of type ${type::class.simpleName}")
         }
 

@@ -22,6 +22,9 @@ import java.time.Clock
 /** The contract on the in-memory reference implementation. */
 internal class FakeSearchBackendContractTest : ArtifactSearchBackendContract() {
 
+    /** The fake keeps no text index and ignores `q`, so the word cases of the contract do not apply to it. */
+    override val supportsTextQuery: Boolean = false
+
     override fun open(directory: Path, clock: Clock): Opened = Opened(FakeArtifactSearchBackend()) {}
 
 }

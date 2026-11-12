@@ -40,6 +40,9 @@ internal object SearchSchema {
     /** The key of the marker row. The suffix is the version of the schema layout. */
     const val MARKER_KEY = "schema-1"
 
+    /** The marker of the token index (full text change, D4): the key column, the token table and their indexes. */
+    const val TOKEN_MARKER_KEY = "schema-2"
+
     enum class Outcome {
         /** This starter created the tables. */
         CREATED,
@@ -52,7 +55,7 @@ internal object SearchSchema {
         val tables = SearchTables(SearchDialect.of(database.vendor))
         createStateTable(database, tables)
 
-        return transaction(database) {
+        val outcome = transaction(database) {
             val marker = tables.state.insertIgnore {
                 it[tables.state.key] = MARKER_KEY
                 it[tables.state.value] = "created"
@@ -63,10 +66,45 @@ internal object SearchSchema {
                 return@transaction Outcome.ALREADY_CREATED
             }
 
-            SchemaUtils.create(tables.artifact, tables.outbox, tables.rebuildRun)
+            SchemaUtils.create(tables.artifact, tables.outbox, tables.rebuildRun, tables.token)
+            markTokenIndex(tables, clock)
             Outcome.CREATED
         }
+        if (outcome == Outcome.ALREADY_CREATED) upgradeToTokenIndex(database, tables, clock)
+        return outcome
     }
+
+    /**
+     * The statements that bring a `schema-1` database to `schema-2` (full text change, D4). Only additions: a nullable key
+     * column, the table of tokens and their indexes. Generated from the table definitions, so the names match the rows.
+     */
+    internal fun upgradeStatements(database: Database): List<String> = transaction(database) {
+        upgradeStatementsIn(SearchTables(SearchDialect.of(database.vendor)))
+    }
+
+    /** The upgrade statements for the dialect of the current transaction. */
+    private fun upgradeStatementsIn(tables: SearchTables): List<String> {
+        val artifact = tables.artifact
+        val keyIndex = artifact.indices.single { it.customName == "ix_search_gav_key" }
+        return listOf("ALTER TABLE ${artifact.tableName} ADD COLUMN ${artifact.gavKey.descriptionDdl(true)}") +
+            SchemaUtils.createIndex(keyIndex) +
+            SchemaUtils.createStatements(tables.token)
+    }
+
+    /** Runs the upgrade once. The marker is inserted first, so two starters serialise on it as the schema-1 creation does. */
+    private fun upgradeToTokenIndex(database: Database, tables: SearchTables, clock: Clock) {
+        transaction(database) {
+            if (markTokenIndex(tables, clock) == 0) return@transaction
+            upgradeStatementsIn(tables).forEach { exec(it) }
+        }
+    }
+
+    private fun markTokenIndex(tables: SearchTables, clock: Clock): Int =
+        tables.state.insertIgnore {
+            it[tables.state.key] = TOKEN_MARKER_KEY
+            it[tables.state.value] = "created"
+            it[tables.state.updatedAt] = clock.millis()
+        }.insertedCount
 
     private fun createStateTable(database: Database, tables: SearchTables) {
         try {

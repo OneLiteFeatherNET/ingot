@@ -181,7 +181,9 @@ data class ArtifactFileItem(
 
 /**
  * The state of the index (4.8). [lagSeconds] is the age of the oldest pending outbox row, 0 when there is none.
- * [pendingEntries] is the number of outbox rows that may still be claimed.
+ * [pendingEntries] is the number of outbox rows that may still be claimed. [tokensComplete] is false while a row has no
+ * GAV key, so the word matches of older rows are not yet indexed (full text change, D6). It defaults to true, so an
+ * older client reads the same as before.
  */
 data class IndexStatus(
     val state: IndexState,
@@ -190,6 +192,7 @@ data class IndexStatus(
     val deadLetters: Long,
     val droppedEnqueues: Long,
     val pendingEntries: Long = 0L,
+    val tokensComplete: Boolean = true,
 )
 
 enum class IndexState { READY, BUILDING, MISSING, DEGRADED }

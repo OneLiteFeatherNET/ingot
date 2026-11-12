@@ -837,9 +837,12 @@
           },
           "state" : {
             "$ref" : "#/components/schemas/IndexState"
+          },
+          "tokensComplete" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "state", "lagSeconds", "deadLetters", "droppedEnqueues", "pendingEntries" ],
+        "required" : [ "state", "lagSeconds", "deadLetters", "droppedEnqueues", "pendingEntries", "tokensComplete" ],
         "type" : "object"
       },
       "IngotInformation" : {

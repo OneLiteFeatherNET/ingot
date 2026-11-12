@@ -26,6 +26,7 @@ import net.onelitefeather.ingot.search.access.SearchAccess
 import net.onelitefeather.ingot.search.backend.ArtifactSearchBackend
 import net.onelitefeather.ingot.search.backend.BackendHealth
 import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.backend.KeyBatch
 import net.onelitefeather.ingot.search.backend.SamplePage
 import net.onelitefeather.ingot.search.backend.StoredRow
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -65,6 +66,8 @@ internal class DatabaseSearchBackend(
     override fun status(): IndexStatus = engine.status()
 
     override fun apply(actions: List<IndexAction>) = index.apply(actions)
+
+    override fun keyRows(after: Long, batchSize: Int): KeyBatch? = index.keyRows(after, batchSize)
 
     override fun pathsAt(repository: String, prefix: String, after: String?, limit: Int): List<String> =
         index.pathsAt(repository, prefix, after, limit)

@@ -51,6 +51,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.core.min
 import org.jetbrains.exposed.v1.core.or
@@ -88,12 +89,15 @@ internal class DatabaseArtifactSearchEngine(
 
     override fun search(query: ArtifactSearchQuery, access: SearchAccess): ArtifactSearchPage {
         checkWindow(query.page, query.size)
-        val filters = SearchFilters(query, rows)
+        val filters = SearchFilters(query, rows, tables.token)
         val visible = access.toCondition(rows)
-        val where = filters.predicate() and visible
         return readOnly {
-            val groups = groupPage(where, query)
-            val total = groupCount(where)
+            val (groups, total) = if (filters.usesTokenTable) {
+                wordGroups(filters, visible, query)
+            } else {
+                val where = filters.predicate() and visible
+                groupPage(where, query, query.size, query.page.toLong() * query.size) to groupCount(where)
+            }
             val presence = repositoriesOf(groups, visible)
             val latest = latestVersionsOf(groups, visible)
             ArtifactSearchPage(
@@ -121,7 +125,7 @@ internal class DatabaseArtifactSearchEngine(
     }
 
     override fun facets(query: ArtifactSearchQuery, access: SearchAccess): SearchFacets {
-        val filters = SearchFilters(query, rows)
+        val filters = SearchFilters(query, rows, tables.token)
         val visible = access.toCondition(rows)
         return readOnly {
             SearchFacets(
@@ -202,7 +206,35 @@ internal class DatabaseArtifactSearchEngine(
         val version: String,
         val fileCount: Long,
         val lastModified: Long,
+        val sizeBytes: Long,
     )
+
+    /**
+     * A query with a word match (search decision): main's groups first, in main's order, then the groups that only a word match
+     * returns, in the requested order. The page is read from each part with its own offset, so no merging is needed. The total
+     * is main's count plus the word-only count, each capped by the count itself.
+     */
+    private fun wordGroups(filters: SearchFilters, visible: Op<Boolean>, query: ArtifactSearchQuery): Pair<List<Group>, Long> {
+        val mainWhere = filters.coordinatePredicate() and visible
+        val wordWhere = filters.wordOnlyPredicate() and visible
+        val mainCount = groupCount(mainWhere)
+        val wordCount = groupCount(wordWhere)
+        val start = query.page.toLong() * query.size
+        val end = start + query.size
+        val fromMain = if (start < mainCount) {
+            groupPage(mainWhere, query, (minOf(end, mainCount) - start).toInt(), start)
+        } else {
+            emptyList()
+        }
+        val wordStart = maxOf(0L, start - mainCount)
+        val wordEnd = maxOf(0L, end - mainCount)
+        val fromWords = if (wordEnd > wordStart) {
+            groupPage(wordWhere, query, (wordEnd - wordStart).toInt(), wordStart)
+        } else {
+            emptyList()
+        }
+        return (fromMain + fromWords) to (mainCount + wordCount)
+    }
 
     private data class GavKey(val groupLc: String, val artifactLc: String, val versionLc: String) {
         fun artifact() = ArtifactKey(groupLc, artifactLc)
@@ -211,7 +243,7 @@ internal class DatabaseArtifactSearchEngine(
     private data class ArtifactKey(val groupLc: String, val artifactLc: String)
 
     /** One page of groups. The sort ends in the three grouped columns, so the order is total and paging is stable. */
-    private fun groupPage(where: Op<Boolean>, query: ArtifactSearchQuery): List<Group> {
+    private fun groupPage(where: Op<Boolean>, query: ArtifactSearchQuery, limit: Int, offset: Long): List<Group> {
         val g = rows.groupIdLc
         val a = rows.artifactIdLc
         val v = rows.versionLc
@@ -232,11 +264,11 @@ internal class DatabaseArtifactSearchEngine(
         // tie comes first, as in the default order of 4.3.
         val direction = if (query.order == SearchOrder.DESC) SortOrder.DESC else SortOrder.ASC
         val tieDirection = if (direction == SortOrder.ASC) SortOrder.DESC else SortOrder.ASC
-        return rows.select(g, a, v, minGroupId, minArtifactId, minVersion, fileCount, lastModified)
+        return rows.select(g, a, v, minGroupId, minArtifactId, minVersion, fileCount, lastModified, size)
             .where { where }
             .groupBy(g, a, v)
             .orderBy(sortKey to direction, g to direction, a to direction, v to tieDirection)
-            .limit(query.size).offset(query.page.toLong() * query.size)
+            .limit(limit).offset(offset)
             .map { row ->
                 Group(
                     key = GavKey(row[g], row[a], row[v]),
@@ -245,6 +277,7 @@ internal class DatabaseArtifactSearchEngine(
                     version = row[minVersion].orEmpty(),
                     fileCount = row[fileCount],
                     lastModified = row[lastModified] ?: 0L,
+                    sizeBytes = row[size] ?: 0L,
                 )
             }
     }
@@ -357,6 +390,7 @@ internal class DatabaseArtifactSearchEngine(
         val dropped = stateValue(SearchStateKey.DROPPED_ENQUEUES)?.toLongOrNull() ?: 0L
         val drift = stateValue(SearchStateKey.VERIFY_LAST_REPORT)?.let(::driftOf)
         val rowsExist = rows.select(rows.id).limit(1).firstOrNull() != null
+        val tokensComplete = rows.select(rows.id).where { rows.gavKey.isNull() }.limit(1).firstOrNull() == null
         val rebuildRunning = runs.select(runs.id)
             .where { (runs.kind eq RunKind.REBUILD.name) and (runs.status eq RunStatus.RUNNING.name) }
             .limit(1)
@@ -383,12 +417,14 @@ internal class DatabaseArtifactSearchEngine(
                 deadLetters = deadLetters,
                 droppedEnqueues = dropped,
                 drift = drift,
+                tokensComplete = tokensComplete,
             ),
             lagSeconds = lagSeconds,
             lastFullRebuild = lastFull?.let(Instant::ofEpochMilli),
             deadLetters = deadLetters,
             droppedEnqueues = dropped,
             pendingEntries = outbox.selectAll().where { outbox.attempts less OutboxPolicy.MAX_ATTEMPTS }.count(),
+            tokensComplete = tokensComplete,
         )
     }
 
@@ -460,11 +496,13 @@ internal fun indexStateOf(
     deadLetters: Long,
     droppedEnqueues: Long,
     drift: Double?,
+    tokensComplete: Boolean = true,
 ): IndexState = when {
     lastFullRebuild == null && !rowsExist && !rebuildRunning -> IndexState.MISSING
     lastFullRebuild == null -> if (lastRebuildFailed && !rebuildRunning) IndexState.DEGRADED else IndexState.BUILDING
     lastRebuildFailed || lagSeconds > MAX_LAG_SECONDS || deadLetters > 0 || droppedEnqueues > 0 || (drift ?: 0.0) > MAX_DRIFT ->
         IndexState.DEGRADED
+    !tokensComplete -> IndexState.BUILDING
     else -> IndexState.READY
 }
 
