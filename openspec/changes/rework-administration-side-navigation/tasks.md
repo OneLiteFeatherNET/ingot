@@ -24,10 +24,13 @@ with a file pattern while working, through `heavy`. Playwright runs through `hea
   focus on open, the focus trap, Escape and the close button returning focus to the opener, the reduced motion class, and the
   `data-ingot-component` name. Verify: it fails, because the component does not exist.
 - [ ] 2.5 `test(ui)`: in `src/components/layout/AdministrationFrame.test.js`, assert the Sections button exists only in the 600 to
-  1239 pixel range classes, opens the sheet with the tree, and that choosing an entry navigates and closes the sheet. Verify: it fails.
+  1239 pixel range classes and only beside a back arrow (none on `/settings`), opens the sheet with the tree, and that choosing an
+  entry navigates and closes the sheet. Verify: it fails.
 - [ ] 2.6 `test(ui)`: in `e2e/layout.spec.js`, add cases at 1366 by 768, 1920 by 1080 and 2560 by 1440 (sticky only where the tree
-  fits, no element inside the `nav` with `overflow-y: auto`, the last entry reachable by scrolling the window), at 900 pixels (Sections
-  opens the sheet, Users opens and closes it, Escape returns focus), and at 320 pixels (no Sections button, no horizontal scroll).
+  fits, no element inside the `nav` with `overflow-y: auto`, the last entry reachable by scrolling the window, and at 1366 by 768 no
+  element of the page content with `position: sticky`; replace the "Only one sticky column" case at 1280 pixels with a 1280 by 1440
+  window), at 900 pixels (Sections opens the sheet, Users opens and closes it, Escape returns focus; no Sections button on
+  `/settings`), and at 320 pixels (no Sections button, no horizontal scroll).
   Selectors are roles and accessible names; no timeouts. Verify: they fail against the current build.
 
 ## 3. Implementation

@@ -33,6 +33,66 @@ not in the tree SHALL mark none.
 - **WHEN** a full administrator opens `/access/users/alice`
 - **THEN** only the Users entry is marked
 
+### Requirement: One Administration frame
+
+Every Administration page SHALL draw the same frame: the navigation rail when the visitor sees it, the same page container, the
+side navigation at the same place beside the page, and one level one heading that names the page shown. The heading SHALL be the
+label of the current tree entry, the manifest `title` on a plugin page, or the item name on a detail page. The `main` landmark SHALL
+be labelled by that heading. The tree landmark SHALL keep the name Administration.
+
+#### Scenario: Heading names the page
+
+- **WHEN** a full administrator opens `/access/users`, `/settings/web`, `/console` and `/settings/plugins/acme/mirrors` in turn
+- **THEN** the level one heading reads Users, Reverse proxy, Console and the manifest title of the plugin page, and each page has
+  exactly one level one heading
+
+#### Scenario: Detail page
+
+- **WHEN** a full administrator opens `/access/users/alice`
+- **THEN** the level one heading reads alice
+
+#### Scenario: Landmark name kept
+
+- **WHEN** a screen reader lists the landmarks of `/access/users`
+- **THEN** the tree is a navigation landmark named Administration, and the main landmark is named Users
+
+#### Scenario: Landing page
+
+- **WHEN** a full administrator opens `/settings`
+- **THEN** the level one heading reads Overview, the label of the current tree entry, and the description reads "Shared
+  configuration for all instances."
+
+### Requirement: Breadcrumb shows where the page sits
+
+The breadcrumb SHALL sit above the level one heading. Its first crumb SHALL be Administration, linked to `/settings`, except on
+Overview, where the breadcrumb SHALL hold only the crumb Administration, as plain text and not a link. On every other page its
+second crumb SHALL be the heading of the current entry's group, as plain text and not a link. On a detail page the trail SHALL add
+the current tree entry as a link. The page itself SHALL be named by the level one heading and SHALL NOT be repeated as a crumb.
+Below 1240 pixels the trail SHALL show its last crumb on one line after the back arrow, truncated with an ellipsis, with the full
+trail as its title and accessible name; a page without a back arrow SHALL show its trail without one.
+
+#### Scenario: Overview
+
+- **WHEN** a full administrator opens `/settings`
+- **THEN** the breadcrumb reads Administration only, that crumb is not a link, and the level one heading reads Overview
+
+#### Scenario: Audit settings
+
+- **WHEN** a full administrator opens `/settings/audit`
+- **THEN** the breadcrumb reads Administration, then Monitoring and support, Administration links to `/settings`, and the level
+  one heading reads Audit settings
+
+#### Scenario: Detail page trail
+
+- **WHEN** a full administrator opens `/access/users/alice`
+- **THEN** the breadcrumb reads Administration, Access, Users, where Users links to `/access/users`, and Access is not a link
+
+#### Scenario: Narrow screen
+
+- **WHEN** a visitor opens `/settings/web` at 320 pixels wide
+- **THEN** the back arrow and the last crumb are drawn on one line, the back arrow has a target of at least 48 by 48 pixels, and
+  the page does not scroll horizontally
+
 ## ADDED Requirements
 
 ### Requirement: Overview is the first entry
@@ -74,8 +134,9 @@ always stay visible. The filter SHALL NOT add a query parameter, a global keyboa
 
 #### Scenario: Plugin page found by plugin id
 
-- **WHEN** a plugin `acme-mirror` contributes a page in an unknown group and the administrator types "acme"
-- **THEN** the page is listed under Plugins
+- **WHEN** a plugin `acme-mirror` contributes a page with `group: "Security"` whose title and description do not contain "acme",
+  and the administrator types "acme"
+- **THEN** the page is listed under Access
 
 #### Scenario: No match
 

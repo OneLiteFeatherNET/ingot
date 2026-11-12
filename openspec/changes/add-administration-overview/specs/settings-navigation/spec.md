@@ -78,3 +78,34 @@ into the draft without a confirmation, and nothing SHALL be stored before Save.
 
 - **WHEN** the administrator imports a valid settings file on Overview
 - **THEN** the changed domains appear under Needs attention as unsaved, and the server settings are unchanged until Save
+
+### Requirement: Overview below 1240 pixels
+
+Below 1240 pixels `/settings` SHALL show, in this order: the page header of Overview, Needs attention when it has a row or a
+conflict, the Administration index with its filter, At a glance, and the dashboard link.
+
+#### Scenario: Phone
+
+- **WHEN** a full administrator with a draft in Javadoc opens `/settings` at 320 pixels wide
+- **THEN** the level one heading reads Overview, Needs attention lists Javadoc above the index, and the page does not scroll
+  horizontally
+
+#### Scenario: Nothing needs attention on a tablet
+
+- **WHEN** a full administrator without a draft or a conflict opens `/settings` at 900 pixels wide
+- **THEN** the Needs attention section is not drawn, the index follows the page header, and At a glance follows the index
+
+### Requirement: Overview is the narrow index
+
+Below 1240 pixels the index on `/settings` SHALL list Overview first and mark it `aria-current="page"`, and `/settings` SHALL draw no
+back arrow. Every other Administration page below 1240 pixels SHALL keep its back arrow and its target as before this change.
+
+#### Scenario: Current entry in the index
+
+- **WHEN** a full administrator opens `/settings` at 320 pixels wide
+- **THEN** the index lists Overview first, marked current, and no back arrow is drawn
+
+#### Scenario: Sibling page keeps its back arrow
+
+- **WHEN** the administrator opens `/settings/javadoc` at 900 pixels wide
+- **THEN** the back arrow is drawn and leads to `/settings`

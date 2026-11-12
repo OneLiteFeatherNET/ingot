@@ -35,6 +35,27 @@ the page scrolls.
 - **WHEN** the tree fits, and a draft makes the save bar appear
 - **THEN** the decision is taken again with the save bar's height, and no tree entry is drawn under the save bar
 
+### Requirement: Page header outside the columns
+
+The page heading and the page actions SHALL sit in one header row above the side navigation and the content. The header row
+SHALL NOT be sticky. Only the side navigation at 1240 pixels and wider while it fits between the bars, and the top bar and the save
+bar, SHALL be sticky.
+
+#### Scenario: Header scrolls away
+
+- **WHEN** a visitor scrolls an Administration page down by 200 pixels
+- **THEN** the page heading is no longer drawn under the top bar, and the top bar stays at the top of the window
+
+#### Scenario: Only one sticky column
+
+- **WHEN** an Administration page is drawn at 1280 by 1440 pixels and the tree fits between the bars
+- **THEN** the side navigation is the only element of the page content with a sticky position
+
+#### Scenario: No sticky column when the tree does not fit
+
+- **WHEN** an Administration page is drawn at 1366 by 768 pixels and the tree is taller than the space between the bars
+- **THEN** no element of the page content has a sticky position
+
 ## ADDED Requirements
 
 ### Requirement: Index rows show the description
@@ -54,14 +75,20 @@ without a description SHALL show its label only. From 1240 pixels the rows of th
 
 ### Requirement: Sections sheet from 600 to 1239 pixels
 
-From 600 to 1239 pixels each Administration page SHALL show a Sections button beside the back arrow, with a target of at least 48 by
-48 pixels. It SHALL open a modal side sheet named "Administration pages" that holds the Administration tree with the current entry
-marked. Choosing an entry SHALL open it and close the sheet. Below 600 and from 1240 pixels the button SHALL NOT be drawn.
+From 600 to 1239 pixels each Administration page that draws a back arrow SHALL show a Sections button beside it, with a target of
+at least 48 by 48 pixels. It SHALL open a modal side sheet named "Administration pages" that holds the Administration tree with the
+current entry marked. Choosing an entry SHALL open it and close the sheet. A page that shows the index itself (`/settings`) SHALL NOT
+draw the button. Below 600 and from 1240 pixels the button SHALL NOT be drawn.
 
 #### Scenario: Move to a sibling page
 
 - **WHEN** a full administrator on `/access/ldap` at 900 pixels activates Sections and then Users
 - **THEN** `/access/users` opens and the sheet is closed
+
+#### Scenario: Not on the index
+
+- **WHEN** a full administrator opens `/settings` at 900 pixels wide
+- **THEN** no Sections button is drawn, and the index is on the page
 
 #### Scenario: Not on phones
 

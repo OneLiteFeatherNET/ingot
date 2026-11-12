@@ -27,12 +27,13 @@ levels, and a page title that names the page.
 - **Groups by job, with display headings.** The four groups keep their internal ids, which are also the plugin manifest values
   `Repository`, `Security`, `System` and `Support`. Only the heading on screen changes, through a frontend map:
   `Repository` is shown as **Artifacts**, `Security` as **Access**, `System` as **Instance**, `Support` as **Monitoring and
-  support**. Pages with an unknown group keep landing under **Plugins**.
+  support**. The server keeps refusing any other page group; the frontend keeps **Plugins** only as the fallback for a value
+  it does not expect.
 - **Each page in one place.**
   - Artifacts: Repositories, Cleanup policies, Javadoc, Search index.
   - Access: Users, Machine accounts, Teams, Single sign-on, LDAP directory, Sign-in protection, Permission check.
   - Instance: Branding, Reverse proxy, Usage statistics, Migration (only while the Nexus import plugin is enabled).
-  - Monitoring and support: Audit log, Audit settings, Analytics, Console, Maintenance, System information and Support bundle
+  - Monitoring and support: Audit log, Audit settings, Console, Maintenance, Analytics, System information and Support bundle
     (the last two only when the support bundle is offered).
 - **Labels that name the job.** Labels come from a frontend map keyed by route or settings domain id, with the server schema
   title as the fallback. `cleanup` is "Cleanup policies", `search` is "Search index" (and moves to Artifacts), `web` is "Reverse
@@ -54,10 +55,13 @@ levels, and a page title that names the page.
 - **Shortcuts are links inside a page, never extra tree entries.** Audit log and Audit settings link to each other, Analytics
   links to Usage statistics, Maintenance links to Search index and Cleanup policies and back, and a user or team detail page
   links to Permission check with the principal filled in through the existing `principal` query.
-- **Order inside a group.** Configuration first, then tools, then logs and views. Entries that belong together sit next to each
-  other. Plugin entries follow the built-in entries of their group, as today.
+- **Order inside a group.** There is no ordering rule by kind of page. Two constraints set the order: entries that belong
+  together sit next to each other (Audit settings directly after Audit log), and the pages that are not settings domains keep
+  their order relative to each other from today. The second one matters because the rail's Administration entry opens the first
+  page of the tree a visitor may open when the visitor lacks the settings node; with the old relative order, a visitor with
+  Console and Analytics still lands on Console. Plugin entries follow the built-in entries of their group, as today.
 - **Design rules written down.** `DESIGN.md` gains an "Administration information architecture" section: one home per page,
-  two levels, the label rule, the description rule, the page header anatomy, and the rule that a page with a save bar has no
+  two levels, the order constraints, the label rule, the description rule, the page header anatomy, and the rule that a page with a save bar has no
   filled button in its header.
 
 Not BREAKING. No configuration key, environment variable, deployment manifest, route, route name, permission node, settings
@@ -78,9 +82,12 @@ Commits: `test(ui)` for the red tests, `feat(ui)` for the registry, the frame an
 ### Dependencies
 
 - `add-repositories-admin-page`, `retire-maven-settings-page` and `fix-administration-navigation`: their code is on `main` and
-  their changes are not archived. This change MODIFIES the requirements "Administration tree", "Accessible tree", "One
-  Administration frame" and "Breadcrumb names the page shown" of the `administration-navigation` capability they define. Archive
-  them first; then these deltas apply to their text.
+  their changes are not archived. This change MODIFIES the requirements "Administration tree", "Accessible tree", "Addresses
+  unchanged", "One tree on every Administration page", "Exactly one current entry" and "One Administration frame" of the
+  `administration-navigation` capability they define, and RENAMES "Breadcrumb names the page shown" to "Breadcrumb shows where
+  the page sits" while modifying it, because the page is now named by the heading and not by a crumb. Every requirement that
+  names the old groups is rewritten here, so the archived spec does not contradict the new tree. Archive them first; then these
+  deltas apply to their text.
 - `fix-top-bar-chrome`: not required. Together they leave one `h1` per page; this change alone already makes the frame `h1`
   name the page.
 - `use-wide-screens`: touches `AdministrationFrame.vue` for the content cap. No requirement overlaps; the second to merge

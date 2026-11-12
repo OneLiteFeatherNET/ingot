@@ -63,7 +63,8 @@ const GROUP_HEADINGS = {
 
 `ADMIN_TREE` keeps `Repository`, `Security`, `System` and `Support` as group ids. `adminGroups` returns `{ id, heading, links }`.
 `contributedHeading` maps a valid manifest group through `GROUP_HEADINGS` and falls back to `Plugins` as today. The backend
-constants and the validator are not touched. If a later change ever accepts new manifest values, they are added and the old
+constants and the validator are not touched, so `PluginUiValidator.kt:46` keeps refusing a page group outside the four values;
+the `Plugins` fallback is only reached by an unexpected value, for example a fake manifest in a unit test. If a later change ever accepts new manifest values, they are added and the old
 strings stay valid (the `INGOT_` and `REPOSILITE_` pattern of `CLAUDE.md`).
 
 Why "Artifacts" and not "Repositories": the first entry of the group is the Repositories page, and a heading that repeats its
@@ -102,9 +103,9 @@ The lookup order for a label is: plugin section label, then `DOMAIN_LABELS` or t
 | Instance | `settings-migration` | Migration | Import the repositories of another instance, step by step. | nexus, import |
 | Monitoring and support | `audit` (page) | Audit log | Deployments, deletions, settings changes, token changes and failed sign ins on this instance, newest first. | audit, events, history, who |
 | Monitoring and support | `audit` (domain) | Audit settings | How long audit events are kept, and whether the client address is recorded. | audit, retention, client address |
-| Monitoring and support | `analytics` | Analytics | Traffic and resource use of this instance over time. | traffic, charts |
 | Monitoring and support | `console` | Console | The log lines of this instance, filtered by level and text. | logs |
 | Monitoring and support | `maintenance` | Maintenance | Storage usage, the search index and cleanup for this Ingot instance. | storage, rebuild index, cleanup run |
+| Monitoring and support | `analytics` | Analytics | Traffic and resource use of this instance over time. | traffic, charts |
 | Monitoring and support | `system-info` | System information | What this instance runs on. Secrets are withheld or masked, and the page only reads. | version, java, environment |
 | Monitoring and support | `support` | Support bundle | What a maintainer needs to look at this instance, as one zip. | zip, debug |
 
@@ -137,8 +138,8 @@ change; `add-administration-overview` names it Overview.
 
 Both live under Monitoring and support, Audit log first. Each keeps its own permission node (`audit` for the log, `settings` for
 the domain), so no visitor loses an entry they can open today, and no hidden entry or special current key is needed. The existing
-requirement "Exactly one current entry" already marks only Audit settings on `/settings/audit`. The two pages link to each other
-(D6). Merging them stays possible later (open question 3).
+requirement "Exactly one current entry" already marks only Audit settings on `/settings/audit`; this change rewrites its
+scenarios with the new group names. The two pages link to each other (D6). Merging them stays possible later (open question 3).
 
 ### D6. Shortcuts are in-page links
 
@@ -163,8 +164,25 @@ group while the code drew a `p`. Open question 4.
 
 ### D8. Order inside a group
 
-Configuration first, then tools, then logs and views; an entry whose settings live in a separate domain sits directly after it.
-Plugin entries follow the built-in entries of their group, in manifest order, and never reorder the built-ins.
+There is no ordering rule by kind of page (configuration, tool, log, view). The order is the one of the "Administration tree"
+requirement, set by two constraints:
+
+1. Entries that belong together are adjacent: Audit settings sits directly after Audit log.
+2. The static pages (every entry of `ADMIN_TREE`, as opposed to settings domains) keep their order relative to each other from
+   today: Repositories; Users, Machine accounts, Teams, Single sign-on, LDAP directory, Sign-in protection, Permission check;
+   Audit log; Migration; Console, Maintenance, Analytics, System information, Support bundle. Only Migration moves ahead of
+   Audit log, and Migration needs `ingot.admin.*`, which also grants the settings node.
+
+The second constraint exists because `administrationLocation` (`src/navigation/registry.js:325-328`) opens `/settings` for a
+visitor with the settings node and otherwise the first permitted entry of `ADMIN_ENTRIES`, the flattened tree. Ordering the
+Monitoring group as log, view, log, tool (Audit log, Analytics, Console, Maintenance) would send a visitor with only Console and
+Analytics to Analytics instead of Console. With the order above, the rail's Administration entry opens the same page as before
+for every set of permissions; the ADDED requirement "Administration entry opens the same page" and a unit test over node sets
+pin it.
+
+Settings domains are not in `ADMIN_ENTRIES`, so their order (Cleanup policies before Javadoc, Branding before Reverse proxy)
+does not affect where the rail opens. Plugin entries follow the built-in entries of their group, in manifest order, and never
+reorder the built-ins.
 
 ### D9. Validate the grouping before the code
 
@@ -238,11 +256,11 @@ Desktop, 1440 pixels, `/access/users`:
 |    |  | MONITORING AND SUPP. |                                                     |
 |    |  |  Audit log           |                                                     |
 |    |  |  Audit settings      |                                                     |
-|    |  |  Analytics           |                                                     |
 |    |  |  Console             |                                                     |
 |    |  |  Maintenance         |                                                     |
+|    |  |  Analytics           |                                                     |
 |    |  | PLUGINS              |                                                     |
-|    |  |  (unknown groups)    |                                                     |
+|    |  |  (fallback only)     |                                                     |
 |    |  +----------------------+                                                     |
 +----+-------------------------------------------------------------------------------+
 ```
@@ -295,11 +313,11 @@ Phone, 320 pixels, `/settings/web`:
 | --- | --- |
 | One home per destination; no second copy of the navigation | NN/g, Duplicate links, https://www.nngroup.com/articles/duplicate-links/ ; NN/g, Vertical navigation, https://www.nngroup.com/articles/vertical-nav/ ; Shopify app navigation ("avoid replicating the app nav content in the app body"), https://shopify.dev/docs/apps/design/navigation ; PatternFly navigation, https://www.patternfly.org/components/navigation/design-guidelines |
 | Two levels at most | Carbon UI shell left panel ("does not support three tiers"), https://carbondesignsystem.com/components/UI-shell-left-panel/usage/ ; GitLab Pajamas navigation sidebar, https://design.gitlab.com/patterns/navigation-sidebar ; NN/g, Progressive disclosure, https://www.nngroup.com/articles/progressive-disclosure/ ; Microsoft navigation basics, https://learn.microsoft.com/en-us/windows/apps/design/basics/navigation-basics ; Apple HIG sidebars, https://developer.apple.com/design/human-interface-guidelines/sidebars |
-| Group by job; logs and monitoring apart from identity and configuration | Gitea admin navigation (Identity and access, Monitor), https://github.com/go-gitea/gitea/blob/main/templates/admin/navbar.tmpl ; Forgejo admin navigation, https://codeberg.org/forgejo/forgejo/src/branch/forgejo/templates/admin/navbar.tmpl ; Sonatype Nexus Repository administration menu (group names Repository, Security, System, Support only); GitLab Admin area monitoring group; Atlassian Administration (audit log under Insights); Apple HIG settings, https://developer.apple.com/design/human-interface-guidelines/settings |
+| Group by job; logs and monitoring apart from identity and configuration | Gitea admin navigation (Identity and access, Monitor), https://github.com/go-gitea/gitea/blob/main/templates/admin/navbar.tmpl ; Forgejo admin navigation, https://codeberg.org/forgejo/forgejo/src/branch/forgejo/templates/admin/navbar.tmpl ; Sonatype Nexus Repository administration menu (group names Repository, Security, System, Support only; URL not recorded in the research corpus); GitLab Admin area monitoring group (URL not recorded in the research corpus); Atlassian Administration (audit log under Insights; URL not recorded in the research corpus); Apple HIG settings, https://developer.apple.com/design/human-interface-guidelines/settings |
 | One term per concept; short noun labels; descriptive text | NN/g, Menu design checklist, https://www.nngroup.com/articles/menu-design/ ; Android settings guidelines, https://source.android.com/docs/core/settings/settings-guidelines ; GitLab Pajamas settings management, https://design.gitlab.com/patterns/settings-management ; GitLab settings click test in issue 23483 (correct location rose from 34% to 97% and from 49% to 92% with descriptive labels; URL not recorded in the research corpus) |
-| Page title names the page; breadcrumb above it; current crumb not a link | PatternFly page, https://www.patternfly.org/components/page ; Primer PageHeader, https://primer.style/components/page-header ; Atlassian page header, https://atlassian.design/components/page-header/ ; Polaris Page, https://polaris.shopify.com/components/layout-and-structure/page ; Apple HIG ("don't title windows with your app name"); NN/g, Breadcrumbs, https://www.nngroup.com/articles/breadcrumbs/ |
+| Page title names the page; breadcrumb above it; current crumb not a link | PatternFly page, https://www.patternfly.org/components/page ; Primer PageHeader, https://primer.style/components/page-header ; Atlassian page header, https://atlassian.design/components/page-header/ ; Polaris Page, https://polaris.shopify.com/components/layout-and-structure/page ; Apple HIG ("don't title windows with your app name"; URL not recorded in the research corpus); NN/g, Breadcrumbs, https://www.nngroup.com/articles/breadcrumbs/ |
 | Contextual shortcuts as in-page links | GitLab Pajamas settings management (in-page shortcuts instead of extra sidebar entries); NN/g, Vertical navigation |
-| Extensions placed through a declared contract, with a fallback bucket | VS Code settings guidelines, https://code.visualstudio.com/api/ux-guidelines/settings ; WordPress `add_menu_page` (capability gating), https://developer.wordpress.org/reference/functions/add_menu_page/ ; Grafana plugin navigation ("More apps" default bucket) |
+| Extensions placed through a declared contract, with a fallback bucket | VS Code settings guidelines, https://code.visualstudio.com/api/ux-guidelines/settings ; WordPress `add_menu_page` (capability gating), https://developer.wordpress.org/reference/functions/add_menu_page/ ; Grafana plugin navigation ("More apps" default bucket; URL not recorded in the research corpus) |
 | Validate with a tree test | NN/g, Tree testing, https://www.nngroup.com/articles/tree-testing/ ; NN/g, Card sorting, https://www.nngroup.com/articles/card-sorting-definition/ |
 | Landmarks, label in name, reflow | WAI-ARIA APG landmark regions, https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/ ; WCAG 2.2 Understanding 2.5.3, https://www.w3.org/WAI/WCAG22/Understanding/label-in-name ; Understanding 1.4.10, https://www.w3.org/WAI/WCAG22/Understanding/reflow |
 

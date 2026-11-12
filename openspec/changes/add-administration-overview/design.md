@@ -98,7 +98,26 @@ changes". No other per-entry status exists.
 `SECTION_SETTINGS_GROUPS` goes with them; a plugin section's tree group is its manifest group (`Repository` or `System`), as
 `treeGroupOf` already does. A test with a fake manifest proves every section still appears.
 
-### D7. Anchor
+### D7. Page header and breadcrumb of Overview
+
+The frame of `rework-administration-information-architecture` names a page by its current tree entry, so the `h1` of `/settings`
+becomes Overview, the label of the new entry. Overview has no group, and a first crumb that links to `/settings` would link the page
+to itself, so on Overview the breadcrumb holds the single crumb Administration as plain text. Every other page keeps the trail of
+that change: Administration (link), group heading (text), and on a detail page the list page (link). The requirement was renamed
+there to "Breadcrumb shows where the page sits"; this change MODIFIES it and "One Administration frame" (scenario "Landing page").
+
+### D8. Overview below 1240 pixels
+
+Today `SideNavLayout` shows the index in place of the page when `narrow` and no entry is current (`showsIndex`), so `/settings`
+below 1240 pixels is the index and the hub is never drawn. With D1, `/settings` has a current entry, and without a change it would
+show the page with a back arrow that leads to itself. So `SideNavLayout` learns one more case: when `narrow` and the current entry is
+Overview, it draws the page and the index on the same page, with no back arrow. The order is the page header, Needs attention
+(only when it has a row or a conflict), the index with the filter and Overview marked current, At a glance, the dashboard link.
+Needs attention comes before the index because it is the reason to land here; At a glance comes after because it is reference.
+Every other page keeps its back arrow and target. `rework-administration-side-navigation` relies on this: its Sections button is
+not drawn on `/settings` below 1240 pixels, because the index is already on the page.
+
+### D9. Anchor
 
 The root element of the Overview content keeps `data-ingot-component="settings-hub"`. The registry entry is unchanged (no parts,
 no states). The PR description and `dashboard-pages.md` say the card children are gone.
@@ -141,19 +160,19 @@ Desktop, filter in use ("nginx"):
 |  | Find an administration |
 |  | page [ nginx         x]|
 |  | 1 page matches         |   (live region, polite)
+|  |> Overview      current |   (current entry kept, first as in the tree)
 |  | INSTANCE               |
 |  |  Reverse proxy         |
 |  |   The headers that ... |   (description shown while filtering)
-|  |> Overview      current |   (current entry kept)
 ```
 
-Phone, 320 pixels, `/settings` (the index is the landing below 1240 pixels):
+Phone, 320 pixels, `/settings` (Overview and the index on one page below 1240 pixels, D8):
 
 ```
 +------------------------------+
 | Ingot Repository        (T)  |
 +------------------------------+
-| Administration               |
+| Administration               |  plain text, no back arrow
 | Overview                     |
 | Shared configuration for all |
 | instances.                   |
@@ -165,10 +184,16 @@ Phone, 320 pixels, `/settings` (the index is the landing below 1240 pixels):
 |                              |
 | Find an administration page  |
 | [                          ] |
+|> Overview          current   |
 | ARTIFACTS                    |
 |  Repositories            >   |
 |  Cleanup policies        >   |
 |  ...                         |
+|                              |
+| At a glance                  |
+| Repositories             7   |
+| Cleanup policies         0   |
+| Instance status and ... >    |
 +------------------------------+
 | 1 unsaved change    [Save]   |
 +------------------------------+

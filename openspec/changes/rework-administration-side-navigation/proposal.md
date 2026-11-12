@@ -21,7 +21,8 @@ only a label, so the index gives no more hint than the label itself.
   made when the window or the tree changes size, never while scrolling, so the tree does not jump.
 - **Index rows with a description.** Below 1240 pixels, where the tree is an index page, each row shows the entry's one-line
   description under its label. Plugin rows show their manifest description; a row without a description shows its label only.
-- **A Sections sheet from 600 to 1239 pixels.** The page header row gets a "Sections" button beside the back arrow. It opens the
+- **A Sections sheet from 600 to 1239 pixels.** The page header row gets a "Sections" button beside the back arrow. A page
+  without a back arrow, the index at `/settings`, gets none, because the tree is already on the page. It opens the
   same tree in a modal side sheet named "Administration pages", with the current entry marked and, once
   `add-administration-overview` is in, the filter at the top. Choosing an entry opens it and closes the sheet. Escape or the close
   button closes it and returns focus to the button. Below 600 pixels nothing changes: the index is the page.
@@ -46,8 +47,10 @@ the change is a feature, not a fix. Commits: `test(ui)` for the red tests, `feat
 - `rework-administration-information-architecture` must be merged first: the index rows show its descriptions.
 - `add-administration-overview` should be merged first, so the sheet carries the filter. Without it the sheet shows the tree
   without the filter; nothing breaks.
-- `rework-administration-layout` (merged): this change MODIFIES its requirement "Side navigation does not overlap bars"
-  (capability `administration-layout`), which asked the tree to scroll inside itself.
+- `rework-administration-layout` (merged, not archived): this change MODIFIES its requirements "Side navigation does not overlap
+  bars" (capability `administration-layout`), which asked the tree to scroll inside itself, and "Page header outside the
+  columns", whose scenario "Only one sticky column" expected the tree to be sticky at 1280 pixels whatever its height. Archive it
+  first.
 - `use-wide-screens`: touches the same frame for the content cap; no requirement overlaps.
 
 ### Out of scope

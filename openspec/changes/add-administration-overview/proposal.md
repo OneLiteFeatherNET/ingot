@@ -32,10 +32,14 @@ of drafts across domains. So the landing stays a page, and it shows only what th
     together; none is shown before the saved settings have loaded.
   - A link "Instance status and resources are on the Dashboard" when the visitor may open `/dashboard`. There is no second
     status dashboard.
-- **Header of Overview.** `h1` "Overview", breadcrumb "Administration", description "Shared configuration for all
+- **Header of Overview.** `h1` "Overview", breadcrumb "Administration" as plain text (Overview has no group, and the crumb
+  would link to the page itself), description "Shared configuration for all
   instances.", and the existing outlined "Import settings" and "Download as JSON" controls on the right. These two act on the
   whole configuration, so they appear on Overview only; the settings domain pages and the Repositories page no longer carry
   them. Import still loads into the draft and asks for no confirmation; the review before Save is the checkpoint.
+- **Overview on narrow screens.** Below 1240 pixels `/settings` shows the Overview header, Needs attention when it is not empty,
+  the index with the filter and Overview marked current, then At a glance and the dashboard link. It draws no back arrow, because
+  it is the index. Today the index replaces the hub there; every other page keeps its back arrow.
 - **Find an administration page.** A labelled filter field at the top of the tree. It matches the label, the group heading,
   the description and the keywords of every entry (the keywords include each page's old label, such as "web" or "frontend"),
   and for plugin pages their title, description and plugin id. Matching is case insensitive on word prefixes. Entries that do not match
@@ -69,8 +73,10 @@ reference page. No file under `openspec/` is in the code PR.
 - `rework-administration-information-architecture` must be merged first: the filter indexes its labels, descriptions and
   keywords, and Overview uses its page header.
 - `restructure-navigation` and `retire-maven-settings-page`: this change MODIFIES their requirement "Settings hub at /settings"
-  (capability `settings-navigation`). `fix-administration-navigation`: this change MODIFIES "Exactly one current entry". Archive
-  those changes first.
+  (capability `settings-navigation`). `fix-administration-navigation`: this change MODIFIES "Exactly one current entry".
+  `rework-administration-information-architecture`: this change MODIFIES its "One Administration frame" (the landing page's
+  heading becomes Overview) and "Breadcrumb shows where the page sits" (the trail of Overview). Archive those changes first, in
+  that order.
 
 ### Out of scope
 
@@ -95,7 +101,8 @@ reference page. No file under `openspec/` is in the code PR.
   description and plugin id. A stylesheet that targets `settings-hub` keeps matching the Overview root.
 - **Code:** `reposilite-frontend/src/navigation/registry.js` (Overview entry, `currentTreeKey`, removal of `SETTINGS_GROUPS`),
   `components/settings/SettingsHub.vue` and `settingsHub.js` (Overview content), `components/settings/SettingsView.vue` (header
-  actions only on Overview), `components/layout/SideNavLayout.vue` (filter, marks), a new `src/navigation/adminFilter.js` (pure
+  actions only on Overview), `components/layout/SideNavLayout.vue` (filter, marks, Overview and index together below 1240 pixels),
+  `components/layout/AdministrationFrame.vue` (the breadcrumb of Overview), a new `src/navigation/adminFilter.js` (pure
   matching). The Repositories page is rendered by `SettingsView` and loses the actions with the domain pages. No file under `reposilite-backend/`
   changes.
 - **Documentation:** `docs/gitbook/reference/dashboard-pages.md` ("Settings hub" becomes "Overview", where Import and Download

@@ -24,13 +24,19 @@ fake), a fresh store, `can`, plugin manifest and router per test, no shared muta
   headings Repository, Security, System, Support and on Search and Audit under System.
 - [ ] 3.2 `test(ui)`: assert that a visitor with the settings node but without the audit node sees Audit settings and not Audit
   log, and the reverse. Verify: it fails on today's placement.
-- [ ] 3.3 `test(ui)`: in `src/navigation/contributions.test.js`, a fake manifest with one page per group value plus `group:
-  "Billing"`, and one plugin section per section group: assert the heading of each, the Plugins fallback last, and that plugin
-  entries follow the built-in ones. Verify: it fails on the headings.
+- [ ] 3.3 `test(ui)`: in `src/navigation/contributions.test.js`, a fake manifest with one page per group value, one page with
+  `group: "Billing"` (a value the server refuses, so only a fake manifest can carry it), and one plugin section per section
+  group: assert the heading of each, the Plugins fallback last for the unexpected value, and that plugin entries follow the
+  built-in ones. Verify: it fails on the headings. The backend test `PluginUiValidatorTest` "should refuse an unknown menu
+  group" stays unchanged and green.
 - [ ] 3.4 `test(ui)`: in `src/navigation/registry.test.js`, assert every built-in entry has a label and a non-empty description,
   that the label of `web`, `frontend`, `statistics`, `search`, `cleanup` and `audit` comes from the frontend map while an unknown
   domain uses its schema title, and that every route name and tree key is unchanged (snapshot of the key list). Verify: it fails on
   the missing descriptions and labels.
+- [ ] 3.5 `test(ui)`: in `src/navigation/registry.test.js`, assert `administrationLocation` for fixed node sets, computed once
+  against today's tree and kept as a table: settings node gives `settings`; console and dashboard give `console`; audit and
+  console give `audit`; maintenance and dashboard give `maintenance`; every single node gives the same route as before. Verify: it
+  passes before the change and is kept as the guard; it fails if the Monitoring group is ordered Analytics before Console.
 
 ## 4. Red tests for the frame
 
@@ -58,7 +64,7 @@ fake), a fresh store, `can`, plugin manifest and router per test, no shared muta
 
 - [ ] 5.1 `feat(ui)`: add `GROUP_HEADINGS`, `DOMAIN_GROUPS` and `DOMAIN_LABELS` to `registry.js`, move the entries as in the
   requirement, return `{ id, heading, links }` from `adminGroups`, and map `contributedHeading` through the headings. Remove
-  `REPOSITORY_DOMAINS`. Verify: 3.1 to 3.3 pass.
+  `REPOSITORY_DOMAINS`. Verify: 3.1 to 3.3 pass, and 3.5 still passes.
 - [ ] 5.2 `feat(ui)`: add the descriptions and filter keywords of design D3 to the registry entries, move `ADMIN_DESCRIPTIONS` out
   of `IndexPage.vue`. Verify: 3.4 passes.
 - [ ] 5.3 `feat(ui)`: rework `AdministrationFrame.vue`: breadcrumb, `h1` from the current entry, manifest or detail name,
@@ -71,7 +77,7 @@ fake), a fresh store, `can`, plugin manifest and router per test, no shared muta
 ## 6. Documentation
 
 - [ ] 6.1 `docs(ui)`: add the section "Administration information architecture" to `reposilite-frontend/DESIGN.md`: one home per
-  page, two levels, the group order rule, the label and description rules, the page header anatomy, and no filled button in the
+  page, two levels, the two order constraints of design D8, the label and description rules, the page header anatomy, and no filled button in the
   header of a page that can show a save bar. Verify: the dash grep prints nothing.
 - [ ] 6.2 `docs(gitbook)`: update `docs/gitbook/reference/dashboard-pages.md` ("Administration tree", the page heading),
   `docs/gitbook/how-to/review-audit-log.md` (where the Audit log sits and its heading), and add the table "group value, heading

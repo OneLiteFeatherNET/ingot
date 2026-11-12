@@ -16,10 +16,12 @@ Administration SHALL group its pages under four group ids, shown with these head
   check.
 - `System`, shown as Instance: Branding, Reverse proxy, Usage statistics, Migration, and every other settings domain, a plugin
   domain included.
-- `Support`, shown as Monitoring and support: Audit log, Audit settings, Analytics, Console, Maintenance, System information,
+- `Support`, shown as Monitoring and support: Audit log, Audit settings, Console, Maintenance, Analytics, System information,
   Support bundle.
 
-Plugin entries SHALL follow the built-in entries of their group. A page SHALL be listed only when it exists and the visitor may
+Plugin entries SHALL follow the built-in entries of their group. A plugin page whose group is none of the four ids SHALL be listed
+under Plugins, after every built-in group. Every page that is not a settings domain SHALL keep the order it had relative to the
+other such pages before this change, so the first permitted page of the tree stays the same for every visitor. A page SHALL be listed only when it exists and the visitor may
 open it. A group without a listed page SHALL be left out. The `maven` domain SHALL NOT be listed. Every route, route name and
 tree key SHALL stay as before; only the group and the label of an entry change.
 
@@ -92,7 +94,7 @@ be labelled by that heading. The tree landmark SHALL keep the name Administratio
 - **WHEN** a full administrator opens `/settings`
 - **THEN** the level one heading reads Administration and the description reads "Shared configuration for all instances."
 
-### Requirement: Breadcrumb names the page shown
+### Requirement: Breadcrumb shows where the page sits
 
 The breadcrumb SHALL sit above the level one heading. Its first crumb SHALL be Administration, linked to `/settings`. Its second
 crumb SHALL be the heading of the current entry's group, as plain text and not a link. On a detail page the trail SHALL add the
@@ -138,23 +140,104 @@ focus behaviour of the dashboard.
 - **WHEN** a screen reader lists the headings of `/access/users`
 - **THEN** the first heading is the level one heading Users, and no group of the tree is listed as a heading
 
+### Requirement: One tree on every Administration page
+
+The side navigation of Access, Settings, Audit, Console, Maintenance, Analytics and Migration pages SHALL show the same
+Administration tree, including every settings domain the visitor may open, with the current page marked by
+`aria-current="page"`. Below 600 CSS pixels the tree SHALL be an index with a back arrow on each page.
+
+#### Scenario: Console page lists the settings domains
+
+- **WHEN** a full administrator opens `/console`
+- **THEN** the tree lists Artifacts with Repositories, Cleanup policies, Javadoc and Search index, Instance with Branding,
+  Reverse proxy, Usage statistics and the other settings domains, and Monitoring and support with Audit settings, and marks
+  Console as current
+
+#### Scenario: Access page lists the same tree
+
+- **WHEN** a full administrator opens `/access/teams`
+- **THEN** the tree lists the same groups and entries as on `/console`, and marks Teams as current
+
+#### Scenario: Settings and Access show equal trees
+
+- **WHEN** the same visitor opens each Administration page in turn
+- **THEN** every page shows an identical tree, apart from the marked entry
+
+#### Scenario: Narrow screen
+
+- **WHEN** a visitor opens any Administration page below 600 pixels
+- **THEN** the tree is shown as an index list with a back arrow on each page
+
+### Requirement: Exactly one current entry
+
+A page of the Administration tree SHALL mark exactly one entry of the tree as current. A page that is not in the tree SHALL
+mark none.
+
+#### Scenario: Audit settings page
+
+- **WHEN** a full administrator opens `/settings/audit`
+- **THEN** only the Audit settings entry in Monitoring and support is marked `aria-current="page"`, and the Audit log entry is
+  not
+
+#### Scenario: Audit log page
+
+- **WHEN** a full administrator opens `/audit`
+- **THEN** only the Audit log entry in Monitoring and support is marked, and no settings domain entry is marked
+
+#### Scenario: Settings hub
+
+- **WHEN** a full administrator opens `/settings` without a domain
+- **THEN** no entry of the tree is marked
+
+### Requirement: Addresses unchanged
+
+Every route path and route name of the dashboard before this change SHALL still resolve, with its permission check
+unchanged. No top level path segment SHALL be added. New pages SHALL live under `/settings`, `/access` or `/browse`.
+The page names under `/settings` SHALL be reserved against settings domain ids.
+
+#### Scenario: Old audit address
+
+- **WHEN** a visitor with the audit node opens `/audit`
+- **THEN** the audit log opens at the same address, listed under Monitoring and support
+
+#### Scenario: Old maintenance address
+
+- **WHEN** a visitor opens `/maintenance` and `/console` and `/analytics`
+- **THEN** each page opens at its address, listed under Monitoring and support
+
+#### Scenario: No new top level segment
+
+- **WHEN** the dashboard segment list is compared with the one before this change
+- **THEN** the lists are equal
+
+## RENAMED Requirements
+
+- FROM: `### Requirement: Breadcrumb names the page shown`
+- TO: `### Requirement: Breadcrumb shows where the page sits`
+
 ## ADDED Requirements
 
 ### Requirement: Display headings keep the plugin group values
 
 The group ids `Repository`, `Security`, `System` and `Support` SHALL remain the values a plugin manifest names. The frontend SHALL map
-each id to its display heading. A plugin page with any other group value SHALL be listed under Plugins, after every built-in group.
-The server's accepted group values, their default and the validator SHALL NOT change.
+each id to its display heading. The server's accepted group values, their default and the validator SHALL NOT change, so the server
+keeps refusing a page with any other group value. The frontend SHALL still list a page with a group value it does not know under
+Plugins, after every built-in group, as a fallback for an unexpected value.
 
 #### Scenario: Plugin page in Security
 
 - **WHEN** a plugin manifest declares a page with `group: "Security"`
 - **THEN** the page is listed under Access, after Permission check
 
-#### Scenario: Plugin page in an unknown group
+#### Scenario: Unexpected group value in the frontend
+
+- **WHEN** the frontend is given a plugin page whose group is none of the four ids, as a unit test does with a fake manifest
+- **THEN** the page is listed under Plugins after every built-in group and is not dropped
+
+#### Scenario: Server still refuses an unknown group
 
 - **WHEN** a plugin manifest declares a page with `group: "Billing"`
-- **THEN** the page is listed under Plugins, and the manifest is accepted as before this change
+- **THEN** the server refuses the page with the same validation message as before this change
 
 #### Scenario: Plugin section in Repository
 
@@ -220,3 +303,24 @@ principal filled in through the `principal` query; a team detail page to Permiss
 
 - **WHEN** a visitor with the audit node but without the settings node opens `/audit`
 - **THEN** no link to Audit settings is drawn
+
+### Requirement: Administration entry opens the same page
+
+The Administration entry of the rail and the bottom bar SHALL open the same page as before this change for every set of
+permissions: `/settings` for a visitor with the settings node, otherwise the first page of the tree the visitor may open, taken
+in the order the pages had before this change.
+
+#### Scenario: Console and Analytics only
+
+- **WHEN** a visitor with the console and dashboard nodes, and without the settings node, activates Administration
+- **THEN** `/console` opens, as before this change
+
+#### Scenario: Audit and Console only
+
+- **WHEN** a visitor with the audit and console nodes, and without the settings node, activates Administration
+- **THEN** `/audit` opens, as before this change
+
+#### Scenario: Settings node
+
+- **WHEN** a visitor with the settings node activates Administration
+- **THEN** `/settings` opens

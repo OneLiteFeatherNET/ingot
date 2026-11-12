@@ -18,6 +18,8 @@ Measured on `main` in `reposilite-frontend/`:
   dialogs such as `ConfirmActionDialog.vue` trap focus.
 - jsdom provides no `ResizeObserver`.
 - `rework-administration-layout` "Side navigation does not overlap bars": "scroll inside itself when it is taller than the window".
+  Its "Page header outside the columns" scenario "Only one sticky column" expects the side navigation to be sticky at 1280
+  pixels; D1 makes that true only while the tree fits, so this change modifies that requirement too.
 
 ## Goals
 
@@ -58,6 +60,10 @@ close, focus moved to the first focusable element on open, focus trapped, and fo
 `AdministrationFrame` shows a "Sections" button (icon plus text, 48 pixel target) beside the back arrow from 600 to 1239 pixels. The
 sheet is named "Administration pages" and renders the same `SideNavLayout` tree (filter, Overview, groups, current entry, Unsaved
 marks). Activating an entry navigates and closes the sheet; the focus rule of the dashboard then moves focus to `main`.
+
+The button sits beside the back arrow, so a page without one draws no button: `/settings` below 1240 pixels shows the index
+itself (today because no entry is current there, and after `add-administration-overview` because Overview draws the page and the
+index together), and a sheet would repeat the list under it.
 
 Below 600 pixels the button is not drawn: the index already fills the screen, and the bottom bar holds the four destinations.
 
@@ -136,7 +142,7 @@ Phone, 320 pixels: unchanged index model with the description lines; no Sections
 | A fixed sidebar only works when it fits | Primer NavList (sidebar always visible on wide viewports), https://primer.style/components/nav-list ; Carbon UI shell left panel, https://carbondesignsystem.com/components/UI-shell-left-panel/usage/ |
 | Keep navigation visible on desktop; hidden navigation is used less | NN/g, Hamburger menus and hidden navigation (179 participants; hidden navigation used in 27% of desktop cases against 48% when visible), https://www.nngroup.com/articles/hamburger-menus/ |
 | Overlay navigation on narrower widths | GitLab Pajamas navigation sidebar (overlay below 1200 pixels), https://design.gitlab.com/patterns/navigation-sidebar ; Microsoft NavigationView (LeftMinimal overlay), https://learn.microsoft.com/en-us/windows/apps/design/controls/navigationview ; Carbon left panel behind a menu button |
-| List-detail with a back link on narrow screens | Android list-detail layout, https://developer.android.com/develop/ui/compose/layouts/adaptive/list-detail ; Primer (back link for one level) |
+| List-detail with a back link on narrow screens | Android list-detail layout, https://developer.android.com/develop/ui/compose/layouts/adaptive/list-detail ; Primer (back link for one level; URL not recorded in the research corpus) |
 | Groups stay open; collapsing hurts findability on short trees | NN/g, Vertical navigation, https://www.nngroup.com/articles/vertical-nav/ ; GitLab settings research (issues 23483 and 1363; URLs not recorded) |
 | Dialog semantics, focus and reflow | WAI-ARIA APG dialog (modal) pattern, https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/ ; WCAG 2.2 Understanding 1.4.10 reflow, https://www.w3.org/WAI/WCAG22/Understanding/reflow ; Understanding 2.5.8 target size, https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum |
 

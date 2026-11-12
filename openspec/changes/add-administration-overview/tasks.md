@@ -18,8 +18,9 @@ pattern while working, through `heavy`. Playwright runs through `heavy` at 320 a
   settings node and absent without it, and that `currentTreeKey` gives `page:overview` for `/settings` and `settings:javadoc` for
   `/settings/javadoc`. Verify: it fails, because there is no Overview entry and the hub has no current key.
 - [ ] 2.2 `test(ui)`: in a new `src/navigation/adminFilter.test.js`, assert the matches of the spec scenarios ("web", "nginx",
-  "rebuild index", "retention", "logo", "acme" on a fake plugin page in an unknown group, "xyz"), that the current entry is always
-  kept, that empty groups are dropped, and that order follows the tree. Verify: it fails, because `adminFilter.js` does not exist.
+  "rebuild index", "retention", "logo", "acme" on a fake plugin page with `group: "Security"` whose title does not contain the
+  id, "xyz"), that the current entry is always kept, that empty groups are dropped, and that order follows the tree, Overview
+  first. Verify: it fails, because `adminFilter.js` does not exist.
 - [ ] 2.3 `test(ui)`: in `src/components/layout/SideNavLayout.test.js`, assert the labelled search field, the live region text for
   one, two and no matches, Escape clearing with focus kept, and Enter calling the router with the first match. Verify: it fails.
 - [ ] 2.4 `test(ui)`: assert the Unsaved mark and the accessible name "Javadoc, unsaved changes" for a draft in Javadoc, and the mark
@@ -27,6 +28,10 @@ pattern while working, through `heavy`. Playwright runs through `heavy` at 320 a
 - [ ] 2.5 `test(ui)`: in `src/navigation/contributions.test.js`, a fake manifest with plugin sections in `Repository` and `System`:
   assert each section is still listed under Artifacts or Instance after `SETTINGS_GROUPS` is gone. Verify: it passes before the
   removal and is kept as the guard.
+- [ ] 2.6 `test(ui)`: in `src/components/layout/SideNavLayout.test.js`, with `narrow` set and Overview current, assert that the
+  page slot and the index are both drawn, the index lists Overview first with `aria-current="page"`, and no back arrow is drawn; with
+  `narrow` set and `settings:javadoc` current, assert the back arrow to `/settings` and no index. Verify: it fails, because today a
+  current entry hides the index below 1240 pixels.
 
 ## 3. Red tests for Overview
 
@@ -40,9 +45,13 @@ pattern while working, through `heavy`. Playwright runs through `heavy` at 320 a
 - [ ] 3.3 `test(ui)`: with the fake client, assert that opening `/settings` makes no request that the current hub does not make.
   Verify: it passes before and after, as the guard against new reads.
 - [ ] 3.4 `test(ui)`: e2e: in `e2e/navigation.spec.js` and `e2e/layout.spec.js`, replace hub card assertions with Overview (current
-  entry, Needs attention, no card grid) at 320 and 1280 pixels; add a filter case ("nginx" opens Reverse proxy). In
-  `e2e/accessibility.spec.js:41`, change the settle marker of `/settings/repositories` to the Repositories table's accessible name and
-  add `/settings` with "Import settings". Verify: they fail against the current build.
+  entry, Needs attention, no card grid) at 320 and 1280 pixels; at 320 and 900 pixels assert the order header, Needs attention,
+  index with Overview marked current, At a glance, and no back arrow on `/settings`; add a filter case ("nginx" opens Reverse
+  proxy). In `e2e/accessibility.spec.js:41`, change the settle marker of `/settings/repositories` to the Repositories table's
+  accessible name and add `/settings` with "Import settings". Verify: they fail against the current build.
+- [ ] 3.5 `test(ui)`: in `src/components/layout/AdministrationFrame.test.js`, assert on `/settings` the `h1` Overview and a
+  breadcrumb with the single crumb Administration that is not a link, and on `/settings/audit` the crumb Administration as a link to
+  `/settings` followed by Monitoring and support as text. Verify: it fails on the `h1` Administration of the landing page.
 
 ## 4. Implementation
 
@@ -55,6 +64,8 @@ pattern while working, through `heavy`. Playwright runs through `heavy` at 320 a
 - [ ] 4.5 `feat(ui)`: render Import settings and Download as JSON on Overview only. Verify: 3.2 passes.
 - [ ] 4.6 `feat(ui)`: remove `SETTINGS_GROUPS`, `SETTINGS_FALLBACK_GROUP`, `SECTION_SETTINGS_GROUPS` and `settingsGroupOf`. Verify:
   2.5 still passes and nothing else imports them.
+- [ ] 4.7 `feat(ui)`: draw the page and the index together on `/settings` below 1240 pixels in `SideNavLayout.vue`, without a
+  back arrow, and give Overview its single plain crumb in `AdministrationFrame.vue`. Verify: 2.6 and 3.5 pass.
 
 ## 5. Documentation
 
