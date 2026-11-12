@@ -109,6 +109,7 @@ The server runs on a free loopback port with a fresh data directory, and both ar
 
 Some tests check a known fault that is not fixed on main yet. Such a test is marked with `test.fail(true, '<change>')` and reports as expected failure.
 The change named in the marker removes the marker in its own pull request, so the test then runs as a normal test and a fix that is merged without it fails the run.
+A pull request that fixes a known fault removes the markers that name its change in the same commit, and the `Dashboard end-to-end` check fails until it does.
 
 A new flow is added as a spec under `reposilite-frontend/e2e/`. Seed its data with `seed.repository(...)` and `seed.upload(...)` from `e2e/support/fixtures.js`, which go through the public REST API and are removed when the test ends.
 Give the test its own name with `seed.name(...)`, never a fixed repository id.

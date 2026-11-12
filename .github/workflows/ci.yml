@@ -125,6 +125,84 @@ jobs:
         run: npm run eslint
 
 
+  # The browser suite of the dashboard, in its own job so that a failing browser test shows as its own check and does
+  # not hide the unit tests above. The suite starts the shaded jar itself, so the jar is built on the same runner.
+  #
+  # Branch protection names this check once it has been green on main. Protection is a repository setting, so the
+  # maintainer adds "Dashboard end-to-end" to the required checks after that first green run, not in this file.
+  #
+  # Markers: a test that is known to fail carries test.fail(true, '<change or issue>') in reposilite-frontend/e2e.
+  # Playwright reports a marked test that passes as a failure, so the pull request that fixes a change removes that
+  # change's markers in the same commit. Markers of still-open changes and issues stay.
+  dashboard-e2e:
+    name: "Dashboard end-to-end"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Node"
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: "reposilite-frontend/package-lock.json"
+
+      - name: "Install frontend dependencies"
+        working-directory: reposilite-frontend
+        run: npm ci
+
+      - name: "Build the server jar"
+        run: ./gradlew :reposilite-backend:shadowJar
+
+      # The browser cache is keyed on the Playwright version, so a Playwright bump fetches a new Chromium and nothing else
+      # does. The install itself still runs on a cache hit: it also installs the system libraries Chromium needs.
+      - name: "Read the Playwright version"
+        id: playwright
+        working-directory: reposilite-frontend
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: "Cache the Playwright browsers"
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: "playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}"
+
+      - name: "Install the Chromium browser"
+        working-directory: reposilite-frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: "Run the dashboard end-to-end tests"
+        working-directory: reposilite-frontend
+        run: npm run e2e -- --workers=2
+
+      # Only on failure: the traces and screenshots are recorded for failed tests alone, and a green run keeps nothing.
+      - name: "Publish the end-to-end report"
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: dashboard-e2e-report
+          path: |
+            reposilite-frontend/playwright-report
+            reposilite-frontend/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
   # Nothing checked dependencies for known advisories before this, which is how 67 of them
   # accumulated unnoticed across the JVM and npm trees. Renovate raises versions but says
   # nothing about whether the current ones are exploitable, and the licence gate next to
