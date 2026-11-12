@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi::class)
+
 package net.onelitefeather.ingot.search.database
 
 import net.onelitefeather.ingot.search.ArtifactFilePage
@@ -51,6 +53,12 @@ internal class DatabaseSearchBackend(
 
     /** The database commits the rows, the cursor and the counters of a rebuild page together. */
     override val joinsDatabaseTransaction: Boolean = true
+
+    /** The database is the server's own and is open before any plugin runs, so there is nothing to open. */
+    override fun open() = Unit
+
+    /** The database is closed by the server, not by the index. */
+    override fun close() = Unit
 
     override fun health(): BackendHealth = runCatching { rows.count() }.fold(
         onSuccess = { BackendHealth.Up },

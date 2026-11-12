@@ -62,6 +62,9 @@ import net.onelitefeather.ingot.search.SnapshotFilter
 import net.onelitefeather.ingot.search.access.SearchAccess
 import net.onelitefeather.ingot.search.access.SearchAccessCompiler
 import net.onelitefeather.ingot.search.access.SearchGrantSetTooLargeException
+import net.onelitefeather.ingot.search.backend.SEARCH_BACKEND_RETRY_AFTER_SECONDS
+import net.onelitefeather.ingot.search.backend.SearchBackendState
+import net.onelitefeather.ingot.search.backend.backendUnavailableProblem
 import net.onelitefeather.ingot.search.application.CancelOutcome
 import net.onelitefeather.ingot.search.application.LastVerifyReport
 import net.onelitefeather.ingot.search.application.RunStart
@@ -121,11 +124,11 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "200", content = [OpenApiContent(from = ArtifactSearchResponse::class)]),
             OpenApiResponse(status = "400", description = "Invalid parameter or result window exceeded. The message names the parameter."),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
-            OpenApiResponse(status = "503", description = "Statement timeout or grant set too large for search"),
+            OpenApiResponse(status = "503", description = "Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set."),
         ]
     )
     private val searchArtifacts = ReposiliteRoute<ArtifactSearchResponse>("/api/maven/search", GET) {
-        whenEnabled { engine, _ ->
+        whenAvailable { engine, _ ->
             accessed {
                 val access = accessOf(this)
                 response = guarded {
@@ -167,11 +170,11 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "200", content = [OpenApiContent(from = ArtifactFilesResponse::class)]),
             OpenApiResponse(status = "400", description = "A coordinate is missing or a parameter is invalid. The message names it."),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
-            OpenApiResponse(status = "503", description = "Statement timeout or grant set too large for search"),
+            OpenApiResponse(status = "503", description = "Statement timeout, grant set too large for search, or the search backend is not available. Retry-After is set."),
         ]
     )
     private val searchFiles = ReposiliteRoute<ArtifactFilesResponse>("/api/maven/search/files", GET) {
-        whenEnabled { engine, _ ->
+        whenAvailable { engine, _ ->
             accessed {
                 val access = accessOf(this)
                 response = guarded {
@@ -196,9 +199,9 @@ internal class SearchApiEndpoints(
         ]
     )
     private val indexStatus = ReposiliteRoute<SearchIndexResponse>("/api/maven/search/index", GET) {
-        whenEnabled { engine, admin ->
+        whenEnabled {
             managerOnly("maintenance") {
-                response = guarded { Result.ok(indexResponse(engine, admin)) }
+                response = guarded { Result.ok(indexResponse()) }
             }
         }
     }
@@ -218,10 +221,11 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
             OpenApiResponse(status = "409", description = "A rebuild or verify run is already running"),
+            OpenApiResponse(status = "503", description = "The search backend is not available. Retry-After is set."),
         ]
     )
     private val startRebuild = ReposiliteRoute<StartedRunResponse>("/api/maven/search/index/rebuild", POST) {
-        whenEnabled { _, admin ->
+        whenAvailable { _, admin ->
             managerOnly("maintenance") {
                 response = guarded {
                     when (val started = admin.startRebuild(ctx.rebuildRepositories())) {
@@ -248,10 +252,11 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance"),
             OpenApiResponse(status = "409", description = "A rebuild or verify run is already running"),
+            OpenApiResponse(status = "503", description = "The search backend is not available. Retry-After is set."),
         ]
     )
     private val startVerify = ReposiliteRoute<StartedRunResponse>("/api/maven/search/index/verify", POST) {
-        whenEnabled { _, admin ->
+        whenAvailable { _, admin ->
             managerOnly("maintenance") {
                 response = guarded {
                     when (val started = admin.startVerify()) {
@@ -279,10 +284,11 @@ internal class SearchApiEndpoints(
             OpenApiResponse(status = "403", description = "Only principals with the maintenance area (ingot.admin.maintenance) can access this endpoint"),
             OpenApiResponse(status = "404", description = "Search is turned off on this instance, or the run does not exist"),
             OpenApiResponse(status = "409", description = "The run has already finished"),
+            OpenApiResponse(status = "503", description = "The search backend is not available. Retry-After is set."),
         ]
     )
     private val cancelRun = ReposiliteRoute<Unit>("/api/maven/search/index/runs/{id}/cancel", POST) {
-        whenEnabled { _, admin ->
+        whenAvailable { _, admin ->
             managerOnly("maintenance") {
                 response = guarded {
                     val runId = parameter("id")?.toLongOrNull()
@@ -302,13 +308,26 @@ internal class SearchApiEndpoints(
     override val routes = routes(searchArtifacts, searchFiles, indexStatus, startRebuild, startVerify, cancelRun)
 
     /** Runs [block] when search is enabled; otherwise answers 404 without looking at the caller. */
-    private fun <R> ContextDsl<R>.whenEnabled(block: (ArtifactSearchEngine, SearchIndexAdmin) -> Unit) {
-        val engine = search.engine
-        val admin = search.admin
-        if (engine == null || admin == null) {
+    private fun <R> ContextDsl<R>.whenEnabled(block: () -> Unit) {
+        if (!search.enabled) {
             response = NOT_FOUND.toErrorResponse(DISABLED).asError()
         } else {
-            block(engine, admin)
+            block()
+        }
+    }
+
+    /**
+     * Runs [block] when search is enabled and its backend is available. Otherwise answers 503 with a problem body that names the
+     * reason and `Retry-After`, as an RFC 9457 problem (search backend registration, D4).
+     */
+    private fun <R> ContextDsl<R>.whenAvailable(block: (ArtifactSearchEngine, SearchIndexAdmin) -> Unit) = whenEnabled {
+        val live = search.liveBackend()
+        val status = search.backend()
+        if (live == null || !status.available) {
+            ctx.header(RETRY_AFTER, SEARCH_BACKEND_RETRY_AFTER_SECONDS.toString())
+            response = backendUnavailableProblem(status.id, status.state, status.detail).asError()
+        } else {
+            block(live.engine, live.admin)
         }
     }
 
@@ -331,25 +350,39 @@ internal class SearchApiEndpoints(
         return SearchAccessCompiler.compile(subject, visibilities)
     }
 
-    private fun indexResponse(engine: ArtifactSearchEngine, admin: SearchIndexAdmin): SearchIndexResponse {
-        val status = engine.status()
+    /**
+     * The Maintenance status. While the backend is available it reads the index; otherwise the index cannot be read, so the
+     * counts and the repositories are zero or empty, the state is DEGRADED, and the `backend` block says why.
+     */
+    private fun indexResponse(): SearchIndexResponse {
         val runs = search.indexRuns()
-        val details = admin.details()
+        val backend = search.backend()
+        val live = search.liveBackend()
+        val status = live?.takeIf { backend.available }?.engine?.status()
+        val details = live?.takeIf { backend.available }?.admin?.details()
         return SearchIndexResponse(
-            state = status.state,
-            lagSeconds = status.lagSeconds,
-            lastFullRebuild = status.lastFullRebuild,
-            rows = details.rows,
+            state = status?.state ?: IndexState.DEGRADED,
+            lagSeconds = status?.lagSeconds ?: 0L,
+            lastFullRebuild = status?.lastFullRebuild,
+            rows = details?.rows ?: 0L,
             outbox = OutboxCounts(
-                pending = details.outboxPending,
-                deadLetters = status.deadLetters,
-                droppedEnqueues = status.droppedEnqueues,
+                pending = details?.outboxPending ?: 0L,
+                deadLetters = status?.deadLetters ?: 0L,
+                droppedEnqueues = status?.droppedEnqueues ?: 0L,
             ),
-            repositories = details.repositories,
-            engine = engine.id,
+            repositories = details?.repositories.orEmpty(),
+            engine = backend.id,
             activeRun = runs.activeRun?.let(::runResponse),
             runs = runs.runs.map(::runResponse),
-            lastVerify = details.lastVerify,
+            lastVerify = details?.lastVerify,
+            backend = SearchBackendResponse(
+                id = backend.id,
+                state = backend.state,
+                detail = backend.detail,
+                health = backend.health,
+                healthDetail = backend.healthDetail,
+                accessMismatches = backend.accessMismatches,
+            ),
         )
     }
 
@@ -485,6 +518,21 @@ internal data class SearchIndexResponse(
     val activeRun: SearchRunResponse?,
     val runs: List<SearchRunResponse>,
     val lastVerify: LastVerifyReport?,
+    val backend: SearchBackendResponse,
+)
+
+/**
+ * The backend of this replica: its id, its state (AVAILABLE, NOT_INSTALLED, REFUSED, OPEN_FAILED, DOWN or CLUSTER_MISMATCH), the
+ * reason of that state, the health (UP, DOWN or UNKNOWN) with the message of a down backend, and the access mismatches the core
+ * dropped. Secrets and user information never appear in the details.
+ */
+internal data class SearchBackendResponse(
+    val id: String,
+    val state: SearchBackendState,
+    val detail: String,
+    val health: String,
+    val healthDetail: String,
+    val accessMismatches: Long,
 )
 
 internal data class OutboxCounts(

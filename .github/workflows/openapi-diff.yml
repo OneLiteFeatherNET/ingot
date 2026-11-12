@@ -83,13 +83,14 @@ jobs:
           fi
 
       # Without the marker, error-level changes fail the check. oasdiff's default levels decide what is an error: removed
-      # endpoints and methods, new required request fields, changed types and narrowed responses.
+      # endpoints and methods, new required request fields, changed types and narrowed responses. The ignore file lists
+      # accepted changes the gate skips, one exact message per line (see the contributing docs in http-api.md).
       - name: "Report breaking changes, failing on error level"
         id: enforced
         if: steps.snapshots.outputs.compare == 'true' && steps.title.outputs.declared == 'false'
         uses: docker://tufin/oasdiff@sha256:ff02af37a254b5199b9d72e7bba93dae5837a9119d59459168d1398893b47aea  # v1.37.0
         with:
-          args: breaking /github/workspace/openapi-diff/base.json /github/workspace/openapi-diff/revision.json --fail-on ERR
+          args: breaking /github/workspace/openapi-diff/base.json /github/workspace/openapi-diff/revision.json --fail-on ERR --err-ignore /github/workspace/docs/openapi/breaking-changes-ignore.txt
 
       # With the marker the same changes are reported and do not fail the check, which is what the title declared.
       - name: "Report breaking changes, declared in the title"

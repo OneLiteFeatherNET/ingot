@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi::class)
+
 package net.onelitefeather.ingot.search.backend
 
 import net.onelitefeather.ingot.search.ArtifactFileItem
@@ -62,7 +64,31 @@ internal class FakeArtifactSearchBackend(
     /** Called with each batch before it is applied. */
     var onApply: (List<IndexAction>) -> Unit = {}
 
-    override fun health(): BackendHealth = BackendHealth.Up
+    /** How many times [open] was called. */
+    var openCalls = 0
+        private set
+
+    /** What [open] throws, or null when it opens. */
+    var openFailure: RuntimeException? = null
+
+    override fun open() {
+        openCalls++
+        openFailure?.let { throw it }
+    }
+
+    override fun close() = Unit
+
+    /** What [health] answers. */
+    var healthAnswer: BackendHealth = BackendHealth.Up
+
+    /** How many times [health] was asked. */
+    var healthChecks = 0
+        private set
+
+    override fun health(): BackendHealth {
+        healthChecks++
+        return healthAnswer
+    }
 
     override fun apply(actions: List<IndexAction>) {
         batches += actions

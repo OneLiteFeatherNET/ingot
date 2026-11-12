@@ -111,7 +111,7 @@ Each file has `repository`, `path`, `name`, `classifier`, `extension`, `size`, `
 |--------|------|
 | `400` | A parameter has an invalid value. The message names the parameter. A result window beyond 10 000 entries is also refused here. |
 | `404` | Search is turned off on this instance. |
-| `503` | The database did not answer within 10 seconds, or the caller's grants are too many to filter. The response carries `Retry-After`. |
+| `503` | The database did not answer within 10 seconds, the caller's grants are too many to filter, or the search backend is not available. The response carries `Retry-After`. A backend that is not available answers `Retry-After: 30` with a problem body that names the backend and the reason, see [Backend states](../how-to/choose-a-search-backend.md#backend-states). |
 
 ## Index administration
 
@@ -135,9 +135,10 @@ The status answers with these fields:
 | `activeRun` | The live run. Left out when no run is live. |
 | `runs` | The last 20 runs, newest first. |
 | `lastVerify` | The report of the last completed verify run. Left out when there is none. It holds `runId`, `at`, `sampled`, `missing`, `changed`, `reorigined`, `removedRepositoryRows` and `drift`. |
-| `engine` | The search engine in use. Currently always `database`. |
+| `engine` | The configured `searchEngine` id, the same as `backend.id`. |
+| `backend` | The search backend of this replica, with `id`, `state`, `detail`, `health`, `healthDetail` and `accessMismatches`. See [The backend block](#the-backend-block). |
 
-A run has `id`, `kind` (`REBUILD` or `VERIFY`), `trigger` (`MANUAL`, `SCHEDULED`, `STARTUP` or `GAP`), `status` (`RUNNING`, `COMPLETED`, `FAILED` or `CANCELLED`), `startedAt`, `finishedAt`, `leaseOwner`, `leaseUntil`, `repositories` (the names of a partial rebuild, or `null` for all), `cursorRepository`, `cursorPath`, `counters` (`processed`, `upserted`, `deleted`, `unparsed`, `skippedTooLong`, `errors`) and `lastError`.
+A run has `id`, `kind` (`REBUILD` or `VERIFY`), `trigger` (`MANUAL`, `SCHEDULED`, `STARTUP`, `GAP` or `BACKEND`, the last one after a switch of the search backend), `status` (`RUNNING`, `COMPLETED`, `FAILED` or `CANCELLED`), `startedAt`, `finishedAt`, `leaseOwner`, `leaseUntil`, `repositories` (the names of a partial rebuild, or `null` for all), `cursorRepository`, `cursorPath`, `counters` (`processed`, `upserted`, `deleted`, `unparsed`, `skippedTooLong`, `errors`) and `lastError`.
 
 The list of triggers may grow, so clients must accept trigger values they do not know.
 
@@ -149,6 +150,33 @@ At most one run is live at a time, whether it is a rebuild or a verify. Cancelli
 | `403` | The caller is not an instance admin. |
 | `404` | Search is turned off on this instance, or, for cancel, the run does not exist. |
 | `409` | A rebuild or a verify run is already live, or, for cancel, the run has already finished. |
+| `503` | For rebuild, verify and cancel: the search backend is not available. The response carries `Retry-After: 30`. |
+
+### The backend block
+
+The status carries a `backend` block that describes the search backend of the replica that answers. The block is additive, and the other fields keep their meaning.
+
+| Field | Meaning |
+|-------|---------|
+| `id` | The id of the backend, the value of `searchEngine`. |
+| `state` | `AVAILABLE`, `NOT_INSTALLED`, `REFUSED`, `OPEN_FAILED`, `DOWN` or `CLUSTER_MISMATCH`. Each state is described in [Backend states](../how-to/choose-a-search-backend.md#backend-states). |
+| `detail` | The reason for the state, with the user information of URLs removed. Empty while the state is `AVAILABLE`. |
+| `health` | `UP` or `DOWN`, as the backend reported it at its last check. `UNKNOWN` while the backend is not open or not installed. |
+| `healthDetail` | The message of a `DOWN` health, with the user information of URLs removed. Empty otherwise. |
+| `accessMismatches` | The number of rows the server dropped because they failed the access check. It stays at zero for a correct backend. |
+
+```json
+"backend": {
+  "id": "database",
+  "state": "AVAILABLE",
+  "detail": "",
+  "health": "UP",
+  "healthDetail": "",
+  "accessMismatches": 0
+}
+```
+
+The status answers `200` even when the search backend is not available, so the reason can be read here. While the backend is not available, the index cannot be read: `state` reads `DEGRADED`, the counts `rows` and `outbox` read `0`, `repositories` is empty and `lastVerify` is left out. The `runs` and `activeRun` fields are still read from the database.
 
 ## Configuration keys
 
@@ -157,7 +185,7 @@ Both keys are local settings. They are read at start, and they are not changed a
 | Key | Environment variable | System property | Default | Meaning |
 |-----|----------------------|-----------------|---------|---------|
 | `searchEnabled` | `INGOT_LOCAL_SEARCHENABLED` | `ingot.local.searchEnabled` | `true` | `false` answers `404` on every search endpoint and stops the index workers. The tables stay. |
-| `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `ingot.local.searchEngine` | `database` | The engine that holds the index. Only `database` is recognised. Any other value leaves search off and logs a warning at start. |
+| `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `ingot.local.searchEngine` | `database` | The search backend that holds the index. `database` ships with Ingot, and a plugin can register more ids. An id that no backend has registered answers `503` with the reason, instead of `404`. See [Choose a search backend](../how-to/choose-a-search-backend.md). |
 
 The names are spelled `INGOT_LOCAL_SEARCHENABLED` and `INGOT_LOCAL_SEARCHENGINE`, without an underscore inside the key. A spelling such as `INGOT_LOCAL_SEARCH_ENABLED` does not match and is logged as an unknown property. The older `REPOSILITE_LOCAL_` prefix is read as a fallback, and when both prefixes set the same key, the `INGOT_` one wins.
 

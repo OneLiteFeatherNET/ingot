@@ -20,6 +20,7 @@ import net.onelitefeather.ingot.search.ArtifactSearchEngine
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.Provenance
+import java.time.Duration
 import java.time.Instant
 import kotlin.random.Random
 
@@ -27,9 +28,10 @@ import kotlin.random.Random
  * Where the artifact index lives (search backend seam). The core runs the outbox, the rebuild, the verify job and the
  * startup rules against this interface only. The read side is [ArtifactSearchEngine], so the REST layer is unchanged.
  *
- * Internal in this change: the registration of a second backend makes it public and experimental.
+ * Public and experimental (search backend registration): a plugin supplies a backend through [ArtifactSearchBackendFactory].
  */
-internal interface ArtifactSearchBackend : ArtifactSearchEngine {
+@ExperimentalIngotSearchApi
+interface ArtifactSearchBackend : ArtifactSearchEngine {
 
     /**
      * True when a write made with [apply] commits in the same transaction as the cursor and counters of a rebuild page. The
@@ -37,7 +39,16 @@ internal interface ArtifactSearchBackend : ArtifactSearchEngine {
      */
     val joinsDatabaseTransaction: Boolean
 
-    /** Whether the backend answers. The core does not poll it yet; it is part of the contract every backend fills in. */
+    /**
+     * Connects to the index and prepares it. May block for as long as it takes; the core calls it off the request threads,
+     * and a throw counts as a failed open that is retried later.
+     */
+    fun open()
+
+    /** Releases what [open] took. The core calls it when an open failed after the backend was created. */
+    fun close()
+
+    /** Whether the backend answers. The core checks it every few seconds while the backend is open. */
     fun health(): BackendHealth
 
     /** Applies [actions] in order. Every action is idempotent, so a batch can be applied again after a crash. */
@@ -83,7 +94,8 @@ internal interface ArtifactSearchBackend : ArtifactSearchEngine {
 }
 
 /** The answer of a health check. */
-internal sealed interface BackendHealth {
+@ExperimentalIngotSearchApi
+sealed interface BackendHealth {
 
     data object Up : BackendHealth
 
@@ -92,7 +104,8 @@ internal sealed interface BackendHealth {
 }
 
 /** One change the core asks a backend to make. A batch is applied in order. */
-internal sealed interface IndexAction {
+@ExperimentalIngotSearchApi
+sealed interface IndexAction {
 
     data class Upsert(val row: IndexRow) : IndexAction
 
@@ -106,7 +119,8 @@ internal sealed interface IndexAction {
 }
 
 /** What a rebuild needs to know about a stored row: enough to tell whether the file changed, and the checksums to keep. */
-internal data class StoredRow(
+@ExperimentalIngotSearchApi
+data class StoredRow(
     val sizeBytes: Long,
     val lastModified: Long,
     val sha1: String?,
@@ -114,7 +128,8 @@ internal data class StoredRow(
 )
 
 /** A row as a verify run reads it: what storage and the mirror ledger are compared with. */
-internal data class SampledRow(
+@ExperimentalIngotSearchApi
+data class SampledRow(
     val repository: String,
     val path: String,
     val sizeBytes: Long,
@@ -124,10 +139,19 @@ internal data class SampledRow(
 )
 
 /** One sample of rows and the cursor the next sample continues from, or null when the index has no rows. */
-internal data class SamplePage(
+@ExperimentalIngotSearchApi
+data class SamplePage(
     val rows: List<SampledRow>,
     val next: String?,
 )
 
 /** One batch of the backfill: the rows it keyed and the id of its last row, the cursor of the next batch (full text change, D6). */
-internal data class KeyBatch(val keyed: Int, val lastId: Long)
+@ExperimentalIngotSearchApi
+data class KeyBatch(val keyed: Int, val lastId: Long)
+
+/**
+ * Thrown by [ArtifactSearchBackend.apply] when the backend has no capacity right now. The outbox releases the batch with
+ * [retryAfter] and does not count the attempt, so a busy backend never turns its entries into dead letters.
+ */
+@ExperimentalIngotSearchApi
+class BackendBusyException(message: String, val retryAfter: Duration) : RuntimeException(message)

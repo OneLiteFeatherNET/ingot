@@ -301,3 +301,5 @@ When a change alters the API on purpose, refresh the snapshot in the same pull r
 Commit the rewritten file with the change. Its diff is the API change that reviewers read.
 
 The pull request check fails when the change breaks the API. To declare an intended break, put `!` after the type or scope of the pull request title, for example `fix(api)!: drop the route`, and add a `BREAKING CHANGE:` footer to the commit. With the `!` the check only reports the changes and passes. Editing the title reruns the check without a new push. Adding an endpoint or an optional field does not need the marker.
+
+Some changes the tool flags are accepted as non-breaking, for example a new value of an enum declared as `x-extensible-enum`. For those, add the exact message to `docs/openapi/breaking-changes-ignore.txt`: one line with the method, the path and the full message as oasdiff prints it, preceded by a comment line with the reason. The line must hold the full message, because a shorter one does not match and the check keeps failing. An entry only matches that exact change. The `!` marker stays the way to declare a real break.

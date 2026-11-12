@@ -1,0 +1,6 @@
+# Breaking changes the maintainers accepted as non-breaking, skipped by the OpenAPI diff gate.
+# Each entry is an API change the maintainers accepted as non-breaking. It is one line per change: the method and path,
+# followed by the full oasdiff message. Entries are added in the pull request that makes the change, with the reason in a
+# comment line above. An entry only matches that exact change; a different message on the same path still fails the gate.
+# The search run trigger is declared as x-extensible-enum since #201, and the BACKEND trigger of search backend registration grows it.
+GET /api/maven/search/index added the new `BACKEND` enum value to the `activeRun/anyOf[#/components/schemas/SearchRunResponse]/trigger` response property for the response status `200` (shared schema: `SearchRunResponse`, also at `runs/items/trigger`)

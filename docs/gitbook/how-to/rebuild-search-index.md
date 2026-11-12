@@ -4,7 +4,7 @@ description: Rebuild or verify the artifact search index from the Maintenance pa
 
 # Rebuild the search index
 
-A rebuild reads the files of storage again and makes the search index agree with them. Start one when the index is empty, after a repository has been restored from a backup, when the last verify reports drift above 5 percent, or after an upgrade in which an older replica wrote artifacts. Ingot also starts a rebuild on its own in some cases, see [Rebuilds on start](#rebuilds-on-start).
+A rebuild reads the files of storage again and makes the search index agree with them. Start one when the index is empty, after a repository has been restored from a backup, when the last verify reports drift above 5 percent, or after an upgrade in which an older replica wrote artifacts. Ingot also starts a rebuild on its own in some cases, see [Rebuilds on start](#rebuilds-on-start) and [After a backend switch](#after-a-backend-switch).
 
 {% hint style="info" %}
 A rebuild only reads storage. It never deletes or changes a file. Search keeps answering while a rebuild runs, and results can be partial until it ends.
@@ -14,6 +14,7 @@ A rebuild only reads storage. It never deletes or changes a file. Search keeps a
 
 * A manager account, which is the only account that sees the Maintenance page and the index endpoints.
 * Search turned on. If the Maintenance page says that search is turned off, set `INGOT_LOCAL_SEARCHENABLED` to `true` and restart Ingot. The [configuration keys](../reference/search-filters-and-api.md#configuration-keys) list the names.
+* A search backend that is available. While the backend is not available, the rebuild, verify and cancel endpoints answer `503`. See [Backend states](choose-a-search-backend.md#backend-states).
 
 ## Rebuild from the Maintenance page
 
@@ -76,6 +77,12 @@ The answer is `202 Accepted` with the id of the run:
 ```
 
 Start a verify with `POST /api/maven/search/index/verify`. Read the progress with `GET /api/maven/search/index`, and cancel the run with `POST /api/maven/search/index/runs/12/cancel`. The full list of endpoints and answers is in the [reference](../reference/search-filters-and-api.md#index-administration).
+
+## After a backend switch
+
+A switch to another search backend starts a full rebuild of all repositories by itself. The first replica of the new backend that becomes available stores its id, clears the date of the last full rebuild and starts the rebuild with the trigger `BACKEND`. You do not start it by hand.
+
+Follow the rebuild in the **Search index** panel. The index state reads **Building** until the rebuild completes, and search results can be partial until then. The steps of a switch are in [The three-minute switch](choose-a-search-backend.md#the-three-minute-switch).
 
 ## Rebuilds on start
 

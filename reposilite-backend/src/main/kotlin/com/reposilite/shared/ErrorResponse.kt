@@ -44,9 +44,9 @@ data class ErrorResponse(
     /** The path of the request this answer belongs to. It is filled in when the answer is written. */
     var instance: String? = null
 
-    /** The reason phrase of [status]. */
-    val title: String?
-        get() = if (status == 500) "Internal Server Error" else org.eclipse.jetty.http.HttpStatus.getMessage(status)
+    /** The short summary of the problem. Null means the reason phrase of [status], which is what most answers carry. */
+    var title: String? = null
+        get() = field ?: if (status == 500) "Internal Server Error" else org.eclipse.jetty.http.HttpStatus.getMessage(status)
 
     /** Mirrors [message], which is the member existing clients read. */
     val detail: String
