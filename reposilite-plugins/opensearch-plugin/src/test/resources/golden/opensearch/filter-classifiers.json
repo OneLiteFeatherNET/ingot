@@ -1,0 +1,16 @@
+{
+  "bool": {
+    "filter": [
+      {
+        "bool": {
+          "should": [
+            {"bool": {"must_not": [{"exists": {"field": "classifier"}}]}},
+            {"terms": {"classifier": ["sources"]}}
+          ],
+          "minimum_should_match": 1
+        }
+      },
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "size": 0,
+  "query": {
+    "bool": {
+      "filter": [
+        {"terms": {"artifact_key": ["net.onelitefeather:mycelium", "com.example:app"]}},
+        {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+      ]
+    }
+  },
+  "aggs": {
+    "artifacts": {
+      "terms": {"field": "artifact_key", "size": 2},
+      "aggs": {
+        "versions": {"terms": {"field": "version_lc", "size": 5001}}
+      }
+    }
+  }
+}

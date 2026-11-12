@@ -33,12 +33,12 @@ import net.onelitefeather.ingot.identity.model.SourcedRule
 import java.util.stream.Stream
 
 /** A named caller of the parity test. A null subject is the anonymous caller. */
-internal data class SubjectCase(val name: String, val subject: AccessSubject?) {
+data class SubjectCase(val name: String, val subject: AccessSubject?) {
     override fun toString(): String = name
 }
 
 /** One indexed row: a repository and a normalised path inside it, as the index stores them. */
-internal data class FixtureRow(val repository: String, val path: String)
+data class FixtureRow(val repository: String, val path: String)
 
 /**
  * The fixed inputs of the parity test (artifact search spec, 5.7): three repositories of each visibility, paths at the edges
@@ -46,7 +46,7 @@ internal data class FixtureRow(val repository: String, val path: String)
  * evaluator allows READ on it, or the repository is PUBLIC. Paths are the normalised form the index stores, so the in-memory
  * filter and the SQL filter see the same input.
  */
-internal object SearchAccessFixtures {
+object SearchAccessFixtures {
 
     val repositories: Map<String, RepositoryVisibility> = linkedMapOf(
         "releases" to PUBLIC,
