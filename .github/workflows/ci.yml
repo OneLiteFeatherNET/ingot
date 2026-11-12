@@ -661,6 +661,11 @@ jobs:
 
   # Frontend coverage. The dashboard suite runs here and nowhere else, so a pull request that does not
   # touch reposilite-frontend/ does not run it. The report is an artifact, not a Codecov upload.
+  #
+  # A pull request runs only the tests that reach its changed modules, found by vitest related. frontend_scope.sh
+  # widens that to the full suite whenever a change could reach a test the module graph does not show. A push
+  # runs in full, and so does a related run that reaches no test. A partial report is published under its own
+  # artifact name, so nobody reads a partial percentage as the full suite.
   coverage-frontend:
     name: "Coverage (frontend)"
     needs: coverage-changes
@@ -671,6 +676,9 @@ jobs:
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # Both ends of the pull request have to be present for the diff below.
+          fetch-depth: 0
 
       - name: "Set up Node"
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
@@ -683,15 +691,63 @@ jobs:
         working-directory: reposilite-frontend
         run: npm ci
 
+      - name: "Decide which frontend tests the change needs"
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+
+          # The full suite unless a pull request diff is readable and the script can place every change.
+          result="frontend_scope=full"
+          if [ "$EVENT" = "pull_request" ] \
+             && [ -n "$BASE" ] && [ -n "$HEAD" ] \
+             && git cat-file -e "${BASE}^{commit}" && git cat-file -e "${HEAD}^{commit}" \
+             && git diff --name-status "$BASE...$HEAD" > "$RUNNER_TEMP/name-status.txt"; then
+            result=$(bash .github/scripts/frontend_scope.sh "$RUNNER_TEMP/frontend-scope" < "$RUNNER_TEMP/name-status.txt") \
+              || result="frontend_scope=full"
+          fi
+          echo "$result" >> "$GITHUB_OUTPUT"
+
       - name: "Run the frontend unit tests with coverage"
+        id: run
         working-directory: reposilite-frontend
-        run: npm run test:coverage
+        env:
+          SCOPE: ${{ steps.scope.outputs.frontend_scope }}
+          SCOPE_DIR: ${{ runner.temp }}/frontend-scope
+        run: |
+          set -uo pipefail
+
+          if [ "$SCOPE" = "related" ]; then
+            mapfile -t targets < <(cat "$SCOPE_DIR/related.txt" "$SCOPE_DIR/readers.txt")
+            status=0
+            npx vitest related "${targets[@]}" --run --coverage --maxWorkers=2 \
+              --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/related.json" || status=$?
+
+            # Tests reached through the graph, not counting the reader tests that always run. Zero, or a
+            # missing report, means nothing was proven, so the full suite runs below.
+            graph=$(jq --rawfile readers "$SCOPE_DIR/readers.txt" \
+              '($readers | split("\n") | map(select(. != ""))) as $fs
+               | [.testResults[].name | sub(".*/reposilite-frontend/"; "")] - $fs | length' \
+              "$RUNNER_TEMP/related.json" 2>/dev/null || echo 0)
+            if [ "$graph" != "0" ]; then
+              echo "effective=related" >> "$GITHUB_OUTPUT"
+              exit "$status"
+            fi
+            echo "No test reaches the changed modules through the module graph, running the full frontend suite."
+          fi
+
+          echo "effective=full" >> "$GITHUB_OUTPUT"
+          npm run test:coverage
 
       - name: "Publish the frontend coverage report"
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
-          name: frontend-coverage
+          # A partial run gets its own name, so its percentages are never mistaken for the full suite.
+          name: ${{ steps.run.outputs.effective == 'related' && 'frontend-coverage-partial' || 'frontend-coverage' }}
           path: reposilite-frontend/coverage
           retention-days: 7
           if-no-files-found: ignore
