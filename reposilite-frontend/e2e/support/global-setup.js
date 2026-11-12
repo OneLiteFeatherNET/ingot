@@ -15,7 +15,8 @@
  */
 
 import { randomBytes } from 'node:crypto'
-import { startServer } from './server.js'
+import { buildStylePlugin } from './plugin-fixture.js'
+import { resolveJar, startServer } from './server.js'
 
 /*
  * One server for the whole run. Its secrets are generated here, handed to the tests through environment
@@ -34,7 +35,15 @@ const secret = (bytes) => randomBytes(bytes).toString('base64url')
 export default async function globalSetup() {
   const tokenSecret = secret(24)
   const adminPassword = secret(24)
-  const server = await startServer({ tokenName: TOKEN_NAME, tokenSecret })
+  // The style fixture is loaded by the shared server, so the stylesheet spec and the rest of the run see one instance.
+  const stylePlugin = buildStylePlugin(resolveJar())
+  let server
+  try {
+    server = await startServer({ tokenName: TOKEN_NAME, tokenSecret, plugins: [stylePlugin.jar] })
+  } catch (error) {
+    stylePlugin.dispose()
+    throw error
+  }
 
   try {
     const setupCode = await server.setupCodeFrom()
@@ -53,6 +62,7 @@ export default async function globalSetup() {
     }
   } catch (error) {
     await server.stop()
+    stylePlugin.dispose()
     throw error
   }
 
@@ -64,5 +74,6 @@ export default async function globalSetup() {
 
   return async () => {
     await server.stop()
+    stylePlugin.dispose()
   }
 }

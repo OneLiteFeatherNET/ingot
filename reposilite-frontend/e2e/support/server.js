@@ -16,7 +16,8 @@
 
 import { spawn } from 'node:child_process'
 import { openSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { basename } from 'node:path'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -73,9 +74,14 @@ const tailOf = (file, lines = 40) => {
  * Starts the server and waits until its readiness answer is UP. The returned stop() ends the process and removes
  * the data directory. `setupCodeFrom()` reads the one-time setup code the server writes to its log.
  */
-const startServer = async ({ tokenName, tokenSecret }) => {
+const startServer = async ({ tokenName, tokenSecret, plugins = [], env = {} }) => {
   const jar = resolveJar()
   const dataDirectory = await mkdtemp(join(tmpdir(), 'ingot-e2e-'))
+  // Plugin jars are copied into the plugins directory of the data directory, where the server looks for them.
+  if (plugins.length > 0) {
+    await mkdir(join(dataDirectory, 'plugins'))
+    await Promise.all(plugins.map(plugin => copyFile(plugin, join(dataDirectory, 'plugins', basename(plugin)))))
+  }
   const port = await freePort()
   const baseUrl = `http://127.0.0.1:${port}`
   const logPath = join(dataDirectory, 'server.log')
@@ -88,7 +94,7 @@ const startServer = async ({ tokenName, tokenSecret }) => {
     '--port', String(port),
     '--hostname', '127.0.0.1',
     '--token', `${tokenName}:${tokenSecret}`,
-  ], { stdio: ['ignore', log, log] })
+  ], { stdio: ['ignore', log, log], env: { ...process.env, ...env } })
 
   const stop = async () => {
     if (child.exitCode === null && child.signalCode === null) {
@@ -136,4 +142,4 @@ const startServer = async ({ tokenName, tokenSecret }) => {
   return failStart(`the server was not ready after ${READY_ATTEMPTS} attempts`)
 }
 
-export { startServer }
+export { startServer, resolveJar }
