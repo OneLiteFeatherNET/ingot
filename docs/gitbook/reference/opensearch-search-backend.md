@@ -83,7 +83,7 @@ The contract suite compares the results with the database engine for the same da
 Ingot's responsibility ends at its own filters. The cluster is the responsibility of its operator, and the following obligations apply.
 
 * **A dedicated user.** Create one user for Ingot. The user reads and writes only the alias `<prefix>` and the indices `<prefix>-*`. It has no access to other indices, and no dashboards or users of the cluster use it. The plugin needs these groups of actions: create an index, manage aliases, read and write documents, and read the mapping and the cluster health. Check the names against the security plugin of your cluster version.
-* **A stored script.** At start the plugin stores one script, the reorigin script, with the cluster's script API. The user therefore needs the cluster permission to write stored scripts, which the security plugin grants separately from index permissions. Grant it to this user only.
+* **No script permission.** The reorigin script is a fixed inline constant of the plugin, sent with each request. Its values are the parameters `origin` and `source_host`, and no value of a request enters its text. The user needs no cluster permission for stored scripts, and the plugin never writes a script into the cluster.
 * **Network policy.** Only the Ingot replicas can reach the cluster. Allow the port of the cluster for the replicas and for nothing else.
 * **TLS.** Use `https` URLs. Keep the verification of the certificate on. The plugin has no option to skip it, see [TLS](#tls).
 * **Audit logging.** Enable the audit log of the cluster for the user, so that a write or a search by the Ingot user can be traced.

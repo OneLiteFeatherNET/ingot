@@ -25,7 +25,6 @@ Create a role that can use one index family and nothing else. The index family i
 ingot_search:
   cluster_permissions:
     - "cluster_monitor"
-    - "cluster:admin/script/put"
   index_permissions:
     - index_patterns:
         - "ingot-artifacts"
@@ -38,7 +37,7 @@ ingot_search:
         - "write"
 ```
 
-The `cluster:admin/script/put` permission is needed because the plugin stores one script when it opens the index. It is a cluster permission, so grant it to this role only.
+The role needs no permission for scripts. The plugin sends its one script inline with each request, as a fixed text with parameters, so nothing is stored in the cluster.
 
 Create a user, assign it the role, and generate a password. Keep the password out of the manifests. Write it to a file that the container can read, for example `/run/secrets/opensearch-password`, mounted read-only. The file must hold the password and nothing else. Ingot removes the line break at its end, and no other character is changed.
 
