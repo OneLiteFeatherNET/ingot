@@ -260,7 +260,8 @@ The console, the WebSocket and the event stream accept a token or a browser sess
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | GET | `/api/frontend/settings` | None | Returns the presentation settings of the dashboard. |
-| GET | `/api/frontend/plugin-ui` | Signed in | Returns the dashboard pages and settings sections that plugins contributed, filtered for the caller, with `version` 1 and the names of the enabled plugins. Answers `401` to an anonymous caller. See [Plugin API](../reference/plugin-api.md#dashboard-pages). |
+| GET | `/api/frontend/plugin-ui` | Signed in | Returns the dashboard pages and settings sections that plugins contributed, filtered for the caller, with `version` 1 and the names of the enabled plugins. Answers `401` to an anonymous caller. The `stylesheets` list holds one entry per plugin with an accepted stylesheet, with its `plugin`, its `path` and its `sha256`, and is empty while `INGOT_LOCAL_PLUGINSTYLES=false`. See [Plugin API](../reference/plugin-api.md#dashboard-pages). |
+| GET | `/api/frontend/plugin-styles/<plugin>/<hash>.css` | None | Returns the stylesheet of a plugin as `text/css; charset=utf-8`, wrapped in the layer `ingot-plugins`. `<hash>` is the first 16 hexadecimal characters of the SHA-256 of the bytes, and the answer is cached for a year with `immutable`. Answers `404` for an unknown plugin, an unknown hash, a path with more segments, or while the plugin styles are switched off. See [Plugin API](../reference/plugin-api.md#stylesheet). |
 | GET | `/`, `/index.html` | None | Serves the dashboard page with `Cache-Control: no-cache` and `Cross-Origin-Opener-Policy: same-origin`. |
 | GET | `/assets/<path>` | None | Serves the dashboard assets with `Cache-Control: public, max-age=31536000, immutable`. A missing file answers `404`. |
 | GET | `/javadoc/{repository}/<gav>` | Optional token | Serves the javadoc of an artifact. Answers `404` while javadoc is disabled. |

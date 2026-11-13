@@ -49,7 +49,11 @@ Repository files and the generated directory index are served with `Content-Secu
 
 ## Plugin pages
 
-A plugin that adds a dashboard page does not add a source to this policy, and the dashboard does not load plugin JavaScript, stylesheets or frames. A page is declared as data and drawn with the dashboard's own components, see [Plugin API, Dashboard pages](../reference/plugin-api.md#dashboard-pages).
+A plugin that adds a dashboard page does not add a source to this policy, and the dashboard does not load plugin JavaScript or frames. A page is declared as data and drawn with the dashboard's own components, see [Plugin API, Dashboard pages](../reference/plugin-api.md#dashboard-pages).
+
+A plugin may ship one stylesheet. It is served from the same origin, so the existing `style-src 'self'` allows it, and the policy is unchanged for it. The server checks the sheet when the plugin registers it: it refuses every construct that can reach the network (`url()` except `data:image/`, `src()`, `image-set()`, `@import`, `@font-face`), every CSS escape outside a string, and the legacy script hooks. A sheet therefore cannot send a value out of the page or run code. See [Stylesheet](../reference/plugin-api.md#stylesheet).
+
+The risk that remains is visual. Only instance administrators install plugins, and a plugin is trusted with its code already, but a stylesheet can hide or restyle a control, a confirmation text or the read-only banner, so what the administrator sees can differ from what they click. The server still checks every request, so a hidden control is refused when it is used. An operator who does not trust a plugin's appearance sets `INGOT_LOCAL_PLUGINSTYLES=false`, or does not install the plugin.
 
 The policy is kept for three reasons:
 

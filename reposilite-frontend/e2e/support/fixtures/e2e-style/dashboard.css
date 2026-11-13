@@ -1,0 +1,11 @@
+/* e2e fixture. The rail brand gets an outline and loses its radius. The radius comes from a utility class of the
+   dashboard's utilities layer, so the plugin rule must win over it. The :root rule names a colour token that the
+   dashboard declares in an unlayered rule, so it must not win. */
+[data-ingot-component="rail-brand"] {
+  outline: 3px dashed rgb(255 0 255);
+  border-radius: 0;
+}
+
+:root {
+  --md-sys-color-primary: rgb(255 0 255);
+}

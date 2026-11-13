@@ -82,6 +82,11 @@ describe('route classifier', () => {
     expect(classify('/api/frontend/plugin-ui', root)).toEqual({ kind: 'proxy', path: '/api/frontend/plugin-ui' })
   })
 
+  it('proxies the stylesheet of a plugin to the server', () => {
+    const path = '/api/frontend/plugin-styles/example/3f9c1a2b7d4e6f80.css'
+    expect(classify(path, root)).toEqual({ kind: 'proxy', path })
+  })
+
   describe('below a base path', () => {
     const sub = { segments, basePath: '/ingot/' }
 

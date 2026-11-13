@@ -150,6 +150,11 @@ class LocalConfiguration : Facade {
     @Description("# false shows only what Ingot ships: the plugin manifest is empty and contributed pages are not served.")
     val pluginUi = mutableReference(true)
 
+    @Description("# Let server plugins ship a stylesheet for the dashboard, which is applied to signed in callers only.")
+    @Description("# false removes every plugin stylesheet: the plugin manifest lists none and their address answers 404.")
+    @Description("# Plugin pages and settings sections are not affected, see the switch of pluginUi.")
+    val pluginStyles = mutableReference(true)
+
     @Description("# Set custom base path for Ingot instance.")
     @Description("# It's not recommended to mount Ingot under custom base path")
     @Description("# and you should always prioritize subdomain over this option.")
