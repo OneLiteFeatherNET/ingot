@@ -247,7 +247,7 @@ describe('the labels and descriptions of the Administration tree', () => {
 
   it('names the renamed settings domains from the frontend, whatever the schema title says', () => {
     const labels = Object.fromEntries(linksWith({ domains: BUILT_IN_DOMAINS, titleOf: () => 'Schema title' })
-      .filter(link => link.to.name === 'settings')
+      .filter(link => link.to.name === 'settings' && link.to.params !== undefined)
       .map(link => [link.key, link.label]))
 
     expect(labels).toEqual({
@@ -273,7 +273,7 @@ describe('the labels and descriptions of the Administration tree', () => {
 
   it('keeps every key of the tree, in the order of the requirement', () => {
     expect(linksWith({ domains: BUILT_IN_DOMAINS }).map(link => link.key)).toEqual([
-      'page:repositories', 'settings:cleanup', 'settings:javadoc', 'settings:search',
+      'page:overview', 'page:repositories','settings:cleanup', 'settings:javadoc', 'settings:search',
       'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check',
       'settings:frontend', 'settings:web', 'settings:statistics', 'page:migration',
       'page:audit', 'settings:audit', 'page:console', 'page:maintenance', 'page:analytics', 'page:system-info', 'page:support',

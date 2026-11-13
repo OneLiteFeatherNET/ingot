@@ -82,7 +82,7 @@ describe('the settings domains', () => {
 
     const domainLinks = adminGroups(instanceAdmin, { domains: [...bundled, 'maven'] })
       .flatMap(group => group.links)
-      .filter(link => link.to.name === 'settings')
+      .filter(link => link.to.name === 'settings' && link.to.params !== undefined)
 
     expect(domainLinks.map(link => link.to.params.domain).sort()).toEqual([...bundled].sort())
     expect(domainLinks.map(link => link.to.params.domain)).not.toContain('migration')

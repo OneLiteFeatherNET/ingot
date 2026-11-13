@@ -15,8 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { domainSummary, hubGroups } from './settingsHub'
-import { ADMIN_NODES } from '../../store/nodeAccess'
+import { attentionRows, glanceRows, unsavedTreeKeys } from './settingsHub'
 
 // Fixtures are built per test, so no test can change what another one reads.
 const collectionSchema = () => ({
@@ -31,90 +30,110 @@ const collectionSchema = () => ({
   }
 })
 
+const twoCollectionSchema = () => ({
+  title: 'Cleanup',
+  properties: {
+    policies: { type: 'array', title: 'Policies', items: { type: 'object', title: 'Cleanup policy', properties: { id: { type: 'string' } } } },
+    exclusions: { type: 'array', title: 'Exclusions', items: { type: 'object', title: 'Exclusion', properties: { id: { type: 'string' } } } }
+  }
+})
+
 const plainSchema = () => ({
   title: 'Web',
   description: 'General web settings',
   properties: { forwardedIp: { type: 'string' } }
 })
 
-const entries = (count) => Array.from({ length: count }, (_, index) => ({ id: `repo-${index}` }))
+const entries = (count) => Array.from({ length: count }, (_, index) => ({ id: `item-${index}` }))
 
-const fixture = (overrides = {}) => ({
-  domains: ['maven', 'web', 'acme'],
-  schemas: {
-    maven: collectionSchema(),
-    web: plainSchema(),
-    acme: { title: 'Acme', properties: {} }
-  },
-  saved: { maven: { repositories: entries(6) }, web: {}, acme: {} },
-  unsaved: [],
-  titleOf: (domain) => ({ maven: 'Maven', web: 'Web', acme: 'Acme' })[domain],
-  can: () => true,
-  ...overrides
-})
+// The settings links of the Administration tree, as the view passes them: the Repositories page edits the maven domain.
+const links = () => [
+  { key: 'page:repositories', label: 'Repositories', to: { name: 'settings-repositories' } },
+  { key: 'settings:cleanup', label: 'Cleanup policies', to: { name: 'settings', params: { domain: 'cleanup' } } },
+  { key: 'settings:javadoc', label: 'Javadoc', to: { name: 'settings', params: { domain: 'javadoc' } } },
+  { key: 'settings:web', label: 'Reverse proxy', to: { name: 'settings', params: { domain: 'web' } } }
+]
 
-// The cards that open a settings domain, the ones this test is about. The other cards are the Access and page links.
-const domainCards = (group) => group.cards.filter(card => card.to.name === 'settings')
+describe('glanceRows', () => {
+  it('counts the saved entries of a collection under the label of its tree entry', () => {
+    const rows = glanceRows({
+      links: links(),
+      schemas: { maven: collectionSchema(), cleanup: { properties: {} }, javadoc: { properties: {} }, web: plainSchema() },
+      saved: { maven: { repositories: entries(7) }, cleanup: {}, javadoc: {}, web: {} }
+    })
 
-describe('domainSummary', () => {
-  it('counts the entries of a collection in its plural name', () => {
-    expect(domainSummary(collectionSchema(), { repositories: entries(6) })).toBe('6 repositories')
-  })
-
-  it('uses the singular name for one entry', () => {
-    expect(domainSummary(collectionSchema(), { repositories: entries(1) })).toBe('1 maven repository')
-  })
-
-  it('counts zero for a collection the saved value does not hold', () => {
-    expect(domainSummary(collectionSchema(), {})).toBe('0 repositories')
-  })
-
-  it('falls back to the description of a domain without collections', () => {
-    expect(domainSummary(plainSchema(), {})).toBe('General web settings')
-  })
-
-  it('is empty for a domain with neither collections nor a description', () => {
-    expect(domainSummary({ properties: {} }, {})).toBe('')
-  })
-})
-
-describe('hubGroups', () => {
-  it('shows no card for the maven domain, and places the other domains, unnamed ones too, in System', () => {
-    const groups = hubGroups(fixture())
-
-    expect(groups.flatMap(group => domainCards(group).map(card => card.key)), 'no maven card').not.toContain('settings:maven')
-    expect(domainCards(groups.find(group => group.heading === 'Instance')).map(card => card.key), 'the other domains').toEqual(['settings:web', 'settings:acme'])
-  })
-
-  it('gives the Repositories page the saved summary of the maven domain, since the domain is edited there', () => {
-    const repository = hubGroups(fixture()).find(group => group.heading === 'Artifacts')
-
-    expect(repository.cards.find(card => card.key === 'page:repositories')).toEqual({
+    expect(rows.find(row => row.key === 'page:repositories'), 'the Repositories page counts the maven domain').toEqual({
       key: 'page:repositories',
-      title: 'Repositories',
-      summary: '6 repositories',
-      unsaved: false,
-      to: { name: 'settings-repositories' }
+      label: 'Repositories',
+      count: 7
     })
   })
 
-  it('marks the Repositories page when the maven draft differs, and keeps its saved summary', () => {
-    const groups = hubGroups(fixture({ unsaved: ['maven'] }))
-    const repositories = groups.find(group => group.heading === 'Artifacts').cards.find(card => card.key === 'page:repositories')
+  it('counts zero for a collection the saved value does not hold', () => {
+    const rows = glanceRows({
+      links: [{ key: 'settings:cleanup', label: 'Cleanup policies', to: { name: 'settings', params: { domain: 'cleanup' } } }],
+      schemas: { cleanup: twoCollectionSchema() },
+      saved: { cleanup: {} }
+    })
 
-    expect(repositories.unsaved).toBe(true)
-    expect(repositories.summary, 'the card shows the saved value, not the draft').toBe('6 repositories')
+    expect(rows.map(row => row.count), 'every collection is listed, empty ones with 0').toEqual([0, 0])
   })
 
-  it('leaves out every settings domain from a visitor without the settings node', () => {
-    const groups = hubGroups(fixture({ can: (node) => node !== ADMIN_NODES.settings }))
+  it('names each collection of a domain with two collections after the domain and the collection', () => {
+    const rows = glanceRows({
+      links: [{ key: 'settings:cleanup', label: 'Cleanup policies', to: { name: 'settings', params: { domain: 'cleanup' } } }],
+      schemas: { cleanup: twoCollectionSchema() },
+      saved: { cleanup: { policies: entries(3), exclusions: [] } }
+    })
 
-    expect(groups.flatMap(group => domainCards(group)), 'no domain card is offered').toEqual([])
+    expect(rows).toEqual([
+      { key: 'settings:cleanup:policies', label: 'Cleanup policies, Policies', count: 3 },
+      { key: 'settings:cleanup:exclusions', label: 'Cleanup policies, Exclusions', count: 0 }
+    ])
   })
 
-  it('leaves out the domains that are edited under Access, and the maven domain', () => {
-    const groups = hubGroups(fixture({ domains: ['maven', 'login', 'authentication'] }))
+  it('gives no row for a domain without a collection', () => {
+    const rows = glanceRows({ links: links(), schemas: { web: plainSchema() }, saved: { web: {} } })
 
-    expect(groups.flatMap(group => domainCards(group).map(card => card.key))).toEqual([])
+    expect(rows.filter(row => row.key.includes('web')), 'the reverse proxy has no count').toEqual([])
+  })
+
+  it('counts the collection of a plugin domain under its section label', () => {
+    const rows = glanceRows({
+      links: [{ key: 'settings:acme', label: 'Acme mirrors', to: { name: 'settings', params: { domain: 'acme' } } }],
+      schemas: { acme: collectionSchema() },
+      saved: { acme: { repositories: entries(2) } }
+    })
+
+    expect(rows).toEqual([{ key: 'settings:acme', label: 'Acme mirrors', count: 2 }])
+  })
+})
+
+describe('attentionRows', () => {
+  it('lists the tree entries whose key has an unsaved draft, in the order of the tree, with their targets', () => {
+    const rows = attentionRows(links(), ['settings:javadoc', 'page:repositories'])
+
+    expect(rows).toEqual([
+      { key: 'page:repositories', label: 'Repositories', to: { name: 'settings-repositories' } },
+      { key: 'settings:javadoc', label: 'Javadoc', to: { name: 'settings', params: { domain: 'javadoc' } } }
+    ])
+  })
+
+  it('gives no row without a draft', () => {
+    expect(attentionRows(links(), [])).toEqual([])
+  })
+})
+
+describe('unsavedTreeKeys', () => {
+  it('maps a domain with a draft to its settings entry of the tree', () => {
+    expect(unsavedTreeKeys(['javadoc'])).toEqual(['settings:javadoc'])
+  })
+
+  it('maps the maven draft to the Repositories page, since that page edits the domain', () => {
+    expect(unsavedTreeKeys(['maven', 'javadoc'])).toEqual(['page:repositories', 'settings:javadoc'])
+  })
+
+  it('gives no key for no draft', () => {
+    expect(unsavedTreeKeys([])).toEqual([])
   })
 })

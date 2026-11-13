@@ -42,7 +42,7 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/console` | `console` | Console. The remote console. The query keys `level` and `q` hold the level switches and the text filter. | Node `ingot.admin.console`. | Router and Backend |
 | `/maintenance` | `maintenance` | Maintenance. Storage usage, search index and cleanup policies. | Node `ingot.admin.maintenance`. | Router and Backend |
 | `/audit` | `audit` | Audit log. The audit events. The filters are kept in the query string. | Node `ingot.admin.audit`. | Router and Backend |
-| `/settings` and `/settings/:domain` | `settings` | Settings. The shared configuration. Without `:domain` the page is the settings hub; the optional `:domain` opens that settings domain. When the user sees only one domain, `/settings` is replaced with that domain. | Node `ingot.admin.settings`. | Router (`/settings/:domain?`) and Backend (`/settings`, `/settings/<path>`) |
+| `/settings` and `/settings/:domain` | `settings` | Settings. The shared configuration. Without `:domain` the page is Overview; the optional `:domain` opens that settings domain. When the user sees only one domain, `/settings` is replaced with that domain. | Node `ingot.admin.settings`. | Router (`/settings/:domain?`) and Backend (`/settings`, `/settings/<path>`) |
 | `/settings/plugins/<plugin>/<page>` | `settings-plugin` | A dashboard page a server plugin contributed, drawn from the blocks the plugin registered. See [Plugin API](plugin-api.md#dashboard-pages). | The area the plugin gave the page, or the instance admin for `*`. Checked by the dashboard and by the server. | Router and Backend (below `/settings`, so no change is needed in `APP_ROUTES`) |
 | `/settings/repositories` | `settings-repositories` | Administration, Repository, **Repositories**. The table of the repositories of the `maven` domain, and below it the **Maven options** of the domain. `?new=repository` opens the wizard once. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
 | `/settings/repositories/:id` | `settings-repository` | Repositories, the page of one repository. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
@@ -64,6 +64,12 @@ Rules for the "Who can open it" column:
 ### Administration tree
 
 **Administration** groups its pages under four headings: **Artifacts**, **Access**, **Instance** and **Monitoring and support**. Every Administration page names itself in its heading. A breadcrumb above the heading reads **Administration**, then the group of the page, and a line under the heading describes the page. Every Administration page shows the same side navigation. The settings domains the visitor may open are part of that navigation on every page. The current page carries `aria-current="page"`. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
+
+**Overview** is the first entry of the tree, above the first group, for every visitor who may edit the settings. It is the page `/settings` without a domain (see [Overview](#overview)).
+
+The field **Find an administration page** at the top of the tree filters the entries by the words an operator has in mind, such as "nginx", "logo" or "retention". An entry is kept when each typed word starts a word of its label, its group, its description, its keywords or, for a plugin page, its title, description or plugin id. Case does not matter. Groups without a kept entry are hidden while the field holds text, and the current page always stays in the tree. A polite line under the field says how many pages match, or that none does. Escape clears the field and keeps the focus in it; Enter opens the first match. The filter changes neither the address nor the stored settings, and it sends no request.
+
+An entry whose settings page has an unsaved draft shows **Unsaved** with an icon, and its name for a screen reader ends with "unsaved changes". No other status is shown on a tree entry.
 
 ### Layout at four widths
 
@@ -99,9 +105,19 @@ Other collections of other domains do not redirect. For example, an entry of the
 
 The name `repositories` is a page under `/settings`, not a settings domain. A settings domain whose id is `repositories`, such as a plugin domain, cannot be opened at `/settings/repositories`. The names of the core domains do not collide with it.
 
-### Settings hub
+### Overview
 
-Opened without a domain, `/settings` shows the hub: the settings domains as cards in the groups **Artifacts** (`cleanup`, `javadoc` and `search`, after the card of the Repositories page, which edits the `maven` domain), **Instance** (`frontend`, `web` and `statistics`, then every other domain, including the domains of plugins) and **Monitoring and support** (`audit`). A card shows the title of the domain and its saved value, for example "6 repositories" on the Repositories card, or the description of the domain when it has no collections. A card of a domain with unsaved draft changes also shows "Unsaved changes". Opening a card only changes the address and does not write the draft. A group without a card is left out. The domains `login` and `authentication` have no card, because they are edited under Access. The last line of the hub, "Sign-in and security live in Access", links to `/access`. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
+Opened without a domain, `/settings` is **Overview**: its heading is **Overview**, its line reads "Shared configuration for all instances.", and its entry in the Administration tree is the current one. The Administration pages are listed in the tree only, so the page does not repeat them. It shows what the tree cannot:
+
+* **Needs attention** has one row for each settings page with an unsaved draft. The row links to that page and is named "Javadoc, Unsaved changes", for example. **Review changes** opens the review of all drafts, where nothing is saved until Save. A save conflict has its own row with **Review conflict**. With no draft and no conflict the section reads "Nothing needs attention."
+* **At a glance** counts the entries of every settings collection, from the saved settings, for example Repositories 7 and Cleanup policies 0. A zero is shown as 0. The page makes no request beyond the ones the settings page made before, so the counts come from what is already loaded.
+* A link to the **Dashboard**, where the instance status and the resources are, when the visitor may open it.
+
+The root of the content keeps the anchor `settings-hub` (see [Dashboard anchors](dashboard-anchors.md)). The card grid of the earlier settings hub is gone, and so is the line that sent sign in and security to Access, which the tree lists.
+
+**Import settings** and **Download as JSON** are in the page header of Overview only, since they act on the whole configuration. Import loads a settings file into the draft and asks for no confirmation; nothing is stored until Save. Download saves the saved state, or the draft when asked for it. The settings domain pages and the Repositories page do not show these two actions.
+
+Below 1240 pixels the order is the page header, Needs attention (only when it has a row or a conflict), the Administration index with Overview marked current, At a glance and the Dashboard link. Overview has no back arrow there, because the index is on the same page. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
 
 ### Client-side guards
 
@@ -167,7 +183,7 @@ A path can be in the backend list but not in the router. The backend accepts any
 | `/browse`, `/browse/<path>` | Yes | Yes (one pattern) |
 | `/search`, `/account`, `/dashboard`, `/analytics`, `/console`, `/maintenance`, `/audit` | Yes | Yes |
 | `/tokens`, `/tokens/{name}` | Yes | Yes (`tokens`, `token-new`, `token`; all redirects) |
-| `/settings`, `/settings/<path>` | Yes | Yes (`settings` takes none or one segment below `/settings`, `settings-repositories` and `settings-repository` take the page name `repositories` with an optional id, `settings-entry` takes three, `settings-authentication` redirects `authentication`, `settings-login` redirects `login` to `/access/sso`; without a segment the page shows the settings hub) |
+| `/settings`, `/settings/<path>` | Yes | Yes (`settings` takes none or one segment below `/settings`, `settings-repositories` and `settings-repository` take the page name `repositories` with an optional id, `settings-entry` takes three, `settings-authentication` redirects `authentication`, `settings-login` redirects `login` to `/access/sso`; without a segment the page shows Overview) |
 | `/access`, `/access/<path>` | Yes | Yes (`access` and eight routes below it; `/access` is forwarded to a page or, on a narrow screen, shows the index of the Access pages) |
 | `/index.html`, `/assets/<path>` | Served, but not in `APP_ROUTES` | No |
 | `/:pathMatch(.*)*` | No | Yes (`not-found`) |

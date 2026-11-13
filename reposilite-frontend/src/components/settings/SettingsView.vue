@@ -22,13 +22,15 @@ import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { adminGroups, currentTreeKey, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, currentTreeKey, OVERVIEW_TREE_KEY, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
+import { ADMIN_NODES } from '../../store/nodeAccess'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
+import SettingsAttention from './SettingsAttention.vue'
 import SettingsHub from './SettingsHub.vue'
-import { hubGroups } from './settingsHub'
+import { attentionRows, glanceRows, unsavedTreeKeys } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import { domainFormOf } from './domainForm'
 import CollectionEditor from './CollectionEditor.vue'
@@ -299,18 +301,22 @@ const openConflictReview = async () => {
 }
 
 /*
- * The hub shows the saved value of each domain and marks the ones whose draft differs. Editing is gated by one
- * node, so a visitor either may edit every domain or none. A session without a node check, as the tests
- * provide, is taken to edit.
+ * Overview lists what needs attention (the drafts, and a conflict) and the counts of the saved settings. Both read the
+ * saved state or the draft's changes, and nothing is fetched for them. Editing is gated by one node, so a visitor either
+ * may edit every domain or none. A session without a node check, as the tests provide, is taken to edit.
  */
-const hubCards = computed(() => hubGroups({
-  can,
-  domains: domains.value,
-  schemas: store.schemas.value,
-  saved: savedSettings.value,
-  unsaved: [...new Set(changes.value.map(change => change.domain))],
-  titleOf: store.titleOf,
-}))
+const unsavedDomains = computed(() => [...new Set(changes.value.map(change => change.domain))])
+// The tree marks the entries of the domains with a draft, on every Administration page of the settings section.
+const unsavedKeys = computed(() => unsavedTreeKeys(unsavedDomains.value))
+const treeLinks = computed(() => navGroups.value.flatMap(group => group.links))
+const attentionList = computed(() => attentionRows(treeLinks.value, unsavedKeys.value))
+const glanceList = computed(() => glanceRows({ links: treeLinks.value, schemas: store.schemas.value, saved: savedSettings.value }))
+const canEdit = computed(() => can(ADMIN_NODES.settings))
+const canDashboard = computed(() => can(ADMIN_NODES.dashboard))
+// Overview is the page of /settings without a domain. Its header actions and its content are for a visitor who may edit.
+const overviewPage = computed(() => canEdit.value && settingsCurrent.value === OVERVIEW_TREE_KEY)
+// Needs attention is drawn above the index below 1240 pixels only when it has something to say; wider, it always reads.
+const attentionShown = computed(() => overviewPage.value && (!narrow.value || attentionList.value.length > 0 || Boolean(conflict.value)))
 
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
 watch(() => changes.value.length, (count) => {
@@ -427,9 +433,14 @@ watch(
     :shortcuts="shortcutsOf(settingsCurrent, can)"
     :narrow="narrow"
     :reading="!repositoriesPage"
+    :unsaved="unsavedKeys"
+    :overview="settingsCurrent === OVERVIEW_TREE_KEY"
     replace
   >
-    <template #actions>
+    <template
+      v-if="overviewPage"
+      #actions
+    >
       <MdButton
         variant="outlined"
         type="button"
@@ -456,6 +467,18 @@ watch(
       />
     </template>
 
+    <template
+      v-if="attentionShown"
+      #lead
+    >
+      <SettingsAttention
+        :rows="attentionList"
+        :conflict="conflict"
+        @review="reviewOpen = true"
+        @review-conflict="openConflictReview"
+      />
+    </template>
+
     <p
       v-if="loadError"
       role="alert"
@@ -470,10 +493,13 @@ watch(
       @dismiss="importErrors = []"
     />
 
-    <SettingsHub
-      v-if="hubShown"
-      :groups="hubCards"
-    />
+    <template v-if="hubShown">
+      <SettingsHub
+        v-if="canEdit"
+        :glance="glanceList"
+        :dashboard="canDashboard"
+      />
+    </template>
     <template v-else-if="activeDomain">
       <div>
         <h2

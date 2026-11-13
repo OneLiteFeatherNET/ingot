@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, afterEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
 
@@ -151,4 +151,222 @@ describe('SideNavLayout', () => {
     expect(wrapper.find('.page-body').exists(), 'no page is drawn under the index').toBe(false)
   })
 
+  it('draws the page and the index together on Overview below 1240 pixels, with Overview first and marked current', async () => {
+    const groups = [{ id: 'overview', label: 'Overview', links: [{ key: 'overview', label: 'Overview', to: { name: 'access' } }] }, ...fixtureGroups()]
+    const wrapper = await mountLayout({ groups, current: 'overview', overview: true, narrow: true })
+
+    expect(wrapper.find('.page-body').exists(), 'the page is drawn beside the index').toBe(true)
+    expect(wrapper.find(SIDE_NAV).exists(), 'the index is drawn').toBe(true)
+    expect(wrapper.get(`${SIDE_NAV} a`).text(), 'Overview is the first link of the index').toBe('Overview')
+    expect(wrapper.get(`${SIDE_NAV} a`).attributes('aria-current'), 'and it is marked current').toBe('page')
+    expect(wrapper.get('ul[aria-label="Overview"]').exists(), 'its list is named Overview, as it has no heading').toBe(true)
+  })
+
+  it('draws the group of Overview without a heading paragraph', async () => {
+    const groups = [{ id: 'overview', label: 'Overview', links: [{ key: 'overview', label: 'Overview', to: { name: 'access' } }] }, ...fixtureGroups()]
+    const wrapper = await mountLayout({ groups, current: 'overview', overview: true, narrow: true })
+
+    const overviewGroup = wrapper.get('ul[aria-label="Overview"]').element.parentElement
+    expect(overviewGroup.querySelector('p'), 'no visible heading above Overview').toBeNull()
+  })
+})
+
+// The filter tree: its links carry the description and keywords the filter matches. Built per test.
+const filterGroups = () => [
+  {
+    heading: 'Accounts',
+    links: [
+      { key: 'users', label: 'Users', description: 'People who sign in', keywords: 'access', to: { name: 'access-users' } },
+      { key: 'machines', label: 'Machine accounts', description: '', keywords: 'ci, bot', to: { name: 'access-machines' } },
+      { key: 'teams', label: 'Teams', description: '', keywords: 'access, group', to: { name: 'access-teams' } }
+    ]
+  },
+  {
+    heading: 'Sign in',
+    links: [
+      { key: 'sso', label: 'SSO', description: '', keywords: 'oidc, openid', to: { name: 'access-sso' } },
+      { key: 'ldap', label: 'LDAP', description: '', keywords: 'active directory', to: { name: 'access-ldap' } }
+    ]
+  }
+]
+
+describe('SideNavLayout find field', () => {
+  // Mounted into the document, so focus can be checked. Each test unmounts what it mounted.
+  const mounted = []
+  afterEach(() => mounted.splice(0).forEach(wrapper => wrapper.unmount()))
+
+  const mountFilter = async (props = {}) => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access/users')
+    await router.isReady()
+    const wrapper = mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: filterGroups(), ...props },
+      slots: { default: '<p class="page-body">Page body</p>' },
+      global: { plugins: [router] },
+      attachTo: document.body
+    })
+    mounted.push(wrapper)
+    return { wrapper, router }
+  }
+
+  const field = (wrapper) => wrapper.get('input[type="search"]')
+  const announcement = (wrapper) => wrapper.get('[aria-live="polite"]').text()
+
+  it('labels the search field Find an administration page', async () => {
+    const { wrapper } = await mountFilter({ current: 'users' })
+
+    const id = field(wrapper).attributes('id')
+    expect(wrapper.get(`label[for="${id}"]`).text(), 'the field is labelled by its visible label').toBe('Find an administration page')
+  })
+
+  it('announces one page for one match', async () => {
+    const { wrapper } = await mountFilter({ current: 'users' })
+
+    await field(wrapper).setValue('oidc')
+
+    expect(announcement(wrapper)).toBe('1 page matches')
+  })
+
+  it('announces the number of pages for several matches', async () => {
+    const { wrapper } = await mountFilter({ current: 'users' })
+
+    await field(wrapper).setValue('access')
+
+    expect(announcement(wrapper), 'Users and Teams match').toBe('2 pages match')
+  })
+
+  it('announces that no page matches the text, and lists only the current entry', async () => {
+    const { wrapper } = await mountFilter({ current: 'users' })
+
+    await field(wrapper).setValue('xyz')
+
+    expect(announcement(wrapper)).toBe('No administration page matches "xyz"')
+    expect(wrapper.findAll(`${SIDE_NAV} a`).map(link => link.text()), 'the current entry stays visible').toEqual(['Users'])
+  })
+
+  it('clears the field on Escape, lists every entry again, and keeps the focus in the field', async () => {
+    const { wrapper } = await mountFilter({ current: 'users' })
+    await field(wrapper).setValue('oidc')
+    field(wrapper).element.focus()
+
+    await field(wrapper).trigger('keydown', { key: 'Escape' })
+
+    expect(field(wrapper).element.value, 'the field is empty').toBe('')
+    expect(wrapper.findAll(`${SIDE_NAV} a`).length, 'every entry is listed').toBe(5)
+    expect(document.activeElement, 'the focus stays in the field').toBe(field(wrapper).element)
+  })
+
+  it('opens the first matching entry on Enter', async () => {
+    const { wrapper, router } = await mountFilter({ current: 'users' })
+    await field(wrapper).setValue('ldap')
+
+    await field(wrapper).trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+
+    expect(router.currentRoute.value.name, 'the first match is opened').toBe('access-ldap')
+  })
+})
+
+describe('SideNavLayout unsaved marks', () => {
+  const unsavedGroups = () => [
+    {
+      heading: 'Artifacts',
+      links: [
+        { key: 'settings:javadoc', label: 'Javadoc', to: { name: 'access-users' } },
+        { key: 'teams', label: 'Teams', to: { name: 'access-teams' } }
+      ]
+    }
+  ]
+
+  const mountMarked = async (props) => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access/users')
+    await router.isReady()
+    return mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: unsavedGroups(), current: 'teams', ...props },
+      slots: { default: '<p class="page-body">Page body</p>' },
+      global: { plugins: [router] }
+    })
+  }
+
+  it('marks a link whose domain has an unsaved draft with the text Unsaved', async () => {
+    const wrapper = await mountMarked({ unsaved: ['settings:javadoc'] })
+
+    const javadoc = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Javadoc'))
+    expect(javadoc.text(), 'the mark is drawn in the link').toContain('Unsaved')
+  })
+
+  it('names a marked link Javadoc, unsaved changes for a screen reader', async () => {
+    const wrapper = await mountMarked({ unsaved: ['settings:javadoc'] })
+
+    const javadoc = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Javadoc'))
+    expect(javadoc.attributes('aria-label'), 'the accessible name ends with unsaved changes').toBe('Javadoc, unsaved changes')
+  })
+
+  it('draws no mark and no changed name on a link without a draft', async () => {
+    const wrapper = await mountMarked({ unsaved: ['settings:javadoc'] })
+
+    const teams = wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().includes('Teams'))
+    expect(teams.text(), 'no mark on Teams').not.toContain('Unsaved')
+    expect(teams.attributes('aria-label'), 'the name is not changed').toBeUndefined()
+  })
+})
+
+// The lead is content that the caller places above the page: on Overview below 1240 pixels it comes before the index,
+// because it is the reason to land there; on wide widths it is the first thing of the page, beside the index.
+describe('SideNavLayout lead', () => {
+  const overviewGroups = () => [
+    { id: 'overview', label: 'Overview', links: [{ key: 'overview', label: 'Overview', to: { name: 'access' } }] },
+    ...fixtureGroups()
+  ]
+
+  const mountLead = async (props = {}) => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access')
+    await router.isReady()
+    return mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: overviewGroups(), current: 'overview', overview: true, ...props },
+      slots: {
+        lead: '<p class="lead-body">Needs attention</p>',
+        default: '<p class="page-body">Page body</p>'
+      },
+      global: { plugins: [router] }
+    })
+  }
+
+  const follows = (first, second) => first.element.compareDocumentPosition(second.element) & Node.DOCUMENT_POSITION_FOLLOWING
+
+  it('draws the lead above the index on Overview below 1240 pixels', async () => {
+    const wrapper = await mountLead({ narrow: true })
+
+    expect(wrapper.find('.lead-body').exists(), 'the lead is drawn').toBe(true)
+    expect(follows(wrapper.get('.lead-body'), wrapper.get(SIDE_NAV)), 'the index follows the lead').toBeTruthy()
+  })
+
+  it('draws the page body after the index on Overview below 1240 pixels', async () => {
+    const wrapper = await mountLead({ narrow: true })
+
+    expect(follows(wrapper.get(SIDE_NAV), wrapper.get('.page-body')), 'the page body follows the index').toBeTruthy()
+  })
+
+  it('draws the lead inside the page, after the index, on wide widths', async () => {
+    const wrapper = await mountLead({ narrow: false })
+
+    expect(follows(wrapper.get(SIDE_NAV), wrapper.get('.lead-body')), 'the lead is beside the index, after it in reading order').toBeTruthy()
+    expect(follows(wrapper.get('.lead-body'), wrapper.get('.page-body')), 'and before the page body').toBeTruthy()
+  })
+
+  it('draws no lead when the caller passes none', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access')
+    await router.isReady()
+    const wrapper = mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: overviewGroups(), current: 'overview', narrow: true, overview: true },
+      slots: { default: '<p class="page-body">Page body</p>' },
+      global: { plugins: [router] }
+    })
+
+    expect(wrapper.find('.lead-body').exists()).toBe(false)
+    expect(wrapper.find('.page-body').exists(), 'the page is still drawn').toBe(true)
+  })
 })

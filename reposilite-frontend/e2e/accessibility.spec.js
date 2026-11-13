@@ -38,9 +38,11 @@ const COVERED_PAGES = [
   { name: 'the search', path: '/search' },
   { name: 'the dashboard', path: '/dashboard', signedIn: true },
   { name: 'the access users page', path: '/access/users', signedIn: true },
+  // The repositories table is the settle marker: its region is named for a screen reader, and the rows arrive with the page.
+  { name: 'the repositories page', path: '/settings/repositories', signedIn: true, settledRegion: 'Repositories table' },
   // The header buttons turn enabled when the settings domains arrive, and fade to their enabled colours over a
   // transition: the check waits for that state (see settled).
-  { name: 'the repositories page', path: '/settings/repositories', signedIn: true, settled: 'Import settings' },
+  { name: 'the Overview page', path: '/settings', signedIn: true, settled: 'Import settings' },
   { name: 'the audit page', path: '/audit', signedIn: true },
 ]
 
@@ -56,6 +58,9 @@ test.describe('accessibility of the covered pages', () => {
       await page.goto(siteUrl(covered.path))
       if (covered.settled) {
         await expect(page.getByRole('button', { name: covered.settled, exact: true })).toBeEnabled()
+      }
+      if (covered.settledRegion) {
+        await expect(page.getByRole('region', { name: covered.settledRegion, exact: true })).toBeVisible()
       }
       if (covered.settledLink) {
         await expect(page.getByRole('link', { name: covered.settledLink, exact: true })).toBeVisible()

@@ -171,12 +171,13 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `security-panel` | experimental | `src/components/access/SecurityPanel.vue` | none | none |
 | `segmented-control` | experimental | `src/components/tokens/SegmentedControl.vue` | none | none |
 | `segmented-option` | experimental | `src/components/tokens/SegmentedOption.vue` | none | none |
+| `settings-attention` | experimental | `src/components/settings/SettingsAttention.vue` | none | none |
 | `settings-download-menu` | stable | `src/components/settings/SettingsDownloadMenu.vue` | none | none |
 | `settings-hub` | stable | `src/components/settings/SettingsHub.vue` | none | none |
 | `settings-import-errors` | stable | `src/components/settings/SettingsImportErrors.vue` | none | none |
 | `settings-review-sheet` | stable | `src/components/settings/SettingsReviewSheet.vue` | `header` | none |
 | `settings-view` (no element of its own) | stable | `src/components/settings/SettingsView.vue` | none | none |
-| `side-nav-layout` | stable | `src/components/layout/SideNavLayout.vue` | `nav`, `page` | none |
+| `side-nav-layout` | stable | `src/components/layout/SideNavLayout.vue` | `nav`, `page`, `lead` | none |
 | `site-footer` | stable | `src/components/footer/SiteFooter.vue` | none | none |
 | `site-legal` | stable | `src/components/footer/SiteLegal.vue` | none | none |
 | `skip-link` | stable | `src/components/layout/SkipLink.vue` | none | none |

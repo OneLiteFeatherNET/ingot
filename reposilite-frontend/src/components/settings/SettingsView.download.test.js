@@ -76,10 +76,13 @@ let wrapper
 const mountWith = async ({ secretsHidden = false } = {}) => {
   const store = createConfigurationStore(ref(fakeClient()), { secretsHidden: () => secretsHidden })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
+  // The download is an action of Overview, so the view is opened at /settings.
+  const router = namedRouter()
+  await router.push('/settings')
   wrapper = mount(SettingsView, {
     props: { selectedTab: 'Settings' },
     global: {
-      plugins: [namedRouter()],
+      plugins: [router],
       provide: { [configurationStoreKey]: store, [settingsClockKey]: () => FIXED_NOW }
     },
     attachTo: document.body

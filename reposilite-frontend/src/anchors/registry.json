@@ -610,7 +610,8 @@
       "stability": "stable",
       "parts": [
         "nav",
-        "page"
+        "page",
+        "lead"
       ],
       "states": []
     },
@@ -1219,6 +1220,13 @@
       "parts": [
         "header"
       ],
+      "states": []
+    },
+    {
+      "name": "settings-attention",
+      "file": "src/components/settings/SettingsAttention.vue",
+      "stability": "experimental",
+      "parts": [],
       "states": []
     },
     {

@@ -42,7 +42,8 @@ import SideNavLayout from './SideNavLayout.vue'
  *   reading      true for a reading page (text and forms): the content keeps a 960 pixel measure. A wide page (a list
  *                or a table, the default) takes the full width after the side navigation.
  *
- * Slots: `actions` (buttons of the page, beside the heading) and the default slot (the page content).
+ * Slots: `actions` (buttons of the page, beside the heading), `lead` (content of the page drawn before the page content, or
+ * above the index on Overview below 1240 pixels; see SideNavLayout) and the default slot (the page content).
  */
 const props = defineProps({
   title: { type: String, default: '' },
@@ -56,7 +57,9 @@ const props = defineProps({
   shortcuts: { type: Array, default: () => [] },
   narrow: { type: Boolean, default: false },
   replace: { type: Boolean, default: false },
-  reading: { type: Boolean, default: false }
+  reading: { type: Boolean, default: false },
+  unsaved: { type: Array, default: () => [] },
+  overview: { type: Boolean, default: false }
 })
 
 const currentLink = computed(() => props.groups
@@ -68,8 +71,10 @@ const currentGroup = computed(() => props.groups
 
 // The trail: the section, the group of the current entry, and on a detail page the list page. Empty when no entry is
 // on screen, as on the settings hub, whose heading already is the section.
+// Overview has no group, and its crumb would link to the page itself, so its trail is the section alone, as plain text.
 const crumbs = computed(() => {
-  if (!currentLink.value || !currentGroup.value) return []
+  if (props.overview) return [{ label: props.sectionLabel }]
+  if (!currentLink.value || !currentGroup.value || currentGroup.value.heading === undefined) return []
   const trail = [{ label: props.sectionLabel, to: props.indexTo }, { label: currentGroup.value.heading }]
   if (props.detail) trail.push({ label: currentLink.value.label, to: currentLink.value.to })
   return trail
@@ -80,7 +85,8 @@ const visibleCrumbs = computed(() => (props.narrow ? crumbs.value.slice(-1) : cr
 const fullTrail = computed(() => crumbs.value.map(crumb => crumb.label).join(' / '))
 const heading = computed(() => props.title || currentLink.value?.label || props.sectionLabel)
 const lineDescription = computed(() => props.description ?? currentLink.value?.description ?? '')
-const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined)
+// The back arrow leads to the index. Overview is the index on narrow widths, so it draws none.
+const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined && !props.overview)
 
 // The slash between two crumbs. Tailwind reads the class names from this file, so they stay whole.
 const SEPARATOR = "after:px-2 after:content-['/']"
@@ -211,7 +217,15 @@ const SEPARATOR = "after:px-2 after:content-['/']"
       :current="current"
       :narrow="narrow && groups.length > 0"
       :replace="replace"
+      :unsaved="unsaved"
+      :overview="overview"
     >
+      <template
+        v-if="$slots.lead"
+        #lead
+      >
+        <slot name="lead" />
+      </template>
       <slot />
     </SideNavLayout>
   </section>
