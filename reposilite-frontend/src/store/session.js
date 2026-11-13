@@ -361,11 +361,9 @@ const stopSharingSession = () => {
 
 const isLogged = computed(() => details.value !== undefined)
 
-const instanceAdmin = computed(() => details.value?.instanceAdmin === true)
-
-// The server's instanceAdmin answer decides when it sends one; the access-token manager
-// permission is the fallback for a server that does not.
-const isManager = computed(() => {
+// The server's instanceAdmin answer decides when it sends one. An older server does not, and then
+// the access-token manager permission is the best answer it can give.
+const instanceAdmin = computed(() => {
   if (typeof details.value?.instanceAdmin === 'boolean') {
     return details.value.instanceAdmin
   }
@@ -373,6 +371,8 @@ const isManager = computed(() => {
     ?.permissions
     ?.some(entry => entry.identifier === 'access-token:manager') === true
 })
+
+const isManager = computed(() => instanceAdmin.value)
 
 // The allowed nodes of the principal, as /api/auth/me lists them. A server that does not send the
 // list gives an empty one here; `can` tells the two cases apart.
