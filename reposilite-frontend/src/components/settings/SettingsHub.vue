@@ -73,7 +73,7 @@ defineProps({
       Instance status and resources are on the
       <RouterLink
         :to="{ name: 'dashboard' }"
-        class="text-primary hover:underline"
+        class="text-primary underline"
         data-test="settings-hub-dashboard"
       >
         Dashboard
