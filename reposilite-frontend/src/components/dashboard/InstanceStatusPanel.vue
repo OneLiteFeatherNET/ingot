@@ -292,6 +292,15 @@ const readOnlyNote = computed(() => {
     </div>
 
     <div
+      data-testid="read-only-status"
+      data-ingot-part="read-only-status"
+      class="flex flex-wrap items-baseline gap-2"
+    >
+      <span class="md-title-small text-on-surface">Read-only mode</span>
+      <span class="md-body-medium text-on-surface-variant">{{ instanceStatus.readOnly ? 'On' : 'Off' }}</span>
+    </div>
+
+    <div
       v-if="!clusterView"
       class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
     >

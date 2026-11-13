@@ -538,4 +538,20 @@ describe('InstanceStatusPanel read-only banner', () => {
     expect(wrapper.text(), 'the rest of the status is still shown').toContain('Used memory')
     wrapper.unmount()
   })
+
+  it('shows read-only mode as a status line that reads Off while the instance accepts writes', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: false, readOnlySource: 'stored' })
+
+    const line = wrapper.find('[data-testid="read-only-status"]')
+    expect(line.exists(), 'the state is shown as a status even while it is off').toBe(true)
+    expect(line.findAll('span').map(span => span.text()), 'the status line names read-only mode and its state').toEqual(['Read-only mode', 'Off'])
+    wrapper.unmount()
+  })
+
+  it('shows read-only mode as a status line that reads On while the instance is read-only', async () => {
+    const wrapper = await mountWithStatus({ ...INSTANCE, readOnly: true, readOnlySource: 'stored' })
+
+    expect(wrapper.find('[data-testid="read-only-status"]').findAll('span').map(span => span.text()), 'the status line reads On').toEqual(['Read-only mode', 'On'])
+    wrapper.unmount()
+  })
 })
