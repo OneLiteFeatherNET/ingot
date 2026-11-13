@@ -293,7 +293,6 @@ const readOnlyNote = computed(() => {
 
     <div
       data-testid="read-only-status"
-      data-ingot-part="read-only-status"
       class="flex flex-wrap items-baseline gap-2"
     >
       <span class="md-title-small text-on-surface">Read-only mode</span>
