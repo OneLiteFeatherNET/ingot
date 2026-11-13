@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.search.api
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.reposilite.ReposiliteObjectMapper
 import net.onelitefeather.ingot.repository.RepositoryRegistry
@@ -80,6 +81,17 @@ import panda.std.asError
 import java.time.Instant
 
 /**
+ * The index status of a search response (4.8), the same composition the Maintenance page uses, so every backend reports the core
+ * outbox. [rowsOf] is asked only for an empty page: a page with results proves that the index holds rows. [composed] receives
+ * whether rows exist.
+ */
+internal fun searchResponseStatus(
+    total: Long,
+    rowsOf: () -> Long,
+    composed: (rowsExist: Boolean) -> IndexStatus,
+): IndexStatus = composed(total > 0L || rowsOf() > 0L)
+
+/**
  * The search API of artifact search (artifact search spec, section 6). The search and the file lookup are open to anonymous
  * callers: the subject of the request decides which rows it sees. The index administration is for managers only.
  *
@@ -142,7 +154,7 @@ internal class SearchApiEndpoints(
                             total = page.total,
                             totalCapped = page.totalCapped,
                             facets = engine.facets(query, access),
-                            indexStatus = page.indexStatus,
+                            indexStatus = searchIndexStatus(page.total, page.indexStatus),
                         )
                     )
                 }
@@ -343,6 +355,12 @@ internal class SearchApiEndpoints(
         Result.error(SERVICE_UNAVAILABLE.toErrorResponse(GRANT_SET_TOO_LARGE))
     }
 
+    /** The index status of a search response: the core composition of the live backend, or the engine's own when none is live. */
+    private fun searchIndexStatus(total: Long, engineStatus: IndexStatus): IndexStatus {
+        val live = search.liveBackend() ?: return engineStatus
+        return searchResponseStatus(total, { live.admin.details().rows }, live.indexStatus)
+    }
+
     /** The rows the subject may see: anonymous without a token, and the token's own rights otherwise. */
     private fun accessOf(token: AccessTokenDto?): SearchAccess {
         val subject = token?.let { accessTokens.subjectOf(it.identifier) }
@@ -357,9 +375,9 @@ internal class SearchApiEndpoints(
     private fun indexResponse(): SearchIndexResponse {
         val runs = search.indexRuns()
         val backend = search.backend()
-        val live = search.liveBackend()
-        val status = live?.takeIf { backend.available }?.engine?.status()
-        val details = live?.takeIf { backend.available }?.admin?.details()
+        val live = search.liveBackend()?.takeIf { backend.available }
+        val details = live?.admin?.details()
+        val status = live?.indexStatus?.invoke((details?.rows ?: 0L) > 0L)
         return SearchIndexResponse(
             state = status?.state ?: IndexState.DEGRADED,
             lagSeconds = status?.lagSeconds ?: 0L,
@@ -382,6 +400,7 @@ internal class SearchApiEndpoints(
                 health = backend.health,
                 healthDetail = backend.healthDetail,
                 accessMismatches = backend.accessMismatches,
+                properties = backend.properties.takeIf { it.isNotEmpty() },
             ),
         )
     }
@@ -524,8 +543,10 @@ internal data class SearchIndexResponse(
 /**
  * The backend of this replica: its id, its state (AVAILABLE, NOT_INSTALLED, REFUSED, OPEN_FAILED, DOWN or CLUSTER_MISMATCH), the
  * reason of that state, the health (UP, DOWN or UNKNOWN) with the message of a down backend, and the access mismatches the core
- * dropped. Secrets and user information never appear in the details.
+ * dropped, and the properties the backend reports, such as its refresh interval. Secrets and user information never appear in
+ * the details.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 internal data class SearchBackendResponse(
     val id: String,
     val state: SearchBackendState,
@@ -533,6 +554,8 @@ internal data class SearchBackendResponse(
     val health: String,
     val healthDetail: String,
     val accessMismatches: Long,
+    /** Absent when the backend reports none, so a database backend answers exactly as before. */
+    val properties: Map<String, String>? = null,
 )
 
 internal data class OutboxCounts(

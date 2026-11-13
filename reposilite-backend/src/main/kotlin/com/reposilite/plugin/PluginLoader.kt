@@ -159,6 +159,8 @@ class PluginLoader(
         const val LEGACY_METRICS_SWITCH: String = "REPOSILITE_METRICS_ENABLED"
         const val NEXUS_IMPORT_SWITCH: String = "INGOT_NEXUS_IMPORT_ENABLED"
         const val LEGACY_NEXUS_IMPORT_SWITCH: String = "REPOSILITE_NEXUS_IMPORT_ENABLED"
+        const val OPENSEARCH_SWITCH: String = "INGOT_OPENSEARCH_ENABLED"
+        const val LEGACY_OPENSEARCH_SWITCH: String = "REPOSILITE_OPENSEARCH_ENABLED"
 
         private val METRICS_SWITCH_OF_JAR = BundledSwitch(METRICS_SWITCH, LEGACY_METRICS_SWITCH)
 
@@ -166,6 +168,7 @@ class PluginLoader(
         val BUNDLED_SWITCHES: Map<String, BundledSwitch> = mapOf(
             "prometheus-plugin.jar" to METRICS_SWITCH_OF_JAR,
             "nexus-import-plugin.jar" to BundledSwitch(NEXUS_IMPORT_SWITCH, LEGACY_NEXUS_IMPORT_SWITCH),
+            "opensearch-plugin.jar" to BundledSwitch(OPENSEARCH_SWITCH, LEGACY_OPENSEARCH_SWITCH),
         )
     }
 

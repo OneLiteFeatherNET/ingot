@@ -32,7 +32,7 @@ import net.onelitefeather.ingot.identity.model.SourcedRule
  * owner's rules and grants, decided level by level with the most specific rule first and a denial before an allow of
  * the same specificity. A null subject is the anonymous caller.
  */
-internal object SearchAccessCompiler {
+object SearchAccessCompiler {
 
     /** The most terms one repository may carry before the request is refused (5.3). */
     const val MAX_TERMS_PER_REPOSITORY: Int = 200

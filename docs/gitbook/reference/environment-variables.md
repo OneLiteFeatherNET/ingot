@@ -231,6 +231,25 @@ The image also ships `nexus-import-plugin.jar`, the Nexus Repository 3 importer,
 
 There is no variable that turns off certificate verification. Nexus certificates are checked against the JVM trust store, and private certificate authorities belong there, see [Import from Nexus](../how-to/import-from-nexus.md).
 
+### OpenSearch search backend
+
+The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in `/app/bundled-plugins/`. It is loaded only when `INGOT_OPENSEARCH_ENABLED` is `true`. Off, nothing is loaded and no connection is made. Each variable below falls back to its `REPOSILITE_OPENSEARCH_` spelling when the `INGOT_` name is unset or blank, and the `INGOT_` name wins when it is set. The switch is the exception: the `REPOSILITE_` spelling is read only when `INGOT_OPENSEARCH_ENABLED` is absent, so an empty value keeps the plugin off. A refused value makes the backend report `OPEN_FAILED` with a message that names the variable, and the server keeps running. The rules, the index layout and the security obligations are in the [OpenSearch search backend](opensearch-search-backend.md) reference.
+
+| Environment variable | Legacy environment variable | Default | Range or values | Meaning |
+| --- | --- | --- | --- | --- |
+| `INGOT_OPENSEARCH_ENABLED` | `REPOSILITE_OPENSEARCH_ENABLED` | `false` | `true` in any case | The bundled switch. Only the value `true` turns the plugin on. |
+| `INGOT_OPENSEARCH_URLS` | `REPOSILITE_OPENSEARCH_URLS` | none | Comma-separated `https` URLs | Cluster URLs. Required when the plugin is on. `http` needs the next switch. |
+| `INGOT_OPENSEARCH_ALLOW_HTTP` | `REPOSILITE_OPENSEARCH_ALLOW_HTTP` | `false` | `true` or `false` | Accepts `http` URLs. Any other value is refused. |
+| `INGOT_OPENSEARCH_INDEX` | `REPOSILITE_OPENSEARCH_INDEX` | `ingot-artifacts` | 1 to 64 characters, lower case letters, digits, `-` and `_`, starting with a letter or digit | Prefix of the alias and of the physical index `<prefix>-v1`. |
+| `INGOT_OPENSEARCH_USERNAME` | `REPOSILITE_OPENSEARCH_USERNAME` | none | Text | User of basic authentication. Needs a password. |
+| `INGOT_OPENSEARCH_PASSWORD` | `REPOSILITE_OPENSEARCH_PASSWORD` | none | Text | Password. Needs a username. Wins over the file variable. |
+| `INGOT_OPENSEARCH_PASSWORD_FILE` | `REPOSILITE_OPENSEARCH_PASSWORD_FILE` | none | Path of a file | Reads the password from the file, without the line break at its end. Used when the plain password is not set. |
+| `INGOT_OPENSEARCH_BULK_SIZE` | `REPOSILITE_OPENSEARCH_BULK_SIZE` | `500` | 1 to 5000 | Actions per bulk request. |
+| `INGOT_OPENSEARCH_TIMEOUT_SECONDS` | `REPOSILITE_OPENSEARCH_TIMEOUT_SECONDS` | `30` | 1 to 300 | Timeout of one request, in seconds. |
+| `INGOT_OPENSEARCH_REPLICAS` | `REPOSILITE_OPENSEARCH_REPLICAS` | `1` | 0 to 10 | Replicas of the index, set when the index is created. |
+
+The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `opensearch` only after the plugin is on. See [Choose a search backend](../how-to/choose-a-search-backend.md).
+
 ### Support bundle switch
 
 The system information page and the support bundle are on by default, because both are read-only and need the console area. A support bundle lists what the instance runs on and never holds a secret, see [Collect a support bundle](../how-to/collect-a-support-bundle.md).

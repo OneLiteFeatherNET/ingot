@@ -1,0 +1,8 @@
+{
+  "bool": {
+    "filter": [
+      {"term": {"origin": "MIRROR"}},
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

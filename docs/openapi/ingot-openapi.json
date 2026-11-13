@@ -1760,6 +1760,12 @@
           "id" : {
             "type" : "string"
           },
+          "properties" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : [ "object", "null" ]
+          },
           "state" : {
             "$ref" : "#/components/schemas/SearchBackendState"
           }

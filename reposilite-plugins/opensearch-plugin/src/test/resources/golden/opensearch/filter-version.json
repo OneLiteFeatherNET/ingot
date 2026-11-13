@@ -1,0 +1,8 @@
+{
+  "bool": {
+    "filter": [
+      {"term": {"version_lc": "1.0-rc1"}},
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

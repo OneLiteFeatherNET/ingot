@@ -61,6 +61,7 @@
 * [Search for artifacts](how-to/search-for-artifacts.md)
 * [Rebuild the search index](how-to/rebuild-search-index.md)
 * [Choose a search backend](how-to/choose-a-search-backend.md)
+* [Use OpenSearch for search](how-to/use-opensearch-for-search.md)
 * [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
 * [Separate releases and snapshots](how-to/separate-releases-and-snapshots.md)
 * [Set cleanup policies](how-to/set-cleanup-policies.md)
@@ -101,6 +102,7 @@
 * [Cleanup policies](reference/cleanup-policies.md)
 * [Audit events](reference/audit-events.md)
 * [Console commands](reference/console-commands.md)
+* [OpenSearch search backend](reference/opensearch-search-backend.md)
 
 ### Identity and access
 

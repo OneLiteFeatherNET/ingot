@@ -73,6 +73,8 @@ internal class DatabaseSearchBackend(
 
     override fun status(): IndexStatus = engine.status()
 
+    override fun tokensComplete(): Boolean = engine.tokensComplete()
+
     override fun apply(actions: List<IndexAction>) = index.apply(actions)
 
     override fun keyRows(after: Long, batchSize: Int): KeyBatch? = index.keyRows(after, batchSize)

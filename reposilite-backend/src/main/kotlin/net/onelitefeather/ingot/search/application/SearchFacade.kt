@@ -20,6 +20,7 @@ import com.reposilite.plugin.api.Facade
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSink
 import net.onelitefeather.ingot.repository.index.ArtifactIndexSinkProvider
 import net.onelitefeather.ingot.search.ArtifactSearchEngine
+import net.onelitefeather.ingot.search.IndexStatus
 import net.onelitefeather.ingot.search.backend.SearchBackendState
 import net.onelitefeather.ingot.search.runs.IndexRunStatus
 
@@ -57,6 +58,8 @@ class SearchFacade internal constructor(
 internal class LiveSearchBackend(
     val engine: ArtifactSearchEngine,
     val admin: SearchIndexAdmin,
+    /** The index status of the backend, given whether its index holds rows (4.8). */
+    val indexStatus: (rowsExist: Boolean) -> IndexStatus,
 )
 
 /**
@@ -70,6 +73,8 @@ internal data class BackendStatus(
     val health: String,
     val healthDetail: String,
     val accessMismatches: Long,
+    /** The settings the backend reports, redacted; see [ArtifactSearchBackend.properties]. */
+    val properties: Map<String, String> = emptyMap(),
 ) {
 
     val available: Boolean

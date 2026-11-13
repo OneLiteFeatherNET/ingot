@@ -410,6 +410,16 @@ dependencies {
     testFixturesApi("org.assertj:assertj-core:4.0.0-M1")
 }
 
+// The OpenSearch backend of the plugin, as compiled classes only. Its service file stays out, so the integration tests do not
+// load the plugin; the container test builds the backend through the factory the plugin exposes.
+val openSearchPlugin = project(":reposilite-plugins:opensearch-plugin")
+dependencies {
+    "integrationImplementation"(
+        files(openSearchPlugin.layout.buildDirectory.dir("classes/kotlin/main"))
+            .builtBy(":reposilite-plugins:opensearch-plugin:compileKotlin"),
+    )
+}
+
 tasks.named<Test>("integration") {
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.

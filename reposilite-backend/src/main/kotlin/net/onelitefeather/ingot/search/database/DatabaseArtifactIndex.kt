@@ -184,7 +184,7 @@ internal class DatabaseArtifactIndex(private val database: Database) {
 }
 
 /** The SHA-256 of `repository`, a NUL byte and `path`, as lower-case hex: the upsert key of a row (2.3). */
-internal fun pathHash(repository: String, path: String): String =
+fun pathHash(repository: String, path: String): String =
     MessageDigest.getInstance("SHA-256")
         .digest("$repository\u0000$path".toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }

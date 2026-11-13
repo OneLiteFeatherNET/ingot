@@ -58,6 +58,7 @@ import net.onelitefeather.ingot.search.outbox.OutboxWorker
 import net.onelitefeather.ingot.search.rebuild.RebuildScheduler
 import net.onelitefeather.ingot.search.rebuild.RebuildService
 import net.onelitefeather.ingot.search.runs.RunStore
+import net.onelitefeather.ingot.search.IndexStatusReader
 import net.onelitefeather.ingot.search.TokenSweep
 import net.onelitefeather.ingot.search.verify.VerifyScheduler
 import net.onelitefeather.ingot.search.verify.VerifyService
@@ -157,7 +158,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             resolution, wiring.clock, { logger.info(it) }, createBackend = { checkNotNull(backend) }, redact = context::redact,
         )
         val cluster = backend?.let { ClusterBackendAgreement(wiring.state, wiring.runs, wiring.clock, wiring.instanceId, wiring.engine) }
-        val runtime = SearchBackendRuntime(holder, cluster, wiring.clock, wiring.engine) {
+        val runtime = SearchBackendRuntime(holder, cluster, wiring.clock, wiring.engine, context::redact) {
             wiring.state.get(SearchStateKey.ACCESS_MISMATCHES)?.toLongOrNull() ?: 0L
         }
         val live = backend?.let { startLive(wiring, it, runtime) }
@@ -204,6 +205,7 @@ internal class SearchPlugin : ReposilitePlugin() {
         val repositoryRegistry = facade<RepositoryRegistry>()
         val readOnlyFacade = facade<ReadOnlyFacade>()
         val ledger = SqlMirrorCacheLedger(wiring.database)
+        val statusReader = IndexStatusReader(wiring.database, clock)
         val worker = OutboxWorker(
             owner = wiring.instanceId,
             outbox = outbox,
@@ -292,7 +294,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             paused = paused,
         )
         return LiveParts(
-            handle = LiveSearchBackend(checked, admin),
+            handle = LiveSearchBackend(checked, admin, indexStatus = { rowsExist -> statusReader.statusOf(backend, rowsExist) }),
             worker = worker,
             rebuild = rebuildScheduler,
             verify = verifyScheduler,

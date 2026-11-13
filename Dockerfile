@@ -27,7 +27,7 @@ WORKDIR /home/ingot-build
 # The below line will show an Error in some IDE's, It is valid Dockerfile.
 RUN --mount=type=cache,target=/root/.gradle <<EOF
   export GRADLE_OPTS="-Djdk.lang.Process.launchMechanism=vfork"
-  ./gradlew :reposilite-backend:shadowJar :reposilite-plugins:prometheus-plugin:shadowJar :reposilite-plugins:nexus-import-plugin:shadowJar --no-daemon --stacktrace
+  ./gradlew :reposilite-backend:shadowJar :reposilite-plugins:prometheus-plugin:shadowJar :reposilite-plugins:nexus-import-plugin:shadowJar :reposilite-plugins:opensearch-plugin:shadowJar --no-daemon --stacktrace
 EOF
 
 # Image labels are not declared here on purpose. The block that used to sit at this
@@ -88,6 +88,10 @@ COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-tes
 # The Nexus importer follows the same rule with its own switch, INGOT_NEXUS_IMPORT_ENABLED. The loader does not read the jar while
 # the switch is off, so an image without the switch behaves exactly as before.
 COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-test/workspace/plugins/nexus-import-plugin.jar /app/bundled-plugins/nexus-import-plugin.jar
+
+# The OpenSearch search backend follows the same rule with its own switch, INGOT_OPENSEARCH_ENABLED. The loader does not read the jar
+# while the switch is off, so an image without the switch behaves exactly as before.
+COPY --from=build --chown=reposilite:reposilite /home/ingot-build/reposilite-test/workspace/plugins/opensearch-plugin.jar /app/bundled-plugins/opensearch-plugin.jar
 
 # The artifact is named after this project, but /app/reposilite.jar is part of what an
 # upstream deployment may reference: anything that overrides the entrypoint or the command

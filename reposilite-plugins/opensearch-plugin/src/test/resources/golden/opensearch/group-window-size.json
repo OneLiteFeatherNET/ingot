@@ -1,0 +1,94 @@
+{
+  "size": 0,
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "bool": {
+            "should": [
+              {
+                "term": {
+                  "repository": "releases"
+                }
+              }
+            ],
+            "minimum_should_match": 1
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "groups": {
+      "terms": {
+        "field": "gav",
+        "size": 40,
+        "order": [
+          {
+            "sizeBytes": "desc"
+          },
+          {
+            "_key": "asc"
+          }
+        ]
+      },
+      "aggs": {
+        "groupLc": {
+          "terms": {
+            "field": "group_id_lc",
+            "size": 1
+          }
+        },
+        "artifactLc": {
+          "terms": {
+            "field": "artifact_id_lc",
+            "size": 1
+          }
+        },
+        "versionLc": {
+          "terms": {
+            "field": "version_lc",
+            "size": 1
+          }
+        },
+        "group": {
+          "terms": {
+            "field": "group_id",
+            "size": 1,
+            "order": {
+              "_key": "asc"
+            }
+          }
+        },
+        "artifact": {
+          "terms": {
+            "field": "artifact_id",
+            "size": 1,
+            "order": {
+              "_key": "asc"
+            }
+          }
+        },
+        "version": {
+          "terms": {
+            "field": "version",
+            "size": 1,
+            "order": {
+              "_key": "asc"
+            }
+          }
+        },
+        "lastModified": {
+          "max": {
+            "field": "last_modified"
+          }
+        },
+        "sizeBytes": {
+          "sum": {
+            "field": "size_bytes"
+          }
+        }
+      }
+    }
+  }
+}
