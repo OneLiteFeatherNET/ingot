@@ -33,8 +33,10 @@ import { matchEntries } from '../../navigation/adminFilter'
  *   current      the key of the open section, or undefined when no section is open
  *   narrow       true below 1240 pixels; from 1240 pixels the navigation is a sticky column beside the page
  *   replace      true when a link replaces the history entry instead of adding one
+ *   overview     true on Overview: below 1240 pixels the lead is drawn above the index, and the page beside it
  *
- * The page content is the default slot.
+ * The page content is the default slot. The optional `lead` slot is drawn first in the page, or above the index on
+ * Overview below 1240 pixels, so the page header and Needs attention come before the index there.
  */
 const props = defineProps({
   label: { type: String, required: true },
@@ -53,6 +55,8 @@ const props = defineProps({
 const showsIndex = computed(() => props.narrow && (props.current === undefined || props.overview))
 const showsPage = computed(() => !(props.narrow && props.current === undefined))
 const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow || showsIndex.value))
+// The lead is drawn above the index only on Overview below 1240 pixels; everywhere else it is the first thing of the page.
+const leadAbove = computed(() => props.narrow && props.overview)
 
 /*
  * The find field of the side navigation. The text keeps the links that match it (adminFilter.js), the current link always
@@ -97,6 +101,13 @@ const linkClasses = (active) => [
     class="flex min-w-0 flex-col gap-6 min-[1240px]:flex-row min-[1240px]:items-start min-[1240px]:gap-10"
     data-ingot-component="side-nav-layout"
   >
+    <div
+      v-if="leadAbove && $slots.lead"
+      data-ingot-part="lead"
+      class="flex min-w-0 flex-col gap-4"
+    >
+      <slot name="lead" />
+    </div>
     <nav
       v-if="showsSideNav"
       data-ingot-part="nav"
@@ -197,6 +208,13 @@ const linkClasses = (active) => [
       data-ingot-part="page"
       class="flex min-w-0 flex-1 flex-col gap-4"
     >
+      <div
+        v-if="!leadAbove && $slots.lead"
+        data-ingot-part="lead"
+        class="flex min-w-0 flex-col gap-4"
+      >
+        <slot name="lead" />
+      </div>
       <slot />
     </div>
   </div>
