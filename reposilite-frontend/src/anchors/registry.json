@@ -616,6 +616,13 @@
       "states": []
     },
     {
+      "name": "side-nav-tree",
+      "file": "src/components/layout/SideNavTree.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "skip-link",
       "file": "src/components/layout/SkipLink.vue",
       "stability": "stable",
@@ -776,6 +783,13 @@
     {
       "name": "md-select",
       "file": "src/components/md/MdSelect.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "md-side-sheet",
+      "file": "src/components/md/MdSideSheet.vue",
       "stability": "experimental",
       "parts": [],
       "states": []

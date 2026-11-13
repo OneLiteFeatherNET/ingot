@@ -15,9 +15,11 @@
   -->
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
+import SideNavTree from './SideNavTree.vue'
+import MdSideSheet from '../md/MdSideSheet.vue'
 
 /*
  * The frame of every Administration page. The header draws, in this order: the trail (Administration, the group of the
@@ -87,6 +89,10 @@ const heading = computed(() => props.title || currentLink.value?.label || props.
 const lineDescription = computed(() => props.description ?? currentLink.value?.description ?? '')
 // The back arrow leads to the index. Overview is the index on narrow widths, so it draws none.
 const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined && !props.overview)
+// The Sections button sits beside the back arrow, so a page without one draws none. It is drawn from 600 pixels (see the
+// classes below); the sheet it opens is the same tree, in a modal side sheet, and it closes on the choice of an entry.
+const showsSections = computed(() => showsBack.value)
+const sheetOpen = ref(false)
 
 // The slash between two crumbs. Tailwind reads the class names from this file, so they stay whole.
 const SEPARATOR = "after:px-2 after:content-['/']"
@@ -183,9 +189,33 @@ const SEPARATOR = "after:px-2 after:content-['/']"
         </p>
       </div>
       <div
-        v-if="$slots.actions || shortcuts.length > 0"
+        v-if="$slots.actions || shortcuts.length > 0 || showsSections"
         class="flex shrink-0 flex-wrap items-center gap-2"
       >
+        <button
+          v-if="showsSections"
+          type="button"
+          aria-haspopup="dialog"
+          class="md-state-layer md-focus-ring relative hidden min-h-12 items-center gap-2 rounded-corner-full px-4 md-label-large text-primary min-[600px]:inline-flex"
+          @click="sheetOpen = true"
+        >
+          <svg
+            class="size-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+          Sections
+        </button>
         <nav
           v-if="shortcuts.length > 0"
           aria-label="Related pages"
@@ -228,5 +258,22 @@ const SEPARATOR = "after:px-2 after:content-['/']"
       </template>
       <slot />
     </SideNavLayout>
+
+    <MdSideSheet
+      v-if="showsSections"
+      :open="sheetOpen"
+      title="Administration pages"
+      @update:open="sheetOpen = $event"
+    >
+      <SideNavTree
+        :label="label"
+        :groups="groups"
+        :current="current"
+        :unsaved="unsaved"
+        :replace="replace"
+        described
+        @select="sheetOpen = false"
+      />
+    </MdSideSheet>
   </section>
 </template>

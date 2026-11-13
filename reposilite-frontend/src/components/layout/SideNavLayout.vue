@@ -15,9 +15,9 @@
   -->
 
 <script setup>
-import { computed, ref, useId } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
-import { matchEntries } from '../../navigation/adminFilter'
+import { computed, nextTick, ref, watch } from 'vue'
+import SideNavTree from './SideNavTree.vue'
+import { useTreeFits } from '../../helpers/useTreeFits'
 
 /*
  * The split layout of a page with sections, such as Access and Settings. On wide widths the sections
@@ -29,11 +29,14 @@ import { matchEntries } from '../../navigation/adminFilter'
  *
  * Props:
  *   label        the accessible name of the side navigation
- *   groups       [{ heading, links: [{ key, label, to }] }], where `to` is a router location
+ *   groups       [{ heading, links: [{ key, label, description, to }] }], where `to` is a router location
  *   current      the key of the open section, or undefined when no section is open
- *   narrow       true below 1240 pixels; from 1240 pixels the navigation is a sticky column beside the page
+ *   narrow       true below 1240 pixels; from 1240 pixels the navigation is a column beside the page
  *   replace      true when a link replaces the history entry instead of adding one
  *   overview     true on Overview: below 1240 pixels the lead is drawn above the index, and the page beside it
+ *
+ * From 1240 pixels the column is sticky only while it fits between the top bar and the save bar; otherwise it scrolls
+ * with the page and has no scroll box of its own (see useTreeFits).
  *
  * The page content is the default slot. The optional `lead` slot is drawn first in the page, or above the index on
  * Overview below 1240 pixels, so the page header and Needs attention come before the index there.
@@ -58,42 +61,14 @@ const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow ||
 // The lead is drawn above the index only on Overview below 1240 pixels; everywhere else it is the first thing of the page.
 const leadAbove = computed(() => props.narrow && props.overview)
 
-/*
- * The find field of the side navigation. The text keeps the links that match it (adminFilter.js), the current link always
- * stays, and a polite live region says how many match. Escape clears the text; Enter opens the first match.
- */
-const router = useRouter()
-const fieldId = useId()
-const query = ref('')
-const filtered = computed(() => matchEntries(props.groups, query.value, props.current))
-const shownGroups = computed(() => filtered.value.groups)
-const announcement = computed(() => {
-  const text = query.value.trim()
-  if (text === '') return ''
-  if (filtered.value.count === 0) return `No administration page matches "${text}"`
-  return filtered.value.count === 1 ? '1 page matches' : `${filtered.value.count} pages match`
-})
-const clearQuery = () => {
-  query.value = ''
-}
-const openFirstMatch = () => {
-  if (query.value.trim() === '') return
-  const first = matchEntries(props.groups, query.value).groups[0]?.links[0]
-  if (first) router.push(first.to)
-}
+const navTree = ref(null)
+const { fits, measure } = useTreeFits(() => navTree.value?.$el)
+// A save bar that appears or goes away changes the room between the bars, so the decision is taken again.
+watch(() => props.unsaved.length, () => nextTick(measure))
 
-// A link whose domain has an unsaved draft says so: the mark is drawn, and the accessible name ends with it.
-const isUnsaved = (link) => props.unsaved.includes(link.key)
-const nameOf = (link) => (isUnsaved(link) ? `${link.label}, unsaved changes` : undefined)
-
-// The id of the visible heading of a group. Each group list is labelled by it, so a screen reader names the group on entry.
-const headingId = (group) => `admin-group-${group.heading.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-
-const linkClasses = (active) => [
-  'md-state-layer md-focus-ring relative flex min-h-10 items-center rounded-corner-full px-4 md-label-large no-underline',
-  'transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard',
-  active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant hover:text-on-surface'
-]
+const navClasses = computed(() => (props.narrow
+  ? 'w-full'
+  : ['w-52 shrink-0', fits.value ? 'sticky top-[calc(4rem+1rem)]' : '']))
 </script>
 
 <template>
@@ -108,100 +83,18 @@ const linkClasses = (active) => [
     >
       <slot name="lead" />
     </div>
-    <nav
+    <SideNavTree
       v-if="showsSideNav"
+      ref="navTree"
       data-ingot-part="nav"
-      :aria-label="label"
-      :class="narrow
-        ? 'flex w-full flex-col gap-4'
-        : 'sticky top-[calc(4rem+1rem)] flex max-h-[calc(100dvh-6rem)] w-52 shrink-0 flex-col gap-4 overflow-y-auto'"
-    >
-      <div
-        role="search"
-        class="flex flex-col gap-1 px-4"
-      >
-        <label
-          :for="fieldId"
-          class="md-label-medium text-on-surface-variant"
-        >Find an administration page</label>
-        <input
-          :id="fieldId"
-          v-model="query"
-          type="search"
-          autocomplete="off"
-          class="min-w-0 rounded-corner-small border border-outline bg-surface px-3 py-2 md-body-medium text-on-surface [&::-webkit-search-cancel-button]:hidden"
-          @keydown.escape="clearQuery"
-          @keydown.enter.prevent="openFirstMatch"
-        >
-        <p
-          aria-live="polite"
-          class="md-label-medium text-on-surface-variant"
-        >
-          {{ announcement }}
-        </p>
-      </div>
-      <div
-        v-for="group in shownGroups"
-        :key="group.heading ?? group.label"
-        class="flex flex-col gap-1"
-      >
-        <p
-          v-if="group.heading"
-          :id="headingId(group)"
-          class="px-4 pb-1 md-label-medium text-on-surface-variant"
-        >
-          {{ group.heading }}
-        </p>
-        <ul
-          :aria-labelledby="group.heading ? headingId(group) : undefined"
-          :aria-label="group.heading ? undefined : group.label"
-          class="flex flex-col gap-1"
-        >
-          <li
-            v-for="link in group.links"
-            :key="link.key"
-          >
-            <RouterLink
-              v-slot="{ href, navigate }"
-              :to="link.to"
-              :replace="replace"
-              custom
-            >
-              <a
-                :href="href"
-                :aria-current="link.key === current ? 'page' : undefined"
-                :aria-label="nameOf(link)"
-                :class="linkClasses(link.key === current)"
-                @click="navigate"
-              >
-                <span>{{ link.label }}</span>
-                <span
-                  v-if="isUnsaved(link)"
-                  class="ml-auto inline-flex items-center gap-1 md-label-medium text-primary"
-                >
-                  <svg
-                    class="size-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="4"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  Unsaved
-                </span>
-              </a>
-            </RouterLink>
-          </li>
-        </ul>
-      </div>
-    </nav>
+      :class="navClasses"
+      :label="label"
+      :groups="groups"
+      :current="current"
+      :replace="replace"
+      :unsaved="unsaved"
+      :described="narrow"
+    />
 
     <div
       v-if="showsPage"

@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AdministrationFrame from './AdministrationFrame.vue'
 
@@ -239,6 +239,59 @@ describe('AdministrationFrame page header', () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
     expect(wrapper.find('[aria-label="Related pages"]').exists()).toBe(false)
+  })
+})
+
+// The Sections button opens the same tree in a side sheet from 600 to 1239 pixels, beside the back arrow. Only the page
+// with a back arrow draws it; the index on /settings already is the tree.
+describe('AdministrationFrame Sections sheet', () => {
+  const sectionsButton = (wrapper) => wrapper.findAll('button').find(button => button.text() === 'Sections')
+  const sheet = (wrapper) => wrapper.find('[role="dialog"]')
+
+  it('draws the Sections button beside the back arrow, shown from 600 pixels only', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+
+    const button = sectionsButton(wrapper)
+    expect(button, 'the Sections button is drawn').toBeDefined()
+    expect(button.classes(), 'hidden below 600 pixels').toContain('hidden')
+    expect(button.classes(), 'shown from the 600 pixel breakpoint').toContain('min-[600px]:inline-flex')
+    expect(button.classes(), 'a 48 pixel target').toContain('min-h-12')
+  })
+
+  it('draws no Sections button on wide widths, where the tree is beside the page', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: false })
+
+    expect(sectionsButton(wrapper), 'no button from 1240 pixels').toBeUndefined()
+  })
+
+  it('draws no Sections button on the index at /settings, which is the tree on the page', async () => {
+    const wrapper = await mountFrame({ groups: groups(), current: undefined, narrow: true }, '/settings')
+
+    expect(sectionsButton(wrapper), 'no button without a back arrow').toBeUndefined()
+  })
+
+  it('opens the tree in a modal sheet named Administration pages, with the current entry marked', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+
+    await sectionsButton(wrapper).trigger('click')
+
+    expect(sheet(wrapper).exists(), 'the sheet is open').toBe(true)
+    expect(sheet(wrapper).attributes('aria-modal')).toBe('true')
+    const names = sheet(wrapper).findAll('a').map(link => link.text())
+    expect(names, 'the sheet holds the whole tree').toEqual(['Users', 'Audit log', 'Audit settings'])
+    const marked = sheet(wrapper).findAll('a').filter(link => link.attributes('aria-current') === 'page')
+    expect(marked.map(link => link.text()), 'the current entry is marked').toEqual(['Audit log'])
+  })
+
+  it('opens the chosen entry and closes the sheet', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+    await sectionsButton(wrapper).trigger('click')
+
+    await sheet(wrapper).findAll('a').find(link => link.text() === 'Users').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.vm.$router.currentRoute.value.path, 'the chosen page is open').toBe('/access/users')
+    expect(sheet(wrapper).exists(), 'the sheet is closed').toBe(false)
   })
 })
 

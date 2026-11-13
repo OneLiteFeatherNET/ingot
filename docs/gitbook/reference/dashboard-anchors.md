@@ -107,6 +107,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `md-radio` | experimental | `src/components/md/MdRadio.vue` | none | none |
 | `md-select` | experimental | `src/components/md/MdSelect.vue` | none | none |
 | `md-select-renderer` (no element of its own) | stable | `src/components/renderers/MdSelectRenderer.vue` | none | none |
+| `md-side-sheet` | experimental | `src/components/md/MdSideSheet.vue` | none | none |
 | `md-snackbar` | experimental | `src/components/md/MdSnackbar.vue` | none | none |
 | `md-switch` | experimental | `src/components/md/MdSwitch.vue` | none | none |
 | `md-text-area` | experimental | `src/components/md/MdTextArea.vue` | none | none |
@@ -180,6 +181,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `settings-review-sheet` | stable | `src/components/settings/SettingsReviewSheet.vue` | `header` | none |
 | `settings-view` (no element of its own) | stable | `src/components/settings/SettingsView.vue` | none | none |
 | `side-nav-layout` | stable | `src/components/layout/SideNavLayout.vue` | `nav`, `page`, `lead` | none |
+| `side-nav-tree` | experimental | `src/components/layout/SideNavTree.vue` | none | none |
 | `site-footer` | stable | `src/components/footer/SiteFooter.vue` | none | none |
 | `site-legal` | stable | `src/components/footer/SiteLegal.vue` | none | none |
 | `skip-link` | stable | `src/components/layout/SkipLink.vue` | none | none |
