@@ -25,15 +25,13 @@ import net.onelitefeather.ingot.search.backend.IndexAction
 
 /**
  * The bodies of the two requests that act on many documents at once (design D4): the prefix removal, which is
- * `_delete_by_query`, and the reorigin, which is `_update_by_query` with a stored script. Every value of a request goes into the
- * query or the script parameters, never into the text of the script, and the script is one constant of the plugin.
+ * `_delete_by_query`, and the reorigin, which is `_update_by_query` with an inline script. Every value of a request goes into the
+ * query or the script parameters, never into the text of the script, and the script is one constant of the plugin. The script
+ * is sent with each request, so no cluster permission for stored scripts is needed (design D7).
  */
 internal object OpenSearchRequests {
 
-    /** The id of the stored Painless script that sets the origin and the source host of matching documents. */
-    const val REORIGIN_SCRIPT_ID: String = "ingot-reorigin-v1"
-
-    /** The source of the stored script. The parameters are `origin` and `source_host` and nothing else. */
+    /** The source of the inline Painless script that sets the origin and the source host. The parameters are `origin` and `source_host` and nothing else. */
     const val REORIGIN_SCRIPT_SOURCE: String =
         "ctx._source.origin = params.origin; ctx._source.source_host = params.source_host;"
 
@@ -58,7 +56,7 @@ internal object OpenSearchRequests {
     }
 
     /**
-     * Sets the origin and the source host of the rows of the repository below the directory, by the stored script. The range is
+     * Sets the origin and the source host of the rows of the repository below the directory, by the inline script. The range is
      * the half-open one of the database: the paths from `directory/` up to `directory0`.
      */
     fun reorigin(action: IndexAction.Reorigin): ObjectNode {
@@ -69,7 +67,8 @@ internal object OpenSearchRequests {
             .put("gte", "${action.directory}/")
             .put("lt", "${action.directory}0")
         val script = body.putObject("script")
-        script.put("id", REORIGIN_SCRIPT_ID)
+        script.put("lang", "painless")
+        script.put("source", REORIGIN_SCRIPT_SOURCE)
         val parameters = script.putObject("params")
         parameters.put("origin", action.provenance.origin.name)
         parameters.put("source_host", action.provenance.sourceHost)

@@ -84,7 +84,7 @@ internal class OpenSearchSearchBackend(
 
     /**
      * Connects to the cluster, creates the physical index and the alias when they are missing, refuses an index that another
-     * mapping version wrote, and installs the reorigin script. A failure throws with a redacted message, which the core reports.
+     * mapping version wrote. A failure throws with a redacted message, which the core reports.
      */
     override fun open() {
         if (client.read("GET", "/_cluster/health").path("status").asText() == "red") {
@@ -104,11 +104,6 @@ internal class OpenSearchSearchBackend(
             }
             else -> throw IllegalStateException(redactor.redact("the alias $alias cannot be read, the cluster answered ${answer.status}"))
         }
-        client.read(
-            "PUT",
-            "/_scripts/${OpenSearchRequests.REORIGIN_SCRIPT_ID}",
-            mapOf("script" to mapOf("lang" to "painless", "source" to OpenSearchRequests.REORIGIN_SCRIPT_SOURCE)),
-        )
     }
 
     /** Nothing to release: the connections belong to the JDK client, which closes with the process. */
