@@ -33,7 +33,7 @@ const ADMINISTRATION_PAGES = [
 const administrationLinks = async (page) => {
   const tree = page.getByRole('navigation', { name: 'Administration', exact: true })
   await expect(tree.getByRole('link', { name: 'Javadoc', exact: true })).toBeVisible()
-  await expect(tree.getByRole('link', { name: 'Audit', exact: true })).toBeVisible()
+  await expect(tree.getByRole('link', { name: 'Audit settings', exact: true })).toBeVisible()
   return tree.getByRole('link').evaluateAll(links => links.map(link => ({
     name: link.textContent.trim(),
     current: link.getAttribute('aria-current') === 'page',

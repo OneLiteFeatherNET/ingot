@@ -60,9 +60,7 @@ describe('SideNavLayout', () => {
     return mount(SideNavLayout, {
       props: {
         label: 'Access sections',
-        sectionLabel: 'Access',
         groups: fixtureGroups(),
-        indexTo: { name: 'access' },
         ...props
       },
       slots: { default: '<p class="page-body">Page body</p>' },
@@ -70,14 +68,21 @@ describe('SideNavLayout', () => {
     })
   }
 
-  it('renders the links of each group under the heading of that group', async () => {
+  it('renders the links of each group as a list, named by the visible heading of that group', async () => {
     const wrapper = await mountLayout({ current: 'users' })
 
-    const groups = wrapper.findAll('[role="group"]')
+    const lists = wrapper.findAll('ul[aria-labelledby]')
+    const names = lists.map(list => wrapper.get(`#${list.attributes('aria-labelledby')}`).text())
+    expect(names, 'one list per heading, named by the heading').toEqual(['Accounts', 'Sign in'])
+    expect(lists[0].findAll('a').map(link => link.text())).toEqual(['Users', 'Machine accounts', 'Teams'])
+    expect(lists[1].findAll('a').map(link => link.text())).toEqual(['SSO', 'LDAP'])
+  })
 
-    expect(groups.map(group => group.attributes('aria-label')), 'one labelled group per heading').toEqual(['Accounts', 'Sign in'])
-    expect(groups[0].findAll('a').map(link => link.text())).toEqual(['Users', 'Machine accounts', 'Teams'])
-    expect(groups[1].findAll('a').map(link => link.text())).toEqual(['SSO', 'LDAP'])
+  it('draws no group heading as a heading element, and no group without a visible name', async () => {
+    const wrapper = await mountLayout({ current: 'users' })
+
+    expect(wrapper.findAll('h1, h2, h3, h4, h5, h6'), 'the group headings are paragraphs').toEqual([])
+    expect(wrapper.findAll('[role="group"]'), 'the lists are named by aria-labelledby, not by aria-label').toEqual([])
   })
 
   it('marks only the current link with aria-current page', async () => {
@@ -146,32 +151,4 @@ describe('SideNavLayout', () => {
     expect(wrapper.find('.page-body').exists(), 'no page is drawn under the index').toBe(false)
   })
 
-  it('gives a back arrow on narrow widths that returns to the index', async () => {
-    const wrapper = await mountLayout({ current: 'users', narrow: true })
-
-    const back = wrapper.find('[aria-label="Back to Access"]')
-
-    expect(back.exists(), 'a page below the index has a back arrow').toBe(true)
-    expect(back.attributes('href'), 'the arrow leads to the index address').toBe('/access')
-  })
-
-  it('shows no back arrow on wide widths', async () => {
-    const wrapper = await mountLayout({ current: 'users', narrow: false })
-
-    expect(wrapper.find('[aria-label="Back to Access"]').exists()).toBe(false)
-  })
-
-  it('names the section and the open page in the breadcrumb', async () => {
-    const wrapper = await mountLayout({ current: 'teams', narrow: false })
-
-    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li').map(item => item.text())
-
-    expect(crumbs, 'the breadcrumb reads section then page').toEqual(['Access', 'Teams'])
-  })
-
-  it('shows no breadcrumb when the open page is not one of the links', async () => {
-    const wrapper = await mountLayout({ current: 'check', narrow: false })
-
-    expect(wrapper.find('[aria-label="Breadcrumb"]').exists(), 'a page outside the groups has no crumb of its own').toBe(false)
-  })
 })

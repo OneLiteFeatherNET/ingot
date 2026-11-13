@@ -57,6 +57,10 @@ describe('UnsavedChangesBar', () => {
     expect(wrapper.emitted('discard')).toEqual([[]])
   })
 
+  it('says that other instances pick up saved changes within 10 seconds, as supporting text of the save bar', () => {
+    expect(mountBar().text()).toContain('Other instances pick up saved changes within 10 seconds.')
+  })
+
   it('does not allow saving while a domain has an invalid entry, and says why', () => {
     const wrapper = mountBar({ invalid: true })
 
