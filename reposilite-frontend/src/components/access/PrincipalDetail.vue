@@ -170,7 +170,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
 
     <template v-else-if="detail">
       <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
-        <div class="flex items-start justify-between gap-2">
+        <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="flex min-w-0 flex-col gap-2">
             <h3
               id="principal-title"
@@ -194,7 +194,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
               </TokenTag>
             </div>
           </div>
-          <div class="flex shrink-0 items-center gap-2">
+          <div class="flex max-w-full flex-wrap items-center gap-2">
             <router-link
               v-slot="{ href, navigate }"
               :to="{ name: 'access-check', query: { principal: detail.name } }"

@@ -45,6 +45,16 @@ const groups = () => [
   }
 ]
 
+// The element that holds the side navigation and the page: the wrapper of the layout, which follows the header.
+const measureOf = (wrapper) => wrapper.get('header').element.nextElementSibling
+
+// The label of a crumb: its text without the separator after it, which is decorative and aria-hidden.
+const crumbLabel = (crumb) => {
+  const copy = crumb.element.cloneNode(true)
+  copy.querySelectorAll('[aria-hidden="true"]').forEach(node => node.remove())
+  return copy.textContent.trim()
+}
+
 const mountFrame = async (props, url = '/audit') => {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push(url)
@@ -92,12 +102,28 @@ describe('AdministrationFrame', () => {
     expect(classes, 'no 1600 pixel cap').not.toContain('min-[1920px]:max-w-[1600px]')
   })
 
-  it('keeps a reading page at a 960 pixel measure, at the start of the content column', async () => {
+  it('keeps the section at full width on a reading page too, so its header spans like a wide page', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: true })
 
     const classes = wrapper.element.classList
-    expect(classes, 'a reading page (text and forms) is at most 960 pixels wide').toContain('max-w-[960px]')
-    expect(classes, 'it stays at the start of the column, not centred').not.toContain('mx-auto')
+    expect(classes, 'the header spans the container on both kinds of page').toContain('max-w-none')
+    expect(classes, 'no 960 pixel cap on the section, which would float the header shortcuts').not.toContain('max-w-[960px]')
+  })
+
+  it('keeps a reading page at a 960 pixel measure around the layout only, at the start of the content column', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: true })
+
+    const measure = measureOf(wrapper)
+    expect(measure.classList, 'a reading page (text and forms) is at most 960 pixels wide').toContain('max-w-[960px]')
+    expect(measure.classList, 'it stays at the start of the column, not centred').not.toContain('mx-auto')
+    expect(measure.querySelector('[aria-label="Administration"]'), 'the layout is measured').not.toBeNull()
+    expect(measure.querySelector('header'), 'the header is not measured').toBeNull()
+  })
+
+  it('draws no reading measure on a wide page', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', reading: false })
+
+    expect(measureOf(wrapper).classList).not.toContain('max-w-[960px]')
   })
 
   it('draws the page heading and its actions in one row from 600 pixels', async () => {
@@ -106,6 +132,17 @@ describe('AdministrationFrame', () => {
     const header = wrapper.find('header').classes()
     expect(header, 'the row starts at the 600 pixel breakpoint').toContain('min-[600px]:flex-row')
     expect(header, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
+  })
+
+  it('lets the actions wrap below the text when the row is short of room, instead of squeezing the text', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
+
+    expect(wrapper.find('header').classes(), 'the header row may wrap').toContain('min-[600px]:flex-wrap')
+    const textColumn = wrapper.get('header > div').classes()
+    expect(textColumn, 'the text keeps a basis of 20 rem before the actions take room').toEqual(expect.arrayContaining(['min-[600px]:basis-80', 'min-w-0']))
+    const actions = wrapper.get('header > div:last-child').classes()
+    expect(actions, 'the actions group may wrap onto its own line').toContain('flex-wrap')
+    expect(actions, 'the actions group does not refuse to shrink').not.toContain('shrink-0')
   })
 
   it('does not make the page header sticky, so it scrolls away', async () => {
@@ -132,7 +169,7 @@ describe('AdministrationFrame', () => {
   it('names the group of the current entry in the breadcrumb, and the page in the heading', async () => {
     const wrapper = await mountFrame({ current: 'settings:audit' }, '/settings/audit')
 
-    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li').map(crumb => crumb.text())
+    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li').map(crumbLabel)
     expect(crumbs, 'the section, then the group of the page').toEqual(['Administration', 'Monitoring and support'])
     expect(wrapper.get('h1').text(), 'the page itself is named by the heading').toBe('Audit settings')
   })
@@ -171,7 +208,7 @@ describe('AdministrationFrame page header', () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
     const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
-    expect(crumbs.map(crumb => crumb.text())).toEqual(['Administration', 'Monitoring and support'])
+    expect(crumbs.map(crumbLabel)).toEqual(['Administration', 'Monitoring and support'])
     expect(crumbs[0].find('a').attributes('href'), 'Administration links to the hub').toBe('/settings')
     expect(crumbs[1].find('a').exists(), 'the group is not a link').toBe(false)
   })
@@ -186,7 +223,7 @@ describe('AdministrationFrame page header', () => {
     const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
 
     const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
-    expect(crumbs.map(crumb => crumb.text()), 'Administration, Access, then the list').toEqual(['Administration', 'Access', 'Users'])
+    expect(crumbs.map(crumbLabel), 'Administration, Access, then the list').toEqual(['Administration', 'Access', 'Users'])
     expect(crumbs[1].find('a').exists(), 'Access is not a link').toBe(false)
     expect(crumbs[2].find('a').attributes('href'), 'Users links to the list').toBe('/access/users')
     expect(wrapper.get('h1').text(), 'the heading is the item name').toBe('alice')
@@ -217,7 +254,7 @@ describe('AdministrationFrame page header', () => {
   it('shows only the last crumb on narrow widths, beside the back arrow, with the full trail as its name', async () => {
     const wrapper = await mountFrame({ current: 'settings:audit', narrow: true }, '/settings/audit')
 
-    const crumbs = wrapper.findAll('nav[aria-label="Administration / Monitoring and support"] li').map(crumb => crumb.text())
+    const crumbs = wrapper.findAll('nav[aria-label="Administration / Monitoring and support"] li').map(crumbLabel)
     expect(crumbs, 'only the last crumb is drawn').toEqual(['Monitoring and support'])
     const trail = wrapper.get('nav[aria-label="Administration / Monitoring and support"]')
     expect(trail.attributes('title'), 'the full trail is the title').toBe('Administration / Monitoring and support')
@@ -295,6 +332,49 @@ describe('AdministrationFrame Sections sheet', () => {
   })
 })
 
+describe('AdministrationFrame breadcrumb markup', () => {
+  const crumbItems = (wrapper) => wrapper.findAll('[aria-label="Breadcrumb"] li')
+  const separators = (wrapper) => wrapper.findAll('[aria-label="Breadcrumb"] [aria-hidden="true"]')
+
+  it('draws each separator as an element hidden from assistive technology, so it is not in any name', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const slashes = separators(wrapper)
+    expect(slashes.map(slash => slash.text()), 'one slash between each pair of crumbs').toEqual(['/', '/'])
+    expect(slashes.every(slash => slash.attributes('aria-hidden') === 'true')).toBe(true)
+  })
+
+  it('draws no separator after the last crumb', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const last = crumbItems(wrapper).at(-1)
+    expect(last.find('[aria-hidden="true"]').exists(), 'the last crumb has no slash after it').toBe(false)
+  })
+
+  it('draws the crumb and its separator in one inline row, so they share a baseline', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    for (const crumb of crumbItems(wrapper)) {
+      expect(crumb.classes(), 'each crumb is a flex row, so its separator is beside it').toEqual(expect.arrayContaining(['flex', 'items-center']))
+    }
+  })
+
+  it('lets a plain crumb truncate inside its row, instead of breaking the row', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const plain = crumbItems(wrapper)[1].get('span:not([aria-hidden])')
+    expect(plain.text()).toBe('Monitoring and support')
+    expect(plain.classes(), 'the text may shrink and ends with an ellipsis').toEqual(expect.arrayContaining(['min-w-0', 'truncate']))
+  })
+
+  it('lets a link crumb truncate inside its row as well', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const link = crumbItems(wrapper)[2].get('a')
+    expect(link.classes(), 'the link may shrink and ends with an ellipsis').toEqual(expect.arrayContaining(['min-w-0', 'truncate']))
+  })
+})
+
 describe('AdministrationFrame on the settings pages', () => {
   // The tree of /settings: Overview is the first entry, in a group without a heading, and the settings groups follow.
   const overviewGroups = () => [
@@ -313,7 +393,7 @@ describe('AdministrationFrame on the settings pages', () => {
     const wrapper = await mountFrame({ groups: overviewGroups(), current: 'page:overview', overview: true, description: undefined }, '/settings')
 
     const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
-    expect(crumbs.map(crumb => crumb.text()), 'only the section').toEqual(['Administration'])
+    expect(crumbs.map(crumbLabel), 'only the section').toEqual(['Administration'])
     expect(crumbs[0].find('a').exists(), 'the crumb is not a link to the page itself').toBe(false)
   })
 
@@ -321,7 +401,7 @@ describe('AdministrationFrame on the settings pages', () => {
     const wrapper = await mountFrame({ groups: overviewGroups(), current: 'settings:audit' }, '/settings/audit')
 
     const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
-    expect(crumbs.map(crumb => crumb.text())).toEqual(['Administration', 'Monitoring and support'])
+    expect(crumbs.map(crumbLabel)).toEqual(['Administration', 'Monitoring and support'])
     expect(crumbs[0].find('a').attributes('href'), 'Administration links to /settings').toBe('/settings')
     expect(crumbs[1].find('a').exists(), 'the group is plain text').toBe(false)
     expect(wrapper.get('h1').text(), 'the page is named by its heading').toBe('Audit settings')

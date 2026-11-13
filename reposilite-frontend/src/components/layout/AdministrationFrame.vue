@@ -94,18 +94,16 @@ const showsBack = computed(() => props.narrow && props.groups.length > 0 && prop
 const showsSections = computed(() => showsBack.value)
 const sheetOpen = ref(false)
 
-// The slash between two crumbs. Tailwind reads the class names from this file, so they stay whole.
-const SEPARATOR = "after:px-2 after:content-['/']"
 </script>
 
 <template>
   <section
-    :class="reading ? 'container max-w-[960px] pb-12 pt-7' : 'container mx-auto max-w-none pb-12 pt-7'"
+    class="container mx-auto max-w-none pb-12 pt-7"
     aria-labelledby="administration-title"
     data-ingot-component="administration-frame"
   >
-    <header class="flex flex-col gap-4 pb-6 min-[600px]:flex-row min-[600px]:items-end min-[600px]:justify-between">
-      <div class="flex min-w-0 flex-col gap-1">
+    <header class="flex flex-col gap-4 pb-6 min-[600px]:flex-row min-[600px]:flex-wrap min-[600px]:items-end min-[600px]:justify-between">
+      <div class="flex min-w-0 flex-col gap-1 min-[600px]:basis-80 min-[600px]:grow">
         <div
           v-if="showsBack || crumbs.length > 0"
           class="flex min-w-0 items-center gap-2"
@@ -152,8 +150,7 @@ const SEPARATOR = "after:px-2 after:content-['/']"
               <li
                 v-for="(crumb, index) in visibleCrumbs"
                 :key="index"
-                class="min-w-0"
-                :class="index < visibleCrumbs.length - 1 ? SEPARATOR : ''"
+                class="flex min-w-0 items-center"
               >
                 <RouterLink
                   v-if="crumb.to"
@@ -163,14 +160,20 @@ const SEPARATOR = "after:px-2 after:content-['/']"
                 >
                   <a
                     :href="href"
-                    class="md-focus-ring rounded-corner-small hover:text-on-surface"
+                    class="md-focus-ring min-w-0 truncate rounded-corner-small hover:text-on-surface"
                     @click="navigate"
                   >{{ crumb.label }}</a>
                 </RouterLink>
                 <span
                   v-else
-                  class="block truncate"
+                  class="min-w-0 truncate"
                 >{{ crumb.label }}</span>
+                <!-- The slash between two crumbs: decorative, so it is hidden from assistive technology and not in any name. -->
+                <span
+                  v-if="index < visibleCrumbs.length - 1"
+                  aria-hidden="true"
+                  class="shrink-0 px-2"
+                >/</span>
               </li>
             </ol>
           </nav>
@@ -190,7 +193,7 @@ const SEPARATOR = "after:px-2 after:content-['/']"
       </div>
       <div
         v-if="$slots.actions || shortcuts.length > 0 || showsSections"
-        class="flex shrink-0 flex-wrap items-center gap-2"
+        class="flex max-w-full flex-wrap items-center gap-2"
       >
         <button
           v-if="showsSections"
@@ -241,23 +244,27 @@ const SEPARATOR = "after:px-2 after:content-['/']"
       </div>
     </header>
 
-    <SideNavLayout
-      :label="label"
-      :groups="groups"
-      :current="current"
-      :narrow="narrow && groups.length > 0"
-      :replace="replace"
-      :unsaved="unsaved"
-      :overview="overview"
-    >
-      <template
-        v-if="$slots.lead"
-        #lead
+    <!-- The reading measure caps the layout (side navigation and page content), never the header: the header spans the
+         container on every page, and a reading page only keeps its content column at 960 pixels. -->
+    <div :class="reading ? 'max-w-[960px]' : 'min-w-0'">
+      <SideNavLayout
+        :label="label"
+        :groups="groups"
+        :current="current"
+        :narrow="narrow && groups.length > 0"
+        :replace="replace"
+        :unsaved="unsaved"
+        :overview="overview"
       >
-        <slot name="lead" />
-      </template>
-      <slot />
-    </SideNavLayout>
+        <template
+          v-if="$slots.lead"
+          #lead
+        >
+          <slot name="lead" />
+        </template>
+        <slot />
+      </SideNavLayout>
+    </div>
 
     <MdSideSheet
       v-if="showsSections"
