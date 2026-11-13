@@ -81,6 +81,17 @@ import panda.std.asError
 import java.time.Instant
 
 /**
+ * The index status of a search response (4.8), the same composition the Maintenance page uses, so every backend reports the core
+ * outbox. [rowsOf] is asked only for an empty page: a page with results proves that the index holds rows. [composed] receives
+ * whether rows exist.
+ */
+internal fun searchResponseStatus(
+    total: Long,
+    rowsOf: () -> Long,
+    composed: (rowsExist: Boolean) -> IndexStatus,
+): IndexStatus = composed(total > 0L || rowsOf() > 0L)
+
+/**
  * The search API of artifact search (artifact search spec, section 6). The search and the file lookup are open to anonymous
  * callers: the subject of the request decides which rows it sees. The index administration is for managers only.
  *
@@ -143,7 +154,7 @@ internal class SearchApiEndpoints(
                             total = page.total,
                             totalCapped = page.totalCapped,
                             facets = engine.facets(query, access),
-                            indexStatus = page.indexStatus,
+                            indexStatus = searchIndexStatus(page.total, page.indexStatus),
                         )
                     )
                 }
@@ -342,6 +353,12 @@ internal class SearchApiEndpoints(
         Result.error(SERVICE_UNAVAILABLE.toErrorResponse(unavailable.message ?: "The search timed out, narrow the filters"))
     } catch (tooLarge: SearchGrantSetTooLargeException) {
         Result.error(SERVICE_UNAVAILABLE.toErrorResponse(GRANT_SET_TOO_LARGE))
+    }
+
+    /** The index status of a search response: the core composition of the live backend, or the engine's own when none is live. */
+    private fun searchIndexStatus(total: Long, engineStatus: IndexStatus): IndexStatus {
+        val live = search.liveBackend() ?: return engineStatus
+        return searchResponseStatus(total, { live.admin.details().rows }, live.indexStatus)
     }
 
     /** The rows the subject may see: anonymous without a token, and the token's own rights otherwise. */
