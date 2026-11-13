@@ -43,6 +43,14 @@ const props = defineProps({
     type: Number,
     default: null
   },
+  /**
+   * What a screen reader says for the meter, in words: the value, the limit and the unit. Without it the
+   * meter announces only its percentage.
+   */
+  meterText: {
+    type: String,
+    default: ''
+  },
   /** One of the reserved state names. Always shown with `statusLabel`, never colour alone. */
   status: {
     type: String,
@@ -59,8 +67,11 @@ const props = defineProps({
   }
 })
 
-const meterWidth = computed(() =>
-  props.ratio === null ? '0%' : `${Math.min(100, Math.max(0, props.ratio * 100))}%`)
+// A meter reads 0 to 100. A value above its limit fills the bar and is announced as 100, never as more.
+const meterValue = computed(() =>
+  props.ratio === null ? 0 : Math.min(100, Math.max(0, Math.round(props.ratio * 100))))
+
+const meterWidth = computed(() => `${meterValue.value}%`)
 
 // The meter fill is the primary role until the reading is one the operator has to act on,
 // and only then does it turn to a state colour.
@@ -106,10 +117,11 @@ const meterColor = computed(() => {
       v-if="ratio !== null"
       class="mt-2 h-1.5 w-full overflow-hidden rounded-corner-full bg-surface-container-highest"
       role="meter"
-      :aria-valuenow="Math.round(ratio * 100)"
+      :aria-valuenow="meterValue"
       aria-valuemin="0"
       aria-valuemax="100"
-      :aria-label="`${label}: ${Math.round(ratio * 100)} percent of the limit`"
+      :aria-valuetext="meterText || `${meterValue} percent`"
+      :aria-label="`${label}: ${meterValue} percent of the limit`"
     >
       <div
         class="h-full rounded-corner-full"

@@ -90,7 +90,7 @@ const memorySeries = computed(() => instances.value
 const threadsSeries = computed(() => instances.value
   ? seriesPerInstance('threads')
   : [{
-    name: 'Used threads',
+    name: 'Live threads',
     data: (snapshots.value ?? []).map(record => [record.at, record.threads])
   }])
 
@@ -112,7 +112,7 @@ const empty = computed(() => instances.value
   >
     <ChartCard
       title="Memory"
-      subtitle="Megabytes in use, recent history"
+      subtitle="Heap in use, MB, recent history"
       :loading="loading"
       :error="errorMessage"
       :empty-message="empty ? 'No snapshots recorded yet. The first one appears a few minutes after startup.' : ''"
@@ -126,7 +126,7 @@ const empty = computed(() => instances.value
 
     <ChartCard
       title="Threads"
-      subtitle="Threads in use, recent history"
+      subtitle="Live threads, recent history"
       :loading="loading"
       :error="errorMessage"
       :empty-message="empty ? 'No snapshots recorded yet. The first one appears a few minutes after startup.' : ''"

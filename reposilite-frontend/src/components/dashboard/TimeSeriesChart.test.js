@@ -61,3 +61,31 @@ describe('TimeSeriesChart animation', () => {
     expect(latest.animation, 'the animation flag of the redrawn option').toBe(false)
   })
 })
+
+describe('TimeSeriesChart legend', () => {
+  const instances = [
+    { name: 'ingot-0', data: [[Date.UTC(2026, 0, 1), 100]] },
+    { name: 'ingot-1', data: [[Date.UTC(2026, 0, 1), 150]] }
+  ]
+
+  it('shows a legend when the chart draws two instances, so the lines can be told apart', () => {
+    wrapper = mount(TimeSeriesChart, { props: { series: instances } })
+
+    const option = chart.setOption.mock.calls[0][0]
+    expect(option.legend.show, 'two series need a legend that is shown').toBe(true)
+  })
+
+  it('names each series after its instance, so the legend lists the instances', () => {
+    wrapper = mount(TimeSeriesChart, { props: { series: instances } })
+
+    const option = chart.setOption.mock.calls[0][0]
+    expect(option.series.map(line => line.name), 'the series carry the instance names').toEqual(['ingot-0', 'ingot-1'])
+  })
+
+  it('shows no legend for a single series, because the heading already names it', () => {
+    wrapper = mount(TimeSeriesChart, { props: { series: [instances[0]] } })
+
+    const option = chart.setOption.mock.calls[0][0]
+    expect(option.legend.show, 'one series needs no legend').toBe(false)
+  })
+})

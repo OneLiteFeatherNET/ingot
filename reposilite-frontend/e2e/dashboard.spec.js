@@ -19,9 +19,6 @@ import { siteUrl } from './support/api.js'
 
 test.describe('dashboard status', () => {
   test('shows read-only as a status without a switch control', async ({ adminPage: page }) => {
-    // Known regression on main: the read-only state is a switch, although it is only a status. The fixing change
-    // is fix-dashboard-status, which removes this marker.
-    test.fail(true, 'fix-dashboard-status')
     await page.goto(siteUrl('/dashboard'))
     const status = page.getByRole('region', { name: 'Instance status' })
     await expect(status).toBeVisible()
@@ -30,9 +27,6 @@ test.describe('dashboard status', () => {
   })
 
   test('shows no used value above its limit', async ({ adminPage: page }) => {
-    // Known regression on main: the threads card shows 32 used of a pool of 25. The fixing change is
-    // fix-dashboard-status, which removes this marker.
-    test.fail(true, 'fix-dashboard-status')
     await page.goto(siteUrl('/dashboard'))
     await expect(page.getByRole('region', { name: 'Instance status' })).toBeVisible()
 

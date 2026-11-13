@@ -24,6 +24,15 @@ import StatusLabel from './StatusLabel.vue'
 // Health moves as often as the status tiles it sits under, so it is polled on the same beat.
 const POLL_INTERVAL_MS = 5000
 
+defineProps({
+  // With a cluster, the cluster summary states the health once, so the row drops its own label and keeps
+  // the detail lines and the integrations.
+  showLabel: {
+    type: Boolean,
+    default: true
+  }
+})
+
 const { client, isManager } = useSession()
 const health = ref(null)
 const integrations = ref([])
@@ -92,6 +101,7 @@ onBeforeUnmount(() => {
       class="flex flex-wrap items-center gap-x-2 md-body-medium text-on-surface"
     >
       <StatusLabel
+        v-if="showLabel"
         :color="DOT_COLORS[indicator.state]"
         class="md-label-large"
       >

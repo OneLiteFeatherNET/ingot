@@ -16,6 +16,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { createErrorToast } from '../../helpers/toast'
 import { useSession } from '../../store/session'
 import MdButton from '../md/MdButton.vue'
@@ -23,7 +24,6 @@ import MdCard from '../md/MdCard.vue'
 import { healthLabel, summariseCluster, uptimeOf } from './clusterStatus'
 import FailuresSheet from './FailuresSheet.vue'
 import InstanceHealthRow from './InstanceHealthRow.vue'
-import ReadOnlyToggle from './ReadOnlyToggle.vue'
 import StatTile from './StatTile.vue'
 
 // Five seconds, where this used to ask once a second. Memory, threads and uptime do not
@@ -31,8 +31,13 @@ import StatTile from './StatTile.vue'
 // hours at a time; a fifth of the requests is a fifth of the load for the same reading.
 const POLL_INTERVAL_MS = 5000
 
+// The node the server checks for read-only mode. A visitor who holds it may change the mode on the
+// Maintenance page, so the banner links there for them only.
+const MAINTENANCE_NODE = 'ingot.admin.maintenance'
+
 const emit = defineEmits(['cluster'])
-const { client } = useSession()
+const { client, can } = useSession()
+const canMaintain = computed(() => can(MAINTENANCE_NODE))
 const instanceStatus = ref(null)
 const failed = ref(false)
 let timer = null
@@ -92,27 +97,35 @@ const ratio = (used, max) => {
   return Number.isFinite(limit) && limit > 0 ? Number(used) / limit : null
 }
 
+// The heap meter says what it divides by: the heap in use of the largest heap the JVM may use.
+const heapMeterText = (used, max) => {
+  const share = ratio(used, max)
+  const percent = share === null ? '' : `, ${Math.round(share * 100)} percent`
+  return `${Number(used).toFixed(1)} of ${Number(max)} MB maximum heap in use${percent}`
+}
+
+// Heap in use is the memory of this JVM that is not free, including garbage not yet collected. The
+// limit is the maximum heap, not free memory, so the card says "maximum heap" and not "available".
 const memory = computed(() => {
   const status = instanceStatus.value
   return {
     value: `${Number(status.usedMemory).toFixed(1)} MB`,
-    detail: `of ${Number(status.maxMemory)} MB available`,
-    ratio: ratio(status.usedMemory, status.maxMemory)
+    detail: `of ${Number(status.maxMemory)} MB maximum heap`,
+    ratio: ratio(status.usedMemory, status.maxMemory),
+    meterText: heapMeterText(status.usedMemory, status.maxMemory)
   }
 })
 
-const threads = computed(() => {
-  const status = instanceStatus.value
-  return {
-    value: `${status.usedThreads}`,
-    detail: `of ${status.maxThreads} in the pool`,
-    ratio: ratio(status.usedThreads, status.maxThreads)
-  }
-})
+// Live threads are counted by the JVM. No limit in the API counts the same threads as the pool sizes,
+// so the card shows the count with no bar and no "of N".
+const threads = computed(() => ({
+  value: `${instanceStatus.value.usedThreads}`,
+  detail: 'Threads in this JVM'
+}))
 
-// The backend reports the newest published release next to the running one, and until now
-// nothing on this page did anything with it. `<unknown>` is what it sends when the check
-// could not run, which is not the same as being up to date.
+// The backend reports the newest published release next to the running one. `<unknown>` is what it
+// sends when the check could not run, so there is no comparison to make. Equal versions say the running
+// build is the same as the latest release; they do not say it is up to date, which the comparison cannot show.
 const versionState = computed(() => {
   const { version, latestVersion } = instanceStatus.value
 
@@ -120,51 +133,58 @@ const versionState = computed(() => {
     return { status: null, label: '' }
   }
   return latestVersion === version
-    ? { status: 'good', label: 'Up to date' }
-    : { status: 'warning', label: `${latestVersion} available` }
+    ? { status: 'good', label: 'Same as latest release' }
+    : { status: 'warning', label: `Release ${latestVersion} is available` }
 })
 
-const failureState = (count) => count === 0
-  ? { status: 'good', label: 'None recorded' }
-  : { status: 'critical', label: count === 1 ? '1 failure recorded' : `${count} failures recorded` }
+// The subline says what the count covers. It names the number only where it is the answer.
+const failureState = (count, scope = '') => count === 0
+  ? { status: 'good', label: `None since the last restart${scope}` }
+  : { status: 'critical', label: `${count} distinct since the last restart${scope}` }
 
 const failures = computed(() => failureState(instanceStatus.value.failuresCount))
 
+// Health of each instance, as the row words it. The cluster summary words the worst one as a statement.
+const ROW_HEALTH = { up: 'Up', down: 'Down' }
+
 // The cluster view exists only when the status carries instances. An empty list has nothing to
-// summarise, so it shows nothing, and the tiles above still describe this instance.
+// summarise, so it shows nothing, and the single-instance tiles stay as they are.
 const clusterView = computed(() => {
   const instances = instanceStatus.value?.cluster?.instances
   if (!instances?.length) return null
 
   const now = Date.now()
   const summary = summariseCluster(instances, now)
-  const failuresState = failureState(summary.failuresCount)
+  const failuresState = failureState(summary.failuresCount, ', counted per instance')
+  const up = instances.filter(instance => instance.health === 'up').length
 
   return {
     memory: {
       value: `${summary.usedMemory.toFixed(1)} MB`,
-      detail: `of ${summary.maxMemory} MB available`,
-      ratio: ratio(summary.usedMemory, summary.maxMemory)
+      detail: `of ${summary.maxMemory} MB maximum heap in total`,
+      ratio: ratio(summary.usedMemory, summary.maxMemory),
+      meterText: heapMeterText(summary.usedMemory, summary.maxMemory)
     },
     threads: {
       value: `${summary.usedThreads}`,
-      detail: `of ${summary.maxThreads} in the pool`,
-      ratio: ratio(summary.usedThreads, summary.maxThreads)
+      detail: 'Live threads on all instances'
     },
     failures: { value: `${summary.failuresCount}`, ...failuresState },
     uptime: prettyUptime(summary.uptime),
     version: summary.version.mixed
       ? { value: 'mixed', detail: `Versions: ${summary.version.versions.join(', ')}` }
       : { value: summary.version.label, detail: 'Same on every instance' },
-    health: { value: healthLabel(summary.health), detail: 'Worst instance' },
-    rows: instances.map(instance => ({
+    health: { value: healthLabel(summary.health), detail: `${up} of ${instances.length} instances up` },
+    // The status documents the local instance first, so the first row is this one.
+    rows: instances.map((instance, index) => ({
       id: instance.id,
+      local: index === 0,
       version: instance.version,
       uptime: prettyUptime(uptimeOf(instance, now)),
-      memory: `${Number(instance.usedMemory).toFixed(1)} of ${instance.maxMemory} MB`,
-      threads: `${instance.usedThreads} of ${instance.maxThreads} threads`,
-      failures: failureState(instance.failuresCount).label,
-      health: healthLabel(instance.health),
+      heap: `${Number(instance.usedMemory).toFixed(1)} MB of ${instance.maxMemory} MB maximum heap`,
+      threads: `${instance.usedThreads} live threads`,
+      failures: `${instance.failuresCount}`,
+      health: ROW_HEALTH[instance.health] ?? 'Unknown',
       stale: instance.stale
     }))
   }
@@ -178,11 +198,18 @@ const openFailures = () => {
   if (hasFailures.value) failuresOpen.value = true
 }
 
-// Read-only mode comes with the status. The source says whether the environment forces it, which
-// decides whether turning it off from the dashboard can work.
-const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === 'environment'
-  ? 'Set by INGOT_READ_ONLY on this instance.'
-  : 'Turned on from this dashboard or the API.')
+// Read-only mode comes with the status, and the dashboard only shows it. The source says whether the
+// environment forces it, and a stored state covers every instance of a cluster. Who changed it and when
+// are not in the status; the audit log holds them.
+const readOnlyNote = computed(() => {
+  const status = instanceStatus.value
+  if (status.readOnlySource === 'environment') {
+    return 'Set by INGOT_READ_ONLY on this instance. Only this instance refuses writes.'
+  }
+  return status.cluster?.instances?.length
+    ? 'Turned on from the Maintenance page or the API. Every instance of the cluster refuses writes.'
+    : 'Turned on from the Maintenance page or the API. This instance refuses writes.'
+})
 </script>
 
 <template>
@@ -245,27 +272,48 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
         Read-only mode is on
       </p>
       <p class="md-body-medium">
-        This instance is read-only. Writes are refused until read-only mode is turned off.
+        Writes are refused until read-only mode is turned off.
       </p>
       <p class="md-body-small">
-        {{ readOnlySource }}
+        {{ readOnlyNote }}
+      </p>
+      <p class="md-body-small">
+        <RouterLink
+          v-if="canMaintain"
+          to="/maintenance"
+          class="underline underline-offset-4 md-focus-ring rounded-corner-extra-small"
+        >
+          Turn it off on the Maintenance page
+        </RouterLink>
+        <template v-else>
+          A maintenance administrator can turn it off.
+        </template>
       </p>
     </div>
 
-    <ReadOnlyToggle @changed="requestStatus()" />
+    <div
+      data-testid="read-only-status"
+      class="flex flex-wrap items-baseline gap-2"
+    >
+      <span class="md-title-small text-on-surface">Read-only mode</span>
+      <span class="md-body-medium text-on-surface-variant">{{ instanceStatus.readOnly ? 'On' : 'Off' }}</span>
+    </div>
 
-    <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+    <div
+      v-if="!clusterView"
+      class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5"
+    >
       <StatTile
         label="Used memory"
         :value="memory.value"
         :detail="memory.detail"
         :ratio="memory.ratio"
+        :meter-text="memory.meterText"
       />
       <StatTile
-        label="Used threads"
+        label="Live threads"
         :value="threads.value"
         :detail="threads.detail"
-        :ratio="threads.ratio"
       />
       <StatTile
         label="Failures"
@@ -316,12 +364,12 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
           :value="clusterView.memory.value"
           :detail="clusterView.memory.detail"
           :ratio="clusterView.memory.ratio"
+          :meter-text="clusterView.memory.meterText"
         />
         <StatTile
           label="Cluster threads"
           :value="clusterView.threads.value"
           :detail="clusterView.threads.detail"
-          :ratio="clusterView.threads.ratio"
         />
         <StatTile
           label="Cluster failures"
@@ -361,20 +409,80 @@ const readOnlySource = computed(() => instanceStatus.value?.readOnlySource === '
           <div class="flex flex-wrap items-center gap-2">
             <span class="md-title-small text-on-surface">{{ row.id }}</span>
             <span
+              v-if="row.local"
+              class="rounded-corner-full bg-secondary-container px-2 py-0.5 md-label-small text-on-secondary-container"
+            >
+              This instance
+            </span>
+            <span
               v-if="row.stale"
               class="rounded-corner-full bg-surface-container-high px-2 py-0.5 md-label-small text-on-surface"
             >
               Stale
             </span>
+            <MdButton
+              v-if="row.local && hasFailures"
+              variant="text"
+              @click="openFailures"
+            >
+              Show failures
+            </MdButton>
           </div>
-          <p class="md-body-small text-on-surface-variant">
-            Version {{ row.version }}. Up {{ row.uptime }}. {{ row.memory }}, {{ row.threads }}. {{ row.failures }}. {{ row.health }}.
-          </p>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 md:grid-cols-3">
+            <div class="flex flex-col">
+              <dt class="md-label-medium text-on-surface-variant">
+                Version
+              </dt>
+              <dd class="md-body-small text-on-surface">
+                {{ row.version }}
+              </dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="md-label-medium text-on-surface-variant">
+                Uptime
+              </dt>
+              <dd class="md-body-small text-on-surface">
+                {{ row.uptime }}
+              </dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="md-label-medium text-on-surface-variant">
+                Heap
+              </dt>
+              <dd class="md-body-small text-on-surface">
+                {{ row.heap }}
+              </dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="md-label-medium text-on-surface-variant">
+                Threads
+              </dt>
+              <dd class="md-body-small text-on-surface">
+                {{ row.threads }}
+              </dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="md-label-medium text-on-surface-variant">
+                Failures
+              </dt>
+              <dd class="md-body-small text-on-surface">
+                {{ row.failures }}
+              </dd>
+            </div>
+            <div class="flex flex-col">
+              <dt class="md-label-medium text-on-surface-variant">
+                Health
+              </dt>
+              <dd class="md-body-small text-on-surface">
+                {{ row.health }}
+              </dd>
+            </div>
+          </dl>
         </li>
       </ul>
     </section>
 
-    <InstanceHealthRow />
+    <InstanceHealthRow :show-label="!clusterView" />
     <FailuresSheet
       v-model="failuresOpen"
       @cleared="requestStatus()"

@@ -171,4 +171,15 @@ describe('ResourceTrends', () => {
     expect(wrapper.text(), 'no sample anywhere means there is nothing to draw yet').toContain('No snapshots recorded yet')
     wrapper.unmount()
   })
+
+  it('names the unit and the measure in the subtitles of both charts', async () => {
+    session.client = ref(clientWith(() => Promise.resolve({ data: [] })))
+    const wrapper = mount(ResourceTrends)
+    await flushPromises()
+
+    expect(wrapper.text(), 'the memory chart names the heap in megabytes').toContain('Heap in use, MB')
+    expect(wrapper.text(), 'the threads chart names live threads, not threads in use').toContain('Live threads')
+    expect(wrapper.text(), 'the word in use is not used for threads').not.toContain('Threads in use')
+    wrapper.unmount()
+  })
 })
