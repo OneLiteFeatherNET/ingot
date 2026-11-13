@@ -176,10 +176,12 @@ The OLF gradient is a brand element, not a role, so it has no Tailwind colour ut
 `--olf-gradient` custom property in `color.css` runs at 135 degrees from the primary to the
 tertiary of the default scheme, in both modes: `#0062a1` to `#565a8b` in light, `#9ccaff` to
 `#bfc2fa` in dark. The OLF pink and the four-stop brand gradient are no longer used by the
-default. The only user is the brand bar, so nothing pink is drawn by the default theme. Use it for brand areas only:
+default. Nothing pink is drawn by the default theme. The gradient is not drawn in the chrome
+and no component draws it at present: the top bar keeps `surface-container` with no rule, and
+the Overview hero draws no band. Use it for brand areas only:
 
-- `.olf-brand-bar` is a 4px band at the top edge of a section. The Overview hero draws one,
-  in `HeaderHero.vue`.
+- `.olf-brand-bar` is a 4px band at the top edge of a section. It is kept as a utility class
+  and is not used by any component.
 - Components stay on the MD3 roles. A button on a gradient area is still a `primary` filled
   button.
 - Under `forced-colors: active` the bar takes the `Highlight` system colour, because forced
@@ -535,11 +537,11 @@ Emits `update:modelValue` with the key of the clicked item. Slot `icon` receives
 
 ### MdNavigationRail
 
-Same props and events as `MdNavigationBar`. 80px `surface` rail, 56 by 32 pill, 56px items with the label under the icon, first item 44px from the top. Used from 600px.
+Same props and events as `MdNavigationBar`. 96px `surface-container` rail, 56 by 32 pill, 56px items with the label under the icon, first item 44px from the top. Used from 600px.
 
 ### Adaptive navigation
 
-Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bottom)`; the page reserves its height. From 600px the rail is fixed at the left and the page is offset by 80px, header included. Switch with the CSS breakpoints `max-[600px]:` / `min-[600px]:`, never with JavaScript. A user with one section gets no navigation.
+Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bottom)`; the page reserves its height. From 600px the rail is fixed at the left and the page is offset by 96px, header included. From 600px the content is a `surface` sheet with rounded corners inside the frame of rail and top bar, and the sticky corner pieces under the top bar finish the sheet's corners. Switch with the CSS breakpoints `max-[600px]:` / `min-[600px]:`, never with JavaScript. A user with one section gets no navigation.
 
 The page publishes the bar height as `--app-bottom-bar-height` on the document root (80px with a
 bar, 0px without). The snackbar adds it to its bottom margin below 600px, so it sits above the bar.
@@ -558,7 +560,7 @@ A modal panel from the leading edge, 320px wide or the window less 56px, whichev
 
 ### Top app bar
 
-64px, `sticky top-0`, `surface`. Takes `surface-container` once the window has scrolled (`useWindowScroll`), with a `short4` colour transition. No shadow change.
+64px, `sticky top-0`, `surface-container` at every scroll position, the same role as the rail, so the two form one frame. It has no tone change on scroll, no border, no shadow and no decorative rule: the `surface` content sheet is the edge. It holds the instance name, as a link to the start page, and the account menu, and nothing else. The instance name is not a heading; each page has its own level one heading.
 
 ### MdLinearProgress
 
@@ -711,7 +713,10 @@ The Administration tree is the one navigation of the operator area. These rules 
 
 ## Known gaps
 
-None at present. Gaps that are deliberately left for the views that own them are listed here.
+Gaps that are deliberately left for the views that own them are listed here:
+
+- No tabs, list, dialog or drawer primitive under `src/components/md/`. Views that need one build it in their own folder until a primitive is added here.
+- The information architecture of the Administration area (its page header, its breadcrumb and the order of its entries) has no rules in this document until `rework-administration-information-architecture` adds them.
 
 ## Window margins
 
