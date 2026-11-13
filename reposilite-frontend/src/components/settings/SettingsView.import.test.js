@@ -81,10 +81,13 @@ const mountView = async () => {
   writes = []
   const store = createConfigurationStore(ref(fakeClient()), { secretsHidden: () => false })
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
+  // Import is an action of Overview, so the view is opened at /settings.
+  const router = namedRouter()
+  await router.push('/settings')
   wrapper = mount(SettingsView, {
     props: { selectedTab: 'Settings' },
     global: {
-      plugins: [namedRouter()],
+      plugins: [router],
       provide: { [configurationStoreKey]: store }
     },
     attachTo: document.body
@@ -125,6 +128,16 @@ describe('SettingsView import', () => {
     expect(writes, 'nothing is written before the user saves').toEqual([])
     expect(sheet(), 'the review shows the imported changes').not.toBeNull()
     expect(sheet().textContent).toContain('Visibility')
+  })
+
+  it('lists the imported domain under Needs attention as unsaved, and writes nothing to the server', async () => {
+    await mountView()
+
+    await pickFile(JSON.stringify({ maven: { repositories: [{ id: 'releases', visibility: 'PRIVATE' }] } }))
+
+    const attention = wrapper.get('[data-test="settings-attention"]')
+    expect(attention.get('[data-test="attention-row"]').attributes('aria-label'), 'the imported domain is listed as unsaved').toBe('Repositories, Unsaved changes')
+    expect(writes, 'the import is a draft until Save').toEqual([])
   })
 
   it('shows the errors per domain and field, and loads nothing when the file is invalid', async () => {

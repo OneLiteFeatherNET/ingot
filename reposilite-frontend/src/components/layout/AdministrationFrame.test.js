@@ -241,3 +241,36 @@ describe('AdministrationFrame page header', () => {
     expect(wrapper.find('[aria-label="Related pages"]').exists()).toBe(false)
   })
 })
+
+describe('AdministrationFrame on the settings pages', () => {
+  // The tree of /settings: Overview is the first entry, in a group without a heading, and the settings groups follow.
+  const overviewGroups = () => [
+    { id: 'overview', label: 'Overview', links: [{ key: 'page:overview', label: 'Overview', description: 'Shared configuration for all instances.', to: { name: 'settings' } }] },
+    ...groups()
+  ]
+
+  it('names the landing page Overview in its one heading, with the description of the tree entry', async () => {
+    const wrapper = await mountFrame({ groups: overviewGroups(), current: 'page:overview', overview: true, description: undefined }, '/settings')
+
+    expect(wrapper.findAll('h1').map(heading => heading.text()), 'the heading is the label of the Overview entry').toEqual(['Overview'])
+    expect(wrapper.text()).toContain('Shared configuration for all instances.')
+  })
+
+  it('draws the single crumb Administration on Overview, as plain text and not a link', async () => {
+    const wrapper = await mountFrame({ groups: overviewGroups(), current: 'page:overview', overview: true, description: undefined }, '/settings')
+
+    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
+    expect(crumbs.map(crumb => crumb.text()), 'only the section').toEqual(['Administration'])
+    expect(crumbs[0].find('a').exists(), 'the crumb is not a link to the page itself').toBe(false)
+  })
+
+  it('draws the crumb Administration as a link to /settings, then Monitoring and support as text, on the audit settings page', async () => {
+    const wrapper = await mountFrame({ groups: overviewGroups(), current: 'settings:audit' }, '/settings/audit')
+
+    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
+    expect(crumbs.map(crumb => crumb.text())).toEqual(['Administration', 'Monitoring and support'])
+    expect(crumbs[0].find('a').attributes('href'), 'Administration links to /settings').toBe('/settings')
+    expect(crumbs[1].find('a').exists(), 'the group is plain text').toBe(false)
+    expect(wrapper.get('h1').text(), 'the page is named by its heading').toBe('Audit settings')
+  })
+})

@@ -311,3 +311,62 @@ describe('SideNavLayout unsaved marks', () => {
     expect(teams.attributes('aria-label'), 'the name is not changed').toBeUndefined()
   })
 })
+
+// The lead is content that the caller places above the page: on Overview below 1240 pixels it comes before the index,
+// because it is the reason to land there; on wide widths it is the first thing of the page, beside the index.
+describe('SideNavLayout lead', () => {
+  const overviewGroups = () => [
+    { id: 'overview', label: 'Overview', links: [{ key: 'overview', label: 'Overview', to: { name: 'access' } }] },
+    ...fixtureGroups()
+  ]
+
+  const mountLead = async (props = {}) => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access')
+    await router.isReady()
+    return mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: overviewGroups(), current: 'overview', overview: true, ...props },
+      slots: {
+        lead: '<p class="lead-body">Needs attention</p>',
+        default: '<p class="page-body">Page body</p>'
+      },
+      global: { plugins: [router] }
+    })
+  }
+
+  const follows = (first, second) => first.element.compareDocumentPosition(second.element) & Node.DOCUMENT_POSITION_FOLLOWING
+
+  it('draws the lead above the index on Overview below 1240 pixels', async () => {
+    const wrapper = await mountLead({ narrow: true })
+
+    expect(wrapper.find('.lead-body').exists(), 'the lead is drawn').toBe(true)
+    expect(follows(wrapper.get('.lead-body'), wrapper.get(SIDE_NAV)), 'the index follows the lead').toBeTruthy()
+  })
+
+  it('draws the page body after the index on Overview below 1240 pixels', async () => {
+    const wrapper = await mountLead({ narrow: true })
+
+    expect(follows(wrapper.get(SIDE_NAV), wrapper.get('.page-body')), 'the page body follows the index').toBeTruthy()
+  })
+
+  it('draws the lead inside the page, after the index, on wide widths', async () => {
+    const wrapper = await mountLead({ narrow: false })
+
+    expect(follows(wrapper.get(SIDE_NAV), wrapper.get('.lead-body')), 'the lead is beside the index, after it in reading order').toBeTruthy()
+    expect(follows(wrapper.get('.lead-body'), wrapper.get('.page-body')), 'and before the page body').toBeTruthy()
+  })
+
+  it('draws no lead when the caller passes none', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access')
+    await router.isReady()
+    const wrapper = mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: overviewGroups(), current: 'overview', narrow: true, overview: true },
+      slots: { default: '<p class="page-body">Page body</p>' },
+      global: { plugins: [router] }
+    })
+
+    expect(wrapper.find('.lead-body').exists()).toBe(false)
+    expect(wrapper.find('.page-body').exists(), 'the page is still drawn').toBe(true)
+  })
+})

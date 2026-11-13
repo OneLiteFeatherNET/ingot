@@ -135,3 +135,38 @@ test.describe('wide screens', () => {
     })
   }
 })
+
+// Below 1240 pixels the Overview page is the index and the page at once. Its order is the page header, Needs attention,
+// the index with Overview marked current, and At a glance; no back arrow leads anywhere, because the index is on the page.
+test.describe('the Overview page below 1240 pixels', () => {
+  const topOf = (locator) => locator.evaluate(element => element.getBoundingClientRect().top)
+
+  for (const width of [320, 900]) {
+    test(`orders the header, Needs attention, the index and At a glance at ${width} pixels`, async ({ adminPage: page, seed }) => {
+      await seed.repository(`overview-draft-${width}`)
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto(siteUrl('/settings/repositories'))
+
+      // A draft that is not saved: the description of the repository is changed, and the change stays in the page.
+      await page.getByRole('button', { name: `Actions for overview-draft-${width}`, exact: true }).click()
+      await page.getByRole('menuitem', { name: `Edit overview-draft-${width}`, exact: true }).click()
+      await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Changed on the way to Overview')
+      await page.getByRole('link', { name: 'Back to Administration' }).click()
+
+      await expect(page).toHaveURL(/\/settings$/)
+      const heading = page.getByRole('heading', { name: 'Overview', level: 1 })
+      const attention = page.getByRole('heading', { name: 'Needs attention', level: 2 })
+      const index = page.getByRole('navigation', { name: 'Administration', exact: true })
+      const glance = page.getByRole('heading', { name: 'At a glance', level: 2 })
+      await expect(attention).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Repositories, Unsaved changes', exact: true })).toBeVisible()
+
+      const tops = [await topOf(heading), await topOf(attention), await topOf(index), await topOf(glance)]
+      expect(tops, 'the header, Needs attention, the index and At a glance, top to bottom').toEqual([...tops].sort((a, b) => a - b))
+      expect(await page.getByRole('link', { name: 'Back to Administration' }).count(), 'no back arrow on Overview').toBe(0)
+      expect(await index.getByRole('link', { name: 'Overview', exact: true }).getAttribute('aria-current'), 'Overview is marked current in the index').toBe('page')
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      expect(overflow, 'no horizontal scrolling in px').toBeLessThanOrEqual(0)
+    })
+  }
+})

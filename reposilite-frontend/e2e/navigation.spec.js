@@ -109,3 +109,33 @@ test.describe('administration navigation', () => {
     })
   }
 })
+
+test.describe('the Overview page of the administration', () => {
+  test('is the first entry of the tree and the current one, and draws no card grid', async ({ page }) => {
+    await signInAsAdmin(page)
+    await page.setViewportSize({ width: 1280, height: 800 })
+
+    await page.goto(siteUrl('/settings'))
+    const tree = page.getByRole('navigation', { name: 'Administration', exact: true })
+    await expect(tree.getByRole('link', { name: 'Javadoc', exact: true })).toBeVisible()
+    const first = tree.getByRole('link').first()
+    await expect(first, 'Overview is the first entry').toHaveText('Overview')
+    await expect(first, 'and it is the current one').toHaveAttribute('aria-current', 'page')
+    await expect(page.locator('[data-test="settings-card"]'), 'the content lists no page as a card').toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Needs attention', level: 2 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'At a glance', level: 2 })).toBeVisible()
+  })
+
+  test('finds Reverse proxy by the word nginx, and the live region says one page matches', async ({ page }) => {
+    await signInAsAdmin(page)
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto(siteUrl('/settings'))
+
+    await page.getByRole('searchbox', { name: 'Find an administration page', exact: true }).fill('nginx')
+
+    await expect(page.getByText('1 page matches', { exact: true }), 'the number of matches is announced').toBeVisible()
+    const tree = page.getByRole('navigation', { name: 'Administration', exact: true })
+    await expect(tree.getByRole('link', { name: 'Reverse proxy', exact: true })).toBeVisible()
+    await expect(tree.getByRole('link', { name: 'Javadoc', exact: true }), 'an entry that does not match is hidden').toHaveCount(0)
+  })
+})
