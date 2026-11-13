@@ -69,7 +69,7 @@ const currentGroup = computed(() => props.groups
 // The trail: the section, the group of the current entry, and on a detail page the list page. Empty when no entry is
 // on screen, as on the settings hub, whose heading already is the section.
 const crumbs = computed(() => {
-  if (!currentLink.value || !currentGroup.value) return []
+  if (!currentLink.value || !currentGroup.value || currentGroup.value.heading === undefined) return []
   const trail = [{ label: props.sectionLabel, to: props.indexTo }, { label: currentGroup.value.heading }]
   if (props.detail) trail.push({ label: currentLink.value.label, to: currentLink.value.to })
   return trail

@@ -176,7 +176,7 @@ describe('the settings hub at /settings', () => {
     expect(entries, 'the page entries of the tree').toEqual(expect.arrayContaining(['Repositories', 'Audit log']))
     expect(entries, 'the settings domains of the tree, under the label of the frontend').toEqual(expect.arrayContaining(['Reverse proxy']))
     expect(entries, 'Maven lives on the Repositories page, not in the tree').not.toContain(SCHEMAS.maven.title)
-    expect(tree.findAll('[aria-current="page"]'), 'the hub marks no entry of the tree').toHaveLength(0)
+    expect(tree.findAll('[aria-current="page"]').map(link => link.text()), 'the hub marks only its Overview entry').toEqual(['Overview'])
   })
 
   it('shows no hub when the address names a domain', async () => {

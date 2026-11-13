@@ -176,6 +176,15 @@ const RESERVED_SETTINGS_PAGES = ['repositories']
  * Audit log), and the pages keep their order relative to each other (see the tree requirement).
  */
 const ADMIN_TREE = [
+  // Overview is the page /settings without a domain. It is listed for every visitor with the settings node, before the
+  // first group, and its group has no heading: the group is named by its label instead.
+  {
+    id: 'overview',
+    label: 'Overview',
+    entries: [
+      { key: 'overview', route: 'settings', label: 'Overview', permission: { node: ADMIN_NODES.settings }, description: 'Shared configuration for all instances.', keywords: 'settings, configuration, import, export, draft, unsaved' },
+    ],
+  },
   {
     id: 'Repository',
     entries: [
@@ -305,6 +314,7 @@ const pluginLinksOf = (can, heading) => contributedPages(can)
     key: pluginTreeKey(page.plugin, page.id),
     label: page.title,
     description: page.description ?? '',
+    plugin: page.plugin,
     to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } },
   }))
 
@@ -315,6 +325,7 @@ const pluginLinksOf = (can, heading) => contributedPages(can)
  */
 const pageTreeKey = (key) => (key === undefined ? undefined : `page:${key}`)
 const settingsTreeKey = (domain) => (domain === undefined ? undefined : `settings:${domain}`)
+const OVERVIEW_TREE_KEY = pageTreeKey('overview')
 
 // The key of the entry the page on screen is, from its route name and, on a Settings page, its domain. Undefined when the
 // page is no entry of the tree, such as the settings hub.
@@ -339,6 +350,7 @@ const settingsLinkOf = (domain, entry, { titleOf, descriptionOf }) => ({
   key: settingsTreeKey(domain),
   label: entry?.label ?? titleOf(domain),
   description: entry?.description ?? descriptionOf(domain) ?? '',
+  keywords: entry?.keywords,
   to: { name: 'settings', params: { domain } },
 })
 
@@ -358,7 +370,7 @@ const adminGroups = (can, { domains: allDomains = [], titleOf = (domain) => doma
       ? entryAvailable(entry) && allowedBy(entry.permission, can)
       : showsDomains && domains.includes(entry.domain)))
     .map(entry => (entry.domain === undefined
-      ? { group: entry.group, link: { key: pageTreeKey(entry.key), label: entry.label, description: entry.description, to: { name: entry.route } } }
+      ? { group: entry.group, link: { key: pageTreeKey(entry.key), label: entry.label, description: entry.description, keywords: entry.keywords, to: { name: entry.route } } }
       : { group: treeGroupOf(entry.domain), link: settingsLinkOf(entry.domain, entry, { titleOf, descriptionOf }) }))
   // The domains the tree does not name come after the named ones, in the order the server gave.
   const unnamed = showsDomains
@@ -371,6 +383,7 @@ const adminGroups = (can, { domains: allDomains = [], titleOf = (domain) => doma
     .map(group => ({
       id: group.id,
       heading: GROUP_HEADINGS[group.id],
+      label: group.label,
       links: [
         ...placed.filter(item => item.group === group.id).map(item => item.link),
         ...pluginLinksOf(can, GROUP_HEADINGS[group.id]),
@@ -516,6 +529,7 @@ export {
   DOMAINS_ON_OTHER_PAGES,
   currentTreeKey,
   pageTreeKey,
+  OVERVIEW_TREE_KEY,
   pluginTreeKey,
   administrationLocation,
   sideNavOf,

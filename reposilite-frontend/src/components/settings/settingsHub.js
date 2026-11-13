@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { adminGroups } from '../../navigation/registry'
+import { adminGroups, OVERVIEW_TREE_KEY } from '../../navigation/registry'
 import { collectionsOf } from './collections'
 import { settingsTabDomains } from './accessDomains'
 
@@ -42,12 +42,17 @@ const domainOfCard = (link) => {
   return link.to.name === 'settings-repositories' ? 'maven' : undefined
 }
 
+// The entries of the tree that a domain with an unsaved draft marks. The Repositories page edits the maven domain, so its
+// draft marks that page, and the other domains mark their own settings entry.
+const unsavedTreeKeys = (domains) => domains.map(domain => (domain === 'maven' ? 'page:repositories' : `settings:${domain}`))
+
+// Overview is the page this list is drawn on, so the cards leave it out.
 const hubGroups = ({ can, domains, schemas, saved, unsaved, titleOf }) => adminGroups(can, {
   domains: settingsTabDomains(domains),
   titleOf,
 }).map(group => ({
   heading: group.heading,
-  cards: group.links.map(link => {
+  cards: group.links.filter(link => link.key !== OVERVIEW_TREE_KEY).map(link => {
     const domain = domainOfCard(link)
     const isDomain = domain !== undefined
     return {
@@ -58,6 +63,6 @@ const hubGroups = ({ can, domains, schemas, saved, unsaved, titleOf }) => adminG
       to: link.to,
     }
   }),
-}))
+})).filter(group => group.cards.length > 0)
 
-export { domainSummary, hubGroups }
+export { domainSummary, hubGroups, unsavedTreeKeys }

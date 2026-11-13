@@ -73,17 +73,19 @@ const linkClasses = (active) => [
     >
       <div
         v-for="group in groups"
-        :key="group.heading"
+        :key="group.heading ?? group.label"
         class="flex flex-col gap-1"
       >
         <p
+          v-if="group.heading"
           :id="headingId(group)"
           class="px-4 pb-1 md-label-medium text-on-surface-variant"
         >
           {{ group.heading }}
         </p>
         <ul
-          :aria-labelledby="headingId(group)"
+          :aria-labelledby="group.heading ? headingId(group) : undefined"
+          :aria-label="group.heading ? undefined : group.label"
           class="flex flex-col gap-1"
         >
           <li
