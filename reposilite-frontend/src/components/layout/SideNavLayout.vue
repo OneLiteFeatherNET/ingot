@@ -15,8 +15,9 @@
   -->
 
 <script setup>
-import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, ref, useId } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { matchEntries } from '../../navigation/adminFilter'
 
 /*
  * The split layout of a page with sections, such as Access and Settings. On wide widths the sections
@@ -40,13 +41,43 @@ const props = defineProps({
   groups: { type: Array, required: true },
   current: { type: String, default: undefined },
   narrow: { type: Boolean, default: false },
-  replace: { type: Boolean, default: false }
+  replace: { type: Boolean, default: false },
+  // The keys of the entries whose domain has an unsaved draft (see unsavedTreeKeys in settingsHub.js).
+  unsaved: { type: Array, default: () => [] }
 })
 
 // On narrow widths the index replaces the page while no section is open.
 const showsIndex = computed(() => props.narrow && props.current === undefined)
 const showsPage = computed(() => !showsIndex.value)
 const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow || showsIndex.value))
+
+/*
+ * The find field of the side navigation. The text keeps the links that match it (adminFilter.js), the current link always
+ * stays, and a polite live region says how many match. Escape clears the text; Enter opens the first match.
+ */
+const router = useRouter()
+const fieldId = useId()
+const query = ref('')
+const filtered = computed(() => matchEntries(props.groups, query.value, props.current))
+const shownGroups = computed(() => filtered.value.groups)
+const announcement = computed(() => {
+  const text = query.value.trim()
+  if (text === '') return ''
+  if (filtered.value.count === 0) return `No administration page matches "${text}"`
+  return filtered.value.count === 1 ? '1 page matches' : `${filtered.value.count} pages match`
+})
+const clearQuery = () => {
+  query.value = ''
+}
+const openFirstMatch = () => {
+  if (query.value.trim() === '') return
+  const first = matchEntries(props.groups, query.value).groups[0]?.links[0]
+  if (first) router.push(first.to)
+}
+
+// A link whose domain has an unsaved draft says so: the mark is drawn, and the accessible name ends with it.
+const isUnsaved = (link) => props.unsaved.includes(link.key)
+const nameOf = (link) => (isUnsaved(link) ? `${link.label}, unsaved changes` : undefined)
 
 // The id of the visible heading of a group. Each group list is labelled by it, so a screen reader names the group on entry.
 const headingId = (group) => `admin-group-${group.heading.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
@@ -72,7 +103,31 @@ const linkClasses = (active) => [
         : 'sticky top-[calc(4rem+1rem)] flex max-h-[calc(100dvh-6rem)] w-52 shrink-0 flex-col gap-4 overflow-y-auto'"
     >
       <div
-        v-for="group in groups"
+        role="search"
+        class="flex flex-col gap-1 px-4"
+      >
+        <label
+          :for="fieldId"
+          class="md-label-medium text-on-surface-variant"
+        >Find an administration page</label>
+        <input
+          :id="fieldId"
+          v-model="query"
+          type="search"
+          autocomplete="off"
+          class="min-w-0 rounded-corner-small border border-outline bg-surface px-3 py-2 md-body-medium text-on-surface [&::-webkit-search-cancel-button]:hidden"
+          @keydown.escape="clearQuery"
+          @keydown.enter.prevent="openFirstMatch"
+        >
+        <p
+          aria-live="polite"
+          class="md-label-medium text-on-surface-variant"
+        >
+          {{ announcement }}
+        </p>
+      </div>
+      <div
+        v-for="group in shownGroups"
         :key="group.heading ?? group.label"
         class="flex flex-col gap-1"
       >
@@ -101,10 +156,32 @@ const linkClasses = (active) => [
               <a
                 :href="href"
                 :aria-current="link.key === current ? 'page' : undefined"
+                :aria-label="nameOf(link)"
                 :class="linkClasses(link.key === current)"
                 @click="navigate"
               >
-                {{ link.label }}
+                <span>{{ link.label }}</span>
+                <span
+                  v-if="isUnsaved(link)"
+                  class="ml-auto inline-flex items-center gap-1 md-label-medium text-primary"
+                >
+                  <svg
+                    class="size-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="4"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  Unsaved
+                </span>
               </a>
             </RouterLink>
           </li>

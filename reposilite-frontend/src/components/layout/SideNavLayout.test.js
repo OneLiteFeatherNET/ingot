@@ -246,6 +246,7 @@ describe('SideNavLayout find field', () => {
   it('clears the field on Escape, lists every entry again, and keeps the focus in the field', async () => {
     const { wrapper } = await mountFilter({ current: 'users' })
     await field(wrapper).setValue('oidc')
+    field(wrapper).element.focus()
 
     await field(wrapper).trigger('keydown', { key: 'Escape' })
 
