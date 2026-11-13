@@ -188,8 +188,8 @@ describe('SideNavLayout sticky rule', () => {
     savedInnerHeight = window.innerHeight
     window.innerHeight = 1000
     heightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function () {
-      if (this.getAttribute('data-ingot-part') === 'nav') return navHeight
-      if (this.getAttribute('data-ingot-component') === 'unsaved-changes-bar') return barHeight
+      if (this.getAttribute('data-ingot-component') === 'side-nav-tree') return navHeight
+      if (this.classList.contains('settings-save-bar')) return barHeight
       return 0
     })
   })
@@ -287,7 +287,7 @@ describe('SideNavLayout sticky rule', () => {
     expect(isSticky(wrapper), 'sticky without a save bar').toBe(true)
 
     const bar = document.createElement('div')
-    bar.setAttribute('data-ingot-component', 'unsaved-changes-bar')
+    bar.className = 'settings-save-bar'
     document.body.append(bar)
     entry.bar = bar
     barHeight = 200
@@ -317,6 +317,15 @@ describe('SideNavLayout index rows', () => {
     const wrapper = await mountRows({ current: undefined, narrow: true })
 
     expect(row(wrapper, 'Users').text(), 'the label, then the description').toContain('People who sign in')
+  })
+
+  it('names a row with a description by its label, and points the description to it', async () => {
+    const wrapper = await mountRows({ current: undefined, narrow: true })
+
+    const users = row(wrapper, 'Users')
+    expect(users.attributes('aria-label'), 'the name is the label, not the label with the description').toBe('Users')
+    const described = wrapper.get(`[id="${users.attributes('aria-describedby')}"]`)
+    expect(described.text(), 'the description is the description of the row').toBe('People who sign in')
   })
 
   it('shows only the label of a row without a description', async () => {
