@@ -274,6 +274,7 @@ internal class SearchPlugin : ReposilitePlugin() {
             readOnly = { readOnlyFacade.isReadOnly() },
             execute = execute,
             onFailure = { logger.warn("SEARCH | $it") },
+            onSkipped = { logger.warn("SEARCH | $it") },
         )
 
         val paused = AtomicBoolean(false)

@@ -39,9 +39,13 @@ internal class TokenSweep(
     private val readOnly: () -> Boolean,
     private val execute: (() -> Unit) -> Unit,
     private val onFailure: (String) -> Unit,
+    private val onSkipped: (String) -> Unit,
 ) {
 
     private val running = AtomicBoolean(false)
+
+    /** The rows already reported as skipped. Kept for the life of the sweep, so a row that stays unkeyed is reported once. */
+    private val reported = mutableSetOf<Long>()
 
     @Volatile
     private var lastRunAt: Instant? = null
@@ -79,8 +83,22 @@ internal class TokenSweep(
                 cursor = 0L
                 return
             }
+            report(batch)
             after = batch.lastId
             cursor = after
+        }
+    }
+
+    /**
+     * Reports the rows of a batch that the database refused to key. Their cursor is passed like any other row, so they do not
+     * block the pass; each is reported once, and a later pass finds it unkeyed again without a second report.
+     */
+    private fun report(batch: KeyBatch) {
+        batch.skipped.filter { reported.add(it.id) }.forEach { skipped ->
+            onSkipped(
+                "Row ${skipped.id} cannot be keyed and is skipped, its words are not searchable until it is written again: " +
+                    skipped.reason,
+            )
         }
     }
 

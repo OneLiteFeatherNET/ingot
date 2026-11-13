@@ -157,9 +157,17 @@ data class SamplePage(
     val next: String?,
 )
 
-/** One batch of the backfill: the rows it keyed and the id of its last row, the cursor of the next batch (full text change, D6). */
+/**
+ * One batch of the backfill: the rows it keyed and the id of its last row, the cursor of the next batch (full text change, D6).
+ * [skipped] lists the rows the database refused to key while the rest of the batch was keyed. They stay unkeyed, and the
+ * sweep reports each of them once instead of retrying the batch.
+ */
 @ExperimentalIngotSearchApi
-data class KeyBatch(val keyed: Int, val lastId: Long)
+data class KeyBatch(val keyed: Int, val lastId: Long, val skipped: List<SkippedKey> = emptyList())
+
+/** A row of a backfill batch that the database refused to key, with the reason it gave. */
+@ExperimentalIngotSearchApi
+data class SkippedKey(val id: Long, val reason: String)
 
 /**
  * Thrown by [ArtifactSearchBackend.apply] when the backend has no capacity right now. The outbox releases the batch with

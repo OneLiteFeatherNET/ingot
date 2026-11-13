@@ -22,6 +22,7 @@ import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.backend.KeyBatch
+import net.onelitefeather.ingot.search.backend.SkippedKey
 import net.onelitefeather.ingot.search.gavKeyOf
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
@@ -45,6 +46,9 @@ import org.jetbrains.exposed.v1.jdbc.upsert
 import org.jetbrains.exposed.v1.jdbc.update
 import java.security.MessageDigest
 import java.util.Locale
+
+/** The coordinates of a row that has no key yet, read by the backfill. */
+private data class UnkeyedRow(val id: Long, val groupId: String, val artifactId: String, val version: String)
 
 /**
  * Writes `search_artifact` (artifact search spec, 2.3 and 3.3). The upsert key is `(repository, path_hash)`, so replaying an
@@ -85,23 +89,49 @@ internal class DatabaseArtifactIndex(private val database: Database) {
      * order. The range on the id starts every batch at the cursor, so a pass costs one walk of the id index, not one per batch.
      * Returns the batch with the id of its last row, or null when no such row is left (full text change, D6).
      */
-    fun keyRows(after: Long, batchSize: Int): KeyBatch? = transaction(database) {
-        val batch = rows.select(rows.id, rows.groupId, rows.artifactId, rows.version)
-            .where { (rows.id greater after) and rows.gavKey.isNull() }
-            .orderBy(rows.id to SortOrder.ASC)
-            .limit(batchSize)
-            .toList()
-        if (batch.isEmpty()) return@transaction null
-        batch.forEach { row ->
-            val groupId = row[rows.groupId]
-            val artifactId = row[rows.artifactId]
-            val version = row[rows.version]
-            val key = gavKeyOf(groupId, artifactId, version)
-            rows.update(where = { rows.id eq row[rows.id] }, body = { it[rows.gavKey] = key })
-            insertTokens(groupId, artifactId, version)
+    fun keyRows(after: Long, batchSize: Int): KeyBatch? {
+        val batch = transaction(database) {
+            rows.select(rows.id, rows.groupId, rows.artifactId, rows.version)
+                .where { (rows.id greater after) and rows.gavKey.isNull() }
+                .orderBy(rows.id to SortOrder.ASC)
+                .limit(batchSize)
+                .map { UnkeyedRow(it[rows.id], it[rows.groupId], it[rows.artifactId], it[rows.version]) }
         }
-        KeyBatch(keyed = batch.size, lastId = batch.last()[rows.id])
+        if (batch.isEmpty()) return null
+        return try {
+            transaction(database) { batch.forEach { keyRow(it) } }
+            KeyBatch(keyed = batch.size, lastId = batch.last().id)
+        } catch (failure: Exception) {
+            keyEachRow(batch, failure)
+        }
     }
+
+    private fun keyRow(row: UnkeyedRow) {
+        val key = gavKeyOf(row.groupId, row.artifactId, row.version)
+        rows.update(where = { rows.id eq row.id }, body = { it[rows.gavKey] = key })
+        insertTokens(row.groupId, row.artifactId, row.version)
+    }
+
+    /**
+     * Keys a batch that failed as a whole, one transaction per row, so the rows the database accepts are keyed and a refused row
+     * is skipped with its reason. When every row is refused while the database still answers, the rows are skipped as well. When
+     * the database does not answer, the failure of the batch is rethrown: the batch is retried on the next tick, and an outage
+     * skips no row.
+     */
+    private fun keyEachRow(batch: List<UnkeyedRow>, batchFailure: Exception): KeyBatch {
+        val skipped = mutableListOf<SkippedKey>()
+        batch.forEach { row ->
+            try {
+                transaction(database) { keyRow(row) }
+            } catch (refused: Exception) {
+                skipped += SkippedKey(id = row.id, reason = refused.message ?: refused::class.java.simpleName)
+            }
+        }
+        if (skipped.size == batch.size && !databaseAnswers()) throw batchFailure
+        return KeyBatch(keyed = batch.size - skipped.size, lastId = batch.last().id, skipped = skipped)
+    }
+
+    private fun databaseAnswers(): Boolean = runCatching { transaction(database) { exec("SELECT 1") { } } }.isSuccess
 
     /** The tokens of one GAV, inserted with insert-ignore: a token that exists is left as it is, so a replay adds nothing. */
     private fun insertTokens(groupId: String, artifactId: String, version: String) {
