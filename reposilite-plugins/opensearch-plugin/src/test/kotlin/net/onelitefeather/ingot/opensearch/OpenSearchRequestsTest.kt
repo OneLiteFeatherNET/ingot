@@ -78,12 +78,16 @@ internal class OpenSearchRequestsTest {
     }
 
     @Test
-    fun `should reorigin the directory with the stored script by its id`() {
+    fun `should reorigin the directory with an inline painless script`() {
         // when: a reorigin is built
         val body = OpenSearchRequests.reorigin(IndexAction.Reorigin("releases", "org/example", Provenance(Origin.MIRROR, "mirror.example.test")))
 
-        // then: the script is the stored one, and the query covers the subtree of the directory
-        assertThat(body.at("/script/id").asText()).`as`("stored script id").isEqualTo(OpenSearchRequests.REORIGIN_SCRIPT_ID)
+        // then: the script is sent inline, in painless, and no stored script is referenced by an id
+        assertThat(body.at("/script/lang").asText()).`as`("script language").isEqualTo("painless")
+        assertThat(body.at("/script/source").asText()).`as`("inline script source").isEqualTo(OpenSearchRequests.REORIGIN_SCRIPT_SOURCE)
+        assertThat(body.at("/script").has("id")).`as`("stored script id present").isFalse()
+
+        // and: the query covers the subtree of the directory
         val subtree = filters(body).single { it.has("range") }
         assertThat(subtree.at("/range/path/gte").asText()).`as`("lower bound").isEqualTo("org/example/")
         assertThat(subtree.at("/range/path/lt").asText()).`as`("upper bound").isEqualTo("org/example0")
@@ -102,13 +106,14 @@ internal class OpenSearchRequestsTest {
     }
 
     @Test
-    fun `should send no script source so that no request value enters the script text`() {
-        // when: a reorigin is built
-        val body = OpenSearchRequests.reorigin(IndexAction.Reorigin("releases", "org/example", Provenance.HOSTED))
+    fun `should keep every request value out of the script source`() {
+        // when: a reorigin is built with values that are easy to recognise
+        val body = OpenSearchRequests.reorigin(IndexAction.Reorigin("repo-marker", "dir-marker", Provenance(Origin.MIRROR, "host-marker.example.test")))
 
-        // then: the body names the stored script and carries no source text
-        assertThat(body.at("/script").has("source")).`as`("inline script source present").isFalse()
-        assertThat(OpenSearchRequests.REORIGIN_SCRIPT_SOURCE).`as`("stored script source").doesNotContain("org/example")
+        // then: the source is the constant of the plugin, and no value of the request is part of it
+        val source = body.at("/script/source").asText()
+        assertThat(source).`as`("inline script source").isEqualTo(OpenSearchRequests.REORIGIN_SCRIPT_SOURCE)
+        assertThat(source).`as`("script source").doesNotContain("repo-marker", "dir-marker", "host-marker")
     }
 
 }
