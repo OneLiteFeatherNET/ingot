@@ -133,14 +133,15 @@ const choose = (event, navigate, link) => {
       </p>
     </div>
     <div
-      v-for="group in shownGroups"
+      v-for="(group, index) in shownGroups"
       :key="group.heading ?? group.label"
       class="flex flex-col gap-1"
+      :class="index > 0 ? 'border-t border-outline-variant pt-4' : undefined"
     >
       <p
         v-if="group.heading"
         :id="headingId(group)"
-        class="px-4 pb-1 md-label-medium text-on-surface-variant"
+        class="px-4 pb-1 md-title-small text-primary"
       >
         {{ group.heading }}
       </p>
