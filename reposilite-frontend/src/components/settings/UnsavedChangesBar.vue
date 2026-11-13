@@ -71,6 +71,9 @@ const countText = computed(() => `${props.count} unsaved ${props.count === 1 ? '
       >
         Fix the errors before saving.
       </p>
+      <p class="md-body-medium text-on-surface-variant">
+        Other instances pick up saved changes within 10 seconds.
+      </p>
     </div>
     <div class="flex shrink-0 items-center justify-end gap-2">
       <MdButton
