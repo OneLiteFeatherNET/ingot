@@ -166,7 +166,8 @@ describe('SideNavLayout', () => {
     const groups = [{ id: 'overview', label: 'Overview', links: [{ key: 'overview', label: 'Overview', to: { name: 'access' } }] }, ...fixtureGroups()]
     const wrapper = await mountLayout({ groups, current: 'overview', overview: true, narrow: true })
 
-    expect(wrapper.findAll('nav > div')[0].find('p').exists(), 'no visible heading above Overview').toBe(false)
+    const overviewGroup = wrapper.get('ul[aria-label="Overview"]').element.parentElement
+    expect(overviewGroup.querySelector('p'), 'no visible heading above Overview').toBeNull()
   })
 })
 

@@ -22,7 +22,7 @@ import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { adminGroups, currentTreeKey, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, currentTreeKey, OVERVIEW_TREE_KEY, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
@@ -431,6 +431,7 @@ watch(
     :narrow="narrow"
     :reading="!repositoriesPage"
     :unsaved="unsavedKeys"
+    :overview="settingsCurrent === OVERVIEW_TREE_KEY"
     replace
   >
     <template #actions>

@@ -43,12 +43,15 @@ const props = defineProps({
   narrow: { type: Boolean, default: false },
   replace: { type: Boolean, default: false },
   // The keys of the entries whose domain has an unsaved draft (see unsavedTreeKeys in settingsHub.js).
-  unsaved: { type: Array, default: () => [] }
+  unsaved: { type: Array, default: () => [] },
+  // True on the Overview page: below 1240 pixels it draws the page beside the index, and the index marks Overview.
+  overview: { type: Boolean, default: false }
 })
 
-// On narrow widths the index replaces the page while no section is open.
-const showsIndex = computed(() => props.narrow && props.current === undefined)
-const showsPage = computed(() => !showsIndex.value)
+// On narrow widths the index replaces the page while no section is open. Overview is the page and the index at once:
+// its page sits beside the index, so no back arrow leads anywhere.
+const showsIndex = computed(() => props.narrow && (props.current === undefined || props.overview))
+const showsPage = computed(() => !(props.narrow && props.current === undefined))
 const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow || showsIndex.value))
 
 /*

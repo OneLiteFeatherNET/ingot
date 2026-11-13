@@ -57,7 +57,8 @@ const props = defineProps({
   narrow: { type: Boolean, default: false },
   replace: { type: Boolean, default: false },
   reading: { type: Boolean, default: false },
-  unsaved: { type: Array, default: () => [] }
+  unsaved: { type: Array, default: () => [] },
+  overview: { type: Boolean, default: false }
 })
 
 const currentLink = computed(() => props.groups
@@ -81,7 +82,8 @@ const visibleCrumbs = computed(() => (props.narrow ? crumbs.value.slice(-1) : cr
 const fullTrail = computed(() => crumbs.value.map(crumb => crumb.label).join(' / '))
 const heading = computed(() => props.title || currentLink.value?.label || props.sectionLabel)
 const lineDescription = computed(() => props.description ?? currentLink.value?.description ?? '')
-const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined)
+// The back arrow leads to the index. Overview is the index on narrow widths, so it draws none.
+const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined && !props.overview)
 
 // The slash between two crumbs. Tailwind reads the class names from this file, so they stay whole.
 const SEPARATOR = "after:px-2 after:content-['/']"
@@ -213,6 +215,7 @@ const SEPARATOR = "after:px-2 after:content-['/']"
       :narrow="narrow && groups.length > 0"
       :replace="replace"
       :unsaved="unsaved"
+      :overview="overview"
     >
       <slot />
     </SideNavLayout>
