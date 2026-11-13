@@ -23,8 +23,6 @@ import MenuPanel from './MenuPanel.vue'
  * row is the container the page content uses, so the title and the content share one left edge. Wide pages
  * have no maximum width, so the title row has none either, and the account actions sit at the window edge.
  * Reading pages keep their own measure at the start of the content column, and the title row does not follow it.
- *
- * The brand rule runs along the bottom edge of the bar, across all of it.
  */
 const { title } = usePlaceholders()
 </script>
@@ -38,7 +36,7 @@ const { title } = usePlaceholders()
     <div
       class="container mx-auto flex min-h-16 max-w-none flex-row items-center justify-between gap-4 py-2"
     >
-      <h1
+      <span
         data-ingot-part="title"
         class="md-title-large min-w-0 truncate"
       >
@@ -48,12 +46,8 @@ const { title } = usePlaceholders()
         >
           {{ title }}
         </router-link>
-      </h1>
+      </span>
       <MenuPanel />
     </div>
-    <div
-      class="olf-brand-bar absolute inset-x-0 bottom-0"
-      aria-hidden="true"
-    />
   </header>
 </template>
