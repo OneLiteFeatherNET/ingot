@@ -134,15 +134,6 @@ def takeover_in_window(taken_over_at, killed_at, ttl_seconds, poll_seconds):
     return taken_over_at <= takeover_deadline(killed_at, ttl_seconds, poll_seconds)
 
 
-def check_run_observed(observed_running, policy_id):
-    """Fails when the run finished before the driver saw it hold the lease, so the takeover was never exercised."""
-    if not observed_running:
-        raise SmokeFailure(
-            f"the cleanup run of policy {policy_id} was not observed as running before it ended (missed observation), "
-            "so the takeover of a killed run could not be checked"
-        )
-
-
 def parse_instance_ids(status):
     """The sorted identifiers of the instances in the cluster section of an instance status."""
     cluster = status.get("cluster") if isinstance(status, dict) else None
@@ -232,10 +223,10 @@ ROLLING_PATH = "net/onelitefeather/smoke/rolling/1.0.0/rolling-1.0.0.pom"
 LEASE_GROUP = "net/onelitefeather/smoke/lease"
 LEASE_VERSIONS = 80
 """Versions seeded for the lease check. A run that keeps all but the newest one deletes this many less one."""
-LEASE_ATTEMPTS = 3
+LEASE_ATTEMPTS = 5
 """Attempts at the lease check. A cleanup run on the first replica can finish, or delete every version, between the
-409 the probe sees and the kill, which loses the race: the check then starts over with fresh versions under a new
-artifact name."""
+409 the probe sees and the kill, or finish before the probe sees it hold the lease at all (a missed observation). Each
+of these loses the race: the check then starts over with fresh versions under a new artifact name."""
 DEPLOY_GROUP = "net/onelitefeather/smoke/deploy"
 DEPLOY_VERSIONS = ("1.0.0", "1.0.1")
 ADMIN = ("smoke-admin", "smoke-ci-only-password")
@@ -515,8 +506,9 @@ class Smoke:
                 self.pods()
                 return
             self.out(f"check 2: attempt {attempt} of {LEASE_ATTEMPTS} lost the race, the run had done its work before the kill")
-        raise SmokeFailure(f"check 2: in all {LEASE_ATTEMPTS} attempts the cleanup run had done its work before the kill, "
-                           "or the taken-over run deleted nothing, so the lease takeover was never shown to do work")
+        raise SmokeFailure(f"check 2: in all {LEASE_ATTEMPTS} attempts the cleanup run had finished before it was "
+                           "observed holding the lease or before the kill, or the taken-over run deleted nothing, so "
+                           "the lease takeover was never shown to do work")
 
     def lease_takeover_attempt(self, attempt):
         """One pass of check 2. Returns False when the race was lost, True when the takeover was checked."""
@@ -532,7 +524,12 @@ class Smoke:
         try:
             outcome = wait_until(lambda: self.probe_run(second_ip), clock=self.clock, timeout=180, interval=1,
                                  describe="the run on the first replica to hold the lease")
-            check_run_observed(outcome == "held", POLICY)
+            if outcome != "held":
+                # The run ended before the probe saw it hold the lease, so the takeover of a killed run cannot be
+                # checked in this attempt. The race is lost: the caller starts over with fresh versions.
+                self.out(f"check 2: the cleanup run of policy {POLICY} was not observed as running before it ended "
+                         "(missed observation)")
+                return False
             killed_at = self.clock.wall()
             self.kubectl.run(["delete", "pod", first, "--force", "--grace-period=0"])
         finally:

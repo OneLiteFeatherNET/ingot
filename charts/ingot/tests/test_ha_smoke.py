@@ -22,7 +22,7 @@ from ha_smoke import (
     LEASE_TTL_SECONDS,
     POLL_SECONDS,
     SmokeFailure,
-    check_run_observed,
+    Smoke,
     ROLLING_GROUP,
     ROLLING_PATH,
     artifact_path,
@@ -57,6 +57,9 @@ class FakeClock:
     def sleep(self, seconds):
         self.sleeps.append(seconds)
         self.time += seconds
+
+    def wall(self):
+        return self.time
 
 
 class WaitUntilTest(unittest.TestCase):
@@ -193,16 +196,69 @@ class TakeoverWindowTest(unittest.TestCase):
                          "a takeover later than the window fails the check")
 
 
-class RunObservationTest(unittest.TestCase):
+class FakeKubectl:
+    """Records the kubectl calls of the driver instead of running them."""
 
-    def test_an_observed_run_passes_the_observation_check(self):
-        check_run_observed(True, "smoke")
+    def __init__(self):
+        self.calls = []
 
-    def test_a_run_that_finished_before_it_was_observed_fails_naming_the_missed_observation(self):
-        with self.assertRaises(SmokeFailure) as caught:
-            check_run_observed(False, "smoke")
-        self.assertIn("not observed", str(caught.exception), "the failure must name the missed observation")
-        self.assertIn("smoke", str(caught.exception), "the failure must name the policy")
+    def run(self, args, **kwargs):
+        self.calls.append(list(args))
+
+
+class FakeHeldRun:
+    """The held lease request of the driver, which the test can inspect after the attempt."""
+
+    def __init__(self):
+        self.killed = False
+        self.waited = False
+
+    def kill(self):
+        self.killed = True
+
+    def wait(self):
+        self.waited = True
+
+
+class FakeHttp:
+    def __init__(self, held):
+        self.held = held
+
+    def start(self, method, url, *, headers=()):
+        return self.held
+
+
+class ScriptedSmoke(Smoke):
+    """A driver whose replicas, uploads and run probes are scripted, so one lease attempt runs without a cluster."""
+
+    def __init__(self, probe_outcomes):
+        self.lines = []
+        super().__init__(FakeKubectl(), FakeClock(), out=self.lines.append)
+        self.held = FakeHeldRun()
+        self.http = FakeHttp(self.held)
+        self.probe_outcomes = list(probe_outcomes)
+
+    def pods(self, expected=2):
+        return {"ha-0": "10.0.0.1", "ha-1": "10.0.0.2"}
+
+    def deploy(self, ip, group, artifact, version, body):
+        pass
+
+    def probe_run(self, ip):
+        return self.probe_outcomes.pop(0)
+
+
+class LeaseTakeoverAttemptTest(unittest.TestCase):
+
+    def test_a_run_not_observed_as_running_loses_the_race_instead_of_failing_the_check(self):
+        smoke = ScriptedSmoke(probe_outcomes=["ran"])
+        self.assertFalse(smoke.lease_takeover_attempt(1),
+                         "a run that finished before the probe saw it hold the lease is a lost race")
+        self.assertTrue(smoke.held.killed and smoke.held.waited,
+                        "the held request is killed and reaped on the way out")
+        self.assertEqual([], smoke.kubectl.calls, "no pod is deleted when the run was not observed")
+        self.assertTrue(any("not observed" in line for line in smoke.lines),
+                        "the attempt logs the missed observation before it starts over")
 
 
 class InstanceStatusTest(unittest.TestCase):
