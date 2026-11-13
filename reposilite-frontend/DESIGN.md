@@ -544,6 +544,18 @@ Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bot
 The page publishes the bar height as `--app-bottom-bar-height` on the document root (80px with a
 bar, 0px without). The snackbar adds it to its bottom margin below 600px, so it sits above the bar.
 
+### Administration tree
+
+From 1240px the tree is a column beside the page, 208px wide. It is sticky only while its full height fits between the top bar and the save bar; otherwise it scrolls with the page. It never has a scroll box of its own, in either state. The decision is `treeFits` in `src/helpers/treeFits.js` (a pure function), taken by `useTreeFits` when the tree or the window changes size and when the save bar appears. It is never taken on scroll, so the tree does not switch between sticky and static under the pointer.
+
+Below 1240px the tree is the index of a page. Each row shows the entry's description under its label, clamped to two lines with the full text in the DOM; a row without a description shows its label only. Beside the page the rows show labels only.
+
+From 600px to 1239px the page header has a Sections button beside the back arrow. It opens the same tree in an `MdSideSheet` titled "Administration pages". Below 600px no button is drawn, and the index is the page. A page without a back arrow, the index at `/settings`, draws no button.
+
+### Side sheet (`MdSideSheet`)
+
+A modal panel from the leading edge, 320px wide or the window less 56px, whichever is smaller, over a scrim. It has `role="dialog"` and `aria-modal="true"`, and is named by its visible title. On open, focus moves to the first focusable element, and Tab and Shift+Tab stay inside the sheet. Escape, the close button and the scrim close it and return focus to the element that opened it. A close that the page starts, such as a choice of an entry, leaves the focus where the page puts it. The fade is off under `prefers-reduced-motion`. The sheet is registered as `md-side-sheet` and the tree inside it as `side-nav-tree`, both experimental.
+
 ### Top app bar
 
 64px, `sticky top-0`, `surface`. Takes `surface-container` once the window has scrolled (`useWindowScroll`), with a `short4` colour transition. No shadow change.
