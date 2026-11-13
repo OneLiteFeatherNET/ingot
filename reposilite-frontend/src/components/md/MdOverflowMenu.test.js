@@ -185,9 +185,9 @@ describe('MdOverflowMenu', () => {
   })
 
   describe('trigger and header slots', () => {
-    it('draws the trigger slot in place of the Actions text, and leaves the name to the visible content', async () => {
+    it('draws the trigger slot in place of the Actions text', async () => {
       wrapper = mount(MdOverflowMenu, {
-        props: { label: 'Account menu', items: ITEMS },
+        props: { label: 'Account menu for Alice', items: ITEMS },
         slots: { trigger: '<span data-test="custom-trigger">Alice</span>' },
         attachTo: document.body
       })
@@ -195,7 +195,32 @@ describe('MdOverflowMenu', () => {
 
       expect(wrapper.find('[data-test="custom-trigger"]').exists(), 'the slot content is the trigger').toBe(true)
       expect(trigger().text(), 'the default text is not drawn').not.toBe('Actions')
-      expect(trigger().attributes('aria-label'), 'a label that differs from the visible name would mismatch it').toBeUndefined()
+    })
+
+    it('keeps the label as the accessible name of the trigger when a trigger slot is used', async () => {
+      wrapper = mount(MdOverflowMenu, {
+        props: { label: 'Account menu for Alice', items: ITEMS },
+        slots: { trigger: '<span aria-hidden="true">A</span><span class="sr-only">Alice</span>' },
+        attachTo: document.body
+      })
+      await flushPromises()
+
+      expect(trigger().attributes('aria-label'), 'the button is announced as the menu, not only by its visible content').toBe('Account menu for Alice')
+    })
+
+    it('keeps aria-haspopup and aria-expanded correct on a trigger with a slot', async () => {
+      wrapper = mount(MdOverflowMenu, {
+        props: { label: 'Account menu for Alice', items: ITEMS },
+        slots: { trigger: '<span>Alice</span>' },
+        attachTo: document.body
+      })
+      await flushPromises()
+
+      expect(trigger().attributes('aria-haspopup'), 'the trigger opens a menu').toBe('menu')
+      expect(trigger().attributes('aria-expanded'), 'the menu is closed at first').toBe('false')
+      await trigger().trigger('click')
+      await flushPromises()
+      expect(trigger().attributes('aria-expanded'), 'the trigger reports the open menu').toBe('true')
     })
 
     it('names the menu by the label when the trigger carries its own content', async () => {

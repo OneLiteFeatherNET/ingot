@@ -82,13 +82,19 @@ describe('MenuPanel, signed in', () => {
     return mounted
   }
 
-  it('shows the account as one button, named after the signed in user', () => {
+  it('shows the account as one button, with the name of the user in it', () => {
     mounted = mountPanel()
 
     const triggers = mounted.wrapper.findAll('button[aria-haspopup="menu"]')
     expect(triggers, 'one account button').toHaveLength(1)
-    expect(triggers[0].attributes('aria-label'), 'the visible name is the accessible name, so no label overrides it').toBeUndefined()
     expect(triggers[0].text(), 'the name is part of the button').toContain('Alice Example')
+  })
+
+  it('names the account button Account menu, followed by the name of the user', () => {
+    mounted = mountPanel()
+
+    const name = accountTrigger(mounted.wrapper).attributes('aria-label')
+    expect(name, 'a screen reader hears that the button opens a menu, and whose').toBe('Account menu for Alice Example')
   })
 
   it('draws the first letter of the name as the avatar, hidden from assistive technology', () => {
