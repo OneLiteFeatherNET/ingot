@@ -22,7 +22,7 @@ import download from 'downloadjs'
 import { useMediaQuery } from '@vueuse/core'
 import { configurationStoreKey, useConfiguration } from '../../store/configuration'
 import { useSession } from '../../store/session'
-import { adminGroups, currentTreeKey, settingsLabelOf, sideNavOf } from '../../navigation/registry'
+import { adminGroups, currentTreeKey, settingsLabelOf, shortcutsOf, sideNavOf } from '../../navigation/registry'
 import FactoryResetModal from './FactoryResetModal.vue'
 import MdButton from '../md/MdButton.vue'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
@@ -123,9 +123,12 @@ const narrow = useMediaQuery('(max-width: 1239px)')
 const session = useSession()
 const can = (node) => (typeof session.can === 'function' ? session.can(node) : true)
 const sideNav = sideNavOf('settings')
+// The hub is the one page of the section without an entry of the tree: its heading is the section, and this line says what it is.
+const HUB_DESCRIPTION = 'Shared configuration for all instances.'
 const navGroups = computed(() => adminGroups(can, {
   domains: tabDomains.value,
   titleOf: (domain) => settingsLabelOf(domain) ?? store.titleOf(domain),
+  descriptionOf: (domain) => store.schemas.value?.[domain]?.description ?? '',
 }))
 // The Repositories page and one repository are their own pages, not a domain: they have no domain in the address.
 const repositoriesPage = computed(() => route.name === 'settings-repositories')
@@ -413,12 +416,15 @@ watch(
   <AdministrationFrame
     class="settings-view"
     :style="pageClearance"
-    description="Shared configuration for all instances. Changes can take up to 10 seconds to reach every instance."
+    :description="settingsCurrent === undefined ? HUB_DESCRIPTION : undefined"
+    :title="repositoryPage ? route.params.id : ''"
+    :detail="repositoryPage"
     :label="sideNav.label"
     :section-label="sideNav.sectionLabel"
     :groups="navGroups"
     :current="settingsCurrent"
     :index-to="sideNav.indexTo"
+    :shortcuts="shortcutsOf(settingsCurrent, can)"
     :narrow="narrow"
     :reading="!repositoriesPage"
     replace

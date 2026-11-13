@@ -23,14 +23,13 @@ import { RouterLink } from 'vue-router'
  * are a side navigation in headed groups, and the page of the open section is on the right. Each
  * section is a real link to its own address. The caller decides the narrow state from a media query,
  * so this component reads no window. On narrow widths the side navigation is an index of the groups
- * when no section is open; with a section open, the page is shown with a back arrow to the index.
+ * when no section is open; with a section open, the page is shown beside the back arrow of the frame (see
+ * AdministrationFrame, which also draws the heading and the trail above this layout).
  *
  * Props:
  *   label        the accessible name of the side navigation
- *   sectionLabel the first crumb of the breadcrumb, and the name of the back arrow
  *   groups       [{ heading, links: [{ key, label, to }] }], where `to` is a router location
  *   current      the key of the open section, or undefined when no section is open
- *   indexTo      the router location of the index, which the back arrow and the first crumb go to
  *   narrow       true below 1240 pixels; from 1240 pixels the navigation is a sticky column beside the page
  *   replace      true when a link replaces the history entry instead of adding one
  *
@@ -38,23 +37,19 @@ import { RouterLink } from 'vue-router'
  */
 const props = defineProps({
   label: { type: String, required: true },
-  sectionLabel: { type: String, required: true },
   groups: { type: Array, required: true },
   current: { type: String, default: undefined },
-  indexTo: { type: Object, required: true },
   narrow: { type: Boolean, default: false },
   replace: { type: Boolean, default: false }
 })
-
-const currentLink = computed(() => props.groups
-  .flatMap(group => group.links)
-  .find(link => link.key === props.current))
 
 // On narrow widths the index replaces the page while no section is open.
 const showsIndex = computed(() => props.narrow && props.current === undefined)
 const showsPage = computed(() => !showsIndex.value)
 const showsSideNav = computed(() => props.groups.length > 0 && (!props.narrow || showsIndex.value))
-const showsBack = computed(() => props.narrow && props.groups.length > 0 && props.current !== undefined)
+
+// The id of the visible heading of a group. Each group list is labelled by it, so a screen reader names the group on entry.
+const headingId = (group) => `admin-group-${group.heading.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
 const linkClasses = (active) => [
   'md-state-layer md-focus-ring relative flex min-h-10 items-center rounded-corner-full px-4 md-label-large no-underline',
@@ -79,30 +74,39 @@ const linkClasses = (active) => [
       <div
         v-for="group in groups"
         :key="group.heading"
-        role="group"
-        :aria-label="group.heading"
         class="flex flex-col gap-1"
       >
-        <p class="px-4 pb-1 md-label-medium text-on-surface-variant">
+        <p
+          :id="headingId(group)"
+          class="px-4 pb-1 md-label-medium text-on-surface-variant"
+        >
           {{ group.heading }}
         </p>
-        <RouterLink
-          v-for="link in group.links"
-          :key="link.key"
-          v-slot="{ href, navigate }"
-          :to="link.to"
-          :replace="replace"
-          custom
+        <ul
+          :aria-labelledby="headingId(group)"
+          class="flex flex-col gap-1"
         >
-          <a
-            :href="href"
-            :aria-current="link.key === current ? 'page' : undefined"
-            :class="linkClasses(link.key === current)"
-            @click="navigate"
+          <li
+            v-for="link in group.links"
+            :key="link.key"
           >
-            {{ link.label }}
-          </a>
-        </RouterLink>
+            <RouterLink
+              v-slot="{ href, navigate }"
+              :to="link.to"
+              :replace="replace"
+              custom
+            >
+              <a
+                :href="href"
+                :aria-current="link.key === current ? 'page' : undefined"
+                :class="linkClasses(link.key === current)"
+                @click="navigate"
+              >
+                {{ link.label }}
+              </a>
+            </RouterLink>
+          </li>
+        </ul>
       </div>
     </nav>
 
@@ -111,64 +115,6 @@ const linkClasses = (active) => [
       data-ingot-part="page"
       class="flex min-w-0 flex-1 flex-col gap-4"
     >
-      <div class="flex min-w-0 items-center gap-2">
-        <RouterLink
-          v-if="showsBack"
-          v-slot="{ href, navigate }"
-          :to="indexTo"
-          custom
-        >
-          <a
-            :href="href"
-            :aria-label="`Back to ${sectionLabel}`"
-            class="md-state-layer md-focus-ring relative inline-flex size-10 shrink-0 items-center justify-center rounded-corner-full text-on-surface-variant hover:text-on-surface"
-            @click="navigate"
-          >
-            <svg
-              class="size-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-          </a>
-        </RouterLink>
-        <nav
-          v-if="currentLink"
-          aria-label="Breadcrumb"
-        >
-          <ol class="flex min-w-0 flex-wrap items-center md-label-large text-on-surface-variant">
-            <li class="after:px-2 after:content-['/']">
-              <RouterLink
-                v-slot="{ href, navigate }"
-                :to="indexTo"
-                custom
-              >
-                <a
-                  :href="href"
-                  class="md-focus-ring rounded-corner-small hover:text-on-surface"
-                  @click="navigate"
-                >{{ sectionLabel }}</a>
-              </RouterLink>
-            </li>
-            <li
-              aria-current="page"
-              class="text-on-surface"
-            >
-              {{ currentLink.label }}
-            </li>
-          </ol>
-        </nav>
-      </div>
-
       <slot />
     </div>
   </div>

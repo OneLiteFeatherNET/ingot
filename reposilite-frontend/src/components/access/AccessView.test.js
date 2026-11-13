@@ -83,18 +83,25 @@ describe('AccessView', () => {
     }
   })
 
-  it('draws one Administration heading with the Access description', async () => {
+  it('links a user detail page to the permission check with the principal filled in', async () => {
+    await mountView({ tab: 'users', name: 'alice' }, '/access/users/alice')
+
+    const link = wrapper.findAll('[aria-label="Related pages"] a').find(item => item.text() === 'Check a permission')
+    expect(link?.attributes('href'), 'the check opens for alice').toBe('/access/check?principal=alice')
+  })
+
+  it('names the open tab in the one heading, and draws the description of that tab', async () => {
     await mountView({ tab: 'users' })
 
-    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Administration'])
-    expect(wrapper.text()).toContain('Who can sign in to this instance and what they can reach.')
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Users'])
+    expect(wrapper.text()).toContain('People who sign in, with their permissions and tokens.')
   })
 
   it('lists the settings domains in the Administration tree, as the other Administration pages do', async () => {
     await mountView({ tab: 'users' })
 
     const labels = wrapper.findAll('[aria-label="Administration"] a').map(link => link.text())
-    expect(labels, 'the settings domains are in the tree with their titles').toContain('Web')
+    expect(labels, 'the settings domains are in the tree with their titles').toContain('Reverse proxy')
   })
 
   it('makes no request for the settings domains to a visitor without the settings node', async () => {
@@ -114,13 +121,13 @@ describe('AccessView', () => {
   it('offers users, machine accounts and teams as tabs', async () => {
     await mountView({ tab: 'users' })
 
-    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP', 'Security settings', 'Permission check'])
+    expect(tabs().map(tab => tab.text())).toEqual(['Users', 'Machine accounts', 'Teams', 'Single sign-on', 'LDAP directory', 'Sign-in protection', 'Permission check'])
   })
 
   it('opens the security page from the Security tab and shows its panel', async () => {
     await mountView({ tab: 'security' }, '/access/security')
 
-    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['Security settings'])
+    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['Sign-in protection'])
     expect(wrapper.find('[data-test="security"]').exists()).toBe(true)
   })
 
@@ -144,7 +151,7 @@ describe('AccessView', () => {
   it('opens the single sign on page from the SSO tab and shows its panel', async () => {
     await mountView({ tab: 'sso' }, '/access/sso')
 
-    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['SSO'])
+    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['Single sign-on'])
     expect(wrapper.find('[data-test="sso"]').exists()).toBe(true)
     expect(principals.list, 'the single sign on page lists no principals').not.toHaveBeenCalled()
   })
@@ -152,7 +159,7 @@ describe('AccessView', () => {
   it('opens the LDAP page from the LDAP tab and shows its form', async () => {
     await mountView({ tab: 'ldap' }, '/access/ldap')
 
-    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['LDAP'])
+    expect(tabs().filter(tab => tab.attributes('aria-current') === 'page').map(tab => tab.text())).toEqual(['LDAP directory'])
     expect(wrapper.find('[data-test="ldap"]').exists()).toBe(true)
   })
 

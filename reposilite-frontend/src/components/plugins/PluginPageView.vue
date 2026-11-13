@@ -1,22 +1,7 @@
-<!--
-  - Copyright (c) 2026 OneLiteFeather
-  -
-  - Licensed under the Apache License, Version 2.0 (the "License");
-  - you may not use this file except in compliance with the License.
-  - You may obtain a copy of the License at
-  -
-  -     http://www.apache.org/licenses/LICENSE-2.0
-  -
-  - Unless required by applicable law or agreed to in writing, software
-  - distributed under the License is distributed on an "AS IS" BASIS,
-  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  - See the License for the specific language governing permissions and
-  - limitations under the License.
-  -->
-
 <script setup>
 // A page a server plugin contributed, drawn from its declaration. The permission is checked by the page
-// that shows it (IndexPage), so this view only draws what it was allowed to show.
+// that shows it (IndexPage), and the page is drawn inside the Administration frame, which names it in
+// its heading. This view draws the description and the plugin of the page, and then its blocks.
 import { computed } from 'vue'
 import { contributedPageByRoute } from '../../navigation/registry'
 import PluginBlock from './PluginBlock.vue'
@@ -39,8 +24,7 @@ const anchoredPageId = computed(() => (page.value && PAGE_ID.test(page.value.id)
   <NotFoundView v-if="!page" />
   <section
     v-else
-    class="container mx-auto flex flex-col gap-6 py-8"
-    :aria-labelledby="`plugin-page-${page.plugin}-${page.id}`"
+    class="flex flex-col gap-6"
     :data-ingot-plugin-page="anchoredPageId"
     data-ingot-component="plugin-page"
   >
@@ -48,17 +32,14 @@ const anchoredPageId = computed(() => (page.value && PAGE_ID.test(page.value.id)
       data-ingot-part="header"
       class="flex flex-col gap-2"
     >
-      <h2
-        :id="`plugin-page-${page.plugin}-${page.id}`"
-        class="md-headline-small text-on-surface"
-      >
-        {{ page.title }}
-      </h2>
       <p
         v-if="page.description"
         class="md-body-large text-on-surface-variant"
       >
         {{ page.description }}
+      </p>
+      <p class="md-body-medium text-on-surface-variant">
+        Provided by the {{ page.plugin }} plugin
       </p>
     </header>
     <PluginBlock

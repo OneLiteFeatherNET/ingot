@@ -22,8 +22,9 @@
  *
  * The rail holds four entries: Browse (overview), Search, Dashboard and Administration. Administration
  * opens the hub at /settings and is the group of every page an operator uses to run the instance; ADMIN_TREE
- * lists those pages in four groups (Repository, Security, System, Support). Every Administration page shows
- * this one tree in its side navigation (adminGroups), with the current page marked.
+ * lists those pages in four groups. A group has an id, the value a plugin manifest names (Repository, Security,
+ * System, Support), and a display heading (GROUP_HEADINGS: Artifacts, Access, Instance, Monitoring and support).
+ * Every Administration page shows this one tree in its side navigation (adminGroups), with the current page marked.
  *
  * Paths and route names stay in src/router/routes.js. An entry names its route by name.
  *
@@ -47,7 +48,8 @@
  * - visiblePages(can)            the rail pages a visitor may open, in rail order (no account page)
  * - visibleChildren(key, can)    the children of a page the visitor may open
  * - adminGroups(can, options)    the Administration tree the visitor may open, in headed groups
- *                                [{ heading, links: [{ key, label, to }] }]; settings domains are passed in
+ *                                [{ id, heading, links: [{ key, label, description, to }] }]; settings domains are passed in
+ * - shortcutsOf(key, can)        the links a page draws to its related pages: [{ label, to }], each one the visitor may open
  * - currentTreeKey(route, domain) the key of the tree entry on screen (`page:<key>` or `settings:<domain>`), or undefined
  * - administrationLocation(can)  where the Administration entry of the rail opens: the hub, or the one page
  *                                the visitor may open
@@ -84,9 +86,17 @@ const NEXUS_IMPORT_PLUGIN = 'nexus-import'
 const NO_CONTRIBUTIONS = { pages: [], sections: [], enabledPlugins: [] }
 const contributions = shallowRef(NO_CONTRIBUTIONS)
 
-// The groups a contributed page may name, in rail order. A page whose group is not one of these sits in Plugins.
+// The groups a contributed page may name, in tree order. A page whose group is not one of these sits in Plugins.
 const CONTRIBUTED_GROUPS = ['Repository', 'Security', 'System', 'Support']
 const PLUGINS_HEADING = 'Plugins'
+
+// The heading each group shows on screen. The group ids stay the values a plugin manifest names (see CONTRIBUTED_GROUPS).
+const GROUP_HEADINGS = {
+  Repository: 'Artifacts',
+  Security: 'Access',
+  System: 'Instance',
+  Support: 'Monitoring and support',
+}
 
 // The Settings category a contributed section is placed in. System has no Settings category of its own.
 const SECTION_SETTINGS_GROUPS = { Repository: 'Repository', System: 'Instance' }
@@ -102,7 +112,10 @@ const pageNodeOf = (area) => (area === '*' ? INSTANCE_ADMIN_NODE : `ingot.admin.
 
 const contributedKey = (page) => `${page.plugin}/${page.id}`
 
-const contributedHeading = (page) => (CONTRIBUTED_GROUPS.includes(page.group) ? page.group : PLUGINS_HEADING)
+// The tree key of a plugin page: `plugin:<plugin>/<id>`, so it never equals a key of a built-in entry.
+const pluginTreeKey = (plugin, id) => `plugin:${plugin}/${id}`
+
+const contributedHeading = (page) => (CONTRIBUTED_GROUPS.includes(page.group) ? GROUP_HEADINGS[page.group] : PLUGINS_HEADING)
 
 // The contributed pages the visitor may open, each with its key and the heading of its group.
 const contributedPages = (can) => contributions.value.pages
@@ -118,8 +131,8 @@ const contributedPageNode = (plugin, id) => {
   return page ? pageNodeOf(page.area) : undefined
 }
 
-// The rail groups of the contributed pages: [{ heading, pages }] in the order of CONTRIBUTED_GROUPS, Plugins last.
-const contributedRailGroups = (can) => [...CONTRIBUTED_GROUPS, PLUGINS_HEADING]
+// The rail groups of the contributed pages: [{ heading, pages }] in the order of the groups, Plugins last.
+const contributedRailGroups = (can) => [...Object.values(GROUP_HEADINGS), PLUGINS_HEADING]
   .map(heading => ({ heading, pages: contributedPages(can).filter(page => page.heading === heading) }))
   .filter(group => group.pages.length > 0)
 
@@ -147,10 +160,6 @@ const entryAvailable = (entry) => entry.requires === undefined || entry.requires
 const AREAS = [{ area: 'rail', heading: undefined }]
 const BAR_SIZE = 4
 
-// The settings domains that belong to the Repository group of the Administration tree. Any other domain, a plugin
-// domain included, is listed under System, so it never fails to show.
-const REPOSITORY_DOMAINS = ['javadoc', 'cleanup']
-
 // The settings domains that have a page of their own, so they are not a settings tab or a settings card. The maven domain is
 // edited on the Repositories page. It is still loaded, saved, exported and imported with the other domains.
 const DOMAINS_ON_OTHER_PAGES = ['maven']
@@ -159,50 +168,63 @@ const DOMAINS_ON_OTHER_PAGES = ['maven']
 const RESERVED_SETTINGS_PAGES = ['repositories']
 
 /*
- * The Administration tree. A static entry names its route, label and permission. The settings domains are not
- * listed here, because the server decides which exist; they are added to their group by adminGroups.
+ * The Administration tree, in its groups, each in the order it is listed. A page entry names its route, label,
+ * description, filter keywords and permission. A settings domain entry (`domain`) names the domain and its label,
+ * description and keywords, and is listed only when the server lists the domain and the visitor has the settings
+ * node. A settings domain the tree does not name is added by adminGroups, after the entries of its group. The
+ * order inside a group is the order here: entries that belong together are adjacent (Audit settings follows
+ * Audit log), and the pages keep their order relative to each other (see the tree requirement).
  */
 const ADMIN_TREE = [
   {
-    heading: 'Repository',
+    id: 'Repository',
     entries: [
-      { key: 'repositories', route: 'settings-repositories', detail: 'settings-repository', label: 'Repositories', permission: { node: ADMIN_NODES.settings } },
+      { key: 'repositories', route: 'settings-repositories', detail: 'settings-repository', label: 'Repositories', permission: { node: ADMIN_NODES.settings }, description: 'Hosted, proxied and group repositories, their policies and Maven options.', keywords: 'maven, hosted, proxy, mirror, group' },
+      { domain: 'cleanup', label: 'Cleanup policies', description: 'Rules that delete old versions from the repositories they list.', keywords: 'cleanup, retention, delete, snapshots' },
+      { domain: 'javadoc', label: 'Javadoc', description: 'Whether Javadoc archives are served, and which file suffixes count as Javadoc.', keywords: 'docs, groovydoc' },
+      { domain: 'search', label: 'Search index', description: 'The index behind artifact search: its nightly check against storage and scheduled rebuilds.', keywords: 'search, index, rebuild, reindex, verify' },
     ],
   },
   {
-    heading: 'Security',
+    id: 'Security',
     entries: [
-      { key: 'users', route: 'access-users', label: 'Users', permission: { node: ADMIN_NODES.users } },
-      { key: 'machines', route: 'access-machines', label: 'Machine accounts', permission: { node: ADMIN_NODES.users } },
-      { key: 'teams', route: 'access-teams', label: 'Teams', permission: { node: ADMIN_NODES.teams } },
-      { key: 'sso', route: 'access-sso', label: 'SSO', permission: { node: INSTANCE_ADMIN_NODE } },
-      { key: 'ldap', route: 'access-ldap', label: 'LDAP', permission: { node: INSTANCE_ADMIN_NODE } },
-      { key: 'security', route: 'access-security', label: 'Security settings', permission: { node: INSTANCE_ADMIN_NODE } },
-      { key: 'check', route: 'access-check', label: 'Permission check', permission: { anyNode: ACCESS_NODES } },
-      { key: 'audit', route: 'audit', label: 'Audit log', permission: { node: ADMIN_NODES.audit } },
+      { key: 'users', route: 'access-users', label: 'Users', permission: { node: ADMIN_NODES.users }, description: 'People who sign in, with their permissions and tokens.', keywords: 'people, account, password, token' },
+      { key: 'machines', route: 'access-machines', label: 'Machine accounts', permission: { node: ADMIN_NODES.users }, description: 'Accounts for CI and other automated clients, with their tokens.', keywords: 'ci, bot, robot, deploy, token' },
+      { key: 'teams', route: 'access-teams', label: 'Teams', permission: { node: ADMIN_NODES.teams }, description: 'Groups of users and machine accounts that share permissions.', keywords: 'group, members' },
+      { key: 'sso', route: 'access-sso', label: 'Single sign-on', permission: { node: INSTANCE_ADMIN_NODE }, description: 'External sign-in providers such as OpenID Connect.', keywords: 'sso, oidc, oauth, openid, login' },
+      { key: 'ldap', route: 'access-ldap', label: 'LDAP directory', permission: { node: INSTANCE_ADMIN_NODE }, description: 'Sign-in with accounts from an LDAP directory.', keywords: 'ldap, active directory' },
+      { key: 'security', route: 'access-security', label: 'Sign-in protection', permission: { node: INSTANCE_ADMIN_NODE }, description: 'Limits on repeated failed sign-ins from one IP address.', keywords: 'security settings, brute force, lockout' },
+      { key: 'check', route: 'access-check', label: 'Permission check', permission: { anyNode: ACCESS_NODES }, description: 'Find out why someone can or cannot reach a path.', keywords: 'why, denied, 403, access' },
     ],
   },
   {
-    heading: 'System',
-    // The nexus import wizard. Listed only while the nexus-import plugin is enabled, so an installation without it sees
-    // no entry and the address answers as an unknown one.
+    id: 'System',
     entries: [
-      { key: 'migration', route: 'settings-migration', label: 'Migration', permission: { node: INSTANCE_ADMIN_NODE }, requires: () => pluginEnabled(NEXUS_IMPORT_PLUGIN) },
+      { domain: 'frontend', label: 'Branding', description: 'Name, description, logo, colours and links shown on this instance.', keywords: 'frontend, logo, colour, color, theme, title, privacy' },
+      { domain: 'web', label: 'Reverse proxy', description: 'The headers that carry the client address and the path prefix behind a proxy.', keywords: 'web, nginx, traefik, x-forwarded, header' },
+      { domain: 'statistics', label: 'Usage statistics', description: 'Whether resolved requests are counted, and per which period.', keywords: 'statistics, stats, downloads' },
+      // The nexus import wizard. Listed only while the nexus-import plugin is enabled, so an installation without it sees
+      // no entry and the address answers as an unknown one.
+      { key: 'migration', route: 'settings-migration', label: 'Migration', permission: { node: INSTANCE_ADMIN_NODE }, requires: () => pluginEnabled(NEXUS_IMPORT_PLUGIN), description: 'Import the repositories of another instance, step by step.', keywords: 'nexus, import' },
     ],
   },
   {
-    heading: 'Support',
+    id: 'Support',
     entries: [
-      { key: 'console', route: 'console', label: 'Console', permission: { node: ADMIN_NODES.console } },
-      { key: 'maintenance', route: 'maintenance', label: 'Maintenance', permission: { node: ADMIN_NODES.maintenance } },
-      { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { node: ADMIN_NODES.dashboard } },
-      { key: 'system-info', route: 'system-info', label: 'System information', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value },
-      { key: 'support', route: 'support', label: 'Support bundle', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value },
+      { key: 'audit', route: 'audit', label: 'Audit log', permission: { node: ADMIN_NODES.audit }, description: 'Deployments, deletions, settings changes, token changes and failed sign ins on this instance, newest first.', keywords: 'audit, events, history, who' },
+      { domain: 'audit', label: 'Audit settings', description: 'How long audit events are kept, and whether the client address is recorded.', keywords: 'audit, retention, client address' },
+      { key: 'console', route: 'console', label: 'Console', permission: { node: ADMIN_NODES.console }, description: 'The log lines of this instance, filtered by level and text.', keywords: 'logs' },
+      { key: 'maintenance', route: 'maintenance', label: 'Maintenance', permission: { node: ADMIN_NODES.maintenance }, description: 'Storage usage, the search index and cleanup for this Ingot instance.', keywords: 'storage, rebuild index, cleanup run' },
+      { key: 'analytics', route: 'analytics', label: 'Analytics', permission: { node: ADMIN_NODES.dashboard }, description: 'Traffic and resource use of this instance over time.', keywords: 'traffic, charts' },
+      { key: 'system-info', route: 'system-info', label: 'System information', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value, description: 'What this instance runs on. Secrets are withheld or masked, and the page only reads.', keywords: 'version, java, environment' },
+      { key: 'support', route: 'support', label: 'Support bundle', permission: { node: ADMIN_NODES.console }, requires: () => supportBundleOffered.value, description: 'What a maintainer needs to look at this instance, as one zip.', keywords: 'zip, debug' },
     ],
   },
 ]
 
-const ADMIN_ENTRIES = ADMIN_TREE.flatMap(group => group.entries)
+// The page entries of the tree in their order, the ones that have a route. The rail's Administration entry opens the
+// first of them the visitor may open (administrationLocation), so this order is the one the requirement fixes.
+const ADMIN_ENTRIES = ADMIN_TREE.flatMap(group => group.entries).filter(entry => entry.route !== undefined)
 
 // Whether the instance offers the support pages (GET /api/admin/support/availability). False until the server has
 // answered, so a support page is listed only once the instance says it is on (see src/store/supportBundle.js).
@@ -274,15 +296,17 @@ const visiblePages = (can) =>
 const visibleChildren = (key, can) => childrenOf(key).filter(child => allowedBy(child.permission, can))
 
 /*
- * The Administration tree a visitor may open, in its groups: [{ heading, links: [{ key, label, to }] }]. `to` is the
- * router location of the link. A group without a visible link is left out. The settings domains come from the
- * caller (`domains` is the list the server gave, Access domains left out), and are listed only to a visitor with
- * the settings node, each in the group treeGroupOf names. `titleOf` gives their label.
+ * The links of the plugin pages a contributed page puts under one heading of the tree, in the order the manifest lists them.
+ * A plugin page is listed after the built-in entries of its group.
  */
-// The links of the pages a plugin contributed under one heading of the tree, in the order the manifest lists them.
 const pluginLinksOf = (can, heading) => contributedPages(can)
   .filter(page => page.heading === heading)
-  .map(page => ({ key: `plugin:${page.key}`, label: page.title, to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } } }))
+  .map(page => ({
+    key: pluginTreeKey(page.plugin, page.id),
+    label: page.title,
+    description: page.description ?? '',
+    to: { name: 'settings-plugin', params: { plugin: page.plugin, page: page.id } },
+  }))
 
 /*
  * The key of an entry of the tree. A static page and a settings domain may share an id (the audit log page and the audit
@@ -300,23 +324,79 @@ const currentTreeKey = (routeName, domain) => {
   return entry ? pageTreeKey(entry.key) : undefined
 }
 
-const adminGroups = (can, { domains: allDomains = [], titleOf = (domain) => domain } = {}) => {
+// The group of a settings domain in the Administration tree. A plugin section takes the group it names (Repository or
+// System). A built-in domain takes the group of its entry in ADMIN_TREE. Any other domain, a plugin domain included,
+// is listed under System, so it never fails to show.
+const treeGroupOf = (domain) => {
+  const section = sectionOf(domain)
+  if (section) return section.group === 'Repository' ? 'Repository' : 'System'
+  return ADMIN_TREE.find(group => group.entries.some(entry => entry.domain === domain))?.id ?? 'System'
+}
+
+// The label of a settings domain: the frontend's label for a built-in domain, else the caller's title (the plugin section
+// label, or the schema title).
+const settingsLinkOf = (domain, entry, { titleOf, descriptionOf }) => ({
+  key: settingsTreeKey(domain),
+  label: entry?.label ?? titleOf(domain),
+  description: entry?.description ?? descriptionOf(domain) ?? '',
+  to: { name: 'settings', params: { domain } },
+})
+
+/*
+ * The Administration tree a visitor may open, in its groups: [{ id, heading, links: [{ key, label, description, to }] }].
+ * `to` is the router location of the link. A group without a visible link is left out. The settings domains come from
+ * the caller (`domains` is the list the server gave, Access domains left out), and are listed only to a visitor with the
+ * settings node. `titleOf` and `descriptionOf` give the label and the description of a domain the frontend does not name.
+ */
+const adminGroups = (can, { domains: allDomains = [], titleOf = (domain) => domain, descriptionOf = () => '' } = {}) => {
   const domains = allDomains.filter(domain => !DOMAINS_ON_OTHER_PAGES.includes(domain))
+  const showsDomains = can(ADMIN_NODES.settings)
+  const flattened = ADMIN_TREE.flatMap(group => group.entries.map(entry => ({ ...entry, group: group.id })))
+  // The entries the visitor may open, in the order of the tree, each with the group it is listed under.
+  const listed = flattened
+    .filter(entry => (entry.domain === undefined
+      ? entryAvailable(entry) && allowedBy(entry.permission, can)
+      : showsDomains && domains.includes(entry.domain)))
+    .map(entry => (entry.domain === undefined
+      ? { group: entry.group, link: { key: pageTreeKey(entry.key), label: entry.label, description: entry.description, to: { name: entry.route } } }
+      : { group: treeGroupOf(entry.domain), link: settingsLinkOf(entry.domain, entry, { titleOf, descriptionOf }) }))
+  // The domains the tree does not name come after the named ones, in the order the server gave.
+  const unnamed = showsDomains
+    ? domains
+      .filter(domain => !flattened.some(entry => entry.domain === domain))
+      .map(domain => ({ group: treeGroupOf(domain), link: settingsLinkOf(domain, undefined, { titleOf, descriptionOf }) }))
+    : []
+  const placed = [...listed, ...unnamed]
   return ADMIN_TREE
-    .map(group => {
-      const pages = group.entries
-        .filter(entry => entryAvailable(entry) && allowedBy(entry.permission, can))
-        .map(entry => ({ key: pageTreeKey(entry.key), label: entry.label, to: { name: entry.route } }))
-      const settingsLinks = can(ADMIN_NODES.settings)
-        ? domains
-          .filter(domain => treeGroupOf(domain) === group.heading)
-          .map(domain => ({ key: settingsTreeKey(domain), label: titleOf(domain), to: { name: 'settings', params: { domain } } }))
-        : []
-      return { heading: group.heading, links: [...pages, ...settingsLinks, ...pluginLinksOf(can, group.heading)] }
-    })
-    .concat([{ heading: PLUGINS_HEADING, links: pluginLinksOf(can, PLUGINS_HEADING) }])
+    .map(group => ({
+      id: group.id,
+      heading: GROUP_HEADINGS[group.id],
+      links: [
+        ...placed.filter(item => item.group === group.id).map(item => item.link),
+        ...pluginLinksOf(can, GROUP_HEADINGS[group.id]),
+      ],
+    }))
+    .concat([{ id: PLUGINS_HEADING, heading: PLUGINS_HEADING, links: pluginLinksOf(can, PLUGINS_HEADING) }])
     .filter(group => group.links.length > 0)
 }
+
+// The shortcuts between the pages of the tree (design D6). A shortcut is a link inside a page, never a tree entry, and
+// it is listed only when the visitor may open its target. The key is the tree key of the page the shortcut is drawn on.
+const settingsTo = (domain) => ({ name: 'settings', params: { domain } })
+const SHORTCUTS = {
+  'page:audit': [{ label: 'Audit settings', to: settingsTo('audit'), node: ADMIN_NODES.settings }],
+  'settings:audit': [{ label: 'Open the audit log', to: { name: 'audit' }, node: ADMIN_NODES.audit }],
+  'page:analytics': [{ label: 'Usage statistics', to: settingsTo('statistics'), node: ADMIN_NODES.settings }],
+  'page:maintenance': [
+    { label: 'Search index', to: settingsTo('search'), node: ADMIN_NODES.settings },
+    { label: 'Cleanup policies', to: settingsTo('cleanup'), node: ADMIN_NODES.settings },
+  ],
+  'settings:search': [{ label: 'Rebuild now on Maintenance', to: { name: 'maintenance' }, node: ADMIN_NODES.maintenance }],
+}
+
+const shortcutsOf = (treeKey, can) => (SHORTCUTS[treeKey] ?? [])
+  .filter(shortcut => can(shortcut.node))
+  .map(({ label, to }) => ({ label, to }))
 
 /*
  * Where the Administration entry of the rail opens: the hub when the visitor may open it, otherwise the first
@@ -334,14 +414,6 @@ const administrationLocation = (can) => {
 const sideNavOf = (key) => {
   const page = pageByKey(key)
   return { label: 'Administration', sectionLabel: 'Administration', indexTo: { name: page.route } }
-}
-
-// The group of a Settings domain in the Administration tree: Repository for the repository domains and a plugin section
-// in the Repository group, System for every other domain, a plugin domain included.
-const treeGroupOf = (domain) => {
-  const section = sectionOf(domain)
-  if (section) return section.group === 'Repository' ? 'Repository' : 'System'
-  return REPOSITORY_DOMAINS.includes(domain) ? 'Repository' : 'System'
 }
 
 const SETTINGS_GROUPS = [
@@ -439,9 +511,12 @@ export {
   visiblePages,
   visibleChildren,
   adminGroups,
+  shortcutsOf,
+  GROUP_HEADINGS,
   DOMAINS_ON_OTHER_PAGES,
   currentTreeKey,
   pageTreeKey,
+  pluginTreeKey,
   administrationLocation,
   sideNavOf,
   settingsGroupOf,

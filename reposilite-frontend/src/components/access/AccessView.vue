@@ -37,7 +37,7 @@ import CheckPermissionView from './check/CheckPermissionView.vue'
  *   tab   users, machines, teams, sso, ldap, security or check (the permission check); none shows the index
  *   name  the open user, machine account or team, if any
  */
-defineProps({
+const props = defineProps({
   tab: {
     type: String,
     default: undefined,
@@ -60,16 +60,28 @@ const narrow = useMediaQuery('(max-width: 1239px)')
 const settings = useSettingsDomains()
 const groups = computed(() => adminGroups(can, { domains: settings.domains.value, titleOf: settings.titleOf }))
 const sideNav = sideNavOf('access')
+
+// The heading of the page: the item name on a detail page, the Access name on the index, and otherwise the label of the tab.
+const heading = computed(() => props.name ?? (props.tab === undefined ? 'Access' : ''))
+// A detail page links to the permission check. A user or a machine account goes there with the principal filled in; a
+// team has no principal of the check, so the link opens the check alone.
+const shortcuts = computed(() => {
+  if (props.name === undefined) return []
+  const to = props.tab === 'teams' ? { name: 'access-check' } : { name: 'access-check', query: { principal: props.name } }
+  return [{ label: 'Check a permission', to }]
+})
 </script>
 
 <template>
   <AdministrationFrame
-    description="Who can sign in to this instance and what they can reach."
+    :title="heading"
+    :detail="name !== undefined"
     :label="sideNav.label"
     :section-label="sideNav.sectionLabel"
     :groups="groups"
     :current="pageTreeKey(tab)"
     :index-to="sideNav.indexTo"
+    :shortcuts="shortcuts"
     :narrow="narrow"
   >
     <div data-ingot-component="access-view">

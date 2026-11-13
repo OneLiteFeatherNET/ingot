@@ -213,7 +213,7 @@ describe('AdministrationFrame page header', () => {
     expect(crumbs, 'only the last crumb is drawn').toEqual(['Monitoring and support'])
     const trail = wrapper.get('nav[aria-label="Administration / Monitoring and support"]')
     expect(trail.attributes('title'), 'the full trail is the title').toBe('Administration / Monitoring and support')
-    expect(trail.element.parentElement.classes(), 'the back arrow and the trail share one row').toEqual(expect.arrayContaining(['flex', 'items-center']))
+    expect([...trail.element.parentElement.classList], 'the back arrow and the trail share one row').toEqual(expect.arrayContaining(['flex', 'items-center']))
   })
 
   it('draws the shortcut links of the page in a related pages block, each to its own address', async () => {

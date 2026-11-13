@@ -154,7 +154,9 @@ describe('SettingsView page', () => {
   })
 
   it('does not repeat the propagation notice as the description of a settings page', async () => {
-    await mountSettings({ props: { domain: 'web' } })
+    const store = await loadedStore()
+    store.domains.value = ['web', 'ingot']
+    await mountSettings({ store, props: { domain: 'web' } })
 
     expect(wrapper.text(), 'the description of the page is the one of its tree entry').toContain('The headers that carry the client address')
     expect(wrapper.text(), 'no 10 second notice in the description').not.toContain('10 seconds')

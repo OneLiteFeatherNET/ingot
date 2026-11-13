@@ -48,7 +48,7 @@ import { routeAllowed } from '../store/nodeAccess'
 import { BOTTOM_BAR_VARIABLE, bottomBarHeight } from '../helpers/bottom-bar'
 import ViewLoading from '../components/util/ViewLoading.vue'
 import ViewLoadError from '../components/util/ViewLoadError.vue'
-import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
+import { supportBundleOffered, MORE_KEY, pageByKey, pageLabel, visiblePages, railGroups, barLayout, accessTabOf, adminGroups, currentTreeKey, pluginTreeKey, shortcutsOf, administrationLocation, sideNavOf, contributedPageByRoute, contributedPageNode, contributedRailGroups, pluginPageRedirect, pluginEnabled, NEXUS_IMPORT_PLUGIN } from '../navigation/registry'
 import { pluginUiReady, loadPluginUi, clearPluginUi } from '../store/pluginUi'
 import { supportBundleReady, loadSupportBundle, clearSupportBundle } from '../store/supportBundle'
 import PluginPageView from '../components/plugins/PluginPageView.vue'
@@ -99,16 +99,6 @@ defineProps({
 const ADMIN_SIDE_PAGES = ['audit', 'console', 'maintenance', 'analytics', 'migration']
 // The support pages are children of Settings: they share its section, and draw the same tree as the ADMIN_SIDE_PAGES.
 const SUPPORT_ROUTES = ['system-info', 'support']
-// The one-line description each Administration page shows under the frame heading, by route name.
-const ADMIN_DESCRIPTIONS = {
-  audit: 'Deployments, deletions, settings changes, token changes and failed sign ins on this instance, newest first.',
-  console: 'The log lines of this instance, filtered by level and text.',
-  maintenance: 'Storage usage, the search index and cleanup for this Ingot instance.',
-  analytics: 'Traffic and resource use of this instance over time.',
-  'settings-migration': 'Import the repositories of another instance, step by step.',
-  'system-info': 'What this instance runs on. Secrets are withheld or masked, and the page only reads.',
-  support: 'What a maintainer needs to look at this instance, as one zip.',
-}
 // The pages that the Administration entry of the rail and the bar stands for.
 const ADMINISTRATION_SECTIONS = ['settings', 'access', ...ADMIN_SIDE_PAGES]
 
@@ -296,15 +286,21 @@ const replaceQuery = (key, value) => {
 // the tree is an index instead of a column; see SideNavLayout. The settings domains are known only inside Settings,
 // so the tree here lists the static pages.
 const narrow = useMediaQuery('(max-width: 1239px)')
+// A plugin page is drawn in the same frame, so the tree is the same there too (see PluginPageView).
 const adminSideNav = computed(() => {
-  if (ADMIN_SIDE_PAGES.includes(section.value)) return { ...sideNavOf(section.value), description: ADMIN_DESCRIPTIONS[route.name] }
-  return SUPPORT_ROUTES.includes(route.name) ? { ...sideNavOf('settings'), description: ADMIN_DESCRIPTIONS[route.name] } : null
+  if (ADMIN_SIDE_PAGES.includes(section.value)) return sideNavOf(section.value)
+  return SUPPORT_ROUTES.includes(route.name) || route.name === 'settings-plugin' ? sideNavOf('settings') : null
 })
+// The main landmark is named by the heading of the Administration frame, on the pages that draw one.
+const framedMain = computed(() => (adminSideNav.value !== null || section.value === 'access' || section.value === 'settings')
+  && sectionAllowed.value)
 // The tree is the same on every Administration page: the settings domains the visitor may open, requested only here.
 const settings = useSettingsDomains(() => adminSideNav.value !== null)
 const adminTree = computed(() => adminGroups(can, { domains: settings.domains.value, titleOf: settings.titleOf }))
-// The entry of the tree on screen, from the route: the one page of the tree the address names.
-const adminCurrent = computed(() => currentTreeKey(route.name))
+// The entry of the tree on screen, from the route: the one page of the tree the address names, or the plugin page.
+const adminCurrent = computed(() => (route.name === 'settings-plugin'
+  ? pluginTreeKey(route.params.plugin, route.params.page)
+  : currentTreeKey(route.name)))
 
 // Access: the tab on screen (users, machines, teams, sso, ldap, security or check; none at /access, which is the index on a narrow screen) and the name of the principal or team that
 // is open. The view moves between them through the router itself. The registry maps each route to its tab.
@@ -366,6 +362,7 @@ const activeLabel = computed(() => pageLabel(section.value))
       <main
         id="main"
         tabindex="-1"
+        :aria-labelledby="framedMain ? 'administration-title' : undefined"
         :class="hasNavigation ? 'min-[600px]:flex min-[600px]:flex-1 min-[600px]:flex-col' : ''"
       >
         <NotFoundView v-if="route.name === 'not-found'" />
@@ -440,11 +437,22 @@ const activeLabel = computed(() => pageLabel(section.value))
             :qualifier="qualifier"
           />
         </template>
-        <PluginPageView
+        <AdministrationFrame
           v-else-if="route.name === 'settings-plugin'"
-          :plugin="route.params.plugin"
-          :page-id="route.params.page"
-        />
+          description=""
+          :label="adminSideNav.label"
+          :section-label="adminSideNav.sectionLabel"
+          :groups="adminTree"
+          :current="adminCurrent"
+          :index-to="adminSideNav.indexTo"
+          :shortcuts="shortcutsOf(adminCurrent, can)"
+          :narrow="narrow"
+        >
+          <PluginPageView
+            :plugin="route.params.plugin"
+            :page-id="route.params.page"
+          />
+        </AdministrationFrame>
         <SearchView v-else-if="section === 'search'" />
         <AccountView v-else-if="section === 'account'" />
         <DashboardView v-else-if="section === 'dashboard'" />
@@ -456,12 +464,12 @@ const activeLabel = computed(() => pageLabel(section.value))
         <AdministrationFrame
           v-else-if="adminSideNav"
           :reading="readingPage"
-          :description="adminSideNav.description"
           :label="adminSideNav.label"
           :section-label="adminSideNav.sectionLabel"
           :groups="adminTree"
           :current="adminCurrent"
           :index-to="adminSideNav.indexTo"
+          :shortcuts="shortcutsOf(adminCurrent, can)"
           :narrow="narrow"
         >
           <AnalyticsView v-if="section === 'analytics'" />

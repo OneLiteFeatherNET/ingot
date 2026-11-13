@@ -523,7 +523,9 @@ describe('IndexPage Administration tree', () => {
   })
 
   const treeOf = (wrapper) => wrapper.find('nav[aria-label="Administration"]')
-  const treeGroups = (wrapper) => treeOf(wrapper).findAll('[role="group"]')
+  // Each group is a list named by the visible heading of the group (aria-labelledby), see SideNavLayout.
+  const treeGroups = (wrapper) => treeOf(wrapper).findAll('ul[aria-labelledby]')
+  const headingOf = (wrapper, group) => wrapper.get(`#${group.attributes('aria-labelledby')}`).text()
 
   it.each([
     ['/audit', 'Audit log'],
@@ -540,7 +542,7 @@ describe('IndexPage Administration tree', () => {
   it('lists the Administration pages in the groups Artifacts, Access and Monitoring and support', async () => {
     const { wrapper } = await mountAt('/audit', { manager: true })
 
-    expect(treeGroups(wrapper).map(group => group.attributes('aria-label')), 'Instance is left out, it has no page here')
+    expect(treeGroups(wrapper).map(group => headingOf(wrapper, group)), 'Instance is left out, it has no page here')
       .toEqual(['Artifacts', 'Access', 'Monitoring and support'])
     expect(treeGroups(wrapper).map(group => group.findAll('a').map(link => link.text()))).toEqual([
       ['Repositories'],
@@ -552,7 +554,7 @@ describe('IndexPage Administration tree', () => {
   it('lists only the Administration pages the visitor may open', async () => {
     const { wrapper } = await mountAt('/audit', { logged: true, nodes: ['ingot.admin.audit'] })
 
-    expect(treeGroups(wrapper).map(group => group.attributes('aria-label'))).toEqual(['Monitoring and support'])
+    expect(treeGroups(wrapper).map(group => headingOf(wrapper, group))).toEqual(['Monitoring and support'])
     expect(treeGroups(wrapper)[0].findAll('a').map(link => link.text())).toEqual(['Audit log'])
   })
 
@@ -714,6 +716,13 @@ describe('IndexPage main landmark', () => {
     const { wrapper } = await mountAt('/dashboard', { manager: true })
 
     expect(wrapper.findAll('main#main[tabindex="-1"]'), 'one main element with the skip link target').toHaveLength(1)
+  })
+
+  it('names the main landmark by the heading of the Administration frame', async () => {
+    const { wrapper } = await mountAt('/audit', { manager: true })
+
+    expect(wrapper.find('main').attributes('aria-labelledby'), 'the audit log names its main landmark by the frame heading').toBe('administration-title')
+    expect(wrapper.find('#administration-title').text()).toBe('Audit log')
   })
 
   it('keeps the page header outside the main landmark', async () => {
