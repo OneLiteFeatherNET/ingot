@@ -31,28 +31,38 @@ describe('support pages in the Administration tree', () => {
   it('lists both support pages in the Support group for a principal with the console area', () => {
     setSupportBundleOffered(true)
 
-    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['page:console', 'page:system-info', 'page:support'])
+    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Monitoring and support'))).toEqual(['page:console', 'page:system-info', 'page:support'])
   })
 
   it('names each page with its label and its route', () => {
     setSupportBundleOffered(true)
 
-    expect(linksOf(adminGroups(canWith([CONSOLE])), 'Support').slice(1)).toEqual([
-      { key: 'page:system-info', label: 'System information', to: { name: 'system-info' } },
-      { key: 'page:support', label: 'Support bundle', to: { name: 'support' } },
+    expect(linksOf(adminGroups(canWith([CONSOLE])), 'Monitoring and support').slice(1)).toEqual([
+      {
+        key: 'page:system-info',
+        label: 'System information',
+        description: 'What this instance runs on. Secrets are withheld or masked, and the page only reads.',
+        to: { name: 'system-info' },
+      },
+      {
+        key: 'page:support',
+        label: 'Support bundle',
+        description: 'What a maintainer needs to look at this instance, as one zip.',
+        to: { name: 'support' },
+      },
     ])
   })
 
   it('hides both support pages while the instance does not offer them, whatever the nodes', () => {
     setSupportBundleOffered(false)
 
-    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Support'))).toEqual(['page:console'])
+    expect(keysOf(linksOf(adminGroups(canWith([CONSOLE])), 'Monitoring and support'))).toEqual(['page:console'])
   })
 
   it('hides both support pages from a principal without the console area', () => {
     setSupportBundleOffered(true)
 
-    expect(linksOf(adminGroups(canWith(['ingot.admin.users'])), 'Support')).toEqual([])
+    expect(linksOf(adminGroups(canWith(['ingot.admin.users'])), 'Monitoring and support')).toEqual([])
   })
 
   it('adds no top level page to the rail, so the rail pages stay as they were', () => {

@@ -22,8 +22,10 @@ import {
   contributedRailGroups,
   railGroups,
   barLayout,
+  adminGroups,
   pluginPageRedirect,
   settingsGroupOf,
+  settingsLabelOf,
   unlistedRoutes,
 } from './registry'
 import { canUse } from '../store/nodeAccess'
@@ -65,7 +67,7 @@ describe('contributed pages', () => {
 
     const groups = contributedRailGroups(canWith(['ingot.admin.maintenance', 'ingot.admin.audit', 'ingot.admin.settings']))
 
-    expect(groups.map(group => group.heading)).toEqual(['Security', 'System', 'Plugins'])
+    expect(groups.map(group => group.heading)).toEqual(['Access', 'Instance', 'Plugins'])
   })
 
   it('places a page whose group is unknown in the Plugins category', () => {
@@ -109,6 +111,66 @@ describe('contributed pages', () => {
     setContributions({ version: 1, pages: [], sections: [], enabledPlugins: [] })
 
     expect(contributedPages(canWith(['*']))).toEqual([])
+  })
+})
+
+describe('contributed pages in the Administration tree', () => {
+  const pageIn = (group, id) => ({ plugin: 'example', id, title: id, group, area: 'maintenance', blocks: [] })
+  const everyGroup = () => setContributions({
+    version: 1,
+    pages: [
+      pageIn('Repository', 'repo'),
+      pageIn('Security', 'sec'),
+      pageIn('System', 'sys'),
+      pageIn('Support', 'sup'),
+      pageIn('Billing', 'Billing'),
+    ],
+    sections: [],
+    enabledPlugins: ['example'],
+  })
+
+  it('shows a page under the display heading of the group it names, and the unknown group under Plugins last', () => {
+    everyGroup()
+
+    const groups = adminGroups(canWith(['ingot.admin.maintenance']))
+
+    expect(groups.map(group => group.heading), 'the four headings, then Plugins for the unknown group').toEqual([
+      'Artifacts', 'Access', 'Instance', 'Monitoring and support', 'Plugins'
+    ])
+    expect(groups.at(-1).links.map(link => link.label)).toEqual(['Billing'])
+  })
+
+  it('lists the plugin pages of each heading after the built-in entries of that heading', () => {
+    everyGroup()
+
+    const groups = adminGroups(canWith(['ingot.admin.settings', 'ingot.admin.maintenance']))
+    const labelsOf = (heading) => groups.find(group => group.heading === heading).links.map(link => link.label)
+
+    expect(labelsOf('Artifacts'), 'the Repositories page, then the plugin page of Repository').toEqual(['Repositories', 'repo'])
+    expect(labelsOf('Access'), 'the plugin page of Security alone, no built-in page for this visitor').toEqual(['sec'])
+    expect(labelsOf('Instance'), 'the plugin page of System alone').toEqual(['sys'])
+    expect(labelsOf('Monitoring and support'), 'Maintenance, then the plugin page of Support').toEqual(['Maintenance', 'sup'])
+  })
+
+  it('lists a plugin settings section under the heading of its group, with the section label', () => {
+    setContributions({
+      version: 1,
+      pages: [],
+      sections: [
+        { plugin: 'example', domain: 'mirror', label: 'Mirror checks', group: 'Repository' },
+        { plugin: 'example', domain: 'pulse', label: 'Pulse', group: 'System' },
+      ],
+      enabledPlugins: ['example'],
+    })
+
+    const groups = adminGroups(canWith(['ingot.admin.settings']), {
+      domains: ['mirror', 'pulse'],
+      titleOf: (domain) => settingsLabelOf(domain) ?? domain,
+    })
+    const labelsOf = (heading) => groups.find(group => group.heading === heading).links.map(link => link.label)
+
+    expect(labelsOf('Artifacts'), 'the section of Repository is under Artifacts').toEqual(['Repositories', 'Mirror checks'])
+    expect(labelsOf('Instance'), 'the section of System is under Instance').toEqual(['Pulse'])
   })
 })
 

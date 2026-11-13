@@ -83,11 +83,11 @@ describe('hubGroups', () => {
     const groups = hubGroups(fixture())
 
     expect(groups.flatMap(group => domainCards(group).map(card => card.key)), 'no maven card').not.toContain('settings:maven')
-    expect(domainCards(groups.find(group => group.heading === 'System')).map(card => card.key), 'the other domains').toEqual(['settings:web', 'settings:acme'])
+    expect(domainCards(groups.find(group => group.heading === 'Instance')).map(card => card.key), 'the other domains').toEqual(['settings:web', 'settings:acme'])
   })
 
   it('gives the Repositories page the saved summary of the maven domain, since the domain is edited there', () => {
-    const repository = hubGroups(fixture()).find(group => group.heading === 'Repository')
+    const repository = hubGroups(fixture()).find(group => group.heading === 'Artifacts')
 
     expect(repository.cards.find(card => card.key === 'page:repositories')).toEqual({
       key: 'page:repositories',
@@ -100,7 +100,7 @@ describe('hubGroups', () => {
 
   it('marks the Repositories page when the maven draft differs, and keeps its saved summary', () => {
     const groups = hubGroups(fixture({ unsaved: ['maven'] }))
-    const repositories = groups.find(group => group.heading === 'Repository').cards.find(card => card.key === 'page:repositories')
+    const repositories = groups.find(group => group.heading === 'Artifacts').cards.find(card => card.key === 'page:repositories')
 
     expect(repositories.unsaved).toBe(true)
     expect(repositories.summary, 'the card shows the saved value, not the draft').toBe('6 repositories')

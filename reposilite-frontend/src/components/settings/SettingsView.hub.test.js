@@ -108,9 +108,10 @@ describe('the settings hub at /settings', () => {
   it('groups the domains under Repository and System, with the Repositories page first in Repository', async () => {
     await mountHub()
 
-    expect(hub().findAll('[role="group"]').map(entry => entry.attributes('aria-label'))).toEqual(expect.arrayContaining(['Repository', 'System']))
-    expect(cardTitles('Repository'), 'the page of the repositories, then the domains of the group').toEqual(['Repositories', SCHEMAS.javadoc.title, SCHEMAS.cleanup.title])
-    expect(cardTitles('System'), 'the other domains, plugin domains included').toEqual([SCHEMAS.web.title, SCHEMAS.frontend.title, SCHEMAS.statistics.title, SCHEMAS.audit.title, 'Acme'])
+    expect(hub().findAll('[role="group"]').map(entry => entry.attributes('aria-label'))).toEqual(expect.arrayContaining(['Artifacts', 'Instance']))
+    expect(cardTitles('Artifacts'), 'the page of the repositories, then the domains of the group, in the order of the tree').toEqual(['Repositories', 'Cleanup policies', 'Javadoc'])
+    expect(cardTitles('Instance'), 'the other domains, plugin domains included').toEqual(['Branding', 'Reverse proxy', 'Usage statistics', 'Acme'])
+    expect(cardTitles('Monitoring and support'), 'the audit settings sit beside the audit log').toContain('Audit settings')
   })
 
   it('shows no card for the domains that are edited under Access', async () => {
@@ -124,7 +125,7 @@ describe('the settings hub at /settings', () => {
   it('shows the saved value of a collection domain, such as "6 repositories"', async () => {
     await mountHub()
 
-    expect(group('Repository').text()).toContain('6 repositories')
+    expect(group('Artifacts').text()).toContain('6 repositories')
   })
 
   it('marks the Repositories card as unsaved when the maven draft differs, and keeps its saved value', async () => {
@@ -132,10 +133,10 @@ describe('the settings hub at /settings', () => {
     store.setDomainData('maven', { repositories: sixRepositories().slice(0, 2) })
     await flushPromises()
 
-    const repositoriesCard = group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === 'Repositories')
+    const repositoriesCard = group('Artifacts').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === 'Repositories')
     expect(repositoriesCard.text()).toContain('Unsaved changes')
     expect(repositoriesCard.text(), 'the card shows the saved value, not the draft').toContain('6 repositories')
-    expect(group('System').text(), 'a domain without a change is not marked').not.toContain('Unsaved changes')
+    expect(group('Instance').text(), 'a domain without a change is not marked').not.toContain('Unsaved changes')
   })
 
   it('shows only the groups the visitor may edit', async () => {
@@ -158,7 +159,7 @@ describe('the settings hub at /settings', () => {
     const { store, router, client } = await mountHub()
     const before = JSON.stringify(store.configurations.value)
 
-    await group('Repository').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === 'Repositories').trigger('click')
+    await group('Artifacts').findAll('[data-test="settings-card"]').find(card => card.find('h3').text() === 'Repositories').trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.fullPath).toBe('/settings/repositories')

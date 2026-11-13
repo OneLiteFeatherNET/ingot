@@ -24,6 +24,7 @@ import {
   railGroups,
   reservedDomainIds,
   setContributions,
+  setSupportBundleOffered,
   sideNavOf,
   unlistedRoutes
 } from './registry'
@@ -85,28 +86,35 @@ describe('the bottom bar', () => {
 })
 
 describe('the Administration tree', () => {
-  it('groups the pages as Repository, Security, System and Support', () => {
-    expect(headingsOf(adminGroups(everything, { domains: ['web'] }))).toEqual(['Repository', 'Security', 'System', 'Support'])
+  it('names the four groups Artifacts, Access, Instance and Monitoring and support, in that order', () => {
+    expect(headingsOf(adminGroups(everything, { domains: ['web'] }))).toEqual(['Artifacts', 'Access', 'Instance', 'Monitoring and support'])
   })
 
-  it('leaves out System when the server lists no settings domain outside the groups', () => {
-    expect(headingsOf(adminGroups(everything))).toEqual(['Repository', 'Security', 'Support'])
+  it('gives each group the id a plugin manifest names, next to its display heading', () => {
+    expect(adminGroups(everything, { domains: ['web'] }).map(group => group.id)).toEqual(['Repository', 'Security', 'System', 'Support'])
   })
 
-  it('lists Repositories under Repository, and the access pages and audit log under Security', () => {
+  it('leaves out Instance when the server lists no settings domain outside the groups', () => {
+    expect(headingsOf(adminGroups(everything))).toEqual(['Artifacts', 'Access', 'Monitoring and support'])
+  })
+
+  it('lists Repositories under Artifacts, the access pages under Access, and the audit log under Monitoring and support', () => {
     const groups = adminGroups(everything)
-    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['page:repositories'])
-    expect(linksOf(groups, 'Security').map(link => link.key)).toEqual([
-      'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check', 'page:audit'
+    expect(linksOf(groups, 'Artifacts').map(link => link.key)).toEqual(['page:repositories'])
+    expect(linksOf(groups, 'Access').map(link => link.key)).toEqual([
+      'page:users', 'page:machines', 'page:teams', 'page:sso', 'page:ldap', 'page:security', 'page:check'
+    ])
+    expect(linksOf(groups, 'Monitoring and support').map(link => link.key)).toContain('page:audit')
+  })
+
+  it('puts Audit log, Console, Maintenance and Analytics under Monitoring and support, the audit log first', () => {
+    expect(linksOf(adminGroups(everything), 'Monitoring and support').map(link => link.key)).toEqual([
+      'page:audit', 'page:console', 'page:maintenance', 'page:analytics'
     ])
   })
 
-  it('puts Console, Maintenance and Analytics under Support', () => {
-    expect(linksOf(adminGroups(everything), 'Support').map(link => link.key)).toEqual(['page:console', 'page:maintenance', 'page:analytics'])
-  })
-
   it('leaves out a group that has no visible page', () => {
-    expect(headingsOf(adminGroups(only(ADMIN_NODES.console)))).toEqual(['Support'])
+    expect(headingsOf(adminGroups(only(ADMIN_NODES.console)))).toEqual(['Monitoring and support'])
   })
 
   it('shows only the pages the visitor may open, and nothing for a visitor with no node', () => {
@@ -114,26 +122,27 @@ describe('the Administration tree', () => {
   })
 
   it('gives each link a router location by route name', () => {
-    expect(linksOf(adminGroups(everything), 'Security')[0]).toMatchObject({
+    expect(linksOf(adminGroups(everything), 'Access')[0]).toMatchObject({
       key: 'page:users',
       label: 'Users',
       to: { name: 'access-users' }
     })
   })
 
-  it('puts a plugin settings domain under System at its settings address', () => {
+  it('puts a plugin settings domain under Instance at its settings address, after the built-in entries', () => {
     const groups = adminGroups(everything, { domains: ['maven', 'acme-plugin'], titleOf: (domain) => `Title of ${domain}` })
-    expect(linksOf(groups, 'System')).toContainEqual({
+    expect(linksOf(groups, 'Instance')).toContainEqual({
       key: 'settings:acme-plugin',
       label: 'Title of acme-plugin',
+      description: '',
       to: { name: 'settings', params: { domain: 'acme-plugin' } }
     })
   })
 
-  it('puts the javadoc and cleanup domains under Repository, after the Repositories page', () => {
+  it('puts the cleanup and javadoc domains under Artifacts, in the order of the tree after Repositories', () => {
     const groups = adminGroups(everything, { domains: ['javadoc', 'cleanup', 'web'] })
-    expect(linksOf(groups, 'Repository').map(link => link.key)).toEqual(['page:repositories', 'settings:javadoc', 'settings:cleanup'])
-    expect(linksOf(groups, 'System').map(link => link.key)).toEqual(['settings:web'])
+    expect(linksOf(groups, 'Artifacts').map(link => link.key)).toEqual(['page:repositories', 'settings:cleanup', 'settings:javadoc'])
+    expect(linksOf(groups, 'Instance').map(link => link.key)).toEqual(['settings:web'])
   })
 
   it('lists no Maven entry for the maven domain, which is edited on the Repositories page', () => {
@@ -141,12 +150,13 @@ describe('the Administration tree', () => {
     expect(allLinks(groups).map(link => link.key), 'no maven key anywhere in the tree').not.toContain('settings:maven')
     const titles = { javadoc: 'Javadoc', cleanup: 'Cleanup policies' }
     const labelled = adminGroups(everything, { domains: ['maven', 'javadoc', 'cleanup'], titleOf: (domain) => titles[domain] })
-    expect(linksOf(labelled, 'Repository').map(link => link.label)).toEqual(['Repositories', 'Javadoc', 'Cleanup policies'])
+    expect(linksOf(labelled, 'Artifacts').map(link => link.label)).toEqual(['Repositories', 'Cleanup policies', 'Javadoc'])
   })
 
   it('lists no settings domain to a visitor without the settings node', () => {
-    const groups = adminGroups(only(ADMIN_NODES.audit), { domains: ['maven', 'web'] })
-    expect(headingsOf(groups)).toEqual(['Security'])
+    const groups = adminGroups(only(ADMIN_NODES.audit), { domains: ['maven', 'web', 'audit'] })
+    expect(headingsOf(groups)).toEqual(['Monitoring and support'])
+    expect(linksOf(groups, 'Monitoring and support').map(link => link.key)).toEqual(['page:audit'])
   })
 
   it('reserves the page names under /settings against settings domain ids', () => {
@@ -215,12 +225,12 @@ describe('plugin pages in the Administration tree', () => {
 
   it('lists a plugin page under the group its manifest names', () => {
     setContributions(contributed('Support'))
-    expect(linksOf(adminGroups(everything), 'Support').map(link => link.label)).toContain('Status')
+    expect(linksOf(adminGroups(everything), 'Monitoring and support').map(link => link.label)).toContain('Status')
   })
 
   it('links a plugin page to its settings address', () => {
     setContributions(contributed('Support'))
-    expect(linksOf(adminGroups(everything), 'Support')).toContainEqual(expect.objectContaining({
+    expect(linksOf(adminGroups(everything), 'Monitoring and support')).toContainEqual(expect.objectContaining({
       label: 'Status',
       to: { name: 'settings-plugin', params: { plugin: 'example', page: 'status' } },
     }))
@@ -235,6 +245,62 @@ describe('plugin pages in the Administration tree', () => {
 
   it('leaves a plugin page out of the tree for a visitor without its area', () => {
     setContributions(contributed('Support'))
-    expect(linksOf(adminGroups(only(ADMIN_NODES.audit)), 'Support')).toEqual([])
+    expect(linksOf(adminGroups(only(ADMIN_NODES.audit)), 'Monitoring and support').map(link => link.label)).not.toContain('Status')
+  })
+})
+
+// The full tree of an administrator, with every settings domain of the built-in set, Migration and the support pages.
+describe('the Administration tree of an administrator', () => {
+  afterEach(() => {
+    setContributions(null)
+    setSupportBundleOffered(false)
+  })
+
+  const fullTree = () => {
+    setContributions({ version: 1, pages: [], sections: [], enabledPlugins: ['nexus-import'] })
+    setSupportBundleOffered(true)
+    return adminGroups(everything, { domains: ['frontend', 'web', 'statistics', 'search', 'javadoc', 'cleanup', 'audit'] })
+  }
+
+  it('lists the entries of each group in the order of the requirement, under the four headings', () => {
+    const labels = fullTree().map(group => [group.heading, group.links.map(link => link.label)])
+
+    expect(labels).toEqual([
+      ['Artifacts', ['Repositories', 'Cleanup policies', 'Javadoc', 'Search index']],
+      ['Access', ['Users', 'Machine accounts', 'Teams', 'Single sign-on', 'LDAP directory', 'Sign-in protection', 'Permission check']],
+      ['Instance', ['Branding', 'Reverse proxy', 'Usage statistics', 'Migration']],
+      ['Monitoring and support', ['Audit log', 'Audit settings', 'Console', 'Maintenance', 'Analytics', 'System information', 'Support bundle']],
+    ])
+  })
+
+  it('places Audit settings directly after Audit log', () => {
+    const keys = linksOf(fullTree(), 'Monitoring and support').map(link => link.key)
+
+    expect(keys.slice(0, 2), 'the two audit entries are adjacent, the log first').toEqual(['page:audit', 'settings:audit'])
+  })
+
+  it('lists Search index under Artifacts, and no entry of Instance under the name Search', () => {
+    const groups = fullTree()
+
+    expect(linksOf(groups, 'Artifacts').map(link => link.key)).toContain('settings:search')
+    expect(linksOf(groups, 'Instance').map(link => link.label)).not.toContain('Search')
+  })
+
+  it('lists Audit settings without Audit log to a visitor with the settings node and not the audit node', () => {
+    const groups = adminGroups(only(ADMIN_NODES.settings), { domains: ['audit'] })
+
+    expect(linksOf(groups, 'Monitoring and support').map(link => link.key)).toEqual(['settings:audit'])
+  })
+
+  it('lists Audit log without Audit settings to a visitor with the audit node and not the settings node', () => {
+    const groups = adminGroups(only(ADMIN_NODES.audit), { domains: ['audit'] })
+
+    expect(linksOf(groups, 'Monitoring and support').map(link => link.key)).toEqual(['page:audit'])
+  })
+
+  it('takes the label of an audit domain from the frontend, as Audit settings', () => {
+    const groups = adminGroups(everything, { domains: ['audit'], titleOf: () => 'Audit' })
+
+    expect(linksOf(groups, 'Monitoring and support')[1]).toMatchObject({ key: 'settings:audit', label: 'Audit settings' })
   })
 })
