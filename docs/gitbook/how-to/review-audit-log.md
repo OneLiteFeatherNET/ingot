@@ -25,7 +25,7 @@ The Audit entry in the navigation is shown to a session that is allowed the node
 
 ### Result
 
-The page sits under the heading **Administration**, and its entry **Audit log** is marked in the side navigation. It shows a line such as `Showing 50 events, more are available`. The first page holds up to 50 events. Select **Load more** to add the next page. If the list is empty, the page says `No events match these filters.`
+The page is headed **Audit log**, its breadcrumb reads **Administration / Monitoring and support**, and its entry **Audit log** is marked in the side navigation. It shows a line such as `Showing 50 events, more are available`. The first page holds up to 50 events. Select **Load more** to add the next page. If the list is empty, the page says `No events match these filters.`
 
 A row that reads `5 attempts` is a folded failed sign-in: failed attempts by one name from one address within the same minute share one row.
 
