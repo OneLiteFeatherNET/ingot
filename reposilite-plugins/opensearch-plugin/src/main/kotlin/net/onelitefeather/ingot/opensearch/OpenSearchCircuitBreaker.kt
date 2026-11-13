@@ -48,7 +48,7 @@ internal class OpenSearchCircuitBreaker(
     fun openRemaining(): Duration? {
         val until = openUntil ?: return null
         val remaining = Duration.between(clock.instant(), until)
-        return if (remaining.isPositive) remaining else null
+        return if (remaining > Duration.ZERO) remaining else null
     }
 
     /** Runs [block] when the circuit admits a call, and records its outcome. */
