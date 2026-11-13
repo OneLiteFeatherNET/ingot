@@ -35,7 +35,7 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/access/check` | `access-check` | Access, tab **Check**. The permission check. `principal`, `node` and `token` come from the query string. | Any one of `ingot.admin.users`, `ingot.admin.tokens`, `ingot.admin.teams`. | Router. Backend (`/access/<path>`) |
 | `/access/sso` | `access-sso` | Access, tab **SSO**. The single sign-on providers. | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
 | `/access/ldap` | `access-ldap` | Access, tab **LDAP**. The LDAP sign in to the dashboard, and the LDAP of Maven and Gradle clients (`authentication` settings domain). | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
-| `/access/security` | `access-security` | Access, tab **Security**. The brute force protection (`authentication` settings domain). | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
+| `/access/security` | `access-security` | Access, tab **Sign-in protection**. The brute force protection (`authentication` settings domain). | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/access/<path>`) |
 | `/tokens` | `tokens` | Redirects to `/access/machines`. Keeps old links working. | Node `ingot.admin.tokens`. | Router and Backend |
 | `/tokens/new` | `token-new` | Redirects to `/access/machines`. | Node `ingot.admin.tokens`. | Router. Backend (`/tokens/{name}`) |
 | `/tokens/:name` | `token` | Redirects to `/access/machines/:name`. | Node `ingot.admin.tokens`. | Router. Backend (`/tokens/{name}`) |
@@ -49,8 +49,8 @@ In the table, "Router" means `reposilite-frontend/src/router/routes.js` and "Bac
 | `/settings/maven` and `/settings/maven/repositories` | `settings-maven-repositories` | The Maven page is retired. Both addresses redirect to `/settings/repositories`, and `/settings/maven` keeps its query. | Node `ingot.admin.settings`, checked on the Repositories page. | Router. Backend (`/settings/<path>`) |
 | `/settings/:domain/:collection/:entry` | `settings-entry` | Settings, one entry of a collection in a domain. `/settings/maven/repositories/<id>` redirects to `/settings/repositories/<id>`. | Node `ingot.admin.settings`. | Router. Backend (`/settings/<path>`) |
 | `/settings/login` | `settings-login` | Redirects to `/access/sso`. The sign in settings are edited under Access. | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/settings/<path>`) |
-| `/settings/system-info` | `system-info` | System information. The version and build, the JVM, the operating system, the database kind and endpoint, the storage, the cluster, the plugins, and the redacted environment and configuration of the instance. Listed under Administration, in the group Support. | Node `ingot.admin.console`, and only while the support bundle is on. | Router and Backend (`/settings/<path>`) |
-| `/settings/support` | `support` | Support bundle. Downloads the zip of the answering instance and states what the contract removes. Listed under Administration, in the group Support. | Node `ingot.admin.console`, and only while the support bundle is on. | Router and Backend (`/settings/<path>`) |
+| `/settings/system-info` | `system-info` | System information. The version and build, the JVM, the operating system, the database kind and endpoint, the storage, the cluster, the plugins, and the redacted environment and configuration of the instance. Listed under Administration, in the group Monitoring and support. | Node `ingot.admin.console`, and only while the support bundle is on. | Router and Backend (`/settings/<path>`) |
+| `/settings/support` | `support` | Support bundle. Downloads the zip of the answering instance and states what the contract removes. Listed under Administration, in the group Monitoring and support. | Node `ingot.admin.console`, and only while the support bundle is on. | Router and Backend (`/settings/<path>`) |
 | `/settings/authentication` | `settings-authentication` | Redirects to `/access/ldap`. The authentication settings are edited under Access. | Node `ingot.admin.*` (full instance admin). | Router. Backend (`/settings/<path>`) |
 | any other path (`/:pathMatch(.*)*`) | `not-found` | Not-found view, rendered by the app. | Everyone. | Router only. See [Unlisted paths](#unlisted-paths). |
 
@@ -63,7 +63,7 @@ Rules for the "Who can open it" column:
 
 ### Administration tree
 
-**Administration** groups its pages under four headings: **Repository**, **Security**, **System** and **Support**. Every Administration page has the heading **Administration**, with a line under it that describes the page, and shows the same side navigation. The settings domains the visitor may open are part of that navigation on every page. The current page carries `aria-current="page"`, and the last crumb of the breadcrumb names it. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
+**Administration** groups its pages under four headings: **Artifacts**, **Access**, **Instance** and **Monitoring and support**. Every Administration page names itself in its heading. A breadcrumb above the heading reads **Administration**, then the group of the page, and a line under the heading describes the page. Every Administration page shows the same side navigation. The settings domains the visitor may open are part of that navigation on every page. The current page carries `aria-current="page"`. A page is listed only when it exists and the visitor may open it. A group without a listed page is left out. When only one Administration page is permitted, `/settings` forwards to that page.
 
 ### Layout at four widths
 
@@ -73,12 +73,12 @@ The pages are of two kinds. A **wide** page is a list or a table, such as Reposi
 
 The heading and the page actions form one row above the columns from 600 pixels. The row is not sticky: it scrolls away with the page, and the top bar stays at the top of the window.
 
-| Group | Pages and addresses |
+| Heading | Pages and addresses |
 | --- | --- |
-| **Repository** | **Repositories** (`/settings/repositories`, which also edits the `maven` domain), **Cleanup policies** (`/settings/cleanup`), **Javadoc** (`/settings/javadoc`) |
-| **Security** | **Users** (`/access/users`), **Machine accounts** (`/access/machines`), **Teams** (`/access/teams`), **SSO** (`/access/sso`), **LDAP** (`/access/ldap`), **Security settings** (`/access/security`), **Permission check** (`/access/check`), **Audit log** (`/audit`) |
-| **System** | Every other settings domain, including the domains that plugins add, each at `/settings/<domain>` |
-| **Support** | **Console** (`/console`), **Maintenance** (`/maintenance`), **Analytics** (`/analytics`) |
+| **Artifacts** | **Repositories** (`/settings/repositories`, which also edits the `maven` domain), **Cleanup policies** (`/settings/cleanup`), **Javadoc** (`/settings/javadoc`), **Search index** (`/settings/search`) |
+| **Access** | **Users** (`/access/users`), **Machine accounts** (`/access/machines`), **Teams** (`/access/teams`), **Single sign-on** (`/access/sso`), **LDAP directory** (`/access/ldap`), **Sign-in protection** (`/access/security`), **Permission check** (`/access/check`) |
+| **Instance** | **Branding** (`/settings/frontend`), **Reverse proxy** (`/settings/web`), **Usage statistics** (`/settings/statistics`), **Migration** (`/settings/migration`, while the Nexus import plugin is enabled), and every other settings domain, including the domains that plugins add, each at `/settings/<domain>` |
+| **Monitoring and support** | **Audit log** (`/audit`), **Audit settings** (`/settings/audit`), **Console** (`/console`), **Maintenance** (`/maintenance`), **Analytics** (`/analytics`), **System information** (`/settings/system-info`) and **Support bundle** (`/settings/support`), the last two while the instance offers the support bundle |
 
 On a screen narrower than 600px the tree is an index list of the groups. A page opened from it shows a back arrow that returns to the index.
 
@@ -101,7 +101,7 @@ The name `repositories` is a page under `/settings`, not a settings domain. A se
 
 ### Settings hub
 
-Opened without a domain, `/settings` shows the hub: the settings domains as cards in the groups **Repository** (`javadoc`, `cleanup`, after the card of the Repositories page, which edits the `maven` domain) and **System** (every other domain, including the domains of plugins). A card shows the title of the domain and its saved value, for example "6 repositories" on the Repositories card, or the description of the domain when it has no collections. A card of a domain with unsaved draft changes also shows "Unsaved changes". Opening a card only changes the address and does not write the draft. A group without a card is left out. The domains `login` and `authentication` have no card, because they are edited under Access. The last line of the hub, "Sign-in and security live in Access", links to `/access`. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
+Opened without a domain, `/settings` shows the hub: the settings domains as cards in the groups **Artifacts** (`cleanup`, `javadoc` and `search`, after the card of the Repositories page, which edits the `maven` domain), **Instance** (`frontend`, `web` and `statistics`, then every other domain, including the domains of plugins) and **Monitoring and support** (`audit`). A card shows the title of the domain and its saved value, for example "6 repositories" on the Repositories card, or the description of the domain when it has no collections. A card of a domain with unsaved draft changes also shows "Unsaved changes". Opening a card only changes the address and does not write the draft. A group without a card is left out. The domains `login` and `authentication` have no card, because they are edited under Access. The last line of the hub, "Sign-in and security live in Access", links to `/access`. The mapping of domains to groups is in `reposilite-frontend/src/navigation/registry.js`.
 
 ### Client-side guards
 
@@ -227,7 +227,7 @@ The router resolves old `#/<path>?tab=<section>` links on the first navigation (
 This section covers the Administration tree and the **Repositories** page. It describes what the pages are built to do. It is not a conformance claim.
 
 * **Keyboard.** Every function is meant to work with the keyboard alone, in reading order. Focus is visible. Within a repository row, Tab goes from the name link to that row's **Actions** button. Enter or Space opens its menu, the arrow keys move through the items, and Escape closes the menu. Escape closes a dialog and returns focus to the control that opened it.
-* **Screen reader names.** The Administration tree is a navigation landmark named **Administration**, and each group is a heading above its list of links. The repository table has a caption with the number of rows shown and the total, column headers, and the name as the row header. A sorted column reports its direction. The row's **Actions** button names its repository, for example "Actions for releases", and its menu items keep the names "Edit releases", "Copy address of releases" and "Delete releases". Type and state are given in text, not only by colour or an icon.
+* **Screen reader names.** The Administration tree is a navigation landmark named **Administration**, and each group is a list named by its visible heading. The repository table has a caption with the number of rows shown and the total, column headers, and the name as the row header. A sorted column reports its direction. The row's **Actions** button names its repository, for example "Actions for releases", and its menu items keep the names "Edit releases", "Copy address of releases" and "Delete releases". Type and state are given in text, not only by colour or an icon.
 * **Reflow.** At a width of 320 CSS pixels and 200 percent zoom, the page is meant to need no sideways scroll for the page itself. The table scrolls inside a named, focusable region.
 * **Target size.** Interactive controls are meant to be at least 24 by 24 CSS pixels.
 * **Not verified yet.** No manual pass with a screen reader has been recorded on this page. The result of that pass is reported with the change that adds the page, not here. Contrast of the badges and the behaviour of each dialog with a screen reader are not checked by this section.

@@ -153,6 +153,15 @@ describe('SettingsView page', () => {
     expect(wrapper.text()).toContain('Shared configuration for all instances.')
   })
 
+  it('does not repeat the propagation notice as the description of a settings page', async () => {
+    const store = await loadedStore()
+    store.domains.value = ['web', 'ingot']
+    await mountSettings({ store, props: { domain: 'web' } })
+
+    expect(wrapper.text(), 'the description of the page is the one of its tree entry').toContain('The headers that carry the client address')
+    expect(wrapper.text(), 'no 10 second notice in the description').not.toContain('10 seconds')
+  })
+
   it('names a single domain as a section title, without tabs', async () => {
     const store = await loadedStore()
     store.domains.value = ['maven']

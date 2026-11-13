@@ -90,7 +90,7 @@ test.describe('top bar alignment', () => {
     test(`starts the title where the administration content starts at ${width}px`, async ({ adminPage: page }) => {
       await page.setViewportSize({ width, height: 1080 })
       await page.goto(siteUrl('/settings/repositories'))
-      await expect(page.getByRole('heading', { name: 'Administration', level: 1 })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Repositories', level: 1 })).toBeVisible()
       const title = await edgesOf(topBar(page).locator('h1'))
       const content = await contentBox(page, 'main .container')
 
@@ -234,5 +234,20 @@ test.describe('top bar for a visitor who is not signed in', () => {
 
     await expect(topBar(page).getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
     await expect(accountButton(page)).toHaveCount(0)
+  })
+})
+
+test.describe('administration trail on a phone', () => {
+  test('draws the back arrow and the last crumb on one line at 320 px, with no horizontal scroll', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 320, height: 640 })
+    await page.goto(siteUrl('/settings/web'))
+    await expect(page.getByRole('heading', { name: 'Reverse proxy', level: 1 })).toBeVisible()
+
+    const back = await page.getByRole('link', { name: 'Back to Administration' }).boundingBox()
+    const trail = await page.getByRole('navigation', { name: 'Administration / Instance', exact: true }).boundingBox()
+    const centre = (box) => box.y + box.height / 2
+    expect(Math.abs(centre(back) - centre(trail)), 'the back arrow and the trail share one line').toBeLessThanOrEqual(8)
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0)
   })
 })

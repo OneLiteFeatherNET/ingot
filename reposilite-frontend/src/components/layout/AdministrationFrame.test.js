@@ -23,6 +23,7 @@ const shell = { render: () => null }
 
 const routes = [
   { name: 'access-users', path: '/access/users', component: shell },
+  { name: 'access-user', path: '/access/users/:name', component: shell },
   { name: 'audit', path: '/audit', component: shell },
   { name: 'settings', path: '/settings/:domain?', component: shell }
 ]
@@ -30,15 +31,17 @@ const routes = [
 // The fixture is built per test, so no test can change what another one reads.
 const groups = () => [
   {
-    heading: 'Security',
-    links: [
-      { key: 'page:users', label: 'Users', to: { name: 'access-users' } },
-      { key: 'page:audit', label: 'Audit log', to: { name: 'audit' } }
-    ]
+    id: 'Security',
+    heading: 'Access',
+    links: [{ key: 'page:users', label: 'Users', to: { name: 'access-users' } }]
   },
   {
-    heading: 'System',
-    links: [{ key: 'settings:audit', label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }]
+    id: 'Support',
+    heading: 'Monitoring and support',
+    links: [
+      { key: 'page:audit', label: 'Audit log', to: { name: 'audit' } },
+      { key: 'settings:audit', label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }
+    ]
   }
 ]
 
@@ -61,10 +64,10 @@ const mountFrame = async (props, url = '/audit') => {
 }
 
 describe('AdministrationFrame', () => {
-  it('draws one heading named Administration, whatever the page', async () => {
+  it('draws one heading that names the page by the label of its tree entry', async () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
-    expect(wrapper.findAll('h1').map(heading => heading.text()), 'the one h1 of the frame').toEqual(['Administration'])
+    expect(wrapper.findAll('h1').map(heading => heading.text()), 'the one h1 of the frame').toEqual(['Audit log'])
   })
 
   it('draws the description of the page under the heading', async () => {
@@ -126,11 +129,12 @@ describe('AdministrationFrame', () => {
     expect(marked.map(link => link.text()), 'exactly one entry is current').toEqual(['Audit settings'])
   })
 
-  it('names the current entry in the last crumb of the breadcrumb', async () => {
+  it('names the group of the current entry in the breadcrumb, and the page in the heading', async () => {
     const wrapper = await mountFrame({ current: 'settings:audit' }, '/settings/audit')
 
     const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li').map(crumb => crumb.text())
-    expect(crumbs, 'the first crumb is the section, the last one the page shown').toEqual(['Administration', 'Audit settings'])
+    expect(crumbs, 'the section, then the group of the page').toEqual(['Administration', 'Monitoring and support'])
+    expect(wrapper.get('h1').text(), 'the page itself is named by the heading').toBe('Audit settings')
   })
 
   it('draws no side navigation on a page without entries, such as the hub', async () => {
@@ -138,5 +142,94 @@ describe('AdministrationFrame', () => {
 
     expect(wrapper.find('[aria-label="Administration"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="page"]').exists(), 'the page is still drawn').toBe(true)
+  })
+})
+
+describe('AdministrationFrame page header', () => {
+  it('labels the frame section by its one heading', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const heading = wrapper.get('h1')
+    expect(wrapper.get('section').attributes('aria-labelledby'), 'the region is named by the heading').toBe(heading.attributes('id'))
+  })
+
+  it('takes the heading from the title prop when one is given', async () => {
+    const wrapper = await mountFrame({ current: 'settings:audit', title: 'Audit settings' }, '/settings/audit')
+
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Audit settings'])
+  })
+
+  it('draws the breadcrumb above the heading', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const breadcrumb = wrapper.get('[aria-label="Breadcrumb"]').element
+    const heading = wrapper.get('h1').element
+    expect(breadcrumb.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING, 'the heading follows the breadcrumb').toBeTruthy()
+  })
+
+  it('draws the group heading as plain text after the link to Administration', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
+    expect(crumbs.map(crumb => crumb.text())).toEqual(['Administration', 'Monitoring and support'])
+    expect(crumbs[0].find('a').attributes('href'), 'Administration links to the hub').toBe('/settings')
+    expect(crumbs[1].find('a').exists(), 'the group is not a link').toBe(false)
+  })
+
+  it('draws no empty description element when the description is empty', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', description: '' })
+
+    expect(wrapper.findAll('header p').filter(paragraph => paragraph.text() === ''), 'no empty paragraph in the header').toEqual([])
+  })
+
+  it('adds the list page as a link to the trail of a detail page, and names the page by its item', async () => {
+    const wrapper = await mountFrame({ current: 'page:users', title: 'alice', detail: true }, '/access/users/alice')
+
+    const crumbs = wrapper.findAll('[aria-label="Breadcrumb"] li')
+    expect(crumbs.map(crumb => crumb.text()), 'Administration, Access, then the list').toEqual(['Administration', 'Access', 'Users'])
+    expect(crumbs[1].find('a').exists(), 'Access is not a link').toBe(false)
+    expect(crumbs[2].find('a').attributes('href'), 'Users links to the list').toBe('/access/users')
+    expect(wrapper.get('h1').text(), 'the heading is the item name').toBe('alice')
+  })
+
+  it('draws a back arrow with a 48 pixel target on narrow widths', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: true })
+
+    const back = wrapper.get('[aria-label="Back to Administration"]')
+    expect(back.attributes('href'), 'the arrow leads to the index').toBe('/settings')
+    expect(back.classes(), 'the target is 48 pixels square').toContain('size-12')
+  })
+
+  it('draws no back arrow on wide widths', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit', narrow: false })
+
+    expect(wrapper.find('[aria-label="Back to Administration"]').exists()).toBe(false)
+  })
+
+  it('shows only the last crumb on narrow widths, beside the back arrow, with the full trail as its name', async () => {
+    const wrapper = await mountFrame({ current: 'settings:audit', narrow: true }, '/settings/audit')
+
+    const crumbs = wrapper.findAll('nav[aria-label="Administration / Monitoring and support"] li').map(crumb => crumb.text())
+    expect(crumbs, 'only the last crumb is drawn').toEqual(['Monitoring and support'])
+    const trail = wrapper.get('nav[aria-label="Administration / Monitoring and support"]')
+    expect(trail.attributes('title'), 'the full trail is the title').toBe('Administration / Monitoring and support')
+    expect([...trail.element.parentElement.classList], 'the back arrow and the trail share one row').toEqual(expect.arrayContaining(['flex', 'items-center']))
+  })
+
+  it('draws the shortcut links of the page in a related pages block, each to its own address', async () => {
+    const wrapper = await mountFrame({
+      current: 'page:audit',
+      shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }]
+    })
+
+    const links = wrapper.findAll('[aria-label="Related pages"] a')
+    expect(links.map(link => link.text())).toEqual(['Audit settings'])
+    expect(links[0].attributes('href')).toBe('/settings/audit')
+  })
+
+  it('draws no related pages block without shortcuts', async () => {
+    const wrapper = await mountFrame({ current: 'page:audit' })
+
+    expect(wrapper.find('[aria-label="Related pages"]').exists()).toBe(false)
   })
 })

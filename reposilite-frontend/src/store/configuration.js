@@ -224,7 +224,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     }
     if (stale.length > 0) return false
 
-    createSuccessToast('Configuration updated')
+    createSuccessToast('Configuration updated. Other instances pick up saved changes within 10 seconds.')
     return true
   }
 
@@ -278,7 +278,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
       await adoptServerState(current.name, server, etag)
       delete validity.value[current.name]
       conflict.value = null
-      createSuccessToast('Configuration updated')
+      createSuccessToast('Configuration updated. Other instances pick up saved changes within 10 seconds.')
       return true
     } catch (error) {
       saveError.value = `Not saved: ${titleOf(current.name)}. ${errorMessage(error)}`

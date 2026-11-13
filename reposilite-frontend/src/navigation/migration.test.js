@@ -33,13 +33,13 @@ const treeKeysOf = (can) => treeLinksOf(can).map(link => link.key)
 beforeEach(() => setContributions(null))
 
 describe('the Migration entry of the navigation', () => {
-  it('lists Migration in the System group of the Administration tree for an instance admin when nexus-import is enabled', () => {
+  it('lists Migration in the Instance group of the Administration tree for an instance admin when nexus-import is enabled', () => {
     setContributions(manifest(['nexus-import']))
 
     const migration = treeLinksOf(instanceAdmin).find(link => link.key === 'page:migration')
 
     expect(migration, 'Migration is listed in the tree').toBeDefined()
-    expect(migration.heading, 'and sits in the System group').toBe('System')
+    expect(migration.heading, 'and sits in the Instance group').toBe('Instance')
     expect(migration.to).toEqual({ name: 'settings-migration' })
   })
 

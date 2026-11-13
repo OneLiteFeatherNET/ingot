@@ -523,7 +523,9 @@ describe('IndexPage Administration tree', () => {
   })
 
   const treeOf = (wrapper) => wrapper.find('nav[aria-label="Administration"]')
-  const treeGroups = (wrapper) => treeOf(wrapper).findAll('[role="group"]')
+  // Each group is a list named by the visible heading of the group (aria-labelledby), see SideNavLayout.
+  const treeGroups = (wrapper) => treeOf(wrapper).findAll('ul[aria-labelledby]')
+  const headingOf = (wrapper, group) => wrapper.get(`#${group.attributes('aria-labelledby')}`).text()
 
   it.each([
     ['/audit', 'Audit log'],
@@ -537,22 +539,22 @@ describe('IndexPage Administration tree', () => {
     expect(treeOf(wrapper).findAll('[aria-current="page"]').map(item => item.text())).toEqual([label])
   })
 
-  it('lists the Administration pages in the groups Repository, Security and Support', async () => {
+  it('lists the Administration pages in the groups Artifacts, Access and Monitoring and support', async () => {
     const { wrapper } = await mountAt('/audit', { manager: true })
 
-    expect(treeGroups(wrapper).map(group => group.attributes('aria-label')), 'System is left out, it has no page here')
-      .toEqual(['Repository', 'Security', 'Support'])
+    expect(treeGroups(wrapper).map(group => headingOf(wrapper, group)), 'Instance is left out, it has no page here')
+      .toEqual(['Artifacts', 'Access', 'Monitoring and support'])
     expect(treeGroups(wrapper).map(group => group.findAll('a').map(link => link.text()))).toEqual([
       ['Repositories'],
-      ['Users', 'Machine accounts', 'Teams', 'SSO', 'LDAP', 'Security settings', 'Permission check', 'Audit log'],
-      ['Console', 'Maintenance', 'Analytics']
+      ['Users', 'Machine accounts', 'Teams', 'Single sign-on', 'LDAP directory', 'Sign-in protection', 'Permission check'],
+      ['Audit log', 'Console', 'Maintenance', 'Analytics']
     ])
   })
 
   it('lists only the Administration pages the visitor may open', async () => {
     const { wrapper } = await mountAt('/audit', { logged: true, nodes: ['ingot.admin.audit'] })
 
-    expect(treeGroups(wrapper).map(group => group.attributes('aria-label'))).toEqual(['Security'])
+    expect(treeGroups(wrapper).map(group => headingOf(wrapper, group))).toEqual(['Monitoring and support'])
     expect(treeGroups(wrapper)[0].findAll('a').map(link => link.text())).toEqual(['Audit log'])
   })
 
@@ -716,6 +718,13 @@ describe('IndexPage main landmark', () => {
     expect(wrapper.findAll('main#main[tabindex="-1"]'), 'one main element with the skip link target').toHaveLength(1)
   })
 
+  it('names the main landmark by the heading of the Administration frame', async () => {
+    const { wrapper } = await mountAt('/audit', { manager: true })
+
+    expect(wrapper.find('main').attributes('aria-labelledby'), 'the audit log names its main landmark by the frame heading').toBe('administration-title')
+    expect(wrapper.find('#administration-title').text()).toBe('Audit log')
+  })
+
   it('keeps the page header outside the main landmark', async () => {
     const { wrapper } = await mountAt('/dashboard', { manager: true })
     const main = wrapper.find('main')
@@ -753,7 +762,7 @@ describe('IndexPage Administration tree', () => {
       trees[url] = treeLabels(wrapper)
     }
 
-    expect(trees['/console'], 'the settings domains are in the tree of the console page').toContain('Web')
+    expect(trees['/console'], 'the settings domains are in the tree of the console page').toContain('Reverse proxy')
     expect(trees['/audit'], 'the tree of the audit log equals the tree of the console').toEqual(trees['/console'])
     expect(trees['/maintenance'], 'the tree of maintenance equals the tree of the console').toEqual(trees['/console'])
     expect(trees['/analytics'], 'the tree of analytics equals the tree of the console').toEqual(trees['/console'])
@@ -766,9 +775,9 @@ describe('IndexPage Administration tree', () => {
     expect(marked.map(link => link.text())).toEqual(['Audit log'])
   })
 
-  it('draws one Administration heading on the console page, and the page description on maintenance', async () => {
+  it('names the console page in its one heading, and draws the page description on maintenance', async () => {
     const { wrapper: consolePage } = await mountAt('/console', { manager: true, client: clientWithDomains() })
-    expect(consolePage.findAll('h1').map(heading => heading.text())).toEqual(['Administration'])
+    expect(consolePage.findAll('h1').map(heading => heading.text())).toEqual(['Console'])
 
     const { wrapper: maintenance } = await mountAt('/maintenance', { manager: true, client: clientWithDomains() })
     expect(maintenance.text()).toContain('Storage usage, the search index and cleanup for this Ingot instance.')

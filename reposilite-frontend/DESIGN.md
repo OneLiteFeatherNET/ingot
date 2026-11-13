@@ -674,6 +674,29 @@ The circle stays at the top left of the card. The slot content sits to its right
 card has a `not-allowed` cursor and dims its text; it cannot be chosen. The keyboard focus ring
 is drawn around the whole card.
 
+## Administration information architecture
+
+The Administration tree is the one navigation of the operator area. These rules hold for every page in it:
+
+- **One home per page.** A page is listed under one heading and with one label. A link from another page is a shortcut inside
+  that page, never a second entry in the tree.
+- **Two levels.** The tree is a list of groups, each a heading over a list of pages. The headings are Artifacts, Access,
+  Instance and Monitoring and support. A group keeps its id, the value a plugin manifest names (Repository, Security, System,
+  Support), and only the heading on screen changes (`GROUP_HEADINGS` in `src/navigation/registry.js`).
+- **Order.** Entries that belong together are adjacent: Audit settings follows Audit log. The pages that are not settings
+  domains keep their order relative to each other, because the rail's Administration entry opens the first page the visitor
+  may open.
+- **Labels name the job.** A label is the task the operator comes for ("Reverse proxy", "Branding", "Cleanup policies"). One
+  term names one concept, and a renamed label keeps its old word as a filter keyword.
+- **Descriptions.** Each entry has one line, written from the fields the page really has. It sits under the heading. An entry
+  without a description draws no empty line.
+- **Page header.** Above the columns: the trail (Administration, then the group as plain text, and on a detail page the list
+  page as a link), the heading that names the page, the description, and the page actions with the shortcuts on the right.
+  Below 1240 pixels the trail is its last crumb, beside a 48 pixel back arrow.
+- **Save bar.** The notice that saved changes reach every instance within 10 seconds is the supporting text of the save bar and
+  part of the save confirmation. It is not the description of a page.
+- **No filled button in the header of a page that can show a save bar.** The save bar carries the primary action.
+
 ## Known gaps
 
 None at present. Gaps that are deliberately left for the views that own them are listed here.

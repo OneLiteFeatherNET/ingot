@@ -107,7 +107,7 @@ test.describe('wide screens', () => {
 
       test('keeps a settings form at most 960 pixels wide', async ({ adminPage: page }) => {
         await page.goto(siteUrl('/settings/audit'))
-        const frame = page.getByRole('region', { name: 'Administration', exact: true })
+        const frame = page.getByRole('region', { name: 'Audit settings', exact: true })
         await expect(frame).toBeVisible()
 
         const box = await frame.boundingBox()

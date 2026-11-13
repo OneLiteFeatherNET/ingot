@@ -194,7 +194,7 @@ describe('settings conflict resolution', () => {
     expect(server.state.maven).toEqual({ name: 'mine', size: 1 })
     expect(store.conflict.value).toBeNull()
     expect(store.isDirty('maven')).toBe(false)
-    expect(createSuccessToast).toHaveBeenCalledWith('Configuration updated')
+    expect(createSuccessToast).toHaveBeenCalledWith('Configuration updated. Other instances pick up saved changes within 10 seconds.')
   })
 
   it('lists the changes between the stored state and the draft when reviewed', async () => {
