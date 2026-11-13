@@ -200,6 +200,14 @@ describe('AdministrationFrame page header', () => {
     expect(back.classes(), 'the target is 48 pixels square').toContain('size-12')
   })
 
+  it('draws no back arrow on Overview below 1240 pixels, where the index is on the same page', async () => {
+    const overview = [{ id: 'overview', label: 'Overview', links: [{ key: 'page:overview', label: 'Overview', to: { name: 'settings' } }] }, ...groups()]
+    const wrapper = await mountFrame({ groups: overview, current: 'page:overview', overview: true, narrow: true, title: '' }, '/settings')
+
+    expect(wrapper.find('[aria-label="Back to Administration"]').exists(), 'no back arrow on Overview').toBe(false)
+    expect(wrapper.find('[data-test="page"]').exists(), 'the page is drawn').toBe(true)
+  })
+
   it('draws no back arrow on wide widths', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', narrow: false })
 

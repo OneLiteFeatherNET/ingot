@@ -36,7 +36,7 @@ const nothing = () => false
 const only = (...nodes) => (node) => nodes.includes(node)
 
 const railLabels = (can) => railGroups(can).flatMap(group => group.pages.map(page => page.label))
-const headingsOf = (groups) => groups.map(group => group.heading)
+const headingsOf = (groups) => groups.map(group => group.heading).filter(heading => heading !== undefined)
 const linksOf = (groups, heading) => groups.find(group => group.heading === heading)?.links ?? []
 const allLinks = (groups) => groups.flatMap(group => group.links)
 const keyOfLabel = (groups, label) => allLinks(groups).find(link => link.label === label)?.key
@@ -91,7 +91,7 @@ describe('the Administration tree', () => {
   })
 
   it('gives each group the id a plugin manifest names, next to its display heading', () => {
-    expect(adminGroups(everything, { domains: ['web'] }).map(group => group.id)).toEqual(['Repository', 'Security', 'System', 'Support'])
+    expect(adminGroups(everything, { domains: ['web'] }).map(group => group.id)).toEqual(['overview', 'Repository', 'Security', 'System', 'Support'])
   })
 
   it('leaves out Instance when the server lists no settings domain outside the groups', () => {
@@ -165,6 +165,25 @@ describe('the Administration tree', () => {
   })
 })
 
+describe('the Overview entry of the Administration tree', () => {
+  it('lists Overview first, alone in a group without a heading, linking to /settings', () => {
+    const groups = adminGroups(everything, { domains: ['web'] })
+
+    expect(groups[0].heading, 'the first group has no visible heading').toBeUndefined()
+    expect(groups[0].links, 'Overview is the only link before the first group').toEqual([
+      expect.objectContaining({ key: 'page:overview', label: 'Overview', to: { name: 'settings' } })
+    ])
+  })
+
+  it('names the group of Overview by its label, since it has no heading to name it', () => {
+    expect(adminGroups(everything, { domains: ['web'] })[0].label).toBe('Overview')
+  })
+
+  it('lists no Overview entry to a visitor without the settings node', () => {
+    expect(allLinks(adminGroups(only(ADMIN_NODES.audit))).map(link => link.key)).not.toContain('page:overview')
+  })
+})
+
 describe('the keys of the Administration tree', () => {
   it('gives no two entries the same key, when a settings domain has the id of a page', () => {
     const groups = adminGroups(everything, { domains: ['audit', 'users', 'security', 'maven'], titleOf: (domain) => domain })
@@ -198,8 +217,12 @@ describe('the keys of the Administration tree', () => {
     expect(currentTreeKey('audit'), 'the current entry of /audit').toBe(keyOfLabel(groups, 'Audit log'))
   })
 
-  it('marks no entry on the settings hub, which is no entry of the tree', () => {
-    expect(currentTreeKey('settings')).toBeUndefined()
+  it('marks Overview on /settings without a domain, the one entry of that page', () => {
+    expect(currentTreeKey('settings'), 'the current entry of /settings').toBe('page:overview')
+  })
+
+  it('marks the settings domain on /settings/javadoc, and not Overview', () => {
+    expect(currentTreeKey('settings', 'javadoc')).toBe('settings:javadoc')
   })
 
   it('marks the page of a detail route with the page it belongs to', () => {
@@ -263,7 +286,9 @@ describe('the Administration tree of an administrator', () => {
   }
 
   it('lists the entries of each group in the order of the requirement, under the four headings', () => {
-    const labels = fullTree().map(group => [group.heading, group.links.map(link => link.label)])
+    const labels = fullTree()
+      .filter(group => group.heading !== undefined)
+      .map(group => [group.heading, group.links.map(link => link.label)])
 
     expect(labels).toEqual([
       ['Artifacts', ['Repositories', 'Cleanup policies', 'Javadoc', 'Search index']],

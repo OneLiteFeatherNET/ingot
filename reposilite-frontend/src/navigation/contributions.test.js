@@ -174,6 +174,29 @@ describe('contributed pages in the Administration tree', () => {
   })
 })
 
+describe('contributed settings sections in the tree, without the settings groups', () => {
+  it('lists a section of the Repository group under Artifacts and a section of System under Instance', () => {
+    setContributions({
+      version: 1,
+      pages: [],
+      sections: [
+        { plugin: 'example', domain: 'mirror', label: 'Mirror checks', group: 'Repository' },
+        { plugin: 'example', domain: 'pulse', label: 'Pulse', group: 'System' },
+      ],
+      enabledPlugins: ['example'],
+    })
+
+    const groups = adminGroups(canWith(['ingot.admin.settings']), {
+      domains: ['mirror', 'pulse'],
+      titleOf: (domain) => settingsLabelOf(domain) ?? domain,
+    })
+    const keysOf = (heading) => groups.find(group => group.heading === heading).links.map(link => link.key)
+
+    expect(keysOf('Artifacts'), 'the Mirror section is under Artifacts').toContain('settings:mirror')
+    expect(keysOf('Instance'), 'the Pulse section is under Instance').toContain('settings:pulse')
+  })
+})
+
 describe('contributed settings sections', () => {
   it('places a domain of a section under the group of the section', () => {
     setContributions(manifest())

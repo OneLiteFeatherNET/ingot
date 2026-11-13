@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { domainSummary, hubGroups } from './settingsHub'
+import { domainSummary, hubGroups, unsavedTreeKeys } from './settingsHub'
 import { ADMIN_NODES } from '../../store/nodeAccess'
 
 // Fixtures are built per test, so no test can change what another one reads.
@@ -116,5 +116,19 @@ describe('hubGroups', () => {
     const groups = hubGroups(fixture({ domains: ['maven', 'login', 'authentication'] }))
 
     expect(groups.flatMap(group => domainCards(group).map(card => card.key))).toEqual([])
+  })
+})
+
+describe('unsavedTreeKeys', () => {
+  it('maps a domain with a draft to its settings entry of the tree', () => {
+    expect(unsavedTreeKeys(['javadoc'])).toEqual(['settings:javadoc'])
+  })
+
+  it('maps the maven draft to the Repositories page, since that page edits the domain', () => {
+    expect(unsavedTreeKeys(['maven', 'javadoc'])).toEqual(['page:repositories', 'settings:javadoc'])
+  })
+
+  it('gives no key for no draft', () => {
+    expect(unsavedTreeKeys([])).toEqual([])
   })
 })
