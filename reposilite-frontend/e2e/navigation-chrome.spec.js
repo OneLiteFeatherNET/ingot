@@ -245,7 +245,8 @@ test.describe('administration trail on a phone', () => {
 
     const back = await page.getByRole('link', { name: 'Back to Administration' }).boundingBox()
     const trail = await page.getByRole('navigation', { name: 'Administration / Instance', exact: true }).boundingBox()
-    expect(Math.abs(back.y - trail.y), 'the back arrow and the trail start on one line').toBeLessThanOrEqual(8)
+    const centre = (box) => box.y + box.height / 2
+    expect(Math.abs(centre(back) - centre(trail)), 'the back arrow and the trail share one line').toBeLessThanOrEqual(8)
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0)
   })
