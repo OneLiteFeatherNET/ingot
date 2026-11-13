@@ -42,12 +42,14 @@ describe('support pages in the Administration tree', () => {
         key: 'page:system-info',
         label: 'System information',
         description: 'What this instance runs on. Secrets are withheld or masked, and the page only reads.',
+        keywords: 'version, java, environment',
         to: { name: 'system-info' },
       },
       {
         key: 'page:support',
         label: 'Support bundle',
         description: 'What a maintainer needs to look at this instance, as one zip.',
+        keywords: 'zip, debug',
         to: { name: 'support' },
       },
     ])
