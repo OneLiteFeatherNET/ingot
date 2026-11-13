@@ -96,6 +96,7 @@
 * [Outbound connections](reference/outbound-connections.md)
 * [Deploy targets](reference/deploy-targets.md)
 * [Settings domains](reference/settings-domains.md)
+* [Settings encryption](reference/settings-encryption.md)
 * [Storage providers](reference/storage-providers.md)
 * [Repository settings](reference/repository-settings.md)
 * [Repository types](reference/repository-types.md)

@@ -15,6 +15,8 @@ description: Lookup tables for the upgrade to Ingot. Lists the supported upgrade
 
 ## What the first start changes
 
+Settings encryption adds one configuration row, `settings-key`, which holds the key identifier and a check value and no key. It is written only when a settings key is configured. Without a key, the default `INGOT_SETTINGS_ENCRYPTION=optional` keeps every stored value, the start and the settings API as they were. With a key, the first start writes the stored secrets sealed once. See [Settings encryption](settings-encryption.md).
+
 ### Database tables
 
 The identity schema is created on the first start. The legacy token tables are kept and only read.

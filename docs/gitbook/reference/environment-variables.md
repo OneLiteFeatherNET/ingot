@@ -346,6 +346,16 @@ Read once at startup. They turn on the `${env:NAME}` and `${file:PATH}` referenc
 | `INGOT_SETTINGS_SECRET_ENV` | empty | Comma separated names of the variables that `${env:NAME}` may read. Empty refuses every `${env:...}`. The legacy spelling `REPOSILITE_SETTINGS_SECRET_ENV` is the fallback. |
 | `INGOT_SETTINGS_SECRET_FILES` | empty | Comma separated absolute directories that `${file:PATH}` may read from. A file outside them, or reached through `..` or a symbolic link that leaves them, is refused. Empty refuses every `${file:...}`. The legacy spelling `REPOSILITE_SETTINGS_SECRET_FILES` is the fallback. |
 
+The settings encryption variables follow. They are read from the environment only, see [Settings encryption](settings-encryption.md).
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `INGOT_SETTINGS_KEY` | unset | Base64 of 32 random bytes, the key that seals the secret values of the shared settings. Setting it together with `INGOT_SETTINGS_KEY_FILE` stops the startup. The legacy spelling `REPOSILITE_SETTINGS_KEY` is read when the `INGOT_` name is not set. |
+| `INGOT_SETTINGS_KEY_FILE` | unset | Absolute path of a file that holds the same key, for Docker and Kubernetes secrets. One trailing line break is ignored. The legacy spelling `REPOSILITE_SETTINGS_KEY_FILE` is the fallback. |
+| `INGOT_SETTINGS_KEY_PREVIOUS` | unset | The key a rotation starts from. It is only used to read values that the previous key sealed. The legacy spelling `REPOSILITE_SETTINGS_KEY_PREVIOUS` is the fallback. |
+| `INGOT_SETTINGS_KEY_PREVIOUS_FILE` | unset | The file form of `INGOT_SETTINGS_KEY_PREVIOUS`. The legacy spelling `REPOSILITE_SETTINGS_KEY_PREVIOUS_FILE` is the fallback. |
+| `INGOT_SETTINGS_ENCRYPTION` | `optional` | `optional` seals the secrets when a key is set and starts as before without one. `required` stops the startup without a key and refuses to store a secret while no key is active. The legacy spelling `REPOSILITE_SETTINGS_ENCRYPTION` is the fallback. |
+
 The variables are read from the environment only. A value in the shared settings cannot turn them on or widen the lists. The value of the switch is compared without regard to case, and an empty value counts as not set.
 
 ### Remote version check

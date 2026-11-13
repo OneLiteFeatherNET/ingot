@@ -1198,6 +1198,13 @@
       "states": []
     },
     {
+      "name": "password-dialog",
+      "file": "src/components/settings/PasswordDialog.vue",
+      "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "repository-access-card",
       "file": "src/components/settings/RepositoryAccessCard.vue",
       "stability": "stable",
@@ -1271,6 +1278,13 @@
       "name": "unsaved-changes-bar",
       "file": "src/components/settings/UnsavedChangesBar.vue",
       "stability": "stable",
+      "parts": [],
+      "states": []
+    },
+    {
+      "name": "settings-encryption-alert",
+      "file": "src/components/support/SettingsEncryptionAlert.vue",
+      "stability": "experimental",
       "parts": [],
       "states": []
     },

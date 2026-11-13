@@ -217,6 +217,10 @@ Every write answers `503` while read-only mode is on. No route takes a credentia
 | GET | `/api/settings/schema/{name}` | Instance admin | Returns the schema of a settings domain. |
 | GET | `/api/settings/domain/{name}` | Instance admin | Reads a settings domain. |
 | PUT | `/api/settings/domain/{name}` | Instance admin | Updates a settings domain. |
+| GET | `/api/settings/domain/{name}?secrets=hidden` | Instance admin | Reads a settings domain with every secret replaced by `********`, whatever `hideSettingsSecrets` says. The dashboard uses this form. |
+| GET | `/api/settings/encryption` | Instance admin | Reports the settings encryption mode, whether a key is active and how many stored secret values are still plain text. No value or key is returned. The System page warns from it. |
+| POST | `/api/settings/export` | Instance admin | Returns the saved settings encrypted with a password of at least 12 characters (Argon2id and AES-256-GCM). Nothing is stored. The response carries `Cache-Control: no-store`. |
+| POST | `/api/settings/import/open` | Instance admin | Decrypts an export with its password and returns the plain settings for review. Nothing is stored. A wrong password, a changed file and an unknown version all answer `400` with the same text. |
 
 While `INGOT_SHARED_CONFIGURATION_RELOAD=true` and the shared settings come from a file, a `PUT` to a domain that the file holds answers `409`. The message names the file, nothing is written and no audit event is recorded. Change the file instead and let the instance pick it up. See [Shared settings reload](environment-variables.md#shared-configuration-reload).
 

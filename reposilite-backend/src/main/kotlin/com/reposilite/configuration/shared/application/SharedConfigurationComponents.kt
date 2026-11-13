@@ -36,6 +36,7 @@ import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.Extensions
 import com.reposilite.plugin.api.PluginComponents
 import com.reposilite.shared.EntityTagSigner
+import net.onelitefeather.ingot.settings.encryption.SettingsSecretCipher
 import com.reposilite.status.FailureFacade
 import java.nio.file.Path
 import java.util.ServiceLoader
@@ -49,6 +50,7 @@ class SharedConfigurationComponents(
     private val configurationFacade: ConfigurationFacade,
     private val sharedConfigurationReload: Boolean = false,
     private val secretReferences: SecretReferenceResolver? = null,
+    private val secretCipher: SettingsSecretCipher? = null,
 ) : PluginComponents {
 
     private fun sharedSettingsProvider(): SharedSettingsProvider =
@@ -105,6 +107,7 @@ class SharedConfigurationComponents(
             extensions = extensions,
             entityTags = entityTags,
             secretReferences = secretReferences,
+            secretCipher = secretCipher,
         )
 
 }

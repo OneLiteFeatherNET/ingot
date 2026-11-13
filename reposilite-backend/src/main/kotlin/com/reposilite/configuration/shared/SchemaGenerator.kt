@@ -47,11 +47,15 @@ import com.github.victools.jsonschema.generator.SchemaKeyword
 import com.github.victools.jsonschema.generator.TypeScope
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.Max
+import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.configuration.shared.api.Min
 import com.reposilite.configuration.shared.api.Range
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
+
+/** The schema property that marks a secret, see [Sensitive]. */
+const val SECRET_SCHEMA_FLAG = "x-ingot-secret"
 
 val SCHEMA_OPTION_PRESET = OptionPreset(
     SCHEMA_VERSION_INDICATOR,
@@ -117,6 +121,13 @@ class SettingsModule(
         builder.forTypesInGeneral().withDescriptionResolver { it.doc?.description?.trimIndent() }
 
         builder.forFields().withNullableCheck { it.kProperty?.returnType?.isMarkedNullable }
+
+        // The dashboard reads this flag instead of guessing secrets from property names. Plugins get it with @Sensitive alone.
+        builder.forFields().withInstanceAttributeOverride { node, field, _ ->
+            if (field.getAnnotationConsideringFieldAndGetterIfSupported(Sensitive::class.java) != null) {
+                node.put(SECRET_SCHEMA_FLAG, true)
+            }
+        }
 
         // Obviously, jsonforms is going crazy with default values and is not able to match proper scheme in 'oneOf' directive
         // builder.forFields().withDefaultResolver(defaultValueResolve())

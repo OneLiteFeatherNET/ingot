@@ -605,9 +605,36 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
+      // The dashboard always asks for the hidden form, so no secret value reaches the browser.
       fetch(name) {
-        return axios.get(createURL(`/api/settings/domain/${name}`), {
+        return axios.get(createURL(`/api/settings/domain/${name}?secrets=hidden`), {
           headers: {
+            Accepts: "application/json",
+            ...defaultAuthorization().headers,
+          },
+        })
+      },
+      encryptionState() {
+        return axios.get(createURL("/api/settings/encryption"), {
+          headers: {
+            Accepts: "application/json",
+            ...defaultAuthorization().headers,
+          },
+        })
+      },
+      exportSaved(password) {
+        return axios.post(createURL("/api/settings/export"), { password }, {
+          headers: {
+            "Content-Type": "application/json",
+            Accepts: "application/json",
+            ...defaultAuthorization().headers,
+          },
+        })
+      },
+      openExport(password, exported) {
+        return axios.post(createURL("/api/settings/import/open"), { password, export: exported }, {
+          headers: {
+            "Content-Type": "application/json",
             Accepts: "application/json",
             ...defaultAuthorization().headers,
           },

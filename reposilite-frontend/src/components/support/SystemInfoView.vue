@@ -17,6 +17,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useSession } from '../../store/session'
+import SettingsEncryptionAlert from './SettingsEncryptionAlert.vue'
 
 // The system information of the instance that answers. Every value on the page is already redacted by the server.
 const { client } = useSession()
@@ -50,6 +51,8 @@ onMounted(load)
     class="flex flex-col gap-6"
     data-ingot-component="system-info-view"
   >
+    <SettingsEncryptionAlert />
+
     <p
       v-if="state === 'loading'"
       data-ingot-state="loading"

@@ -316,6 +316,15 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     configurations.value[domain] = data
   }
 
+  /*
+   * The saved state as a password protected file. The server reads the stored values, so the draft is never part of it.
+   * The response is the file itself; the caller saves it.
+   */
+  const exportSaved = async (password) => (await client.value.settings.exportSaved(password)).data
+
+  /* Decrypts a password protected file for review. Nothing is stored here: the result goes into the draft like a plain file. */
+  const openExport = async (password, exported) => (await client.value.settings.openExport(password, exported)).data
+
   /* Puts checked values of the domains into the draft. Nothing is written: the user reviews and saves them like any edit. */
   const importDomains = (byDomain) => {
     Object.entries(byDomain).forEach(([domain, data]) => {
@@ -455,6 +464,8 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     factoryReset,
     setDomainData,
     importDomains,
+    exportSaved,
+    openExport,
     setValidity,
     savedConfiguration,
     validateDomain,

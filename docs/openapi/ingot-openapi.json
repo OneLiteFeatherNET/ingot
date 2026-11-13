@@ -2017,6 +2017,22 @@
         },
         "type" : "object"
       },
+      "SettingsEncryptionState" : {
+        "properties" : {
+          "mode" : {
+            "type" : "string"
+          },
+          "plaintextSecrets" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "secretsEncrypted" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "mode", "secretsEncrypted", "plaintextSecrets" ],
+        "type" : "object"
+      },
       "SetupRequest" : {
         "properties" : {
           "displayName" : {
@@ -4797,6 +4813,89 @@
           "tokenBasic" : [ ]
         } ],
         "summary" : "List configurations",
+        "tags" : [ "Settings" ]
+      }
+    },
+    "/api/settings/encryption" : {
+      "get" : {
+        "description" : "Reports whether a settings key is active, the configured mode and the number of stored secret values that are still plain text. No value is returned.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsEncryptionState"
+                }
+              }
+            },
+            "description" : "Encryption state of the shared settings"
+          },
+          "401" : {
+            "description" : "Returns 401 without credentials"
+          },
+          "403" : {
+            "description" : "Returns 403 if a token without the settings area (ingot.admin.settings) is used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Get the settings encryption state",
+        "tags" : [ "Settings" ]
+      }
+    },
+    "/api/settings/export" : {
+      "post" : {
+        "description" : "Returns the saved settings encrypted with a password (Argon2id and AES-256-GCM). The password is at least 12 characters.",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Encrypted settings file"
+          },
+          "400" : {
+            "description" : "The password is missing or shorter than 12 characters"
+          },
+          "403" : {
+            "description" : "A token without the settings area (ingot.admin.settings) is used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Export settings",
+        "tags" : [ "Settings" ]
+      }
+    },
+    "/api/settings/import/open" : {
+      "post" : {
+        "description" : "Decrypts an export with its password and returns the plain settings for review. Nothing is stored.",
+        "responses" : {
+          "200" : {
+            "description" : "Plain settings, for review"
+          },
+          "400" : {
+            "description" : "The password is wrong or the file was changed"
+          },
+          "403" : {
+            "description" : "A token without the settings area (ingot.admin.settings) is used"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Open an encrypted settings file",
         "tags" : [ "Settings" ]
       }
     },
