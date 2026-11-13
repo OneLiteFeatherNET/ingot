@@ -73,7 +73,7 @@ An entry whose settings page has an unsaved draft shows **Unsaved** with an icon
 
 ### Layout at four widths
 
-The Administration pages use one layout at four widths. Below 600 pixels the navigation is the bottom bar, and the Administration tree is an index with a back arrow on each page. From 600 to 1239 pixels the rail is at the left, and the tree is still an index. From 1240 pixels the tree stands beside the page at 208 pixels wide. It stays in view while the page scrolls, below the top bar and above the save bar, and scrolls inside itself when it is taller than the window.
+The Administration pages use one layout at four widths. Below 600 pixels the navigation is the bottom bar, and the Administration tree is an index with a back arrow on each page. From 600 to 1239 pixels the rail is at the left, and the tree is still an index; its rows show the description of each page under its name. From 1240 pixels the tree stands beside the page at 208 pixels wide. It stays in view while the page scrolls, between the top bar and the save bar, when the whole tree fits in that space. When it is taller than the space, it scrolls with the page, so no list inside the page scrolls on its own.
 
 The pages are of two kinds. A **wide** page is a list or a table, such as Repositories, Access, Audit and the file browser listing. It takes the full width after the side navigation at every width, and the table shows more columns as the window grows: Version policy and Visibility from 1920 pixels, and Storage from 2560 pixels. A **reading** page is text or a form, such as the settings domains, Maintenance, Account, the migration steps and the system information. It keeps a measure of at most 960 pixels, at the start of the content column, so a long line does not stretch across a large monitor. The dashboard lays its two resource charts out side by side from 1024 pixels, and its getting started checklist takes the full width of the content column. The repository overview puts the browse list beside the snippet card, the list taking two thirds of the width, from 1920 pixels.
 
@@ -87,6 +87,8 @@ The heading and the page actions form one row above the columns from 600 pixels.
 | **Monitoring and support** | **Audit log** (`/audit`), **Audit settings** (`/settings/audit`), **Console** (`/console`), **Maintenance** (`/maintenance`), **Analytics** (`/analytics`), **System information** (`/settings/system-info`) and **Support bundle** (`/settings/support`), the last two while the instance offers the support bundle |
 
 On a screen narrower than 600px the tree is an index list of the groups. A page opened from it shows a back arrow that returns to the index.
+
+From 600 to 1239 pixels a **Sections** button sits in the page header beside the back arrow. It opens the same tree in a side sheet named **Administration pages**. Choosing a page there opens it and closes the sheet. Escape or the close button closes the sheet and returns the focus to the **Sections** button. The index at `/settings` shows no such button, because the tree is on the page. Below 600 pixels there is no sheet.
 
 ### Redirects to the Repositories page
 
