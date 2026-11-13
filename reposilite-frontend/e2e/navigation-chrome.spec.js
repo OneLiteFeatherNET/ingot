@@ -81,7 +81,7 @@ test.describe('top bar alignment', () => {
     test(`starts the title where the page content starts at ${width}px`, async ({ adminPage: page }) => {
       await page.setViewportSize({ width, height: 1080 })
       await page.goto(siteUrl('/'))
-      const title = await edgesOf(topBar(page).locator('h1'))
+      const title = await edgesOf(topBar(page).locator('[data-ingot-part="title"]'))
       const content = await contentBox(page, 'main .container')
 
       expect(Math.abs(title.left - content.left), 'the title and the content share one left edge').toBeLessThanOrEqual(2)
@@ -91,7 +91,7 @@ test.describe('top bar alignment', () => {
       await page.setViewportSize({ width, height: 1080 })
       await page.goto(siteUrl('/settings/repositories'))
       await expect(page.getByRole('heading', { name: 'Repositories', level: 1 })).toBeVisible()
-      const title = await edgesOf(topBar(page).locator('h1'))
+      const title = await edgesOf(topBar(page).locator('[data-ingot-part="title"]'))
       const content = await contentBox(page, 'main .container')
 
       expect(Math.abs(title.left - content.left), 'the title and the frame share one left edge').toBeLessThanOrEqual(2)
@@ -117,15 +117,23 @@ test.describe('top bar alignment', () => {
       expect(bar.top, 'the bar is at the top of the window').toBe(0)
     })
 
-    test(`draws the brand rule across the whole top bar at ${width}px`, async ({ adminPage: page }) => {
+    test(`draws no rule under the top bar at ${width}px`, async ({ adminPage: page }) => {
       await page.setViewportSize({ width, height: 1080 })
       await page.goto(siteUrl('/'))
-      const bar = await edgesOf(topBar(page))
-      const rule = await edgesOf(topBar(page).locator('.olf-brand-bar'))
 
-      expect(rule.left, 'the rule starts at the bar edge').toBe(bar.left)
-      expect(rule.right, 'the rule ends at the bar edge').toBe(bar.right)
-      expect(rule.bottom, 'the rule sits on the bottom edge of the bar').toBe(bar.bottom)
+      await expect(topBar(page).locator('.olf-brand-bar'), 'the top bar contains no gradient rule').toHaveCount(0)
+      await expect(topBar(page), 'the bar has no border under it').toHaveCSS('border-bottom-width', '0px')
+      await expect(topBar(page), 'the bar casts no shadow').toHaveCSS('box-shadow', 'none')
+    })
+
+    test(`keeps the top bar in the rail's colour after scrolling at ${width}px`, async ({ adminPage: page }) => {
+      await page.setViewportSize({ width, height: 1080 })
+      await page.goto(siteUrl('/'))
+      const railColour = await rail(page).evaluate(element => getComputedStyle(element).backgroundColor)
+
+      await expect(topBar(page), 'at rest the bar has the rail colour').toHaveCSS('background-color', railColour)
+      await page.evaluate(() => window.scrollTo(0, 400))
+      await expect(topBar(page), 'after scrolling the bar keeps the rail colour').toHaveCSS('background-color', railColour)
     })
 
     test(`runs the rail the full height of the window at ${width}px`, async ({ adminPage: page }) => {
@@ -137,6 +145,14 @@ test.describe('top bar alignment', () => {
       expect(navigation.height, 'the rail reaches the bottom window edge').toBe(1080)
     })
   }
+
+  test('draws no rule under the top bar on a phone window', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 320, height: 800 })
+    await page.goto(siteUrl('/'))
+
+    await expect(topBar(page).locator('.olf-brand-bar'), 'the top bar contains no gradient rule at 320 pixels').toHaveCount(0)
+    await expect(topBar(page), 'the bar casts no shadow at 320 pixels').toHaveCSS('box-shadow', 'none')
+  })
 
   test('leaves no empty corner above the rail', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 1280, height: 1080 })
@@ -151,6 +167,25 @@ test.describe('top bar alignment', () => {
     expect(logo.bottom, 'the logo sits inside the corner').toBeLessThanOrEqual(corner.bottom)
     const entry = await edgesOf(rail(page).getByRole('link', { name: 'Browse', exact: true }))
     expect(entry.top, 'the entries start below the corner').toBeGreaterThanOrEqual(corner.bottom)
+  })
+})
+
+test.describe('page headings', () => {
+  for (const path of ['/', '/search', '/dashboard', '/account', '/settings']) {
+    test(`has exactly one level one heading on ${path}, and none in the top bar`, async ({ adminPage: page }) => {
+      await page.setViewportSize({ width: 1280, height: 1080 })
+      await page.goto(siteUrl(path))
+
+      await expect(page.getByRole('heading', { level: 1 }), 'the page names itself once').toHaveCount(1)
+      await expect(topBar(page).getByRole('heading', { level: 1 }), 'the instance name is not a heading').toHaveCount(0)
+    })
+  }
+
+  test('names the Dashboard page with a visible level one heading', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1280, height: 1080 })
+    await page.goto(siteUrl('/dashboard'))
+
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible()
   })
 })
 

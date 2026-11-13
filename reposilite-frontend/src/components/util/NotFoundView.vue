@@ -24,12 +24,12 @@ import MdButton from '../md/MdButton.vue'
     aria-labelledby="not-found-title"
     data-ingot-component="not-found-view"
   >
-    <h2
+    <h1
       id="not-found-title"
       class="md-headline-small text-on-surface"
     >
       Page not found
-    </h2>
+    </h1>
     <p class="md-body-large text-on-surface-variant">
       Nothing lives at this address. It may have moved, or the link may be mistyped.
     </p>

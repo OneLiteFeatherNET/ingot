@@ -378,12 +378,12 @@ const activeLabel = computed(() => pageLabel(section.value))
           class="container mx-auto flex flex-col items-start gap-4 py-12"
           aria-labelledby="no-access-title"
         >
-          <h2
+          <h1
             id="no-access-title"
             class="md-headline-small text-on-surface"
           >
             {{ activeLabel }}
-          </h2>
+          </h1>
           <p class="md-body-large text-on-surface-variant">
             You do not have access to this page.
           </p>

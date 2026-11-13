@@ -56,6 +56,12 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-test="getting-started"]').classes(), 'no 960 pixel cap on the checklist').not.toContain('max-w-[960px]')
   })
 
+  it('names the page with one visible level one heading, Dashboard', () => {
+    const wrapper = mount(DashboardView)
+
+    expect(wrapper.findAll('h1').map(heading => heading.text()), 'the page has exactly one level one heading').toEqual(['Dashboard'])
+  })
+
   it('no longer renders the resolved requests chart, which moved to analytics', () => {
     const wrapper = mount(DashboardView)
 

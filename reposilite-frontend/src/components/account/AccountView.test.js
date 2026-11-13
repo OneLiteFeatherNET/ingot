@@ -82,6 +82,13 @@ describe('AccountView', () => {
     )
   })
 
+  it('titles the page My account with its only level one heading', async () => {
+    await mountView()
+
+    expect(wrapper.findAll('h1').map(heading => heading.text()), 'the page has exactly one level one heading').toEqual(['My account'])
+    expect(wrapper.find('#account-title').element.tagName, 'the title keeps its id and is a level one heading').toBe('H1')
+  })
+
   it('renders the profile with the teams and the instance admin badge', async () => {
     await mountView({ admin: true, teams: ['developers', 'release'] })
 

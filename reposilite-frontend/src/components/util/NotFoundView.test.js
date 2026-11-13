@@ -30,7 +30,13 @@ describe('NotFoundView', () => {
   it('says that the page does not exist', async () => {
     const wrapper = await mountNotFound()
 
-    expect(wrapper.find('h2').text()).toBe('Page not found')
+    expect(wrapper.find('h1').text()).toBe('Page not found')
+  })
+
+  it('keeps the title as the only level one heading of the page', async () => {
+    const wrapper = await mountNotFound()
+
+    expect(wrapper.findAll('h1').map(heading => heading.text())).toEqual(['Page not found'])
   })
 
   it('links back to overview through the router', async () => {

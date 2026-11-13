@@ -292,7 +292,13 @@ describe('IndexPage no access state', () => {
   it('names the page that is denied', async () => {
     const { wrapper } = await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
 
-    expect(wrapper.find('[data-test="no-access"] h2').text()).toBe('Console')
+    expect(wrapper.find('[data-test="no-access"] h1').text()).toBe('Console')
+  })
+
+  it('gives the no access message exactly one level one heading', async () => {
+    const { wrapper } = await mountAt('/console', { logged: true, nodes: ['ingot.admin.audit'] })
+
+    expect(wrapper.find('[data-test="no-access"]').findAll('h1').length, 'the message is the page heading').toBe(1)
   })
 
   it('offers a link to Browse and does not navigate to overview by itself', async () => {

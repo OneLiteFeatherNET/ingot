@@ -45,12 +45,12 @@ const passwordChanged = () => {
     data-ingot-component="account-view"
   >
     <div class="flex flex-col gap-1 pb-7">
-      <h2
+      <h1
         id="account-title"
         class="md-headline-small text-on-surface"
       >
         My account
-      </h2>
+      </h1>
       <p class="md-body-large text-on-surface-variant">
         Your profile, your password and the tokens you created.
       </p>

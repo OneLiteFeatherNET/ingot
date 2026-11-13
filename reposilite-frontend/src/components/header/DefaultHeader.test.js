@@ -65,7 +65,33 @@ describe('DefaultHeader', () => {
 
     const container = wrapper.find('header > .container')
     expect(container.exists(), 'the title row is the shared container').toBe(true)
-    expect(container.find('h1').exists(), 'the title sits in it').toBe(true)
+    expect(container.find('.md-title-large').exists(), 'the title sits in it').toBe(true)
+  })
+
+  it('renders the instance name as no heading, so the page keeps the only level one heading', () => {
+    const wrapper = mountHeader()
+
+    expect(wrapper.findAll('h1, h2, h3, h4, h5, h6').length, 'the top bar has no heading element').toBe(0)
+  })
+
+  it('links the instance name to the start page', () => {
+    const wrapper = mountHeader()
+
+    const link = wrapper.find('.md-title-large a')
+    expect(link.exists(), 'the name is a link').toBe(true)
+    expect(link.attributes('href'), 'the link goes to the start page').toBe('/')
+    expect(link.text(), 'the link carries the instance name').toBe(wrapper.find('.md-title-large').text())
+  })
+
+  it('keeps the title anchor on the element that holds the name inside the header anchor', () => {
+    const wrapper = mountHeader()
+
+    const header = wrapper.find('header')
+    const title = wrapper.find('.md-title-large')
+    expect(header.attributes('data-ingot-component'), 'the header keeps its component anchor').toBe('default-header')
+    expect(title.attributes('data-ingot-part'), 'the title keeps its part anchor').toBe('title')
+    expect(header.element.contains(title.element), 'the title anchor sits inside the header anchor').toBe(true)
+    expect(title.text().length, 'the anchor holds the instance name').toBeGreaterThan(0)
   })
 
   it('spans the full window width on every page, so the title lines up with full-width content', () => {
@@ -74,14 +100,16 @@ describe('DefaultHeader', () => {
     expect(wrapper.find('header > .container').classes(), 'no maximum width, as the wide pages have none').toContain('max-w-none')
   })
 
-  it('draws the brand rule under the top bar across its whole width', () => {
+  it('draws no rule under the top bar', () => {
     const wrapper = mountHeader()
 
-    const rule = wrapper.find('header > .olf-brand-bar')
-    expect(rule.exists(), 'the rule is a direct child of the bar').toBe(true)
-    expect(rule.classes(), 'it spans the bar from edge to edge, at its bottom edge').toEqual(
-      expect.arrayContaining(['absolute', 'inset-x-0', 'bottom-0'])
-    )
-    expect(rule.attributes('aria-hidden'), 'the decoration carries no information').toBe('true')
+    expect(wrapper.find('.olf-brand-bar').exists(), 'the top bar draws no gradient rule').toBe(false)
+  })
+
+  it('draws no border, shadow or transition on the bar, so the content sheet is the only edge', () => {
+    const wrapper = mountHeader()
+
+    const decoration = wrapper.find('header').classes().filter(name => /(^|:)(border|shadow|transition)/.test(name))
+    expect(decoration, 'the bar has no border, shadow or transition class').toEqual([])
   })
 })
