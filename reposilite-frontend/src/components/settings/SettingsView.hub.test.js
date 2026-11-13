@@ -122,7 +122,7 @@ const mountAt = async ({ path = '/settings', names, props = {}, loaded = true, h
   return { store, router, client }
 }
 
-const overview = () => wrapper.get('[data-ingot-component="settings-hub"]')
+const overview = () => wrapper.get('[data-test="settings-hub"]')
 const attention = () => wrapper.get('[data-test="settings-attention"]')
 const treeEntries = () => wrapper.get('nav[aria-label="Administration"]')
 
@@ -246,20 +246,20 @@ describe('the Overview page at /settings', () => {
     session.mayEdit = false
     await mountAt()
 
-    expect(wrapper.find('[data-ingot-component="settings-hub"]').exists(), 'no Overview root').toBe(false)
+    expect(wrapper.find('[data-test="settings-hub"]').exists(), 'no Overview root').toBe(false)
     expect(wrapper.find('[data-test="settings-attention"]').exists(), 'no Needs attention').toBe(false)
   })
 
   it('shows no hub when the address names a domain', async () => {
     await mountAt({ path: '/settings/web', props: { domain: 'web' } })
 
-    expect(wrapper.find('[data-ingot-component="settings-hub"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="settings-hub"]').exists()).toBe(false)
   })
 
   it('forwards to the one domain a visitor sees instead of showing the hub', async () => {
     await mountAt({ names: ['maven', 'login'] })
 
-    expect(wrapper.find('[data-ingot-component="settings-hub"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="settings-hub"]').exists()).toBe(false)
     expect(wrapper.emitted('update:domain')?.at(-1), 'the address is replaced with the only domain').toEqual(['maven'])
   })
 })
