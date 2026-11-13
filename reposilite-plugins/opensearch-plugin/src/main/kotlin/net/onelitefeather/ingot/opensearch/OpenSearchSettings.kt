@@ -58,9 +58,18 @@ internal class OpenSearchSettings private constructor(
         private const val PREFIX = "OPENSEARCH_"
         private val INDEX_NAME = Regex("[a-z0-9][a-z0-9_-]{0,63}")
 
+        /** The warning of every start while plain HTTP is accepted. It names the switch and never a URL, user or password. */
+        const val PLAIN_HTTP_WARNING: String =
+            "INGOT_OPENSEARCH_ALLOW_HTTP is true, the cluster is reached over plain http and the credentials and the index travel unencrypted"
+
+        /**
+         * Reads the settings. A successful read with plain HTTP accepted writes [PLAIN_HTTP_WARNING] to [log], so every start of a
+         * backend shows it. [log] receives nothing else, and the default discards it for the callers that do not log.
+         */
         fun read(
             environment: Map<String, String>,
             readFile: (String) -> String = { path -> Files.readString(Path.of(path)) },
+            log: (String) -> Unit = {},
         ): OpenSearchSettings {
             val allowHttp = flag(environment, "ALLOW_HTTP")
             val username = lookup(environment, "USERNAME")?.second
@@ -71,7 +80,7 @@ internal class OpenSearchSettings private constructor(
             require(password == null || username != null) {
                 "INGOT_OPENSEARCH_PASSWORD is set without INGOT_OPENSEARCH_USERNAME"
             }
-            return OpenSearchSettings(
+            val settings = OpenSearchSettings(
                 urls = urls(environment, allowHttp),
                 allowHttp = allowHttp,
                 index = index(environment),
@@ -81,6 +90,8 @@ internal class OpenSearchSettings private constructor(
                 timeoutSeconds = integer(environment, "TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS, 1..300),
                 replicas = integer(environment, "REPLICAS", DEFAULT_REPLICAS, 0..10),
             )
+            if (allowHttp) log(PLAIN_HTTP_WARNING)
+            return settings
         }
 
         /** The variable that was read and its raw value, or null when neither spelling is set to a non-blank value. */

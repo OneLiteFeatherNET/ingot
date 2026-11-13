@@ -32,9 +32,11 @@ import javax.net.ssl.SSLContext
  *
  * [sslContext] replaces the JVM default context of the connections. Only the container tests pass one, to trust the authority of
  * their own cluster; the plugin registers the factory with null.
+ *
+ * [settings] reads the settings and receives the log sink of the backend, which is the logger of the context at every create.
  */
 internal class OpenSearchBackendFactory(
-    private val settings: () -> OpenSearchSettings,
+    private val settings: (log: (String) -> Unit) -> OpenSearchSettings,
     private val sslContext: SSLContext? = null,
 ) : ArtifactSearchBackendFactory {
 
@@ -42,8 +44,10 @@ internal class OpenSearchBackendFactory(
 
     override val apiVersion: Int = SEARCH_BACKEND_API_VERSION
 
-    override fun create(context: SearchBackendContext): ArtifactSearchBackend =
-        OpenSearchSearchBackend(settings(), context.clock, sslContext)
+    override fun create(context: SearchBackendContext): ArtifactSearchBackend {
+        val logger = context.logger()
+        return OpenSearchSearchBackend(settings(logger::warn), context.clock, sslContext)
+    }
 
     companion object {
         const val ID: String = "opensearch"
@@ -59,4 +63,4 @@ internal class OpenSearchBackendFactory(
 fun openSearchBackendFactory(
     environment: Map<String, String>,
     sslContext: SSLContext? = null,
-): ArtifactSearchBackendFactory = OpenSearchBackendFactory({ OpenSearchSettings.read(environment) }, sslContext)
+): ArtifactSearchBackendFactory = OpenSearchBackendFactory({ log -> OpenSearchSettings.read(environment, log = log) }, sslContext)
