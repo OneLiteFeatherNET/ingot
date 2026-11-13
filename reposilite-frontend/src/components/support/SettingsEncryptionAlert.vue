@@ -41,6 +41,7 @@ onMounted(async () => {
     v-if="state && !state.secretsEncrypted && state.plaintextSecrets > 0"
     role="alert"
     class="rounded-corner-large bg-error-container p-4 text-on-error-container"
+    data-ingot-component="settings-encryption-alert"
   >
     <p class="md-title-small">
       {{ state.plaintextSecrets }} stored secret {{ state.plaintextSecrets === 1 ? 'value is' : 'values are' }} kept in clear.

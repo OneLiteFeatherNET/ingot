@@ -91,6 +91,7 @@ const onKeydown = (event) => {
     v-if="open"
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
     :style="{ backgroundColor: 'color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent)' }"
+    data-ingot-component="password-dialog"
     @keydown="onKeydown"
   >
     <form

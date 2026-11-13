@@ -132,6 +132,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `optional-renderer` | stable | `src/components/renderers/OptionalRenderer.vue` | none | none |
 | `page-footer` | stable | `src/components/footer/PageFooter.vue` | none | none |
 | `password-card` | experimental | `src/components/account/PasswordCard.vue` | none | none |
+| `password-dialog` | stable | `src/components/settings/PasswordDialog.vue` | none | none |
 | `password-field` | experimental | `src/components/migration/PasswordField.vue` | none | none |
 | `permission-nodes-card` | experimental | `src/components/access/PermissionNodesCard.vue` | none | none |
 | `plugin-block` | stable | `src/components/plugins/PluginBlock.vue` | none | `error`, `loading` |
@@ -172,6 +173,7 @@ A `stable` name is part of the contract. It is added in a minor release, and it 
 | `segmented-control` | experimental | `src/components/tokens/SegmentedControl.vue` | none | none |
 | `segmented-option` | experimental | `src/components/tokens/SegmentedOption.vue` | none | none |
 | `settings-download-menu` | stable | `src/components/settings/SettingsDownloadMenu.vue` | none | none |
+| `settings-encryption-alert` | experimental | `src/components/support/SettingsEncryptionAlert.vue` | none | none |
 | `settings-hub` | stable | `src/components/settings/SettingsHub.vue` | none | none |
 | `settings-import-errors` | stable | `src/components/settings/SettingsImportErrors.vue` | none | none |
 | `settings-review-sheet` | stable | `src/components/settings/SettingsReviewSheet.vue` | `header` | none |
