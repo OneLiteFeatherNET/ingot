@@ -136,6 +136,102 @@ test.describe('wide screens', () => {
   }
 })
 
+// The Administration tree of rework-administration-side-navigation: from 1240 pixels it is sticky beside the page only while
+// it fits between the top bar and the save bar, and it never has a scroll box of its own. Below 1240 pixels the Sections
+// sheet opens the same tree from 600 pixels, and nothing is drawn below 600. The tree is found by its name and its links.
+test.describe('the administration tree at wide widths', () => {
+  const tree = (page) => page.getByRole('navigation', { name: 'Administration', exact: true }).filter({ has: page.getByRole('link') })
+
+  // The number of elements inside the tree that scroll on their own, which must be none.
+  const scrollBoxes = (locator) => locator.evaluate(nav => [nav, ...nav.querySelectorAll('*')]
+    .filter(element => ['auto', 'scroll'].includes(getComputedStyle(element).overflowY)).length)
+  const positionOf = (locator) => locator.evaluate(element => getComputedStyle(element).position)
+  // The number of elements of the page content that are sticky, and the page content itself.
+  const stickyInContent = (page) => page.locator('main').evaluate(main => [...main.querySelectorAll('*')]
+    .filter(element => getComputedStyle(element).position === 'sticky').length)
+
+  for (const [width, height] of [[1280, 1440], [2560, 1440]]) {
+    test(`keeps the tree sticky beside the page when it fits, at ${width} by ${height} pixels`, async ({ adminPage: page }) => {
+      await page.setViewportSize({ width, height })
+      await page.goto(siteUrl('/settings/repositories'))
+
+      const navigation = tree(page)
+      await expect(navigation).toBeVisible()
+      await expect.poll(() => positionOf(navigation), 'the tree is sticky while it fits').toBe('sticky')
+      expect(await scrollBoxes(navigation), 'no element of the tree scrolls on its own').toBe(0)
+      expect(await stickyInContent(page), 'the tree is the only sticky element of the page content').toBe(1)
+    })
+  }
+
+  for (const [width, height] of [[1366, 768], [1920, 1080]]) {
+    test(`lets the window scroll the tree when it is taller than the window, at ${width} by ${height} pixels`, async ({ adminPage: page }) => {
+      await page.setViewportSize({ width, height })
+      await page.goto(siteUrl('/settings/repositories'))
+
+      const navigation = tree(page)
+      await expect(navigation).toBeVisible()
+      // The entries arrive with the settings domains, so the height is polled until the tree has its full height.
+      const treeHeight = () => navigation.evaluate(element => element.offsetHeight)
+      await expect.poll(treeHeight, 'the precondition: the tree is taller than the window').toBeGreaterThan(height)
+      expect(await positionOf(navigation), 'the tree is not sticky when it does not fit').not.toBe('sticky')
+      expect(await scrollBoxes(navigation), 'no element of the tree scrolls on its own').toBe(0)
+      expect(await stickyInContent(page), 'no element of the page content is sticky').toBe(0)
+
+      const last = navigation.getByRole('link').last()
+      await last.scrollIntoViewIfNeeded()
+      await expect(last, 'the last entry is reached by scrolling the window').toBeInViewport()
+      expect(await page.evaluate(() => window.scrollY), 'the window itself scrolled').toBeGreaterThan(0)
+    })
+  }
+})
+
+test.describe('the Sections sheet below 1240 pixels', () => {
+  const sectionsButton = (page) => page.getByRole('button', { name: 'Sections', exact: true })
+  const sheet = (page) => page.getByRole('dialog', { name: 'Administration pages', exact: true })
+
+  test('moves from a page to a sibling page through the sheet at 900 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await page.goto(siteUrl('/access/ldap'))
+
+    await sectionsButton(page).click()
+    await expect(sheet(page), 'the sheet is open').toBeVisible()
+    await sheet(page).getByRole('link', { name: 'Users', exact: true }).click()
+
+    await expect(page).toHaveURL(/\/access\/users$/)
+    await expect(sheet(page), 'the sheet closes after the choice').toBeHidden()
+  })
+
+  test('returns focus to the Sections button when Escape closes the sheet at 900 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await page.goto(siteUrl('/access/users'))
+
+    await sectionsButton(page).click()
+    await expect(sheet(page)).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await expect(sheet(page), 'the sheet is closed').toBeHidden()
+    await expect(sectionsButton(page), 'focus is back on the button').toBeFocused()
+  })
+
+  test('draws no Sections button on the index at /settings at 900 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 900, height: 900 })
+    await page.goto(siteUrl('/settings'))
+
+    await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible()
+    await expect(sectionsButton(page), 'the index is the tree already').toHaveCount(0)
+  })
+
+  test('draws no Sections button and no horizontal scroll at 320 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 320, height: 900 })
+    await page.goto(siteUrl('/access/users'))
+
+    await expect(page.getByRole('heading', { name: 'Users', level: 1 })).toBeVisible()
+    await expect(sectionsButton(page), 'no Sections button on a phone').toBeHidden()
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(overflow, 'no horizontal scrolling in px').toBeLessThanOrEqual(0)
+  })
+})
+
 // Below 1240 pixels the Overview page is the index and the page at once. Its order is the page header, Needs attention,
 // the index with Overview marked current, and At a glance; no back arrow leads anywhere, because the index is on the page.
 test.describe('the Overview page below 1240 pixels', () => {

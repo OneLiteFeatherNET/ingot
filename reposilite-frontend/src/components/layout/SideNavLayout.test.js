@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SideNavLayout from './SideNavLayout.vue'
+import { treeObserverKey } from '../../helpers/useTreeFits'
 
 const shell = { render: () => null }
 
@@ -103,15 +104,14 @@ describe('SideNavLayout', () => {
     ])
   })
 
-  it('draws the side navigation 208 pixels wide and sticky beside the page', async () => {
+  it('draws the side navigation 208 pixels wide beside the page, with no scroll box of its own', async () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
     const classes = wrapper.find(SIDE_NAV).classes()
     expect(classes, 'the column is 208 pixels wide').toContain('w-52')
-    expect(classes, 'the column stays in view while the page scrolls').toContain('sticky')
-    expect(classes, 'the column stops one rem below the top bar').toContain('top-[calc(4rem+1rem)]')
-    expect(classes, 'the column is at most the window less the top bar and one rem at the bottom').toContain('max-h-[calc(100dvh-6rem)]')
-    expect(classes, 'a tall column scrolls inside itself').toContain('overflow-y-auto')
+    expect(classes, 'the column stops one rem below the top bar when it is sticky').toContain('top-[calc(4rem+1rem)]')
+    expect(classes.some(name => name.startsWith('max-h-')), 'no maximum height that would make a scroll box').toBe(false)
+    expect(classes, 'a tall column scrolls with the page, not inside itself').not.toContain('overflow-y-auto')
   })
 
   it('does not make the index sticky on narrow widths', async () => {
@@ -168,6 +168,167 @@ describe('SideNavLayout', () => {
 
     const overviewGroup = wrapper.get('ul[aria-label="Overview"]').element.parentElement
     expect(overviewGroup.querySelector('p'), 'no visible heading above Overview').toBeNull()
+  })
+})
+
+// The sticky rule (D1): from 1240 pixels the side navigation is sticky only while its full height fits between the top
+// bar and the save bar. The size observer is a fake that the test triggers by hand. The heights are fixed per test: the
+// navigation through the offsetHeight of its element, the window through window.innerHeight and the save bar through
+// its own element; each is restored after the test. The window is 1000 pixels high, so the room is 1000 - 80 - 16 = 904.
+describe('SideNavLayout sticky rule', () => {
+  const mounted = []
+  let navHeight = 0
+  let barHeight = 0
+  let savedInnerHeight
+  let heightSpy
+
+  beforeEach(() => {
+    navHeight = 0
+    barHeight = 0
+    savedInnerHeight = window.innerHeight
+    window.innerHeight = 1000
+    heightSpy = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function () {
+      if (this.getAttribute('data-ingot-part') === 'nav') return navHeight
+      if (this.getAttribute('data-ingot-component') === 'unsaved-changes-bar') return barHeight
+      return 0
+    })
+  })
+
+  afterEach(() => {
+    mounted.splice(0).forEach(({ wrapper, bar }) => {
+      wrapper.unmount()
+      bar?.remove()
+    })
+    heightSpy.mockRestore()
+    window.innerHeight = savedInnerHeight
+  })
+
+  // A fake of the size observer: it keeps the callbacks it is given, and `report` calls them as a size change would.
+  const fakeObserver = () => {
+    const observed = []
+    const observe = (element, onChange) => {
+      const entry = { element, onChange }
+      observed.push(entry)
+      return () => observed.splice(observed.indexOf(entry), 1)
+    }
+    const report = () => observed.forEach(entry => entry.onChange())
+    return { observe, report }
+  }
+
+  const mountSticky = async (props = {}) => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access/users')
+    await router.isReady()
+    const observer = fakeObserver()
+    const wrapper = mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: fixtureGroups(), current: 'users', narrow: false, ...props },
+      slots: { default: '<p class="page-body">Page body</p>' },
+      global: { plugins: [router], provide: { [treeObserverKey]: observer.observe } },
+      attachTo: document.body
+    })
+    const entry = { wrapper, bar: null }
+    mounted.push(entry)
+    await flushPromises()
+    return { wrapper, observer, entry }
+  }
+
+  const isSticky = (wrapper) => wrapper.find(SIDE_NAV).classes().includes('sticky')
+
+  it('has no scroll box of its own while the tree fits', async () => {
+    navHeight = 800
+    const { wrapper } = await mountSticky()
+
+    const classes = wrapper.find(SIDE_NAV).classes()
+    expect(classes.some(name => name.startsWith('max-h-')), 'no maximum height').toBe(false)
+    expect(classes, 'no inner scrollbar').not.toContain('overflow-y-auto')
+  })
+
+  it('is sticky while the whole tree fits between the bars', async () => {
+    navHeight = 800
+    const { wrapper } = await mountSticky()
+
+    expect(isSticky(wrapper), 'an 800 pixel tree fits in 904 pixels of room').toBe(true)
+  })
+
+  it('is not sticky when the tree is taller than the room between the bars', async () => {
+    navHeight = 1000
+    const { wrapper } = await mountSticky()
+
+    expect(isSticky(wrapper), 'a 1000 pixel tree does not fit in 904 pixels of room').toBe(false)
+  })
+
+  it('switches to static when the observer reports that the tree has grown', async () => {
+    navHeight = 800
+    const { wrapper, observer } = await mountSticky()
+    expect(isSticky(wrapper), 'sticky before the change').toBe(true)
+
+    navHeight = 1000
+    observer.report()
+    await flushPromises()
+
+    expect(isSticky(wrapper), 'static once the tree is taller than the room').toBe(false)
+  })
+
+  it('does not change its state while the page scrolls', async () => {
+    navHeight = 800
+    const { wrapper } = await mountSticky()
+
+    navHeight = 1000
+    window.dispatchEvent(new Event('scroll'))
+    document.dispatchEvent(new Event('scroll'))
+    await flushPromises()
+
+    expect(isSticky(wrapper), 'the decision waits for a size change, not for a scroll').toBe(true)
+  })
+
+  it('takes the save bar out of the room when it appears', async () => {
+    navHeight = 800
+    const { wrapper, entry } = await mountSticky()
+    expect(isSticky(wrapper), 'sticky without a save bar').toBe(true)
+
+    const bar = document.createElement('div')
+    bar.setAttribute('data-ingot-component', 'unsaved-changes-bar')
+    document.body.append(bar)
+    entry.bar = bar
+    barHeight = 200
+    await wrapper.setProps({ unsaved: ['settings:javadoc'] })
+    await flushPromises()
+
+    expect(isSticky(wrapper), 'an 800 pixel tree does not fit beside a 216 pixel save bar').toBe(false)
+  })
+})
+
+describe('SideNavLayout index rows', () => {
+  // The rows of the filter tree carry a description; the index shows it below 1240 pixels, and the side column does not.
+  const mountRows = async (props) => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/access/users')
+    await router.isReady()
+    return mount(SideNavLayout, {
+      props: { label: 'Access sections', groups: filterGroups(), ...props },
+      slots: { default: '<p class="page-body">Page body</p>' },
+      global: { plugins: [router] }
+    })
+  }
+
+  const row = (wrapper, label) => wrapper.findAll(`${SIDE_NAV} a`).find(link => link.text().startsWith(label))
+
+  it('shows the description under the label of a row on narrow widths', async () => {
+    const wrapper = await mountRows({ current: undefined, narrow: true })
+
+    expect(row(wrapper, 'Users').text(), 'the label, then the description').toContain('People who sign in')
+  })
+
+  it('shows only the label of a row without a description', async () => {
+    const wrapper = await mountRows({ current: undefined, narrow: true })
+
+    expect(row(wrapper, 'Teams').text(), 'a row without a description is one line').toBe('Teams')
+  })
+
+  it('shows only the labels in the side column from 1240 pixels', async () => {
+    const wrapper = await mountRows({ current: 'teams', narrow: false })
+
+    expect(row(wrapper, 'Users').text(), 'the side column draws labels only').toBe('Users')
   })
 })
 
