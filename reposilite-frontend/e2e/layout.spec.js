@@ -143,20 +143,22 @@ test.describe('the Overview page below 1240 pixels', () => {
 
   for (const width of [320, 900]) {
     test(`orders the header, Needs attention, the index and At a glance at ${width} pixels`, async ({ adminPage: page, seed }) => {
-      await seed.repository(`overview-draft-${width}`)
+      // The seed prefixes the id with the test name, so the id it returns is the one the page lists.
+      const repository = await seed.repository(`overview-draft-${width}`)
       await page.setViewportSize({ width, height: 900 })
       await page.goto(siteUrl('/settings/repositories'))
 
       // A draft that is not saved: the description of the repository is changed, and the change stays in the page.
-      await page.getByRole('button', { name: `Actions for overview-draft-${width}`, exact: true }).click()
-      await page.getByRole('menuitem', { name: `Edit overview-draft-${width}`, exact: true }).click()
+      await page.getByRole('button', { name: `Actions for ${repository}`, exact: true }).click()
+      await page.getByRole('menuitem', { name: `Edit ${repository}`, exact: true }).click()
       await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Changed on the way to Overview')
       await page.getByRole('link', { name: 'Back to Administration' }).click()
 
       await expect(page).toHaveURL(/\/settings$/)
       const heading = page.getByRole('heading', { name: 'Overview', level: 1 })
       const attention = page.getByRole('heading', { name: 'Needs attention', level: 2 })
-      const index = page.getByRole('navigation', { name: 'Administration', exact: true })
+      // The trail above the heading is also named Administration on narrow widths, so the index is the one with links.
+      const index = page.getByRole('navigation', { name: 'Administration', exact: true }).filter({ has: page.getByRole('link') })
       const glance = page.getByRole('heading', { name: 'At a glance', level: 2 })
       await expect(attention).toBeVisible()
       await expect(page.getByRole('link', { name: 'Repositories, Unsaved changes', exact: true })).toBeVisible()
