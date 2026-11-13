@@ -24,7 +24,6 @@ import {
   barLayout,
   adminGroups,
   pluginPageRedirect,
-  settingsGroupOf,
   settingsLabelOf,
   unlistedRoutes,
 } from './registry'
@@ -194,21 +193,6 @@ describe('contributed settings sections in the tree, without the settings groups
 
     expect(keysOf('Artifacts'), 'the Mirror section is under Artifacts').toContain('settings:mirror')
     expect(keysOf('Instance'), 'the Pulse section is under Instance').toContain('settings:pulse')
-  })
-})
-
-describe('contributed settings sections', () => {
-  it('places a domain of a section under the group of the section', () => {
-    setContributions(manifest())
-
-    expect(settingsGroupOf('mirror')).toBe('Repository')
-  })
-
-  it('keeps a domain without a section in its fallback group', () => {
-    setContributions(manifest())
-
-    expect(settingsGroupOf('web')).toBe('Instance')
-    expect(settingsGroupOf('unknown-plugin-domain')).toBe('Plugins')
   })
 })
 

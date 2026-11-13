@@ -54,7 +54,6 @@
  * - administrationLocation(can)  where the Administration entry of the rail opens: the hub, or the one page
  *                                the visitor may open
  * - sideNavOf(key)              { label, sectionLabel, indexTo } of a page for SideNavLayout
- * - settingsGroupOf(domain)    the category of a Settings domain in the legacy Settings groups (Repository, Instance, Data, Plugins)
  * - reservedDomainIds(domains)  the settings domain ids that a reserved page name under /settings shadows
  * - firstAccessRoute(can)        the route /access opens: the first permitted landing page, or users
  * - accessTabOf(routeName)       the Access tab key of a route, including its detail routes
@@ -97,9 +96,6 @@ const GROUP_HEADINGS = {
   System: 'Instance',
   Support: 'Monitoring and support',
 }
-
-// The Settings category a contributed section is placed in. System has no Settings category of its own.
-const SECTION_SETTINGS_GROUPS = { Repository: 'Repository', System: 'Instance' }
 
 const setContributions = (manifest) => {
   contributions.value = manifest
@@ -429,23 +425,6 @@ const sideNavOf = (key) => {
   return { label: 'Administration', sectionLabel: 'Administration', indexTo: { name: page.route } }
 }
 
-const SETTINGS_GROUPS = [
-  { heading: 'Repository', domains: ['javadoc', 'cleanup'] },
-  { heading: 'Instance', domains: ['web', 'frontend'] },
-  { heading: 'Data', domains: ['statistics', 'audit', 'search'] },
-  { heading: 'Plugins', domains: [] }
-]
-
-const SETTINGS_FALLBACK_GROUP = 'Plugins'
-
-// A domain a plugin placed with a section takes that section's category; the other domains keep the mapping above.
-const settingsGroupOf = (domain) => {
-  const section = sectionOf(domain)
-  if (section) return SECTION_SETTINGS_GROUPS[section.group] ?? SETTINGS_FALLBACK_GROUP
-  return SETTINGS_GROUPS.find(group => group.domains.includes(domain))?.heading ?? SETTINGS_FALLBACK_GROUP
-}
-
-
 // The settings domain ids that a reserved page name under /settings would shadow.
 const reservedDomainIds = (domains) => domains.filter(domain => RESERVED_SETTINGS_PAGES.includes(domain))
 
@@ -533,7 +512,6 @@ export {
   pluginTreeKey,
   administrationLocation,
   sideNavOf,
-  settingsGroupOf,
   reservedDomainIds,
   firstAccessRoute,
   accessTabOf,
