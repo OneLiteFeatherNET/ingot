@@ -277,6 +277,9 @@ internal class OpenSearchSearchBackend(
         )
     }
 
+    /** The refresh interval of the index. No connection detail is reported: the URL, the user name and the password stay out. */
+    override fun properties(): Map<String, String> = mapOf("refreshInterval" to OpenSearchIndexDefinition.REFRESH_INTERVAL)
+
     // ---- writes by query ----------------------------------------------------------------------------------------------
 
     private fun deleteByQuery(filter: List<Map<String, Any>>, limit: Int): Int {

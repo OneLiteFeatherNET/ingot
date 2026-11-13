@@ -73,6 +73,8 @@ internal data class BackendStatus(
     val health: String,
     val healthDetail: String,
     val accessMismatches: Long,
+    /** The settings the backend reports, redacted; see [ArtifactSearchBackend.properties]. */
+    val properties: Map<String, String> = emptyMap(),
 ) {
 
     val available: Boolean

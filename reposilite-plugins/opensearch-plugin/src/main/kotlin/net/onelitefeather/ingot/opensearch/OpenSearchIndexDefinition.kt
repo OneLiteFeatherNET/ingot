@@ -28,10 +28,13 @@ internal object OpenSearchIndexDefinition {
 
     const val MAPPING_VERSION: Int = 1
 
+    /** The interval after which a write is visible to a search. The mapping sets it, and the status block reports it. */
+    const val REFRESH_INTERVAL: String = "1s"
+
     private const val TEMPLATE = """
     {
       "settings": {
-        "index": {"number_of_shards": 1, "number_of_replicas": 1, "refresh_interval": "1s"},
+        "index": {"number_of_shards": 1, "number_of_replicas": 1, "refresh_interval": "$REFRESH_INTERVAL"},
         "analysis": {"normalizer": {"ingot_lowercase": {"type": "custom", "filter": ["lowercase"]}}}
       },
       "mappings": {

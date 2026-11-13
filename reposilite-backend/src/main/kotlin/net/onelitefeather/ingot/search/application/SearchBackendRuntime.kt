@@ -34,6 +34,7 @@ internal class SearchBackendRuntime(
     private val agreement: ClusterBackendAgreement?,
     private val clock: Clock,
     private val backendId: String,
+    private val redact: (String) -> String,
     private val accessMismatches: () -> Long,
 ) {
 
@@ -87,7 +88,14 @@ internal class SearchBackendRuntime(
             health = health,
             healthDetail = if (holder.state == SearchBackendState.DOWN) holder.detail else "",
             accessMismatches = accessMismatches(),
+            properties = properties(),
         )
+    }
+
+    /** The properties the backend reports, with every key and value redacted. Empty while no backend is open or it fails to answer. */
+    private fun properties(): Map<String, String> {
+        val reported = holder.backendOrNull()?.let { runCatching { it.properties() }.getOrNull() }.orEmpty()
+        return reported.entries.associate { (key, value) -> redact(key) to redact(value) }
     }
 
     private companion object {

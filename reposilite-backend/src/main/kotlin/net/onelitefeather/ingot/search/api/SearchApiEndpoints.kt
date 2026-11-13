@@ -16,6 +16,7 @@
 
 package net.onelitefeather.ingot.search.api
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.reposilite.ReposiliteObjectMapper
 import net.onelitefeather.ingot.repository.RepositoryRegistry
@@ -382,6 +383,7 @@ internal class SearchApiEndpoints(
                 health = backend.health,
                 healthDetail = backend.healthDetail,
                 accessMismatches = backend.accessMismatches,
+                properties = backend.properties.takeIf { it.isNotEmpty() },
             ),
         )
     }
@@ -524,8 +526,10 @@ internal data class SearchIndexResponse(
 /**
  * The backend of this replica: its id, its state (AVAILABLE, NOT_INSTALLED, REFUSED, OPEN_FAILED, DOWN or CLUSTER_MISMATCH), the
  * reason of that state, the health (UP, DOWN or UNKNOWN) with the message of a down backend, and the access mismatches the core
- * dropped. Secrets and user information never appear in the details.
+ * dropped, and the properties the backend reports, such as its refresh interval. Secrets and user information never appear in
+ * the details.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 internal data class SearchBackendResponse(
     val id: String,
     val state: SearchBackendState,
@@ -533,6 +537,8 @@ internal data class SearchBackendResponse(
     val health: String,
     val healthDetail: String,
     val accessMismatches: Long,
+    /** Absent when the backend reports none, so a database backend answers exactly as before. */
+    val properties: Map<String, String>? = null,
 )
 
 internal data class OutboxCounts(

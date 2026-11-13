@@ -57,6 +57,12 @@ interface ArtifactSearchBackend : ArtifactSearchEngine {
      */
     fun tokensComplete(): Boolean = true
 
+    /**
+     * The settings of this backend that the status block shows, such as its refresh interval. A value is shown as it is, so it
+     * never holds a URL, a user name or a password; the core redacts every key and value before it is shown.
+     */
+    fun properties(): Map<String, String> = emptyMap()
+
     /** Applies [actions] in order. Every action is idempotent, so a batch can be applied again after a crash. */
     fun apply(actions: List<IndexAction>)
 
