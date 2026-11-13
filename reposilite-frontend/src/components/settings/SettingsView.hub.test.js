@@ -139,6 +139,15 @@ describe('the settings hub at /settings', () => {
     expect(group('Instance').text(), 'a domain without a change is not marked').not.toContain('Unsaved changes')
   })
 
+  it('marks the Repositories entry of the tree as unsaved when the maven draft differs', async () => {
+    const { store } = await mountHub()
+    store.setDomainData('maven', { repositories: sixRepositories().slice(0, 2) })
+    await flushPromises()
+
+    const marked = wrapper.get('nav[aria-label="Administration"]').findAll('a').map(link => link.attributes('aria-label')).filter(Boolean)
+    expect(marked, 'only the Repositories entry says it has unsaved changes').toEqual(['Repositories, unsaved changes'])
+  })
+
   it('shows only the groups the visitor may edit', async () => {
     session.mayEdit = false
     await mountHub()

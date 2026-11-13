@@ -28,7 +28,7 @@ import MdButton from '../md/MdButton.vue'
 import AdministrationFrame from '../layout/AdministrationFrame.vue'
 import AccessDomainCard from './AccessDomainCard.vue'
 import SettingsHub from './SettingsHub.vue'
-import { hubGroups } from './settingsHub'
+import { hubGroups, unsavedTreeKeys } from './settingsHub'
 import { isAccessDomain, settingsTabDomains } from './accessDomains'
 import { domainFormOf } from './domainForm'
 import CollectionEditor from './CollectionEditor.vue'
@@ -303,14 +303,17 @@ const openConflictReview = async () => {
  * node, so a visitor either may edit every domain or none. A session without a node check, as the tests
  * provide, is taken to edit.
  */
+const unsavedDomains = computed(() => [...new Set(changes.value.map(change => change.domain))])
 const hubCards = computed(() => hubGroups({
   can,
   domains: domains.value,
   schemas: store.schemas.value,
   saved: savedSettings.value,
-  unsaved: [...new Set(changes.value.map(change => change.domain))],
+  unsaved: unsavedDomains.value,
   titleOf: store.titleOf,
 }))
+// The tree marks the entries of the domains with a draft, on every Administration page of the settings section.
+const unsavedKeys = computed(() => unsavedTreeKeys(unsavedDomains.value))
 
 // The sheet is modal and covers the page, so it closes once there is nothing left in it to review.
 watch(() => changes.value.length, (count) => {
@@ -427,6 +430,7 @@ watch(
     :shortcuts="shortcutsOf(settingsCurrent, can)"
     :narrow="narrow"
     :reading="!repositoriesPage"
+    :unsaved="unsavedKeys"
     replace
   >
     <template #actions>

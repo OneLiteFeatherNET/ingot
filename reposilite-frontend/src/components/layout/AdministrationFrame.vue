@@ -56,7 +56,8 @@ const props = defineProps({
   shortcuts: { type: Array, default: () => [] },
   narrow: { type: Boolean, default: false },
   replace: { type: Boolean, default: false },
-  reading: { type: Boolean, default: false }
+  reading: { type: Boolean, default: false },
+  unsaved: { type: Array, default: () => [] }
 })
 
 const currentLink = computed(() => props.groups
@@ -211,6 +212,7 @@ const SEPARATOR = "after:px-2 after:content-['/']"
       :current="current"
       :narrow="narrow && groups.length > 0"
       :replace="replace"
+      :unsaved="unsaved"
     >
       <slot />
     </SideNavLayout>
