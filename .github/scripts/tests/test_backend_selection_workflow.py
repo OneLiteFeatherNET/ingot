@@ -141,6 +141,14 @@ class PullRequestRunsUnitTestsOnlyTest(unittest.TestCase):
         self.assertNotIn("--tests", run, "the full run must not filter")
         self.assertNotIn("jacoco", run.lower())
 
+    def test_build_job_compiles_and_runs_the_unit_tests_without_packaging(self):
+        task = load_jobs()["build"]["with"]["gradle-task"].split()
+
+        self.assertEqual("test", task[0], "the build job runs test, not build, so no javadoc or distribution is made")
+        self.assertNotIn("build", task)
+        for excluded in ("integration", "integrationTest"):
+            self.assertIn(excluded, task[task.index("-x") :], "the integration suite must stay out of the build job")
+
     def test_a_frontend_only_pull_request_runs_the_dashboard_unit_tests_only(self):
         steps = find_steps("coverage-backend", lambda step: "frontend_only == 'true'" in condition(step))
 
