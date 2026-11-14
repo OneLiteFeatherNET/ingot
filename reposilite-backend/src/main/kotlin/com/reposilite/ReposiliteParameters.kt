@@ -20,7 +20,6 @@ import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.configuration.local.LocalConfigurationMode
 import com.reposilite.configuration.local.infrastructure.LOCAL_CONFIGURATION_FILE
 import com.reposilite.configuration.shared.infrastructure.SHARED_CONFIGURATION_FILE
-import com.reposilite.journalist.Channel
 import com.reposilite.token.AccessTokenSecurityProvider
 import com.reposilite.token.AccessTokenType.TEMPORARY
 import com.reposilite.token.api.CreateAccessTokenRequest
@@ -97,8 +96,9 @@ class ReposiliteParameters : Runnable {
     var tokenEntries = arrayOf<String>()
     lateinit var tokens: Collection<CreateAccessTokenRequest>
 
+    /** Empty when the option is absent, so `INGOT_LOG_LEVEL` and then INFO decide the console threshold. */
     @Option(names = ["--channel", "--level"], description = ["Default logging channel"])
-    var level: String = Channel.INFO.name
+    var level: String = ""
 
     @Option(names = ["--run-migrations"], description = [
         "Opt-in to run all available migrations. Available migrations:",
