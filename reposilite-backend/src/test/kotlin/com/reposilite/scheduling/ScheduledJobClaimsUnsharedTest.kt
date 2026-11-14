@@ -31,4 +31,12 @@ internal class ScheduledJobClaimsUnsharedTest {
         assertThat(claims.extend("cleanup:nightly:active", Duration.ofSeconds(60))).`as`("extend without a shared database").isTrue()
     }
 
+    @Test
+    fun `grants an unfenced lease with epoch zero when no shared database exists`() {
+        val lease = ScheduledJobClaims.Unshared.acquire("cleanup:nightly:active", Duration.ofSeconds(60))
+
+        assertThat(lease?.epoch).`as`("epoch without a shared database").isEqualTo(0L)
+        assertThat(ScheduledJobClaims.Unshared.renew(lease!!, Duration.ofSeconds(60))).`as`("renew without a shared database").isTrue()
+    }
+
 }

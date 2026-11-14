@@ -37,12 +37,12 @@ import java.util.concurrent.ConcurrentHashMap
  * until [start] returns, and the day is then marked as done, so no instance runs it twice. A run that was started but
  * not completed, because its instance stopped, is taken over by a later tick once that lease expired.
  *
- * [start] runs the policy and returns when the run has ended.
+ * [start] runs the policy with the day lease and returns when the run has ended.
  */
 internal class CleanupScheduler(
     private val clock: Clock,
     private val policies: () -> List<CleanupPolicy>,
-    private val start: (CleanupPolicy) -> Unit,
+    private val start: (CleanupPolicy, ScheduledJobClaims.Lease) -> Unit,
     private val claims: ScheduledJobClaims,
     private val journalist: Journalist,
     /** Whether the instance is read-only. A run that falls due then is skipped for the day, and no claim is written. */
@@ -70,16 +70,16 @@ internal class CleanupScheduler(
             if (startedOn[policy.id] == today) return@forEach
             val atScheduledMinute = due.hour == now.hour && due.minute == now.minute
             val key = dayKey(policy.id, clock)
-            val granted = if (atScheduledMinute) claims.lease(key, DAY_LEASE) else claims.takeover(key, DAY_LEASE)
-            if (!granted) {
+            val lease = if (atScheduledMinute) claims.acquire(key, DAY_LEASE) else claims.acquireExpired(key, DAY_LEASE)
+            if (lease == null) {
                 if (atScheduledMinute) journalist.logger.debug("CLEANUP | Scheduled run of ${policy.id} is claimed by another instance, skipping ($key)")
                 return@forEach
             }
             startedOn[policy.id] = today
             try {
-                start(policy)
+                start(policy, lease)
             } finally {
-                claims.complete(key, done = true)
+                claims.release(lease, done = true)
             }
         }
     }

@@ -123,7 +123,7 @@ The scheduled cleanup and the audit retention purge hold their daily run as a le
 | Scheduled run whose instance stopped before the run ended | The day was lost, and no instance ran it | A later check on the same UTC day takes the day over after 60 seconds, and runs it once |
 | Scheduled run that was not started at its minute | Not run | Still not run. Ingot does not catch up later |
 
-No configuration, environment variable, volume or plugin changes. The schedule itself does not move.
+No configuration, environment variable, volume or plugin changes. The schedule itself does not move. The lease table `scheduled_job_claim` gets one column, `lease_epoch`, which is added at start and is `0` for every existing row. Each grant of a lease raises it, so a replica that lost its lease cannot renew or release the grant of the replica that took over.
 
 **Mixed versions.** A replica on the previous release ignores the leases, so during a rolling upgrade it can still run a cleanup next to a replica on this release. Upgrade one replica first, and enable no scheduled cleanup policy until every replica runs this release. The rule for the pair of releases and the tests behind it are in [High availability support](../explanation/high-availability-support.md#rolling-upgrade-rule).
 

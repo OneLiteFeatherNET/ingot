@@ -17,6 +17,7 @@
 package com.reposilite.scheduling.infrastructure
 
 import com.reposilite.scheduling.ScheduledJobClaims
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -26,10 +27,12 @@ import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertIgnore
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import java.time.Clock
@@ -51,6 +54,13 @@ internal object ScheduledJobClaimTable : Table("scheduled_job_claim") {
     val leaseOwner = varchar("lease_owner", CLAIMANT_MAX_LENGTH).nullable()
     val leaseUntil = long("lease_until").nullable()
     val doneAt = long("done_at").nullable()
+
+    /**
+     * The fencing token of the current lease. It is incremented by every grant and is never reset, so a holder that
+     * kept an older epoch cannot renew or release a newer grant. A row written by a previous release gets 0 from the
+     * database default, which is the epoch of a row that was never granted.
+     */
+    val leaseEpoch = long("lease_epoch").default(0L)
 
     override val primaryKey = PrimaryKey(jobKey)
 
@@ -131,8 +141,73 @@ internal class SqlScheduledJobClaims(
         }) {
             it[leaseOwner] = owner
             it[leaseUntil] = expiry
+            it[leaseEpoch] = ScheduledJobClaimTable.leaseEpoch + 1
         } == 1
     }
+
+    override fun acquire(key: String, ttl: Duration): ScheduledJobClaims.Lease? {
+        checkKey(key)
+        require(!ttl.isNegative && !ttl.isZero) { "lease duration must be positive" }
+        val now = clock.instant().toEpochMilli()
+        return transaction(database) {
+            deleteExpiredRows(now)
+
+            ScheduledJobClaimTable.insertIgnore {
+                it[jobKey] = key
+                it[claimedBy] = owner
+                it[claimedAt] = now
+                it[leaseUntil] = ScheduledJobClaimTable.RELEASED
+            }
+            if (!grantExpired(key, ttl, now)) return@transaction null
+            ScheduledJobClaims.Lease(key, epochOf(key))
+        }
+    }
+
+    override fun acquireExpired(key: String, ttl: Duration): ScheduledJobClaims.Lease? {
+        checkKey(key)
+        require(!ttl.isNegative && !ttl.isZero) { "lease duration must be positive" }
+        val now = clock.instant().toEpochMilli()
+        return transaction(database) {
+            deleteExpiredRows(now)
+            if (!grantExpired(key, ttl, now)) return@transaction null
+            ScheduledJobClaims.Lease(key, epochOf(key))
+        }
+    }
+
+    override fun renew(lease: ScheduledJobClaims.Lease, ttl: Duration): Boolean {
+        checkKey(lease.key)
+        require(!ttl.isNegative && !ttl.isZero) { "lease duration must be positive" }
+        val now = clock.instant().toEpochMilli()
+        val expiry = clock.instant().plus(ttl).toEpochMilli()
+        return transaction(database) {
+            ScheduledJobClaimTable.update({ holds(lease) and (ScheduledJobClaimTable.leaseUntil greater now) }) {
+                it[leaseUntil] = expiry
+            } == 1
+        }
+    }
+
+    override fun release(lease: ScheduledJobClaims.Lease, done: Boolean) {
+        checkKey(lease.key)
+        val now = clock.instant().toEpochMilli()
+        transaction(database) {
+            ScheduledJobClaimTable.update({ holds(lease) }) {
+                it[leaseOwner] = null
+                it[leaseUntil] = ScheduledJobClaimTable.RELEASED
+                if (done) it[doneAt] = now
+            }
+        }
+    }
+
+    /** Whether this instance holds the grant [lease] names: same key, same owner and the current epoch. */
+    private fun holds(lease: ScheduledJobClaims.Lease): Op<Boolean> =
+        (ScheduledJobClaimTable.jobKey eq lease.key) and
+            (ScheduledJobClaimTable.leaseOwner eq owner) and
+            (ScheduledJobClaimTable.leaseEpoch eq lease.epoch)
+
+    private fun epochOf(key: String): Long =
+        ScheduledJobClaimTable.selectAll()
+            .where { ScheduledJobClaimTable.jobKey eq key }
+            .single()[ScheduledJobClaimTable.leaseEpoch]
 
     override fun extend(key: String, ttl: Duration): Boolean {
         checkKey(key)

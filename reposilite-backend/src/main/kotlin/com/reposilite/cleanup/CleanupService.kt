@@ -97,20 +97,18 @@ class CleanupService internal constructor(
      * Deletes what the policy plans right now and records the outcome. [heldLeases] are leases that the caller holds for
      * the run, such as the day key of a scheduled run. The run renews them together with its own lease.
      */
-    fun run(policyId: String, actor: CleanupActor, trigger: CleanupTrigger, heldLeases: List<String> = emptyList()): Result<CleanupRun, ErrorResponse> {
+    fun run(policyId: String, actor: CleanupActor, trigger: CleanupTrigger, heldLeases: List<ScheduledJobClaims.Lease> = emptyList()): Result<CleanupRun, ErrorResponse> {
         val policy = findPolicy(policyId) ?: return notFoundError("Cleanup policy $policyId not found")
         if (!running.add(policyId)) {
             return alreadyRunning(policyId, trigger)
         }
 
-        val activeKey = activeLeaseKey(policyId)
-        var leased = false
+        var activeLease: ScheduledJobClaims.Lease? = null
         try {
             // The lease covers the whole run on every instance that shares the database, so a manual run cannot overlap a scheduled one.
-            if (!claims.lease(activeKey, LEASE_DURATION)) {
-                return alreadyRunning(policyId, trigger)
-            }
-            leased = true
+            val lease = claims.acquire(activeLeaseKey(policyId), LEASE_DURATION)
+                ?: return alreadyRunning(policyId, trigger)
+            activeLease = lease
             var renewedAt = clock.instant()
 
             val startedAt = clock.instant()
@@ -118,10 +116,10 @@ class CleanupService internal constructor(
             val (deletions, _) = plan(policy)
             val outcomes = mutableListOf<Pair<PlannedDeletion, Result<Unit, ErrorResponse>>>()
             var lostLease: String? = null
-            val renewable = listOf(activeKey) + heldLeases
+            val renewable = listOf(lease) + heldLeases
             for (deletion in deletions) {
                 if (Duration.between(renewedAt, clock.instant()) >= LEASE_RENEWAL) {
-                    lostLease = renewable.firstOrNull { !claims.extend(it, LEASE_DURATION) }
+                    lostLease = renewable.firstOrNull { !claims.renew(it, LEASE_DURATION) }?.key
                     if (lostLease != null) break
                     renewedAt = clock.instant()
                 }
@@ -172,7 +170,7 @@ class CleanupService internal constructor(
             )
             return run.asSuccess()
         } finally {
-            if (leased) claims.complete(activeKey, done = false)
+            activeLease?.let { claims.release(it, done = false) }
             running.remove(policyId)
         }
     }
@@ -183,10 +181,10 @@ class CleanupService internal constructor(
 
     /**
      * Runs a policy for the scheduler. The scheduler has no access token, so its deletions are not checked against one.
-     * [dayKey] is the day lease the scheduler holds for this run, which the run keeps alive while it deletes.
+     * [dayLease] is the day lease the scheduler holds for this run, which the run keeps alive while it deletes.
      */
-    internal fun runScheduled(policyId: String, dayKey: String? = null): Result<CleanupRun, ErrorResponse> =
-        run(policyId, CleanupActor(by = SCHEDULER_ACTOR, accessToken = null), CleanupTrigger.SCHEDULED, listOfNotNull(dayKey))
+    internal fun runScheduled(policyId: String, dayLease: ScheduledJobClaims.Lease? = null): Result<CleanupRun, ErrorResponse> =
+        run(policyId, CleanupActor(by = SCHEDULER_ACTOR, accessToken = null), CleanupTrigger.SCHEDULED, listOfNotNull(dayLease))
             .peek { lastScheduledSuccess.set(clock.instant()) }
 
     private val lastScheduledSuccess = AtomicReference<Instant?>(null)
