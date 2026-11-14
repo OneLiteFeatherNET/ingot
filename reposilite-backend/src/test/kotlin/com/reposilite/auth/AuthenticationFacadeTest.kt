@@ -98,7 +98,7 @@ internal class AuthenticationFacadeTest : AuthenticationSpecification() {
     }
 
     @Test
-    fun `should allow different IPs when one is blocked`() = runBlocking {
+    fun `should allow different IPs when one is blocked`() = runBlocking<Unit> {
         // given: brute force protection is enabled and one IP is blocked
         bruteForceProtectionSettings.update(BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 300))
         val name = "name"
@@ -117,7 +117,7 @@ internal class AuthenticationFacadeTest : AuthenticationSpecification() {
     }
 
     @Test
-    fun `should not block when brute force protection is disabled`() = runBlocking {
+    fun `should not block when brute force protection is disabled`() = runBlocking<Unit> {
         // given: brute force protection is disabled (default)
         bruteForceProtectionSettings.update(BruteForceProtectionSettings(enabled = false, maxAttempts = 3, banDurationSeconds = 300))
         val name = "name"
@@ -135,7 +135,7 @@ internal class AuthenticationFacadeTest : AuthenticationSpecification() {
     }
 
     @Test
-    fun `should clear counter on successful authentication`() = runBlocking {
+    fun `should clear counter on successful authentication`() = runBlocking<Unit> {
         // given: brute force protection is enabled and some failed attempts exist
         bruteForceProtectionSettings.update(BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 300))
         val name = "name"
