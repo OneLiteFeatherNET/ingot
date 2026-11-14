@@ -98,6 +98,23 @@ class CoverageChangesScriptTest(unittest.TestCase):
             {"backend": "true", "frontend": "false", "frontend_only": "false"},
         )
 
+    def test_openapi_document_change_runs_the_backend_and_frontend_jobs(self):
+        # The backend OpenApiCompletenessTest reads the document, and the dashboard api types are generated from it.
+        self.assertEqual(
+            decide(["docs/openapi/ingot-openapi.json"]),
+            {"backend": "true", "frontend": "true", "frontend_only": "false"},
+        )
+
+    def test_openapi_document_change_with_frontend_change_is_not_frontend_only(self):
+        self.assertEqual(
+            decide(["reposilite-frontend/x.vue", "docs/openapi/ingot-openapi.json"]),
+            {"backend": "true", "frontend": "true", "frontend_only": "false"},
+        )
+
+    def test_other_file_in_openapi_folder_still_skips_every_coverage_job(self):
+        # Only the document itself is exempt from the deny list, not the whole docs/openapi/ folder.
+        self.assertEqual(decide(["docs/openapi/breaking-changes-ignore.txt"]), NONE)
+
     def test_frontend_change_runs_the_backend_dashboard_subset_and_the_frontend_job(self):
         self.assertEqual(
             decide(["reposilite-frontend/x.vue"]),
@@ -217,6 +234,10 @@ class ScopeFlagsTest(unittest.TestCase):
         flags = truthy(["reposilite-frontend/src/App.vue"])
         self.assertTrue({"unit", "e2e", "frontend"} <= flags)
         self.assertFalse({"image", "chart"} & flags)
+
+    def test_openapi_document_change_turns_on_unit_tests(self):
+        # The document is not a module of any known area, so the scope flags fail open like an unknown path.
+        self.assertIn("unit", truthy(["docs/openapi/ingot-openapi.json"]))
 
     def test_unknown_root_path_turns_every_flag_on(self):
         self.assertEqual(truthy(["something-new/file.txt"]), self.EVERYTHING - {"frontend", "frontend_only"})

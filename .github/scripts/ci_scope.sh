@@ -19,14 +19,21 @@
 # module) turns all four on, because the job it would have skipped might be the one that catches the change.
 #
 # backend is true when at least one path is not on the deny list below. frontend is true when at least
-# one relevant path is under reposilite-frontend/. frontend_only is true when relevant paths exist and all
-# of them are under reposilite-frontend/. An empty change list is false for all three.
+# one relevant path is under reposilite-frontend/ or is the OpenAPI document docs/openapi/ingot-openapi.json.
+# frontend_only is true when relevant paths exist and all of them are under reposilite-frontend/. An empty
+# change list is false for all three.
+#
+# The OpenAPI document is the one docs/ path that counts as relevant. The backend OpenApiCompletenessTest reads
+# it, and the dashboard api types are generated from it, so a change to it runs both coverage jobs. It is not
+# under reposilite-frontend/, so frontend_only stays false and the backend runs its full suite. Other files in
+# docs/openapi/ (for example breaking-changes-ignore.txt) stay on the deny list. The document is not a module
+# of any known area, so image, chart, e2e and unit fail open like any unknown path.
 #
 # The deny list is short on purpose and is a deny list, not an allow list: anything it does not name
 # counts as relevant. The backend jar bundles the dashboard, and characterisation tests read files
 # outside the Java sources, so guessing wrong in the skip direction would hide a real regression.
-# Paths that are skipped are only documentation, OpenSpec proposals and repository metadata.
-# An empty change list is false for all seven.
+# Paths that are skipped are only documentation, OpenSpec proposals and repository metadata, except the
+# OpenAPI document named above. An empty change list is false for all seven.
 #
 # A path that git quotes (non-ASCII names, for example "reposilite-frontend/\303\244.vue") does not match
 # the frontend prefix, so it counts as backend and the full run is kept. That is the fail-open direction.
@@ -37,10 +44,15 @@
 set -euo pipefail
 
 DENIED='^(docs/|openspec/|\.github/ISSUE_TEMPLATE/|\.well-known/)|\.md$|^(\.github/CODEOWNERS|\.github/pull_request_template\.md|\.clomonitor\.yml|LICENSE|NOTICE)$'
+OPENAPI='^docs/openapi/ingot-openapi\.json$'
 FRONTEND='^reposilite-frontend/'
 
 # grep -v prints the paths that are NOT on the deny list. An empty result is not an error here.
-relevant="$(grep -v '^$' | grep -vE "$DENIED" || true)"
+# The OpenAPI document is on the docs/ deny list, so it is added back explicitly.
+input="$(grep -v '^$' || true)"
+relevant="$(printf '%s\n' "$input" | grep -vE "$DENIED" || true)"
+openapi="$(printf '%s\n' "$input" | grep -E "$OPENAPI" || true)"
+relevant="$(printf '%s\n%s\n' "$relevant" "$openapi" | grep -v '^$' || true)"
 
 if [ -z "$relevant" ]; then
   echo "Only documentation or repository metadata changed, skipping the coverage jobs." >&2
@@ -52,7 +64,7 @@ fi
 echo "Paths that need the coverage run:" >&2
 printf '%s\n' "$relevant" | sed 's/^/  /' >&2
 
-frontend="$(printf '%s\n' "$relevant" | grep -E "$FRONTEND" || true)"
+frontend="$(printf '%s\n' "$relevant" | grep -E "$FRONTEND|$OPENAPI" || true)"
 outside="$(printf '%s\n' "$relevant" | grep -vE "$FRONTEND" || true)"
 
 if [ -n "$frontend" ]; then frontend_flag=true; else frontend_flag=false; fi
