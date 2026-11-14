@@ -32,7 +32,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 ## Repositories and artifacts
 
-**Repository type.** The declared purpose of a repository: `HOSTED` stores uploads, `PROXY` copies remote URLs and `GROUP` combines local repositories. A repository without a declared type keeps the behaviour of earlier versions, and Ingot derives its type from its references. See [Repository types](configuration/repository-types.md).
+**Repository type.** The declared purpose of a repository: `HOSTED` stores uploads, `PROXY` copies remote URLs and `GROUP` combines local repositories. A repository without a declared type keeps the behaviour of earlier versions, and Ingot derives its type from its references. See [Repository types](repositories/repository-types.md).
 
 **Hosted repository.** A repository that stores what is uploaded to it. See [Create hosted repositories](../configure/repositories/create-hosted-repositories.md).
 

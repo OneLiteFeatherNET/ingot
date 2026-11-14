@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Writes docs/gitbook/references/dashboard/dashboard-anchors.md from src/anchors/registry.json. Run with `npm run anchors:doc`.
+// Writes docs/gitbook/references/plugins/dashboard-anchors.md from src/anchors/registry.json. Run with `npm run anchors:doc`.
 
 import { readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
@@ -22,7 +22,7 @@ import { renderAnchorsDoc } from "../src/anchors/render.js"
 
 const frontendRoot = fileURLToPath(new URL("..", import.meta.url))
 const registry = JSON.parse(readFileSync(`${frontendRoot}/src/anchors/registry.json`, "utf8"))
-const target = fileURLToPath(new URL("../../docs/gitbook/references/dashboard/dashboard-anchors.md", import.meta.url))
+const target = fileURLToPath(new URL("../../docs/gitbook/references/plugins/dashboard-anchors.md", import.meta.url))
 
 writeFileSync(target, renderAnchorsDoc(registry))
 console.log(`wrote ${target}`)

@@ -22,55 +22,60 @@ How the parts of Ingot work and why.
 * [Security headers](architecture/security-headers.md)
 * [How the search index stays current](architecture/how-the-search-index-stays-current.md)
 
-## Configuration
+## Instance configuration
 
-Settings, variables, Helm values and storage.
+Configuration files, variables, deploy targets and Helm values.
 
 * [Configuration file and startup parameters](configuration/configuration-and-startup.md)
 * [Environment variables](configuration/environment-variables.md)
 * [Deploy targets](configuration/deploy-targets.md)
 * [Helm chart values](configuration/helm-values.md)
-* [Settings domains](configuration/settings-domains.md)
-* [Settings encryption](configuration/settings-encryption.md)
-* [Storage providers](configuration/storage-providers.md)
 * [Outbound connections](configuration/outbound-connections.md)
-* [Repository settings](configuration/repository-settings.md)
-* [Repository types](configuration/repository-types.md)
-* [Cleanup policies](configuration/cleanup-policies.md)
-* [OpenSearch search backend](configuration/opensearch-search-backend.md)
-* [Login providers](configuration/login-providers.md)
 
-## HTTP API
+## Repositories and storage
 
-Endpoints, errors, search and web routes.
+Repository settings and storage providers.
+
+* [Repository settings](repositories/repository-settings.md)
+* [Repository types](repositories/repository-types.md)
+* [Cleanup policies](repositories/cleanup-policies.md)
+* [Storage providers](repositories/storage-providers.md)
+
+## Settings and login
+
+Settings domains, encryption and login providers.
+
+* [Settings domains](settings/settings-domains.md)
+* [Settings encryption](settings/settings-encryption.md)
+* [Login providers](settings/login-providers.md)
+* [OpenSearch search backend](settings/opensearch-search-backend.md)
+
+## HTTP API and dashboard
+
+Endpoints, errors, search, web routes and dashboard routes.
 
 * [HTTP API overview](http-api/http-api.md)
 * [API errors](http-api/api-errors.md)
 * [Search filters and API](http-api/search-filters-and-api.md)
 * [Web routes](http-api/web-routes.md)
-* [Access tokens and routes](http-api/access-tokens-and-routes.md)
+* [Dashboard pages](http-api/dashboard-pages.md)
 
 ## Identity
 
-Permission nodes and audit events.
+Permission nodes, audit events and token formats.
 
 * [Permission nodes](identity/permission-nodes.md)
 * [Artifact permission nodes](identity/artifact-permission-nodes.md)
 * [Audit events](identity/audit-events.md)
+* [Access tokens and routes](identity/access-tokens-and-routes.md)
 
-## Dashboard
+## Dashboard and plugins
 
-Pages and the stable names that plugins target.
-
-* [Dashboard pages](dashboard/dashboard-pages.md)
-* [Dashboard anchors](dashboard/dashboard-anchors.md)
-
-## Plugins
-
-The plugin API and the plugin store.
+The plugin API, the plugin store and the stable names plugins target.
 
 * [Plugin API](plugins/plugin-api.md)
 * [Plugin store](plugins/plugin-store.md)
+* [Dashboard anchors](plugins/dashboard-anchors.md)
 
 ## Other
 

@@ -109,25 +109,25 @@ redirects:
   reference/environment-variables: references/configuration/environment-variables.md
   reference/deploy-targets: references/configuration/deploy-targets.md
   reference/helm-values: references/configuration/helm-values.md
-  reference/settings-domains: references/configuration/settings-domains.md
-  reference/settings-encryption: references/configuration/settings-encryption.md
-  reference/storage-providers: references/configuration/storage-providers.md
+  reference/settings-domains: references/settings/settings-domains.md
+  reference/settings-encryption: references/settings/settings-encryption.md
+  reference/storage-providers: references/repositories/storage-providers.md
   reference/outbound-connections: references/configuration/outbound-connections.md
-  reference/repository-settings: references/configuration/repository-settings.md
-  reference/repository-types: references/configuration/repository-types.md
-  reference/cleanup-policies: references/configuration/cleanup-policies.md
-  reference/opensearch-search-backend: references/configuration/opensearch-search-backend.md
-  reference/login-providers: references/configuration/login-providers.md
+  reference/repository-settings: references/repositories/repository-settings.md
+  reference/repository-types: references/repositories/repository-types.md
+  reference/cleanup-policies: references/repositories/cleanup-policies.md
+  reference/opensearch-search-backend: references/settings/opensearch-search-backend.md
+  reference/login-providers: references/settings/login-providers.md
   reference/http-api: references/http-api/http-api.md
   reference/api-errors: references/http-api/api-errors.md
   reference/search-filters-and-api: references/http-api/search-filters-and-api.md
   reference/web-routes: references/http-api/web-routes.md
-  reference/access-tokens-and-routes: references/http-api/access-tokens-and-routes.md
+  reference/access-tokens-and-routes: references/identity/access-tokens-and-routes.md
   reference/permission-nodes: references/identity/permission-nodes.md
   reference/artifact-permission-nodes: references/identity/artifact-permission-nodes.md
   reference/audit-events: references/identity/audit-events.md
-  reference/dashboard-pages: references/dashboard/dashboard-pages.md
-  reference/dashboard-anchors: references/dashboard/dashboard-anchors.md
+  reference/dashboard-pages: references/http-api/dashboard-pages.md
+  reference/dashboard-anchors: references/plugins/dashboard-anchors.md
   reference/plugin-api: references/plugins/plugin-api.md
   reference/plugin-store: references/plugins/plugin-store.md
   reference/console-commands: references/console-commands.md
@@ -146,3 +146,16 @@ redirects:
   set-up/network/terminate-tls-at-the-gateway: set-up/kubernetes/terminate-tls-at-the-gateway.md
   set-up/deploy/deployment-options-compared: set-up/deployment-options-compared.md
   set-up/deploy/size-the-deployment: set-up/size-the-deployment.md
+  references/dashboard/dashboard-pages: references/http-api/dashboard-pages.md
+  references/http-api/access-tokens-and-routes: references/identity/access-tokens-and-routes.md
+  references/dashboard/dashboard-anchors: references/plugins/dashboard-anchors.md
+  references/configuration/repository-settings: references/repositories/repository-settings.md
+  references/configuration/repository-types: references/repositories/repository-types.md
+  references/configuration/cleanup-policies: references/repositories/cleanup-policies.md
+  references/configuration/storage-providers: references/repositories/storage-providers.md
+  references/configuration/settings-domains: references/settings/settings-domains.md
+  references/configuration/settings-encryption: references/settings/settings-encryption.md
+  references/configuration/login-providers: references/settings/login-providers.md
+  references/configuration/opensearch-search-backend: references/settings/opensearch-search-backend.md
+  references/dashboard/README: references/plugins/README.md
+  references/dashboard: references/plugins/README.md

@@ -12,7 +12,7 @@ A proxy repository serves artifacts from one or more remote repositories, such a
 * The URL of each remote repository, for example `https://repo.maven.apache.org/maven2` for Maven Central. The URL is the root of the repository, without a group path.
 * Credentials for each remote, only if the remote requires them.
 * Storage for the cached copies. The default is the local disk of the instance. For several replicas or large caches, use an S3 bucket, see [Use S3 storage](../../set-up/cluster/use-s3-storage.md).
-* Read the [repository types reference](../../references/configuration/repository-types.md) if you want to declare the type. The type is optional.
+* Read the [repository types reference](../../references/repositories/repository-types.md) if you want to declare the type. The type is optional.
 
 ## Declare the proxy
 
@@ -168,7 +168,7 @@ You can leave `type` out or set it to `PROXY`.
 | `proxied` | Any mix of URLs and local ids | At least one URL, no local ids |
 | Rule check | None beyond the general settings rules | Checked when the settings are saved |
 
-A typed proxy is the clearest choice for a pure mirror. The typed rules and their error messages are listed in the [repository types reference](../../references/configuration/repository-types.md).
+A typed proxy is the clearest choice for a pure mirror. The typed rules and their error messages are listed in the [repository types reference](../../references/repositories/repository-types.md).
 
 ## Verify the proxy
 

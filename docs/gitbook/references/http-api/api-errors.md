@@ -29,7 +29,7 @@ The content type is `application/json`, as before. A client that asks for `appli
 
 ## Checksum file refused
 
-A deploy of a checksum file (`.md5`, `.sha1`, `.sha256` or `.sha512`) answers `400` when the repository has the `reject` [upload checksum policy](../configuration/repository-settings.md#upload-checksum-policy) and the file does not match the artifact stored before it. The message names the algorithm, and `type` is `urn:ingot:problem:upload-checksum-mismatch`, which tells this refusal apart from other `400` answers. Nothing is stored for the checksum file, and the artifact stays as it is.
+A deploy of a checksum file (`.md5`, `.sha1`, `.sha256` or `.sha512`) answers `400` when the repository has the `reject` [upload checksum policy](../repositories/repository-settings.md#upload-checksum-policy) and the file does not match the artifact stored before it. The message names the algorithm, and `type` is `urn:ingot:problem:upload-checksum-mismatch`, which tells this refusal apart from other `400` answers. Nothing is stored for the checksum file, and the artifact stays as it is.
 
 ```json
 {
@@ -51,7 +51,7 @@ The same check under `warn` stores the file and answers as usual. See [Verify up
 * A request to a path under `/api` that no route handles. It answers 404 with this body instead of the HTML page. Paths outside `/api`, including dashboard routes, keep the HTML page.
 * An unhandled server error. It answers 500 with a generic message. The exception text and the stack trace are never part of the body; they are kept in the failure list of the console.
 * A write refused because the instance is read-only. It answers `503` with a `Retry-After` header of 30 seconds. See [Freeze writes for maintenance](../../manage/operate/freeze-writes-for-maintenance.md).
-* A deploy refused by the version policy of its repository. It answers `400`, and the message names the repository, the policy and the version. See [Version policy and read-only](../configuration/repository-settings.md#version-policy-and-read-only).
+* A deploy refused by the version policy of its repository. It answers `400`, and the message names the repository, the policy and the version. See [Version policy and read-only](../repositories/repository-settings.md#version-policy-and-read-only).
 * A deploy, delete or POM generation refused because its repository is read-only. It answers `405`, and the message names the repository. The instance-wide read-only mode answers first, with `503`.
 
 Status codes are not changed by this format.

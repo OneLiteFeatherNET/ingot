@@ -346,7 +346,7 @@ describe("anchor checks across the dashboard source", () => {
   })
 
   it("matches the generated reference page to the registry", () => {
-    const page = readFileSync(`${REPO_ROOT}/docs/gitbook/references/dashboard/dashboard-anchors.md`, "utf8")
+    const page = readFileSync(`${REPO_ROOT}/docs/gitbook/references/plugins/dashboard-anchors.md`, "utf8")
 
     expect(page, "run `npm run anchors:doc` in reposilite-frontend to regenerate the page").toBe(renderAnchorsDoc(registry))
   })

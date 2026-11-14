@@ -26,7 +26,7 @@ flowchart LR
 | Server | One JVM process. It serves the Maven protocol, the REST API, the login endpoints and, by default, the dashboard. | [Backend architecture](backend-architecture.md) |
 | Dashboard | The web interface for browsing, settings, accounts and the audit log. It is served by the server, or by its own container. | [Run the dashboard in a separate container](../../set-up/deploy/run-split-dashboard-container.md) |
 | Database | Holds users, tokens, sessions, shared settings, the audit log, job claims and the search index. SQLite is the default. MariaDB and PostgreSQL are the supported choices for a server database. | [Configure a database](../../set-up/cluster/configure-database.md) |
-| Storage | Holds the artifact files of each repository, on a directory of the file system or in an S3-compatible bucket. | [Storage providers](../configuration/storage-providers.md) |
+| Storage | Holds the artifact files of each repository, on a directory of the file system or in an S3-compatible bucket. | [Storage providers](../repositories/storage-providers.md) |
 | Search backends | Answer artifact search. The built-in backend keeps the index in the database. A plugin can register another backend, such as OpenSearch. | [Choose a search backend](../../configure/search/choose-a-search-backend.md) |
 | Cluster bus | An optional message channel between replicas, on NATS or Redis. It speeds up the spread of revocations and cache invalidations. The database stays the source of truth. | [Configure the cluster bus](../../set-up/cluster/configure-cluster-bus.md) |
 | Plugins | Jars loaded from a directory at start. They register routes, facades, events, search backends and dashboard extensions. | [Plugin API](../plugins/plugin-api.md) |

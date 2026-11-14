@@ -522,7 +522,7 @@ A repository names its format with the optional `format` key. A repository witho
 * **Path rules.** `PathRules` answers the questions that the Maven layout used to answer in shared code: which files are generated metadata, which are resolution metadata, which reads count as downloads and which index path a write maps to. `MavenPathRules` gives the answers of the maven2 layout. The repository, the resolution provider, the mirror service and the index listeners ask the rules of their repository's format.
 * **Dispatch.** `RepositoryRouteDispatcher` serves `/{repository}/<gav>` for every format mounted on repository paths. It checks the request as the Maven routes did, then calls the handler of the format that the registry names for the repository. The maven2 handler (`MavenRepositoryRequestHandler`) picks the Maven endpoint by the method of the request, and the dashboard fallback and the redirect plugin reach it through the same dispatcher.
 
-A rule that depends on what the server has installed runs when settings are written, not when a stored document is read. A document written by a later version therefore still loads, and its unknown repositories are left out at start with a recorded failure. See [Repository settings](../configuration/repository-settings.md#format).
+A rule that depends on what the server has installed runs when settings are written, not when a stored document is read. A document written by a later version therefore still loads, and its unknown repositories are left out at start with a recorded failure. See [Repository settings](../repositories/repository-settings.md#format).
 
 ## Layer view vs UML
 

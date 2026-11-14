@@ -4,7 +4,7 @@ description: Explains how a person signs in to the Ingot dashboard. Covers the t
 
 # Sessions, login and CSRF
 
-A request to Ingot is authenticated in one of two ways. A script or build tool sends a token in an `Authorization` header. A person in the dashboard sends cookies that belong to a browser session. This page explains the second way: how a login becomes a session, how long it lasts, and how Ingot protects it. For the login providers themselves, see [Login providers](../configuration/login-providers.md).
+A request to Ingot is authenticated in one of two ways. A script or build tool sends a token in an `Authorization` header. A person in the dashboard sends cookies that belong to a browser session. This page explains the second way: how a login becomes a session, how long it lasts, and how Ingot protects it. For the login providers themselves, see [Login providers](../settings/login-providers.md).
 
 If an `Authorization` header is present, Ingot uses it and ignores the session cookies. Only a request without that header is treated as a browser session.
 
@@ -84,7 +84,7 @@ Ingot counts failed password logins. It keeps the counts in the database, so eve
 * A login that is refused because of a lock gets the HTTP status `429` with a `Retry-After` header. The lock is not extended by further attempts while it lasts.
 * A successful login clears the failures counted for its pair of user name and address. The failures counted for the address alone are kept, so a successful login cannot reset them.
 
-The number of failures and the first lock time can be changed in the `login` settings. The defaults and the other login settings are listed in [Login providers](../configuration/login-providers.md).
+The number of failures and the first lock time can be changed in the `login` settings. The defaults and the other login settings are listed in [Login providers](../settings/login-providers.md).
 
 These lockouts apply to password logins. Basic and token authentication have their own brute force protection, which is separate. It is **off by default**. When it is enabled, it blocks an address after 10 failed attempts by default, for 300 seconds. Turn it on under **Access**, then **Security**, if your instance accepts Basic or token authentication from networks you do not control.
 
@@ -110,7 +110,7 @@ Wrong codes count against the address, the same way failed passwords do.
 
 ## Related pages
 
-* [Login providers](../configuration/login-providers.md) lists the providers and their settings.
+* [Login providers](../settings/login-providers.md) lists the providers and their settings.
 * [Identity model](identity-model.md) explains the user and the accounts a session belongs to.
 * [Multi-replica operation](multi-replica-operation.md) explains what is shared between replicas.
-* [Access tokens and routes](../http-api/access-tokens-and-routes.md) describes the tokens that scripts use instead of a session.
+* [Access tokens and routes](../identity/access-tokens-and-routes.md) describes the tokens that scripts use instead of a session.

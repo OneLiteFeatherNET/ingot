@@ -26,13 +26,13 @@ New settings get the `INGOT_` prefix, and the `REPOSILITE_` spelling stays valid
 ## What Ingot adds over Reposilite
 
 * **An identity model.** Users, teams, machine accounts and permission nodes, with a role for instance administrators. See [Identity model](../references/architecture/identity-model.md) and [How permissions are evaluated](../references/architecture/permission-evaluation.md).
-* **External login.** Generic OpenID Connect, GitHub and LDAP sign-in for the dashboard, with provider groups mapped to teams. See [Login providers](../references/configuration/login-providers.md).
-* **Repository types.** Hosted, proxy and group repositories that enforce their rules. See [Repository types](../references/configuration/repository-types.md).
+* **External login.** Generic OpenID Connect, GitHub and LDAP sign-in for the dashboard, with provider groups mapped to teams. See [Login providers](../references/settings/login-providers.md).
+* **Repository types.** Hosted, proxy and group repositories that enforce their rules. See [Repository types](../references/repositories/repository-types.md).
 * **Artifact search** across all repositories, with a built-in database backend and a plugin point for others, including an OpenSearch backend. See [Search for artifacts](../publish-and-consume/search-for-artifacts.md).
 * **Several replicas.** A shared database, an optional cluster bus and an S3 storage provider support more than one replica. See [High availability support](../references/architecture/high-availability-support.md) for what is supported and what is tested.
 * **Operations.** An audit log with CSV export, cleanup policies, a write freeze for maintenance, a support bundle and a Helm chart. See [Review the audit log](../manage/monitor/review-audit-log.md) and [Run on Kubernetes](../set-up/kubernetes/run-on-kubernetes.md).
 * **Import.** A bundled importer that copies Maven repositories from Sonatype Nexus Repository 3. See [Import from Nexus](../set-up/migrate/import-from-nexus.md).
-* **A rebuilt dashboard** in Material Design 3, which can also run in its own container. See [Dashboard pages](../references/dashboard/dashboard-pages.md).
+* **A rebuilt dashboard** in Material Design 3, which can also run in its own container. See [Dashboard pages](../references/http-api/dashboard-pages.md).
 
 ## Licence
 

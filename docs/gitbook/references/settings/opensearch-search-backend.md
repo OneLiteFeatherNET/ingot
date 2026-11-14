@@ -116,5 +116,5 @@ Results of a write can lag behind a deploy by about a second. A file that was de
 
 * [Use OpenSearch for search](../../configure/search/use-opensearch-for-search.md) is the setup, step by step.
 * [Choose a search backend](../../configure/search/choose-a-search-backend.md) explains the states, the cluster rule and the switch between backends.
-* [Environment variables](environment-variables.md#opensearch-search-backend) lists the variables with the other settings of the server.
+* [Environment variables](../configuration/environment-variables.md#opensearch-search-backend) lists the variables with the other settings of the server.
 * [Write a search backend plugin](../../manage/plugins/write-a-search-backend-plugin.md) describes the interfaces that this plugin implements.

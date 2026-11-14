@@ -31,7 +31,7 @@ The server file inside the image is called `ingot.jar`. The path `/app/reposilit
 
 A data directory written by Reposilite is read by Ingot as it is. The configuration and state files keep their names: `configuration.cdn`, `configuration.shared.json` and the SQLite database `reposilite.db`.
 
-A repository may carry a `format` key in `configuration.shared.json`. A configuration without the key is read as it always was, because the key is optional and means `maven2`. Ingot does not add the key to a repository that did not have it. See [Repository settings](../references/configuration/repository-settings.md#format).
+A repository may carry a `format` key in `configuration.shared.json`. A configuration without the key is read as it always was, because the key is optional and means `maven2`. Ingot does not add the key to a repository that did not have it. See [Repository settings](../references/repositories/repository-settings.md#format).
 
 Access tokens are carried over with their names, secrets, expiry dates and descriptions. Their rights are carried over exactly, including the old way of matching routes. The migration runs on the first start, inside one database transaction, and nothing needs to be run by hand. See [Token migration](../set-up/migrate/token-migration.md) for the design.
 

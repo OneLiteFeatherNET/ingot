@@ -79,4 +79,4 @@ Requests, the access check and artifact search all ask the same evaluator for a 
 * [Token migration](../../set-up/migrate/token-migration.md) explains how old tokens became machine accounts.
 * [Drop-in compatibility with Reposilite](../../introduction/drop-in-compatibility.md) explains what stays the same for existing installations.
 * [Permission nodes](../identity/permission-nodes.md) lists the node grammar.
-* [Access tokens and routes](../http-api/access-tokens-and-routes.md) lists the token formats and the legacy route grants.
+* [Access tokens and routes](../identity/access-tokens-and-routes.md) lists the token formats and the legacy route grants.
