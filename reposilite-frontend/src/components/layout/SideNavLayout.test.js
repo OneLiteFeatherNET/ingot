@@ -124,7 +124,7 @@ describe('SideNavLayout', () => {
     const wrapper = await mountLayout({ current: 'users', narrow: false })
 
     const classes = wrapper.element.classList
-    expect(classes, 'the row starts at the 1240 pixel breakpoint').toContain('min-[1240px]:flex-row')
+    expect(classes, 'the row starts at the 1240 pixel breakpoint').toContain('large:flex-row')
     expect(classes, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
   })
 

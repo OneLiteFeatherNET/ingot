@@ -102,8 +102,8 @@ const sheetOpen = ref(false)
     aria-labelledby="administration-title"
     data-ingot-component="administration-frame"
   >
-    <header class="flex flex-col gap-4 pb-6 min-[600px]:flex-row min-[600px]:flex-wrap min-[600px]:items-end min-[600px]:justify-between">
-      <div class="flex min-w-0 flex-col gap-1 min-[600px]:basis-80 min-[600px]:grow">
+    <header class="flex flex-col gap-4 pb-6 medium:flex-row medium:flex-wrap medium:items-end medium:justify-between">
+      <div class="flex min-w-0 flex-col gap-1 medium:basis-80 medium:grow">
         <div
           v-if="showsBack || crumbs.length > 0"
           class="flex min-w-0 items-center gap-2"
@@ -199,7 +199,7 @@ const sheetOpen = ref(false)
           v-if="showsSections"
           type="button"
           aria-haspopup="dialog"
-          class="md-state-layer md-focus-ring relative hidden min-h-12 items-center gap-2 rounded-corner-full px-4 md-label-large text-primary min-[600px]:inline-flex"
+          class="md-state-layer md-focus-ring relative hidden min-h-12 items-center gap-2 rounded-corner-full px-4 md-label-large text-primary medium:inline-flex"
           @click="sheetOpen = true"
         >
           <svg

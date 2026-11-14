@@ -60,7 +60,6 @@ const topLevelBlocks = (css) => {
   const text = css.replace(/\/\*[\s\S]*?\*\//g, '')
   const blocks = []
   let depth = 0
-  let start = 0
   let boundary = 0
   for (let index = 0; index < text.length; index++) {
     const character = text[index]
@@ -125,24 +124,20 @@ describe('container utility', () => {
   const utilityAt = stylesheet.indexOf('@utility container {')
   const containerUtility = utilityAt < 0 ? '' : blockAt(stylesheet, utilityAt)
 
-  it('is declared as a utility, so that the breakpoint tokens do not add width steps to Tailwind\'s own container', () => {
+  it('is declared as a utility in src/style.css', () => {
     expect(utilityAt, 'a @utility container block in src/style.css').toBeGreaterThanOrEqual(0)
   })
 
-  // Tailwind 4 derives the built-in container width steps from every --breakpoint token. The named window breakpoints
-  // must not add steps, so the utility keeps the five steps that the dashboard had before.
-  for (const step of ['40rem', '48rem', '64rem', '80rem', '96rem']) {
-    it(`keeps the width step of ${step} and no other`, () => {
-      expect(containerUtility, `the container utility caps the width at ${step}`).toMatch(
-        new RegExp(`@media \\(width >= ${step}\\)\\s*\\{\\s*max-width: ${step}`)
-      )
-    })
-  }
+  it('sets no width, so the built-in container keeps the width steps of the dashboard', () => {
+    expect(containerUtility, 'the container utility only adds the gutter').not.toMatch(/max-width|width:/)
+  })
 
-  it('keeps the 16px gutter below 600px and the 24px gutter from 600px', () => {
-    expect(containerUtility, 'the compact gutter of 16px').toContain('padding-inline: 16px')
-    expect(containerUtility, 'the medium gutter of 24px from 600px').toMatch(
-      /@media \(width >= 600px\)\s*\{\s*padding-inline: 24px/
+  it('takes the 16px gutter below 600px and the 24px gutter from 600px from the window margin tokens', () => {
+    expect(containerUtility, 'the compact gutter is the compact window margin').toContain(
+      'padding-inline: var(--md-sys-window-margin-compact)'
+    )
+    expect(containerUtility, 'the medium gutter is the medium window margin from 600px').toMatch(
+      /@media \(width >= 600px\)\s*\{\s*padding-inline: var\(--md-sys-window-margin-medium\)/
     )
   })
 })

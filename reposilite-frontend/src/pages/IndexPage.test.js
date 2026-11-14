@@ -159,7 +159,7 @@ describe('IndexPage footer and content sheet', () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
     expect(wrapper.find('.pane-sheet').classes(), 'the sheet fills the window below the 4rem top bar')
-      .toContain('min-[600px]:min-h-[calc(100dvh_-_4rem)]')
+      .toContain('medium:min-h-[calc(100dvh_-_4rem)]')
   })
 })
 

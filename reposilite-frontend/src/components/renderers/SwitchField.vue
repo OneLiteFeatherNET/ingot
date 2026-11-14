@@ -78,7 +78,7 @@ const labelId = computed(() => `${props.id}-label`)
         @update:model-value="emit('update:modelValue', $event)"
       >
         <!-- On phones the state word would squeeze the description, and the switch already announces its state. -->
-        <span class="max-[599px]:sr-only">{{ modelValue ? 'Enabled' : 'Disabled' }}</span>
+        <span class="max-medium:sr-only">{{ modelValue ? 'Enabled' : 'Disabled' }}</span>
       </MdSwitch>
     </div>
     <p

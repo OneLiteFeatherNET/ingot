@@ -162,7 +162,7 @@ const onAction = (row, value) => {
           <th
             v-if="writePolicy"
             scope="col"
-            class="hidden whitespace-nowrap px-3 py-2 text-left md-label-large text-on-surface min-[1240px]:table-cell"
+            class="hidden whitespace-nowrap px-3 py-2 text-left md-label-large text-on-surface large:table-cell"
           >
             Write policy
           </th>
@@ -181,7 +181,7 @@ const onAction = (row, value) => {
           </th>
           <th
             scope="col"
-            class="hidden px-3 py-2 text-left md-label-large text-on-surface min-[1240px]:table-cell"
+            class="hidden px-3 py-2 text-left md-label-large text-on-surface large:table-cell"
           >
             Address
           </th>
@@ -244,14 +244,14 @@ const onAction = (row, value) => {
           </td>
           <td
             v-if="writePolicy"
-            class="hidden px-3 py-3 md-body-medium text-on-surface min-[1240px]:table-cell"
+            class="hidden px-3 py-3 md-body-medium text-on-surface large:table-cell"
           >
             {{ writeLabel(row) }}
           </td>
           <td class="hidden px-3 py-3 md-body-medium text-on-surface min-[2560px]:table-cell">
             {{ row.storage }}
           </td>
-          <td class="hidden w-full max-w-0 px-3 py-3 min-[1240px]:table-cell">
+          <td class="hidden w-full max-w-0 px-3 py-3 large:table-cell">
             <code
               :title="row.address"
               class="block truncate md-body-small text-on-surface-variant"

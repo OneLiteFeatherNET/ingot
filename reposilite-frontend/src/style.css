@@ -30,6 +30,12 @@
 @plugin "@tailwindcss/forms";
 
 /*
+ * Plugin stylesheets and plugin markup may use the brand bar, which is generated only for the classes Tailwind finds in
+ * the dashboard sources. Listing it here keeps the utility available without a source reference.
+ */
+@source inline("olf-brand-bar");
+
+/*
  * The layer of plugin stylesheets comes last. Its position is fixed here, so a sheet that loads later cannot reorder the
  * layers: a plugin rule beats the utilities of the dashboard, and an unlayered rule of the dashboard still beats it.
  */
@@ -54,9 +60,28 @@
   @apply !border-0 !bg-transparent !shadow-none !ring-0 !outline-none;
 }
 
+/*
+ * The page gutter follows the window margin of the MD3 foundation: 16px in a compact window and 24px from the medium
+ * window class.
+ */
 @theme {
   --font-mono: Consolas, Monaco, monospace;
+  --md-sys-window-margin-compact: 16px;
+  --md-sys-window-margin-medium: 24px;
 }
+
+/*
+ * The MD3 window size classes. They are variants and not theme breakpoints on purpose: Tailwind 4 derives the width
+ * steps of its built-in container from every --breakpoint token, so theme breakpoints would add width steps at 600,
+ * 840, 1240 and 1600 pixels to every centred page. medium: is the window from 600px, expanded: from 840px, large: from
+ * 1240px and xlarge: from 1600px. max-medium: and max-expanded: are the windows below them.
+ */
+@custom-variant medium (@media (width >= 600px));
+@custom-variant expanded (@media (width >= 840px));
+@custom-variant large (@media (width >= 1240px));
+@custom-variant xlarge (@media (width >= 1600px));
+@custom-variant max-medium (@media (width < 600px));
+@custom-variant max-expanded (@media (width < 840px));
 
 @layer base {
   /*
@@ -155,41 +180,37 @@
   }
 
   /*
-   * The shared page gutter, from the MD3 window size classes: 16px on compact windows (below
-   * 600px) and 24px on medium and expanded windows (600px and up). Width comes from Tailwind's
-   * container utility; this adds the side padding that several views rely on without writing
-   * it themselves. It sits in a layer so that a view's own px-* utility still wins. The media
-   * query has to stay inside the layer too: unlayered CSS would beat every utility.
+   * vue-final-modal sets no z-index unless it is given a zIndexFn, so a dialog would sit at
+   * `auto` and any positioned page element with a z-index (a copy button, say) would paint
+   * over it. Every dialog root takes the stacking token from the MD3 foundation instead.
    */
-  .container {
-    padding-inline: 16px;
+  .vfm {
+    z-index: var(--md-sys-z-dialog);
   }
-
-  @media (width >= 600px) {
-    .container {
-      padding-inline: 24px;
-    }
-  }
-}
-
-.router-view-full {
-  min-height: calc(100vh - 2rem);
 }
 
 /*
- * vue-final-modal sets no z-index unless it is given a zIndexFn, so a dialog would sit at
- * `auto` and any positioned page element with a z-index (a copy button, say) would paint
- * over it. Every dialog root takes the stacking token from the MD3 foundation instead.
+ * The shared page gutter of the container. Tailwind's own container supplies the width steps; this utility adds the
+ * side padding that several views rely on without writing it themselves: 16px in a compact window and 24px from the
+ * medium window class. A view's own px-* utility is not used on a container (see window-margins.test.js).
  */
-.vfm {
-  z-index: var(--md-sys-z-dialog);
+@utility container {
+  padding-inline: var(--md-sys-window-margin-compact);
+
+  @media (width >= 600px) {
+    padding-inline: var(--md-sys-window-margin-medium);
+  }
+}
+
+@utility md-router-view {
+  min-height: calc(100vh - 2rem);
 }
 
 /*
  * Skeleton placeholders: the card and its background appear at once, only these bars fade
  * in, so a fast response replaces them before they get a chance to flicker.
  */
-.skeleton-bars {
+@utility skeleton-bars {
   animation: skeleton-fade-in 0.8s ease-out 0.2s both;
 }
 

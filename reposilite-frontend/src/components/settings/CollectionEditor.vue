@@ -140,10 +140,10 @@ watch([addresses, () => props.keys], () => {
     </header>
 
     <!-- Below 840px the list and the detail take the full content width: the outer card, its border and its padding go. -->
-    <div class="grid overflow-hidden min-[840px]:rounded-corner-large min-[840px]:border min-[840px]:border-outline-variant min-[840px]:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+    <div class="grid overflow-hidden expanded:rounded-corner-large expanded:border expanded:border-outline-variant expanded:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <div
-        class="min-w-0 min-[840px]:p-3 min-[840px]:border-r min-[840px]:border-outline-variant"
-        :class="hasSelection ? 'max-[839px]:hidden' : ''"
+        class="min-w-0 expanded:p-3 expanded:border-r expanded:border-outline-variant"
+        :class="hasSelection ? 'max-expanded:hidden' : ''"
       >
         <EntryList
           :entries="entries"
@@ -158,8 +158,8 @@ watch([addresses, () => props.keys], () => {
       </div>
 
       <div
-        class="min-w-0 min-[840px]:p-6"
-        :class="hasSelection ? '' : 'max-[839px]:hidden'"
+        class="min-w-0 expanded:p-6"
+        :class="hasSelection ? '' : 'max-expanded:hidden'"
       >
         <EntryDetail
           v-if="hasSelection"

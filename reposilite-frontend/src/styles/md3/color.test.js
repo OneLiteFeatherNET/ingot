@@ -252,12 +252,12 @@ describe('brand expression', () => {
 
   it('draws the brand bar as a 4px band filled with the gradient', () => {
     expect(sheet, 'the brand bar should be a 4px band filled with the gradient').toMatch(
-      /\.olf-brand-bar\s*\{[^}]*height:\s*4px[^}]*background:\s*var\(--olf-gradient\)/
+      /@utility olf-brand-bar\s*\{[^}]*height:\s*4px[^}]*background:\s*var\(--olf-gradient\)/
     )
   })
 
   it('keeps the brand bar visible under forced colours', () => {
-    expect(mediaBody(sheet, '(forced-colors: active)'), 'forced colours should give the brand bar a visible fill').toMatch(/\.olf-brand-bar/)
+    expect(sheet, 'forced colours should give the brand bar a system colour fill').toMatch(/@utility olf-brand-bar\s*\{[\s\S]*@media \(forced-colors: active\)\s*\{\s*background:\s*Highlight/)
   })
 })
 

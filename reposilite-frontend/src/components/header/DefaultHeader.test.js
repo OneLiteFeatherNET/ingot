@@ -57,7 +57,7 @@ describe('DefaultHeader', () => {
   it('ends the bar 16px short of the window from 1600px up, as the content sheet does', () => {
     const wrapper = mountHeader()
 
-    expect(wrapper.find('header').classes(), 'the bar and the sheet share one right edge').toContain('min-[1600px]:pr-4')
+    expect(wrapper.find('header').classes(), 'the bar and the sheet share one right edge').toContain('xlarge:pr-4')
   })
 
   it('places the title in the container the page content uses, so both start at one x', () => {

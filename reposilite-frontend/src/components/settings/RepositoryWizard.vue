@@ -322,12 +322,12 @@ const onModalUpdate = (open) => {
     :overlay-style="SCRIM_STYLE"
     :click-to-close="dismissable"
     :esc-to-close="dismissable"
-    class="flex min-h-full items-center justify-center max-[599px]:p-0 min-[600px]:p-6"
+    class="flex min-h-full items-center justify-center max-medium:p-0 medium:p-6"
     @update:model-value="onModalUpdate"
   >
     <form
       id="repository-wizard"
-      class="flex w-full min-w-[280px] flex-col overflow-hidden bg-surface-container-high text-on-surface max-[599px]:h-dvh max-[599px]:rounded-none min-[600px]:h-auto min-[600px]:max-h-[min(44rem,90dvh)] min-[600px]:max-w-[560px] min-[600px]:rounded-corner-extra-large min-[600px]:shadow-elevation-3"
+      class="flex w-full min-w-[280px] flex-col overflow-hidden bg-surface-container-high text-on-surface max-medium:h-dvh max-medium:rounded-none medium:h-auto medium:max-h-[min(44rem,90dvh)] medium:max-w-[560px] medium:rounded-corner-extra-large medium:shadow-elevation-3"
       role="dialog"
       aria-modal="true"
       aria-labelledby="wizard-title"
@@ -337,7 +337,7 @@ const onModalUpdate = (open) => {
     >
       <header
         data-ingot-part="header"
-        class="flex flex-col gap-4 px-6 pt-6 max-[599px]:px-4 max-[599px]:pt-4"
+        class="flex flex-col gap-4 px-6 pt-6 max-medium:px-4 max-medium:pt-4"
       >
         <h2
           id="wizard-title"
@@ -376,7 +376,7 @@ const onModalUpdate = (open) => {
         </h3>
       </header>
 
-      <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4 max-[599px]:px-4">
+      <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4 max-medium:px-4">
         <div
           v-if="attempted && errorList.length > 0"
           ref="errorSummary"
@@ -1065,7 +1065,7 @@ const onModalUpdate = (open) => {
         </div>
       </div>
 
-      <footer class="flex flex-wrap items-center justify-end gap-2 px-6 pb-6 pt-2 max-[599px]:px-4 max-[599px]:pb-4">
+      <footer class="flex flex-wrap items-center justify-end gap-2 px-6 pb-6 pt-2 max-medium:px-4 max-medium:pb-4">
         <MdButton
           v-if="!succeeded"
           id="wizard-cancel"

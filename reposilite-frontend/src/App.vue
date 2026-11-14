@@ -53,7 +53,7 @@ initializeSession().catch(error => createErrorToast(`Cannot reach the server: ${
     <div class="min-h-screen bg-surface text-on-surface">
       <SkipLink />
       <router-view
-        class="router-view-full"
+        class="md-router-view"
         :qualifier="qualifier"
       />
       <MdSnackbar />

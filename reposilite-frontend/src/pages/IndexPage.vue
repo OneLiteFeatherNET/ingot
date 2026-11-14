@@ -323,7 +323,7 @@ const activeLabel = computed(() => pageLabel(section.value))
 <template>
   <div
     class="bg-surface text-on-surface"
-    :class="hasNavigation ? 'min-[600px]:pl-24 min-[600px]:bg-surface-container' : ''"
+    :class="hasNavigation ? 'medium:pl-24 medium:bg-surface-container' : ''"
     data-ingot-component="index-page"
   >
     <!--
@@ -344,11 +344,11 @@ const activeLabel = computed(() => pageLabel(section.value))
     -->
     <div
       v-if="hasNavigation"
-      class="pointer-events-none sticky top-16 z-20 hidden h-0 min-[600px]:block"
+      class="pointer-events-none sticky top-16 z-20 hidden h-0 medium:block"
       aria-hidden="true"
     >
       <span class="pane-corner pane-corner-start" />
-      <span class="pane-corner pane-corner-end min-[1600px]:right-4" />
+      <span class="pane-corner pane-corner-end xlarge:right-4" />
     </div>
     <!--
       Clips wide content at the sides without making this box a scroll container. overflow-auto
@@ -357,13 +357,13 @@ const activeLabel = computed(() => pageLabel(section.value))
     -->
     <div
       class="overflow-x-clip bg-surface"
-      :class="hasNavigation ? 'pane-sheet min-[600px]:flex min-[600px]:min-h-[calc(100dvh_-_4rem)] min-[600px]:flex-col min-[600px]:rounded-tl-corner-extra-large min-[1600px]:mr-4 min-[1600px]:rounded-tr-corner-extra-large' : ''"
+      :class="hasNavigation ? 'pane-sheet medium:flex medium:min-h-[calc(100dvh_-_4rem)] medium:flex-col medium:rounded-tl-corner-extra-large xlarge:mr-4 xlarge:rounded-tr-corner-extra-large' : ''"
     >
       <main
         id="main"
         tabindex="-1"
         :aria-labelledby="framedMain ? 'administration-title' : undefined"
-        :class="hasNavigation ? 'min-[600px]:flex min-[600px]:flex-1 min-[600px]:flex-col' : ''"
+        :class="hasNavigation ? 'medium:flex medium:flex-1 medium:flex-col' : ''"
       >
         <NotFoundView v-if="route.name === 'not-found'" />
         <ViewLoading v-else-if="route.name === 'settings-plugin' && isLogged && !pluginUiReady" />
@@ -505,16 +505,16 @@ const activeLabel = computed(() => pageLabel(section.value))
       <!-- From 600px the footer closes the sheet; below it, the footer below the page takes over. -->
       <PageFooter
         v-if="hasNavigation"
-        class="mt-auto hidden min-[600px]:block"
+        class="mt-auto hidden medium:block"
       />
     </div>
     <PageFooter
-      :class="hasNavigation ? 'max-[600px]:pt-[calc(5rem+env(safe-area-inset-bottom))] min-[600px]:hidden' : ''"
+      :class="hasNavigation ? 'max-medium:pt-[calc(5rem+env(safe-area-inset-bottom))] medium:hidden' : ''"
     />
     <template v-if="hasNavigation">
       <div
         v-if="moreOpen"
-        class="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom)+0.5rem)] z-30 rounded-corner-large bg-surface-container-high p-2 min-[600px]:hidden"
+        class="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom)+0.5rem)] z-30 rounded-corner-large bg-surface-container-high p-2 medium:hidden"
         @keydown.esc="moreOpen = false"
       >
         <nav aria-label="More sections">
@@ -556,7 +556,7 @@ const activeLabel = computed(() => pageLabel(section.value))
           </div>
         </nav>
       </div>
-      <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] min-[600px]:hidden">
+      <div class="fixed inset-x-0 bottom-0 z-20 bg-surface-container pb-[env(safe-area-inset-bottom)] medium:hidden">
         <MdNavigationBar
           :items="barItems"
           :model-value="barSection"
@@ -570,7 +570,7 @@ const activeLabel = computed(() => pageLabel(section.value))
           </template>
         </MdNavigationBar>
       </div>
-      <div class="fixed inset-y-0 left-0 z-20 hidden w-24 min-[600px]:block">
+      <div class="fixed inset-y-0 left-0 z-20 hidden w-24 medium:block">
         <MdNavigationRail
           class="h-full"
           :items="railItems"

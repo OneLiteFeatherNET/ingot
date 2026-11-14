@@ -35,23 +35,27 @@ const blockAt = (css, start) => {
 const themeAt = stylesheet.indexOf('@theme {')
 const theme = themeAt < 0 ? '' : blockAt(stylesheet, themeAt)
 
-describe('named window breakpoints in the theme', () => {
+describe('named window size classes', () => {
   // The MD3 window size classes: compact below 600px, medium from 600px, expanded from 840px, large from 1240px and
-  // extra large from 1600px. Tailwind derives the variants medium:, expanded:, large: and xlarge: from these tokens.
-  const breakpoints = [
-    ['medium', '600px'],
-    ['expanded', '840px'],
-    ['large', '1240px'],
-    ['xlarge', '1600px'],
+  // extra large from 1600px. They are custom variants, so the built-in container keeps its width steps.
+  const classes = [
+    ['medium', '(width >= 600px)'],
+    ['expanded', '(width >= 840px)'],
+    ['large', '(width >= 1240px)'],
+    ['xlarge', '(width >= 1600px)'],
+    ['max-medium', '(width < 600px)'],
+    ['max-expanded', '(width < 840px)'],
   ]
 
-  for (const [name, width] of breakpoints) {
-    it(`declares the ${name} window class at ${width}`, () => {
-      expect(theme, `the @theme block declares --breakpoint-${name}`).toMatch(
-        new RegExp(`--breakpoint-${name}:\\s*${width};`)
-      )
+  for (const [name, query] of classes) {
+    it(`declares the ${name} variant on the ${query} media query`, () => {
+      expect(stylesheet, `src/style.css declares the ${name} variant`).toContain(`@custom-variant ${name} (@media ${query});`)
     })
   }
+
+  it('declares no theme breakpoint, so that Tailwind keeps the width steps of its container', () => {
+    expect(stylesheet, 'no --breakpoint token in src/style.css').not.toMatch(/--breakpoint-/)
+  })
 })
 
 describe('window margin tokens in the theme', () => {

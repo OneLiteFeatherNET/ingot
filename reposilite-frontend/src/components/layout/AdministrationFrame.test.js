@@ -130,16 +130,16 @@ describe('AdministrationFrame', () => {
     const wrapper = await mountFrame({ current: 'page:audit' })
 
     const header = wrapper.find('header').classes()
-    expect(header, 'the row starts at the 600 pixel breakpoint').toContain('min-[600px]:flex-row')
+    expect(header, 'the row starts at the 600 pixel breakpoint').toContain('medium:flex-row')
     expect(header, 'no row at the old 768 pixel breakpoint').not.toContain('md:flex-row')
   })
 
   it('lets the actions wrap below the text when the row is short of room, instead of squeezing the text', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', shortcuts: [{ label: 'Audit settings', to: { name: 'settings', params: { domain: 'audit' } } }] })
 
-    expect(wrapper.find('header').classes(), 'the header row may wrap').toContain('min-[600px]:flex-wrap')
+    expect(wrapper.find('header').classes(), 'the header row may wrap').toContain('medium:flex-wrap')
     const textColumn = wrapper.get('header > div').classes()
-    expect(textColumn, 'the text keeps a basis of 20 rem before the actions take room').toEqual(expect.arrayContaining(['min-[600px]:basis-80', 'min-w-0']))
+    expect(textColumn, 'the text keeps a basis of 20 rem before the actions take room').toEqual(expect.arrayContaining(['medium:basis-80', 'min-w-0']))
     const actions = wrapper.get('header > div:last-child').classes()
     expect(actions, 'the actions group may wrap onto its own line').toContain('flex-wrap')
     expect(actions, 'the actions group does not refuse to shrink').not.toContain('shrink-0')
@@ -291,7 +291,7 @@ describe('AdministrationFrame Sections sheet', () => {
     const button = sectionsButton(wrapper)
     expect(button, 'the Sections button is drawn').toBeDefined()
     expect(button.classes(), 'hidden below 600 pixels').toContain('hidden')
-    expect(button.classes(), 'shown from the 600 pixel breakpoint').toContain('min-[600px]:inline-flex')
+    expect(button.classes(), 'shown from the 600 pixel breakpoint').toContain('medium:inline-flex')
     expect(button.classes(), 'a 48 pixel target').toContain('min-h-12')
   })
 

@@ -131,7 +131,7 @@ const admin = computed(() => isInstanceAdmin(detail.value))
   >
     <MdButton
       variant="text"
-      class="self-start min-[840px]:hidden"
+      class="self-start expanded:hidden"
       data-test="back"
       @click="emit('back')"
     >
