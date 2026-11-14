@@ -71,7 +71,6 @@ const mountDetail = (props = {}) => {
   return wrapper
 }
 
-const heading = () => wrapper.get('[data-test="entry-title"]')
 const labels = () => wrapper.findAll('label').map(label => label.text())
 
 afterEach(() => {
@@ -80,10 +79,19 @@ afterEach(() => {
 })
 
 describe('EntryDetail', () => {
-  it('shows the id of the entry as the heading of the pane', () => {
+  it('draws no heading of its own with the id, the page heading names the entry', () => {
     mountDetail()
 
-    expect(heading().text()).toBe('releases')
+    expect(wrapper.find('[data-test="entry-title"]').exists(), 'no second title of the entry').toBe(false)
+    expect(wrapper.findAll('h1, h2').map(title => title.text()), 'no heading of the pane is the id').not.toContain('releases')
+  })
+
+  it('draws its sections at the third level, below the heading of the page and of the collection', () => {
+    mountDetail()
+
+    const levels = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(title => Number(title.element.tagName.slice(1)))
+    expect(levels.length, 'the pane has sections').toBeGreaterThan(0)
+    expect(Math.min(...levels), 'no heading above the third level').toBeGreaterThanOrEqual(3)
   })
 
   it('edits the id in its own field, once, and not among the generated fields', () => {
@@ -124,20 +132,17 @@ describe('EntryDetail', () => {
     expect(wrapper.text()).toContain('ghost')
   })
 
-  it('offers a way back to the list when the entry is not found', async () => {
+  it('draws no way back of its own when the entry is not found, the page frame carries it', () => {
     mountDetail({ id: 'ghost', entry: null })
 
-    await wrapper.findAll('button').find(button => button.text() === 'Back to repositories').trigger('click')
-
-    expect(wrapper.emitted('back')).toEqual([[]])
+    expect(wrapper.findAll('button').map(button => button.text()).filter(text => text.startsWith('Back to'))).toEqual([])
   })
 
-  it('offers a back button on narrow screens that returns to the list', async () => {
+  it('draws no back button of its own on narrow screens, the page frame carries it', () => {
     mountDetail()
 
-    await wrapper.find('[aria-label="Back to repositories"]').trigger('click')
-
-    expect(wrapper.emitted('back')).toEqual([[]])
+    expect(wrapper.find('[aria-label="Back to repositories"]').exists()).toBe(false)
+    expect(wrapper.findAll('button').map(button => button.text()).filter(text => text.startsWith('Back to'))).toEqual([])
   })
 
   it('puts the delete action in a danger zone at the end of the pane', () => {

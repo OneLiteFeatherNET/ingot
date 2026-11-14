@@ -86,7 +86,7 @@ describe('the Repositories page inside Settings', () => {
   it('shows the detail of one repository at its own address', async () => {
     await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
 
-    expect(wrapper.find('h2').text(), 'the detail heading is the id').toBe('releases')
+    expect(wrapper.get('h1').text(), 'the page heading is the id').toBe('releases')
   })
 
   it('lists a repository without an id as Unnamed repository, and its Edit item opens its detail', async () => {

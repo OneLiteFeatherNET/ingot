@@ -71,8 +71,30 @@ describe('TeamDetail', () => {
       await mountDetail('developers')
 
       expect(teams.get).toHaveBeenCalledWith('developers')
-      expect(wrapper.find('#team-title').text()).toBe('developers')
       expect(wrapper.find('[data-test="description"]').text()).toBe('Everyone who writes code')
+    })
+
+    it('does not repeat the name of the team as a heading, the page heading names it', async () => {
+      await mountDetail('developers')
+
+      const headings = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
+      expect(headings, 'no heading of the detail is the team name').not.toContain('developers')
+    })
+
+    it('starts the headings of the detail at the second level, under the page heading', async () => {
+      await mountDetail('developers')
+
+      const levels = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => Number(heading.element.tagName.slice(1)))
+      expect(levels.length, 'the detail has section headings').toBeGreaterThan(0)
+      expect(Math.min(...levels), 'no level one heading in the detail').toBeGreaterThanOrEqual(2)
+      expect(levels[0], 'the first heading is the second level').toBe(2)
+    })
+
+    it('draws no back button of its own, the page frame carries the way back', async () => {
+      await mountDetail('developers')
+
+      expect(wrapper.find('[data-test="back"]').exists()).toBe(false)
+      expect(wrapper.findAll('button').map(button => button.text()).filter(text => text.startsWith('Back to'))).toEqual([])
     })
 
     it('says so when the team does not exist', async () => {
@@ -102,7 +124,7 @@ describe('TeamDetail', () => {
 
       const card = wrapper.find('[data-test="permission-nodes"]')
 
-      expect(card.find('h4').text()).toBe('Permission nodes')
+      expect(card.find('h2').text()).toBe('Permission nodes')
       expect(card.find('[data-test="node-editor"]').exists()).toBe(true)
     })
 
@@ -229,7 +251,6 @@ describe('TeamDetail', () => {
       expect(wrapper.find('[data-test="inherited-warning"]').text())
         .toBe('Could not read the nodes of team staff: Store unavailable')
       expect(inheritedRows().map(row => row.source)).toEqual(['from team developers, 1 level up'])
-      expect(wrapper.find('#team-title').text()).toBe('ops')
     })
 
     it('shows the parents card with the parents of the team', async () => {
@@ -237,7 +258,7 @@ describe('TeamDetail', () => {
 
       const card = wrapper.find('[data-test="team-parents"]')
 
-      expect(card.find('h4').text()).toBe('Inherits from')
+      expect(card.find('h2').text()).toBe('Inherits from')
       expect(card.findAll('[data-test="parent"]').map(chip => chip.text())).toEqual(['developers'])
     })
 

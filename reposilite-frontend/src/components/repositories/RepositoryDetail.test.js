@@ -90,10 +90,27 @@ const writePolicyRadios = () => Array.from(document.querySelectorAll('fieldset i
 const buttonNamed = (text) => Array.from(document.querySelectorAll('button')).find(button => button.textContent.trim() === text)
 
 describe('the repository detail page', () => {
-  it('opens at the address of the repository and names it with an h2', async () => {
+  it('does not repeat the id of the repository as a heading, the page heading names it', async () => {
     await mountDetail({ id: 'releases' })
 
-    expect(wrapper.find('h2').text(), 'the heading is the id').toBe('releases')
+    const headings = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
+    expect(headings, 'no heading of the detail is the id').not.toContain('releases')
+  })
+
+  it('starts the headings of the detail at the second level, under the page heading', async () => {
+    await mountDetail({ id: 'releases' })
+
+    const levels = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => Number(heading.element.tagName.slice(1)))
+    expect(levels.length, 'the detail has section headings').toBeGreaterThan(0)
+    expect(Math.min(...levels), 'no level one heading in the detail').toBeGreaterThanOrEqual(2)
+    expect(levels[0], 'the first heading is the second level').toBe(2)
+  })
+
+  it('draws no back button of its own, the page frame carries the way back', async () => {
+    await mountDetail({ id: 'releases' })
+
+    const backs = Array.from(document.querySelectorAll('button, a')).map(control => control.textContent.trim()).filter(text => text.startsWith('Back to'))
+    expect(backs, 'no Back to control in the page content').toEqual([])
   })
 
   it('keeps the type switch and the access card', async () => {
@@ -207,12 +224,10 @@ describe('the repository detail page', () => {
       .not.toContain('Declare type')
   })
 
-  it('shows a not found pane with a link back to the list for an id that does not exist', async () => {
+  it('shows a not found pane for an id that does not exist, with no link of its own back to the list', async () => {
     await mountDetail({ id: 'nowhere' })
 
     expect(wrapper.find('h2').text(), 'the pane says it is not found').toBe('Repository not found')
-    const link = wrapper.find('a[href="/settings/repositories"]')
-    expect(link.exists(), 'a link goes back to the list').toBe(true)
-    expect(link.text(), 'the link names the list').toBe('Back to repositories')
+    expect(wrapper.find('a[href="/settings/repositories"]').exists(), 'the page frame carries the way back').toBe(false)
   })
 })

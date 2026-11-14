@@ -262,7 +262,6 @@ const deleted = (principal) => {
         :kind="kind"
         @changed="load()"
         @deleted="deleted"
-        @back="close()"
       />
       <p
         v-else

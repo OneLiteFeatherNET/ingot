@@ -37,8 +37,8 @@ import { detailOf, isInstanceAdmin, legacyGrants, newestLastUsed, seenLabel, use
  * Props:
  *   name  the principal to show
  *   kind  USER or MACHINE; it decides which facts and sections appear
- * Emits changed and deleted (after an action), and back (the link that closes the detail on a
- * narrow window, where the list and the detail do not fit side by side).
+ * Emits changed and deleted (after an action). The way back is the page frame's: its back arrow on a
+ * narrow window, its list crumb on a wide one, so this component draws no back control of its own.
  */
 const props = defineProps({
   name: {
@@ -52,14 +52,13 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['changed', 'deleted', 'back'])
+const emit = defineEmits(['changed', 'deleted'])
 
 const { client } = useSession()
 const api = computed(() => client.value.identity.principals)
 const tokensApi = computed(() => client.value.identity.principalTokens(props.name))
 
 const isMachine = computed(() => props.kind === 'MACHINE')
-const noun = computed(() => (isMachine.value ? 'machine accounts' : 'users'))
 
 const detail = ref(null)
 const status = ref('loading')
@@ -112,7 +111,6 @@ const changed = () => {
   emit('changed')
 }
 
-const title = computed(() => detail.value?.displayName || props.name)
 const seen = computed(() => seenLabel(detail.value?.lastSeenAt ?? null))
 const used = computed(() => usedLabel(newestLastUsed(detail.value?.tokens)))
 // createdAt is an Instant on the wire: epoch seconds, read through the shared helper.
@@ -126,18 +124,8 @@ const admin = computed(() => isInstanceAdmin(detail.value))
 <template>
   <section
     class="flex min-w-0 flex-col gap-4"
-    aria-labelledby="principal-title"
     data-ingot-component="principal-detail"
   >
-    <MdButton
-      variant="text"
-      class="self-start expanded:hidden"
-      data-test="back"
-      @click="emit('back')"
-    >
-      Back to {{ noun }}
-    </MdButton>
-
     <p
       v-if="status === 'loading'"
       data-ingot-state="loading"
@@ -172,12 +160,6 @@ const admin = computed(() => isInstanceAdmin(detail.value))
       <div class="flex flex-col gap-4 rounded-corner-large bg-surface-container-low px-4 py-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="flex min-w-0 flex-col gap-2">
-            <h3
-              id="principal-title"
-              class="md-title-large break-words text-on-surface"
-            >
-              {{ title }}
-            </h3>
             <div class="flex flex-wrap items-center gap-2">
               <TokenTag
                 v-if="detail.disabled"
@@ -232,7 +214,10 @@ const admin = computed(() => isInstanceAdmin(detail.value))
           <dt class="text-on-surface-variant">
             Display name
           </dt>
-          <dd class="m-0 min-w-0 break-words text-on-surface">
+          <dd
+            class="m-0 min-w-0 break-words text-on-surface"
+            data-test="principal-display-name"
+          >
             {{ detail.displayName || 'None' }}
           </dd>
           <dt class="text-on-surface-variant">

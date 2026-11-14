@@ -249,7 +249,9 @@ test.describe('the Overview page below 1240 pixels', () => {
       await page.getByRole('button', { name: `Actions for ${repository}`, exact: true }).click()
       await page.getByRole('menuitem', { name: `Edit ${repository}`, exact: true }).click()
       await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Changed on the way to Overview')
-      await page.getByRole('link', { name: 'Back to Administration' }).click()
+      // The back arrow of a repository leads to its list; the list's arrow leads to the Administration index.
+      await page.getByRole('link', { name: 'Back to Repositories', exact: true }).click()
+      await page.getByRole('link', { name: 'Back to Administration', exact: true }).click()
 
       await expect(page).toHaveURL(/\/settings$/)
       const heading = page.getByRole('heading', { name: 'Overview', level: 1 })
@@ -301,7 +303,7 @@ test.describe('the administration page header', () => {
   test('keeps a detail title on whole words at 320 pixels, with the actions wrapped below it', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 320, height: 900 })
     await page.goto(siteUrl('/access/users/e2e-operator'))
-    const title = page.locator('#principal-title')
+    const title = page.locator('#administration-title')
     await expect(title).toBeVisible()
 
     const lineHeight = await title.evaluate(element => parseFloat(getComputedStyle(element).lineHeight))

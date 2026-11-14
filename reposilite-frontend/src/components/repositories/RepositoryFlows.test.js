@@ -102,16 +102,15 @@ describe('creating a repository from the page', () => {
     expect(router.currentRoute.value.query.new, 'the query is consumed once the wizard opens').toBeUndefined()
   })
 
-  it('moves the focus to the heading of the new repository once it is open', async () => {
+  it('moves the focus to the first heading of the new repository once it is open', async () => {
     const { router, store } = await mountList()
     store.addEntry('maven', 'repositories', { id: 'fresh', visibility: 'PUBLIC' })
 
     await router.push('/settings/repositories/fresh')
     await flushPromises()
 
-    expect(headingText(), 'the detail of the new repository is shown').toBe('fresh')
-    expect(document.activeElement?.tagName, 'the focus is on the heading').toBe('H2')
-    expect(document.activeElement?.textContent.trim(), 'the focused heading names the repository').toBe('fresh')
+    expect(document.activeElement?.tagName, 'the focus is on a heading').toBe('H2')
+    expect(document.activeElement?.textContent.trim(), 'the focused heading is the first section of the detail').toBe('Repository type')
   })
 })
 

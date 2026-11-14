@@ -120,12 +120,12 @@ const overwrite = async () => settle(await nodes.overwriteConflict())
     data-ingot-component="permission-nodes-card"
   >
     <div class="flex flex-col gap-1">
-      <h4
+      <h2
         :id="titleId"
         class="md-title-medium text-on-surface"
       >
         Permission nodes
-      </h4>
+      </h2>
       <p class="md-body-small text-on-surface-variant">
         Each node allows or denies one action. A more specific node beats a wildcard, and a deny wins a tie.
       </p>

@@ -149,8 +149,32 @@ describe('PrincipalDetail', () => {
       await mountDetail({ name: 'alice', kind: 'USER' })
 
       expect(principals.get).toHaveBeenCalledWith('alice')
-      expect(wrapper.find('#principal-title').text()).toBe('Alice Example')
       expect(wrapper.find('[data-test="username"]').text()).toBe('alice')
+      expect(wrapper.find('[data-test="principal-display-name"]').text(), 'the display name is kept as text').toBe('Alice Example')
+    })
+
+    it('does not repeat the name of the user as a heading, the page heading names it', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const headings = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => heading.text())
+      expect(headings, 'no heading of the detail is the display name').not.toContain('Alice Example')
+      expect(headings, 'no heading of the detail is the id').not.toContain('alice')
+    })
+
+    it('starts the headings of the detail at the second level, under the page heading', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      const levels = wrapper.findAll('h1, h2, h3, h4, h5, h6').map(heading => Number(heading.element.tagName.slice(1)))
+      expect(levels.length, 'the detail has section headings').toBeGreaterThan(0)
+      expect(Math.min(...levels), 'no level one heading in the detail').toBeGreaterThanOrEqual(2)
+      expect(levels[0], 'the first heading is the second level').toBe(2)
+    })
+
+    it('draws no back button of its own, the page frame carries the way back', async () => {
+      await mountDetail({ name: 'alice', kind: 'USER' })
+
+      expect(wrapper.find('[data-test="back"]').exists()).toBe(false)
+      expect(wrapper.findAll('button').map(button => button.text()).filter(text => text.startsWith('Back to'))).toEqual([])
     })
 
     it('shows the teams as chips that link to the team', async () => {
@@ -191,7 +215,7 @@ describe('PrincipalDetail', () => {
 
         const card = wrapper.find('[data-test="permission-nodes"]')
 
-        expect(card.find('h4').text()).toBe('Permission nodes')
+        expect(card.find('h2').text()).toBe('Permission nodes')
         expect(card.find('[data-test="node-editor"]').exists()).toBe(true)
       })
 
@@ -259,13 +283,6 @@ describe('PrincipalDetail', () => {
       expect(wrapper.find('[data-test="missing"]').text()).toContain('ghost')
     })
 
-    it('asks the list to close the detail from the back button', async () => {
-      await mountDetail({ name: 'alice', kind: 'USER' })
-
-      await wrapper.find('[data-test="back"]').trigger('click')
-
-      expect(wrapper.emitted('back')).toHaveLength(1)
-    })
   })
 
   describe('the check permission action', () => {
@@ -367,7 +384,7 @@ describe('PrincipalDetail', () => {
         const panel = wrapper.find('[data-test="legacy-grants"]')
         const grants = panel.findAll('[data-test="legacy-grant"]')
 
-        expect(panel.find('h3').text()).toBe('Legacy routes')
+        expect(panel.find('h2').text()).toBe('Legacy routes')
         expect(grants.map(grant => grant.text())).toEqual(['/releasesReadWrite', '/snapshotsRead'])
       })
 
@@ -460,7 +477,6 @@ describe('PrincipalDetail', () => {
       expect(wrapper.find('[data-test="inherited-warning"]').text())
         .toBe("Could not read the nodes of team release: Team 'release' not found")
       expect(inheritedRows().map(row => row.source)).toEqual(['from team developers', 'from team staff, 1 level up'])
-      expect(wrapper.find('#principal-title').text()).toBe('Alice Example')
     })
   })
 })

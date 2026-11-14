@@ -189,7 +189,7 @@ describe('SettingsView rename', () => {
 
     expect(itemButtons()[0].element, 'the item is the same element').toBe(item)
     expect(itemButtons()[0].attributes('aria-current')).toBe('true')
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('mirror')
+    expect(wrapper.get('h1').text()).toBe('mirror')
   })
 
   it('does not move the address while the new id is taken, and says why on the field', async () => {
@@ -198,7 +198,7 @@ describe('SettingsView rename', () => {
     await typeInto(idField(), 'snapshots')
 
     expect(router.currentRoute.value.params.entry).toBe('releases')
-    expect(wrapper.get('[data-test="entry-title"]').text(), 'the open entry stays open').toBe('snapshots')
+    expect(wrapper.get('h1').text(), 'the page heading keeps the address it opens, not the id that is not usable yet').toBe('releases')
     expect(wrapper.text()).toContain('A repository with this id already exists.')
     expect(store.invalidDomains.value).toEqual(['ingot'])
   })
@@ -231,14 +231,14 @@ describe('SettingsView entries without a usable id', () => {
     await followAddress(router)
 
     expect(router.currentRoute.value.params.entry.startsWith('~'), 'the unnamed entry is addressed by its key').toBe(true)
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('Unnamed repository')
+    expect(wrapper.get('h1').text()).toBe('Unnamed repository')
 
     await typeInto(idField(), 'named')
     await followAddress(router)
 
     expect(repositoryIds(store)).toEqual(['named', 'snapshots'])
     expect(router.currentRoute.value.params.entry).toBe('named')
-    expect(wrapper.get('[data-test="entry-title"]').text()).toBe('named')
+    expect(wrapper.get('h1').text()).toBe('named')
   })
 })
 

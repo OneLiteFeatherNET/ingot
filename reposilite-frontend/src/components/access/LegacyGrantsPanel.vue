@@ -39,12 +39,12 @@ defineProps({
     data-test="legacy-grants"
     data-ingot-component="legacy-grants-panel"
   >
-    <h3
+    <h2
       id="legacy-routes-title"
       class="md-title-large text-on-surface"
     >
       Legacy routes
-    </h3>
+    </h2>
     <p class="md-body-medium text-on-surface-variant">
       These routes come from a migrated access token and still apply. They are read only here.
       Grant permission nodes to replace them.

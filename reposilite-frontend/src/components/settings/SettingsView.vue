@@ -37,7 +37,7 @@ import CollectionEditor from './CollectionEditor.vue'
 import UnsavedChangesBar from './UnsavedChangesBar.vue'
 import RepositoriesView from '../repositories/RepositoriesView.vue'
 import RepositoryDetail from '../repositories/RepositoryDetail.vue'
-import { collectionsOf, idText, validateNewId } from './collections'
+import { collectionsOf, entryAddresses, idText, validateNewId } from './collections'
 import { barClearance } from './barClearance'
 import SettingsDownloadMenu from './SettingsDownloadMenu.vue'
 import { serializeSettings, settingsByDomain, settingsClockKey, settingsFileName, systemClock } from './settingsExport'
@@ -138,6 +138,24 @@ const navGroups = computed(() => adminGroups(can, {
 const repositoriesPage = computed(() => route.name === 'settings-repositories')
 const repositoryPage = computed(() => route.name === 'settings-repository')
 const repositoriesRoute = computed(() => repositoriesPage.value || repositoryPage.value)
+// One entry of a collection, at /settings/:domain/:collection/:entry, as the props name it. Its page names the entry in the
+// frame heading, as a repository page does, and the list of the collection is its way back.
+const entryPage = computed(() => props.collection !== undefined && props.entry !== undefined)
+// The name a detail page gives the entry at an address: its id, or "Unnamed" and the noun of its collection while it has
+// no usable id. The address itself when no entry has it.
+const nameOfEntry = (domain, collectionKey, address) => {
+  if (!domain) return address
+  const list = collectionsFor(domain).find(collection => collection.key === collectionKey)
+  const entries = configurations.value[domain]?.[collectionKey] ?? []
+  const entry = entries[entryAddresses(entries, store.entryKeysOf(domain, collectionKey)).indexOf(address)]
+  if (!list || !entry) return address
+  return idText(entry) || `Unnamed ${list.noun}`
+}
+// The name of the item on a detail page: the repository or the entry it opens. Empty on every other page.
+const detailTitle = computed(() => {
+  if (repositoryPage.value) return nameOfEntry('maven', 'repositories', route.params.id)
+  return entryPage.value ? nameOfEntry(activeDomain.value, props.collection, props.entry) : ''
+})
 // The entry of the tree on screen: the domain in the address, or the Repositories page. The hub marks none.
 const settingsCurrent = computed(() => currentTreeKey(route.name, props.domain))
 
@@ -188,10 +206,6 @@ const selectEntry = (collection, id) => {
   router.push({ name: 'settings-entry', params: { domain: activeDomain.value, collection: collection.key, entry: id } })
 }
 
-const backToList = () => {
-  router.push({ name: 'settings', params: { domain: activeDomain.value } })
-}
-
 const createEntry = (collection, id) => {
   const domain = activeDomain.value
   store.addEntry(domain, collection.key, { id })
@@ -219,12 +233,6 @@ const deleteEntry = (collection, index) => {
   store.removeEntry(activeDomain.value, collection.key, index)
   router.replace({ name: 'settings', params: { domain: activeDomain.value } })
 }
-
-// The not-found pane of an entry links to the list of its domain. It is a real link, so it can be
-// opened in a new tab; a plain click is taken by the view and pushed through the router instead.
-const backHref = computed(() => (activeDomain.value
-  ? router.resolve({ name: 'settings', params: { domain: activeDomain.value } }).href
-  : undefined))
 
 const onDomainChange = (domain, event) => {
   store.setDomainData(domain, event.data)
@@ -461,8 +469,8 @@ watch(
     class="settings-view"
     :style="pageClearance"
     :description="settingsCurrent === undefined ? HUB_DESCRIPTION : undefined"
-    :title="repositoryPage ? route.params.id : ''"
-    :detail="repositoryPage"
+    :title="detailTitle"
+    :detail="repositoryPage || entryPage"
     :label="sideNav.label"
     :section-label="sideNav.sectionLabel"
     :groups="navGroups"
@@ -592,12 +600,10 @@ watch(
               :entries="entriesOf(activeDomain, list)"
               :keys="store.entryKeysOf(activeDomain, list.key)"
               :selected-id="selectedIdFor(list)"
-              :back-href="backHref"
               :renderers="renderers"
               :validator="store.configurationValidator"
               :server-error="saveError ?? ''"
               @select="selectEntry(list, $event)"
-              @back="backToList"
               @create="createEntry(list, $event)"
               @change="updateEntry(list, $event)"
               @delete="deleteEntry(list, $event)"
