@@ -145,6 +145,10 @@ jobs:
         working-directory: reposilite-frontend
         run: npm run eslint
 
+      - name: "Type-check the frontend"
+        working-directory: reposilite-frontend
+        run: npm run typecheck
+
 
   # Nothing checked dependencies for known advisories before this, which is how 67 of them
   # accumulated unnoticed across the JVM and npm trees. Renovate raises versions but says
