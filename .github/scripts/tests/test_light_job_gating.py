@@ -97,8 +97,8 @@ class LightJobGatingTest(unittest.TestCase):
         self.assertIn("github.event_name != 'push'", text)
 
     def test_jobs_that_gate_nothing_stay_free_of_the_scope_step(self):
-        # Container images, the Helm chart and the HA smoke test are heavy jobs and are not touched here.
-        for job in ("images", "chart", "ha-smoke", "dashboard-e2e"):
+        # The dashboard end-to-end job is a heavy job and is not touched here.
+        for job in ("dashboard-e2e",):
             block = job_block(self.workflow, job)
             self.assertIsNotNone(block, job)
             self.assertNotIn("needs: coverage-changes", block, job)

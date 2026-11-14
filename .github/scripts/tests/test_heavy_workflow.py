@@ -47,8 +47,22 @@ def triggers():
     return workflow.get("on", workflow.get(True))
 
 
-def heavy_job_ids():
+# Jobs that only prepare or split one heavy job. They are gated like the job they belong to, and the aggregate does
+# not wait for them directly because the heavy job they belong to does. A helper may serve several heavy jobs, and it
+# runs when any of their flags is set.
+HELPERS = {
+    "images-build": ("images", "helm", "ha"),
+    "images-arm64": ("images",),
+    "container-tests": ("images",),
+}
+
+
+def all_job_ids():
     return [job for job in load()["jobs"] if job not in (GATE, AGGREGATE)]
+
+
+def heavy_job_ids():
+    return [job for job in all_job_ids() if job not in HELPERS]
 
 
 class TriggerTest(unittest.TestCase):
@@ -136,19 +150,26 @@ class GateAndAggregateTest(unittest.TestCase):
         needs = load()["jobs"][AGGREGATE]["needs"]
         self.assertEqual({GATE, *heavy_job_ids()}, set(needs))
 
+    def test_every_helper_belongs_to_a_job_the_gate_script_knows(self):
+        for helper, flags in HELPERS.items():
+            for flag in flags:
+                self.assertIn(flag, heavy_gate.HEAVY_JOBS, helper)
+
     def test_every_heavy_job_id_is_known_to_the_gate_script(self):
         self.assertLessEqual(set(heavy_job_ids()), set(heavy_gate.HEAVY_JOBS))
 
     def test_every_heavy_job_runs_when_the_gate_failed_and_otherwise_on_its_flag(self):
-        for job_id in heavy_job_ids():
+        for job_id in all_job_ids():
             condition = str(load()["jobs"][job_id]["if"])
+            flags = HELPERS.get(job_id, (job_id,))
             with self.subTest(job=job_id):
                 self.assertIn("!cancelled()", condition)
                 self.assertIn("needs.gate.result != 'success'", condition)
-                self.assertIn(f"needs.gate.outputs.{job_id} == 'true'", condition)
+                for flag in flags:
+                    self.assertIn(f"needs.gate.outputs.{flag} == 'true'", condition)
 
     def test_every_heavy_job_needs_the_gate(self):
-        for job_id in heavy_job_ids():
+        for job_id in all_job_ids():
             with self.subTest(job=job_id):
                 self.assertIn(GATE, load()["jobs"][job_id]["needs"])
 
