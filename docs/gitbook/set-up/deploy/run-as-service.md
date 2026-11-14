@@ -61,12 +61,12 @@ This page runs the Ingot JAR under systemd, so that it starts at boot and restar
 
 The JAR name contains the version, so each upgrade changes the `ExecStart` line:
 
-1. Stop the service and [back up](back-up-before-upgrading.md) the data directory.
+1. Stop the service and [back up](../../how-to/back-up-before-upgrading.md) the data directory.
 2. Copy the new `ingot-<version>.jar` into `/opt/ingot` and change the name in `ExecStart`.
 3. Run `sudo systemctl daemon-reload` and `sudo systemctl restart ingot`.
-4. Check the result with the steps in [Verify an upgrade](verify-an-upgrade.md).
+4. Check the result with the steps in [Verify an upgrade](../../how-to/verify-an-upgrade.md).
 
-To return to the previous version, restore the old file name in `ExecStart` and restart. [Roll back an upgrade](roll-back-an-upgrade.md) describes the data side.
+To return to the previous version, restore the old file name in `ExecStart` and restart. [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md) describes the data side.
 
 ## Verify
 
@@ -77,9 +77,9 @@ To return to the previous version, restore the old file name in `ExecStart` and 
 ## Troubleshooting
 
 * The service restarts in a loop: read `journalctl -u ingot`. A port that is already in use or a data directory owned by another user are the usual causes.
-* `Permission denied` on a port below 1024: Ingot cannot bind it as user `ingot`. Use a port above 1023, or let a proxy listen on the low port. See [Run behind a reverse proxy](run-behind-reverse-proxy.md).
+* `Permission denied` on a port below 1024: Ingot cannot bind it as user `ingot`. Use a port above 1023, or let a proxy listen on the low port. See [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md).
 
 ## Related
 
 * [Run the JAR](install-jar.md)
-* [Enable TLS](enable-tls.md)
+* [Enable TLS](../network/enable-tls.md)

@@ -142,7 +142,7 @@ every push to `main`. `INGOT_OPTS` passes startup parameters to the server;
 The dashboard also ships on its own as `ghcr.io/onelitefeathernet/ingot-dashboard`, for
 deployments that want it scaled separately or want a static file server rather than a JVM
 on the edge. `docker compose -f docker-compose.split.yml up -d` runs the pair;
-[Run the dashboard in a separate container](https://github.com/OneLiteFeatherNET/ingot/blob/main/docs/gitbook/how-to/run-split-dashboard-container.md)
+[Run the dashboard in a separate container](https://github.com/OneLiteFeatherNET/ingot/blob/main/docs/gitbook/set-up/deploy/run-split-dashboard-container.md)
 explains when that trade is worth making.
 
 ### Publishing to it

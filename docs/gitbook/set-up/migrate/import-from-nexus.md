@@ -19,7 +19,7 @@ environment:
   INGOT_NEXUS_IMPORT_ENABLED: "true"
 ```
 
-`REPOSILITE_NEXUS_IMPORT_ENABLED` is read when the `INGOT_` name is unset. The tuning variables, `INGOT_NEXUS_IMPORT_CONCURRENCY`, `INGOT_NEXUS_IMPORT_MAX_REQUESTS_PER_SECOND`, `INGOT_NEXUS_IMPORT_AUDIT` and `INGOT_NEXUS_IMPORT_ALLOWED_HOSTS`, are listed in the [environment variables reference](../reference/environment-variables.md#nexus-import-variables).
+`REPOSILITE_NEXUS_IMPORT_ENABLED` is read when the `INGOT_` name is unset. The tuning variables, `INGOT_NEXUS_IMPORT_CONCURRENCY`, `INGOT_NEXUS_IMPORT_MAX_REQUESTS_PER_SECOND`, `INGOT_NEXUS_IMPORT_AUDIT` and `INGOT_NEXUS_IMPORT_ALLOWED_HOSTS`, are listed in the [environment variables reference](../../reference/environment-variables.md#nexus-import-variables).
 
 Nothing else changes. The configuration file, the volumes and the entrypoint stay as they are.
 
@@ -39,7 +39,7 @@ Nothing else changes. The configuration file, the volumes and the entrypoint sta
 * `abort`: the first conflict stops that repository and the job continues with the next one.
 * `overwrite`: the existing file is replaced. Both the deletion and the write are audited. Use it only after the dry run has shown how many conflicts there are.
 
-**Audit mode.** `per-file` (default) writes one deploy event per file with the actor `migration`. `summary` writes only the run event, `NEXUS_IMPORT_RUN`, which carries the counts. Use `summary` for very large repositories. See the [audit events reference](../reference/audit-events.md).
+**Audit mode.** `per-file` (default) writes one deploy event per file with the actor `migration`. `summary` writes only the run event, `NEXUS_IMPORT_RUN`, which carries the counts. Use `summary` for very large repositories. See the [audit events reference](../../reference/audit-events.md).
 
 **Credential form.** Enter the password as a literal or as a secret reference. A reference is resolved only when the operator has allowed it, with `INGOT_SETTINGS_SECRET_REFERENCES=true` and the variable listed in `INGOT_SETTINGS_SECRET_ENV` or the directory in `INGOT_SETTINGS_SECRET_FILES`:
 
@@ -79,6 +79,6 @@ Progress is kept. A job paused for read-only mode resumes by itself when read-on
 ## Related
 
 * [Import from other repository managers](import-from-other-repository-managers.md)
-* [Environment variables](../reference/environment-variables.md)
-* [HTTP API](../reference/http-api.md)
-* [Audit events](../reference/audit-events.md)
+* [Environment variables](../../reference/environment-variables.md)
+* [HTTP API](../../reference/http-api.md)
+* [Audit events](../../reference/audit-events.md)

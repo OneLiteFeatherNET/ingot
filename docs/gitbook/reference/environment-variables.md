@@ -88,7 +88,7 @@ The server process reads these variables itself, not the entrypoint.
 
 | Variable | System property | Default | Meaning |
 | --- | --- | --- | --- |
-| `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). |
+| `INGOT_TRUSTED_PROXIES` | `-Dingot.trustedProxies` | unset | Comma-separated IPv4 and IPv6 addresses and CIDR ranges of your reverse proxies, for example `10.0.0.0/8,fd00::/8,192.168.1.5`. When set, the client address header is only read from a connection that comes from one of them, and the client is the rightmost address of that header which is not a trusted proxy. When unset, the header is used exactly as it arrives and the server logs a warning at startup. A malformed entry stops the start with a message that names it. The property wins over the variable. There is no `REPOSILITE_` spelling because Reposilite has no such setting. See [Run behind a reverse proxy](../set-up/network/run-behind-reverse-proxy.md#trust-your-proxies). |
 | `INGOT_FETCH_METADATA` | `-Dingot.fetchMetadata` | `on` | `off` lets a request to the API that comes from another site or a sibling subdomain through when it carries the session or refresh cookie. By default such a request is refused with `403`, unless it is a top-level navigation. The value is matched without regard to case, and any other value keeps the refusal on. The variable wins over the property. There is no `REPOSILITE_` spelling because the cookie sessions are Ingot's own. See [Cross-site requests](../explanation/sessions-and-login.md#cross-site-requests). |
 
 ## Shutdown variables
@@ -127,11 +127,11 @@ The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
 | `INGOT_OPTS` | `REPOSILITE_OPTS` | empty | Command line parameters for the server, see [Command line parameters](configuration-and-startup.md#command-line-parameters). The value is split at white space. When `INGOT_OPTS` is empty or unset, `REPOSILITE_OPTS` is used. The two are not combined. |
 | `INGOT_ARGS` | none | not read | Not an input. The entrypoint assigns its own shell variable of this name from `INGOT_OPTS`, or from `REPOSILITE_OPTS` when `INGOT_OPTS` is empty or unset, and passes it to the server. Setting `INGOT_ARGS` in the environment has no effect. Use `INGOT_OPTS`. |
 | `JAVA_OPTS` | none | empty | Options for the JVM, for example `-Xmx1g` or `-Dingot.local.port=9090`. There is no `INGOT_` spelling. |
-| `JDK_JAVA_OPTIONS` | none | empty | Options that the JVM reads before `JAVA_OPTS`. The Helm chart writes one entry of it when its `jvm` or `opentelemetry` values are set, and keeps the text that `env` sets. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#size-the-heap-from-the-memory-limit). |
+| `JDK_JAVA_OPTIONS` | none | empty | Options that the JVM reads before `JAVA_OPTS`. The Helm chart writes one entry of it when its `jvm` or `opentelemetry` values are set, and keeps the text that `env` sets. See [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md#size-the-heap-from-the-memory-limit). |
 | `PUID` | none | `977` | User id of the `reposilite` service account. Read only when the container starts as root. |
 | `PGID` | none | `977` | Group id of the service account. Read only when the container starts as root. |
 | `INGOT_FORCE_CHOWN` | `REPOSILITE_FORCE_CHOWN` | unset | `true` changes the owner of `/app` and `/var/log/reposilite` at every start. Any other value does nothing. Read only when the container starts as root. |
-| `INGOT_EXTRA_CA_CERTS` | `REPOSILITE_EXTRA_CA_CERTS` | unset | Directory of PEM files with certificate authorities to trust in addition to the public ones. Every certificate in every file is imported at start into a copy of the JDK trust store under `/tmp`. An invalid value stops the start with exit code 1 and one line that names the variable. See [Trust a private certificate authority](../how-to/install-with-docker.md#trust-a-private-certificate-authority). |
+| `INGOT_EXTRA_CA_CERTS` | `REPOSILITE_EXTRA_CA_CERTS` | unset | Directory of PEM files with certificate authorities to trust in addition to the public ones. Every certificate in every file is imported at start into a copy of the JDK trust store under `/tmp`. An invalid value stops the start with exit code 1 and one line that names the variable. See [Trust a private certificate authority](../set-up/deploy/install-with-docker.md#trust-a-private-certificate-authority). |
 
 Behavior of the entrypoint:
 
@@ -151,7 +151,7 @@ The server adds security headers to its responses. Two of them can be changed. T
 | Variable | System property | Default | Meaning |
 | --- | --- | --- | --- |
 | `INGOT_REPOSITORY_SANDBOX` | `ingot.repository.sandbox` | `true` | Repository files and the generated directory index are served with `Content-Security-Policy: sandbox`, so a browser runs an uploaded page without the origin of the dashboard. `false` leaves them without this header. The value is matched without regard to case, any other value keeps the sandbox. |
-| `INGOT_HSTS_MAX_AGE` | `ingot.hsts.maxAge` | unset | A positive number of seconds turns on `Strict-Transport-Security: max-age=<seconds>`. The header is sent only on HTTPS requests, that is a request over TLS served by Ingot or a request with `X-Forwarded-Proto: https`. With trusted proxies configured, that header counts only when the request comes from one of them, see [Trust your proxies](../how-to/run-behind-reverse-proxy.md#trust-your-proxies). Unset, zero or a value that is not a number sends no header. |
+| `INGOT_HSTS_MAX_AGE` | `ingot.hsts.maxAge` | unset | A positive number of seconds turns on `Strict-Transport-Security: max-age=<seconds>`. The header is sent only on HTTPS requests, that is a request over TLS served by Ingot or a request with `X-Forwarded-Proto: https`. With trusted proxies configured, that header counts only when the request comes from one of them, see [Trust your proxies](../set-up/network/run-behind-reverse-proxy.md#trust-your-proxies). Unset, zero or a value that is not a number sends no header. |
 
 The complete list of headers is in [Security headers](../explanation/security-headers.md).
 
@@ -170,7 +170,7 @@ The image has no build argument for the base path, so one image serves any base 
 
 ## Cluster bus variables
 
-The cluster plugin reads these settings at start. Without `INGOT_CLUSTER_URL` or its fallback, none of them has an effect. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
+The cluster plugin reads these settings at start. Without `INGOT_CLUSTER_URL` or its fallback, none of them has an effect. See [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md).
 
 | Variable | Fallback | Default | Meaning |
 | --- | --- | --- | --- |
@@ -231,7 +231,7 @@ The image also ships `nexus-import-plugin.jar`, the Nexus Repository 3 importer,
 | `INGOT_NEXUS_IMPORT_AUDIT` | `REPOSILITE_NEXUS_IMPORT_AUDIT` | `per-file` | `per-file` writes one deploy event per file with the actor `migration`. `summary` writes only the run event. |
 | `INGOT_NEXUS_IMPORT_ALLOWED_HOSTS` | `REPOSILITE_NEXUS_IMPORT_ALLOWED_HOSTS` | unset (any host) | Comma-separated host names a Nexus connection may point at. |
 
-There is no variable that turns off certificate verification. Nexus certificates are checked against the JVM trust store, and private certificate authorities belong there, see [Import from Nexus](../how-to/import-from-nexus.md).
+There is no variable that turns off certificate verification. Nexus certificates are checked against the JVM trust store, and private certificate authorities belong there, see [Import from Nexus](../set-up/migrate/import-from-nexus.md).
 
 ### OpenSearch search backend
 
@@ -278,7 +278,7 @@ The system information page and the support bundle are on by default, because bo
 
 | Variable | Fallback | Default | Meaning |
 | --- | --- | --- | --- |
-| `INGOT_S3_BUFFER_TO_DISK` | `REPOSILITE_S3_BUFFER_TO_DISK`, read when the `INGOT_` variable is not set | `false` | `true` writes every S3 upload to a temporary file before it is sent, as before large uploads were streamed. `false` streams uploads as multipart uploads above 8 MiB. Read once at start, for every S3 repository of the instance. Any value other than `true` or `false`, in any case, stops the start with a message that names the variable. See [Large uploads](../how-to/use-s3-storage.md#large-uploads). |
+| `INGOT_S3_BUFFER_TO_DISK` | `REPOSILITE_S3_BUFFER_TO_DISK`, read when the `INGOT_` variable is not set | `false` | `true` writes every S3 upload to a temporary file before it is sent, as before large uploads were streamed. `false` streams uploads as multipart uploads above 8 MiB. Read once at start, for every S3 repository of the instance. Any value other than `true` or `false`, in any case, stops the start with a message that names the variable. See [Large uploads](../set-up/cluster/use-s3-storage.md#large-uploads). |
 
 ### S3 storage system properties
 
@@ -314,7 +314,7 @@ Read once at startup. `INGOT_HTTP_USE_ENV_PROXY` is the switch. When it is `true
 | Credentials | A proxy value with a user name or a password is refused. The mirror request then fails with a message that names the variable. Ingot never writes the value or the credentials to the log. Set `httpProxy` on the mirror when the proxy needs a login. |
 | Other URLs | Only mirror clients read the switch. S3, OIDC and the update check do not. |
 
-The JVM system properties such as `https.proxyHost` in `JAVA_OPTS` still apply to all outgoing connections whatever the switch says. The JDK does not read `HTTPS_PROXY` or `HTTP_PROXY` by itself, so the switch is the only way to take them into account. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#route-mirror-traffic-through-an-egress-proxy).
+The JVM system properties such as `https.proxyHost` in `JAVA_OPTS` still apply to all outgoing connections whatever the switch says. The JDK does not read `HTTPS_PROXY` or `HTTP_PROXY` by itself, so the switch is the only way to take them into account. See [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md#route-mirror-traffic-through-an-egress-proxy).
 
 ### Upload checksum policy
 
@@ -350,7 +350,7 @@ Read once at startup from `INGOT_SHARED_CONFIGURATION_RELOAD`, or from the legac
 
 The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_SHARED_CONFIGURATION_RELOAD`. With the database as the shared source the variable has no effect, and the instance logs one warning at startup. See [Shared settings source](configuration-and-startup.md#shared-settings-source).
 
-The Helm chart sets this variable to `true`, and adds `--shared-configuration` with the mounted file to `INGOT_OPTS`, when its `sharedConfiguration` block is enabled. See [Run on Kubernetes](../how-to/run-on-kubernetes.md#keep-the-shared-settings-in-git).
+The Helm chart sets this variable to `true`, and adds `--shared-configuration` with the mounted file to `INGOT_OPTS`, when its `sharedConfiguration` block is enabled. See [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md#keep-the-shared-settings-in-git).
 
 ### Settings secret references
 

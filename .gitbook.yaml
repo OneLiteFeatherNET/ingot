@@ -11,3 +11,32 @@ redirects:
   tutorials/first-steps-with-docker: get-started/first-steps-with-docker.md
   tutorials/set-up-users-teams-and-sso: get-started/set-up-users-teams-and-sso.md
   how-to/set-up-first-admin: get-started/set-up-first-admin.md
+  how-to/install-with-docker: set-up/deploy/install-with-docker.md
+  how-to/install-jar: set-up/deploy/install-jar.md
+  how-to/run-as-service: set-up/deploy/run-as-service.md
+  how-to/run-on-kubernetes: set-up/deploy/run-on-kubernetes.md
+  how-to/run-split-with-helm: set-up/deploy/run-split-with-helm.md
+  how-to/run-split-dashboard-container: set-up/deploy/run-split-dashboard-container.md
+  how-to/set-helm-values-for-high-availability: set-up/deploy/set-helm-values-for-high-availability.md
+  how-to/autoscale-the-server: set-up/deploy/autoscale-the-server.md
+  how-to/set-a-disruption-budget: set-up/deploy/set-a-disruption-budget.md
+  how-to/route-with-gateway-api: set-up/deploy/route-with-gateway-api.md
+  how-to/manage-secrets-with-gitops: set-up/deploy/manage-secrets-with-gitops.md
+  how-to/size-the-deployment: set-up/deploy/size-the-deployment.md
+  explanation/deployment-options-compared: set-up/deploy/deployment-options-compared.md
+  how-to/run-behind-reverse-proxy: set-up/network/run-behind-reverse-proxy.md
+  how-to/configure-the-edge-for-large-uploads: set-up/network/configure-the-edge-for-large-uploads.md
+  how-to/enable-tls: set-up/network/enable-tls.md
+  how-to/terminate-tls-at-the-gateway: set-up/network/terminate-tls-at-the-gateway.md
+  how-to/restrict-network-traffic: set-up/network/restrict-network-traffic.md
+  how-to/configure-database: set-up/cluster/configure-database.md
+  how-to/configure-cluster-bus: set-up/cluster/configure-cluster-bus.md
+  how-to/use-s3-storage: set-up/cluster/use-s3-storage.md
+  how-to/move-from-reposilite: set-up/migrate/move-from-reposilite.md
+  how-to/upgrade-from-reposilite: set-up/migrate/upgrade-from-reposilite.md
+  how-to/upgrade-from-reposilite-2: set-up/migrate/upgrade-from-reposilite-2.md
+  how-to/migrate-from-upstream-chart: set-up/migrate/migrate-from-upstream-chart.md
+  how-to/import-from-other-repository-managers: set-up/migrate/import-from-other-repository-managers.md
+  how-to/import-from-nexus: set-up/migrate/import-from-nexus.md
+  how-to/use-the-nexus-import-wizard: set-up/migrate/use-the-nexus-import-wizard.md
+  explanation/token-migration: set-up/migrate/token-migration.md

@@ -36,7 +36,7 @@ Ingot is a fork of Reposilite and keeps its image, data directory, configuration
 
 ## Against Sonatype Nexus Repository
 
-Nexus Repository is a broad repository manager for many formats. Choose it when you need those formats, vendor support or its commercial features. Choose Ingot when your artifacts are Maven only, you want an Apache 2.0 licence with no edition split and you want a lighter process. Ingot can import Maven repositories from Nexus Repository 3, see [Import from Nexus](../how-to/import-from-nexus.md).
+Nexus Repository is a broad repository manager for many formats. Choose it when you need those formats, vendor support or its commercial features. Choose Ingot when your artifacts are Maven only, you want an Apache 2.0 licence with no edition split and you want a lighter process. Ingot can import Maven repositories from Nexus Repository 3, see [Import from Nexus](../set-up/migrate/import-from-nexus.md).
 
 ## Against JFrog Artifactory
 
@@ -46,4 +46,4 @@ Artifactory is a universal repository platform with many formats and a commercia
 
 * [What is Ingot](what-is-ingot.md)
 * [Architecture overview](../explanation/architecture-overview.md)
-* [Import from other repository managers](../how-to/import-from-other-repository-managers.md)
+* [Import from other repository managers](../set-up/migrate/import-from-other-repository-managers.md)

@@ -223,7 +223,7 @@ A subdomain such as `ingot.example.org` is simpler than a path. Use a path only 
    {% endhint %}
 
 {% hint style="warning" %}
-A dashboard under a path in the split container needs its own image build. See [Run the dashboard in a separate container](run-split-dashboard-container.md#build-a-dashboard-for-a-sub-path). Combining that with a path in the proxy was not tested in this batch.
+A dashboard under a path in the split container needs its own image build. See [Run the dashboard in a separate container](../deploy/run-split-dashboard-container.md#build-a-dashboard-for-a-sub-path). Combining that with a path in the proxy was not tested in this batch.
 {% endhint %}
 
 ## Single sign-on redirect
@@ -244,7 +244,7 @@ With an empty `publicUrl`, Ingot builds the redirect from the `Host` header and 
 
 ## Strict transport security
 
-Ingot sends `Strict-Transport-Security` only when you ask for it, with `INGOT_HSTS_MAX_AGE` set to a number of seconds, for example `31536000`. It sends the header only on requests that arrived over HTTPS, which behind a proxy means `X-Forwarded-Proto: https`. Do not set both here and in the proxy, or the browser receives the header twice. See [Environment variables](../reference/environment-variables.md#security-header-variables).
+Ingot sends `Strict-Transport-Security` only when you ask for it, with `INGOT_HSTS_MAX_AGE` set to a number of seconds, for example `31536000`. It sends the header only on requests that arrived over HTTPS, which behind a proxy means `X-Forwarded-Proto: https`. Do not set both here and in the proxy, or the browser receives the header twice. See [Environment variables](../../reference/environment-variables.md#security-header-variables).
 
 ## Verify
 
@@ -261,5 +261,5 @@ Ingot sends `Strict-Transport-Security` only when you ask for it, with `INGOT_HS
 ## Related
 
 * [Enable TLS](enable-tls.md), for HTTPS served by Ingot itself.
-* [Run the dashboard in a separate container](run-split-dashboard-container.md), for a proxy in front of a split dashboard.
-* [Run as a service](run-as-service.md), to keep Ingot running behind the proxy.
+* [Run the dashboard in a separate container](../deploy/run-split-dashboard-container.md), for a proxy in front of a split dashboard.
+* [Run as a service](../deploy/run-as-service.md), to keep Ingot running behind the proxy.

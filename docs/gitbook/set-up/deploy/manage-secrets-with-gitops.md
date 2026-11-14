@@ -21,7 +21,7 @@ Ingot reads these values from its environment, so they can come from a Secret. T
 
 The metrics plugin is not part of the image, so the two metrics variables only matter once you have installed the plugin. Their older `REPOSILITE_PROMETHEUS_` spellings still work.
 
-Any other value that Ingot reads from the environment can come from `envFrom` as well. The [environment variables](../reference/environment-variables.md) reference lists them.
+Any other value that Ingot reads from the environment can come from `envFrom` as well. The [environment variables](../../reference/environment-variables.md) reference lists them.
 
 {% hint style="warning" %}
 Do not put these values in `env` as literal `value` entries, and do not put them in the values file. A value in the values file ends up in the Git history and in the rendered manifests.
@@ -31,7 +31,7 @@ Do not put these values in `env` as literal `value` entries, and do not put them
 
 The S3 keys of a repository, `accessKey` and `secretKey`, are repository settings. You set them through the settings API or in the dashboard, and Ingot stores them in its database. They are not read from the environment, so no Secret in the values file can supply them.
 
-Leave them empty in the settings if the pod gets its credentials from the environment or from the workload identity instead. See [Use S3 storage](use-s3-storage.md#credentials-from-the-workload-identity).
+Leave them empty in the settings if the pod gets its credentials from the environment or from the workload identity instead. See [Use S3 storage](../cluster/use-s3-storage.md#credentials-from-the-workload-identity).
 
 ## Option 1: SOPS
 
@@ -145,5 +145,5 @@ The first command lists the Secrets. The second lists the names of the variables
 ## Related
 
 * [Run on Kubernetes](run-on-kubernetes.md) sets the database Secret and the S3 Secret.
-* [Use S3 storage](use-s3-storage.md) explains the repository keys.
-* [Environment variables](../reference/environment-variables.md) lists every variable that Ingot reads.
+* [Use S3 storage](../cluster/use-s3-storage.md) explains the repository keys.
+* [Environment variables](../../reference/environment-variables.md) lists every variable that Ingot reads.

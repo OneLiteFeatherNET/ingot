@@ -95,7 +95,7 @@ Ingot's own administration never shows the URL, the user name or the password of
 
 The plugin uses the default `SSLContext` of the JVM, with hostname verification on. A certificate is accepted when the JVM trusts its authority, and a name that does not match the certificate is refused.
 
-To trust an internal certificate authority, put its certificate in a directory of PEM files and name the directory in `INGOT_EXTRA_CA_CERTS`. The server image imports the certificates into a copy of the JVM trust store at start. The steps are in [Install with Docker](../how-to/install-with-docker.md#trust-a-private-certificate-authority). A JAR installation trusts what the JVM trusts, so add the authority to that trust store.
+To trust an internal certificate authority, put its certificate in a directory of PEM files and name the directory in `INGOT_EXTRA_CA_CERTS`. The server image imports the certificates into a copy of the JVM trust store at start. The steps are in [Install with Docker](../set-up/deploy/install-with-docker.md#trust-a-private-certificate-authority). A JAR installation trusts what the JVM trusts, so add the authority to that trust store.
 
 ## Errors and states
 

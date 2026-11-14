@@ -86,7 +86,7 @@ Square brackets mark optional arguments. All commands need the instance admin ro
 
 ### Token commands
 
-These commands work on the legacy token store through the access token facade. See [Upgrade changes](upgrade-changes.md) for how Ingot reads these tokens and [Token migration](../explanation/token-migration.md) for the reason.
+These commands work on the legacy token store through the access token facade. See [Upgrade changes](upgrade-changes.md) for how Ingot reads these tokens and [Token migration](../set-up/migrate/token-migration.md) for the reason.
 
 | Command | Arguments and options | Behavior |
 | --- | --- | --- |
@@ -198,5 +198,5 @@ On success the command prints `Snapshot written: <file name> (<size> bytes) in b
 * [Upgrade changes](upgrade-changes.md): how tokens are migrated and what happens to a `--token` token.
 * [Encrypt settings secrets](../how-to/encrypt-settings-secrets.md): the rotation steps behind `settings-reencrypt` and `settings-decrypt`.
 * [Back up and restore](../how-to/back-up-and-restore.md): when to take a snapshot and how to restore one.
-* [Upgrade from Reposilite 2.x](../how-to/upgrade-from-reposilite-2.md): uses `token-import`.
-* [Token migration](../explanation/token-migration.md): why tokens become machine accounts.
+* [Upgrade from Reposilite 2.x](../set-up/migrate/upgrade-from-reposilite-2.md): uses `token-import`.
+* [Token migration](../set-up/migrate/token-migration.md): why tokens become machine accounts.

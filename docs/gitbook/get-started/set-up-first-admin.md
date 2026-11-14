@@ -73,4 +73,4 @@ The server answers a failed setup with one of these messages. The HTTP status is
 
 * [First steps with Docker](first-steps-with-docker.md) uses this setup in a guided walkthrough.
 * [Set up users, teams and SSO](set-up-users-teams-and-sso.md) shows how to add more people with their own accounts.
-* [Install with Docker](../how-to/install-with-docker.md) explains the container options that the setup depends on.
+* [Install with Docker](../set-up/deploy/install-with-docker.md) explains the container options that the setup depends on.

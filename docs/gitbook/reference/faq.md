@@ -12,12 +12,12 @@ For the image, the data directory, the configuration and the clients, yes. Movin
 
 Some things do change under the hood, and they are visible to an operator:
 
-* Tokens become machine accounts, and their rights move to a private team. See [Token migration](../explanation/token-migration.md).
+* Tokens become machine accounts, and their rights move to a private team. See [Token migration](../set-up/migrate/token-migration.md).
 * The old MANAGER permission becomes the instance administrator role. See [Identity model](../explanation/identity-model.md).
 * The dashboard has a login, and users sign in with a password or an external provider.
 * Some features are on by default, such as artifact search. Check the defaults before you assume that a feature is off.
 
-The full list is in [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md). Each upgrade path has its own steps in [Upgrade from Reposilite 3.x](../how-to/upgrade-from-reposilite.md) and [Upgrade from Reposilite 2.x](../how-to/upgrade-from-reposilite-2.md).
+The full list is in [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md). Each upgrade path has its own steps in [Upgrade from Reposilite 3.x](../set-up/migrate/upgrade-from-reposilite.md) and [Upgrade from Reposilite 2.x](../set-up/migrate/upgrade-from-reposilite-2.md).
 
 ## Do Reposilite plugins work with Ingot?
 
@@ -31,7 +31,7 @@ Test your plugin before you rely on it. Ingot documents its plugin API in [Plugi
 * **MariaDB** and **PostgreSQL** are supported. Use them for several replicas or when a database server is part of your backups.
 * **MySQL** and **H2** are experimental. They are not covered by Ingot's integration tests.
 
-See [Configure a database](../how-to/configure-database.md) for the connection string of each one.
+See [Configure a database](../set-up/cluster/configure-database.md) for the connection string of each one.
 
 ## Can I go back to Reposilite after upgrading?
 
@@ -45,7 +45,7 @@ Several replicas need four things:
 
 * A shared database: MariaDB, or PostgreSQL. SQLite and H2 are not supported with more than one replica.
 * Storage that every replica sees: S3, or a volume that several replicas mount. The shared volume is not tested, so the object storage path is the one covered by tests.
-* The cluster bus, which is optional. It shares cache invalidations, revocations and log lines between replicas. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
+* The cluster bus, which is optional. It shares cache invalidations, revocations and log lines between replicas. See [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md).
 * A rolling upgrade, one replica at a time, with the order that [High availability support](../explanation/high-availability-support.md#rolling-upgrade-rule) describes.
 
 The page also lists which setups are tested on every pull request, and which are not supported.
