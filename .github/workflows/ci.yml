@@ -258,9 +258,8 @@ jobs:
   #
   # Nothing is pushed. This answers "does it build", which is the failure mode that used to
   # escape; the release job stays the only thing that publishes.
-  # Builds the two images once for this commit and hands them to the jobs that run them. The server and the
-  # dashboard are built for linux/amd64 and loaded, the arm64 legs are built afterwards on the same builder, so the
-  # pinned build stage is reused from its local cache and the Gradle build runs once.
+  # Builds the two amd64 images once for this commit and hands them to the jobs that run them. The arm64 images
+  # are built by their own job, in parallel, so nothing that waits for this archive waits for them.
   images-build:
     name: "Build the container images"
     runs-on: ubuntu-latest
@@ -269,11 +268,6 @@ jobs:
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
-
-      # For the arm64 legs further down. Only the run stages are emulated; the Gradle and npm
-      # builds are pinned to the native platform in the Dockerfiles.
-      - name: "Set up QEMU"
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4.2.0
 
       - name: "Set up Buildx"
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
@@ -335,10 +329,28 @@ jobs:
           compression-level: 0
           if-no-files-found: error
 
+
+  # The arm64 legs run beside the amd64 build rather than after it, so they add no time to the jobs that
+  # wait for the archive. Only the run stages are emulated; the Gradle and npm work is pinned to the native
+  # platform in the Dockerfiles, so this job runs that stage once more on its own runner, about two minutes.
+  images-arm64:
+    name: "Build the container images for arm64"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Set up QEMU"
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4.2.0
+
+      - name: "Set up Buildx"
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+
       # Neither loaded nor pushed: a single Docker image store cannot hold two
       # architectures under one tag, and the question here is only whether it builds.
-      # No cache export: the build stage is shared with the amd64 build above through the builder's
-      # local cache, so the Gradle build runs once and nothing is written to the Actions cache.
+      # No cache export: nothing reads it, and the build stage is not shared with the amd64 job.
       - name: "Build the server image for arm64"
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
@@ -353,6 +365,7 @@ jobs:
           file: reposilite-frontend/Dockerfile
           platforms: linux/arm64
           push: false
+
 
   # Runs the server image and the dashboard image the way a deployment does. It needs an image that
   # already exists, which is why it cannot be part of the normal build.
@@ -439,10 +452,10 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "1"
 
-  # The required check. It passes only when the image build and the container tests both succeeded.
+  # The required check. It passes only when the amd64 build, the container tests and the arm64 build all succeeded.
   images:
     name: "Container images"
-    needs: [images-build, container-tests]
+    needs: [images-build, container-tests, images-arm64]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
@@ -452,10 +465,12 @@ jobs:
         env:
           BUILD: ${{ needs.images-build.result }}
           TESTS: ${{ needs.container-tests.result }}
+          ARM64: ${{ needs.images-arm64.result }}
         run: |
-          echo "Image build: $BUILD. Container tests: $TESTS."
+          echo "Image build: $BUILD. Container tests: $TESTS. arm64 build: $ARM64."
           test "$BUILD" = success
           test "$TESTS" = success
+          test "$ARM64" = success
 
   # The chart is linted and rendered without a cluster first, because a broken template is the
   # cheapest thing to catch. Then chart-testing installs both deploy modes on a kind cluster
