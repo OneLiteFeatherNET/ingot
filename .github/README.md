@@ -75,7 +75,7 @@ Storage and persistence
 - Local filesystem storage with disk quotas (fixed size or percentage)
 - S3 compatible object storage with a configurable endpoint, so AWS S3, MinIO and
   similar services work
-- SQLite (default) and MariaDB for metadata and tokens; MySQL, PostgreSQL and H2 are
+- SQLite (default), MariaDB and PostgreSQL for metadata and tokens; MySQL and H2 are
   present but marked experimental in the configuration
 
 Access control
