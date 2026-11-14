@@ -23,9 +23,10 @@ import java.util.Base64
 
 /**
  * The JSON-over-HTTP client of a search cluster (design D1). It is the only class of a search plugin that builds requests: the base
- * URLs are tried in the configured order, and the basic authentication header is built from the user and the password. An answer of
- * any status is returned to the caller, which decides what it means. Only a transport failure of every URL is thrown, as an
- * [IOException], so that the circuit breaker counts it.
+ * URLs are tried in the configured order, and the authorization header is built from the user and the password, or from the
+ * encoded [apiKey] of a cluster that takes API keys, which takes precedence. An answer of any status is returned to the caller,
+ * which decides what it means. Only a transport failure of every URL is thrown, as an [IOException], so that the circuit breaker
+ * counts it.
  */
 class SearchHttpClient(
     private val urls: List<URI>,
@@ -33,12 +34,14 @@ class SearchHttpClient(
     password: String?,
     timeout: Duration,
     private val exchange: HttpExchange = JdkHttpExchange(timeout),
+    apiKey: String? = null,
 ) {
 
-    private val authorization: String? = if (username != null && password != null) {
-        "Basic " + Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
-    } else {
-        null
+    private val authorization: String? = when {
+        apiKey != null -> "ApiKey $apiKey"
+        username != null && password != null ->
+            "Basic " + Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
+        else -> null
     }
 
     fun send(method: String, path: String, body: String? = null, contentType: String = JSON): HttpAnswer {

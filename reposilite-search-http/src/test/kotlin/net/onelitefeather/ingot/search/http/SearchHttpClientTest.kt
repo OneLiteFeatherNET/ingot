@@ -45,6 +45,36 @@ internal class SearchHttpClientTest {
     }
 
     @Test
+    fun `should send the api key authorization header as it was given`() {
+        // given: a client with an encoded API key
+        val exchange = FakeExchange()
+        val http = SearchHttpClient(listOf(first), null, null, Duration.ofSeconds(30), exchange, apiKey = "QXBpS2V5SWQ6c2VjcmV0")
+
+        // when: a request is sent
+        http.send("GET", "/_cluster/health")
+
+        // then: the header is the ApiKey scheme with the key, and no basic header is added
+        assertThat(exchange.calls.single().headers["Authorization"])
+            .`as`("authorization header")
+            .isEqualTo("ApiKey QXBpS2V5SWQ6c2VjcmV0")
+    }
+
+    @Test
+    fun `should send the api key and no basic header when a key and a user are both configured`() {
+        // given: a client with an API key and a user (the settings refuse this pair, the client still picks the key)
+        val exchange = FakeExchange()
+        val http = SearchHttpClient(listOf(first), "indexer", "s3cret", Duration.ofSeconds(30), exchange, apiKey = "QXBpS2V5SWQ6c2VjcmV0")
+
+        // when: a request is sent
+        http.send("GET", "/_cluster/health")
+
+        // then: the ApiKey scheme is the only authorization header
+        assertThat(exchange.calls.single().headers["Authorization"])
+            .`as`("authorization header")
+            .isEqualTo("ApiKey QXBpS2V5SWQ6c2VjcmV0")
+    }
+
+    @Test
     fun `should send no authorization header when no user is configured`() {
         // given: a client without credentials
         val exchange = FakeExchange()
