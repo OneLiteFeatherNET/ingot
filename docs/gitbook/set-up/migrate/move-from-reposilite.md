@@ -1,16 +1,17 @@
 ---
-description: Move a running Reposilite installation to Ingot by changing one line for the container image, the JAR or the dependency coordinate, then check the result. Links to the upgrade steps and the compatibility rules rather than repeating them.
+description: Move a running Reposilite 3.x installation to Ingot by changing one line for the container image, the JAR or the dependency coordinate, then check the result. Covers the first start on an existing data directory, the dashboard login with LDAP and the Reposilite 3.6.x settings.
 ---
 
 # Move from Reposilite to Ingot
 
 Moving from Reposilite to Ingot changes one line: the image reference in a deployment, the name of the JAR you start, or the dependency coordinate in a build. The data directory, the configuration, the environment variables, the port and the plugins stay as they are. This page lists the one line for each way of running Ingot, and what to check afterwards.
 
-For the steps of a Reposilite 3.x upgrade, including the start on an existing data directory, read [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md). For the full list of what stays the same, read [Drop-in compatibility with Reposilite](../../introduction/drop-in-compatibility.md).
+This page covers Reposilite 3.x. Ingot is based on Reposilite 3.5.28. The container upgrade tests cover 3.5.28 on SQLite and on MariaDB 11.4. Reposilite 3.6.x is not covered by these tests, see [Reposilite 3.6.x settings](#reposilite-36x-settings). For the full list of what stays the same, read [Drop-in compatibility with Reposilite](../../introduction/drop-in-compatibility.md).
 
 ## Before you begin
 
 * A [backup](../../manage/upgrade/back-up-before-upgrading.md) of the data directory and, for MariaDB, of the database. The first start of Ingot migrates the data, and a rollback to Reposilite does not take that migration back.
+* The image `ghcr.io/onelitefeathernet/ingot:1.2.0`. Earlier Ingot releases do not run this migration.
 * The Reposilite release you run now. Keep its image reference or JAR name, because you need it for a rollback.
 * Reposilite 3.x. For a Reposilite 2.x installation, follow [Upgrade from Reposilite 2.x](../../manage/upgrade/upgrade-from-reposilite-2.md) instead, because it needs its own steps.
 
@@ -18,7 +19,7 @@ For the steps of a Reposilite 3.x upgrade, including the start on an existing da
 
 ### Container image with Docker Compose
 
-Replace the image reference of the service. Leave the rest of the file as it is.
+Stop the server, then replace the image reference of the service. Leave the rest of the file as it is. Start the server again on the same data directory. The existing data is adopted.
 
 ```yaml
 services:
@@ -86,7 +87,7 @@ What changes is listed in [Drop-in compatibility with Reposilite](../../introduc
 
 ## Check after the move
 
-1. Read the first lines of the log. On a start with persistent tokens, Ingot prints a line of this shape: `Identity | migrated <n> access token(s) to machine principals`. The steps are in [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md#steps).
+1. Read the log of the first start. The first start adds the identity and search tables and the configuration keys described in [Upgrade from Ingot 1.1.x](../../manage/upgrade/upgrade-ingot.md#what-changes-on-the-first-start). If the instance had persistent tokens, the log contains a line of this shape: `Identity | migrated <n> access token(s) to machine principals`.
 2. Check the health endpoint. It needs no login and answers `{"status":"UP"}`.
 
    ```bash
@@ -95,13 +96,30 @@ What changes is listed in [Drop-in compatibility with Reposilite](../../introduc
 
 3. Check the repositories. `GET /api/maven/repositories` lists the repositories that Ingot serves, and they should match the ones you had.
 4. Resolve and deploy one artifact with your build tool. A test deploy must go to a repository that accepts it, and a release file that already exists returns `409`.
-5. Work through the rest of the checks in [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md).
+5. Work through the rest of the checks in [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md). When they pass, the server answers on its port and the move is done.
 
 Ingot rewrites `configuration.cdn` on every start in its default mode. The file looks different after the first start, and settings that come from environment variables are not written into it. This is expected.
 
 {% hint style="info" %}
-Reposilite 3.6.x added settings that Ingot does not read. The section [Reposilite 3.6.x settings](upgrade-from-reposilite.md#reposilite-36x-settings) lists them and says what happens to each one.
+Reposilite 3.6.x added settings that Ingot does not read. The section [Reposilite 3.6.x settings](#reposilite-36x-settings) lists them and says what happens to each one.
 {% endhint %}
+
+## Dashboard login with LDAP
+
+The dashboard login keeps working when your configuration uses the `authentication.ldap` settings of Reposilite 3.x, as long as `login.ldap` is off:
+
+* If `login.ldap` is off and `authentication.ldap` is enabled, the dashboard login uses `authentication.ldap`. No change is needed.
+* If `login.ldap` is enabled, it is the only LDAP directory for the dashboard login. An enabled `login.ldap` that is incomplete serves no LDAP login at all.
+
+## Reposilite 3.6.x settings
+
+Ingot does not know the settings that Reposilite 3.6.x added, for example `parallelMetadataLookup`, `resolutionCacheLevel`, the mirror `blockedGroups`, or an S3 signer setting. Ingot ignores them. Startup does not fail because of them. What happens depends on where the setting is stored:
+
+* **`configuration.cdn`:** an unknown key is not read. In the default AUTO mode, Ingot rewrites the file on start from its own settings, so the key is removed from the file.
+* **Shared settings** (in the database, or in `configuration.shared.json`): an unknown field of a known settings domain is not read. The next save of that domain removes the field.
+* **Environment variables** with the `INGOT_LOCAL_` or `REPOSILITE_LOCAL_` prefix that Ingot does not know: Ingot logs `Unknown local configuration property: <KEY>` as a warning and the variable has no effect.
+
+Before you upgrade from 3.6.x, keep a copy of `configuration.cdn` and of the shared settings. After the upgrade, check the behaviour that those settings controlled. The upgrade tests do not cover 3.6.x, so treat this part as unverified until you have checked it on your own installation.
 
 ## Going back
 
@@ -109,6 +127,5 @@ A rollback restores the old state. Nothing created in Ingot, such as users, mach
 
 ## Related pages
 
-* [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md) lists the steps of the upgrade on the same data directory.
 * [Drop-in compatibility with Reposilite](../../introduction/drop-in-compatibility.md) explains what stays the same and why.
 * [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md) lists the checks after the start.

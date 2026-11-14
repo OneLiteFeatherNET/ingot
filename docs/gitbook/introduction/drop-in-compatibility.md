@@ -6,7 +6,7 @@ description: Explains what it means that Ingot is a drop-in replacement for Repo
 
 Ingot is a drop-in replacement for Reposilite. Moving an installation to Ingot should change one line: the image reference in a deployment, or the dependency coordinate in a build. Nothing else should need to change. No configuration file, volume, manifest or plugin is edited.
 
-This page explains that promise in terms of what an operator and a plugin author can rely on. It also says where the promise stops. The steps for an actual upgrade are in [Upgrade from Reposilite 3.x](../set-up/migrate/upgrade-from-reposilite.md).
+This page explains that promise in terms of what an operator and a plugin author can rely on. It also says where the promise stops. The steps for an actual upgrade are in [Upgrade from Reposilite 3.x](../set-up/migrate/move-from-reposilite.md).
 
 ## What stays the same
 
@@ -75,6 +75,6 @@ A repository with a `format` key is also a rollback concern. Reposilite and earl
 ## Related pages
 
 * [Token migration](../references/architecture/token-migration.md) explains how old tokens become machine accounts.
-* [Upgrade from Reposilite 3.x](../set-up/migrate/upgrade-from-reposilite.md) lists the steps.
+* [Upgrade from Reposilite 3.x](../set-up/migrate/move-from-reposilite.md) lists the steps.
 * [Upgrade changes and supported paths](../release-notes/upgrade-changes.md) lists each change.
 * [Identity model](../references/architecture/identity-model.md) explains the new objects.

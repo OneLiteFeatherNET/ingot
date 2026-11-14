@@ -202,7 +202,7 @@ Removing the container with `docker rm` keeps the volume. Removing the volume wi
 
 Before you change the image tag, read [Back up before upgrading](../../manage/upgrade/back-up-before-upgrading.md). Then follow the guide for your current version:
 
-* From Reposilite 3.x: [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md).
+* From Reposilite 3.x: [Upgrade from Reposilite 3.x](../migrate/move-from-reposilite.md).
 * From Ingot 1.1.x: [Upgrade from Ingot 1.1.x](../../manage/upgrade/upgrade-ingot.md).
 
 ## Result
