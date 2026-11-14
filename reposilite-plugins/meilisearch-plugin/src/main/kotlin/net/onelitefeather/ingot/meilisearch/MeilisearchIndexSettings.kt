@@ -28,7 +28,7 @@ internal object MeilisearchIndexSettings {
     val FILTERABLE: List<String> = listOf(
         "id", "repository", "path", "directories", "gav", "group_id", "artifact_id", "version", "group_id_lc", "artifact_id_lc",
         "version_lc", "artifact_key", "classifier", "extension", "snapshot", "origin", "source_host", "size_bytes", "last_modified",
-        "indexed_at", "sha1",
+        "indexed_at", "sha1", "word_prefixes",
     )
 
     val SORTABLE: List<String> = listOf("path", "repository", "group_id", "artifact_id", "version", "size_bytes", "last_modified")

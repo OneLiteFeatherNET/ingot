@@ -70,8 +70,9 @@ internal class MeilisearchReader(
         checkWindow(query.page, query.size)
         val base = MeilisearchFilters.access(access) ?: return emptyPage(query)
         val conditions = listOf(base) + conditionsOf(query).map { it.second }
-        val window = search(conditions, query.q, distinct = GAV, hitsPerPage = WINDOW)
         val text = query.q?.trim()?.lowercase().orEmpty()
+        val (wordConditions, dottedQuery) = textRule(query)
+        val window = search(conditions + wordConditions, dottedQuery, distinct = GAV, hitsPerPage = WINDOW_FETCH)
         val dotted = '.' in text
         val windowTotal = window.path("totalHits").asLong(0L)
         val rows = window.path("hits").map(::groupOf).filter { row ->
@@ -121,9 +122,10 @@ internal class MeilisearchReader(
             throw SearchUnavailableException("a version prefix is not supported for facets by the meilisearch backend, drop it")
         }
         val all = conditionsOf(query)
+        val (wordConditions, dottedQuery) = textRule(query)
         fun buckets(attribute: String): List<FacetBucket> {
-            val conditions = listOf(base) + all.filter { it.first != attribute }.map { it.second }
-            val answer = search(conditions, query.q, facets = listOf(attribute), hitsPerPage = 0)
+            val conditions = listOf(base) + all.filter { it.first != attribute }.map { it.second } + wordConditions
+            val answer = search(conditions, dottedQuery, facets = listOf(attribute), hitsPerPage = 0)
             return answer.path("facetDistribution").path(attribute).fields().asSequence()
                 .map { (value, count) -> FacetBucket(value, count.asLong()) }
                 .sortedBy { it.value }
@@ -260,6 +262,12 @@ internal class MeilisearchReader(
 
     // ---- mapping -----------------------------------------------------------------------------------------------------
 
+    /** The word conditions of the query text, and the text sent to the server only for a dotted query (see [MeilisearchFilters.wordConditions]). */
+    private fun textRule(query: ArtifactSearchQuery): Pair<List<String>, String?> {
+        val text = query.q?.trim().orEmpty()
+        return if ('.' in text) emptyList<String>() to query.q else MeilisearchFilters.wordConditions(text) to null
+    }
+
     /**
      * Whether a group is a main group of the query: a dotted query is a prefix of the groupId or of the version, any other text is a
      * prefix of the groupId, the artifactId or the version. Every other group is matched only by a word.
@@ -360,7 +368,11 @@ internal class MeilisearchReader(
 
     companion object {
         const val GAV = "gav"
+        /** The bound of a page, as the database engine validates it. */
         const val WINDOW = 10_000
+
+        /** The distinct groups fetched for one request: the design's window, one above the total cap, so the count is exact. */
+        const val WINDOW_FETCH = 10_101
         const val MAX_SEARCH_SIZE = 100
         const val SCAN_PAGE = 1000
         const val MAX_VERSIONS_PER_ARTIFACT = 5_000

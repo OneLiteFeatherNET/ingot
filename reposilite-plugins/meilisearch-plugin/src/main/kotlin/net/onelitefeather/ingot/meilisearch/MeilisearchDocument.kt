@@ -66,7 +66,10 @@ internal object MeilisearchDocument {
         row.sha1?.let { document.put("sha1", it) }
         row.sha256?.let { document.put("sha256", it) }
         val tokens = document.putArray("tokens")
-        SearchTokens.of(file.groupId, file.artifactId, file.version).forEach { tokens.add(it) }
+        val tokenList = SearchTokens.of(file.groupId, file.artifactId, file.version)
+        tokenList.forEach { tokens.add(it) }
+        val prefixes = document.putArray("word_prefixes")
+        tokenList.flatMap { token -> (1..token.length).map { token.substring(0, it) } }.distinct().forEach { prefixes.add(it) }
         return document
     }
 

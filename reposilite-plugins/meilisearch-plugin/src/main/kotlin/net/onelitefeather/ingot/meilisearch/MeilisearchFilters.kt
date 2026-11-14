@@ -21,6 +21,7 @@ package net.onelitefeather.ingot.meilisearch
 import net.onelitefeather.ingot.search.SearchUnavailableException
 import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.SearchAccess
+import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 
 /**
@@ -108,6 +109,15 @@ internal object MeilisearchFilters {
 
     /** A string value of the filter language, with the backslash and the quote escaped. */
     fun quote(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+    /**
+     * The conditions of the words of a query text (contract: each word is a prefix of a token of the GAV, and every word must match).
+     * A text with a dot is a coordinate prefix and gets no word conditions: its groups are chosen by the caller.
+     */
+    fun wordConditions(text: String): List<String> {
+        if ('.' in text) return emptyList()
+        return text.trim().split(Regex("\\s+")).flatMap { SearchTokens.partsOf(it) }.map { "word_prefixes = ${quote(it)}" }
+    }
 
     /** A list of values as the `IN` list of the filter language. */
     fun inList(values: Collection<String>): String = values.joinToString(separator = ", ", prefix = "[", postfix = "]") { quote(it) }
