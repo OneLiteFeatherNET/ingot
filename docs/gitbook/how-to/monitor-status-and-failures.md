@@ -109,7 +109,7 @@ Set `INGOT_LOG_FILE=false` to write no file at all. The console keeps every line
 
 ## Structured console output
 
-With `INGOT_LOG_FORMAT=json`, every console line is one JSON object, for example `{"time":"2026-11-14T10:15:30.123Z","level":"INFO","message":"Listening on ..."}`. The `time` value is in UTC. Colour codes are removed from the message. When an OpenTelemetry agent is attached and a span is active on the thread that logs, the line also carries `trace_id` and `span_id`, so a log line can be joined to its trace. Without an agent the two fields are absent, and they are never written as `null`. The fields appear only when the agent makes its OpenTelemetry API visible to the server. Ingot does not start spans or configure the agent.
+With `INGOT_LOG_FORMAT=json`, every console line is one JSON object, for example `{"time":"2026-11-14T10:15:30.123Z","level":"INFO","message":"Listening on ..."}`. The `time` value is in UTC. Colour codes are removed from the message. When a span is active on the thread that logs, for example inside a request traced by the OpenTelemetry Java agent, the line also carries `trace_id` and `span_id`, so a log line can be joined to its trace. Without a span the two fields are absent, and they are never written as `null`. The OpenTelemetry Java agent, attached with `-javaagent`, makes its spans visible this way. Ingot does not start spans or configure the agent.
 
 The log files stay in text form in both formats, so the files that the container writes are unchanged.
 
