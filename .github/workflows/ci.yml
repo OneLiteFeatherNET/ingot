@@ -301,7 +301,9 @@ jobs:
           load: true
           tags: ingot:ci
           cache-from: type=gha,scope=ci-server
-          cache-to: type=gha,mode=max,scope=ci-server
+          # Pushes to main keep a minimal export for the next run. Pull requests export nothing: a
+          # key built from COPY . changes with every commit, so nothing the pull request writes is read back.
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=min,scope=ci-server' || '' }}
 
       - name: "Build the dashboard image"
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
@@ -315,7 +317,7 @@ jobs:
           load: true
           tags: ingot-dashboard:ci
           cache-from: type=gha,scope=ci-dashboard
-          cache-to: type=gha,mode=max,scope=ci-dashboard
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=min,scope=ci-dashboard' || '' }}
 
       # Building an image proves the Dockerfile parses. Everything that has actually gone
       # wrong with these two was runtime behaviour that a build cannot see: privileges the
@@ -396,14 +398,14 @@ jobs:
       #
       # Neither loaded nor pushed: a single Docker image store cannot hold two
       # architectures under one tag, and the question here is only whether it builds.
+      # No cache export: the build stage is shared with the amd64 build above through the builder's
+      # local cache, so the Gradle build runs once and nothing is written to the Actions cache.
       - name: "Build the server image for arm64"
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
           platforms: linux/arm64
           push: false
-          cache-from: type=gha,scope=ci-server
-          cache-to: type=gha,mode=max,scope=ci-server-arm64
 
       - name: "Build the dashboard image for arm64"
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
@@ -412,8 +414,6 @@ jobs:
           file: reposilite-frontend/Dockerfile
           platforms: linux/arm64
           push: false
-          cache-from: type=gha,scope=ci-dashboard
-          cache-to: type=gha,mode=max,scope=ci-dashboard-arm64
 
   # The chart is linted and rendered without a cluster first, because a broken template is the
   # cheapest thing to catch. Then chart-testing installs both deploy modes on a kind cluster
