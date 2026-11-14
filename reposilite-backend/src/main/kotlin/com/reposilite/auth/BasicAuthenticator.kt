@@ -30,11 +30,20 @@ internal class BasicAuthenticator(
     private val clock: Clock = Clock.systemUTC(),
 ) : Authenticator {
 
-    override fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> =
-        accessTokenFacade.getAccessToken(credentials.name)
-            ?.takeIf { !it.isExpired(clock) && !accessTokenFacade.isDisabled(it.identifier) && accessTokenFacade.secretMatches(it.identifier, credentials.secret) }
-            ?.asSuccess()
-            ?: unauthorizedError("Invalid authorization credentials")
+    override fun authenticate(credentials: Credentials): Result<AccessTokenDto, ErrorResponse> {
+        val usable = accessTokenFacade.getAccessToken(credentials.name)
+            ?.takeIf { !it.isExpired(clock) && !accessTokenFacade.isDisabled(it.identifier) }
+
+        // Every login spends exactly one secret verification, so the response time does not reveal whether the name is usable.
+        val secretMatches = if (usable != null) {
+            accessTokenFacade.secretMatches(usable.identifier, credentials.secret)
+        } else {
+            accessTokenFacade.verifyAgainstDummySecret(credentials.secret)
+            false
+        }
+
+        return if (usable != null && secretMatches) usable.asSuccess() else unauthorizedError("Invalid authorization credentials")
+    }
 
     override fun enabled(): Boolean =
         true
