@@ -130,7 +130,7 @@ const clear = () =>
   <VueFinalModal
     v-model="open"
     teleport-to="body"
-    :overlay-class="'vfm__overlay bg-scrim/32!'"
+    :overlay-class="'vfm__overlay bg-scrim/md-scrim!'"
     class="flex justify-end"
   >
     <section

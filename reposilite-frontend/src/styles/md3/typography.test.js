@@ -45,6 +45,48 @@ describe('type scale is the md3 scale', () => {
     expect(typography).toContain('--md-sys-typescale-label-medium-weight-prominent: 700;')
   })
 
+})
+
+describe('extra long motion durations', () => {
+  it.each([
+    ['extra-long1', '700ms'],
+    ['extra-long2', '800ms'],
+    ['extra-long3', '900ms'],
+    ['extra-long4', '1000ms']
+  ])('defines %s as %s', (name, value) => {
+    expect(motion).toContain(`--md-sys-motion-duration-${name}: ${value};`)
+  })
+})
+
+// The body of the @utility block of the given name.
+const utilityOf = (name) => {
+  const start = typography.indexOf(`@utility ${name} {`)
+  return start < 0 ? '' : typography.slice(start, typography.indexOf('\n}', start) + 2)
+}
+
+describe('monospace family', () => {
+  it('is a documented extension token in the typography file', () => {
+    expect(typography, 'the mono family is declared in the typography tokens').toMatch(/--font-mono:\s*Consolas, Monaco, monospace;/)
+  })
+
+  it('is no longer declared in the dashboard stylesheet', () => {
+    expect(globalStyles, 'src/style.css does not declare --font-mono').not.toContain('--font-mono:')
+  })
+
+  it.each([
+    ['md-code-small', 'md-sys-typescale-body-small-size'],
+    ['md-code-medium', 'md-sys-typescale-body-medium-size'],
+  ])('declares the %s utility in the monospace family at the body size', (name, sizeToken) => {
+    const utility = utilityOf(name)
+    expect(utility, `a @utility ${name} block`).not.toBe('')
+    expect(utility, 'the family is the mono token').toContain('font-family: var(--font-mono)')
+    expect(utility, 'the size comes from the type scale').toContain(`font-size: var(--${sizeToken});`)
+  })
+})
+
+// The prominent labels keep their own declarations: an @apply of the base label changes the order in which Tailwind
+// emits them, and the base weight then overrides the prominent one (see the comment in typography.css).
+describe('prominent label utilities', () => {
   it('defines md-label-large-prominent with the label large size and the prominent weight', () => {
     expect(typography).toMatch(
       /@utility md-label-large-prominent \{[^}]*font-size: var\(--md-sys-typescale-label-large-size\)[^}]*font-weight: var\(--md-sys-typescale-label-large-weight-prominent\)/
@@ -56,15 +98,8 @@ describe('type scale is the md3 scale', () => {
       /@utility md-label-medium-prominent \{[^}]*font-size: var\(--md-sys-typescale-label-medium-size\)[^}]*font-weight: var\(--md-sys-typescale-label-medium-weight-prominent\)/
     )
   })
-})
 
-describe('extra long motion durations', () => {
-  it.each([
-    ['extra-long1', '700ms'],
-    ['extra-long2', '800ms'],
-    ['extra-long3', '900ms'],
-    ['extra-long4', '1000ms']
-  ])('defines %s as %s', (name, value) => {
-    expect(motion).toContain(`--md-sys-motion-duration-${name}: ${value};`)
+  it('does not @apply the base label, so the prominent weight stays after the base declarations', () => {
+    expect(typography, 'no @apply inside the prominent labels').not.toMatch(/@apply md-label-(large|medium);/)
   })
 })

@@ -252,7 +252,7 @@ const sheetOpen = ref(false)
 
     <!-- The reading measure caps the layout (side navigation and page content), never the header: the header spans the
          container on every page, and a reading page only keeps its content column at 960 pixels. -->
-    <div :class="reading ? 'max-w-[960px]' : 'min-w-0'">
+    <div :class="reading ? 'max-w-md-reading' : 'min-w-0'">
       <SideNavLayout
         :label="label"
         :groups="groups"

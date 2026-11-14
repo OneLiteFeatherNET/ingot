@@ -19,23 +19,25 @@
  * from the area that answers a touch, which is at least 48px. The visual element stays
  * small and the hit area is an invisible box centred on it, as material-web does.
  *
- * Usage: add `md-touch-target` to an element with `position: relative`. The box is drawn
- * on ::after. ::before stays free for the state layer (see state-layer.css), so the two
- * never clash. The box is transparent and takes no space, so it changes nothing on screen.
+ * Usage: add `md-touch-target` to an element. The box is drawn on ::after. ::before stays
+ * free for the state layer (see state-layer.css), so the two never clash. The box is
+ * transparent and takes no space, so it changes nothing on screen.
  */
 
-@layer components {
-  .md-touch-target {
-    position: relative;
-  }
+:root {
+  --md-sys-touch-target-size: 48px;
+}
 
-  .md-touch-target::after {
+@utility md-touch-target {
+  position: relative;
+
+  &::after {
     content: "";
     position: absolute;
     top: 50%;
     left: 50%;
     translate: -50% -50%;
-    min-width: 48px;
-    min-height: 48px;
+    min-width: var(--md-sys-touch-target-size);
+    min-height: var(--md-sys-touch-target-size);
   }
 }

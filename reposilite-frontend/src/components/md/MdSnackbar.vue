@@ -51,7 +51,7 @@ const isError = computed(() => current.value?.tone === 'error')
         :role="isError ? 'alert' : 'status'"
         :aria-live="isError ? undefined : 'polite'"
         :data-tone="current.tone"
-        class="pointer-events-auto flex min-h-12 w-full max-w-[560px] items-center gap-2 rounded-corner-extra-small bg-inverse-surface py-2 pr-2 pl-4 text-inverse-on-surface shadow-elevation-3 md-body-medium"
+        class="pointer-events-auto flex min-h-12 w-full max-w-md-snackbar items-center gap-2 rounded-corner-extra-small bg-inverse-surface py-2 pr-2 pl-4 text-inverse-on-surface shadow-elevation-3 md-body-medium"
       >
         <span class="min-w-0 flex-1 break-words py-1">{{ current.message }}</span>
         <button

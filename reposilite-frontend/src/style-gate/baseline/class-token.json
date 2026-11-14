@@ -70,11 +70,6 @@
     "count": 1
   },
   {
-    "file": "src/pages/IndexPage.vue",
-    "match": "pane-sheet",
-    "count": 1
-  },
-  {
     "file": "src/store/configuration.js",
     "match": "description",
     "count": 1

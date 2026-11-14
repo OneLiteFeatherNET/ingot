@@ -78,40 +78,5 @@
     "file": "src/helpers/useTreeFits.js",
     "match": ".settings-save-bar",
     "count": 1
-  },
-  {
-    "file": "src/style.css",
-    "match": ".pane-corner",
-    "count": 1
-  },
-  {
-    "file": "src/style.css",
-    "match": ".pane-corner-end",
-    "count": 1
-  },
-  {
-    "file": "src/style.css",
-    "match": ".pane-corner-start",
-    "count": 1
-  },
-  {
-    "file": "src/styles/md3/state-layer.css",
-    "match": ".md-focus-ring",
-    "count": 1
-  },
-  {
-    "file": "src/styles/md3/state-layer.css",
-    "match": ".md-focus-ring-inset",
-    "count": 1
-  },
-  {
-    "file": "src/styles/md3/state-layer.css",
-    "match": ".md-state-layer",
-    "count": 9
-  },
-  {
-    "file": "src/styles/md3/touch-target.css",
-    "match": ".md-touch-target",
-    "count": 2
   }
 ]

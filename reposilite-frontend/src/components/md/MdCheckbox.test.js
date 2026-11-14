@@ -83,7 +83,7 @@ describe('MdCheckbox', () => {
   it('draws the box at 18px', () => {
     const wrapper = mountCheckbox()
 
-    expect(box(wrapper).classes()).toContain('size-[18px]')
+    expect(box(wrapper).classes()).toContain('size-md-icon')
   })
 
   it('sizes the state layer at 40px, the size of its container', () => {
@@ -149,20 +149,20 @@ describe('MdCheckbox', () => {
   it('shows the focus state layer while the input has keyboard focus', () => {
     const wrapper = mountCheckbox()
 
-    expect(stateLayer(wrapper).classes()).toContain('peer-focus-visible:opacity-[0.12]')
+    expect(stateLayer(wrapper).classes()).toContain('peer-focus-visible:opacity-md-state-focus')
   })
 
   it('uses the MD3 hover and pressed opacities on the state layer', () => {
     const wrapper = mountCheckbox()
 
-    expect(stateLayer(wrapper).classes()).toContain('peer-hover:opacity-[0.08]')
-    expect(stateLayer(wrapper).classes()).toContain('peer-active:opacity-[0.12]')
+    expect(stateLayer(wrapper).classes()).toContain('peer-hover:opacity-md-state-hover')
+    expect(stateLayer(wrapper).classes()).toContain('peer-active:opacity-md-state-pressed')
   })
 
   it('draws no state layer while disabled', () => {
     const wrapper = mountCheckbox({ disabled: true })
 
-    expect(stateLayer(wrapper).classes()).not.toContain('peer-hover:opacity-[0.08]')
+    expect(stateLayer(wrapper).classes()).not.toContain('peer-hover:opacity-md-state-hover')
     expect(stateLayer(wrapper).classes()).toContain('opacity-0')
   })
 

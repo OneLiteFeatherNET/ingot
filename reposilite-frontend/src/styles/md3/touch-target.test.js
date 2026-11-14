@@ -26,22 +26,25 @@ import { fileURLToPath } from 'node:url'
  */
 const touchTargetCss = readFileSync(fileURLToPath(new URL('./touch-target.css', import.meta.url)), 'utf8')
 
-function declarationsOf(css, selector) {
-  const start = css.indexOf(`${selector} {`)
+// The body of the @utility block of the given name, which holds the ::after rule of the hit area.
+function utilityBody(css, name) {
+  const start = css.indexOf(`@utility ${name} {`)
   if (start === -1) return ''
-  return css.slice(start, css.indexOf('}', start))
+  return css.slice(start, css.indexOf('\n}', start) + 2)
 }
 
 describe('md-touch-target', () => {
-  const after = declarationsOf(touchTargetCss, '.md-touch-target::after')
+  const utility = utilityBody(touchTargetCss, 'md-touch-target')
+  const after = utility.slice(utility.indexOf('&::after'))
 
-  it('draws its hit area on ::after, because ::before belongs to the state layer', () => {
-    expect(touchTargetCss).not.toContain('.md-touch-target::before')
-    expect(after).not.toBe('')
+  it('is declared as a utility that draws its hit area on ::after, because ::before belongs to the state layer', () => {
+    expect(utility, 'a @utility md-touch-target block').not.toBe('')
+    expect(utility).not.toContain('&::before')
+    expect(after, 'the hit area rule').not.toBe('')
   })
 
   it('is absolutely positioned inside the element', () => {
-    expect(declarationsOf(touchTargetCss, '.md-touch-target')).toContain('position: relative')
+    expect(utility).toContain('position: relative')
     expect(after).toContain('position: absolute')
   })
 
@@ -51,9 +54,10 @@ describe('md-touch-target', () => {
     expect(after).toContain('translate: -50% -50%')
   })
 
-  it('has a 48px minimum width and height', () => {
-    expect(after).toContain('min-width: 48px')
-    expect(after).toContain('min-height: 48px')
+  it('takes its 48px minimum size from the touch target token', () => {
+    expect(touchTargetCss, 'the touch target token is 48px').toContain('--md-sys-touch-target-size: 48px;')
+    expect(after).toContain('min-width: var(--md-sys-touch-target-size)')
+    expect(after).toContain('min-height: var(--md-sys-touch-target-size)')
   })
 
   it('is transparent, so it adds no paint', () => {

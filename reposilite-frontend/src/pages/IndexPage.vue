@@ -357,7 +357,7 @@ const activeLabel = computed(() => pageLabel(section.value))
     -->
     <div
       class="overflow-x-clip bg-surface"
-      :class="hasNavigation ? 'pane-sheet medium:flex medium:min-h-[calc(100dvh_-_4rem)] medium:flex-col medium:rounded-tl-corner-extra-large xlarge:mr-4 xlarge:rounded-tr-corner-extra-large' : ''"
+      :class="hasNavigation ? 'medium:flex medium:min-h-[calc(100dvh_-_var(--spacing-md-top-bar))] medium:flex-col medium:rounded-tl-corner-extra-large xlarge:mr-4 xlarge:rounded-tr-corner-extra-large' : ''"
     >
       <main
         id="main"
@@ -509,12 +509,12 @@ const activeLabel = computed(() => pageLabel(section.value))
       />
     </div>
     <PageFooter
-      :class="hasNavigation ? 'max-medium:pt-[calc(5rem+env(safe-area-inset-bottom))] medium:hidden' : ''"
+      :class="hasNavigation ? 'max-medium:pt-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom))] medium:hidden' : ''"
     />
     <template v-if="hasNavigation">
       <div
         v-if="moreOpen"
-        class="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom)+0.5rem)] z-30 rounded-corner-large bg-surface-container-high p-2 medium:hidden"
+        class="fixed inset-x-3 bottom-[calc(var(--spacing-md-bottom-bar)+env(safe-area-inset-bottom)+--spacing(2))] z-30 rounded-corner-large bg-surface-container-high p-2 medium:hidden"
         @keydown.esc="moreOpen = false"
       >
         <nav aria-label="More sections">

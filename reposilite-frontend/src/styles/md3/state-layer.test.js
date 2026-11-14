@@ -20,73 +20,137 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-/*
- * The state layer and focus ring are CSS, so the tests read the declarations of the rule
- * they pin. Vitest does not process CSS imports (it hands back an empty string), so the
- * stylesheet source is read directly. The values are the Material Design 3 state opacities
- * (material-web tokens, `_md-sys-state.scss`, v0_192) and the MD3 focus indicator.
- */
 const stateLayerCss = readFileSync(fileURLToPath(new URL('./state-layer.css', import.meta.url)), 'utf8')
 
-function declarationsOf(css, selector) {
-  const start = css.indexOf(`${selector} {`)
+// The text of the @utility block with the given name, from its opening brace to the brace that closes it.
+function utilityBlock(css, name) {
+  const start = css.indexOf(`@utility ${name} {`)
   if (start === -1) return ''
-  return css.slice(start, css.indexOf('}', start))
+  let depth = 0
+  for (let index = css.indexOf('{', start); index < css.length; index++) {
+    if (css[index] === '{') depth++
+    if (css[index] === '}' && --depth === 0) return css.slice(start, index + 1)
+  }
+  return ''
 }
 
+describe('state layers, focus rings and the touch target are utilities', () => {
+  it.each(['md-state-layer', 'md-focus-ring', 'md-focus-ring-inset'])(
+    'declares %s with @utility',
+    (name) => {
+      expect(utilityBlock(stateLayerCss, name), `a @utility ${name} block`).not.toBe('')
+    }
+  )
+
+  it('declares md-touch-target with @utility, in the touch target file', () => {
+    const touchTargetCss = readFileSync(fileURLToPath(new URL('./touch-target.css', import.meta.url)), 'utf8')
+    expect(utilityBlock(touchTargetCss, 'md-touch-target'), 'a @utility md-touch-target block').not.toBe('')
+  })
+
+  it.each(['md-state-hover', 'md-state-focus', 'md-state-pressed', 'md-state-dragged', 'md-focus-ring-within'])(
+    'declares the variant-driven utility %s',
+    (name) => {
+      expect(utilityBlock(stateLayerCss, name), `a @utility ${name} block`).not.toBe('')
+    }
+  )
+
+  it('keeps no plain class selector for the state layer, so the helpers only exist as utilities', () => {
+    expect(stateLayerCss, 'no .md-state-layer class rule outside a utility').not.toMatch(/(^|\n)\s*\.md-[a-z-]+[^{]*\{/)
+  })
+})
+
+describe('state opacity tokens', () => {
+  it.each([
+    ['--md-sys-state-hover-opacity', '0.08'],
+    ['--md-sys-state-focus-opacity', '0.12'],
+    ['--md-sys-state-pressed-opacity', '0.12'],
+    ['--md-sys-state-dragged-opacity', '0.16'],
+    ['--md-sys-state-disabled-container-opacity', '0.12'],
+    ['--md-sys-state-disabled-content-opacity', '0.38'],
+  ])('declares %s as %s', (name, value) => {
+    expect(stateLayerCss, `${name} is an MD3 state token`).toContain(`${name}: ${value};`)
+  })
+
+  it('exposes the disabled opacities as theme keys for the opacity modifiers', () => {
+    expect(stateLayerCss, 'bg-on-surface/md-disabled-container reads this key').toContain('--opacity-md-disabled-container:')
+    expect(stateLayerCss, 'text-on-surface/md-disabled-content reads this key').toContain('--opacity-md-disabled-content:')
+  })
+})
+
 describe('md-state-layer opacities', () => {
-  it('uses the MD3 focus state layer opacity of 12 percent', () => {
-    const rule = declarationsOf(stateLayerCss, '.md-state-layer:focus-visible')
+  const layer = utilityBlock(stateLayerCss, 'md-state-layer')
 
-    expect(rule).toContain('--md-state-opacity: 0.12')
+  it('takes the focus state opacity from its token on keyboard focus', () => {
+    expect(layer).toContain('&:focus-visible')
+    expect(layer).toContain('--md-state-opacity: var(--md-sys-state-focus-opacity)')
   })
 
-  it('uses the MD3 pressed state layer opacity of 12 percent', () => {
-    const rule = declarationsOf(stateLayerCss, '.md-state-layer:active')
-
-    expect(rule).toContain('--md-state-opacity: 0.12')
+  it('takes the pressed state opacity from its token', () => {
+    expect(layer).toContain('--md-state-opacity: var(--md-sys-state-pressed-opacity)')
   })
 
-  it('keeps the MD3 hover state layer opacity of 8 percent', () => {
-    expect(stateLayerCss).toContain('.md-state-layer:hover {\n      --md-state-opacity: 0.08;')
+  it('takes the hover state opacity from its token, on devices that can hover', () => {
+    expect(layer).toContain('--md-state-opacity: var(--md-sys-state-hover-opacity)')
+    expect(layer).toMatch(/@media \(hover: hover\)/)
   })
 
-  it('keeps the MD3 dragged state layer opacity of 16 percent', () => {
-    const rule = declarationsOf(stateLayerCss, '.md-state-layer.is-dragged')
+  it('takes the dragged state opacity from its token', () => {
+    expect(layer).toContain('--md-state-opacity: var(--md-sys-state-dragged-opacity)')
+  })
 
-    expect(rule).toContain('--md-state-opacity: 0.16')
+  it('writes no literal opacity inside the utility', () => {
+    expect(layer, 'a state value is a token, not a number').not.toMatch(/--md-state-opacity:\s*0\.\d/)
+  })
+
+  it.each([
+    ['md-state-hover', '--md-sys-state-hover-opacity'],
+    ['md-state-focus', '--md-sys-state-focus-opacity'],
+    ['md-state-pressed', '--md-sys-state-pressed-opacity'],
+    ['md-state-dragged', '--md-sys-state-dragged-opacity'],
+  ])('%s sets the state opacity from %s, for use with a variant', (name, token) => {
+    expect(utilityBlock(stateLayerCss, name)).toContain(`--md-state-opacity: var(${token})`)
   })
 })
 
 describe('md-focus-ring', () => {
-  const rule = declarationsOf(stateLayerCss, '.md-focus-ring:focus-visible')
+  const rule = utilityBlock(stateLayerCss, 'md-focus-ring')
 
-  it('draws a 3px outline', () => {
-    expect(rule).toContain('outline: 3px solid')
+  it('draws a 3px outline on keyboard focus only', () => {
+    expect(rule).toContain('&:focus-visible')
+    expect(rule).toContain('outline: var(--md-sys-focus-ring-width) solid var(--md-sys-color-secondary)')
   })
 
-  it('draws the outline in the secondary colour role', () => {
-    expect(rule).toContain('outline: 3px solid var(--md-sys-color-secondary)')
-  })
-
-  it('sets the outline outward by 2px', () => {
-    expect(rule).toContain('outline-offset: 2px')
+  it('takes the width and the outward offset from the focus ring tokens', () => {
+    expect(stateLayerCss).toContain('--md-sys-focus-ring-width: 3px;')
+    expect(stateLayerCss).toContain('--md-sys-focus-ring-offset: 2px;')
+    expect(rule).toContain('outline-offset: var(--md-sys-focus-ring-offset)')
   })
 })
 
 describe('md-focus-ring-inset', () => {
-  const rule = declarationsOf(stateLayerCss, '.md-focus-ring-inset:focus-visible')
+  const rule = utilityBlock(stateLayerCss, 'md-focus-ring-inset')
 
   it('draws the same 3px secondary outline as the outset ring', () => {
-    expect(rule).toContain('outline: 3px solid var(--md-sys-color-secondary)')
+    expect(rule).toContain('outline: var(--md-sys-focus-ring-width) solid var(--md-sys-color-secondary)')
   })
 
   it('draws the outline inside the element by its full width', () => {
-    expect(rule, 'a negative offset keeps the ring inside the window edge').toContain('outline-offset: -3px')
+    expect(rule, 'a negative offset of the width keeps the ring inside the window edge').toContain(
+      'outline-offset: calc(var(--md-sys-focus-ring-width) * -1)'
+    )
   })
 
   it('shows only for keyboard focus, not for a pointer press', () => {
-    expect(stateLayerCss).not.toContain('.md-focus-ring-inset:focus {')
-    expect(declarationsOf(stateLayerCss, '.md-focus-ring-inset')).toBe('')
+    expect(rule).toContain('&:focus-visible')
+  })
+})
+
+describe('md-focus-ring-within', () => {
+  const rule = utilityBlock(stateLayerCss, 'md-focus-ring-within')
+
+  it('draws the focus ring of its container without a selector of its own, so a variant can drive it', () => {
+    expect(rule).not.toContain(':focus')
+    expect(rule).toContain('outline: var(--md-sys-focus-ring-width) solid var(--md-sys-color-secondary)')
+    expect(rule).toContain('outline-offset: var(--md-sys-focus-ring-offset)')
   })
 })

@@ -55,7 +55,7 @@ const onClick = (event) => {
   >
     <svg
       v-if="on"
-      class="size-[18px] shrink-0"
+      class="size-md-icon shrink-0"
       viewBox="0 -960 960 960"
       aria-hidden="true"
       focusable="false"

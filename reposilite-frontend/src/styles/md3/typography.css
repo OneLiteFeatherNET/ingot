@@ -112,6 +112,14 @@
   --font-sans: var(--md-sys-typescale-font-family);
 }
 
+/*
+ * The monospace family is an extension of the type scale, not an MD3 role: code, paths and secrets are read in it.
+ * It is a system stack, as the sans family is, so no webfont is loaded for it.
+ */
+@theme {
+  --font-mono: Consolas, Monaco, monospace;
+}
+
 @utility md-display-large {
   font-family: var(--md-sys-typescale-font-family);
   font-size: var(--md-sys-typescale-display-large-size);
@@ -200,6 +208,11 @@
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
 }
 
+/*
+ * The prominent labels repeat the base declarations rather than @apply the base label. With @apply, Tailwind emits the
+ * base label after the prominent one, so its weight overrides the prominent weight (the active item of the navigation
+ * rail showed the regular weight). The copy keeps the cascade order, and the weight is the only difference.
+ */
 @utility md-label-large-prominent {
   font-family: var(--md-sys-typescale-font-family);
   font-size: var(--md-sys-typescale-label-large-size);
@@ -246,4 +259,21 @@
   line-height: var(--md-sys-typescale-body-small-line-height);
   font-weight: var(--md-sys-typescale-body-small-weight);
   letter-spacing: var(--md-sys-typescale-body-small-tracking);
+}
+
+/* Code at the body sizes, in the monospace family. */
+@utility md-code-small {
+  font-family: var(--font-mono);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  letter-spacing: var(--md-sys-typescale-body-small-tracking);
+}
+
+@utility md-code-medium {
+  font-family: var(--font-mono);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
 }

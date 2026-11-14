@@ -40,7 +40,7 @@ const titleId = useId()
     <VueFinalModal
       v-model="showAdjustments"
       teleport-to="body"
-      :overlay-class="'vfm__overlay bg-scrim/32!'"
+      :overlay-class="'vfm__overlay bg-scrim/md-scrim!'"
       class="flex items-center justify-center p-4"
     >
       <div

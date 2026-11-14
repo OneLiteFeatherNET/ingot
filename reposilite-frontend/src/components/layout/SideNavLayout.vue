@@ -68,7 +68,7 @@ watch(() => props.unsaved.length, () => nextTick(measure))
 
 const navClasses = computed(() => (props.narrow
   ? 'w-full'
-  : ['w-52 shrink-0', fits.value ? 'sticky top-[calc(4rem+1rem)]' : '']))
+  : ['w-52 shrink-0', fits.value ? 'sticky top-[calc(var(--spacing-md-top-bar)+--spacing(4))]' : '']))
 </script>
 
 <template>

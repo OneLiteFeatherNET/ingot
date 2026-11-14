@@ -8,11 +8,14 @@ Source files:
 
 - `src/styles/md3/color.css`: colour roles, light and dark, plus two status colours
 - `src/styles/md3/typography.css`: type scale and the `md-*` text classes
-- `src/styles/md3/shape-elevation-motion.css`: corner radii, elevation, easing and durations
-- `src/styles/md3/state-layer.css`: state layers and the focus ring
+- `src/styles/md3/shape-elevation-motion.css`: corner radii, elevation, easing, durations,
+  the animations, the stacking, scrim, icon and layout sizes
+- `src/styles/md3/state-layer.css`: state layers, state opacities and the focus ring
+- `src/styles/md3/touch-target.css`: the touch target
 - `src/components/md/`: primitives
-- `src/style.css`: imports the files above, sets the `dark` variant, and holds the few
-  global rules
+- `src/style.css`: imports the files above, the window size classes, the `dark` variant, the
+  page gutter, the router view height, the skeleton, the pane corners and the global rules
+  (the reduced motion rule and the base styles)
 
 ## Rules for contributors
 
@@ -331,20 +334,34 @@ exist. Prefer the `rounded-corner-*` names in new code.
 
 ## State layers and focus
 
-- `md-state-layer` adds a translucent overlay in the element's own text colour
-  (`currentColor`). Hover is 8%, focus-visible and pressed are 12%, and the dragged
-  state (`is-dragged`) is 16%. These are the MD3 state opacities (`md-sys-state`). The
-  element needs a border radius, which it can inherit.
+- `md-state-layer` is a utility. It adds a translucent overlay in the element's own text
+  colour (`currentColor`). Hover is 8%, focus-visible and pressed are 12%, and the dragged
+  state is 16%. The values are tokens: `--md-sys-state-hover-opacity`,
+  `--md-sys-state-focus-opacity`, `--md-sys-state-pressed-opacity` and
+  `--md-sys-state-dragged-opacity`. The element needs a border radius, which it can inherit.
+- The dragged state is the `is-dragged` class (plugin markup may set it). The class is
+  written as an attribute selector in the stylesheet, because the style gate counts a class
+  selector outside the documented hooks.
 - The overlay is a `::before` pseudo-element. Do not give the element its own `::before`.
 - Hover only applies on devices that can hover. Disabled elements and
   `aria-disabled="true"` get no overlay.
+- A variant can drive the state of another element. The state utilities set the overlay
+  opacity: `peer-hover:md-state-hover`, `group-hover:md-state-hover`,
+  `peer-focus-visible:md-state-focus`, `peer-active:md-state-pressed`, and `md-state-dragged`.
+  A control that keeps its own opacity (a checkbox, a radio, a switch) uses the opacity keys
+  `opacity-md-state-hover`, `opacity-md-state-focus` and `opacity-md-state-pressed` instead.
 - `md-focus-ring` draws the MD3 focus ring on `:focus-visible`: a 3px outline in the
-  `secondary` role, drawn 2px outside the element's edge (`outline-offset: 2px`).
-- `md-focus-ring-inset` is the same ring drawn inside the edge (`outline-offset: -3px`). Use
-  it for an item that sits flush against the window edge, such as the navigation rail, where
-  the outset ring would be clipped.
+  `secondary` role, drawn 2px outside the element's edge. The width and the offset are the
+  tokens `--md-sys-focus-ring-width` (3px) and `--md-sys-focus-ring-offset` (2px).
+- `md-focus-ring-inset` is the same ring drawn inside the edge, with the offset equal to the
+  negated width. Use it for an item that sits flush against the window edge, such as the
+  navigation rail, where the outset ring would be clipped.
+- `md-focus-ring-within` draws the ring of a container while a child has keyboard focus:
+  `has-focus-visible:md-focus-ring-within`. A radio card and the search field use it.
 - The focus ring is for keyboard focus only. A pointer click on a navigation rail item
   blurs that item, so no ring is left behind; a keyboard activation keeps its focus.
+- The disabled colours of a control use `bg-on-surface/md-disabled-container` and
+  `text-on-surface/md-disabled-content`, which are the MD3 disabled opacities (12% and 38%).
 
 ## Touch target
 
@@ -352,10 +369,10 @@ Visual size and hit area are separate, as in MD3 and material-web:
 
 - A button is a 40px container, a standard or filled icon button is 40 by 40 px with a
   24px icon, and a chip is 32px. The visual size is what a control shows.
-- `md-touch-target` gives the element a hit area of at least 48 by 48 px. It is an
-  invisible box centred on the element, drawn with `::after` (`min-width` and
-  `min-height` 48px). It takes no space and paints nothing.
-- The element needs `position: relative`, which the primitives set. `::before` stays
+- `md-touch-target` is a utility. It gives the element a hit area of at least 48 by 48 px,
+  the token `--md-sys-touch-target-size`. It is an invisible box centred on the element,
+  drawn with `::after`. It takes no space and paints nothing.
+- The element needs `position: relative`, which the utility sets. `::before` stays
   reserved for the state layer, so the two never clash.
 
 ## Motion
@@ -363,12 +380,28 @@ Visual size and hit area are separate, as in MD3 and material-web:
 Easing (`ease-md-*`): `standard`, `standard-decelerate`, `standard-accelerate`,
 `emphasized`, `emphasized-decelerate`, `emphasized-accelerate`.
 
-Durations are not theme-driven in Tailwind 4, so reference the variable directly:
-`duration-(--md-sys-motion-duration-short3)`. Available steps are `short1` to `short4`
-(50 to 200ms), `medium1` to `medium4` (250 to 400ms), `long1` to `long4` (450 to 600ms) and
-`extra-long1` to `extra-long4` (700 to 1000ms, for the largest transitions).
+Durations: Tailwind 4.3 has no theme namespace for durations (a `--duration-*` token
+generates no utility; checked by compiling a scratch stylesheet). Each motion duration token
+therefore has a `duration-md-<name>` utility: `short1` to `short4` (50 to 200ms),
+`medium1` to `medium4` (250 to 400ms), `long1` to `long4` (450 to 600ms) and `extra-long1` to
+`extra-long4` (700 to 1000ms, for the largest transitions). The utility sets the transition
+duration and the `--tw-duration` value that the transition utilities read. The older form
+`duration-(--md-sys-motion-duration-short3)` still works and is not rewritten.
 
-`md-state-layer` and the linear progress animation respect `prefers-reduced-motion`.
+Animations are `--animate-*` tokens built from the motion tokens, with their keyframes next
+to them, in `shape-elevation-motion.css`:
+
+- `animate-md-linear-slide` (1.6s) and `animate-md-linear-slide-reduced` (4s), for the linear
+  progress indicator. Under `prefers-reduced-motion` the indicator uses the slower token.
+- `animate-md-snackbar-enter` and `animate-md-snackbar-leave`. The snackbar still runs its own
+  transitions until the component catalogue change rewrites it, so these tokens are not used
+  yet.
+- `animate-skeleton-fade-in` (800ms, with a 200ms delay), for the skeleton bars. Its timing
+  function is `ease-out`; a motion easing token would change the curve.
+
+Reduced motion is one rule, in the `base` layer of `src/style.css`. It shortens every
+animation and transition of the dashboard to 0.01ms, so `md-state-layer` and the linear
+progress animation respect `prefers-reduced-motion` without a rule of their own.
 
 ## Primitives
 
@@ -546,7 +579,7 @@ Same props and events as `MdNavigationBar`. 96px `surface-container` rail, 56 by
 
 ### Adaptive navigation
 
-Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bottom)`; the page reserves its height. From 600px the rail is fixed at the left and the page is offset by 96px, header included. From 600px the content is a `surface` sheet with rounded corners inside the frame of rail and top bar, and the sticky corner pieces under the top bar finish the sheet's corners. Switch with the CSS breakpoints `max-[600px]:` / `min-[600px]:`, never with JavaScript. A user with one section gets no navigation.
+Below 600px the bar is fixed at the bottom and respects `env(safe-area-inset-bottom)`; the page reserves its height. From 600px the rail is fixed at the left and the page is offset by 96px, header included. From 600px the content is a `surface` sheet with rounded corners inside the frame of rail and top bar, and the sticky corner pieces under the top bar finish the sheet's corners. Switch with the window classes `max-medium:` / `medium:` (see Window margins), never with JavaScript. A user with one section gets no navigation.
 
 The page publishes the bar height as `--app-bottom-bar-height` on the document root (80px with a
 bar, 0px without). The snackbar adds it to its bottom margin below 600px, so it sits above the bar.
@@ -724,12 +757,80 @@ Gaps that are deliberately left for the views that own them are listed here:
 
 - No tabs, list, dialog or drawer primitive under `src/components/md/`. Views that need one build it in their own folder until a primitive is added here.
 - The information architecture of the Administration area (its page header, its breadcrumb and the order of its entries) has no rules in this document until `rework-administration-information-architecture` adds them.
+- The surface-dim of the dark theme is `#0d141c`, the same value as the surface role, so a
+  surface that is meant to sit below the default cannot be told apart from the page. The
+  value is kept by the token change; `fix-surface-hierarchy-and-page-header` changes it.
 
 ## Window margins
 
-The `container` class is the page gutter. Its side padding follows the MD3 window size
-classes: 16px below 600px (compact), 24px from 600px (medium and expanded). The rule is
-inside `@layer components`, so a view's own `px-*` utility would still win and override
-the gutter. Do not add `px-*` to a `container` element unless the gutter should differ from
-the page. Every view and the header use the shared gutter; a test reads their sources and
-fails if a `container` element carries a `px-*` class.
+The MD3 window size classes are custom variants, not theme breakpoints, on purpose: Tailwind
+derives the width steps of its built-in `container` from the theme breakpoints, and the
+window classes would have added steps to every centred page.
+
+| Class | Window |
+| --- | --- |
+| `max-medium:` | below 600px (compact) |
+| `medium:` | from 600px (medium) |
+| `max-expanded:` | below 840px |
+| `expanded:` | from 840px |
+| `large:` | from 1240px |
+| `xlarge:` | from 1600px |
+
+A pixel literal such as `min-[600px]:` is not used in the components; a test scans the sources.
+`max-medium:` is below 600px. Tailwind writes `max-[599px]:` as below 599px, so a window of
+exactly 599 pixels follows the medium class and not the old literal. The JavaScript breakpoint
+in `IndexPage.vue` stays a literal, because a CSS token cannot feed `matchMedia`.
+
+The `container` utility is the page gutter. Its side padding follows the MD3 window margins:
+16px below 600px (compact), 24px from 600px (medium and expanded). It is an `@utility`, so a
+view's own `px-*` utility would still win and override the gutter. Do not add `px-*` to a
+`container` element unless the gutter should differ from the page. Every view and the header
+use the shared gutter; a test reads their sources and fails if a `container` element carries
+a `px-*` class. The built-in width steps of `container` (40rem to 96rem) are kept: the custom
+utility adds only the gutter.
+
+## Layout, stacking and scrim
+
+Named sizes, each a theme key (see `shape-elevation-motion.css` and `color.css`):
+
+| Key | Value | Use |
+| --- | --- | --- |
+| `z-md-sticky` | 20 | sticky elements (no view uses it yet) |
+| `z-md-top-bar` | 30 | the bottom bar of a narrow window |
+| `z-md-menu` | 50 | menus |
+| `z-md-dialog` | 1000 (`--md-sys-z-dialog`) | dialogs; the vue-final-modal root takes the same value |
+| `z-md-snackbar` | 1100 | the snackbar |
+| `bg-scrim/md-scrim` | 32% | the overlay of a dialog or a sheet |
+| `bg-scrim/md-scrim-strong` | 40% | the migration dialog |
+| `size-md-icon` | 18px (`1.125rem`) | icons of the primitives |
+| `top-md-top-bar`, `min-h-md-top-bar` | 4rem | the top bar |
+| `w-md-rail` | 6rem | the navigation rail |
+| `--spacing-md-bottom-bar` | 5rem | the bottom bar, read as `var(--spacing-md-bottom-bar)`; `BOTTOM_BAR_HEIGHT` in `src/helpers/bottom-bar.js` must equal it in pixels (80px) |
+| `max-w-md-reading` | 60rem (960px) | the reading measure of a page |
+| `--container-md-sheet` | 20rem (320px) | the side sheet, read as `var(--container-md-sheet)` in its width |
+| `max-w-md-snackbar` | 35rem (560px) | the snackbar |
+
+The layout keys are spacing or container keys, so `calc()` takes them as
+`var(--spacing-md-top-bar)`, `var(--container-md-sheet)` and so on.
+
+The pane corners that finish the content sheet are `pane-corner`, with `pane-corner-start`
+on the left edge and `pane-corner-end` on the right. `md-router-view` is the minimum height
+of a page below the top bar. `skeleton-bars` fades in its bars. `md-embedded-input` removes
+the field box of an input inside a composite field. `olf-brand-bar` is a 4px band at the top
+of a section and is kept for plugin markup.
+
+## Tailwind 4.3 facts
+
+Checked against the installed `tailwindcss` 4.3.3 by compiling a scratch stylesheet:
+
+- No `--duration-*` namespace: `duration-md-short2` is not generated from a theme token, so
+  the duration utilities are written out (see Motion).
+- `--z-index-*`, `--opacity-*`, `--container-*`, `--spacing-*` and `--animate-*` produce the
+  `z-*`, `bg-*/<key>` and `opacity-*`, `max-w-*`, `w-*`, `top-*`, `size-*` and `animate-*`
+  utilities.
+- The built-in `container` derives its width steps from the theme breakpoints, which are the
+  default `sm` to `2xl` steps here. The window classes are custom variants, so the steps do not
+  change; `@utility container` adds the gutter beside them.
+- `@utility` works with a variant, for example `peer-hover:md-state-hover`.
+- `max-[599px]:` compiles to `width < 599px`, and `max-medium:` to `width < 600px`. This is the
+  one-pixel difference of the window classes.

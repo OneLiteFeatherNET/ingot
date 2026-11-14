@@ -3,10 +3,5 @@
     "file": "src/components/md/MdLinearProgress.vue",
     "match": "`${percent}%`",
     "reason": "Progress width computed from the value at run time. No token can carry a value that changes with the data."
-  },
-  {
-    "file": "src/components/md/MdSelect.vue",
-    "match": "'--md-state-opacity':",
-    "reason": "State-layer opacity chosen per row at run time (the active row or not). A class cannot pick it per element."
   }
 ]
