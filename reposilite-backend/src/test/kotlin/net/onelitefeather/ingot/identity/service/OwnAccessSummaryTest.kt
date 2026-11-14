@@ -29,6 +29,7 @@ import net.onelitefeather.ingot.identity.api.CreatePrincipalRequest
 import net.onelitefeather.ingot.identity.api.CreateTeamRequest
 import net.onelitefeather.ingot.identity.api.CreateTokenRequest
 import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -52,7 +53,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `the summary names the caller with its display name and kind`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice", displayName = "Alice Example"))
 
             val summary = service.ownAccess(principalCaller(service, "alice")).orNull()!!
@@ -65,7 +66,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `the teams of the caller are listed with their direct parents only`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.createTeam(CreateTeamRequest(name = "root"))
             service.createTeam(CreateTeamRequest(name = "maintainers"))
@@ -83,7 +84,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `the private team of a machine account is not listed as a team`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci-deploy"))
             service.replacePrincipalNodes("ci-deploy", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
 
@@ -96,7 +97,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `the nodes are the effective nodes of the caller, from its own rules and its teams`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
             service.createTeam(CreateTeamRequest(name = "deployers"))
@@ -112,7 +113,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `a token narrows the nodes of its owner and marks the answer as narrowed`() {
-        withService { service, store, _ ->
+        withService { service, store, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.createTeam(CreateTeamRequest(name = "deployers"))
             service.replaceTeamNodes(
@@ -133,7 +134,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `denials are listed apart from the allowed nodes`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
             service.createTeam(CreateTeamRequest(name = "readers"))
@@ -149,7 +150,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `the instance administrator flag is set for an administrator`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             val admin = bootstrapAdmin(service)
 
             val summary = service.ownAccess(admin).orNull()!!
@@ -160,7 +161,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `the instance administrator flag is not set for a plain member`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
@@ -173,7 +174,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `the summary carries no token secret and no name of a token the caller does not present`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             val presented = service.createToken("alice", CreateTokenRequest(name = "alice-read")).orNull()!!
             service.createToken("alice", CreateTokenRequest(name = "alice-ci"))
@@ -189,7 +190,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `a temporary token has no principal and no teams, and names the token`() {
-        withService { service, _, accessTokens ->
+        withService { service, _, accessTokens, _ ->
             val temporary = accessTokens.createAccessToken(CreateAccessTokenRequest(type = AccessTokenType.TEMPORARY, name = "setup-token")).accessToken
             accessTokens.addPermission(temporary.identifier, AccessTokenPermission.MANAGER)
 
@@ -203,8 +204,36 @@ internal class OwnAccessSummaryTest {
     }
 
     @Test
+    fun `a denial that a more specific allow overrides is still listed as the rule the caller holds`() {
+        withService { service, _, _, _ ->
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.delete", true)), ifMatch = null)
+            service.createTeam(CreateTeamRequest(name = "readers"))
+            service.replaceTeamNodes("readers", listOf(NodeDto("ingot.repository.releases.delete", false)), ifMatch = null)
+            service.replaceMembers("readers", listOf("alice"), ifMatch = null)
+
+            val summary = service.ownAccess(principalCaller(service, "alice")).orNull()!!
+
+            assertThat(summary.denials).describedAs("raw denying rule of the team").containsExactly("ingot.repository.releases.delete")
+        }
+    }
+
+    @Test
+    fun `an LDAP link and an OIDC link are listed as the provider kinds of the principal`() {
+        withService { service, _, _, links ->
+            val alice = service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice")).orNull()!!
+            links.link("ldap:ldap.example.org", "uid=alice,ou=people,dc=example,dc=org", alice.value.principal.id)
+            links.link("oidc:corporate", "subject-of-alice", alice.value.principal.id)
+
+            val summary = service.ownAccess(principalCaller(service, "alice")).orNull()!!
+
+            assertThat(summary.principal?.providers).describedAs("providers").containsExactly("ldap", "oidc")
+        }
+    }
+
+    @Test
     fun `every node of the summary is allowed by the check and every denial is denied by it`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
@@ -232,7 +261,7 @@ internal class OwnAccessSummaryTest {
 
     @Test
     fun `a principal without a password has no login providers`() {
-        withService { service, _, _ ->
+        withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
 
             val summary = service.ownAccess(principalCaller(service, "alice")).orNull()!!
@@ -255,7 +284,7 @@ internal class OwnAccessSummaryTest {
     private fun persistentCaller(store: IdentityStore, tokenName: String): AccessTokenIdentifier =
         AccessTokenIdentifier(type = AccessTokenType.PERSISTENT, value = store.findToken(tokenName)!!.id)
 
-    private fun withService(block: (IdentityFacade, IdentityStore, AccessTokenFacade) -> Unit) {
+    private fun withService(block: (IdentityFacade, IdentityStore, AccessTokenFacade, ExternalIdentityStore) -> Unit) {
         DatabaseConnectionFactory.createConnection(workingDirectory, "sqlite --temporary", 1).use { connection ->
             val database = connection.database
             val extensions = Extensions(journalist)
@@ -270,7 +299,7 @@ internal class OwnAccessSummaryTest {
                 repositoryNames = { listOf("releases") },
                 clock = clock,
             )
-            block(service, store, accessTokens)
+            block(service, store, accessTokens, ExternalIdentityStore(database))
         }
     }
 }
