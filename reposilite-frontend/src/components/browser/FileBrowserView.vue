@@ -20,7 +20,6 @@ import { useAdjustments } from '../../store/adjustments'
 import { useSession } from '../../store/session'
 import AdjustmentsModal from './AdjustmentsModal.vue'
 import Card from '../card/SnippetsCard.vue'
-import { readDetailsCollapsed } from '../card/detailsCollapsed'
 import Breadcrumb from './BreadcrumbNavigation.vue'
 import FileList from './FileList.vue'
 import BrowserUpload from './FileUpload.vue'
@@ -187,9 +186,6 @@ watch(
   { immediate: true }
 )
 
-// The details card reports its fold state, so the listing can take the free width while it is folded.
-const detailsCollapsed = ref(readDetailsCollapsed())
-
 const fileBrowserCompactViewKey = 'file-browser-compact-view'
 const fileBrowserCompactMode = ref(localStorage.getItem(fileBrowserCompactViewKey) === "true")
 const toggleCompactMode = () => {
@@ -200,23 +196,16 @@ const toggleCompactMode = () => {
 
 <template>
   <!--
-    The same container as the header, so both share one content width. Below lg the details
-    card stacks above the listing, as before. From lg the listing takes the free column and the
-    details card sits in a fixed-width column beside it, with the same 24px gap in both axes.
+    The same container as the header and the start page, so all share one content width. Below lg the details
+    card stacks above the listing, folded or open alike. From lg the card is always the sidebar on the right, in the
+    same column whether it is folded or not, so the listing keeps its width and the toggle keeps its place.
   -->
   <div
-    class="container mx-auto mb-12 grid min-h-[320px] max-w-none gap-6 pt-7 lg:items-start"
-    :class="detailsCollapsed ? 'grid-cols-[minmax(0,1fr)]' : 'grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]'"
+    class="container mx-auto mb-12 grid min-h-[320px] max-w-none grid-cols-[minmax(0,1fr)] gap-6 pt-7 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
     data-ingot-component="file-browser-view"
   >
-    <div
-      class="min-w-0"
-      :class="detailsCollapsed ? '' : 'lg:col-start-2 lg:row-start-1'"
-    >
-      <Card
-        :qualifier="qualifier"
-        @update:collapsed="value => detailsCollapsed = value"
-      />
+    <div class="min-w-0 lg:col-start-2 lg:row-start-1">
+      <Card :qualifier="qualifier" />
     </div>
     <div class="min-w-0">
       <div class="flex items-center justify-between gap-2">

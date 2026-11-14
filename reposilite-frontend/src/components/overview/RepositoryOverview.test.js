@@ -498,10 +498,10 @@ describe('RepositoryOverview width', () => {
     )
   })
 
-  it('gives the browse list two thirds of the width from 1920 pixels, the card the rest', async () => {
+  it('keeps the details card at its own width on wide screens, so the list does not stretch with the window', async () => {
     await mountAt('/')
 
-    expect(wrapper.element.className, 'the list takes the wider column on wide screens').toContain('min-[1920px]:grid-cols-[2fr_1fr]')
+    expect(wrapper.element.className, 'the card column is the same from 1920 pixels').not.toContain('min-[1920px]:grid-cols-[2fr_1fr]')
   })
 
   it('has no maximum width, so the list uses the full window width', async () => {

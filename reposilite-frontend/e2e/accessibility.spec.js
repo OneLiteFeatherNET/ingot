@@ -26,14 +26,14 @@ const COVERED_PAGES = [
     name: 'the sign in dialog',
     path: '/',
     open: 'sign-in',
-    knownFault: 'issue #160: color-contrast, label-content-name-mismatch and scrollable-region-focusable',
+    knownFault: 'issue #160: color-contrast and label-content-name-mismatch',
   },
   {
     name: 'the browse overview',
     path: '/',
     // The repository rows load after the page: the check waits for one row, so the rows it reports are on screen.
     settledLink: 'Browse releases',
-    knownFault: 'issue #160: color-contrast, label-content-name-mismatch and scrollable-region-focusable',
+    knownFault: 'issue #160: color-contrast and label-content-name-mismatch',
   },
   { name: 'the search', path: '/search' },
   { name: 'the dashboard', path: '/dashboard', signedIn: true },

@@ -418,12 +418,12 @@ describe('FileBrowserView details layout', () => {
     expect(layoutGrid(wrapper).classes(), 'the wide layout has the details column').toContain(SIDE_BY_SIDE)
   })
 
-  it('gives the listing the full width while the details card is folded', () => {
+  it('keeps the side column while the details card is folded, so the listing does not move', () => {
     localStorage.setItem(DETAILS_COLLAPSED_KEY, 'true')
 
     const wrapper = mountView()
 
-    expect(layoutGrid(wrapper).classes(), 'no side column is reserved for a folded card').not.toContain(SIDE_BY_SIDE)
+    expect(layoutGrid(wrapper).classes(), 'the folded card stays in its column').toContain(SIDE_BY_SIDE)
   })
 
   it('has no maximum width, so the listing takes the full window width after the side navigation', () => {
@@ -434,13 +434,13 @@ describe('FileBrowserView details layout', () => {
     expect(layoutGrid(wrapper).classes(), 'a wide page is not capped at the container width').toContain('max-w-none')
   })
 
-  it('changes the layout when the card is folded from the page', async () => {
+  it('keeps the layout when the card is folded from the page, so the listing does not jump', async () => {
     localStorage.setItem(DETAILS_COLLAPSED_KEY, 'false')
     const wrapper = mountView()
 
     await wrapper.find('[data-testid="card-fold"]').trigger('click')
 
-    expect(layoutGrid(wrapper).classes(), 'the listing takes the width the card gave up').not.toContain(SIDE_BY_SIDE)
+    expect(layoutGrid(wrapper).classes(), 'the card stays in its column after folding').toContain(SIDE_BY_SIDE)
   })
 })
 
