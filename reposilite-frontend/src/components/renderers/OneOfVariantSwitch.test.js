@@ -139,6 +139,32 @@ describe('data that would be lost by a switch', () => {
   })
 })
 
+describe('the discriminator of the chosen variant', () => {
+  it('is not drawn as a row, because the select already shows the variant', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+    await flushPromises()
+
+    expect(select().element.value).toBe('0')
+    expect(wrapper.findAll('[data-test="constant-row"]').map(row => row.text()), 'no "Type fs" row beside the select').toEqual([])
+    expect(wrapper.text()).not.toContain('fs')
+  })
+
+  it('keeps the other fields of the variant on the form', () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+
+    expect(wrapper.find('input').element.value, 'the mount point is still shown').toBe('/srv')
+  })
+
+  it('is still written into the saved data, so the saved settings keep the type', async () => {
+    mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })
+
+    await wrapper.find('input').setValue('/data')
+    await flushPromises()
+
+    expect(lastData(), 'the saved value keeps the discriminator').toEqual({ type: 'fs', mount: '/data' })
+  })
+})
+
 describe('switching the storage provider', () => {
   it('opens the confirmation dialog when the current variant holds data', async () => {
     mountStorage({ storageProvider: { type: 'fs', mount: '/srv' } })

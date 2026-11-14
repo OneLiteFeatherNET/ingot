@@ -89,6 +89,21 @@ describe('the Repositories page inside Settings', () => {
     expect(wrapper.find('h2').text(), 'the detail heading is the id').toBe('releases')
   })
 
+  it('keeps the instance-wide factory reset off the detail of one repository', async () => {
+    await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
+
+    expect(wrapper.find('#settings-danger-title').exists(), 'the settings danger zone is the page of the whole domain, not of one repository').toBe(false)
+    expect(wrapper.text(), 'a repository page must not offer a reset of every setting').not.toContain('Factory reset')
+  })
+
+  it('shows one Danger zone on the detail of one repository, the one that deletes it', async () => {
+    await mountSettings({ address: '/settings/repositories/releases', props: { id: 'releases' } })
+
+    const zones = wrapper.findAll('h2, h3, h4').filter(heading => heading.text() === 'Danger zone')
+    expect(zones, 'the repository page has one danger zone').toHaveLength(1)
+    expect(wrapper.get('[data-test="danger-zone"]').text()).toContain('Delete repository')
+  })
+
   it('lists a repository without an id as Unnamed repository, and its Edit item opens its detail', async () => {
     const server = {
       maven: {
