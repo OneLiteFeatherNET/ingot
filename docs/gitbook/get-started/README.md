@@ -10,6 +10,6 @@ This section takes you from an empty machine to a running instance. The tutorial
 
 Start with the first tutorial. It creates the first administrator, and the page on the first administrator covers each message of that step. The second tutorial adds a team and single sign on.
 
-* [First steps with Docker](../tutorials/first-steps-with-docker.md)
-* [Set up users, teams and single sign on](../tutorials/set-up-users-teams-and-sso.md)
-* [Set up the first administrator](../how-to/set-up-first-admin.md)
+* [First steps with Docker](first-steps-with-docker.md)
+* [Set up users, teams and single sign on](set-up-users-teams-and-sso.md)
+* [Set up the first administrator](set-up-first-admin.md)

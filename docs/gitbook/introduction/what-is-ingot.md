@@ -25,11 +25,11 @@ New settings get the `INGOT_` prefix, and the `REPOSILITE_` spelling stays valid
 
 ## What Ingot adds over Reposilite
 
-* **An identity model.** Users, teams, machine accounts and permission nodes, with a role for instance administrators. See [Identity model](identity-model.md) and [How permissions are evaluated](permission-evaluation.md).
+* **An identity model.** Users, teams, machine accounts and permission nodes, with a role for instance administrators. See [Identity model](../explanation/identity-model.md) and [How permissions are evaluated](../explanation/permission-evaluation.md).
 * **External login.** Generic OpenID Connect, GitHub and LDAP sign-in for the dashboard, with provider groups mapped to teams. See [Login providers](../reference/login-providers.md).
 * **Repository types.** Hosted, proxy and group repositories that enforce their rules. See [Repository types](../reference/repository-types.md).
 * **Artifact search** across all repositories, with a built-in database backend and a plugin point for others, including an OpenSearch backend. See [Search for artifacts](../how-to/search-for-artifacts.md).
-* **Several replicas.** A shared database, an optional cluster bus and an S3 storage provider support more than one replica. See [High availability support](high-availability-support.md) for what is supported and what is tested.
+* **Several replicas.** A shared database, an optional cluster bus and an S3 storage provider support more than one replica. See [High availability support](../explanation/high-availability-support.md) for what is supported and what is tested.
 * **Operations.** An audit log with CSV export, cleanup policies, a write freeze for maintenance, a support bundle and a Helm chart. See [Review the audit log](../how-to/review-audit-log.md) and [Run on Kubernetes](../how-to/run-on-kubernetes.md).
 * **Import.** A bundled importer that copies Maven repositories from Sonatype Nexus Repository 3. See [Import from Nexus](../how-to/import-from-nexus.md).
 * **A rebuilt dashboard** in Material Design 3, which can also run in its own container. See [Dashboard pages](../reference/dashboard-pages.md).
@@ -41,5 +41,5 @@ Ingot is free and open source software under the Apache License 2.0, the same li
 ## Where to go next
 
 * [How Ingot compares](how-ingot-compares.md) sets Ingot beside Reposilite, Sonatype Nexus Repository and JFrog Artifactory.
-* [Architecture overview](architecture-overview.md) shows the parts and how a request moves through them.
-* [First steps with Docker](../tutorials/first-steps-with-docker.md) starts an instance.
+* [Architecture overview](../explanation/architecture-overview.md) shows the parts and how a request moves through them.
+* [First steps with Docker](../get-started/first-steps-with-docker.md) starts an instance.

@@ -6,7 +6,7 @@ description: Move a running Reposilite installation to Ingot by changing one lin
 
 Moving from Reposilite to Ingot changes one line: the image reference in a deployment, the name of the JAR you start, or the dependency coordinate in a build. The data directory, the configuration, the environment variables, the port and the plugins stay as they are. This page lists the one line for each way of running Ingot, and what to check afterwards.
 
-For the steps of a Reposilite 3.x upgrade, including the start on an existing data directory, read [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md). For the full list of what stays the same, read [Drop-in compatibility with Reposilite](../explanation/drop-in-compatibility.md).
+For the steps of a Reposilite 3.x upgrade, including the start on an existing data directory, read [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md). For the full list of what stays the same, read [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md).
 
 ## Before you begin
 
@@ -82,7 +82,7 @@ The build of this repository gives the server bundle the coordinate `net.onelite
 * The plugins keep working. Their packages are `com.reposilite.*`, and their JARs go into the same `plugins` directory.
 * Build tools keep their setup. The repository URLs, the tokens and the basic authentication stay as they are, and the paths of artifacts do not change.
 
-What changes is listed in [Drop-in compatibility with Reposilite](../explanation/drop-in-compatibility.md#what-changes-under-the-hood). It includes the way tokens belong to machine accounts, and the dashboard login.
+What changes is listed in [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md#what-changes-under-the-hood). It includes the way tokens belong to machine accounts, and the dashboard login.
 
 ## Check after the move
 
@@ -110,5 +110,5 @@ A rollback restores the old state. Nothing created in Ingot, such as users, mach
 ## Related pages
 
 * [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md) lists the steps of the upgrade on the same data directory.
-* [Drop-in compatibility with Reposilite](../explanation/drop-in-compatibility.md) explains what stays the same and why.
+* [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md) explains what stays the same and why.
 * [Verify an upgrade](verify-an-upgrade.md) lists the checks after the start.

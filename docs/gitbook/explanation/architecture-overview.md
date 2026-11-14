@@ -33,7 +33,7 @@ The server runs as a set of plugins on one runtime, and the bundled features, su
 
 ### Single instance
 
-One server process, with SQLite or a database server, and file system or S3 storage. This is the default, and it is what the [Docker tutorial](../tutorials/first-steps-with-docker.md) starts. It is the simplest shape and the one to start with.
+One server process, with SQLite or a database server, and file system or S3 storage. This is the default, and it is what the [Docker tutorial](../get-started/first-steps-with-docker.md) starts. It is the simplest shape and the one to start with.
 
 ### Split dashboard
 
@@ -45,6 +45,6 @@ Several server replicas share one database server and one S3 storage, behind one
 
 ## Related pages
 
-* [What is Ingot](what-is-ingot.md)
-* [How Ingot compares](how-ingot-compares.md)
+* [What is Ingot](../introduction/what-is-ingot.md)
+* [How Ingot compares](../introduction/how-ingot-compares.md)
 * [Run on Kubernetes](../how-to/run-on-kubernetes.md)

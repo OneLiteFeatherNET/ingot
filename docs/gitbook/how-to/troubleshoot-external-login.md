@@ -26,7 +26,7 @@ Shown in the redirect as `?loginError=<code>`.
 | `token_exchange_failed` | The token endpoint refused the code. Check the client id, the client secret and the redirect URI at the provider. An expired client secret of Entra ID gives this code too. |
 | `invalid_id_token` | The ID token failed a check. Its reason is in the log, see the table of log lines below. A missing user name with automatic creation on gives this code as well. |
 | `no_database` | The login could not start a session. The database is not reachable, check the database settings. |
-| `setup_required` | No user exists yet. Create the first administrator locally, see [Set up the first administrator](set-up-first-admin.md). |
+| `setup_required` | No user exists yet. Create the first administrator locally, see [Set up the first administrator](../get-started/set-up-first-admin.md). |
 | `user_not_provisioned` | The person has no linked account and automatic creation is off. Turn it on, or create the account by hand. |
 | `username_taken` | A local user has the same name. A provider login never takes over a local account. Rename the local user, or the provider login will keep failing. |
 | `invalid_username` | The user name from the username claim is not valid. A user name may contain `@`, but not a colon, a space or a control character. Set **Username claim** to another claim. |

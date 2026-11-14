@@ -12,6 +12,6 @@ This section answers what Ingot is and whether it fits. To try it, go to [Get st
 
 Read them in this order.
 
-* [What is Ingot](../explanation/what-is-ingot.md)
-* [How Ingot compares](../explanation/how-ingot-compares.md)
-* [Drop-in compatibility with Reposilite](../explanation/drop-in-compatibility.md)
+* [What is Ingot](what-is-ingot.md)
+* [How Ingot compares](how-ingot-compares.md)
+* [Drop-in compatibility with Reposilite](drop-in-compatibility.md)

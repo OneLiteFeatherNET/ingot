@@ -4,7 +4,7 @@ description: How to run Ingot in Docker with a pinned image tag, a persistent da
 
 # Install with Docker
 
-This guide shows how to run the Ingot server in a Docker container for a real deployment. For a first run with a guided walkthrough, use [First steps with Docker](../tutorials/first-steps-with-docker.md).
+This guide shows how to run the Ingot server in a Docker container for a real deployment. For a first run with a guided walkthrough, use [First steps with Docker](../get-started/first-steps-with-docker.md).
 
 ## Prerequisites
 
@@ -213,4 +213,4 @@ The health endpoint answers `{"status":"UP"}`. A new instance also reports that 
 curl -s http://localhost:8080/api/auth/providers
 ```
 
-The response contains `"setupRequired":true`. To create that administrator, follow [Set up the first administrator](set-up-first-admin.md).
+The response contains `"setupRequired":true`. To create that administrator, follow [Set up the first administrator](../get-started/set-up-first-admin.md).

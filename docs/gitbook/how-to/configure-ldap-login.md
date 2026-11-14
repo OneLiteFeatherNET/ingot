@@ -8,7 +8,7 @@ Ingot can check the password of a dashboard sign-in against an LDAP directory. T
 
 ## Before you begin
 
-* An instance administrator account and at least one local user, see [Set up the first administrator](set-up-first-admin.md).
+* An instance administrator account and at least one local user, see [Set up the first administrator](../get-started/set-up-first-admin.md).
 * The address of the directory, `ldap://` or `ldaps://`, and, if the directory needs one, a service account that can search the user and group entries.
 * Know how your directory names users and groups, for example `uid` and `cn` in a typical OpenLDAP tree.
 
