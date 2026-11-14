@@ -26,7 +26,7 @@ const DESKTOP_WIDTHS = [1280, 1920]
 const rail = (page) => page.locator('.fixed.inset-y-0 > nav')
 const railLabels = (page) => rail(page).locator('li a span:last-child, li button span:last-child')
 const topBar = (page) => page.locator('header').first()
-const accountButton = (page) => page.getByRole('button', { name: ACCOUNT_NAME, exact: true })
+const accountButton = (page) => page.getByRole('button', { name: `Account menu for ${ACCOUNT_NAME}`, exact: true })
 
 // The left edge of the first shared container of the page, past its side padding: where the page content starts.
 const contentBox = (page, selector) => page.locator(selector).first().evaluate((element) => {
