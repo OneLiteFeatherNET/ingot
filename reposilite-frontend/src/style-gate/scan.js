@@ -104,7 +104,7 @@ export const colourLiterals = (text) => [
 // The literal values of a style attribute or binding: a length with a unit, a colour, a z-index and a custom property
 // that is declared. A template literal that ends in a unit is a literal too, because `${percent}%` is still a size
 // written in the template.
-const LITERAL_LENGTH = /(?<![\w$.\-])-?\d+(?:\.\d+)?(?:px|%|rem|em|vh|vw|vmin|vmax|ch|pt)(?![\w-])/g
+const LITERAL_LENGTH = /(?<![\w$.-])-?\d+(?:\.\d+)?(?:px|%|rem|em|vh|vw|vmin|vmax|ch|pt)(?![\w-])/g
 const TEMPLATE_LENGTH = /`[^`]*\}(?:%|px|rem|em|vh|vw)[^`]*`/g
 const Z_INDEX = /z-index\s*:\s*-?\d+/g
 const CUSTOM_DECLARATION = /['"]?--[\w-]+['"]?\s*:(?!\/)/g

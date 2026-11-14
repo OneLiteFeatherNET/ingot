@@ -18,25 +18,23 @@ import js from "@eslint/js";
 import pluginVue from 'eslint-plugin-vue'
 import globals from 'globals'
 
-// Warn phase: every enabled rule reports as a warning, so findings are printed without failing the run.
-// Off rules stay off, so the rule set is unchanged. Remove this helper to restore the configured severities.
-const isOff = (severity) => severity === 0 || severity === 'off'
-
-const toWarn = (value) => {
+// Every enabled rule reports as an error. The plugin presets ship some rules as warnings, and the bulk suppressions of
+// ESLint record errors only, so those rules are raised here. A finding that is not in eslint-suppressions.json fails the run.
+const raiseWarning = (value) => {
   if (Array.isArray(value)) {
-    return isOff(value[0]) ? value : ['warn', ...value.slice(1)]
+    return value[0] === 'warn' || value[0] === 1 ? ['error', ...value.slice(1)] : value
   }
-  return isOff(value) ? value : 'warn'
+  return value === 'warn' || value === 1 ? 'error' : value
 }
 
-const warnPhase = (config) => {
+const raiseWarnings = (config) => {
   if (!config.rules) {
     return config
   }
   return {
     ...config,
     rules: Object.fromEntries(
-      Object.entries(config.rules).map(([name, value]) => [name, toWarn(value)])
+      Object.entries(config.rules).map(([name, value]) => [name, raiseWarning(value)])
     ),
   }
 }
@@ -64,4 +62,4 @@ export default [
       'semi': ['error', 'never'],
     }
   }
-].map(warnPhase)
+].map(raiseWarnings)
