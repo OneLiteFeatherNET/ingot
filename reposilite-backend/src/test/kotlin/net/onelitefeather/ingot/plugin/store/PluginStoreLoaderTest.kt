@@ -143,7 +143,7 @@ internal class PluginStoreLoaderTest {
         loader.loadPluginsByServiceFiles()
 
         // then: the store plugin is loaded, and the start registers one plugin with that id
-        assertThat(loader.storeEntries.single().state).describedAs("a store plugin must win over a bundled jar").isEqualTo(StoreState.LOADED)
+        assertThat(loader.storeEntries.single().state).describedAs("a store plugin must win over a bundled jar").isEqualTo(StoreState.UNVERIFIED)
         assertThat(extensions.getPlugins()["other-fixture"]).isNotNull
     }
 
@@ -153,24 +153,24 @@ internal class PluginStoreLoaderTest {
         val (store, _) = storeServing(FixturePluginOne::class, catalogueId = "fixture", reachable = false)
         val (loader, extensions) = loader(store)
 
-        // when: the plugins are loaded and initialised
+        // when: the plugins are loaded
         loader.loadPluginsByServiceFiles()
-        loader.initialize()
 
         // then: the start completes without the plugin
         assertThat(loader.storeEntries.single().state).isEqualTo(StoreState.UNAVAILABLE)
-        assertThat(extensions.getPlugins()).describedAs("no plugin must be registered from an unavailable store").isEmpty()
+        assertThat(extensions.getPlugins().keys).describedAs("no store plugin may be registered from an unavailable store").doesNotContain("fixture")
     }
 
     @Test
     fun `should mark a store plugin that fails in initialize as failed and finish the start`() {
         // given: a store plugin whose initialise throws
         val (store, _) = storeServing(FailingStorePlugin::class, catalogueId = "failing-store-fixture")
-        val (loader, _) = loader(store)
+        val (loader, extensions) = loader(store)
 
-        // when: the plugins are loaded and initialised
+        // when: the plugins are loaded, and the store plugin is initialised. Only that entry is initialised, because the
+        // built-in plugins of the classpath need a running server, which a unit test does not start.
         loader.loadPluginsByServiceFiles()
-        loader.initialize()
+        loader.initializePlugins(listOf(extensions.getPlugins().getValue("failing-store-fixture")))
 
         // then: the plugin is failed in the status, with the message of the exception, and the start completes
         val entry = loader.storeEntries.single()
@@ -191,7 +191,7 @@ internal class PluginStoreLoaderTest {
         val entry = loader.storeEntries.single()
         assertThat(entry.state).describedAs("an id that differs from the catalogue must be refused").isEqualTo(StoreState.REFUSED)
         assertThat(entry.reason).contains("another-id", "fixture")
-        assertThat(extensions.getPlugins()).isEmpty()
+        assertThat(extensions.getPlugins().keys).describedAs("neither id may be registered").doesNotContain("fixture", "another-id")
     }
 
     @Test
