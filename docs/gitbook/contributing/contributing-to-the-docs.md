@@ -8,16 +8,33 @@ The documentation lives in `docs/gitbook/`. It is published as a GitBook site, a
 
 ## Pick the mode first
 
-The docs follow the Diataxis framework. Each page belongs to exactly one of four modes, and the mode decides what the page may contain.
+The docs follow the Diataxis framework. Each page belongs to exactly one of four modes, and the mode decides what the page may contain. The folders follow the goal of the reader and not the mode, so one folder holds pages of several modes. The next section says where a page goes.
 
-| Mode | Folder | Purpose | Test for a page of this mode |
+| Mode | Lives in | Purpose | Test for a page of this mode |
 |---|---|---|---|
-| Tutorial | `tutorials/` | A guided lesson with a known result, for a reader who is new to Ingot. | Every step is done in order, and the reader ends with a working result. |
-| How-to guide | `how-to/` | Finishes one task for a reader who already runs Ingot. | The title is a task, such as "Enable TLS", and the page does not explain why. |
-| Reference | `reference/` | Lists settings, routes, commands and tables to look up. | A reader can scan it without reading the rest of the page. |
-| Explanation | `explanation/` | Explains why things work the way they do, and what follows from it. | The page has no steps to follow. It gives reasons, trade-offs and links to the how-to pages. |
+| Tutorial | `get-started/` | A guided lesson with a known result, for a reader who is new to Ingot. | Every step is done in order, and the reader ends with a working result. |
+| How-to guide | `set-up/`, `configure/`, `publish-and-consume/`, `manage/` | Finishes one task for a reader who already runs Ingot. | The title is a task, such as "Enable TLS", and the page does not explain why. |
+| Reference | `references/`, `release-notes/` | Lists settings, routes, commands and tables to look up. | A reader can scan it without reading the rest of the page. |
+| Explanation | `introduction/`, `references/architecture/` | Explains why things work the way they do, and what follows from it. | The page has no steps to follow. It gives reasons, trade-offs and links to the how-to pages. |
 
-A page that drifts into a second mode is split. A how-to that explains its design moves the design to an explanation page and links to it. A reference that tells a story moves the story out. The [README](../README.md) of the docs lists the modes in the same words.
+A page that drifts into a second mode is split. A how-to that explains its design moves the design to an explanation page and links to it. A reference that tells a story moves the story out. The [README](../README.md) of the docs lists the sections in the same words.
+
+## Where a page goes
+
+The docs are organized like the Grafana Mimir docs, by what a reader wants to do. Every section folder has a `README.md` that is its overview page, and larger sections have subfolders with an overview page of their own.
+
+| Section | Folder | A page goes here when |
+|---|---|---|
+| Introduction | `introduction/` | It says what Ingot is, how it compares or what drop-in compatibility means. |
+| Get started | `get-started/` | It is a tutorial, or the first step after a first start. |
+| Set up | `set-up/` | It installs or deploys Ingot, puts it on the network, sets up a cluster, or moves to Ingot from another manager. |
+| Configure | `configure/` | It changes the behaviour of a running instance, such as login providers, repositories, search or the dashboard. |
+| Publish and consume | `publish-and-consume/` | It is for the people and build systems that use a repository. |
+| Manage | `manage/` | It keeps an instance running: operate, upgrade, monitor, access and plugins. |
+| References | `references/` | It is a lookup page, or explains the architecture. The folders are `architecture/`, `configuration/`, `repositories/`, `settings/`, `http-api/`, `identity/`, `dashboard/` and `plugins/`. |
+| Release notes | `release-notes/` | It lists what changed between releases. |
+
+Pick the section by the task of the reader. When two pages answer the same question, make one page with sections instead of two pages that point at each other.
 
 ## Front matter
 
@@ -35,14 +52,15 @@ The description is a sentence, not a title or a list of keywords. Keep it to one
 
 [SUMMARY.md](../SUMMARY.md) is the table of contents, and it decides which pages a reader can reach from the site navigation.
 
-* Add every new page to `SUMMARY.md` in the section of its mode. The sections are Tutorials, How-to guides, Reference and Explanation.
-* Put the entry under the subheading that matches the topic, and keep the order of the entries sensible for a reader.
+* Add every new page to `SUMMARY.md` in the section it belongs to, under the overview page of its subfolder. The groups are the sections of the table in the previous part.
+* Keep the order of the entries sensible for a reader, and nest a page under another page only when it is the guided form of the same task.
+* Give a new subfolder a `README.md` with a `description:` line, a few lines of introduction and a list of its pages, and put it at the top level of its group. Do not make the section overview the parent of the subfolder overviews, because that doubles the section in the page addresses.
 * Use the page title as the link text, and the path relative to `SUMMARY.md`.
 * A page that is not in `SUMMARY.md` cannot be reached from the navigation. It is still in the repository, so give it a link from another page.
 
 ## Links
 
-* Use relative links for pages in `docs/gitbook/`, for example `../reference/faq.md`. Add an anchor when you link to a section, for example `configure-database.md#custom-jdbc-urls`.
+* Use relative links for pages in `docs/gitbook/`, for example `../references/faq.md`. Add an anchor when you link to a section, for example `configure-database.md#custom-jdbc-urls`.
 * Check each relative link before you open the pull request. There is no link checker in the continuous integration of the docs yet, so the check is manual: open the target and confirm that the anchor exists.
 * Link to files outside `docs/gitbook/` with the full URL of the file on the `main` branch.
 * Do not link to a page that does not exist yet. Add the page in the same change, or leave the sentence out.
@@ -87,6 +105,12 @@ Draw a diagram when a picture shows a structure or a flow faster than text, such
 * **Host large screenshots at `img.onelitefeather.net`.** Small images and all diagrams stay in the repository, because they are reviewed with the page. An external URL that moves leaves a broken image.
 
 Describe a screen in text as well, with the exact name of each label, button and page. A screenshot that shows a secret, a host name of a real instance or a personal account is not allowed, and must be replaced with an example.
+
+## Moving or removing a page
+
+* A moved or removed page needs an entry under `redirects:` in `.gitbook.yaml`, so that the old address keeps working. The key is the old path without `.md`, and the value is the new path with `.md`.
+* Update the relative links of every page that pointed at it, and any path in a file outside `docs/gitbook/`, such as a comment, a generator or a test, that names it.
+* The GitBook preview of a pull request does not apply redirects of removed pages. They work on the published site after the merge.
 
 ## Related pages
 
