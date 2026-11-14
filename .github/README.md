@@ -193,6 +193,14 @@ The backend is Kotlin on [Javalin](https://javalin.io) with
 storage, tested with JUnit 5 and Testcontainers. The frontend is Vue 3 with Vite,
 WindiCSS and JsonForms.
 
+## Use of AI tools
+
+Ingot is developed with the help of AI coding assistants. A large part of the code, tests, documentation and change proposals in this repository was drafted with AI tools such as Claude Code and then reviewed, tested and merged by the maintainers.
+
+The maintainers remain responsible for everything that ships. Every change goes through the same pull request review, continuous integration and security checks, whoever or whatever wrote the first draft. If you find a mistake, please report it like any other bug or, for security issues, through the process in [SECURITY.md](SECURITY.md).
+
+Contributions written with AI assistance are welcome under the same rules: you understand and can explain the change, it comes with tests, and you have the right to submit it under the Apache License 2.0.
+
 ## License
 
 Ingot is licensed under the [Apache License 2.0](https://github.com/OneLiteFeatherNET/ingot/blob/main/LICENSE),
