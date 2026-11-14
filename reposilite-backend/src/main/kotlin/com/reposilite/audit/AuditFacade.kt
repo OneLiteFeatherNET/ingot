@@ -215,7 +215,8 @@ class AuditFacade(
         }
 
         val key = utcDayKey("audit-purge", clock)
-        if (!claims.lease(key, PURGE_LEASE)) {
+        val lease = claims.acquire(key, PURGE_LEASE)
+        if (lease == null) {
             logger.debug("AUDIT | Retention purge of today is claimed by another instance, skipping")
             return 0
         }
@@ -226,7 +227,7 @@ class AuditFacade(
                 .also { removed -> if (removed > 0) logger.info("AUDIT | Removed $removed event(s) older than $retentionDays day(s)") }
                 .also { lastPurge.set(clock.instant()) }
         } finally {
-            claims.complete(key, done = true)
+            claims.release(lease, done = true)
         }
     }
 

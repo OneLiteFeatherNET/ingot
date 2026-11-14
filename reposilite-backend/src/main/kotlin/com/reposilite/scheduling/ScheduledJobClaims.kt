@@ -58,6 +58,45 @@ interface ScheduledJobClaims {
     fun complete(key: String, done: Boolean): Unit =
         throw UnsupportedOperationException("this claim store does not release leases")
 
+    /**
+     * Grants the lease of [key] like [lease] and returns it with its fencing [Lease.epoch], or returns null when the
+     * lease is refused. A store without epochs grants epoch [UNFENCED_EPOCH] and fences nothing.
+     */
+    fun acquire(key: String, ttl: Duration): Lease? =
+        if (lease(key, ttl)) Lease(key, UNFENCED_EPOCH) else null
+
+    /**
+     * Grants the lease of [key] like [takeover] and returns it with its fencing [Lease.epoch], or returns null when the
+     * lease is refused. Unlike [acquire], it never creates the row of a key that no instance started.
+     */
+    fun acquireExpired(key: String, ttl: Duration): Lease? =
+        if (takeover(key, ttl)) Lease(key, UNFENCED_EPOCH) else null
+
+    /**
+     * Moves the expiry of [lease] forward by [ttl], only while [lease] is the live grant of this instance. A holder whose
+     * key was granted again, even to this same instance, is refused, because its epoch is no longer the current one.
+     */
+    fun renew(lease: Lease, ttl: Duration): Boolean = extend(lease.key, ttl)
+
+    /**
+     * Releases [lease] when it is the live grant of this instance, and marks the key as done with [done]. A holder whose
+     * grant was superseded changes nothing of the new grant.
+     */
+    fun release(lease: Lease, done: Boolean): Unit = complete(lease.key, done)
+
+    /**
+     * A lease granted to an instance. [epoch] is the fencing token of the grant: every grant of a key, whether a first
+     * lease, a takeover or a grant after a release, gets an epoch larger than the one before. Work that must not overlap
+     * a newer holder checks the epoch before it acts, so a stale holder is detected even when the newer holder is the
+     * same instance.
+     */
+    data class Lease(val key: String, val epoch: Long)
+
+    companion object {
+        /** The epoch of a lease from a store that keeps no epochs. Such a lease cannot be told apart from a newer one. */
+        const val UNFENCED_EPOCH: Long = 0L
+    }
+
     /** Without a shared database there is no other instance to coordinate with, so every claim and lease is granted. */
     object Unshared : ScheduledJobClaims {
         override fun claim(key: String): Boolean = true
