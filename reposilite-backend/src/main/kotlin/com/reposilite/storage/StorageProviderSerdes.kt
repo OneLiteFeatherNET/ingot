@@ -18,13 +18,13 @@ package com.reposilite.storage
 
 import com.fasterxml.classmate.ResolvedType
 import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.core.ObjectCodec
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler
 import com.fasterxml.jackson.databind.deser.ValueInstantiator
-import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.contains
@@ -33,6 +33,7 @@ import com.github.victools.jsonschema.generator.SchemaGenerationContext
 import com.reposilite.configuration.shared.EnumResolver
 import com.reposilite.configuration.shared.SubtypeResolver
 import java.util.ServiceLoader
+import java.util.concurrent.ConcurrentHashMap
 
 class StorageProviderSerdes {
 
@@ -41,15 +42,15 @@ class StorageProviderSerdes {
         private val STORAGE_PROVIDERS: Map<String, Class<out StorageProviderSettings>> =
             ServiceLoader.load(StorageProviderFactory::class.java).associate { factory -> factory.type to factory.settingsType }
 
-        /** Reads decimals as exact BigDecimal, so that an unresolved block keeps the number text it was written with, trailing zeros included. */
-        private val TREE_READER: ObjectMapper = JsonMapper.builder()
-            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
-            .nodeFactory(JsonNodeFactory.withExactBigDecimals(true))
-            .build()
-
     }
 
     class StorageProviderDeserializationProblemHandler : DeserializationProblemHandler() {
+
+        /**
+         * The configured mappers, each with a copy that reads decimals as exact BigDecimal, so that an unresolved block keeps the number
+         * text it was written with, trailing zeros included. The copy keeps every other feature of its mapper.
+         */
+        private val exactTreeReaders = ConcurrentHashMap<ObjectMapper, ObjectMapper>()
 
         override fun handleMissingInstantiator(ctx: DeserializationContext, type: Class<*>, instantiator: ValueInstantiator, parser: JsonParser, message: String): Any =
             when (type) {
@@ -59,7 +60,7 @@ class StorageProviderSerdes {
 
         private fun JsonParser.parseStorageProvider(): Any? =
             codec?.let {
-                val json = TREE_READER.readTree<JsonNode>(this)
+                val json = exactTreeReader(it).readTree<JsonNode>(this)
 
                 val type = json?.get("type")
                     ?.asText()
@@ -72,6 +73,18 @@ class StorageProviderSerdes {
                     json is ObjectNode -> UnresolvedStorageProviderSettings(type, json)
                     else -> it.treeToValue(json, null)
                 }
+            }
+
+        /** The configured mapper's copy for a mapper, or the codec itself when it is not a mapper (an ObjectReader, for example). */
+        private fun exactTreeReader(codec: ObjectCodec): ObjectCodec =
+            if (codec is ObjectMapper) {
+                exactTreeReaders.computeIfAbsent(codec) {
+                    it.copy()
+                        .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+                        .setNodeFactory(JsonNodeFactory.withExactBigDecimals(true))
+                }
+            } else {
+                codec
             }
 
     }
