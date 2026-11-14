@@ -17,6 +17,9 @@ package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.audit.api.AuditAction
 import com.reposilite.audit.api.AuditActor
+import com.reposilite.auth.application.AuthenticationSettings
+import com.reposilite.auth.application.BruteForceProtectionSettings
+import com.reposilite.auth.application.LdapSettings
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenType.PERSISTENT
@@ -118,6 +121,42 @@ internal class LoginIdentityGuardTest {
             assertThat(message).contains("ingot.admin.idp")
         }
     }
+
+    @Test
+    fun `enforce refuses enabling the legacy LDAP authentication without the idp right`() {
+        withGuard(IdpGuardMode.ENFORCE, holders = emptySet()) { guard, events, _ ->
+            // when
+            val refusal = guard.refusal("authentication", authentication(), authentication(ldapEnabled = true), caller, operator)
+
+            // then
+            assertThat(refusal?.status).describedAs("status of the refusal").isEqualTo(403)
+            val event = events.single { it.action == AuditAction.IDP_SETTINGS_UNGUARDED }
+            assertThat(event.details).containsEntry("domain", "authentication").containsEntry("outcome", "refused")
+            assertThat(event.details["fields"]).isEqualTo(listOf("ldap.enabled"))
+        }
+    }
+
+    @Test
+    fun `enabling the legacy LDAP authentication is allowed with the idp right`() {
+        withGuard(IdpGuardMode.ENFORCE, holders = setOf(caller)) { guard, events, _ ->
+            assertThat(guard.refusal("authentication", authentication(), authentication(ldapEnabled = true), caller, operator)).isNull()
+            assertThat(events.map { it.action }).doesNotContain(AuditAction.IDP_SETTINGS_UNGUARDED)
+        }
+    }
+
+    @Test
+    fun `a brute force setting of the authentication domain needs no idp right`() {
+        withGuard(IdpGuardMode.ENFORCE, holders = emptySet()) { guard, events, _ ->
+            val changed = authentication().copy(bruteForceProtection = BruteForceProtectionSettings(enabled = true))
+
+            assertThat(guard.refusal("authentication", authentication(), changed, caller, operator)).isNull()
+            assertThat(events).isEmpty()
+        }
+    }
+
+    private fun authentication(ldapEnabled: Boolean = false): AuthenticationSettings = AuthenticationSettings(
+        ldap = LdapSettings(enabled = ldapEnabled, hostname = "ldap.example.org", searchUserPassword = "search-secret"),
+    )
 
     private fun changedAdminGroups(): LoginSettings =
         baseline().copy(oidcProviders = listOf(provider().copy(adminGroups = listOf("ingot-admins", "contractors"))))

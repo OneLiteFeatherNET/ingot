@@ -119,6 +119,39 @@ internal class LoginIdentityGuardIntegrationTest : ReposiliteSpecification() {
         document.get("oidcProviders").get(0).get("adminGroups") as ArrayNode
 
     @Test
+    fun `a settings administrator cannot enable the legacy LDAP authentication, the idp administrator can`() {
+        // given
+        val settingsOnly = machine("ldap-bot", listOf("ingot.admin.settings"))
+        val idpAdmin = machine("ldap-idp-bot", listOf("ingot.admin.settings", "ingot.admin.idp"))
+        val (etag, document) = readDomain("authentication", settingsOnly)
+
+        // when: a settings administrator enables the directory login
+        (document.get("ldap") as ObjectNode).put("enabled", true)
+        val refused = put(settings("authentication")).header("Authorization", settingsOnly).header("If-Match", etag).body(document.toString()).asString()
+
+        // then
+        assertThat(refused.status).describedAs("status of enabling the directory without the idp area").isEqualTo(403)
+
+        // and: the same settings administrator may still change the brute force protection
+        val (bruteEtag, brute) = readDomain("authentication", settingsOnly)
+        (brute.get("bruteForceProtection") as ObjectNode).put("maxAttempts", 3)
+        val unrelated = put(settings("authentication")).header("Authorization", settingsOnly).header("If-Match", bruteEtag).body(brute.toString()).asString()
+        assertThat(unrelated.status).describedAs("status of an unrelated change").isEqualTo(200)
+
+        // and: the idp administrator may change an identity field of the directory
+        val (idpEtag, idpDocument) = readDomain("authentication", idpAdmin)
+        (idpDocument.get("ldap") as ObjectNode).put("hostname", "ldap.example.org")
+        val accepted = put(settings("authentication")).header("Authorization", idpAdmin).header("If-Match", idpEtag).body(idpDocument.toString()).asString()
+        assertThat(accepted.status).describedAs("status with the idp area").isEqualTo(200)
+    }
+
+    private fun readDomain(domain: String, authorization: String): Pair<String, ObjectNode> {
+        val response = get(settings(domain)).header("Authorization", authorization).asString()
+        assertThat(response.status).describedAs("status of reading the $domain domain").isEqualTo(200)
+        return response.headers.getFirst("ETag") to (DEFAULT_OBJECT_MAPPER.readTree(response.body) as ObjectNode)
+    }
+
+    @Test
     fun `a settings administrator may change an unrelated login field`() {
         // given
         val settingsOnly = machine("session-bot", listOf("ingot.admin.settings"))

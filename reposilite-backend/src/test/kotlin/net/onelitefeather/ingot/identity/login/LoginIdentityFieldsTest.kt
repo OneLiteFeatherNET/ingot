@@ -101,6 +101,9 @@ internal class LoginIdentityFieldsTest {
             Arguments.of("oidcProviders.corp.groupsClaim", LoginIdentityFieldsTest.onProviderOf { copy(groupsClaim = "roles") }),
             Arguments.of("oidcProviders.corp.usernameClaim", LoginIdentityFieldsTest.onProviderOf { copy(usernameClaim = "sub") }),
             Arguments.of("oidcProviders.corp.adminGroups", LoginIdentityFieldsTest.onProviderOf { copy(adminGroups = listOf("everyone")) }),
+            Arguments.of("oidcProviders.corp.allowedEmailDomains", LoginIdentityFieldsTest.onProviderOf { copy(allowedEmailDomains = listOf("example.org")) }),
+            Arguments.of("oidcProviders.corp.autoCreateUsers", LoginIdentityFieldsTest.onProviderOf { copy(autoCreateUsers = false) }),
+            Arguments.of("oidcProviders.corp.emailClaim", LoginIdentityFieldsTest.onProviderOf { copy(emailClaim = "mail") }),
             Arguments.of("ldap.enabled", LoginIdentityFieldsTest.onLdapOf { copy(enabled = false) }),
             Arguments.of("ldap.url", LoginIdentityFieldsTest.onLdapOf { copy(url = "ldap://elsewhere.example:389") }),
             Arguments.of("ldap.startTls", LoginIdentityFieldsTest.onLdapOf { copy(startTls = true) }),
@@ -113,6 +116,7 @@ internal class LoginIdentityFieldsTest {
             Arguments.of("ldap.groupFilter", LoginIdentityFieldsTest.onLdapOf { copy(groupFilter = "(uniqueMember={dn})") }),
             Arguments.of("ldap.groupNameAttribute", LoginIdentityFieldsTest.onLdapOf { copy(groupNameAttribute = "name") }),
             Arguments.of("ldap.adminGroups", LoginIdentityFieldsTest.onLdapOf { copy(adminGroups = listOf("everyone")) }),
+            Arguments.of("ldap.autoCreateUsers", LoginIdentityFieldsTest.onLdapOf { copy(autoCreateUsers = false) }),
             Arguments.of("publicUrl", LoginIdentityFieldsTest.onSettings { copy(publicUrl = "https://evil.example/") }),
         )
 
