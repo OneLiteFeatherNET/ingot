@@ -105,7 +105,7 @@ The tests named in this section are in the open pull request for `test-mixed-ver
 
 ## Scale and sizing
 
-No figure in the table below is measured. A value enters the table only when a run was recorded with its date, the version, the hardware, the workload and the query that produced it, as [Size the deployment](../../set-up/deploy/size-the-deployment.md) describes. The HA smoke test checks function, not capacity, so it produces no figure.
+No figure in the table below is measured. A value enters the table only when a run was recorded with its date, the version, the hardware, the workload and the query that produced it, as [Size the deployment](../../set-up/size-the-deployment.md) describes. The HA smoke test checks function, not capacity, so it produces no figure.
 
 | Dimension | Measured value | Conditions | Status |
 | --- | --- | --- | --- |
@@ -137,8 +137,8 @@ These values are fixed in the code. They are limits, not capacity.
 ## Related pages
 
 * [Multi-replica operation](multi-replica-operation.md) explains what each replica shares and what it keeps for itself.
-* [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md) sets up the chart for more than one replica.
+* [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md) sets up the chart for more than one replica.
 * [Upgrade from Ingot 1.1.x](../../manage/upgrade/upgrade-ingot.md) gives the steps of the 1.2.0 upgrade.
 * [Upgrade changes and supported paths](../../release-notes/upgrade-changes.md) lists the changes per release.
 * [Configure the cluster bus](../../set-up/cluster/configure-cluster-bus.md) describes the optional bus.
-* [Size the deployment](../../set-up/deploy/size-the-deployment.md) describes how a measurement is made.
+* [Size the deployment](../../set-up/size-the-deployment.md) describes how a measurement is made.

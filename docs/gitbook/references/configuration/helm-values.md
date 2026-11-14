@@ -6,7 +6,7 @@ description: Reference of every key in the values.yaml of the Ingot Helm chart, 
 
 The Ingot chart is published as `oci://ghcr.io/onelitefeathernet/charts/ingot`. This page lists every key of its `values.yaml`, grouped by area. The default of each key is the value in that file. The type, the enumeration and the pattern come from `values.schema.json`.
 
-To install the chart, see [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md). To run the dashboard as its own workload, see [Run the dashboard split from the server with Helm](../../set-up/deploy/run-split-with-helm.md).
+To install the chart, see [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md). To run the dashboard as its own workload, see [Run the dashboard split from the server with Helm](../../set-up/kubernetes/run-split-with-helm.md).
 
 ## How to read the tables
 
@@ -26,7 +26,7 @@ Set `image.digest` to pin the server image. The chart then renders `name@digest`
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `mode` | string, one of allInOne, split | `"allInOne"` | Deploy shape. `allInOne` runs one workload that serves the dashboard and the API. `split` runs the server and a separate dashboard workload in front of it. See [Run the dashboard split from the server with Helm](../../set-up/deploy/run-split-with-helm.md). |
+| `mode` | string, one of allInOne, split | `"allInOne"` | Deploy shape. `allInOne` runs one workload that serves the dashboard and the API. `split` runs the server and a separate dashboard workload in front of it. See [Run the dashboard split from the server with Helm](../../set-up/kubernetes/run-split-with-helm.md). |
 | `image.name` | string | `"ghcr.io/onelitefeathernet/ingot"` | Repository of the server image. |
 | `image.tag` | string | `""` | Tag of the server image. Empty uses the chart `appVersion`. Ignored while `image.digest` is set. |
 | `image.digest` | string | `""` | Digest of the server image, for example `sha256:...`. When set, the image is rendered as `name@digest` and `image.tag` is not used. |
@@ -39,7 +39,7 @@ Set `image.digest` to pin the server image. The chart then renders `name@digest`
 
 With `autoscaling.enabled`, the autoscaler owns the replica count, and `deployment.replicas` is not rendered.
 
-The server image starts as root, and its entrypoint switches to the service user. That path keeps `PUID`, `PGID` and the ownership fix of a volume working, so the security contexts are off by default. For a namespace that enforces the restricted Pod Security level, use `deployment.securityProfile` instead of the two `enabled` switches. See [Run under the restricted Pod Security level](../../set-up/deploy/run-on-kubernetes.md#run-under-the-restricted-pod-security-level).
+The server image starts as root, and its entrypoint switches to the service user. That path keeps `PUID`, `PGID` and the ownership fix of a volume working, so the security contexts are off by default. For a namespace that enforces the restricted Pod Security level, use `deployment.securityProfile` instead of the two `enabled` switches. See [Run under the restricted Pod Security level](../../set-up/kubernetes/run-on-kubernetes.md#run-under-the-restricted-pod-security-level).
 
 `service.port` is also the container port of the server. Keep `probes.port` equal to it.
 
@@ -66,7 +66,7 @@ The server image starts as root, and its entrypoint switches to the service user
 | `deployment.containerSecurityContext.enabled` | boolean | `false` | Renders the container security context. Off by default. Turn it on only for a volume that is already owned by the UID you set. |
 | `deployment.containerSecurityContext.runAsUser` | integer | `999` | UID of the server container. Used only when `enabled` is `true`. |
 | `deployment.containerSecurityContext.runAsGroup` | integer | `999` | GID of the server container. Used only when `enabled` is `true`. |
-| `deployment.securityProfile` | string, one of empty, restricted, restricted-openshift | `""` | Pod Security profile of the server. `restricted` runs the pod as UID and GID `977` and mounts `emptyDir` volumes at `/tmp` and `/var/log/reposilite`. `restricted-openshift` sets the same fields without fixed IDs, for clusters that assign the UID. Do not combine a profile with either `enabled` switch above. See [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md#run-under-the-restricted-pod-security-level). |
+| `deployment.securityProfile` | string, one of empty, restricted, restricted-openshift | `""` | Pod Security profile of the server. `restricted` runs the pod as UID and GID `977` and mounts `emptyDir` volumes at `/tmp` and `/var/log/reposilite`. `restricted-openshift` sets the same fields without fixed IDs, for clusters that assign the UID. Do not combine a profile with either `enabled` switch above. See [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md#run-under-the-restricted-pod-security-level). |
 | `service.type` | string | `"ClusterIP"` | Type of the server Service. |
 | `service.port` | integer | `8080` | Port of the server Service. The server container listens on this port too, under the name `http`, so keep `probes.port` equal to it. |
 | `service.annotations` | object | `{}` | Extra annotations on the server Service. |
@@ -124,40 +124,40 @@ The startup probe is on in `split` mode and off in `allInOne` mode. `probes.star
 
 `persistence.enabled` mounts a claim at `persistence.path`, which is `/app/data` by default. The claim is named after the release, and it carries `helm.sh/resource-policy: keep`, so `helm uninstall` keeps the data. `persistence.name` only names the volume in the pod.
 
-With more than one replica, the access mode must let pods on several nodes mount the claim, or `persistence.existingClaim` must name a volume that every replica reaches. The install notes warn about a `ReadWriteOnce` claim with more than one replica. See [Running more than one replica](../../set-up/deploy/run-on-kubernetes.md#running-more-than-one-replica).
+With more than one replica, the access mode must let pods on several nodes mount the claim, or `persistence.existingClaim` must name a volume that every replica reaches. The install notes warn about a `ReadWriteOnce` claim with more than one replica. See [Running more than one replica](../../set-up/kubernetes/run-on-kubernetes.md#running-more-than-one-replica).
 
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `persistence.enabled` | boolean | `true` | Mounts a PersistentVolumeClaim at `persistence.path`. `false` uses an `emptyDir`, which every replica keeps for itself. |
 | `persistence.name` | string | `"data"` | Name of the data volume in the pod. |
 | `persistence.size` | string | `"4Gi"` | Requested size of the claim. |
-| `persistence.accessMode` | string | `"ReadWriteOnce"` | Access mode of the claim. Several replicas on different nodes need `ReadWriteMany` or an existing claim, see [Running more than one replica](../../set-up/deploy/run-on-kubernetes.md#running-more-than-one-replica). |
+| `persistence.accessMode` | string | `"ReadWriteOnce"` | Access mode of the claim. Several replicas on different nodes need `ReadWriteMany` or an existing claim, see [Running more than one replica](../../set-up/kubernetes/run-on-kubernetes.md#running-more-than-one-replica). |
 | `persistence.annotations` | object | `{}` | Extra annotations on the claim. The chart always adds `helm.sh/resource-policy: keep`, so an uninstall keeps the data. |
 | `persistence.path` | string | `"/app/data"` | Mount path of the data volume in the server container. |
 
 
 ## Scaling and availability
 
-`autoscaling` renders a HorizontalPodAutoscaler. The chart uses `autoscaling/v2` when the cluster offers it, and an older version otherwise. See [Autoscale the server](../../set-up/deploy/autoscale-the-server.md).
+`autoscaling` renders a HorizontalPodAutoscaler. The chart uses `autoscaling/v2` when the cluster offers it, and an older version otherwise. See [Autoscale the server](../../set-up/kubernetes/autoscale-the-server.md).
 
-`podDisruptionBudget` renders a budget with `maxUnavailable: 1`, so a node drain can evict one pod at a time. See [Set a disruption budget](../../set-up/deploy/set-a-disruption-budget.md).
+`podDisruptionBudget` renders a budget with `maxUnavailable: 1`, so a node drain can evict one pod at a time. See [Set a disruption budget](../../set-up/kubernetes/set-a-disruption-budget.md).
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `autoscaling.enabled` | boolean | `false` | Renders a HorizontalPodAutoscaler for the server and removes `deployment.replicas` from the Deployment. See [Autoscale the server](../../set-up/deploy/autoscale-the-server.md). |
+| `autoscaling.enabled` | boolean | `false` | Renders a HorizontalPodAutoscaler for the server and removes `deployment.replicas` from the Deployment. See [Autoscale the server](../../set-up/kubernetes/autoscale-the-server.md). |
 | `autoscaling.minReplicas` | integer | `1` | Lower bound of the replica count. Not rendered when `0`. |
 | `autoscaling.maxReplicas` | integer | `10` | Upper bound of the replica count. |
 | `autoscaling.metrics` | array | see below | Metrics of the autoscaler, passed through unchanged. The default list targets 60% average CPU utilization and 60% average memory utilization. The install notes warn about the memory metric, see the autoscaling guide. |
 | `autoscaling.behavior.scaleDown.stabilizationWindowSeconds` | integer | `300` | Seconds of recommendations that the autoscaler considers before it scales down. |
 | `autoscaling.behavior.scaleDown.policies` | array | see below | Scale-down policies, passed through unchanged. |
-| `podDisruptionBudget.enabled` | boolean | `false` | Renders a PodDisruptionBudget with `maxUnavailable: 1` for the server, and for the dashboard in `split` mode. See [Set a disruption budget](../../set-up/deploy/set-a-disruption-budget.md). |
+| `podDisruptionBudget.enabled` | boolean | `false` | Renders a PodDisruptionBudget with `maxUnavailable: 1` for the server, and for the dashboard in `split` mode. See [Set a disruption budget](../../set-up/kubernetes/set-a-disruption-budget.md). |
 
 
 ## Routing and network
 
 Route the traffic with `ingress` or with `httpRoute`, not with both. In `split` mode, either form sends the dashboard paths to the dashboard Service and everything else to the server. The per-host `paths` of `ingress.hosts` apply in `allInOne` mode only.
 
-`networkPolicy` is off by default. See [Restrict network traffic](../../set-up/network/restrict-network-traffic.md) and [Route with a Gateway API HTTPRoute](../../set-up/deploy/route-with-gateway-api.md).
+`networkPolicy` is off by default. See [Restrict network traffic](../../set-up/network/restrict-network-traffic.md) and [Route with a Gateway API HTTPRoute](../../set-up/kubernetes/route-with-gateway-api.md).
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -172,7 +172,7 @@ Route the traffic with `ingress` or with `httpRoute`, not with both. In `split` 
 | `ingress.annotations` | object | `{}` | Annotations on the Ingress. |
 | `ingress.hosts` | array | see below | Host rules of the Ingress. In `split` mode the Ingress routes the dashboard paths to the dashboard Service and everything else to the server, and the per-host `paths` are not used. |
 | `ingress.tls` | array | see below | TLS entries of the Ingress, each with a `secretName` and the `hosts` it covers. Empty renders no TLS block. |
-| `httpRoute.enabled` | boolean | `false` | Renders a Gateway API `HTTPRoute` for the server. Cannot be combined with `ingress.enabled`. See [Route with a Gateway API HTTPRoute](../../set-up/deploy/route-with-gateway-api.md). |
+| `httpRoute.enabled` | boolean | `false` | Renders a Gateway API `HTTPRoute` for the server. Cannot be combined with `ingress.enabled`. See [Route with a Gateway API HTTPRoute](../../set-up/kubernetes/route-with-gateway-api.md). |
 | `httpRoute.parentRefs` | array | `[]` | Gateways that the route attaches to, passed through as `parentRefs`. |
 | `httpRoute.hostnames` | array | `[]` | Host names that the route answers for. Empty matches every host. |
 
@@ -370,10 +370,10 @@ Helm stops with an error, and the message names the keys to change, when:
 * `env` sets a variable that a typed value of the chart also sets, for example `INGOT_LOCAL_DATABASE` next to `database.existingSecret`, or `INGOT_CLUSTER_URL` next to `clusterBus.url`. The message names both keys. Remove the variable from `env`, or unset the typed value.
 * `env` sets a JVM option in `JDK_JAVA_OPTIONS` that a `jvm` key also renders.
 
-The NOTES printed after an install warn about some settings without failing. For example, they warn when more than one replica runs with a `ReadWriteOnce` claim, or when `env` does not set `INGOT_CLUSTER_URL`. The NOTES read only `env`, so they can warn about a variable that a typed value such as `clusterBus.url` renders. See [Set Helm values for high availability](../../set-up/deploy/set-helm-values-for-high-availability.md).
+The NOTES printed after an install warn about some settings without failing. For example, they warn when more than one replica runs with a `ReadWriteOnce` claim, or when `env` does not set `INGOT_CLUSTER_URL`. The NOTES read only `env`, so they can warn about a variable that a typed value such as `clusterBus.url` renders. See [Set Helm values for high availability](../../set-up/kubernetes/set-helm-values-for-high-availability.md).
 
 ## Related
 
-* [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md) installs the chart step by step.
+* [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md) installs the chart step by step.
 * [Migrate from the upstream Helm chart](../../set-up/migrate/migrate-from-upstream-chart.md) explains the two name overrides and the upstream keys.
 * [Environment variables](environment-variables.md) lists the variables of the server, and the names that the chart writes.

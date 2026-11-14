@@ -76,7 +76,7 @@ resources:
 
 Each block points at a Secret or a value that you create first. The chart never renders the value of a Secret. Create the database Secret as in [Run on Kubernetes](run-on-kubernetes.md#create-the-database-secret), and the S3 and bus Secrets in the same way.
 
-The memory limit must cover the heap and the memory that the JVM uses around it. The chart defaults, `-Xmx64M` and a 256Mi limit, are the upstream Reposilite values, and the values above are a starting point that was not measured. Size the heap and the limit for your load with [Size the deployment](size-the-deployment.md).
+The memory limit must cover the heap and the memory that the JVM uses around it. The chart defaults, `-Xmx64M` and a 256Mi limit, are the upstream Reposilite values, and the values above are a starting point that was not measured. Size the heap and the limit for your load with [Size the deployment](../size-the-deployment.md).
 
 ## What each block does
 

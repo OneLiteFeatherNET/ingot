@@ -8,7 +8,7 @@ This section is for the person who keeps an instance running.
 
 ## Operate
 
-Backups, maintenance, hardening and troubleshooting.
+Backups, maintenance, hardening, limits and troubleshooting.
 
 * [Back up and restore](operate/back-up-and-restore.md)
 * [Freeze writes for maintenance](operate/freeze-writes-for-maintenance.md)

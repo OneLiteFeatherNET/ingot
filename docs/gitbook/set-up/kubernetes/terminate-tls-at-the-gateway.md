@@ -6,7 +6,7 @@ description: Serve HTTPS for Ingot on Kubernetes with a cert-manager certificate
 
 In a Kubernetes cluster the gateway or the ingress controller usually serves HTTPS. cert-manager issues and renews the certificate, and Ingot serves plain HTTP on port `8080` behind it. This setup does not need the TLS connector of Ingot itself, so leave `sslEnabled` at its default `false`.
 
-Use this page with [Run on Kubernetes](../deploy/run-on-kubernetes.md). The chart's Gateway API route, `httpRoute`, attaches to a Gateway that you already run.
+Use this page with [Run on Kubernetes](run-on-kubernetes.md). The chart's Gateway API route, `httpRoute`, attaches to a Gateway that you already run.
 
 ## Before you begin
 
@@ -85,24 +85,24 @@ Use this page with [Run on Kubernetes](../deploy/run-on-kubernetes.md). The char
 
    The first command prints `True`. The second prints `{"status":"UP"}`.
 
-The HTTPRoute of the chart has no timeout field. For uploads that run for a long time, see [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md).
+The HTTPRoute of the chart has no timeout field. For uploads that run for a long time, see [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md).
 
 ## Ingress instead of a Gateway
 
-An ingress controller can serve the same host name with the same certificate. Set `ingress.enabled: true`, your `ingress.className`, and a `tls` entry that names the Secret of cert-manager. The ingress setup is described in [Run on Kubernetes](../deploy/run-on-kubernetes.md#expose-the-instance-with-ingress). Do not set `httpRoute.enabled` at the same time.
+An ingress controller can serve the same host name with the same certificate. Set `ingress.enabled: true`, your `ingress.className`, and a `tls` entry that names the Secret of cert-manager. The ingress setup is described in [Run on Kubernetes](run-on-kubernetes.md#expose-the-instance-with-ingress). Do not set `httpRoute.enabled` at the same time.
 
 ## Client addresses
 
-The gateway or the ingress is the proxy in front of Ingot. Ingot then sees the address of the proxy, not the client, unless you list the proxies in `INGOT_TRUSTED_PROXIES`. See [Run behind a reverse proxy](run-behind-reverse-proxy.md) and the [environment variables](../../references/configuration/environment-variables.md) reference.
+The gateway or the ingress is the proxy in front of Ingot. Ingot then sees the address of the proxy, not the client, unless you list the proxies in `INGOT_TRUSTED_PROXIES`. See [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md) and the [environment variables](../../references/configuration/environment-variables.md) reference.
 
 ## In-app TLS
 
-Ingot can also serve HTTPS itself with the `sslEnabled` and `keyPath` settings. Only use it when no gateway or ingress is in front of Ingot. See [Enable TLS](enable-tls.md).
+Ingot can also serve HTTPS itself with the `sslEnabled` and `keyPath` settings. Only use it when no gateway or ingress is in front of Ingot. See [Enable TLS](../network/enable-tls.md).
 
 The `keyPath` value has to end in `.pem` or `.jks`. A PEM pair is written as a certificate file and a key file separated by a space, and the whole value must end in `.pem`. The check in Ingot accepts only those two extensions. cert-manager writes its files as `tls.crt` and `tls.key`, and Ingot rejects them with `Provided key extension is not supported.` This is a known limit: until the change `fix-tls-key-file-names` is merged, do not mount cert-manager's files into Ingot for in-app TLS. Serve TLS from the gateway instead, as described above.
 
 ## Related
 
-* [Run on Kubernetes](../deploy/run-on-kubernetes.md)
-* [Run behind a reverse proxy](run-behind-reverse-proxy.md)
-* [Enable TLS](enable-tls.md)
+* [Run on Kubernetes](run-on-kubernetes.md)
+* [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md)
+* [Enable TLS](../network/enable-tls.md)

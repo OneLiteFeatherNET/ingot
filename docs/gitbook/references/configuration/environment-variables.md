@@ -127,7 +127,7 @@ The entrypoint of the server image (`/app/entrypoint.sh`) reads these variables.
 | `INGOT_OPTS` | `REPOSILITE_OPTS` | empty | Command line parameters for the server, see [Command line parameters](configuration-and-startup.md#command-line-parameters). The value is split at white space. When `INGOT_OPTS` is empty or unset, `REPOSILITE_OPTS` is used. The two are not combined. |
 | `INGOT_ARGS` | none | not read | Not an input. The entrypoint assigns its own shell variable of this name from `INGOT_OPTS`, or from `REPOSILITE_OPTS` when `INGOT_OPTS` is empty or unset, and passes it to the server. Setting `INGOT_ARGS` in the environment has no effect. Use `INGOT_OPTS`. |
 | `JAVA_OPTS` | none | empty | Options for the JVM, for example `-Xmx1g` or `-Dingot.local.port=9090`. There is no `INGOT_` spelling. |
-| `JDK_JAVA_OPTIONS` | none | empty | Options that the JVM reads before `JAVA_OPTS`. The Helm chart writes one entry of it when its `jvm` or `opentelemetry` values are set, and keeps the text that `env` sets. See [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md#size-the-heap-from-the-memory-limit). |
+| `JDK_JAVA_OPTIONS` | none | empty | Options that the JVM reads before `JAVA_OPTS`. The Helm chart writes one entry of it when its `jvm` or `opentelemetry` values are set, and keeps the text that `env` sets. See [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md#size-the-heap-from-the-memory-limit). |
 | `PUID` | none | `977` | User id of the `reposilite` service account. Read only when the container starts as root. |
 | `PGID` | none | `977` | Group id of the service account. Read only when the container starts as root. |
 | `INGOT_FORCE_CHOWN` | `REPOSILITE_FORCE_CHOWN` | unset | `true` changes the owner of `/app` and `/var/log/reposilite` at every start. Any other value does nothing. Read only when the container starts as root. |
@@ -314,7 +314,7 @@ Read once at startup. `INGOT_HTTP_USE_ENV_PROXY` is the switch. When it is `true
 | Credentials | A proxy value with a user name or a password is refused. The mirror request then fails with a message that names the variable. Ingot never writes the value or the credentials to the log. Set `httpProxy` on the mirror when the proxy needs a login. |
 | Other URLs | Only mirror clients read the switch. S3, OIDC and the update check do not. |
 
-The JVM system properties such as `https.proxyHost` in `JAVA_OPTS` still apply to all outgoing connections whatever the switch says. The JDK does not read `HTTPS_PROXY` or `HTTP_PROXY` by itself, so the switch is the only way to take them into account. See [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md#route-mirror-traffic-through-an-egress-proxy).
+The JVM system properties such as `https.proxyHost` in `JAVA_OPTS` still apply to all outgoing connections whatever the switch says. The JDK does not read `HTTPS_PROXY` or `HTTP_PROXY` by itself, so the switch is the only way to take them into account. See [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md#route-mirror-traffic-through-an-egress-proxy).
 
 ### Upload checksum policy
 
@@ -350,7 +350,7 @@ Read once at startup from `INGOT_SHARED_CONFIGURATION_RELOAD`, or from the legac
 
 The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_SHARED_CONFIGURATION_RELOAD`. With the database as the shared source the variable has no effect, and the instance logs one warning at startup. See [Shared settings source](configuration-and-startup.md#shared-settings-source).
 
-The Helm chart sets this variable to `true`, and adds `--shared-configuration` with the mounted file to `INGOT_OPTS`, when its `sharedConfiguration` block is enabled. See [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md#keep-the-shared-settings-in-git).
+The Helm chart sets this variable to `true`, and adds `--shared-configuration` with the mounted file to `INGOT_OPTS`, when its `sharedConfiguration` block is enabled. See [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md#keep-the-shared-settings-in-git).
 
 ### Settings secret references
 

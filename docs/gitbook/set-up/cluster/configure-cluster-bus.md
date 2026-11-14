@@ -162,5 +162,5 @@ The settings above are read and checked when the instance starts. The bus connec
 ## Related pages
 
 * [Multi-replica operation](../../references/architecture/multi-replica-operation.md) lists the state that each replica keeps for itself.
-* [Run on Kubernetes](../deploy/run-on-kubernetes.md) describes the replica setup and its limits.
+* [Run on Kubernetes](../kubernetes/run-on-kubernetes.md) describes the replica setup and its limits.
 * [Environment variables](../../references/configuration/environment-variables.md#cluster-bus-variables) lists every variable with its fallback and default.

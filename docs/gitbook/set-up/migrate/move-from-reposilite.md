@@ -39,7 +39,7 @@ containers:
     image: ghcr.io/onelitefeathernet/ingot:1.2.0
 ```
 
-If you deploy with the Ingot Helm chart, the image is set by `image.name` and `image.tag` (or `image.digest`) in the values. The steps are in [Run on Kubernetes](../deploy/run-on-kubernetes.md).
+If you deploy with the Ingot Helm chart, the image is set by `image.name` and `image.tag` (or `image.digest`) in the values. The steps are in [Run on Kubernetes](../kubernetes/run-on-kubernetes.md).
 
 ### JAR
 

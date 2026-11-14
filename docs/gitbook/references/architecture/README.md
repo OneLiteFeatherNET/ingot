@@ -1,5 +1,5 @@
 ---
-description: Architecture of Ingot. Lists the pages that explain the parts, the backend, high availability, multi-replica operation, storage, identity, permissions, sessions, security headers and search.
+description: Architecture of Ingot. Lists the pages that explain the parts, the deployment modes, the backend, high availability, multi-replica operation, storage, identity, permissions, sessions, security headers, search and token migration.
 ---
 
 # Architecture

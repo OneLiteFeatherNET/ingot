@@ -276,7 +276,7 @@ The server answers `409` to a save from the dashboard or the API for a domain th
 
 ## Trust a private certificate authority
 
-Set `extraCaCerts.enabled` to `true` and name one ConfigMap (`configMapName`) or one Secret (`secretName`) that holds the PEM files of your authority. The chart mounts it read-only at `/etc/ingot/extra-ca` and sets `INGOT_EXTRA_CA_CERTS` to that path. The image imports the certificates when the pod starts and keeps the public authorities trusted. How the image reads the directory, and which starts it refuses, is described in [Trust a private certificate authority](install-with-docker.md#trust-a-private-certificate-authority).
+Set `extraCaCerts.enabled` to `true` and name one ConfigMap (`configMapName`) or one Secret (`secretName`) that holds the PEM files of your authority. The chart mounts it read-only at `/etc/ingot/extra-ca` and sets `INGOT_EXTRA_CA_CERTS` to that path. The image imports the certificates when the pod starts and keeps the public authorities trusted. How the image reads the directory, and which starts it refuses, is described in [Trust a private certificate authority](../deploy/install-with-docker.md#trust-a-private-certificate-authority).
 
 ## Use S3 for repositories
 
@@ -539,17 +539,17 @@ ingress:
 
 Apply the change with `helm upgrade --install` and the same `--version` and values file as before. If you run Ingot under a path prefix, see [Run behind a reverse proxy and base path](../network/run-behind-reverse-proxy.md).
 
-With a Gateway API implementation instead of an ingress, see [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md). For the body size and the timeouts that the edge needs for large uploads, see [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md).
+With a Gateway API implementation instead of an ingress, see [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md). For the body size and the timeouts that the edge needs for large uploads, see [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md).
 
-For the sizing of the heap and the memory limit, see [Size the deployment](size-the-deployment.md). For a comparison of the JAR, the container image and the two Helm shapes, see [Deployment options compared](deployment-options-compared.md).
+For the sizing of the heap and the memory limit, see [Size the deployment](../size-the-deployment.md). For a comparison of the JAR, the container image and the two Helm shapes, see [Deployment options compared](../deployment-options-compared.md).
 
 ## Related
 
-* [Run with Docker](install-with-docker.md) describes the same image without an orchestrator.
+* [Run with Docker](../deploy/install-with-docker.md) describes the same image without an orchestrator.
 * [Configure a database](../cluster/configure-database.md) lists the database forms and their rules.
 * [Configure the cluster bus](../cluster/configure-cluster-bus.md) sets the optional message bus between replicas.
 * [Use S3 storage](../cluster/use-s3-storage.md) explains the S3 settings per repository.
 * [Manage secrets with GitOps](manage-secrets-with-gitops.md) delivers the Secrets of this page from Git.
-* [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md) and [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md) cover the cluster edge.
-* [Size the deployment](size-the-deployment.md) describes how to choose the heap and the limits.
+* [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md) and [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md) cover the cluster edge.
+* [Size the deployment](../size-the-deployment.md) describes how to choose the heap and the limits.
 * [Create proxy repositories](../../configure/repositories/create-proxy-repositories.md) for a proxy with a shared or large cache.

@@ -50,7 +50,7 @@ One server process, with SQLite or a database server, and file system or S3 stor
 
 ### Split dashboard
 
-The dashboard runs in its own container and passes every other request to the server, which runs without its dashboard. Use it when the dashboard should restart, scale or be hardened apart from the artifact store. The data and the API do not change. See [Run the dashboard in a separate container](../../set-up/deploy/run-split-dashboard-container.md) and [Deployment options compared](../../set-up/deploy/deployment-options-compared.md).
+The dashboard runs in its own container and passes every other request to the server, which runs without its dashboard. Use it when the dashboard should restart, scale or be hardened apart from the artifact store. The data and the API do not change. See [Run the dashboard in a separate container](../../set-up/deploy/run-split-dashboard-container.md) and [Deployment options compared](../../set-up/deployment-options-compared.md).
 
 ### Multi-replica
 
@@ -60,4 +60,4 @@ Several server replicas share one database server and one S3 storage, behind one
 
 * [What is Ingot](../../introduction/what-is-ingot.md)
 * [How Ingot compares](../../introduction/how-ingot-compares.md)
-* [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md)
+* [Run on Kubernetes](../../set-up/kubernetes/run-on-kubernetes.md)

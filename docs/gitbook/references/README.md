@@ -11,6 +11,7 @@ The pages in this section are for lookup. They list settings, routes, commands a
 How the parts of Ingot work and why.
 
 * [Architecture overview](architecture/architecture-overview.md)
+* [Deployment modes](architecture/deployment-modes.md)
 * [Backend architecture](architecture/backend-architecture.md)
 * [High availability support](architecture/high-availability-support.md)
 * [Multi-replica operation](architecture/multi-replica-operation.md)

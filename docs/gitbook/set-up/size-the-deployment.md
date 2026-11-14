@@ -20,7 +20,7 @@ These are the upstream Reposilite values. A limit of `256Mi` leaves little room 
 
 ## Step 1: Turn on the metrics
 
-The JVM and request metrics come from the bundled metrics plugin. It is off by default. Set `INGOT_METRICS_ENABLED=true` in the server environment, then scrape the `/metrics` endpoint. The endpoint needs `INGOT_PROMETHEUS_USER` and `INGOT_PROMETHEUS_PASSWORD`, and the plugin does not start without them. See [Monitor status and failures](../../manage/monitor/monitor-status-and-failures.md) and the [environment variables](../../references/configuration/environment-variables.md#metrics-switch) reference.
+The JVM and request metrics come from the bundled metrics plugin. It is off by default. Set `INGOT_METRICS_ENABLED=true` in the server environment, then scrape the `/metrics` endpoint. The endpoint needs `INGOT_PROMETHEUS_USER` and `INGOT_PROMETHEUS_PASSWORD`, and the plugin does not start without them. See [Monitor status and failures](../manage/monitor/monitor-status-and-failures.md) and the [environment variables](../references/configuration/environment-variables.md#metrics-switch) reference.
 
 The JVM series used below are `jvm_memory_used_bytes`, `jvm_memory_committed_bytes` and `jvm_memory_used_after_last_gc_bytes`, with the label `area` set to `heap` or `nonheap`. The request series are `ingot_http_server_requests_total` and `ingot_http_server_request_duration_seconds`.
 
@@ -46,7 +46,7 @@ The memory request should be close to the working set in normal operation, so th
 
 ## Step 4: Add the headroom for uploads
 
-An upload above 8 MiB is sent to the bucket in parts of 8 MiB, and one part is held in the heap while it is sent. Each concurrent upload to an S3 repository therefore needs one part of heap, see [Use S3 storage](../cluster/use-s3-storage.md#large-uploads). Count the largest number of concurrent uploads that your clients can start, and add that many 8 MiB parts to the heap.
+An upload above 8 MiB is sent to the bucket in parts of 8 MiB, and one part is held in the heap while it is sent. Each concurrent upload to an S3 repository therefore needs one part of heap, see [Use S3 storage](cluster/use-s3-storage.md#large-uploads). Count the largest number of concurrent uploads that your clients can start, and add that many 8 MiB parts to the heap.
 
 ## Step 5: Choose the CPU from the request rate
 
@@ -58,6 +58,6 @@ Repeat the measurement after each change of the values. Record the date, the wor
 
 ## Related
 
-* [Run on Kubernetes](run-on-kubernetes.md)
-* [Monitor status and failures](../../manage/monitor/monitor-status-and-failures.md)
-* [Use S3 storage](../cluster/use-s3-storage.md)
+* [Run on Kubernetes](kubernetes/run-on-kubernetes.md)
+* [Monitor status and failures](../manage/monitor/monitor-status-and-failures.md)
+* [Use S3 storage](cluster/use-s3-storage.md)
