@@ -22,11 +22,13 @@ The chart version and its `appVersion` are the Ingot release, so the chart and t
 
 ## Read the chart values
 
+The [Helm chart values](../reference/helm-values.md) reference lists every key of the chart with its default and what it renders. Your own values file only needs the keys that change.
+
+To read the values of the release that you deploy, run `helm show values` against that release, and replace `1.1.1` with its version:
+
 ```bash
 helm show values oci://ghcr.io/onelitefeathernet/charts/ingot --version 1.1.1 > ingot-chart-values.yaml
 ```
-
-Replace `1.1.1` with the release you deploy. The file lists every value of the chart with its default. Use it as a reference. Your own values file only needs the keys that change.
 
 ## Create the database Secret
 
