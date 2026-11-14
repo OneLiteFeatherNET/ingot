@@ -1,5 +1,5 @@
 ---
-description: A checklist to harden an Ingot deployment: unprivileged start, read-only root filesystem, dropped capabilities, network policy, TLS, trusted proxies, settings secrets, tokens, audit forwarding and release verification, with Docker Compose and Helm snippets.
+description: A checklist to harden an Ingot deployment. It covers unprivileged start, read-only root filesystem, dropped capabilities, network policy, TLS, trusted proxies, settings secrets, tokens, audit forwarding and release verification, with Docker Compose and Helm snippets.
 ---
 
 # Harden a deployment
