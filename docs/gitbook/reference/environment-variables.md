@@ -250,6 +250,26 @@ The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in 
 
 The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `opensearch` only after the plugin is on. See [Choose a search backend](../how-to/choose-a-search-backend.md).
 
+### Elasticsearch search backend
+
+The Elasticsearch plugin is not part of the image. Its jar, `elasticsearch-plugin.jar`, is installed in the plugins directory, as described in [Install a plugin](../how-to/install-a-plugin.md), and the jar is its switch. There is no `ENABLED` variable. Each variable below falls back to its `REPOSILITE_ELASTICSEARCH_` spelling when the `INGOT_` name is unset or blank, and the `INGOT_` name wins when it is set. A refused value makes the backend report `OPEN_FAILED` with a message that names the variable, and the server keeps running. The rules, the privileges of the API key and the security obligations are in the [Elasticsearch search backend](elasticsearch-search-backend.md) reference.
+
+| Environment variable | Legacy environment variable | Default | Range or values | Meaning |
+| --- | --- | --- | --- | --- |
+| `INGOT_ELASTICSEARCH_URLS` | `REPOSILITE_ELASTICSEARCH_URLS` | none | Comma-separated `https` URLs | Cluster URLs. Required when the backend is selected. `http` needs the next switch. |
+| `INGOT_ELASTICSEARCH_ALLOW_HTTP` | `REPOSILITE_ELASTICSEARCH_ALLOW_HTTP` | `false` | `true` or `false` | Accepts `http` URLs. Any other value is refused. |
+| `INGOT_ELASTICSEARCH_API_KEY` | `REPOSILITE_ELASTICSEARCH_API_KEY` | none | Encoded API key | The API key of the cluster. Wins over the file variable and cannot be combined with a user name. |
+| `INGOT_ELASTICSEARCH_API_KEY_FILE` | `REPOSILITE_ELASTICSEARCH_API_KEY_FILE` | none | Path of a file | Reads the API key from the file, without the line break at its end. Used when the plain key is not set. |
+| `INGOT_ELASTICSEARCH_INDEX` | `REPOSILITE_ELASTICSEARCH_INDEX` | `ingot-artifacts` | 1 to 64 characters, lower case letters, digits, `-` and `_`, starting with a letter or digit | Prefix of the alias and of the physical index `<prefix>-v1`. |
+| `INGOT_ELASTICSEARCH_USERNAME` | `REPOSILITE_ELASTICSEARCH_USERNAME` | none | Text | User of basic authentication. Needs a password. Refused together with an API key. |
+| `INGOT_ELASTICSEARCH_PASSWORD` | `REPOSILITE_ELASTICSEARCH_PASSWORD` | none | Text | Password. Needs a username. Wins over the file variable. |
+| `INGOT_ELASTICSEARCH_PASSWORD_FILE` | `REPOSILITE_ELASTICSEARCH_PASSWORD_FILE` | none | Path of a file | Reads the password from the file, without the line break at its end. Used when the plain password is not set. |
+| `INGOT_ELASTICSEARCH_BULK_SIZE` | `REPOSILITE_ELASTICSEARCH_BULK_SIZE` | `500` | 1 to 5000 | Actions per bulk request. |
+| `INGOT_ELASTICSEARCH_TIMEOUT_SECONDS` | `REPOSILITE_ELASTICSEARCH_TIMEOUT_SECONDS` | `30` | 1 to 300 | Timeout of one request, in seconds. |
+| `INGOT_ELASTICSEARCH_REPLICAS` | `REPOSILITE_ELASTICSEARCH_REPLICAS` | `1` | 0 to 10 | Replicas of the index, set when the index is created. |
+
+The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `elasticsearch` only after the jar is installed. See [Choose a search backend](../how-to/choose-a-search-backend.md).
+
 ### Support bundle switch
 
 The system information page and the support bundle are on by default, because both are read-only and need the console area. A support bundle lists what the instance runs on and never holds a secret, see [Collect a support bundle](../how-to/collect-a-support-bundle.md).

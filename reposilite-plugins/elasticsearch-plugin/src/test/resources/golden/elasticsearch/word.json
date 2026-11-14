@@ -1,0 +1,29 @@
+{
+  "bool": {
+    "filter": [
+      {
+        "bool": {
+          "should": [
+            {"prefix": {"group_id_lc": "mycelium"}},
+            {"prefix": {"artifact_id_lc": "mycelium"}},
+            {"term": {"version_lc": "mycelium"}},
+            {"bool": {"filter": [{"term": {"tokens": "mycelium"}}]}}
+          ],
+          "minimum_should_match": 1
+        }
+      },
+      {
+        "bool": {
+          "should": [
+            {"prefix": {"group_id_lc": "bom"}},
+            {"prefix": {"artifact_id_lc": "bom"}},
+            {"term": {"version_lc": "bom"}},
+            {"bool": {"filter": [{"prefix": {"tokens": "bom"}}]}}
+          ],
+          "minimum_should_match": 1
+        }
+      },
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

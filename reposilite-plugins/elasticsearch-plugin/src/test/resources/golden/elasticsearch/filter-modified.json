@@ -1,0 +1,8 @@
+{
+  "bool": {
+    "filter": [
+      {"range": {"last_modified": {"gte": 1767225600000, "lt": 1769904000000}}},
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

@@ -32,7 +32,7 @@ include(
 // The image keeps only the bundled metrics plugin, so each plugin is included when its directory is present.
 if (rootDir.resolve("reposilite-plugins").isDirectory) {
     include("reposilite-plugins")
-    listOf("checksum-plugin", "example-plugin", "groovy-plugin", "migration-plugin", "nexus-import-plugin", "opensearch-plugin", "prometheus-plugin", "swagger-plugin")
+    listOf("checksum-plugin", "example-plugin", "groovy-plugin", "migration-plugin", "elasticsearch-plugin", "nexus-import-plugin", "opensearch-plugin", "prometheus-plugin", "swagger-plugin")
         .filter { rootDir.resolve("reposilite-plugins/$it").isDirectory }
         .forEach { include("reposilite-plugins:$it") }
 }
