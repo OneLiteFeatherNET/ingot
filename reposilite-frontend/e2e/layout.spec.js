@@ -110,7 +110,8 @@ test.describe('wide screens', () => {
         const frame = page.getByRole('region', { name: 'Audit settings', exact: true })
         await expect(frame).toBeVisible()
 
-        const box = await frame.boundingBox()
+        // The header spans the frame; the reading measure caps the layout beneath it, where the settings form is.
+        const box = await frame.locator(':scope > header + div').boundingBox()
         expect(box.width, 'the width of the settings page in px').toBeLessThanOrEqual(960)
       })
 
@@ -267,4 +268,80 @@ test.describe('the Overview page below 1240 pixels', () => {
       expect(overflow, 'no horizontal scrolling in px').toBeLessThanOrEqual(0)
     })
   }
+})
+
+// The header of an administration page at the widths an operator reads it at: the crumbs and their separators sit on one
+// row, the description keeps its room when the actions are beside it, a reading page spans its header like a wide page,
+// and a detail title never breaks inside a word.
+test.describe('the administration page header', () => {
+  // Every child of the breadcrumb items, in reading order: a crumb, then its separator when it has one.
+  const trailParts = (page) => page.evaluate(() => [...document.querySelectorAll('nav[aria-label="Breadcrumb"] li')]
+    .flatMap(item => [...item.children].map(child => {
+      const box = child.getBoundingClientRect()
+      return { separator: child.getAttribute('aria-hidden') === 'true', top: box.top, bottom: box.bottom, left: box.left, right: box.right }
+    })))
+
+  test('draws the crumbs and their separators on one baseline with even spacing at 1440 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(siteUrl('/access/users/e2e-operator'))
+    await expect(page.locator('nav[aria-label="Breadcrumb"] li')).toHaveCount(3)
+
+    const parts = await trailParts(page)
+    expect(parts.filter(part => part.separator).length, 'a slash between each pair of crumbs').toBe(2)
+    const centres = parts.map(part => (part.top + part.bottom) / 2)
+    expect(Math.max(...centres) - Math.min(...centres), 'every crumb and separator shares one baseline, in px').toBeLessThan(1)
+
+    const gaps = []
+    for (let index = 0; index + 2 < parts.length; index += 2) {
+      gaps.push(parts[index + 1].left - parts[index].right, parts[index + 2].left - parts[index + 1].right)
+    }
+    expect(Math.max(...gaps) - Math.min(...gaps), 'the space on both sides of each slash is the same, in px').toBeLessThan(1)
+  })
+
+  test('keeps a detail title on whole words at 320 pixels, with the actions wrapped below it', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 320, height: 900 })
+    await page.goto(siteUrl('/access/users/e2e-operator'))
+    const title = page.locator('#principal-title')
+    await expect(title).toBeVisible()
+
+    const lineHeight = await title.evaluate(element => parseFloat(getComputedStyle(element).lineHeight))
+    const height = await title.evaluate(element => element.getBoundingClientRect().height)
+    expect(Number.isNaN(lineHeight), 'the title has a pixel line height').toBe(false)
+    expect(height, 'the title takes one line, not one line per letter, in px').toBeLessThan(lineHeight * 1.5)
+
+    const titleBox = await title.boundingBox()
+    const checkBox = await page.locator('[data-test="check-permission"]').boundingBox()
+    expect(checkBox.y, 'the actions start below the title').toBeGreaterThanOrEqual(titleBox.y + titleBox.height - 1)
+  })
+
+  test('keeps the description at least 300 pixels wide at 600 pixels, with the actions wrapped below it', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 600, height: 900 })
+    await page.goto(siteUrl('/settings'))
+    await expect(page.getByRole('button', { name: 'Download as JSON', exact: true })).toBeVisible()
+
+    const text = page.locator('section[data-ingot-component="administration-frame"] > header > div').first()
+    const box = await text.boundingBox()
+    expect(box.width, 'the text column of the header in px').toBeGreaterThanOrEqual(300)
+  })
+
+  test('spans the shortcuts of a reading page to the edge of the header, as a wide page does, at 1440 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(siteUrl('/maintenance'))
+    const shortcut = page.getByRole('navigation', { name: 'Related pages', exact: true }).getByRole('link').last()
+    await expect(shortcut).toBeVisible()
+
+    const box = await shortcut.boundingBox()
+    expect(box.x + box.width, 'the last shortcut ends near the right edge of the container, in px').toBeGreaterThan(1200)
+  })
+
+  test('keeps the content column of a reading page at its 960 pixel measure at 1440 pixels', async ({ adminPage: page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(siteUrl('/maintenance'))
+    // The wrapper of the layout is the element after the header of the frame.
+    const measure = page.locator('section[data-ingot-component="administration-frame"] > header + div')
+    await expect(page.getByRole('heading', { name: 'Maintenance', level: 1 })).toBeVisible()
+
+    const box = await measure.boundingBox()
+    expect(box.width, 'the measure of the reading page in px').toBeLessThanOrEqual(960)
+  })
 })
