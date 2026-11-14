@@ -105,6 +105,18 @@ The files hold all levels, from debug upwards. A new file starts at each start o
 
 To change the level of the messages that the console shows while the instance runs, use the console command `level <level>`.
 
+Set `INGOT_LOG_FILE=false` to write no file at all. The console keeps every line, and the start does not need a writable log directory.
+
+## Structured console output
+
+With `INGOT_LOG_FORMAT=json`, every console line is one JSON object, for example `{"time":"2026-11-14T10:15:30.123Z","level":"INFO","message":"Listening on ..."}`. The `time` value is in UTC. Colour codes are removed from the message. When a span is active on the thread that logs, for example inside a request traced by the OpenTelemetry Java agent, the line also carries `trace_id` and `span_id`, so a log line can be joined to its trace. Without a span the two fields are absent, and they are never written as `null`. The OpenTelemetry Java agent, attached with `-javaagent`, makes its spans visible this way. Ingot does not start spans or configure the agent.
+
+The log files stay in text form in both formats, so the files that the container writes are unchanged.
+
+## Access log
+
+`INGOT_ACCESS_LOG=true` writes one INFO line per request, for example `access method=GET path=/api/status/health status=200 duration_ms=3 bytes=- client=198.51.100.7 user=-`. The client address follows `INGOT_TRUSTED_PROXIES`, so it is the address of the client behind your proxy when the proxy is listed. The user is the name of the token that authenticated the request, or `-`. The line never holds the query string, the `Authorization` header or a cookie. The record is off by default, and it is written whether or not the external cache bypass is on. The response size is `-` when the response has no `Content-Length`, for example when it is compressed or streamed.
+
 ## Scrape Prometheus metrics (optional)
 
 The container image ships the Prometheus plugin as `/app/bundled-plugins/prometheus-plugin.jar`, outside the data volume. It stays off until you set the switch. The steps below are for the image. An installation that does not use the image has to build the plugin first, see [Installations without the image](#installations-without-the-image).
