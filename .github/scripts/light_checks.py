@@ -33,6 +33,7 @@ BUDGETS = {
     "Vulnerabilities": 180,
     "SBOM": 120,
     "Plugin API": 300,
+    "Docs tests": 120,
 }
 # The Build job of the shared workflow is named per runner, for example "Build / Build (ubuntu-latest)".
 BUILD_PREFIX = "Build / Build"

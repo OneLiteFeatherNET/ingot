@@ -100,6 +100,10 @@ class BudgetTest(unittest.TestCase):
         _, text, _ = run(needs(a="success"), [job("Build / Build (ubuntu-latest)", 250)])
         self.assertIn("| Build / Build (ubuntu-latest) | 250 s | 300 s | ok |", text)
 
+    def test_docs_tests_job_has_a_two_minute_budget(self):
+        _, text, _ = run(needs(a="success"), [job("Docs tests", 120)])
+        self.assertIn("| Docs tests | 120 s | 120 s | ok |", text)
+
     def test_job_without_a_budget_is_not_listed(self):
         _, text, warnings = run(needs(a="success"), [job("Container images", 1500)])
         self.assertNotIn("Container images", text)
@@ -142,7 +146,7 @@ class WorkflowTest(unittest.TestCase):
     def test_job_needs_every_light_job(self):
         for job_id in (
             "build", "coverage-changes", "coverage-backend", "coverage-frontend",
-            "frontend", "licenses", "vulnerabilities", "sbom", "plugin-api", "script-tests",
+            "frontend", "licenses", "vulnerabilities", "sbom", "plugin-api", "script-tests", "docs-tests",
         ):
             self.assertRegex(self.block, rf"needs:[^\n]*\b{re.escape(job_id)}\b", job_id)
 
