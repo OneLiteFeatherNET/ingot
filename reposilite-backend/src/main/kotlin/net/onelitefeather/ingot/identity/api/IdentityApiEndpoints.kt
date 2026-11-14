@@ -202,7 +202,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val createTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams", POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("teams") {
             response = readBody<CreateTeamRequest>()
-                .flatMap { request -> identity.createTeam(request, actor = auditActor()) }
+                .flatMap { request -> identity.createTeam(request, actor = auditActor(), caller = identifier) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value
@@ -240,7 +240,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     val updateTeam = ReposiliteRoute<TeamDetailDto>("/api/identity/teams/{name}", PATCH, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         managerOnly("teams") {
             response = readBody<UpdateTeamRequest>()
-                .flatMap { request -> identity.updateTeam(requireParameter("name"), request, ctx.header(Header.IF_MATCH), actor = auditActor()) }
+                .flatMap { request -> identity.updateTeam(requireParameter("name"), request, ctx.header(Header.IF_MATCH), actor = auditActor(), caller = identifier) }
                 .map { snapshot ->
                     ctx.header(Header.ETAG, snapshot.etag)
                     snapshot.value

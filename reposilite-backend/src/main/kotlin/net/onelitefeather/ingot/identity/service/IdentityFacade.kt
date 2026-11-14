@@ -23,6 +23,7 @@ import com.reposilite.audit.api.AuditAction.PRINCIPAL_CREATED
 import com.reposilite.audit.api.AuditAction.PRINCIPAL_DELETED
 import com.reposilite.audit.api.AuditAction.PRINCIPAL_DISABLED
 import com.reposilite.audit.api.AuditAction.PRINCIPAL_UPDATED
+import com.reposilite.audit.api.AuditAction.EXTERNAL_REF_UNGUARDED
 import com.reposilite.audit.api.AuditAction.TEAM_CREATED
 import com.reposilite.audit.api.AuditAction.TEAM_DELETED
 import com.reposilite.audit.api.AuditAction.TEAM_GRANTS_CHANGED
@@ -143,6 +144,10 @@ class IdentityFacade(
     private val visibilityOf: (String) -> String?,
     private val repositoryNames: () -> Collection<String> = { emptyList() },
     private val clock: Clock = Clock.systemUTC(),
+    /** Whether linking a team to a provider group needs the admin area `ingot.admin.idp`. */
+    private val idpGuard: IdpGuardMode = IdpGuardMode.ENFORCE,
+    /** Receives the warning of an unguarded link in warn mode. */
+    private val warnings: (String) -> Unit = {},
 ) {
 
     private companion object {
@@ -309,7 +314,11 @@ class IdentityFacade(
         }.asSuccess()
     }
 
-    fun createTeam(request: CreateTeamRequest, actor: AuditActor = AuditActor.SYSTEM_ACTOR): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
+    fun createTeam(
+        request: CreateTeamRequest,
+        actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
+    ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         // The reserved prefix is checked first: it is a conflict with the private teams, not a malformed name.
         if (request.name?.trim()?.startsWith("machine:", ignoreCase = true) == true) {
             return errorResponse(CONFLICT, "Team names starting with 'machine:' are reserved")
@@ -317,8 +326,10 @@ class IdentityFacade(
         val name = validateName(request.name, MAX_TEAM_NAME_LENGTH)
             ?: return badRequestError(nameProblem(request.name, MAX_TEAM_NAME_LENGTH, "Team name"))
         if (store.findTeam(name) != null) return errorResponse(CONFLICT, "Team '$name' already exists")
+        val reference = request.externalRef?.takeIf { it.isNotBlank() }
+        if (reference != null) guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, name, reference, actor)?.let { return it }
 
-        val team = store.createTeam(name, request.description.orEmpty(), request.externalRef?.takeIf { it.isNotBlank() })
+        val team = store.createTeam(name, request.description.orEmpty(), reference)
             ?: return errorResponse(CONFLICT, "Team '$name' already exists")
         audit(TEAM_CREATED, actor, mapOf("team" to team.name))
         return snapshotOf(team).asSuccess()
@@ -332,9 +343,18 @@ class IdentityFacade(
         request: UpdateTeamRequest,
         ifMatch: String?,
         actor: AuditActor = AuditActor.SYSTEM_ACTOR,
+        caller: AccessTokenIdentifier? = null,
     ): IdentityResult<IdentitySnapshot<TeamDetailDto>> {
         val team = publicTeam(name) ?: return notFoundError("Team not found")
         if (!EntityTag.matches(ifMatch, snapshotOf(team).etag)) return preconditionFailed("Team '$name'")
+        // Only a write that sets, changes or clears the reference is guarded. Repeating the current reference is no change.
+        val requested = request.externalRef
+        if (requested != null) {
+            val reference = requested.takeIf { it.isNotBlank() }
+            if (reference != team.externalRef?.takeIf { it.isNotBlank() }) {
+                guardExternalRef<IdentitySnapshot<TeamDetailDto>>(caller, team.name, reference.orEmpty(), actor)?.let { return it }
+            }
+        }
 
         store.updateTeam(team.id, request.description, request.externalRef, updateExternalRef = request.externalRef != null)
         val changed = listOfNotNull(
@@ -1063,6 +1083,34 @@ class IdentityFacade(
         store.listMemberships(team.id).forEach { membership ->
             store.findPrincipalById(membership.principalId)?.let { invalidateTokensOf(it) }
         }
+    }
+
+    /**
+     * The guard of a write to an external reference. Null when the write may proceed. A caller without `ingot.admin.idp` is
+     * refused in enforce mode. In warn mode the write proceeds and is recorded and logged. In off mode nothing is checked. A
+     * write without a caller is internal and is not guarded.
+     */
+    private fun <T> guardExternalRef(caller: AccessTokenIdentifier?, team: String, reference: String, actor: AuditActor): IdentityResult<T>? {
+        if (caller == null || idpGuard == IdpGuardMode.OFF) return null
+        val subject = accessTokens.subjectOf(caller)
+        if (PermissionEvaluator.allowsAdminArea(subject, "idp")) return null
+
+        val refused = idpGuard == IdpGuardMode.ENFORCE
+        audit(
+            EXTERNAL_REF_UNGUARDED, actor,
+            mapOf(
+                "team" to team,
+                "reference" to reference,
+                "caller" to subject.principalName,
+                "mode" to idpGuard.name.lowercase(),
+                "outcome" to if (refused) "refused" else "allowed",
+            ),
+        )
+        if (refused) {
+            return errorResponse(FORBIDDEN, "Linking a team to an identity provider group needs the admin area ingot.admin.idp. The caller does not hold it.")
+        }
+        warnings("Team '$team' is linked to the provider group '$reference' by '${subject.principalName}' without ingot.admin.idp")
+        return null
     }
 
     /** Records an administrative change. The details name what changed; they never carry a secret. */

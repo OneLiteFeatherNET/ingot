@@ -60,6 +60,7 @@ internal class NodeCatalogAndCheckTest {
                 .containsExactlyInAnyOrder(
                     "ingot.admin.settings", "ingot.admin.users", "ingot.admin.teams", "ingot.admin.tokens",
                     "ingot.admin.maintenance", "ingot.admin.audit", "ingot.admin.console", "ingot.admin.dashboard",
+                    "ingot.admin.idp",
                 )
         }
     }
