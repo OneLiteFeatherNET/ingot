@@ -28,6 +28,7 @@ import com.reposilite.maven.api.RepositoryListEntriesResponse
 import com.reposilite.maven.api.RepositoryMembersResponse
 import com.reposilite.shared.ContextDsl
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.shared.extensions.applyListingHeaders
 import com.reposilite.shared.notFoundError
 import com.reposilite.storage.api.DirectoryInfo
 import com.reposilite.storage.api.FileDetails
@@ -86,6 +87,8 @@ internal class MavenApiEndpoints(mavenFacade: MavenFacade) : MavenRoutes(mavenFa
                         Location.ofRequest(parameter("gav") ?: "")
                             .flatMap { gav -> mavenFacade.findDetails(LookupRequest(this?.identifier, repository, gav)) }
                 }
+            // A listing depends on the caller, so it is never stored by a shared cache; a file keeps its own headers
+            response?.peek { details -> if (details is DirectoryInfo) ctx.applyListingHeaders() }
         }
     }
 

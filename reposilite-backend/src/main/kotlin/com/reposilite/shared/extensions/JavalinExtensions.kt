@@ -240,6 +240,15 @@ internal fun Context.applyErrorCacheControl() {
     errorCacheControl(path(), res().getHeader(CACHE_CONTROL))?.let { header(CACHE_CONTROL, it) }
 }
 
+/**
+ * Applies the headers of a directory listing. The listing shows only what the caller may read, so no shared cache may store
+ * it, and a cache keys it by the credentials and the session cookie that decide what the caller sees.
+ */
+internal fun Context.applyListingHeaders() {
+    header(CACHE_CONTROL, NO_STORE_CACHE_CONTROL)
+    header(Header.VARY, mergeVary(res().getHeaders(Header.VARY), listOf(Header.AUTHORIZATION, Header.COOKIE)))
+}
+
 fun Context.error(status: Int, error: Any): Context =
     when (error) {
         is ErrorResponse -> {
