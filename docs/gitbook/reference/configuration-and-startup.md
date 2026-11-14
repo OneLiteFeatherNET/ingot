@@ -153,10 +153,6 @@ A value that starts with `jdbc:` is used as the JDBC URL as it is. Only the pref
 For a `jdbc:` value, Ingot reads no separate user name and password. Put the credentials into the URL. The comment that Ingot writes into a new `configuration.cdn` shows `user password` after a JDBC URL. The code does not split them off.
 {% endhint %}
 
-{% hint style="warning" %}
-The comment in a generated `configuration.cdn` still lists `postgresql` under the experimental providers. PostgreSQL is a supported database. MySQL and H2 are experimental.
-{% endhint %}
-
 ## Shared settings source
 
 | Aspect | Behavior |

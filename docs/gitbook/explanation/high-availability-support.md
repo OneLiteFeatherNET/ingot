@@ -21,6 +21,7 @@ Each row has one state:
 | State | Meaning |
 | --- | --- |
 | tested on every pull request | A test named in the row runs in a CI job that runs on every pull request. |
+| partly tested | Some tests named in the row run in a CI job on every pull request. The rest of the statement has no test, and the row says which part it is. |
 | not tested | No test or job asserts the statement. It may still be true, but this page does not promise it. |
 | not supported | The project makes no promise for this setup. No test is named, because a missing promise has no test. |
 
@@ -28,7 +29,7 @@ The jobs that carry the evidence, all of which run on pull requests:
 
 * **HA smoke test** (`ha-smoke` job of `.github/workflows/ci.yml`, driver `charts/ingot/tests/ha_smoke.py`): two replicas on kind, with MariaDB, an S3 endpoint (Floci) and NATS.
 * **Container images** (`./gradlew :reposilite-backend:containerTest`): the built image, the bus between two replicas and the comparison with the previous release.
-* **Coverage** (`./gradlew :reposilite-backend:testCoverage`): the unit suite and the integration suite. The integration suite runs on MariaDB, and a set of its tests also runs on PostgreSQL.
+* **Coverage** (`./gradlew :reposilite-backend:testCoverage`): the unit suite and the integration suite. The integration suite runs on SQLite and MariaDB, and the tests that name PostgreSQL also run on PostgreSQL.
 * **Helm chart** (unit tests in `charts/ingot/tests`).
 
 ## Supported topology
@@ -38,7 +39,7 @@ The jobs that carry the evidence, all of which run on pull requests:
 | N replicas of one release line behind one Service | `ha_smoke.py` checks `check_rolling_restart`, `check_lease_takeover`, `check_concurrent_deploys`, `check_sessions` and `check_cluster_view`, run on two replicas of the same image | tested on every pull request |
 | MariaDB as the shared database | the HA smoke test uses MariaDB; `MetadataLeaseIntegrationTest` and `LeaseSchemaLockTakeoverIntegrationTest` run two instances on one MariaDB database | tested on every pull request |
 | PostgreSQL as the shared database, one instance | a set of integration tests runs on PostgreSQL through `PostgresSpecificationJunitExtension` (#121) | tested on every pull request |
-| PostgreSQL with several replicas | no test starts two replicas on PostgreSQL, and `PostgresAdvisorySchemaLock` has no test | not tested |
+| PostgreSQL with several replicas | `ConcurrentSchemaInitialisationIntegrationTest` (PostgreSQL case) starts replicas together on one schema, `TwoInstanceClusterIntegrationTest` (`startPair(postgres = true)`) runs two instances on one PostgreSQL database, and `DatabaseClusterTransportIntegrationTest` (PostgreSQL case) covers the transport. `PostgresAdvisorySchemaLock` has no test of its own. The two-replica smoke test and the container suite have no PostgreSQL leg yet | partly tested |
 | S3 storage shared by all replicas | the HA smoke test stores its repositories on the S3 endpoint Floci, not on AWS | tested on every pull request |
 | A filesystem volume that several replicas mount (`ReadWriteMany`) | no test mounts one volume on two replicas | not tested |
 | Optional NATS cluster bus | `ClusterBusImageTest` "two replicas see each other through the bus"; the HA smoke test runs NATS | tested on every pull request |

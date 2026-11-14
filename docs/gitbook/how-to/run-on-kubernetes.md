@@ -44,7 +44,7 @@ kubectl -n ingot create secret generic ingot-database \
 Use `postgresql` as the engine for PostgreSQL. The password is split on spaces, so it must not contain a space.
 
 {% hint style="info" %}
-SQLite, MariaDB and PostgreSQL are supported. MySQL and H2 are experimental. The code comment for the database key still labels PostgreSQL as experimental, so check the release notes of your version before you rely on it in production.
+SQLite, MariaDB and PostgreSQL are supported. MySQL and H2 are experimental.
 {% endhint %}
 
 ## Write the values
@@ -428,7 +428,7 @@ Several replicas need all of the following:
 * A `ReadWriteMany` volume, or `persistence.enabled: false`, so that pods on other nodes can start.
 
 {% hint style="warning" %}
-The schema lock and the metadata lock are shared by all pods of one database. The tests for these locks run on MariaDB, and the page [High availability support](../explanation/high-availability-support.md) names them and marks PostgreSQL with several replicas as not tested.
+The schema lock and the metadata lock are shared by all pods of one database. The schema lock tests run on MariaDB and on PostgreSQL. The page [High availability support](../explanation/high-availability-support.md) names them and states which parts of PostgreSQL with several replicas are tested.
 
 These limits still apply:
 

@@ -53,9 +53,9 @@ object DatabaseConnectionFactory {
         when {
             databaseConfiguration.startsWith("mariadb") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:mariadb", databaseThreadPoolSize)
             databaseConfiguration.startsWith("sqlite") -> connectWithEmbeddedDatabase(workingDirectory, databaseConfiguration, "jdbc:sqlite:%file%")
+            databaseConfiguration.startsWith("postgresql") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:postgresql", databaseThreadPoolSize)
             /* Experimental implementations (not covered with integration tests) */
             databaseConfiguration.startsWith("mysql") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:mysql", databaseThreadPoolSize)
-            databaseConfiguration.startsWith("postgresql") -> connectWithStandardDatabase(databaseConfiguration, "jdbc:postgresql", databaseThreadPoolSize)
             databaseConfiguration.startsWith("h2") -> connectWithEmbeddedDatabase(workingDirectory, databaseConfiguration, "jdbc:h2:%file%;MODE=MYSQL")
             /* Raw */
             databaseConfiguration.startsWith("jdbc:") -> connectWithCustomJdbcUrl(databaseConfiguration, databaseThreadPoolSize)
