@@ -91,7 +91,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Check backend dependency licenses"
-        run: ./gradlew :reposilite-backend:checkLicense
+        run: ./gradlew --build-cache :reposilite-backend:checkLicense
 
       - name: "Set up Node"
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
@@ -253,7 +253,7 @@ jobs:
       # task copies the resolved runtime classpath out so the jars can be identified by
       # checksum instead.
       - name: "Collect the resolved runtime dependencies"
-        run: ./gradlew :reposilite-backend:collectRuntimeDependencies
+        run: ./gradlew --build-cache :reposilite-backend:collectRuntimeDependencies
 
       - name: "Scan the backend dependencies"
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
@@ -539,7 +539,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Generate the SBOM of the standalone jar"
-        run: ./gradlew :reposilite-backend:cyclonedxDirectBom
+        run: ./gradlew --build-cache :reposilite-backend:cyclonedxDirectBom
 
       - name: "Set up Node"
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444  # v5.0.0
@@ -896,7 +896,7 @@ jobs:
             echo "::error::The selection named no filter for one of the two tasks."
             exit 1
           fi
-          ./gradlew :reposilite-backend:test "${test_args[@]}" :reposilite-backend:integration "${integration_args[@]}"
+          ./gradlew --build-cache :reposilite-backend:test "${test_args[@]}" :reposilite-backend:integration "${integration_args[@]}"
 
       # The backend tests that serve the dashboard, unit and integration. The filters select the frontend
       # package, the dashboard policy, the dashboard route and caching tests, and the security header tests
@@ -904,15 +904,15 @@ jobs:
       - name: "Run the dashboard tests of the backend"
         if: ${{ needs.coverage-changes.outputs.frontend_only == 'true' }}
         run: |
-          ./gradlew :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
-          ./gradlew :reposilite-backend:integration --tests 'com.reposilite.frontend.*' \
+          ./gradlew --build-cache :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
+          ./gradlew --build-cache :reposilite-backend:integration --tests 'com.reposilite.frontend.*' \
             --tests 'com.reposilite.web.DashboardRoutesIntegrationTest*' \
             --tests 'com.reposilite.web.DashboardCachingIntegrationTest*' \
             --tests 'com.reposilite.web.SecurityHeadersIntegrationTest*'
 
       - name: "Run tests with coverage"
         if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
-        run: ./gradlew :reposilite-backend:testCoverage
+        run: ./gradlew --build-cache :reposilite-backend:testCoverage
 
       - name: "Upload coverage to Codecov"
         if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
@@ -1073,15 +1073,15 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       - name: "Compare the plugin API with Reposilite 3.5.28"
-        run: ./gradlew :reposilite-backend:pluginApiReport
+        run: ./gradlew --build-cache :reposilite-backend:pluginApiReport
 
       - name: "Run the upstream plugin canaries"
         id: canaries
         continue-on-error: true
-        run: ./gradlew :reposilite-backend:integration --tests '*UpstreamPluginCanary*'
+        run: ./gradlew --build-cache :reposilite-backend:integration --tests '*UpstreamPluginCanary*'
 
       - name: "Test the bundled plugins"
-        run: ./gradlew :reposilite-plugins:checksum-plugin:test :reposilite-plugins:migration-plugin:test
+        run: ./gradlew --build-cache :reposilite-plugins:checksum-plugin:test :reposilite-plugins:migration-plugin:test
 
       - name: "Write the results to the job summary"
         if: always()

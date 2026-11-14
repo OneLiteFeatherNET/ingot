@@ -432,6 +432,10 @@ dependencies {
 }
 
 tasks.named<Test>("integration") {
+    // Never replayed from the build cache. The suite starts containers that Gradle cannot see, so a cached pass would
+    // say nothing about the images and services of this run. CI reads the cache with --build-cache for the unit suite.
+    outputs.cacheIf { false }
+
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.
     systemProperty("reposilite.s3.pathStyleAccessEnabled", "true")
