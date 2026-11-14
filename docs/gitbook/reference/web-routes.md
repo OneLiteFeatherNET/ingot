@@ -139,7 +139,7 @@ A request to the API with the session or refresh cookie that comes from another 
 
 ## Directory index
 
-A `GET` or `HEAD` request on a directory of a repository answers with an HTML page. There is no setting to turn it off, and there is no other format. The JSON listing is part of the API.
+A `GET` or `HEAD` request on a directory of a repository answers with an HTML page. There is no setting to turn it off, and there is no other format. The JSON listing is part of the API. Every listing, in HTML or JSON, answers with `Cache-Control: no-cache, no-store, max-age=0` and `Vary: Authorization, Cookie`, because it shows only what the caller may read. Artifacts keep their own `Cache-Control`.
 
 | Part | Content |
 |------|---------|
