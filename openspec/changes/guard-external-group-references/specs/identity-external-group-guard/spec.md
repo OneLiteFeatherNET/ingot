@@ -8,7 +8,7 @@ Linking a team to an identity provider group is a right of its own. A caller who
 
 ### Requirement: Linking a team to a provider group needs the IdP right
 
-Creating a team with an external reference, changing a team's external reference and clearing it SHALL require the caller to hold the node `ingot.admin.idp`, or `ingot.admin.*`, in `enforce` mode.
+Creating a team with an external reference, changing a team's external reference and clearing it SHALL require the caller to hold the node `ingot.admin.idp`, or `ingot.admin.*`, in `enforce` mode. `enforce` is the default.
 
 #### Scenario: A teams administrator cannot link a team in enforce mode
 
@@ -20,7 +20,7 @@ Creating a team with an external reference, changing a team's external reference
 - **WHEN** the mode is `enforce` and a caller holding `ingot.admin.idp` sets `externalRef`
 - **THEN** the team is linked and the answer is the one of today
 
-### Requirement: Warn mode is the default and changes no response
+### Requirement: Warn mode is a temporary fallback and changes no response
 
 When the mode is `warn`, the write SHALL proceed exactly as before. A write by a caller without the IdP right SHALL record one `EXTERNAL_REF_UNGUARDED` audit event naming the caller, the team and the reference, and SHALL log a WARN line.
 
@@ -49,9 +49,14 @@ The node `ingot.admin.idp` SHALL be accepted by the node grammar as an admin are
 
 ### Requirement: The switch names follow the drop-in rule
 
-The mode SHALL be read from `INGOT_IDENTITY_IDP_GUARD` with the values `off`, `warn` and `enforce`, falling back to `REPOSILITE_IDENTITY_IDP_GUARD`. The default SHALL be `warn`.
+The mode SHALL be read from `INGOT_IDENTITY_IDP_GUARD` with the values `off`, `warn` and `enforce`, falling back to `REPOSILITE_IDENTITY_IDP_GUARD`. The default SHALL be `enforce`. An operator MAY set `warn` as a temporary fallback while granting `ingot.admin.idp`.
 
 #### Scenario: The default needs no configuration
 
 - **WHEN** neither variable is set
-- **THEN** the mode is `warn`
+- **THEN** the mode is `enforce`
+
+#### Scenario: The fallback restores today's responses
+
+- **WHEN** `INGOT_IDENTITY_IDP_GUARD=warn` is set and a caller holding only `ingot.admin.teams` sets `externalRef`
+- **THEN** the write succeeds with the usual answer and one `EXTERNAL_REF_UNGUARDED` event is recorded
