@@ -203,6 +203,11 @@ dependencies {
         exclude(group = "org.bouncycastle")
     }
 
+    // The OpenTelemetry API, Apache-2.0. The JSON console journalist reads the active span through it, so the trace fields
+    // appear under the Java agent, which bridges its own spans to an API that the application ships itself.
+    val openTelemetry = "1.67.0"
+    implementation("io.opentelemetry:opentelemetry-api:$openTelemetry")
+
     val journalist = "1.0.12"
     api("com.reposilite:journalist:$journalist")
     implementation("com.reposilite:journalist-slf4j:$journalist")
@@ -389,6 +394,19 @@ dependencies {
     "pluginCanary"("com.reposilite.plugin:migration-plugin:3.5.28")
 }
 
+// The OpenTelemetry Java agent, attached with -javaagent to the child JVM of OtelAgentLogIntegrationTest. Not transitive, and
+// not on any classpath of the server: the test starts a child process with it, exporters off, and reads the trace id of a log line.
+val otelAgent by configurations.creating {
+    description = "The OpenTelemetry Java agent that the agent integration test attaches to a child JVM"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+dependencies {
+    "otelAgent"("io.opentelemetry.javaagent:opentelemetry-javaagent:2.33.0")
+}
+
 // The Nexus import jar, loaded into a fresh instance by NexusImportIntegrationTest, and the fake Nexus that test serves from
 // the plugin's test fixtures. The jar is the plugin's own shadow jar, so the test runs the shipped artefact.
 val nexusImportPlugin by configurations.creating {
@@ -453,9 +471,11 @@ tasks.named<Test>("integration") {
     // Resolved at execution time, so the canary jars are only fetched when the integration suite runs.
     inputs.files(pluginCanary)
     inputs.files(nexusImportPlugin)
+    inputs.files(otelAgent)
     doFirst {
         systemProperty("reposilite.canary.plugins", pluginCanary.files.joinToString(File.pathSeparator) { it.absolutePath })
         systemProperty("reposilite.nexusImport.plugin", nexusImportPlugin.singleFile.absolutePath)
+        systemProperty("ingot.otelAgent", otelAgent.singleFile.absolutePath)
     }
 }
 
