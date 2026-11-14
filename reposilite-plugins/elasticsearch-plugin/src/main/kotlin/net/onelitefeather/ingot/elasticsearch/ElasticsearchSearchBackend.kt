@@ -103,15 +103,34 @@ internal class ElasticsearchSearchBackend(
                 val indices = mapper.readTree(answer.body).fieldNames().asSequence().toList()
                 check(indices.size == 1) { "the alias $alias points to ${indices.size} indices, one is expected" }
                 verifyVersion(indices.single())
+                identity = indexUuid(indices.single())
             }
             404 -> {
                 createIndex()
                 verifyVersion(physical)
                 client.read("POST", "/_aliases", mapOf("actions" to listOf(mapOf("add" to mapOf("index" to physical, "alias" to alias)))))
+                identity = indexUuid(physical)
             }
             else -> throw IllegalStateException(redactor.redact("the alias $alias cannot be read, the cluster answered ${answer.status}"))
         }
     }
+
+    /**
+     * The uuid of the physical index, read from its settings. An operator who recreates the index gets a new uuid, so the core resets
+     * the rebuild cursor that was written against the old one (design D8).
+     */
+    private fun indexUuid(index: String): String {
+        val uuid = client.read("GET", "/$index/_settings/index.uuid").path(index)
+            .path("settings").path("index").path("uuid").asText()
+        check(uuid.isNotBlank()) { "the index $index reports no uuid" }
+        return uuid
+    }
+
+    /** The uuid of the physical index read at [open], or null before the backend is open. */
+    @Volatile
+    private var identity: String? = null
+
+    override fun indexIdentity(): String? = identity
 
     /** Nothing to release: the connections belong to the JDK client, which closes with the process. */
     override fun close() = Unit
