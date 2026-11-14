@@ -229,6 +229,23 @@ internal class MeilisearchSettingsTest {
     }
 
     @Test
+    fun `should use 100000 files as the aggregate sort limit when the variable is unset`() {
+        // when: the settings are read with the URL alone
+        val settings = MeilisearchSettings.read(mapOf("INGOT_MEILISEARCH_URL" to https), noFileExpected)
+
+        // then: the group sorts by modification and size read at most the documented number of files
+        assertThat(settings.aggregateSortLimit).`as`("files read for the group sorts").isEqualTo(100_000)
+    }
+
+    @Test
+    fun `should refuse an aggregate sort limit of zero and name the variable`() {
+        // when / then: at least one file is needed
+        assertThatThrownBy { MeilisearchSettings.read(withUrl("INGOT_MEILISEARCH_AGGREGATE_SORT_LIMIT" to "0"), noFileExpected) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("INGOT_MEILISEARCH_AGGREGATE_SORT_LIMIT")
+    }
+
+    @Test
     fun `should refuse an index uid with a space and name the variable`() {
         // when / then: a space is not allowed in an index uid
         assertThatThrownBy { MeilisearchSettings.read(withUrl("INGOT_MEILISEARCH_INDEX" to "ingot artifacts"), noFileExpected) }
