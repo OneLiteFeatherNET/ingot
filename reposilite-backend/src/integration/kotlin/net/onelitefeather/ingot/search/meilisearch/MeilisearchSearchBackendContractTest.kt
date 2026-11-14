@@ -24,6 +24,7 @@ import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendContract
 import net.onelitefeather.ingot.search.backend.CoreSearchBackendContext
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.opensearch.newIndexName
+import net.onelitefeather.ingot.search.http.HttpExchange
 import java.nio.file.Path
 import java.time.Clock
 import java.util.UUID
@@ -58,12 +59,12 @@ internal class MeilisearchSearchBackendContractTest : ArtifactSearchBackendContr
  * A backend created by the factory of the plugin, the way the core creates one, and not yet opened. The clock is the system clock,
  * so that the bound of a task wait is real.
  */
-internal fun createMeilisearchBackend(environment: Map<String, String>): ArtifactSearchBackend {
+internal fun createMeilisearchBackend(environment: Map<String, String>, exchange: HttpExchange? = null): ArtifactSearchBackend {
     val context = CoreSearchBackendContext(
         clock = Clock.systemUTC(),
         instanceId = "test-replica-${UUID.randomUUID()}",
         backendId = "meilisearch",
         variables = environment::get,
     ) { _, _ -> }
-    return meilisearchBackendFactory(environment).create(context)
+    return meilisearchBackendFactory(environment, exchange).create(context)
 }
