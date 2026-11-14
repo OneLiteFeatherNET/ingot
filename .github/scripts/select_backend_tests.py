@@ -19,7 +19,7 @@ A domain is a package directly below com.reposilite or net.onelitefeather.ingot.
 domain is the domain itself plus the domains whose sources import it directly (one hop, Decision 2). The
 smoke set (SMOKE_CLASSES) is added to every partial run, so a renamed smoke class fails here, not silently.
 
-The deny list mirrors coverage_changes.sh. Keep the two in step when one of them changes.
+The deny list mirrors ci_scope.sh. Keep the two in step when one of them changes.
 """
 
 import os
@@ -36,7 +36,7 @@ SOURCE_SETS = {
 }
 KOTLIN_ROOTS = tuple(SOURCE_SETS.values())
 
-# Mirrors DENIED in coverage_changes.sh: documentation, OpenSpec, templates and repository metadata.
+# Mirrors DENIED in ci_scope.sh: documentation, OpenSpec, templates and repository metadata.
 DENIED = re.compile(
     r"^(docs/|openspec/|\.github/ISSUE_TEMPLATE/|\.well-known/)"
     r"|\.md$"
