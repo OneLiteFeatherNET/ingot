@@ -353,10 +353,12 @@ class ChartRenderTest(unittest.TestCase):
         self.assertEqual(3, readiness["timeoutSeconds"], "the split readiness check runs two bounded checks, so it needs 3 seconds")
         self.assertEqual(2, readiness["failureThreshold"], "one slow answer must not take the split pod out of rotation")
 
-    def test_all_in_one_readiness_keeps_its_budget(self):
+    # The all-in-one readiness now runs the same database and storage checks as the split server, so it gets the same
+    # budget: one slow answer must not take the replica out of rotation.
+    def test_all_in_one_readiness_tolerates_one_slow_answer(self):
         readiness = container(named(render(), "Deployment", SERVER))["readinessProbe"]
-        self.assertEqual(1, readiness["timeoutSeconds"], "the all-in-one readiness timeout must stay at the upstream 1 second")
-        self.assertEqual(1, readiness["failureThreshold"], "the all-in-one readiness threshold must stay at the upstream 1")
+        self.assertEqual(3, readiness["timeoutSeconds"], "the all-in-one readiness timeout must be 3 seconds, as in split mode")
+        self.assertEqual(2, readiness["failureThreshold"], "the all-in-one readiness must tolerate one failed check, as in split mode")
 
     def test_explicit_readiness_path_wins_in_all_in_one_mode(self):
         deployment = named(render({"probes": {"readinessPath": "/api/status/ready"}}), "Deployment", SERVER)
