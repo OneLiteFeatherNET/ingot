@@ -1,5 +1,5 @@
 ---
-description: Start page of the Ingot documentation. Pitches what Ingot is, gives a reading path for each audience, and explains how the four sections are organized.
+description: Start page of the Ingot documentation. Pitches what Ingot is, gives a reading path for each audience, and explains how the sections are organized.
 ---
 
 # Ingot documentation
@@ -44,9 +44,13 @@ Ingot keeps the image, the data directory and the port of Reposilite. It also re
 
 ## Sections
 
-* **Tutorials** are guided lessons with a known result. Use them for a first contact.
-* **How-to guides** finish one task for a reader who already runs Ingot.
-* **Reference** lists the settings, routes, commands and tables to look up.
-* **Explanation** describes why things work the way they do.
+* **Introduction** says what Ingot is and how it compares.
+* **Get started** has the tutorials for a first contact.
+* **Set up** installs and deploys Ingot, and moves to it from another manager.
+* **Configure** changes the behaviour of a running instance.
+* **Publish and consume** is for the people and build systems that use a repository.
+* **Manage** keeps an instance running, from backups to plugins.
+* **References** lists the settings, routes, commands and tables to look up, and explains the architecture.
+* **Release notes** list what changed.
 
-Each page covers one of these modes. To add a page, pick the mode first, then add it to [SUMMARY.md](SUMMARY.md).
+Each page is one of the four Diataxis modes: tutorial, how-to guide, reference or explanation. To add a page, pick the section by the task of the reader, then add it to [SUMMARY.md](SUMMARY.md). [Contributing to the docs](contributing/contributing-to-the-docs.md) has the rules.
