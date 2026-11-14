@@ -84,14 +84,22 @@ describe('monospace family', () => {
   })
 })
 
+// The prominent labels keep their own declarations: an @apply of the base label changes the order in which Tailwind
+// emits them, and the base weight then overrides the prominent one (see the comment in typography.css).
 describe('prominent label utilities', () => {
-  it.each([
-    ['md-label-large-prominent', 'md-label-large'],
-    ['md-label-medium-prominent', 'md-label-medium'],
-  ])('%s applies %s and changes only the weight', (name, base) => {
-    const utility = utilityOf(name)
-    expect(utility, `${name} applies its base label`).toContain(`@apply ${base};`)
-    expect(utility, 'the prominent weight is the only declaration of its own').toMatch(/font-weight: var\(--md-sys-typescale-label-(?:large|medium)-weight-prominent\);/)
-    expect(utility, 'the size is not copied from the base label').not.toContain('font-size')
+  it('defines md-label-large-prominent with the label large size and the prominent weight', () => {
+    expect(typography).toMatch(
+      /@utility md-label-large-prominent \{[^}]*font-size: var\(--md-sys-typescale-label-large-size\)[^}]*font-weight: var\(--md-sys-typescale-label-large-weight-prominent\)/
+    )
+  })
+
+  it('defines md-label-medium-prominent with the label medium size and the prominent weight', () => {
+    expect(typography).toMatch(
+      /@utility md-label-medium-prominent \{[^}]*font-size: var\(--md-sys-typescale-label-medium-size\)[^}]*font-weight: var\(--md-sys-typescale-label-medium-weight-prominent\)/
+    )
+  })
+
+  it('does not @apply the base label, so the prominent weight stays after the base declarations', () => {
+    expect(typography, 'no @apply inside the prominent labels').not.toMatch(/@apply md-label-(large|medium);/)
   })
 })

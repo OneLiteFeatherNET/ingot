@@ -208,14 +208,25 @@
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
 }
 
+/*
+ * The prominent labels repeat the base declarations rather than @apply the base label. With @apply, Tailwind emits the
+ * base label after the prominent one, so its weight overrides the prominent weight (the active item of the navigation
+ * rail showed the regular weight). The copy keeps the cascade order, and the weight is the only difference.
+ */
 @utility md-label-large-prominent {
-  @apply md-label-large;
+  font-family: var(--md-sys-typescale-font-family);
+  font-size: var(--md-sys-typescale-label-large-size);
+  line-height: var(--md-sys-typescale-label-large-line-height);
   font-weight: var(--md-sys-typescale-label-large-weight-prominent);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
 }
 
 @utility md-label-medium-prominent {
-  @apply md-label-medium;
+  font-family: var(--md-sys-typescale-font-family);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
   font-weight: var(--md-sys-typescale-label-medium-weight-prominent);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
 }
 
 @utility md-label-small {
