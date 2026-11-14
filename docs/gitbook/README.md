@@ -30,7 +30,7 @@ Pick the path that matches your role.
 
 ## Upgrade an existing installation
 
-To upgrade, start with [Back up before upgrading](manage/upgrade/back-up-before-upgrading.md). Then follow [Upgrade from Ingot 1.1.x](manage/upgrade/upgrade-ingot.md) if you run Ingot, or [Upgrade from Reposilite 3.x](set-up/migrate/upgrade-from-reposilite.md) if you run Reposilite. Verify the result with [Verify an upgrade](manage/upgrade/verify-an-upgrade.md).
+To upgrade, start with [Back up before upgrading](manage/upgrade/back-up-before-upgrading.md). Then follow [Upgrade from Ingot 1.1.x](manage/upgrade/upgrade-ingot.md) if you run Ingot, or [Upgrade from Reposilite 3.x](set-up/migrate/move-from-reposilite.md) if you run Reposilite. Verify the result with [Verify an upgrade](manage/upgrade/verify-an-upgrade.md).
 
 ## What changed in 1.2.0
 

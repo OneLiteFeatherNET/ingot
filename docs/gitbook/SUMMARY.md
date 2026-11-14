@@ -46,7 +46,6 @@
   * [Use S3 storage](set-up/cluster/use-s3-storage.md)
 * [Migrate](set-up/migrate/README.md)
   * [Move from Reposilite to Ingot](set-up/migrate/move-from-reposilite.md)
-  * [Upgrade from Reposilite 3.x](set-up/migrate/upgrade-from-reposilite.md)
   * [Migrate from the upstream Helm chart](set-up/migrate/migrate-from-upstream-chart.md)
   * [Import from other repository managers](set-up/migrate/import-from-other-repository-managers.md)
   * [Import from Nexus](set-up/migrate/import-from-nexus.md)
