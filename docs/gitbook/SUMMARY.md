@@ -18,6 +18,7 @@
 
 ## Set up
 
+* [Set up Ingot](set-up/README.md)
 * [Install with Docker](how-to/install-with-docker.md)
 * [Run the JAR](how-to/install-jar.md)
 * [Run as a service](how-to/run-as-service.md)
@@ -50,6 +51,7 @@
 
 ## Configure
 
+* [Configure Ingot](configure/README.md)
 * [Encrypt the settings secrets](how-to/encrypt-settings-secrets.md)
 * [Customize branding](how-to/customize-branding.md)
 * [Serve a custom frontend](how-to/serve-custom-frontend.md)
@@ -88,6 +90,7 @@
 
 ## Manage
 
+* [Manage Ingot](manage/README.md)
 * [Back up and restore](how-to/back-up-and-restore.md)
 * [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
 * [Shut down without dropping requests](how-to/shut-down-without-dropping-requests.md)
@@ -115,6 +118,7 @@
 
 ## References
 
+* [References](references/README.md)
 * [Architecture overview](explanation/architecture-overview.md)
 * [Backend architecture](explanation/backend-architecture.md)
 * [High availability support](explanation/high-availability-support.md)

@@ -1,0 +1,56 @@
+---
+description: Set up Ingot. Lists the pages that deploy Ingot with Docker, the JAR or Kubernetes, put it behind a proxy or TLS, run it on a shared database and storage, and move to it from Reposilite, Nexus or another manager.
+---
+
+# Set up Ingot
+
+This section covers getting Ingot running outside a tutorial: the install paths, the network setup, a cluster of replicas, and the move from another repository manager. A server runs with the deploy target `all` or `server`, and the Helm chart has the modes `allInOne` and `split`. [Deploy targets](../reference/deploy-targets.md) and [Deployment options compared](../explanation/deployment-options-compared.md) explain the choice.
+
+## Deploy
+
+Install paths and the Kubernetes pages.
+
+* [Install with Docker](../how-to/install-with-docker.md)
+* [Run the JAR](../how-to/install-jar.md)
+* [Run as a service](../how-to/run-as-service.md)
+* [Run on Kubernetes](../how-to/run-on-kubernetes.md)
+* [Run the dashboard split from the server with Helm](../how-to/run-split-with-helm.md)
+* [Run the dashboard in a separate container](../how-to/run-split-dashboard-container.md)
+* [Set Helm values for high availability](../how-to/set-helm-values-for-high-availability.md)
+* [Autoscale the server](../how-to/autoscale-the-server.md)
+* [Set a disruption budget](../how-to/set-a-disruption-budget.md)
+* [Route with a Gateway API HTTPRoute](../how-to/route-with-gateway-api.md)
+* [Manage secrets with GitOps](../how-to/manage-secrets-with-gitops.md)
+* [Size the deployment](../how-to/size-the-deployment.md)
+* [Deployment options compared](../explanation/deployment-options-compared.md)
+
+## Network
+
+Reverse proxy, TLS and traffic restrictions.
+
+* [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md)
+* [Configure the edge for large uploads](../how-to/configure-the-edge-for-large-uploads.md)
+* [Enable TLS](../how-to/enable-tls.md)
+* [Terminate TLS at the gateway](../how-to/terminate-tls-at-the-gateway.md)
+* [Restrict network traffic with a NetworkPolicy](../how-to/restrict-network-traffic.md)
+
+## Cluster
+
+The shared database, the object storage and the cluster bus that several replicas need.
+
+* [Configure a database](../how-to/configure-database.md)
+* [Configure the cluster bus](../how-to/configure-cluster-bus.md)
+* [Use S3 storage](../how-to/use-s3-storage.md)
+
+## Migrate
+
+Moving from Reposilite, Nexus and other repository managers.
+
+* [Move from Reposilite to Ingot](../how-to/move-from-reposilite.md)
+* [Upgrade from Reposilite 3.x](../how-to/upgrade-from-reposilite.md)
+* [Upgrade from Reposilite 2.x](../how-to/upgrade-from-reposilite-2.md)
+* [Migrate from the upstream Helm chart](../how-to/migrate-from-upstream-chart.md)
+* [Import from other repository managers](../how-to/import-from-other-repository-managers.md)
+* [Import from Nexus](../how-to/import-from-nexus.md)
+* [Use the Nexus import wizard](../how-to/use-the-nexus-import-wizard.md)
+* [Token migration](../explanation/token-migration.md)
