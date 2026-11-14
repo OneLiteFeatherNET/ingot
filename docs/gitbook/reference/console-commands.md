@@ -117,7 +117,7 @@ These commands act on the secret values of the shared settings. They need a sett
 | `settings-reencrypt` | none | Seals every stored secret value with the active key and stores the key record. Prints `Sealed <n> stored secret values with the settings key id <key id>`. Run it once on one replica after a key rotation. Without an active key it fails with `No settings key is active, set INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE first`. |
 | `settings-decrypt` | none | Writes every stored secret value in clear and clears the key record. Prints `Wrote <n> stored secret values in clear, remove the settings key before starting an older build`. It needs the active key, and fails without one. Take an export first. |
 
-Both commands fail with `The stored settings could not be written, the settings may be managed by a file or changed concurrently` when the stored settings cannot be saved. The steps for a rotation and for a return to an older build are in [Encrypt settings secrets](../how-to/encrypt-settings-secrets.md).
+Both commands fail with `The stored settings could not be written, the settings may be managed by a file or changed concurrently` when the stored settings cannot be saved. The steps for a rotation and for a return to an older build are in [Encrypt settings secrets](../configure/encrypt-settings-secrets.md).
 
 The help text of `route-add` states the matching rule: a route matches as a case-insensitive byte prefix, so `/releases` also covers `/releases-snapshots`. A trailing `/` anchors the route at a segment boundary, so `/releases/` does not match `/releases-snapshots`.
 
@@ -196,7 +196,7 @@ On success the command prints `Snapshot written: <file name> (<size> bytes) in b
 ## Related
 
 * [Upgrade changes](upgrade-changes.md): how tokens are migrated and what happens to a `--token` token.
-* [Encrypt settings secrets](../how-to/encrypt-settings-secrets.md): the rotation steps behind `settings-reencrypt` and `settings-decrypt`.
+* [Encrypt settings secrets](../configure/encrypt-settings-secrets.md): the rotation steps behind `settings-reencrypt` and `settings-decrypt`.
 * [Back up and restore](../how-to/back-up-and-restore.md): when to take a snapshot and how to restore one.
 * [Upgrade from Reposilite 2.x](../set-up/migrate/upgrade-from-reposilite-2.md): uses `token-import`.
 * [Token migration](../set-up/migrate/token-migration.md): why tokens become machine accounts.

@@ -69,17 +69,17 @@ A provider can remove the last instance admin from the instance, for example whe
 With no instance admin left, nobody can change the teams in the dashboard. Keep a local instance admin, or keep at least two members in each admin group at the provider.
 {% endhint %}
 
-If it happens anyway, follow [Recover admin access](recover-admin-access.md#after-a-provider-removed-the-last-admin). It describes how to restore the group at the provider, or how to start Ingot with a temporary admin token and grant the right again.
+If it happens anyway, follow [Recover admin access](../../how-to/recover-admin-access.md#after-a-provider-removed-the-last-admin). It describes how to restore the group at the provider, or how to start Ingot with a temporary admin token and grant the right again.
 
 ## Check the result
 
 1. Sign in through the provider with a person who is in a group that has a team. Open **Access**, then **Teams**, and check that the person is a member.
 2. Remove the person from the group at the provider, and sign in again. The membership must be gone.
-3. Open the audit log, see [Review the audit log](review-audit-log.md), and check the `TEAM_MEMBERSHIP_CHANGED` events of the test.
+3. Open the audit log, see [Review the audit log](../../how-to/review-audit-log.md), and check the `TEAM_MEMBERSHIP_CHANGED` events of the test.
 
 ## Related
 
 * [Configure generic OIDC login](configure-oidc-login.md)
 * [Configure LDAP login](configure-ldap-login.md)
-* [Recover admin access](recover-admin-access.md)
-* [Login providers](../reference/login-providers.md)
+* [Recover admin access](../../how-to/recover-admin-access.md)
+* [Login providers](../../reference/login-providers.md)

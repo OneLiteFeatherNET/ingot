@@ -84,8 +84,8 @@ Google sends no groups in the ID token. Ingot therefore cannot synchronise teams
 
 What follows from that:
 
-* Add the people to teams by hand, in **Access**, then **Teams**. See [Manage users, teams and machine accounts](manage-users-teams-and-machine-accounts.md). A manual membership is never changed by a login.
-* Do not list groups under **Admin groups** for this provider. Grant the instance admin right to a team of your choice by hand instead, or keep a local instance admin, see [Set up the first administrator](../get-started/set-up-first-admin.md).
+* Add the people to teams by hand, in **Access**, then **Teams**. See [Manage users, teams and machine accounts](../../how-to/manage-users-teams-and-machine-accounts.md). A manual membership is never changed by a login.
+* Do not list groups under **Admin groups** for this provider. Grant the instance admin right to a team of your choice by hand instead, or keep a local instance admin, see [Set up the first administrator](../../get-started/set-up-first-admin.md).
 * If the company needs group synchronisation with Google as the sign-in, put a provider in front that sends groups, such as Keycloak or Okta, and let it use Google as its own identity provider. The recipes for [Keycloak](configure-keycloak-login.md) and [Okta](configure-okta-login.md) cover the group side.
 
 ## Check the result
@@ -109,5 +109,5 @@ For every other code and message, see [Troubleshoot external login](troubleshoot
 
 * [Configure generic OIDC login](configure-oidc-login.md)
 * [Map provider groups to teams](map-provider-groups-to-teams.md)
-* [Manage users, teams and machine accounts](manage-users-teams-and-machine-accounts.md)
+* [Manage users, teams and machine accounts](../../how-to/manage-users-teams-and-machine-accounts.md)
 * [Troubleshoot external login](troubleshoot-external-login.md)

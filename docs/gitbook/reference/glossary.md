@@ -28,17 +28,17 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Instance administrator.** A principal that may administer the whole instance. It is the successor of the MANAGER permission of Reposilite. See [Identity model](../explanation/identity-model.md#the-instance-administrator).
 
-**Group sync.** The mapping of the groups of an external login provider, such as OIDC, GitHub or LDAP, to Ingot teams, updated at each login. A group can also grant the instance administrator right. See [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md).
+**Group sync.** The mapping of the groups of an external login provider, such as OIDC, GitHub or LDAP, to Ingot teams, updated at each login. A group can also grant the instance administrator right. See [Map provider groups to teams](../configure/authentication/map-provider-groups-to-teams.md).
 
 ## Repositories and artifacts
 
 **Repository type.** The declared purpose of a repository: `HOSTED` stores uploads, `PROXY` copies remote URLs and `GROUP` combines local repositories. A repository without a declared type keeps the behaviour of earlier versions, and Ingot derives its type from its references. See [Repository types](repository-types.md).
 
-**Hosted repository.** A repository that stores what is uploaded to it. See [Create hosted repositories](../how-to/create-hosted-repositories.md).
+**Hosted repository.** A repository that stores what is uploaded to it. See [Create hosted repositories](../configure/repositories/create-hosted-repositories.md).
 
-**Proxy repository.** A repository that fetches files from remote URLs, and can store a copy of them. See [Create a proxy repository](../how-to/create-proxy-repositories.md).
+**Proxy repository.** A repository that fetches files from remote URLs, and can store a copy of them. See [Create a proxy repository](../configure/repositories/create-proxy-repositories.md).
 
-**Group repository.** A repository that answers with the first of its local members that has the file. See [Create a group repository](../how-to/create-a-group-repository.md).
+**Group repository.** A repository that answers with the first of its local members that has the file. See [Create a group repository](../configure/repositories/create-a-group-repository.md).
 
 **Upload checksum policy.** The rule that decides what happens to an uploaded checksum file that does not match its artifact: `ignore`, `warn` or `reject`. See [Verify uploaded checksums](../how-to/verify-uploaded-checksums.md).
 
@@ -58,7 +58,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 ## Search
 
-**Search backend.** The component that holds the artifact index and answers search. Ingot ships the `database` backend, and a plugin can register another one, such as OpenSearch. All replicas of a cluster use the same backend. See [Choose a search backend](../how-to/choose-a-search-backend.md).
+**Search backend.** The component that holds the artifact index and answers search. Ingot ships the `database` backend, and a plugin can register another one, such as OpenSearch. All replicas of a cluster use the same backend. See [Choose a search backend](../configure/search/choose-a-search-backend.md).
 
 **Index state.** The state of the search index, such as `Building` while the first full rebuild runs. See [Rebuild the search index](../how-to/rebuild-search-index.md).
 

@@ -76,7 +76,7 @@ A public repository needs nothing else. For a private repository, add a `server`
 
 ## Route Maven Central through Ingot
 
-A mirror sends the requests of one repository id through another URL. To fetch Maven Central through an Ingot proxy, first create the proxy with [Create a proxy repository](create-proxy-repositories.md). The example below uses a proxy named `central`.
+A mirror sends the requests of one repository id through another URL. To fetch Maven Central through an Ingot proxy, first create the proxy with [Create a proxy repository](../configure/repositories/create-proxy-repositories.md). The example below uses a proxy named `central`.
 
 ```xml
 <settings>

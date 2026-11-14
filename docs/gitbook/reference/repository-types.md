@@ -112,4 +112,4 @@ The storage usage figures report a `group` without a quota, since a group holds 
 
 ## Related
 
-* [Create a group repository](../how-to/create-a-group-repository.md) walks through a group from its settings to a first request.
+* [Create a group repository](../configure/repositories/create-a-group-repository.md) walks through a group from its settings to a first request.

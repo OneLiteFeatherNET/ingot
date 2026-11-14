@@ -47,7 +47,7 @@ The list is the enum `AuditAction` in `reposilite-backend/src/main/kotlin/com/re
 | `MIRROR_CHECKSUM_MISMATCH` | A copy stored by a mirror with `checksumPolicy` `warn` or `fail` does not match the checksum file of the same host. `AuditPlugin` listens to `MirrorIntegrityEvent`. The actor is `system`, and `success` is `false`. Sets `repository` and `path`. | `host`, `policy` (`warn` or `fail`), `algorithm` (`sha256` or `sha1`), `outcome` (`stored` under `warn`, `refused` under `fail`) |
 | `MIRROR_CHECKSUM_MISSING` | A host of a mirror with `checksumPolicy` `warn` or `fail` publishes no checksum file for the artifact. The actor, `success` and the fields are those of `MIRROR_CHECKSUM_MISMATCH`, with `algorithm` set to `none`. | `host`, `policy`, `algorithm` (always `none`), `outcome` (`stored` under `warn`, `refused` under `fail`) |
 
-Nothing is written for a mirror with `checksumPolicy` `ignore`, or for metadata and checksum files. See [Check checksums](../how-to/create-proxy-repositories.md#check-checksums).
+Nothing is written for a mirror with `checksumPolicy` `ignore`, or for metadata and checksum files. See [Check checksums](../configure/repositories/create-proxy-repositories.md#check-checksums).
 
 ### Settings
 

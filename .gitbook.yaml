@@ -40,3 +40,24 @@ redirects:
   how-to/import-from-nexus: set-up/migrate/import-from-nexus.md
   how-to/use-the-nexus-import-wizard: set-up/migrate/use-the-nexus-import-wizard.md
   explanation/token-migration: set-up/migrate/token-migration.md
+  how-to/encrypt-settings-secrets: configure/encrypt-settings-secrets.md
+  how-to/customize-branding: configure/customize-branding.md
+  how-to/serve-custom-frontend: configure/serve-custom-frontend.md
+  how-to/limit-concurrent-requests: configure/limit-concurrent-requests.md
+  how-to/configure-oidc-login: configure/authentication/configure-oidc-login.md
+  how-to/configure-keycloak-login: configure/authentication/configure-keycloak-login.md
+  how-to/configure-authentik-login: configure/authentication/configure-authentik-login.md
+  how-to/configure-okta-login: configure/authentication/configure-okta-login.md
+  how-to/configure-google-workspace-login: configure/authentication/configure-google-workspace-login.md
+  how-to/configure-entra-id-login: configure/authentication/configure-entra-id-login.md
+  how-to/configure-github-login: configure/authentication/configure-github-login.md
+  how-to/configure-ldap-login: configure/authentication/configure-ldap-login.md
+  how-to/map-provider-groups-to-teams: configure/authentication/map-provider-groups-to-teams.md
+  how-to/troubleshoot-external-login: configure/authentication/troubleshoot-external-login.md
+  how-to/create-hosted-repositories: configure/repositories/create-hosted-repositories.md
+  how-to/create-proxy-repositories: configure/repositories/create-proxy-repositories.md
+  how-to/create-a-group-repository: configure/repositories/create-a-group-repository.md
+  how-to/separate-releases-and-snapshots: configure/repositories/separate-releases-and-snapshots.md
+  how-to/set-cleanup-policies: configure/repositories/set-cleanup-policies.md
+  how-to/choose-a-search-backend: configure/search/choose-a-search-backend.md
+  how-to/use-opensearch-for-search: configure/search/use-opensearch-for-search.md

@@ -111,7 +111,7 @@ Each file has `repository`, `path`, `name`, `classifier`, `extension`, `size`, `
 |--------|------|
 | `400` | A parameter has an invalid value. The message names the parameter. A result window beyond 10 000 entries is also refused here. |
 | `404` | Search is turned off on this instance. |
-| `503` | The database did not answer within 10 seconds, the caller's grants are too many to filter, or the search backend is not available. The response carries `Retry-After`. A backend that is not available answers `Retry-After: 30` with a problem body that names the backend and the reason, see [Backend states](../how-to/choose-a-search-backend.md#backend-states). |
+| `503` | The database did not answer within 10 seconds, the caller's grants are too many to filter, or the search backend is not available. The response carries `Retry-After`. A backend that is not available answers `Retry-After: 30` with a problem body that names the backend and the reason, see [Backend states](../configure/search/choose-a-search-backend.md#backend-states). |
 
 ## Index administration
 
@@ -159,7 +159,7 @@ The status carries a `backend` block that describes the search backend of the re
 | Field | Meaning |
 |-------|---------|
 | `id` | The id of the backend, the value of `searchEngine`. |
-| `state` | `AVAILABLE`, `NOT_INSTALLED`, `REFUSED`, `OPEN_FAILED`, `DOWN` or `CLUSTER_MISMATCH`. Each state is described in [Backend states](../how-to/choose-a-search-backend.md#backend-states). |
+| `state` | `AVAILABLE`, `NOT_INSTALLED`, `REFUSED`, `OPEN_FAILED`, `DOWN` or `CLUSTER_MISMATCH`. Each state is described in [Backend states](../configure/search/choose-a-search-backend.md#backend-states). |
 | `detail` | The reason for the state, with the user information of URLs removed. Empty while the state is `AVAILABLE`. |
 | `health` | `UP` or `DOWN`, as the backend reported it at its last check. `UNKNOWN` while the backend is not open or not installed. |
 | `healthDetail` | The message of a `DOWN` health, with the user information of URLs removed. Empty otherwise. |
@@ -185,7 +185,7 @@ Both keys are local settings. They are read at start, and they are not changed a
 | Key | Environment variable | System property | Default | Meaning |
 |-----|----------------------|-----------------|---------|---------|
 | `searchEnabled` | `INGOT_LOCAL_SEARCHENABLED` | `ingot.local.searchEnabled` | `true` | `false` answers `404` on every search endpoint and stops the index workers. The tables stay. |
-| `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `ingot.local.searchEngine` | `database` | The search backend that holds the index. `database` ships with Ingot, and a plugin can register more ids. An id that no backend has registered answers `503` with the reason, instead of `404`. See [Choose a search backend](../how-to/choose-a-search-backend.md). |
+| `searchEngine` | `INGOT_LOCAL_SEARCHENGINE` | `ingot.local.searchEngine` | `database` | The search backend that holds the index. `database` ships with Ingot, and a plugin can register more ids. An id that no backend has registered answers `503` with the reason, instead of `404`. See [Choose a search backend](../configure/search/choose-a-search-backend.md). |
 
 The names are spelled `INGOT_LOCAL_SEARCHENABLED` and `INGOT_LOCAL_SEARCHENGINE`, without an underscore inside the key. A spelling such as `INGOT_LOCAL_SEARCH_ENABLED` does not match and is logged as an unknown property. The older `REPOSILITE_LOCAL_` prefix is read as a fallback, and when both prefixes set the same key, the `INGOT_` one wins.
 

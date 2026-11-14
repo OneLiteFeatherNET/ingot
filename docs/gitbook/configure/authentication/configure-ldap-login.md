@@ -8,7 +8,7 @@ Ingot can check the password of a dashboard sign-in against an LDAP directory. T
 
 ## Before you begin
 
-* An instance administrator account and at least one local user, see [Set up the first administrator](../get-started/set-up-first-admin.md).
+* An instance administrator account and at least one local user, see [Set up the first administrator](../../get-started/set-up-first-admin.md).
 * The address of the directory, `ldap://` or `ldaps://`, and, if the directory needs one, a service account that can search the user and group entries.
 * Know how your directory names users and groups, for example `uid` and `cn` in a typical OpenLDAP tree.
 
@@ -84,4 +84,4 @@ The login is subject to the same failure limit as the local password. A wrong pa
 ## Related
 
 * [Configure generic OIDC login](configure-oidc-login.md)
-* [Recover admin access](recover-admin-access.md)
+* [Recover admin access](../../how-to/recover-admin-access.md)

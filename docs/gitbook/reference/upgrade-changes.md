@@ -158,7 +158,7 @@ See [Import from Nexus](../set-up/migrate/import-from-nexus.md) for the flow.
 
 The image ships `opensearch-plugin.jar` in `/app/bundled-plugins/`. It is loaded only when `INGOT_OPENSEARCH_ENABLED=true` (or `REPOSILITE_OPENSEARCH_ENABLED=true` when the `INGOT_` name is absent). With the switch off nothing is loaded and no connection is made, so an existing installation behaves as before. No configuration, environment variable, volume, manifest or plugin changes for existing deployments.
 
-* The search backend stays `database` until `searchEngine` is set to `opensearch` on every replica. Set the switch first and the search backend second, as described in [Use OpenSearch for search](../how-to/use-opensearch-for-search.md).
+* The search backend stays `database` until `searchEngine` is set to `opensearch` on every replica. Set the switch first and the search backend second, as described in [Use OpenSearch for search](../configure/search/use-opensearch-for-search.md).
 
 See [OpenSearch search backend](opensearch-search-backend.md) for the variables and the security obligations of the cluster.
 

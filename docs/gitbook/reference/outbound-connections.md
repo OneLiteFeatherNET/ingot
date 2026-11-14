@@ -32,17 +32,17 @@ To turn it off, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment
 
 A proxy repository asks the hosts listed in its `proxied` settings for files that it does not hold. Ingot names no host of its own here. Only the hosts that an operator configured are contacted.
 
-Requests use the proxy from the environment only when `INGOT_HTTP_USE_ENV_PROXY=true` is set. A proxy configured for a single mirror takes precedence over the environment. See [Create a proxy repository](../how-to/create-proxy-repositories.md).
+Requests use the proxy from the environment only when `INGOT_HTTP_USE_ENV_PROXY=true` is set. A proxy configured for a single mirror takes precedence over the environment. See [Create a proxy repository](../configure/repositories/create-proxy-repositories.md).
 
 ## OIDC and GitHub login
 
 A configured OIDC provider is contacted for its discovery document, its key set, the token exchange and the user lookup. GitHub login uses the fixed hosts `github.com`, for authorization and the token exchange, and `api.github.com`, for the user lookup. A generic OIDC provider uses the issuer address that its operator entered.
 
-These requests never follow redirects, and each one times out after five seconds. They happen during a login attempt or when the connection test in the settings is run. See [Configure generic OIDC login](../how-to/configure-oidc-login.md) and [Configure GitHub login](../how-to/configure-github-login.md).
+These requests never follow redirects, and each one times out after five seconds. They happen during a login attempt or when the connection test in the settings is run. See [Configure generic OIDC login](../configure/authentication/configure-oidc-login.md) and [Configure GitHub login](../configure/authentication/configure-github-login.md).
 
 ## LDAP
 
-With LDAP enabled, a login opens a connection to the configured LDAP server to bind and search for the user. See [Configure LDAP login](../how-to/configure-ldap-login.md).
+With LDAP enabled, a login opens a connection to the configured LDAP server to bind and search for the user. See [Configure LDAP login](../configure/authentication/configure-ldap-login.md).
 
 ## S3
 

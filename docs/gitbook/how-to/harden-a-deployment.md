@@ -164,7 +164,7 @@ The file must be readable by uid `977`. Every instance that shares the database 
 
 In Kubernetes, put the key in a Secret and mount it as a file, or deliver it with your GitOps tool. Keep the database password in a Secret too: the chart reads it through `database.existingSecret`, see [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md).
 
-The steps for a first setup, a key rotation and a return to a build without encryption are in [Encrypt settings secrets](encrypt-settings-secrets.md). The Kubernetes delivery of the secrets is in [Manage secrets with GitOps](../set-up/deploy/manage-secrets-with-gitops.md), and the key variables are in [Settings encryption](../reference/settings-encryption.md).
+The steps for a first setup, a key rotation and a return to a build without encryption are in [Encrypt settings secrets](../configure/encrypt-settings-secrets.md). The Kubernetes delivery of the secrets is in [Manage secrets with GitOps](../set-up/deploy/manage-secrets-with-gitops.md), and the key variables are in [Settings encryption](../reference/settings-encryption.md).
 
 ## 11. Token hygiene
 

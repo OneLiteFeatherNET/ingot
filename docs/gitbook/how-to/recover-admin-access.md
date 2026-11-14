@@ -113,6 +113,6 @@ If you can wait, wait for the lock to end. If you cannot, sign in from another a
 
 ## Related
 
-* [Configure generic OIDC login](configure-oidc-login.md)
-* [Configure LDAP login](configure-ldap-login.md)
+* [Configure generic OIDC login](../configure/authentication/configure-oidc-login.md)
+* [Configure LDAP login](../configure/authentication/configure-ldap-login.md)
 * [Set up the first administrator](../get-started/set-up-first-admin.md)

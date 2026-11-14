@@ -552,4 +552,4 @@ For the sizing of the heap and the memory limit, see [Size the deployment](size-
 * [Manage secrets with GitOps](manage-secrets-with-gitops.md) delivers the Secrets of this page from Git.
 * [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md) and [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md) cover the cluster edge.
 * [Size the deployment](size-the-deployment.md) describes how to choose the heap and the limits.
-* [Create proxy repositories](../../how-to/create-proxy-repositories.md) for a proxy with a shared or large cache.
+* [Create proxy repositories](../../configure/repositories/create-proxy-repositories.md) for a proxy with a shared or large cache.

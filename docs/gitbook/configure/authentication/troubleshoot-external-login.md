@@ -26,7 +26,7 @@ Shown in the redirect as `?loginError=<code>`.
 | `token_exchange_failed` | The token endpoint refused the code. Check the client id, the client secret and the redirect URI at the provider. An expired client secret of Entra ID gives this code too. |
 | `invalid_id_token` | The ID token failed a check. Its reason is in the log, see the table of log lines below. A missing user name with automatic creation on gives this code as well. |
 | `no_database` | The login could not start a session. The database is not reachable, check the database settings. |
-| `setup_required` | No user exists yet. Create the first administrator locally, see [Set up the first administrator](../get-started/set-up-first-admin.md). |
+| `setup_required` | No user exists yet. Create the first administrator locally, see [Set up the first administrator](../../get-started/set-up-first-admin.md). |
 | `user_not_provisioned` | The person has no linked account and automatic creation is off. Turn it on, or create the account by hand. |
 | `username_taken` | A local user has the same name. A provider login never takes over a local account. Rename the local user, or the provider login will keep failing. |
 | `invalid_username` | The user name from the username claim is not valid. A user name may contain `@`, but not a colon, a space or a control character. Set **Username claim** to another claim. |
@@ -91,17 +91,17 @@ These lines are written to the server log only. They say why a `loginError` was 
 | `is already used by an earlier entry` | Settings check. Two providers have the same id. The second is skipped. |
 | `Created the synchronised admin team` | Group sync. The admin group had no team yet, and Ingot created it. This is information, not a problem. |
 | `skipped: a team of that name exists without the external reference` | Group sync. A team with the name of an admin group exists by hand. Rename or delete it, see [Map provider groups to teams](map-provider-groups-to-teams.md#when-a-team-of-that-name-exists-already). |
-| `removed the last usable instance admin` | Group sync, a warning. A provider removed the last admin. The audit log holds `LAST_ADMIN_REVOKED_BY_PROVIDER` too. See [Recover admin access](recover-admin-access.md#after-a-provider-removed-the-last-admin). |
+| `removed the last usable instance admin` | Group sync, a warning. A provider removed the last admin. The audit log holds `LAST_ADMIN_REVOKED_BY_PROVIDER` too. See [Recover admin access](../../how-to/recover-admin-access.md#after-a-provider-removed-the-last-admin). |
 
 ## Where to go next
 
 * For the steps of a provider, see its guide, for example [Configure Keycloak login](configure-keycloak-login.md), [Configure Okta login](configure-okta-login.md) or [Configure Microsoft Entra ID login](configure-entra-id-login.md).
 * For the groups, see [Map provider groups to teams](map-provider-groups-to-teams.md).
-* For the settings and the codes in one place, see [Login providers](../reference/login-providers.md).
-* If nobody can sign in as an administrator any more, see [Recover admin access](recover-admin-access.md).
+* For the settings and the codes in one place, see [Login providers](../../reference/login-providers.md).
+* If nobody can sign in as an administrator any more, see [Recover admin access](../../how-to/recover-admin-access.md).
 
 ## Related
 
 * [Configure generic OIDC login](configure-oidc-login.md)
 * [Configure LDAP login](configure-ldap-login.md)
-* [Login providers](../reference/login-providers.md)
+* [Login providers](../../reference/login-providers.md)

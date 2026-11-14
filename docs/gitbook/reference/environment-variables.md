@@ -250,7 +250,7 @@ The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in 
 | `INGOT_OPENSEARCH_TIMEOUT_SECONDS` | `REPOSILITE_OPENSEARCH_TIMEOUT_SECONDS` | `30` | 1 to 300 | Timeout of one request, in seconds. |
 | `INGOT_OPENSEARCH_REPLICAS` | `REPOSILITE_OPENSEARCH_REPLICAS` | `1` | 0 to 10 | Replicas of the index, set when the index is created. |
 
-The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `opensearch` only after the plugin is on. See [Choose a search backend](../how-to/choose-a-search-backend.md).
+The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `opensearch` only after the plugin is on. See [Choose a search backend](../configure/search/choose-a-search-backend.md).
 
 ### Plugin store
 
@@ -301,7 +301,7 @@ Read once at startup, in this order: the system property `ingot.proxy.upstreamSt
 | `legacy` (default) | A proxy repository answers upstream failures with the statuses Reposilite always used. Existing Maven and Gradle clients keep working unchanged. |
 | `strict` | A proxy answers `504` when the upstream times out, `502` when it is unreachable, answers an error status other than `404` or `410`, or answers an HTML page, and `404` when the upstream answers `404` or `410`. |
 
-The value is compared without regard to case. Any other value stops the startup with a message that names `INGOT_PROXY_UPSTREAM_STATUS`. See [Create proxy repositories](../how-to/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
+The value is compared without regard to case. Any other value stops the startup with a message that names `INGOT_PROXY_UPSTREAM_STATUS`. See [Create proxy repositories](../configure/repositories/create-proxy-repositories.md#choose-the-status-for-upstream-failures).
 
 ### Mirror environment proxy
 

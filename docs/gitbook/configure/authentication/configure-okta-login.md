@@ -122,4 +122,4 @@ For every other code and message, see [Troubleshoot external login](troubleshoot
 * [Configure generic OIDC login](configure-oidc-login.md)
 * [Map provider groups to teams](map-provider-groups-to-teams.md)
 * [Troubleshoot external login](troubleshoot-external-login.md)
-* [Recover admin access](recover-admin-access.md)
+* [Recover admin access](../../how-to/recover-admin-access.md)
