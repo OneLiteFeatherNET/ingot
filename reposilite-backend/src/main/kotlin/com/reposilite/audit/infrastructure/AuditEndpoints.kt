@@ -25,6 +25,7 @@ import com.reposilite.shared.badRequest
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.GET
 import io.javalin.http.ContentType
@@ -39,7 +40,7 @@ import java.time.Instant
 internal class AuditEndpoints(private val auditFacade: AuditFacade) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Audit"],
         path = "/api/audit",
         methods = [HttpMethod.GET],
@@ -59,7 +60,7 @@ internal class AuditEndpoints(private val auditFacade: AuditFacade) : Reposilite
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Audit"],
         path = "/api/audit/export",
         methods = [HttpMethod.GET],

@@ -27,8 +27,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
- * The served OpenAPI document declares the two credential forms the API accepts, and a route that needs a login
- * refers to one of them, so that a generated client knows to send it.
+ * The served OpenAPI document declares the credential forms the API accepts: an access token as HTTP Basic, an access
+ * token secret as a bearer value, and the browser session cookie. A route that needs a login lists them as alternatives,
+ * so that a generated client knows which credentials to send. The bearer scheme describes an access token, never a session.
  */
 @ExtendWith(RecommendedLocalSpecificationJunitExtension::class)
 internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification() {
@@ -37,7 +38,7 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
         Unirest.get("$base/openapi").asJacksonObject(JsonNode::class).body
 
     @Test
-    fun `declares HTTP Basic with a token and the session bearer as security schemes`() {
+    fun `declares HTTP Basic and the bearer access token as security schemes`() {
         val schemes = openApiDocument().path("components").path("securitySchemes")
 
         assertThat(schemes.path("tokenBasic").path("type").asText())
@@ -55,18 +56,76 @@ internal class OpenApiSecuritySchemesIntegrationTest : ReposiliteSpecification()
     }
 
     @Test
-    fun `a route that needs a login refers to a declared security scheme`() {
-        // GET /api/identity/me/tokens answers only an authenticated caller
-        val document = openApiDocument()
-        val requirements = document.path("paths").path("/api/identity/me/tokens").path("get").path("security")
+    fun `declares the session cookie as an apiKey security scheme in the cookie ingot_session`() {
+        val cookie = openApiDocument().path("components").path("securitySchemes").path("sessionCookie")
 
-        assertThat(requirements.isArray && requirements.size() > 0)
-            .describedAs("the security requirements of GET /api/identity/me/tokens")
-            .isTrue()
-        val referenced = requirements.flatMap { requirement -> requirement.fieldNames().asSequence().toList() }
+        assertThat(cookie.path("type").asText())
+            .describedAs("type of the sessionCookie security scheme")
+            .isEqualTo("apiKey")
+        assertThat(cookie.path("in").asText())
+            .describedAs("location of the sessionCookie security scheme")
+            .isEqualTo("cookie")
+        assertThat(cookie.path("name").asText())
+            .describedAs("cookie name of the sessionCookie security scheme")
+            .isEqualTo("ingot_session")
+    }
+
+    @Test
+    fun `the bearer scheme describes an access token secret and not a session`() {
+        val description = openApiDocument().path("components").path("securitySchemes").path("sessionBearer")
+            .path("description").asText()
+
+        assertThat(description)
+            .describedAs("description of the sessionBearer security scheme")
+            .contains("access token")
+            .doesNotContainIgnoringCase("session")
+    }
+
+    @Test
+    fun `a route that needs a login lists the token, bearer and cookie alternatives`() {
+        // GET /api/identity/me/tokens answers only an authenticated caller
+        val referenced = authenticatedRoutes(openApiDocument())["GET /api/identity/me/tokens"]
+
         assertThat(referenced)
-            .describedAs("security schemes referenced by GET /api/identity/me/tokens")
-            .containsAnyOf("tokenBasic", "sessionBearer")
+            .describedAs("security schemes listed for GET /api/identity/me/tokens")
+            .containsExactlyInAnyOrder("tokenBasic", "sessionBearer", "sessionCookie")
+    }
+
+    @Test
+    fun `every route that needs a login lists the session cookie`() {
+        val routesWithoutCookie = authenticatedRoutes(openApiDocument()).filterValues { "sessionCookie" !in it }.keys
+
+        assertThat(routesWithoutCookie)
+            .describedAs("routes that need a login but do not list the sessionCookie scheme")
+            .isEmpty()
+    }
+
+    @Test
+    fun `every route that needs a login still lists the bearer access token`() {
+        val routesWithoutBearer = authenticatedRoutes(openApiDocument()).filterValues { "sessionBearer" !in it }.keys
+
+        assertThat(routesWithoutBearer)
+            .describedAs("routes that need a login but no longer list the sessionBearer scheme")
+            .isEmpty()
+    }
+
+    /** Every operation that declares a security requirement, with the names of the schemes it lists. */
+    private fun authenticatedRoutes(document: JsonNode): Map<String, Set<String>> =
+        document.path("paths").fields().asSequence().flatMap { (path, item) ->
+            item.fields().asSequence()
+                .filter { (method, _) -> method in HTTP_METHODS }
+                .map { (method, operation) -> "${method.uppercase()} $path" to securitySchemesOf(operation) }
+        }
+            .filter { (_, schemes) -> schemes.isNotEmpty() }
+            .toMap()
+
+    private fun securitySchemesOf(operation: JsonNode): Set<String> =
+        operation.path("security")
+            .flatMap { requirement -> requirement.fieldNames().asSequence().toList() }
+            .toSet()
+
+    private companion object {
+        val HTTP_METHODS = setOf("get", "put", "post", "delete", "patch", "head", "options")
     }
 
 }

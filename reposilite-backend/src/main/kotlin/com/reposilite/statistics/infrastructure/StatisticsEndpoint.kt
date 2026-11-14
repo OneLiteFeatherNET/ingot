@@ -25,6 +25,7 @@ import com.reposilite.statistics.api.ResolvedCountResponse
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.GET
 import io.javalin.openapi.HttpMethod
@@ -38,7 +39,7 @@ import panda.std.asSuccess
 internal class StatisticsEndpoint(private val statisticsFacade: StatisticsFacade) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Statistics"],
         path = "/api/statistics/resolved/phrase/{limit}/{repository}/{gav}",
         methods = [HttpMethod.GET],
@@ -64,7 +65,7 @@ internal class StatisticsEndpoint(private val statisticsFacade: StatisticsFacade
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Statistics"],
         path = "/api/statistics/resolved/unique",
         methods = [HttpMethod.GET],
@@ -80,7 +81,7 @@ internal class StatisticsEndpoint(private val statisticsFacade: StatisticsFacade
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Statistics"],
         path = "/api/statistics/resolved/all",
         methods = [HttpMethod.GET],

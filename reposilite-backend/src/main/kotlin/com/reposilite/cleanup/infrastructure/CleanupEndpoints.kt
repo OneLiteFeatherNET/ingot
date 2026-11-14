@@ -26,6 +26,7 @@ import com.reposilite.cleanup.PlannedDeletion
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.POST
@@ -44,7 +45,7 @@ import java.time.format.DateTimeFormatter
 internal class CleanupEndpoints(private val cleanupService: CleanupService) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Cleanup"],
         path = "/api/cleanup/policies/{id}/dry-run",
         methods = [HttpMethod.POST],
@@ -64,7 +65,7 @@ internal class CleanupEndpoints(private val cleanupService: CleanupService) : Re
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Cleanup"],
         path = "/api/cleanup/policies/{id}/run",
         methods = [HttpMethod.POST],
@@ -86,7 +87,7 @@ internal class CleanupEndpoints(private val cleanupService: CleanupService) : Re
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Cleanup"],
         path = "/api/cleanup/runs",
         methods = [HttpMethod.GET],

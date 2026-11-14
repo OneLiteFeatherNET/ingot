@@ -24,6 +24,7 @@ import com.reposilite.shared.toErrorResponse
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.DELETE
 import io.javalin.community.routing.Route.GET
@@ -46,7 +47,7 @@ data class ReadOnlyStateDto(val enabled: Boolean, val source: String)
 internal class ReadOnlyEndpoints(private val facade: ReadOnlyFacade) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Maintenance"],
         path = "/api/admin/read-only",
         methods = [HttpMethod.GET],
@@ -63,7 +64,7 @@ internal class ReadOnlyEndpoints(private val facade: ReadOnlyFacade) : Reposilit
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Maintenance"],
         path = "/api/admin/read-only",
         methods = [HttpMethod.POST],
@@ -81,7 +82,7 @@ internal class ReadOnlyEndpoints(private val facade: ReadOnlyFacade) : Reposilit
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Maintenance"],
         path = "/api/admin/read-only",
         methods = [HttpMethod.DELETE],
