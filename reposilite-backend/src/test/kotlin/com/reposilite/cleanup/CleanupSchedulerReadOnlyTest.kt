@@ -74,7 +74,7 @@ internal class CleanupSchedulerReadOnlyTest {
     ) = CleanupScheduler(
         clock = clock,
         policies = { listOf(nightly) },
-        start = { started += it.id },
+        start = { policy, _ -> started += policy.id },
         claims = claims,
         journalist = InMemoryLogger(),
         readOnly = readOnly,
