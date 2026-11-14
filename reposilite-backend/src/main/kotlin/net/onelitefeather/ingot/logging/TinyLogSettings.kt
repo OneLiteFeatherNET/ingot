@@ -30,5 +30,9 @@ fun LogSettings.applyToTinyLog() {
     if (!file) {
         System.setProperty("tinylog.configuration", TINYLOG_CONSOLE_CONFIGURATION)
     }
+    if (format == LogFormat.JSON) {
+        // The console writer renders the message with its time and level; the JSON line carries those in fields of its own
+        System.setProperty("tinylog.writerJournalist.format", "{message}")
+    }
     packageLevels.forEach { (pkg, level) -> System.setProperty("tinylog.level@$pkg", level) }
 }

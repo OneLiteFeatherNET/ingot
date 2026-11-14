@@ -27,9 +27,24 @@ import org.junit.jupiter.api.Test
 internal class LogSettingsTest {
 
     @Test
+    fun `should use the ingot variable when both spellings are set`() {
+        // when: both spellings name a format
+        val settings = LogSettings.read(mapOf("INGOT_LOG_FORMAT" to "json", "REPOSILITE_LOG_FORMAT" to "text"))
+
+        // then: the INGOT_ name wins
+        assertThat(settings.format).describedAs("format when both spellings are set").isEqualTo(LogFormat.JSON)
+    }
+
+    @Test
     fun `should fall back to the legacy file switch when the ingot one is unset`() {
         assertThat(LogSettings.read(mapOf("REPOSILITE_LOG_FILE" to "false")).file)
             .describedAs("file writer with REPOSILITE_LOG_FILE=false").isFalse()
+    }
+
+    @Test
+    fun `should fall back to the legacy format when the ingot one is unset`() {
+        assertThat(LogSettings.read(mapOf("REPOSILITE_LOG_FORMAT" to "json")).format)
+            .describedAs("format with REPOSILITE_LOG_FORMAT=json").isEqualTo(LogFormat.JSON)
     }
 
     @Test
@@ -47,10 +62,10 @@ internal class LogSettingsTest {
     @Test
     fun `should treat a blank ingot variable as unset`() {
         // when: the INGOT_ name is blank and the legacy name is set
-        val settings = LogSettings.read(mapOf("INGOT_LOG_FILE" to "  ", "REPOSILITE_LOG_FILE" to "false"))
+        val settings = LogSettings.read(mapOf("INGOT_LOG_FORMAT" to "  ", "REPOSILITE_LOG_FORMAT" to "json"))
 
         // then: the legacy name applies
-        assertThat(settings.file).describedAs("file writer with a blank INGOT_LOG_FILE").isFalse()
+        assertThat(settings.format).describedAs("format with a blank INGOT_LOG_FORMAT").isEqualTo(LogFormat.JSON)
     }
 
     @Test
@@ -60,7 +75,17 @@ internal class LogSettingsTest {
 
         // then: the server keeps its current behaviour
         assertThat(settings).describedAs("settings of an empty environment")
-            .isEqualTo(LogSettings(file = true, level = null, packageLevels = emptyMap()))
+            .isEqualTo(LogSettings(file = true, format = LogFormat.TEXT, level = null, packageLevels = emptyMap()))
+    }
+
+    @Test
+    fun `should refuse an unknown format and name the variable and the accepted values`() {
+        assertThatThrownBy { LogSettings.read(mapOf("INGOT_LOG_FORMAT" to "xml")) }
+            .describedAs("refusal of an unknown format")
+            .isInstanceOf(LogSettingsRefusal::class.java)
+            .hasMessageContaining("INGOT_LOG_FORMAT")
+            .hasMessageContaining("text")
+            .hasMessageContaining("json")
     }
 
     @Test
