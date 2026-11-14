@@ -45,6 +45,7 @@ import com.reposilite.shared.badRequestProblems
 import com.reposilite.token.AccessTokenFacade
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.token.AccessTokenSecurityProvider
+import com.reposilite.token.AccessTokenType
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.PRECONDITION_FAILED
@@ -58,6 +59,11 @@ import net.onelitefeather.ingot.identity.api.GrantDto
 import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.MemberDto
 import net.onelitefeather.ingot.identity.api.NodeDto
+import net.onelitefeather.ingot.identity.api.OwnAccessSummaryDto
+import net.onelitefeather.ingot.identity.api.OwnDenialDto
+import net.onelitefeather.ingot.identity.api.OwnGrantDto
+import net.onelitefeather.ingot.identity.api.OwnPrincipalDto
+import net.onelitefeather.ingot.identity.api.OwnTeamDto
 import net.onelitefeather.ingot.identity.api.PrincipalDetailDto
 import net.onelitefeather.ingot.identity.api.PrincipalDto
 import net.onelitefeather.ingot.identity.api.PrincipalSummaryDto
@@ -901,6 +907,47 @@ class IdentityFacade(
             else -> "because no node or grant matches"
         }
         return "$verdict $by"
+    }
+
+    /**
+     * The access of the caller itself. It reads the subject the request path reads, and decides nothing on its own. It takes
+     * no principal, so it can describe the caller only. The teams are the direct teams of the caller without its private
+     * team, which the team list does not show either; the private team's rights appear in the nodes and grants.
+     */
+    fun ownAccess(caller: AccessTokenIdentifier): IdentityResult<OwnAccessSummaryDto> {
+        val subject = accessTokens.subjectOf(caller)
+        val token = if (caller.type == AccessTokenType.PRINCIPAL) null else accessTokens.getAccessTokenById(caller)?.name
+        return OwnAccessSummaryDto(
+            principal = subject.principalId?.let { store.findPrincipalById(it) }?.let { ownPrincipalOf(it) },
+            instanceAdmin = PermissionEvaluator.isInstanceAdmin(subject),
+            token = token,
+            tokenNarrowed = subject.tokenRules != null,
+            teams = subject.teams.mapNotNull { store.findTeam(it) }.filterNot { it.isPrivate }
+                .map { team -> OwnTeamDto(name = team.name, parents = parentNamesOf(team).sorted()) },
+            nodes = PermissionEvaluator.effectiveNodes(subject),
+            denials = subject.levels.flatMap { level -> level.rules.filterNot { it.allowed }.map { it.pattern.text } }
+                .plus(subject.tokenRules.orEmpty().filterNot { it.allowed }.map { it.pattern.text })
+                .distinct()
+                .sorted()
+                .map { text ->
+                    // The same decision the check gives for this node, so a denial that nothing overrides agrees with the check.
+                    OwnDenialDto(node = text, overridden = PermissionEvaluator.decide(subject, NodePattern.of(text)).allowed)
+                },
+            grants = subject.levels.flatMap { it.grants }
+                .map { grant -> OwnGrantDto(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name) },
+        ).asSuccess()
+    }
+
+    /** The caller's record with its login providers: `local` for a password, then the kinds of its external links. */
+    private fun ownPrincipalOf(principal: PrincipalRecord): OwnPrincipalDto {
+        val withPassword = principal.kind == PrincipalKind.USER && principal.id in store.listPrincipalIdsWithLocalCredential()
+        val external = store.externalProviderKindsOf(principal.id)
+        return OwnPrincipalDto(
+            name = principal.name,
+            displayName = principal.displayName,
+            kind = principal.kind.name,
+            providers = (if (withPassword) listOf(LocalLoginProvider.ID) else emptyList()) + external.sorted(),
+        )
     }
 
     // access explanation

@@ -509,6 +509,18 @@ class IdentityStore(
                 .toSet()
         }
 
+    /**
+     * The kinds of the external login links of one principal, such as `ldap` or `oidc`: the part of each stored provider before
+     * its colon. Read from the same links the login writes; the principal list does not use it.
+     */
+    fun externalProviderKindsOf(principalId: Int): Set<String> =
+        transaction(database) {
+            ExternalIdentityTable.selectAll()
+                .where { ExternalIdentityTable.principalId eq principalId }
+                .map { it[ExternalIdentityTable.provider].substringBefore(':') }
+                .toSet()
+        }
+
     // permission nodes
 
     /** The node rules of one subject, in node order. [subjectKind] is a [PrincipalKind] name or [NODE_SUBJECT_TEAM]. */

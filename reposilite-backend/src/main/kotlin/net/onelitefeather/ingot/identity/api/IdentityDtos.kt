@@ -158,6 +158,51 @@ data class AccessViaDto(
     val pathPrefix: String?,
 )
 
+/**
+ * The access of the caller itself. It is never about another principal. [principal] is null for a temporary token, which has
+ * no stored principal. [token] is the name of the token that made the request, null for a session. [tokenNarrowed] tells
+ * whether that token limits its owner. [nodes] are the allowed nodes and [denials] the denied ones, token narrowing included.
+ */
+data class OwnAccessSummaryDto(
+    val principal: OwnPrincipalDto?,
+    val instanceAdmin: Boolean,
+    val token: String?,
+    val tokenNarrowed: Boolean,
+    val teams: List<OwnTeamDto>,
+    val nodes: List<String>,
+    val denials: List<OwnDenialDto>,
+    val grants: List<OwnGrantDto>,
+)
+
+/**
+ * A denied node of the caller. [overridden] is true when a more specific allow of the caller wins for the node, as the
+ * access check decides it; a denial with [overridden] false is denied by the check too.
+ */
+data class OwnDenialDto(
+    val node: String,
+    val overridden: Boolean,
+)
+
+data class OwnPrincipalDto(
+    val name: String,
+    val displayName: String,
+    val kind: String,
+    val providers: List<String>,
+)
+
+/** A team of the caller with its direct parents. The private team of a machine account is not listed. */
+data class OwnTeamDto(
+    val name: String,
+    val parents: List<String>,
+)
+
+data class OwnGrantDto(
+    val team: String,
+    val repository: String?,
+    val pathPrefix: String?,
+    val role: String,
+)
+
 // Requests
 
 data class CreatePrincipalRequest(

@@ -35,6 +35,7 @@ import io.javalin.openapi.OpenApi
 import io.javalin.openapi.OpenApiContent
 import io.javalin.openapi.OpenApiParam
 import io.javalin.openapi.OpenApiRequestBody
+import io.javalin.openapi.OpenApiResponse
 import io.javalin.openapi.OpenApiSecurity
 import net.onelitefeather.ingot.identity.service.IdentityFacade
 import panda.std.Result
@@ -548,6 +549,23 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         }
     }
 
+    @OpenApi(
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        path = "/api/identity/me/access",
+        tags = ["Identity"],
+        summary = "Lists the caller's own access: its teams with their direct parents, its allowed and denied nodes, its grants and whether it is an instance administrator. Any signed-in principal may read it; it never describes another principal.",
+        methods = [HttpMethod.GET],
+        responses = [
+            OpenApiResponse("200", content = [ OpenApiContent(from = OwnAccessSummaryDto::class) ], description = "The caller's own access summary"),
+            OpenApiResponse("401", content = [ OpenApiContent(from = ErrorResponse::class) ], description = "When no valid credential is presented"),
+        ],
+    )
+    val ownAccess = ReposiliteRoute<OwnAccessSummaryDto>("/api/identity/me/access", GET) {
+        authenticated {
+            response = identity.ownAccess(identifier)
+        }
+    }
+
     /** Reads the request body, answering 400 when it cannot be read. */
     private inline fun <reified B : Any> ContextDsl<*>.readBody(): Result<B, ErrorResponse> =
         supplyThrowing { body<B>() }.mapErr { badRequest("Failed to read body") }
@@ -559,7 +577,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
         grantPrincipalInstanceAdmin, revokePrincipalInstanceAdmin, grantTeamInstanceAdmin, revokeTeamInstanceAdmin,
         repositoryAccess,
         getPrincipalNodes, replacePrincipalNodes, getTeamNodes, replaceTeamNodes, getTeamParents, replaceTeamParents,
-        nodeCatalog, nodeTemplates, permissionCheck,
+        nodeCatalog, nodeTemplates, permissionCheck, ownAccess,
     )
 
 }

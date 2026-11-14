@@ -75,6 +75,7 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 | POST | `/api/identity/me/tokens/{name}/rotate` | Token or session | Replaces the secret of an own token. |
 | DELETE | `/api/identity/me/tokens/{name}` | Token or session | Deletes an own token. |
 | GET | `/api/identity/check` | Token or session | Decides one node, or one path, for a principal. Instance admins may check any principal, others only themselves. |
+| GET | `/api/identity/me/access` | Token or session | Lists the own teams with their direct parents, the allowed and denied nodes, the grants, the login providers and whether the caller is an instance admin. Never describes another principal. |
 
 ## Identity: principals
 

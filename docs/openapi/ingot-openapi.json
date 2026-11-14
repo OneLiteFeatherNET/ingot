@@ -1298,6 +1298,118 @@
         "required" : [ "pending", "deadLetters", "droppedEnqueues" ],
         "type" : "object"
       },
+      "OwnAccessSummaryDto" : {
+        "properties" : {
+          "denials" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OwnDenialDto"
+            },
+            "type" : "array"
+          },
+          "grants" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OwnGrantDto"
+            },
+            "type" : "array"
+          },
+          "instanceAdmin" : {
+            "type" : "boolean"
+          },
+          "nodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "principal" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/OwnPrincipalDto"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "teams" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OwnTeamDto"
+            },
+            "type" : "array"
+          },
+          "token" : {
+            "type" : [ "string", "null" ]
+          },
+          "tokenNarrowed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "instanceAdmin", "tokenNarrowed", "teams", "nodes", "denials", "grants" ],
+        "type" : "object"
+      },
+      "OwnDenialDto" : {
+        "properties" : {
+          "node" : {
+            "type" : "string"
+          },
+          "overridden" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "node", "overridden" ],
+        "type" : "object"
+      },
+      "OwnGrantDto" : {
+        "properties" : {
+          "pathPrefix" : {
+            "type" : [ "string", "null" ]
+          },
+          "repository" : {
+            "type" : [ "string", "null" ]
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "team" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "team", "role" ],
+        "type" : "object"
+      },
+      "OwnPrincipalDto" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "providers" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "name", "displayName", "kind", "providers" ],
+        "type" : "object"
+      },
+      "OwnTeamDto" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "parents" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "name", "parents" ],
+        "type" : "object"
+      },
       "PlannedDeletion" : {
         "properties" : {
           "path" : {
@@ -3150,6 +3262,39 @@
           "tokenBasic" : [ ]
         } ],
         "summary" : "Decides one node for a principal, optionally narrowed by one of its tokens, with the candidates considered. Or decides a repository path with the query parameters repository, path and action (or the action of a node). Instance admins may check any principal, others only their own.",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/me/access" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OwnAccessSummaryDto"
+                }
+              }
+            },
+            "description" : "The caller's own access summary"
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "When no valid credential is presented"
+          }
+        },
+        "security" : [ {
+          "sessionBearer" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Lists the caller's own access: its teams with their direct parents, its allowed and denied nodes, its grants and whether it is an instance administrator. Any signed-in principal may read it; it never describes another principal.",
         "tags" : [ "Identity" ]
       }
     },
