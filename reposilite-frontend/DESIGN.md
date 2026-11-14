@@ -702,6 +702,8 @@ The Administration tree is the one navigation of the operator area. These rules 
 - **Two levels.** The tree is a list of groups, each a heading over a list of pages. The headings are Artifacts, Access,
   Instance and Monitoring and support. A group keeps its id, the value a plugin manifest names (Repository, Security, System,
   Support), and only the heading on screen changes (`GROUP_HEADINGS` in `src/navigation/registry.js`).
+- **Group headings.** A heading is set in the primary colour at title-small, and every group after the first starts with a
+  1 pixel `outline-variant` rule above it, so a group reads as a block rather than as one more entry.
 - **Order.** Entries that belong together are adjacent: Audit settings follows Audit log. The pages that are not settings
   domains keep their order relative to each other, because the rail's Administration entry opens the first page the visitor
   may open.
