@@ -16,32 +16,40 @@
 
 package com.reposilite.storage
 
+import com.reposilite.ReposiliteObjectMapper
 import com.reposilite.journalist.Journalist
 import com.reposilite.plugin.api.Facade
 import com.reposilite.status.FailureFacade
 import java.nio.file.Path
-import java.util.ServiceLoader
 
-open class StorageFacade : Facade {
+open class StorageFacade internal constructor(
+    private val storageProviders: StorageProviderRegistry,
+) : Facade {
+
+    /** A facade that knows the built-in providers only, for callers outside the plugin start-up. */
+    constructor() : this(StorageProviderRegistry.applicationClassPath())
 
     @Suppress("UNCHECKED_CAST")
-    private val storageProviderFactories = ServiceLoader.load(StorageProviderFactory::class.java)
-        .associateBy { it.type }
-        .mapValues { (_, factory) -> factory as StorageProviderFactory<*, StorageProviderSettings> }
-
     open fun createStorageProvider(
         journalist: Journalist,
         failureFacade: FailureFacade,
         workingDirectory: Path,
         repository: String,
         storageSettings: StorageProviderSettings,
-    ): StorageProvider? =
-        storageProviderFactories[storageSettings.type]?.create(
+    ): StorageProvider? {
+        val factory = storageProviders.resolve(storageSettings.type) as StorageProviderFactory<*, StorageProviderSettings>?
+            ?: return null
+
+        return factory.create(
             journalist = journalist,
             failureFacade = failureFacade,
             workingDirectory = workingDirectory,
             repositoryName = repository,
-            settings = storageSettings
+            settings = storageSettings.boundTo(factory.settingsType)
         )
+    }
+
+    private fun StorageProviderSettings.boundTo(settingsType: Class<out StorageProviderSettings>): StorageProviderSettings =
+        if (this is UnresolvedStorageProviderSettings) ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER.treeToValue(raw, settingsType) else this
 
 }

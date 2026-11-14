@@ -24,6 +24,7 @@ import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.api.ReposilitePlugin.ReposilitePluginAccessor
+import com.reposilite.storage.StorageProviderRegistry
 import kotlin.reflect.full.findAnnotation
 
 data class PluginEntry(
@@ -32,6 +33,9 @@ data class PluginEntry(
 )
 
 class Extensions(private val journalist: Journalist) : Journalist {
+
+    /** The storage providers of the built-in factories, extended by the plugin class loaders before any plugin initialises. */
+    internal val storageProviders: StorageProviderRegistry = StorageProviderRegistry.applicationClassPath { journalist.logger.warn(it) }
 
     private val plugins: MutableMap<String, PluginEntry> = mutableMapOf()
     private val facades: MutableList<Facade> = mutableListOf()
