@@ -2,38 +2,58 @@
 
 * [Ingot documentation](README.md)
 
-## Tutorials
+## Introduction
 
+* [Introduction](introduction/README.md)
+* [What is Ingot](explanation/what-is-ingot.md)
+* [How Ingot compares](explanation/how-ingot-compares.md)
+* [Drop-in compatibility with Reposilite](explanation/drop-in-compatibility.md)
+
+## Get started
+
+* [Get started](get-started/README.md)
 * [First steps with Docker](tutorials/first-steps-with-docker.md)
 * [Set up users, teams and single sign on](tutorials/set-up-users-teams-and-sso.md)
+* [Set up the first administrator](how-to/set-up-first-admin.md)
 
-## How-to guides
-
-### Install and run
+## Set up
 
 * [Install with Docker](how-to/install-with-docker.md)
-* [Run the dashboard in a separate container](how-to/run-split-dashboard-container.md)
-* [Run on Kubernetes](how-to/run-on-kubernetes.md)
-* [Manage secrets with GitOps](how-to/manage-secrets-with-gitops.md)
-* [Size the deployment](how-to/size-the-deployment.md)
-* [Collect a support bundle](how-to/collect-a-support-bundle.md)
-* [Run the dashboard split from the server with Helm](how-to/run-split-with-helm.md)
 * [Run the JAR](how-to/install-jar.md)
 * [Run as a service](how-to/run-as-service.md)
+* [Run on Kubernetes](how-to/run-on-kubernetes.md)
+* [Run the dashboard split from the server with Helm](how-to/run-split-with-helm.md)
+* [Run the dashboard in a separate container](how-to/run-split-dashboard-container.md)
+* [Set Helm values for high availability](how-to/set-helm-values-for-high-availability.md)
+* [Autoscale the server](how-to/autoscale-the-server.md)
+* [Set a disruption budget](how-to/set-a-disruption-budget.md)
+* [Route with a Gateway API HTTPRoute](how-to/route-with-gateway-api.md)
+* [Manage secrets with GitOps](how-to/manage-secrets-with-gitops.md)
+* [Size the deployment](how-to/size-the-deployment.md)
+* [Deployment options compared](explanation/deployment-options-compared.md)
 * [Run behind a reverse proxy](how-to/run-behind-reverse-proxy.md)
 * [Configure the edge for large uploads](how-to/configure-the-edge-for-large-uploads.md)
 * [Enable TLS](how-to/enable-tls.md)
 * [Terminate TLS at the gateway](how-to/terminate-tls-at-the-gateway.md)
+* [Restrict network traffic with a NetworkPolicy](how-to/restrict-network-traffic.md)
 * [Configure a database](how-to/configure-database.md)
 * [Configure the cluster bus](how-to/configure-cluster-bus.md)
 * [Use S3 storage](how-to/use-s3-storage.md)
-* [Serve a custom frontend](how-to/serve-custom-frontend.md)
+* [Move from Reposilite to Ingot](how-to/move-from-reposilite.md)
+* [Upgrade from Reposilite 3.x](how-to/upgrade-from-reposilite.md)
+* [Upgrade from Reposilite 2.x](how-to/upgrade-from-reposilite-2.md)
+* [Migrate from the upstream Helm chart](how-to/migrate-from-upstream-chart.md)
+* [Import from other repository managers](how-to/import-from-other-repository-managers.md)
+* [Import from Nexus](how-to/import-from-nexus.md)
+* [Use the Nexus import wizard](how-to/use-the-nexus-import-wizard.md)
+* [Token migration](explanation/token-migration.md)
+
+## Configure
+
+* [Encrypt the settings secrets](how-to/encrypt-settings-secrets.md)
 * [Customize branding](how-to/customize-branding.md)
-
-### Identity and access
-
-* [Set up the first administrator](how-to/set-up-first-admin.md)
-* [Manage users, teams and machine accounts](how-to/manage-users-teams-and-machine-accounts.md)
+* [Serve a custom frontend](how-to/serve-custom-frontend.md)
+* [Limit concurrent requests](how-to/limit-concurrent-requests.md)
 * [Configure generic OIDC login](how-to/configure-oidc-login.md)
 * [Configure Keycloak login](how-to/configure-keycloak-login.md)
 * [Configure Authentik login](how-to/configure-authentik-login.md)
@@ -44,107 +64,101 @@
 * [Configure LDAP login](how-to/configure-ldap-login.md)
 * [Map provider groups to teams](how-to/map-provider-groups-to-teams.md)
 * [Troubleshoot external login](how-to/troubleshoot-external-login.md)
-* [Use tokens in CI](how-to/use-tokens-in-ci.md)
-* [Restrict a token to artifacts](how-to/restrict-token-to-artifacts.md)
-* [Grant permissions with nodes](how-to/grant-permissions-with-nodes.md)
-* [Check what a principal can do](how-to/check-access.md)
-* [Recover admin access](how-to/recover-admin-access.md)
-
-### Repositories and artifacts
-
-* [Publish and consume artifacts](how-to/publish-and-consume-artifacts.md)
 * [Create hosted repositories](how-to/create-hosted-repositories.md)
 * [Create a proxy repository](how-to/create-proxy-repositories.md)
 * [Create a group repository](how-to/create-a-group-repository.md)
-* [Verify uploaded checksums](how-to/verify-uploaded-checksums.md)
-* [Verify the SBOMs of a release](how-to/verify-release-sboms.md)
-* [Search for artifacts](how-to/search-for-artifacts.md)
-* [Rebuild the search index](how-to/rebuild-search-index.md)
-* [Choose a search backend](how-to/choose-a-search-backend.md)
-* [Use OpenSearch for search](how-to/use-opensearch-for-search.md)
-* [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
 * [Separate releases and snapshots](how-to/separate-releases-and-snapshots.md)
 * [Set cleanup policies](how-to/set-cleanup-policies.md)
-* [Import from other repository managers](how-to/import-from-other-repository-managers.md)
-* [Import from Nexus](how-to/import-from-nexus.md)
-* [Use the Nexus import wizard](how-to/use-the-nexus-import-wizard.md)
+* [Choose a search backend](how-to/choose-a-search-backend.md)
+* [Use OpenSearch for search](how-to/use-opensearch-for-search.md)
+
+## Publish and consume
+
+* [Publish and consume](publish-and-consume/README.md)
+* [Publish and consume artifacts](how-to/publish-and-consume-artifacts.md)
+* [Publish and consume with Maven](how-to/publish-and-consume-with-maven.md)
+* [Publish and consume with Gradle (Groovy DSL)](how-to/publish-and-consume-with-gradle-groovy.md)
+* [Publish and consume with Gradle (Kotlin DSL)](how-to/publish-and-consume-with-gradle-kotlin.md)
+* [Publish and consume with sbt](how-to/publish-and-consume-with-sbt.md)
+* [Publish and consume with Leiningen](how-to/publish-and-consume-with-leiningen.md)
+* [Use tokens in CI](how-to/use-tokens-in-ci.md)
+* [Restrict a token to artifacts](how-to/restrict-token-to-artifacts.md)
+* [Verify uploaded checksums](how-to/verify-uploaded-checksums.md)
+* [Search for artifacts](how-to/search-for-artifacts.md)
+
+## Manage
+
+* [Back up and restore](how-to/back-up-and-restore.md)
+* [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
+* [Shut down without dropping requests](how-to/shut-down-without-dropping-requests.md)
+* [Harden a deployment](how-to/harden-a-deployment.md)
+* [Verify the SBOMs of a release](how-to/verify-release-sboms.md)
+* [Troubleshoot Ingot](how-to/troubleshoot.md)
+* [Collect a support bundle](how-to/collect-a-support-bundle.md)
+* [Rebuild the search index](how-to/rebuild-search-index.md)
+* [Back up before upgrading](how-to/back-up-before-upgrading.md)
+* [Upgrade from Ingot 1.1.x](how-to/upgrade-ingot.md)
+* [Verify an upgrade](how-to/verify-an-upgrade.md)
+* [Roll back an upgrade](how-to/roll-back-an-upgrade.md)
+* [Monitor status and failures](how-to/monitor-status-and-failures.md)
+* [Monitor with the Prometheus Operator](how-to/monitor-with-the-prometheus-operator.md)
+* [Review the audit log](how-to/review-audit-log.md)
+* [Forward audit events to a SIEM](how-to/forward-audit-events-to-a-siem.md)
+* [Manage users, teams and machine accounts](how-to/manage-users-teams-and-machine-accounts.md)
+* [Grant permissions with nodes](how-to/grant-permissions-with-nodes.md)
+* [Check what a principal can do](how-to/check-access.md)
+* [Recover admin access](how-to/recover-admin-access.md)
 * [Install a plugin](how-to/install-a-plugin.md)
 * [Write a plugin](how-to/write-a-plugin.md)
 * [Write a search backend plugin](how-to/write-a-search-backend-plugin.md)
 * [Extend the dashboard from a plugin](how-to/extend-the-dashboard-from-a-plugin.md)
 
-### Operate and upgrade
+## References
 
-* [Back up and restore](how-to/back-up-and-restore.md)
-* [Back up before upgrading](how-to/back-up-before-upgrading.md)
-* [Upgrade from Ingot 1.1.x](how-to/upgrade-ingot.md)
-* [Upgrade from Reposilite 3.x](how-to/upgrade-from-reposilite.md)
-* [Migrate from the upstream Helm chart](how-to/migrate-from-upstream-chart.md)
-* [Upgrade from Reposilite 2.x](how-to/upgrade-from-reposilite-2.md)
-* [Verify an upgrade](how-to/verify-an-upgrade.md)
-* [Roll back an upgrade](how-to/roll-back-an-upgrade.md)
-* [Review the audit log](how-to/review-audit-log.md)
-* [Forward audit events to a SIEM](how-to/forward-audit-events-to-a-siem.md)
-* [Monitor status and failures](how-to/monitor-status-and-failures.md)
-
-## Reference
-
-### Configuration
-
-* [Configuration file and startup parameters](reference/configuration-and-startup.md)
-* [Environment variables](reference/environment-variables.md)
-* [Outbound connections](reference/outbound-connections.md)
-* [Deploy targets](reference/deploy-targets.md)
-* [Settings domains](reference/settings-domains.md)
-* [Settings encryption](reference/settings-encryption.md)
-* [Storage providers](reference/storage-providers.md)
-* [Repository settings](reference/repository-settings.md)
-* [Repository types](reference/repository-types.md)
-* [Cleanup policies](reference/cleanup-policies.md)
-* [Audit events](reference/audit-events.md)
-* [Console commands](reference/console-commands.md)
-* [OpenSearch search backend](reference/opensearch-search-backend.md)
-
-### Identity and access
-
-* [Permission nodes](reference/permission-nodes.md)
-* [Artifact permission nodes](reference/artifact-permission-nodes.md)
-* [Login providers](reference/login-providers.md)
-* [Access tokens and routes](reference/access-tokens-and-routes.md)
-
-### HTTP and web
-
-* [HTTP API overview](reference/http-api.md)
-* [API errors](reference/api-errors.md)
-* [Search filters and API](reference/search-filters-and-api.md)
-* [Web routes](reference/web-routes.md)
-* [Dashboard pages](reference/dashboard-pages.md)
-* [Plugin API](reference/plugin-api.md)
-* [Dashboard anchors](reference/dashboard-anchors.md)
-
-### Upgrades
-
-* [Upgrade changes and supported paths](reference/upgrade-changes.md)
-
-## Explanation
-
-### Architecture and compatibility
-
-* [Drop-in compatibility with Reposilite](explanation/drop-in-compatibility.md)
-* [Deployment options compared](explanation/deployment-options-compared.md)
+* [Architecture overview](explanation/architecture-overview.md)
+* [Backend architecture](explanation/backend-architecture.md)
 * [High availability support](explanation/high-availability-support.md)
 * [Multi-replica operation](explanation/multi-replica-operation.md)
 * [Storage and mirror caching](explanation/storage-and-mirror-caching.md)
-
-### Identity and access
-
 * [Identity model](explanation/identity-model.md)
 * [How permissions are evaluated](explanation/permission-evaluation.md)
 * [Sessions, login and CSRF](explanation/sessions-and-login.md)
 * [Security headers](explanation/security-headers.md)
-* [Token migration](explanation/token-migration.md)
-
-### Search
-
 * [How the search index stays current](explanation/how-the-search-index-stays-current.md)
-* [Backend architecture](explanation/backend-architecture.md)
+* [Configuration file and startup parameters](reference/configuration-and-startup.md)
+* [Environment variables](reference/environment-variables.md)
+* [Deploy targets](reference/deploy-targets.md)
+* [Helm chart values](reference/helm-values.md)
+* [Settings domains](reference/settings-domains.md)
+* [Settings encryption](reference/settings-encryption.md)
+* [Storage providers](reference/storage-providers.md)
+* [Outbound connections](reference/outbound-connections.md)
+* [Repository settings](reference/repository-settings.md)
+* [Repository types](reference/repository-types.md)
+* [Cleanup policies](reference/cleanup-policies.md)
+* [OpenSearch search backend](reference/opensearch-search-backend.md)
+* [Login providers](reference/login-providers.md)
+* [HTTP API overview](reference/http-api.md)
+* [API errors](reference/api-errors.md)
+* [Search filters and API](reference/search-filters-and-api.md)
+* [Web routes](reference/web-routes.md)
+* [Access tokens and routes](reference/access-tokens-and-routes.md)
+* [Permission nodes](reference/permission-nodes.md)
+* [Artifact permission nodes](reference/artifact-permission-nodes.md)
+* [Audit events](reference/audit-events.md)
+* [Dashboard pages](reference/dashboard-pages.md)
+* [Dashboard anchors](reference/dashboard-anchors.md)
+* [Plugin API](reference/plugin-api.md)
+* [Plugin store](reference/plugin-store.md)
+* [Console commands](reference/console-commands.md)
+* [Glossary](reference/glossary.md)
+* [Frequently asked questions](reference/faq.md)
+
+## Release notes
+
+* [Release notes](reference/release-notes.md)
+* [Upgrade changes and supported paths](reference/upgrade-changes.md)
+
+## Contributing
+
+* [Contributing to the docs](explanation/contributing-to-the-docs.md)
