@@ -18,9 +18,6 @@ package net.onelitefeather.ingot.logging
 
 import com.reposilite.journalist.Channel
 
-/** The console line format. [TEXT] is the format of every earlier version. */
-enum class LogFormat { TEXT, JSON }
-
 /** A logging variable that holds a value the server does not accept. The message names the variable. */
 class LogSettingsRefusal(message: String) : IllegalArgumentException(message)
 
@@ -33,7 +30,6 @@ class LogSettingsRefusal(message: String) : IllegalArgumentException(message)
  */
 data class LogSettings(
     val file: Boolean = true,
-    val format: LogFormat = LogFormat.TEXT,
     val level: Channel? = null,
     val packageLevels: Map<String, String> = emptyMap(),
 ) {
@@ -61,14 +57,6 @@ data class LogSettings(
                 }
             } ?: true
 
-            val format = logVariable(environment, "LOG_FORMAT")?.let { (name, value) ->
-                when {
-                    value.equals("text", ignoreCase = true) -> LogFormat.TEXT
-                    value.equals("json", ignoreCase = true) -> LogFormat.JSON
-                    else -> throw LogSettingsRefusal("Invalid value for $name: $value, expected text or json")
-                }
-            } ?: LogFormat.TEXT
-
             val level = logVariable(environment, "LOG_LEVEL")?.let { (name, value) ->
                 Channel.of(value).orElseThrow {
                     LogSettingsRefusal("Invalid value for $name: $value, expected one of FATAL, ERROR, WARN, INFO, DEBUG, TRACE")
@@ -79,7 +67,7 @@ data class LogSettings(
                 ?.let { (name, value) -> parsePackageLevels(name, value) }
                 .orEmpty()
 
-            return LogSettings(file = file, format = format, level = level, packageLevels = packageLevels)
+            return LogSettings(file = file, level = level, packageLevels = packageLevels)
         }
 
         /**

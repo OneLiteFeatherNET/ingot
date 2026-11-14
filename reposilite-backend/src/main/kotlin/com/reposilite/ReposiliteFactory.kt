@@ -47,8 +47,9 @@ object ReposiliteFactory {
 
     fun createReposilite(parameters: ReposiliteParameters): Reposilite {
         // Read first, because tinylog reads its configuration once, when the first logger uses it
-        LogSettings.read().applyToTinyLog()
-        return createReposilite(parameters, PrintStreamLogger(System.out, System.err, Channel.ALL, false))
+        val logSettings = LogSettings.read()
+        logSettings.applyToTinyLog()
+        return createReposilite(parameters, PrintStreamLogger(System.out, System.err, Channel.ALL, false), logSettings = logSettings)
     }
 
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite =
@@ -66,6 +67,8 @@ object ReposiliteFactory {
         readOnlySetting: ReadOnlySetting = ReadOnlySetting.read(),
         // Read before anything binds a port, like the read-only switch
         supportBundleSetting: SupportBundleSetting = SupportBundleSetting.read(),
+        // The defaults of the logging variables, so a test does not depend on the environment of its machine
+        logSettings: LogSettings = LogSettings(),
         awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
     ): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
@@ -85,7 +88,7 @@ object ReposiliteFactory {
         val journalist = ReposiliteJournalist(
             visibleJournalist = rootJournalist,
             cachedLogSize = localConfiguration.cachedLogSize.get(),
-            defaultVisibilityThreshold = Channel.of(parameters.level).orElseGet { Channel.INFO },
+            defaultVisibilityThreshold = logSettings.consoleThreshold(parameters.level),
             testEnv = parameters.testEnv,
             noColor = parameters.noColor,
         )
