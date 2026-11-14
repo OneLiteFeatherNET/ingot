@@ -300,6 +300,6 @@ You have now published a library to Ingot and consumed it from another project.
 
 ## Next steps
 
-* [Install with Docker](../how-to/install-with-docker.md) explains the image tags, the user ids, the data volume and the environment variables for a real deployment.
+* [Install with Docker](../set-up/deploy/install-with-docker.md) explains the image tags, the user ids, the data volume and the environment variables for a real deployment.
 * [Set up the first administrator](set-up-first-admin.md) lists every message the setup can give you.
 * [Set up users, teams and SSO](set-up-users-teams-and-sso.md) gives people access with their own accounts, so they do not need the deploy token.

@@ -41,7 +41,7 @@ The role needs no permission for scripts. The plugin sends its one script inline
 
 Create a user, assign it the role, and generate a password. Keep the password out of the manifests. Write it to a file that the container can read, for example `/run/secrets/opensearch-password`, mounted read-only. The file must hold the password and nothing else. Ingot removes the line break at its end, and no other character is changed.
 
-Then check the certificate. The server image trusts the public authorities. A private authority is added with a directory of PEM files that you mount, and that directory is named in `INGOT_EXTRA_CA_CERTS`. The steps are in [Install with Docker](install-with-docker.md#trust-a-private-certificate-authority). Hostname verification is always on, so the name in the URL must appear in the certificate of the cluster.
+Then check the certificate. The server image trusts the public authorities. A private authority is added with a directory of PEM files that you mount, and that directory is named in `INGOT_EXTRA_CA_CERTS`. The steps are in [Install with Docker](../set-up/deploy/install-with-docker.md#trust-a-private-certificate-authority). Hostname verification is always on, so the name in the URL must appear in the certificate of the cluster.
 
 Last, allow the network path. Only the Ingot replicas should reach port `9200` of the cluster. Turn on the audit log of the cluster for the new user. The reasons are in [Security obligations](../reference/opensearch-search-backend.md#security-obligations).
 

@@ -141,7 +141,7 @@ Partial files are never listed, counted in the storage usage or served. After a 
 
 An S3 upload is sent to the bucket as it arrives. An upload above 8 MiB is a multipart upload, and no copy of it is written to the system temporary directory of the container. The stored objects are unchanged: the same keys, content types and bytes, and a repository reads them as before. No configuration, environment variable, manifest or plugin changes. Operators can drop any sizing that was made for the temporary directory.
 
-* A failed upload is aborted, so the bucket keeps no incomplete upload from it. An upload that is interrupted by a killed process leaves parts in the bucket. Add the `AbortIncompleteMultipartUpload` lifecycle rule from [Large uploads](../how-to/use-s3-storage.md#large-uploads) to remove them.
+* A failed upload is aborted, so the bucket keeps no incomplete upload from it. An upload that is interrupted by a killed process leaves parts in the bucket. Add the `AbortIncompleteMultipartUpload` lifecycle rule from [Large uploads](../set-up/cluster/use-s3-storage.md#large-uploads) to remove them.
 * `INGOT_S3_BUFFER_TO_DISK=true` restores the temporary file path for every upload. Use it only when the storage service rejects multipart uploads.
 
 ### Nexus import is bundled and off by default
@@ -152,7 +152,7 @@ The image ships `nexus-import-plugin.jar` in `/app/bundled-plugins/`. It is load
 * The loader now switches each bundled jar on its own variable. A jar that the loader does not know still follows the metrics switch, as before.
 * The audit action `NEXUS_IMPORT_RUN` is new. Its name is stored, so it is never renamed.
 
-See [Import from Nexus](../how-to/import-from-nexus.md) for the flow.
+See [Import from Nexus](../set-up/migrate/import-from-nexus.md) for the flow.
 
 ### OpenSearch search backend is bundled and off by default (unreleased)
 

@@ -75,4 +75,4 @@ An existing deployment that sets neither needs no action. Its effective target i
 
 * [Environment variables](environment-variables.md#deploy-target)
 * [Configuration file and startup parameters](configuration-and-startup.md#command-line-parameters)
-* [Run the dashboard in a separate container](../how-to/run-split-dashboard-container.md)
+* [Run the dashboard in a separate container](../set-up/deploy/run-split-dashboard-container.md)

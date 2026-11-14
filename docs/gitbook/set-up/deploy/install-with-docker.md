@@ -4,7 +4,7 @@ description: How to run Ingot in Docker with a pinned image tag, a persistent da
 
 # Install with Docker
 
-This guide shows how to run the Ingot server in a Docker container for a real deployment. For a first run with a guided walkthrough, use [First steps with Docker](../get-started/first-steps-with-docker.md).
+This guide shows how to run the Ingot server in a Docker container for a real deployment. For a first run with a guided walkthrough, use [First steps with Docker](../../get-started/first-steps-with-docker.md).
 
 ## Prerequisites
 
@@ -123,7 +123,7 @@ The image reads these variables.
 | `JAVA_OPTS` | empty | Options for the Java virtual machine, for example `-Xmx1g`. |
 | `INGOT_OPTS` | empty | Arguments for the server, for example `--port 9090`. If it is empty, the entrypoint reads `REPOSILITE_OPTS`. |
 | `INGOT_LOCAL_<NAME>` | none | Overrides one key of the local configuration, for example `INGOT_LOCAL_DEFAULTFRONTEND=false`. The name is not case sensitive. The override is not written back to the file. |
-| `INGOT_LOCAL_<NAME>_FILE` | none | Takes the value of one key from a file, for example `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` with the file mounted into the container. Use it for secrets, so they stay out of the manifest. The file content is the value, without the line breaks at its end. A missing or unreadable file stops the start with one line that names the variable. See [File values](../reference/environment-variables.md#file-values). |
+| `INGOT_LOCAL_<NAME>_FILE` | none | Takes the value of one key from a file, for example `INGOT_LOCAL_KEYPASSWORD_FILE=/run/secrets/key-password` with the file mounted into the container. Use it for secrets, so they stay out of the manifest. The file content is the value, without the line breaks at its end. A missing or unreadable file stops the start with one line that names the variable. See [File values](../../reference/environment-variables.md#file-values). |
 | `PUID` | `977` | The user id the server runs as. |
 | `PGID` | `977` | The group id the server runs as. |
 | `INGOT_FORCE_CHOWN` | empty | Set to `true` to change the owner of `/app` and `/var/log/reposilite` at every start. If it is empty, the entrypoint reads `REPOSILITE_FORCE_CHOWN`. |
@@ -200,10 +200,10 @@ Removing the container with `docker rm` keeps the volume. Removing the volume wi
 
 ## Upgrade
 
-Before you change the image tag, read [Back up before upgrading](back-up-before-upgrading.md). Then follow the guide for your current version:
+Before you change the image tag, read [Back up before upgrading](../../how-to/back-up-before-upgrading.md). Then follow the guide for your current version:
 
-* From Reposilite 3.x: [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md).
-* From Ingot 1.1.x: [Upgrade from Ingot 1.1.x](upgrade-ingot.md).
+* From Reposilite 3.x: [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md).
+* From Ingot 1.1.x: [Upgrade from Ingot 1.1.x](../../how-to/upgrade-ingot.md).
 
 ## Result
 
@@ -213,4 +213,4 @@ The health endpoint answers `{"status":"UP"}`. A new instance also reports that 
 curl -s http://localhost:8080/api/auth/providers
 ```
 
-The response contains `"setupRequired":true`. To create that administrator, follow [Set up the first administrator](../get-started/set-up-first-admin.md).
+The response contains `"setupRequired":true`. To create that administrator, follow [Set up the first administrator](../../get-started/set-up-first-admin.md).

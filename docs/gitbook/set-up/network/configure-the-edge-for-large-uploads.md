@@ -60,7 +60,7 @@ env:
     value: "-Xmx768M -Djavalin.maxRequestSize=1073741824"
 ```
 
-The value is an example of 1 GiB. Set it to at least the size of the largest artifact. See the [environment variables](../reference/environment-variables.md) reference for the setting.
+The value is an example of 1 GiB. Set it to at least the size of the largest artifact. See the [environment variables](../../reference/environment-variables.md) reference for the setting.
 
 ## Check the limits
 
@@ -76,7 +76,7 @@ A `413` means that a body limit of the edge or of Ingot is too small. A `502` or
 
 ## Related
 
-* [Run on Kubernetes](run-on-kubernetes.md)
+* [Run on Kubernetes](../deploy/run-on-kubernetes.md)
 * [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md)
 * [Run behind a reverse proxy](run-behind-reverse-proxy.md)
-* [Use S3 storage](use-s3-storage.md) for the memory that one large upload holds
+* [Use S3 storage](../cluster/use-s3-storage.md) for the memory that one large upload holds

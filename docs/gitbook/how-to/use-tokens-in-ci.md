@@ -159,7 +159,7 @@ For Maven, use the same two variables with the `settings.xml` from the Maven tab
 
 ## Legacy tokens
 
-Tokens from Reposilite 3.x, and tokens created before the `ingot_` format, have no prefix. They keep their name and their secret, and they work over Basic authentication only. A Bearer header does not accept them. Keep their name and secret in the CI secrets, and change nothing else in the build. For the migration, see [Token migration](../explanation/token-migration.md).
+Tokens from Reposilite 3.x, and tokens created before the `ingot_` format, have no prefix. They keep their name and their secret, and they work over Basic authentication only. A Bearer header does not accept them. Keep their name and secret in the CI secrets, and change nothing else in the build. For the migration, see [Token migration](../set-up/migrate/token-migration.md).
 
 ## Verify the token
 

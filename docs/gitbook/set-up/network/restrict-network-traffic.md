@@ -4,7 +4,7 @@ description: Turn on the NetworkPolicy of the Ingot Helm chart so that only the 
 
 # Restrict network traffic with a NetworkPolicy
 
-The chart renders no NetworkPolicy by default. Without one, every pod in the cluster can reach the Ingot port, which serves the artifacts, the API and the metrics. This page turns on the chart's policy, lists the peers that need the port, and checks that the policy works. The basic switch and the table of peers are also in [Run on Kubernetes](run-on-kubernetes.md#restrict-network-traffic). This page covers the steps in more detail.
+The chart renders no NetworkPolicy by default. Without one, every pod in the cluster can reach the Ingot port, which serves the artifacts, the API and the metrics. This page turns on the chart's policy, lists the peers that need the port, and checks that the policy works. The basic switch and the table of peers are also in [Run on Kubernetes](../deploy/run-on-kubernetes.md#restrict-network-traffic). This page covers the steps in more detail.
 
 ## Before you begin
 
@@ -76,7 +76,7 @@ List the policies, then check that a listed caller reaches Ingot and an unlisted
 kubectl -n ingot get networkpolicy
 ```
 
-From a namespace that is not listed, the request must time out. From a listed namespace, it must answer `{"status":"UP"}`. The probe command of [Run on Kubernetes](run-on-kubernetes.md#restrict-network-traffic) shows one way to send that request from a test pod.
+From a namespace that is not listed, the request must time out. From a listed namespace, it must answer `{"status":"UP"}`. The probe command of [Run on Kubernetes](../deploy/run-on-kubernetes.md#restrict-network-traffic) shows one way to send that request from a test pod.
 
 Also check the readiness of the pods after you turn the policy on:
 
@@ -94,7 +94,7 @@ kubectl -n ingot get pods -l app.kubernetes.io/name=ingot
 
 ## Related
 
-* [Run on Kubernetes](run-on-kubernetes.md) installs the chart and lists the basic switch.
-* [Route with a Gateway API HTTPRoute](route-with-gateway-api.md) and [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md) describe the path from the gateway to Ingot.
-* [Monitor with the Prometheus Operator](monitor-with-the-prometheus-operator.md) describes the scrape that the policy must admit.
-* [Helm chart values](../reference/helm-values.md#routing-and-network) lists every key of the policy.
+* [Run on Kubernetes](../deploy/run-on-kubernetes.md) installs the chart and lists the basic switch.
+* [Route with a Gateway API HTTPRoute](../deploy/route-with-gateway-api.md) and [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md) describe the path from the gateway to Ingot.
+* [Monitor with the Prometheus Operator](../../how-to/monitor-with-the-prometheus-operator.md) describes the scrape that the policy must admit.
+* [Helm chart values](../../reference/helm-values.md#routing-and-network) lists every key of the policy.

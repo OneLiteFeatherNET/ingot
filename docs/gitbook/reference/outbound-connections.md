@@ -46,15 +46,15 @@ With LDAP enabled, a login opens a connection to the configured LDAP server to b
 
 ## S3
 
-With an S3 backed repository, every read and write goes to the configured S3 endpoint, and so do the metadata lookups of the cache in front of it. Filesystem storage opens no connection. See [Use S3 storage](../how-to/use-s3-storage.md).
+With an S3 backed repository, every read and write goes to the configured S3 endpoint, and so do the metadata lookups of the cache in front of it. Filesystem storage opens no connection. See [Use S3 storage](../set-up/cluster/use-s3-storage.md).
 
 ## Database
 
-Startup and every query use the configured MariaDB, MySQL or PostgreSQL server. SQLite and H2 are files in the data directory and open no network connection. See [Configure a database](../how-to/configure-database.md).
+Startup and every query use the configured MariaDB, MySQL or PostgreSQL server. SQLite and H2 are files in the data directory and open no network connection. See [Configure a database](../set-up/cluster/configure-database.md).
 
 ## Cluster bus
 
-With a bus URL set in `INGOT_CLUSTER_URL`, the NATS transport connects to that server when the instance starts. Without a URL, no bus is opened. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
+With a bus URL set in `INGOT_CLUSTER_URL`, the NATS transport connects to that server when the instance starts. Without a URL, no bus is opened. See [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md).
 
 ## What does not exist
 

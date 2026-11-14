@@ -11,7 +11,7 @@ Ingot is a self-hosted Maven repository manager. It hosts, proxies and caches ar
 Pick the path that matches your role.
 
 * **Evaluator.** Read [What is Ingot](introduction/what-is-ingot.md), then [How Ingot compares](introduction/how-ingot-compares.md) and the [Architecture overview](explanation/architecture-overview.md). Start an instance with [First steps with Docker](get-started/first-steps-with-docker.md). It takes about 30 minutes.
-* **Operator.** Start with [Install with Docker](how-to/install-with-docker.md) or [Run on Kubernetes](how-to/run-on-kubernetes.md). Then read [Size the deployment](how-to/size-the-deployment.md), [Back up and restore](how-to/back-up-and-restore.md) and [Monitor status and failures](how-to/monitor-status-and-failures.md). For more than one replica, read [High availability support](explanation/high-availability-support.md).
+* **Operator.** Start with [Install with Docker](set-up/deploy/install-with-docker.md) or [Run on Kubernetes](set-up/deploy/run-on-kubernetes.md). Then read [Size the deployment](set-up/deploy/size-the-deployment.md), [Back up and restore](how-to/back-up-and-restore.md) and [Monitor status and failures](how-to/monitor-status-and-failures.md). For more than one replica, read [High availability support](explanation/high-availability-support.md).
 * **Administrator.** Follow [Set up users, teams and single sign on](get-started/set-up-users-teams-and-sso.md). Then read [Identity model](explanation/identity-model.md), [Grant permissions with nodes](how-to/grant-permissions-with-nodes.md) and [Review the audit log](how-to/review-audit-log.md).
 * **Developer.** Read [Publish and consume artifacts](how-to/publish-and-consume-artifacts.md) and [Use tokens in CI](how-to/use-tokens-in-ci.md). Use [Search for artifacts](how-to/search-for-artifacts.md) to find what you need.
 * **Plugin author.** Read [Write a plugin](how-to/write-a-plugin.md), then the [Plugin API](reference/plugin-api.md) and [Backend architecture](explanation/backend-architecture.md). To extend the dashboard, see [Extend the dashboard from a plugin](how-to/extend-the-dashboard-from-a-plugin.md).
@@ -20,7 +20,7 @@ Pick the path that matches your role.
 
 | I want to | Start with |
 |---|---|
-| Install and run Ingot | [Install with Docker](how-to/install-with-docker.md) or [Run the JAR](how-to/install-jar.md) |
+| Install and run Ingot | [Install with Docker](set-up/deploy/install-with-docker.md) or [Run the JAR](set-up/deploy/install-jar.md) |
 | Publish and consume artifacts | [Publish and consume artifacts](how-to/publish-and-consume-artifacts.md) |
 | Manage access and logins | [Manage users, teams and machine accounts](how-to/manage-users-teams-and-machine-accounts.md) |
 | Create tokens for CI | [Use tokens in CI](how-to/use-tokens-in-ci.md) |
@@ -30,7 +30,7 @@ Pick the path that matches your role.
 
 ## Upgrade an existing installation
 
-To upgrade, start with [Back up before upgrading](how-to/back-up-before-upgrading.md). Then follow [Upgrade from Ingot 1.1.x](how-to/upgrade-ingot.md) if you run Ingot, or [Upgrade from Reposilite 3.x](how-to/upgrade-from-reposilite.md) if you run Reposilite. Verify the result with [Verify an upgrade](how-to/verify-an-upgrade.md).
+To upgrade, start with [Back up before upgrading](how-to/back-up-before-upgrading.md). Then follow [Upgrade from Ingot 1.1.x](how-to/upgrade-ingot.md) if you run Ingot, or [Upgrade from Reposilite 3.x](set-up/migrate/upgrade-from-reposilite.md) if you run Reposilite. Verify the result with [Verify an upgrade](how-to/verify-an-upgrade.md).
 
 ## What changed in 1.2.0
 
@@ -40,7 +40,7 @@ To upgrade, start with [Back up before upgrading](how-to/back-up-before-upgradin
 
 ## Coming from Reposilite
 
-Ingot keeps the image, the data directory and the port of Reposilite. It also reads the `REPOSILITE_` names of the local settings, the options and the file ownership variables when the `INGOT_` name is not set. [Drop-in compatibility with Reposilite](introduction/drop-in-compatibility.md) lists what stays the same and what differs. Tokens from Reposilite 2.x are migrated with the steps in [Upgrade from Reposilite 2.x](how-to/upgrade-from-reposilite-2.md).
+Ingot keeps the image, the data directory and the port of Reposilite. It also reads the `REPOSILITE_` names of the local settings, the options and the file ownership variables when the `INGOT_` name is not set. [Drop-in compatibility with Reposilite](introduction/drop-in-compatibility.md) lists what stays the same and what differs. Tokens from Reposilite 2.x are migrated with the steps in [Upgrade from Reposilite 2.x](set-up/migrate/upgrade-from-reposilite-2.md).
 
 ## Sections
 

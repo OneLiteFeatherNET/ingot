@@ -6,7 +6,7 @@ description: Configure the optional cluster bus that lets several Ingot replicas
 
 The cluster bus is an optional message channel between the replicas of one Ingot database. A replica publishes an event when it changes state that other replicas keep in memory, such as a disabled token or a revoked session. The other replicas drop their copy of that state at once instead of waiting for it to expire.
 
-The bus is a speed-up, not a source of truth. The database stays the only place where sessions, tokens, configuration and counters are held. A replica that misses an event still converges on the next poll or when its cache entry expires, except for javadoc caches, see [Javadoc caches](#javadoc-caches). See [Multi-replica operation](../explanation/multi-replica-operation.md).
+The bus is a speed-up, not a source of truth. The database stays the only place where sessions, tokens, configuration and counters are held. A replica that misses an event still converges on the next poll or when its cache entry expires, except for javadoc caches, see [Javadoc caches](#javadoc-caches). See [Multi-replica operation](../../explanation/multi-replica-operation.md).
 
 ## Before you begin
 
@@ -161,6 +161,6 @@ The settings above are read and checked when the instance starts. The bus connec
 
 ## Related pages
 
-* [Multi-replica operation](../explanation/multi-replica-operation.md) lists the state that each replica keeps for itself.
-* [Run on Kubernetes](run-on-kubernetes.md) describes the replica setup and its limits.
-* [Environment variables](../reference/environment-variables.md#cluster-bus-variables) lists every variable with its fallback and default.
+* [Multi-replica operation](../../explanation/multi-replica-operation.md) lists the state that each replica keeps for itself.
+* [Run on Kubernetes](../deploy/run-on-kubernetes.md) describes the replica setup and its limits.
+* [Environment variables](../../reference/environment-variables.md#cluster-bus-variables) lists every variable with its fallback and default.

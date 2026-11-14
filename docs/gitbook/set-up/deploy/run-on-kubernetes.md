@@ -4,10 +4,10 @@ description: Run Ingot on Kubernetes with the Ingot Helm chart, with a database 
 
 # Run on Kubernetes
 
-This page installs Ingot with the Ingot Helm chart, which is published as an OCI chart with each release. The chart sets the Deployment, Service, probes, persistence, autoscaling and ingress. You pass the Ingot settings through environment variables. Its values keep the keys of the upstream Reposilite chart, so [migrating an existing release](migrate-from-upstream-chart.md) is a values diff. To run the dashboard as its own workload, see [Run the dashboard split from the server with Helm](run-split-with-helm.md).
+This page installs Ingot with the Ingot Helm chart, which is published as an OCI chart with each release. The chart sets the Deployment, Service, probes, persistence, autoscaling and ingress. You pass the Ingot settings through environment variables. Its values keep the keys of the upstream Reposilite chart, so [migrating an existing release](../migrate/migrate-from-upstream-chart.md) is a values diff. To run the dashboard as its own workload, see [Run the dashboard split from the server with Helm](run-split-with-helm.md).
 
 {% hint style="info" %}
-Which setups are supported with more than one replica, which are not, and the test behind each statement are listed in [High availability support](../explanation/high-availability-support.md). Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
+Which setups are supported with more than one replica, which are not, and the test behind each statement are listed in [High availability support](../../explanation/high-availability-support.md). Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
 {% endhint %}
 
 ## Before you begin
@@ -22,7 +22,7 @@ The chart version and its `appVersion` are the Ingot release, so the chart and t
 
 ## Read the chart values
 
-The [Helm chart values](../reference/helm-values.md) reference lists every key of the chart with its default and what it renders. Your own values file only needs the keys that change.
+The [Helm chart values](../../reference/helm-values.md) reference lists every key of the chart with its default and what it renders. Your own values file only needs the keys that change.
 
 To read the values of the release that you deploy, run `helm show values` against that release, and replace `1.1.1` with its version:
 
@@ -324,7 +324,7 @@ objectStorage:
 
 The chart renders each variable as a reference to a key of that Secret, so the values stay in the cluster. The first two keys must exist, or the pod does not start. `AWS_REGION` may be left out.
 
-To use the workload identity of the pod instead of keys, see [Credentials from the workload identity](use-s3-storage.md#credentials-from-the-workload-identity). For how to deliver these Secrets through Git, see [Manage secrets with GitOps](manage-secrets-with-gitops.md).
+To use the workload identity of the pod instead of keys, see [Credentials from the workload identity](../cluster/use-s3-storage.md#credentials-from-the-workload-identity). For how to deliver these Secrets through Git, see [Manage secrets with GitOps](manage-secrets-with-gitops.md).
 
 ## Route mirror traffic through an egress proxy
 
@@ -340,7 +340,7 @@ env:
     value: "localhost,127.0.0.1,.svc,.cluster.local"
 ```
 
-The switch is off by default, so an existing installation keeps its routes until you set it. Put no user name or password into `HTTPS_PROXY` or `HTTP_PROXY`, because Ingot refuses such a value. Keep the credentials of the proxy on the mirror with `httpProxy` instead. The variables are described in [Environment variables](../reference/environment-variables.md#mirror-environment-proxy).
+The switch is off by default, so an existing installation keeps its routes until you set it. Put no user name or password into `HTTPS_PROXY` or `HTTP_PROXY`, because Ingot refuses such a value. Keep the credentials of the proxy on the mirror with `httpProxy` instead. The variables are described in [Environment variables](../../reference/environment-variables.md#mirror-environment-proxy).
 
 A NetworkPolicy that limits egress has to allow the same route. Without it the pod cannot reach the proxy, and the mirror requests fail with the upstream error. Allow the pods of this release to reach the proxy and DNS, and nothing else that the mirrors need:
 
@@ -430,7 +430,7 @@ Several replicas need all of the following:
 * A `ReadWriteMany` volume, or `persistence.enabled: false`, so that pods on other nodes can start.
 
 {% hint style="warning" %}
-The schema lock and the metadata lock are shared by all pods of one database. The tests for these locks run on MariaDB, and the page [High availability support](../explanation/high-availability-support.md) names them and marks PostgreSQL with several replicas as not tested.
+The schema lock and the metadata lock are shared by all pods of one database. The tests for these locks run on MariaDB, and the page [High availability support](../../explanation/high-availability-support.md) names them and marks PostgreSQL with several replicas as not tested.
 
 These limits still apply:
 
@@ -440,7 +440,7 @@ These limits still apply:
 The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.
 {% endhint %}
 
-An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](configure-cluster-bus.md). With more than one replica or the autoscaler on, the install notes warn about the settings that are missing, such as a `ReadWriteOnce` claim or no `INGOT_LOCAL_DATABASE`. The warnings do not stop the install. See [Multi-replica operation](../explanation/multi-replica-operation.md#what-the-helm-chart-warns-about).
+An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](../cluster/configure-cluster-bus.md). With more than one replica or the autoscaler on, the install notes warn about the settings that are missing, such as a `ReadWriteOnce` claim or no `INGOT_LOCAL_DATABASE`. The warnings do not stop the install. See [Multi-replica operation](../../explanation/multi-replica-operation.md#what-the-helm-chart-warns-about).
 
 ### Shutdown budget
 
@@ -537,19 +537,19 @@ ingress:
         - ingot.example.org
 ```
 
-Apply the change with `helm upgrade --install` and the same `--version` and values file as before. If you run Ingot under a path prefix, see [Run behind a reverse proxy and base path](run-behind-reverse-proxy.md).
+Apply the change with `helm upgrade --install` and the same `--version` and values file as before. If you run Ingot under a path prefix, see [Run behind a reverse proxy and base path](../network/run-behind-reverse-proxy.md).
 
-With a Gateway API implementation instead of an ingress, see [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md). For the body size and the timeouts that the edge needs for large uploads, see [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md).
+With a Gateway API implementation instead of an ingress, see [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md). For the body size and the timeouts that the edge needs for large uploads, see [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md).
 
-For the sizing of the heap and the memory limit, see [Size the deployment](size-the-deployment.md). For a comparison of the JAR, the container image and the two Helm shapes, see [Deployment options compared](../explanation/deployment-options-compared.md).
+For the sizing of the heap and the memory limit, see [Size the deployment](size-the-deployment.md). For a comparison of the JAR, the container image and the two Helm shapes, see [Deployment options compared](deployment-options-compared.md).
 
 ## Related
 
 * [Run with Docker](install-with-docker.md) describes the same image without an orchestrator.
-* [Configure a database](configure-database.md) lists the database forms and their rules.
-* [Configure the cluster bus](configure-cluster-bus.md) sets the optional message bus between replicas.
-* [Use S3 storage](use-s3-storage.md) explains the S3 settings per repository.
+* [Configure a database](../cluster/configure-database.md) lists the database forms and their rules.
+* [Configure the cluster bus](../cluster/configure-cluster-bus.md) sets the optional message bus between replicas.
+* [Use S3 storage](../cluster/use-s3-storage.md) explains the S3 settings per repository.
 * [Manage secrets with GitOps](manage-secrets-with-gitops.md) delivers the Secrets of this page from Git.
-* [Terminate TLS at the gateway](terminate-tls-at-the-gateway.md) and [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md) cover the cluster edge.
+* [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md) and [Configure the edge for large uploads](../network/configure-the-edge-for-large-uploads.md) cover the cluster edge.
 * [Size the deployment](size-the-deployment.md) describes how to choose the heap and the limits.
-* [Create proxy repositories](create-proxy-repositories.md) for a proxy with a shared or large cache.
+* [Create proxy repositories](../../how-to/create-proxy-repositories.md) for a proxy with a shared or large cache.

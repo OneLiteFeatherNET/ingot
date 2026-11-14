@@ -56,7 +56,7 @@ Below the working directory Ingot creates:
 Logs go to `./logs` relative to the directory that the JVM starts in. Passing `--working-directory` does not move them. The log directory and the rolling policy are set in `tinylog.properties`, which is part of the JAR.
 
 {% hint style="info" %}
-The data directory of an existing Reposilite instance can be used by Ingot. For the steps and checks, follow [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md) and [Back up before upgrading](back-up-before-upgrading.md) first.
+The data directory of an existing Reposilite instance can be used by Ingot. For the steps and checks, follow [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md) and [Back up before upgrading](../../how-to/back-up-before-upgrading.md) first.
 {% endhint %}
 
 ## Startup flags
@@ -92,5 +92,5 @@ To stop Ingot in the foreground, type `stop` in the console, or send the process
 ## Related
 
 * [Run as a service](run-as-service.md), to start Ingot at boot.
-* [Enable TLS](enable-tls.md), to serve HTTPS from Ingot itself.
-* [Run behind a reverse proxy](run-behind-reverse-proxy.md), to serve Ingot under a host name.
+* [Enable TLS](../network/enable-tls.md), to serve HTTPS from Ingot itself.
+* [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md), to serve Ingot under a host name.

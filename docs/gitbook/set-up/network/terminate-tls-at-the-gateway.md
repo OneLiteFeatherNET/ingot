@@ -6,7 +6,7 @@ description: Serve HTTPS for Ingot on Kubernetes with a cert-manager certificate
 
 In a Kubernetes cluster the gateway or the ingress controller usually serves HTTPS. cert-manager issues and renews the certificate, and Ingot serves plain HTTP on port `8080` behind it. This setup does not need the TLS connector of Ingot itself, so leave `sslEnabled` at its default `false`.
 
-Use this page with [Run on Kubernetes](run-on-kubernetes.md). The chart's Gateway API route, `httpRoute`, attaches to a Gateway that you already run.
+Use this page with [Run on Kubernetes](../deploy/run-on-kubernetes.md). The chart's Gateway API route, `httpRoute`, attaches to a Gateway that you already run.
 
 ## Before you begin
 
@@ -89,11 +89,11 @@ The HTTPRoute of the chart has no timeout field. For uploads that run for a long
 
 ## Ingress instead of a Gateway
 
-An ingress controller can serve the same host name with the same certificate. Set `ingress.enabled: true`, your `ingress.className`, and a `tls` entry that names the Secret of cert-manager. The ingress setup is described in [Run on Kubernetes](run-on-kubernetes.md#expose-the-instance-with-ingress). Do not set `httpRoute.enabled` at the same time.
+An ingress controller can serve the same host name with the same certificate. Set `ingress.enabled: true`, your `ingress.className`, and a `tls` entry that names the Secret of cert-manager. The ingress setup is described in [Run on Kubernetes](../deploy/run-on-kubernetes.md#expose-the-instance-with-ingress). Do not set `httpRoute.enabled` at the same time.
 
 ## Client addresses
 
-The gateway or the ingress is the proxy in front of Ingot. Ingot then sees the address of the proxy, not the client, unless you list the proxies in `INGOT_TRUSTED_PROXIES`. See [Run behind a reverse proxy](run-behind-reverse-proxy.md) and the [environment variables](../reference/environment-variables.md) reference.
+The gateway or the ingress is the proxy in front of Ingot. Ingot then sees the address of the proxy, not the client, unless you list the proxies in `INGOT_TRUSTED_PROXIES`. See [Run behind a reverse proxy](run-behind-reverse-proxy.md) and the [environment variables](../../reference/environment-variables.md) reference.
 
 ## In-app TLS
 
@@ -103,6 +103,6 @@ The `keyPath` value has to end in `.pem` or `.jks`. A PEM pair is written as a c
 
 ## Related
 
-* [Run on Kubernetes](run-on-kubernetes.md)
+* [Run on Kubernetes](../deploy/run-on-kubernetes.md)
 * [Run behind a reverse proxy](run-behind-reverse-proxy.md)
 * [Enable TLS](enable-tls.md)

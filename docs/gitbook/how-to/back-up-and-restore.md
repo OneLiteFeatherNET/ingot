@@ -185,4 +185,4 @@ The instance starts with the users, tokens and settings from the backup. The rep
 
 * [Back up before upgrading](back-up-before-upgrading.md) covers the copy that you take before a new version.
 * [Roll back an upgrade](roll-back-an-upgrade.md) describes returning to an older version with the copy.
-* [Use S3 storage](use-s3-storage.md) and [Configure a database](configure-database.md) describe the two storage parts.
+* [Use S3 storage](../set-up/cluster/use-s3-storage.md) and [Configure a database](../set-up/cluster/configure-database.md) describe the two storage parts.

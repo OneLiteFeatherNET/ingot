@@ -110,7 +110,7 @@ They apply to every S3 repository of the instance. There is no per-repository se
 
 ### Upload path
 
-An upload above 8 MiB is sent as a multipart upload in parts of 8 MiB, and it does not pass through the system temporary directory. A failed upload is aborted. `INGOT_S3_BUFFER_TO_DISK=true` restores the temporary file path for every upload. See [Large uploads](../how-to/use-s3-storage.md#large-uploads) and [Environment variables](environment-variables.md#s3-upload-variable).
+An upload above 8 MiB is sent as a multipart upload in parts of 8 MiB, and it does not pass through the system temporary directory. A failed upload is aborted. `INGOT_S3_BUFFER_TO_DISK=true` restores the temporary file path for every upload. See [Large uploads](../set-up/cluster/use-s3-storage.md#large-uploads) and [Environment variables](environment-variables.md#s3-upload-variable).
 
 ### Object keys
 

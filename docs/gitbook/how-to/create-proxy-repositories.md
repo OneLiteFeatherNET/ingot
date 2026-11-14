@@ -11,7 +11,7 @@ A proxy repository serves artifacts from one or more remote repositories, such a
 * A manager account, so that you can change the maven settings.
 * The URL of each remote repository, for example `https://repo.maven.apache.org/maven2` for Maven Central. The URL is the root of the repository, without a group path.
 * Credentials for each remote, only if the remote requires them.
-* Storage for the cached copies. The default is the local disk of the instance. For several replicas or large caches, use an S3 bucket, see [Use S3 storage](use-s3-storage.md).
+* Storage for the cached copies. The default is the local disk of the instance. For several replicas or large caches, use an S3 bucket, see [Use S3 storage](../set-up/cluster/use-s3-storage.md).
 * Read the [repository types reference](../reference/repository-types.md) if you want to declare the type. The type is optional.
 
 ## Declare the proxy
@@ -126,7 +126,7 @@ With `store` set to `false`, the file is streamed to the client and not kept. Wh
 The copy and the request share one fetch when every host of the repository has `store` set to `true`. Two clients that ask for the same missing file at the same time then cause one remote request.
 
 {% hint style="warning" %}
-With several replicas, a cache on local disk is per pod. Each pod fetches and keeps its own copy. Use [S3 storage](use-s3-storage.md) for the repository when the replicas should share the cache. See [Run on Kubernetes](run-on-kubernetes.md).
+With several replicas, a cache on local disk is per pod. Each pod fetches and keeps its own copy. Use [S3 storage](../set-up/cluster/use-s3-storage.md) for the repository when the replicas should share the cache. See [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md).
 {% endhint %}
 
 ## Check checksums
@@ -188,5 +188,5 @@ A typed proxy is the clearest choice for a pure mirror. The typed rules and thei
 
 * [Create a group repository](create-a-group-repository.md) puts several local repositories behind one URL.
 * [Create hosted repositories](create-hosted-repositories.md) covers repositories that store your own uploads.
-* [Use S3 storage](use-s3-storage.md) for shared or large caches.
+* [Use S3 storage](../set-up/cluster/use-s3-storage.md) for shared or large caches.
 * [Set cleanup policies](set-cleanup-policies.md) to remove old cache copies.

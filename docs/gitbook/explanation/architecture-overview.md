@@ -11,11 +11,11 @@ This page shows the parts of an Ingot installation and how they fit together. It
 | Component | What it does | Read more |
 |:--|:--|:--|
 | Server | One JVM process. It serves the Maven protocol, the REST API, the login endpoints and, by default, the dashboard. | [Backend architecture](backend-architecture.md) |
-| Dashboard | The web interface for browsing, settings, accounts and the audit log. It is served by the server, or by its own container. | [Run the dashboard in a separate container](../how-to/run-split-dashboard-container.md) |
-| Database | Holds users, tokens, sessions, shared settings, the audit log, job claims and the search index. SQLite is the default. MariaDB and PostgreSQL are the supported choices for a server database. | [Configure a database](../how-to/configure-database.md) |
+| Dashboard | The web interface for browsing, settings, accounts and the audit log. It is served by the server, or by its own container. | [Run the dashboard in a separate container](../set-up/deploy/run-split-dashboard-container.md) |
+| Database | Holds users, tokens, sessions, shared settings, the audit log, job claims and the search index. SQLite is the default. MariaDB and PostgreSQL are the supported choices for a server database. | [Configure a database](../set-up/cluster/configure-database.md) |
 | Storage | Holds the artifact files of each repository, on a directory of the file system or in an S3-compatible bucket. | [Storage providers](../reference/storage-providers.md) |
 | Search backends | Answer artifact search. The built-in backend keeps the index in the database. A plugin can register another backend, such as OpenSearch. | [Choose a search backend](../how-to/choose-a-search-backend.md) |
-| Cluster bus | An optional message channel between replicas, on NATS or Redis. It speeds up the spread of revocations and cache invalidations. The database stays the source of truth. | [Configure the cluster bus](../how-to/configure-cluster-bus.md) |
+| Cluster bus | An optional message channel between replicas, on NATS or Redis. It speeds up the spread of revocations and cache invalidations. The database stays the source of truth. | [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md) |
 | Plugins | Jars loaded from a directory at start. They register routes, facades, events, search backends and dashboard extensions. | [Plugin API](../reference/plugin-api.md) |
 
 The server runs as a set of plugins on one runtime, and the bundled features, such as checksums, Prometheus metrics and the Nexus importer, are plugins as well.
@@ -37,7 +37,7 @@ One server process, with SQLite or a database server, and file system or S3 stor
 
 ### Split dashboard
 
-The dashboard runs in its own container and passes every other request to the server, which runs without its dashboard. Use it when the dashboard should restart, scale or be hardened apart from the artifact store. The data and the API do not change. See [Run the dashboard in a separate container](../how-to/run-split-dashboard-container.md) and [Deployment options compared](deployment-options-compared.md).
+The dashboard runs in its own container and passes every other request to the server, which runs without its dashboard. Use it when the dashboard should restart, scale or be hardened apart from the artifact store. The data and the API do not change. See [Run the dashboard in a separate container](../set-up/deploy/run-split-dashboard-container.md) and [Deployment options compared](../set-up/deploy/deployment-options-compared.md).
 
 ### Multi-replica
 
@@ -47,4 +47,4 @@ Several server replicas share one database server and one S3 storage, behind one
 
 * [What is Ingot](../introduction/what-is-ingot.md)
 * [How Ingot compares](../introduction/how-ingot-compares.md)
-* [Run on Kubernetes](../how-to/run-on-kubernetes.md)
+* [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md)

@@ -35,7 +35,7 @@ Some start refusals are not one line. A value that Ingot cannot parse at start, 
 **Symptom:** the process stops at start with `Unknown database: <value>`.
 
 * **Cause:** the `database` value does not begin with `sqlite`, `mariadb`, `postgresql`, `mysql`, `h2` or `jdbc:`.
-* **Fix:** write the value in one of the formats of [Configure a database](configure-database.md). Remember that the `--database` option, the system property, the variable, and the `configuration.cdn` key are read in that order, and the first one that is set wins.
+* **Fix:** write the value in one of the formats of [Configure a database](../set-up/cluster/configure-database.md). Remember that the `--database` option, the system property, the variable, and the `configuration.cdn` key are read in that order, and the first one that is set wins.
 
 **Symptom:** `Unsupported JDBC driver for URL: <url>`.
 
@@ -45,7 +45,7 @@ Some start refusals are not one line. A value that Ingot cannot parse at start, 
 **Symptom:** the start stops while the pool opens, with an exception from the JDBC driver or the connection pool. The text usually names the host, the port, the database or the user.
 
 * **Cause:** the database server is not reachable from the host or the container, the database does not exist, the user or password is wrong, or the user has no right to create tables. Ingot creates its tables on start, so the user needs that right.
-* **Fix:** test the host and port from the same network as Ingot. The database must exist and be empty, as the prerequisites of [Configure a database](configure-database.md) say. For MariaDB and PostgreSQL the user needs rights to create and change tables. A password with a space does not work in the simple form, so use a custom JDBC URL for it.
+* **Fix:** test the host and port from the same network as Ingot. The database must exist and be empty, as the prerequisites of [Configure a database](../set-up/cluster/configure-database.md) say. For MariaDB and PostgreSQL the user needs rights to create and change tables. A password with a space does not work in the simple form, so use a custom JDBC URL for it.
 
 **Symptom:** a SQLite instance fails with two replicas, or a replica shows a database error after a restart.
 
@@ -57,7 +57,7 @@ Some start refusals are not one line. A value that Ingot cannot parse at start, 
 **Symptom:** uploads or downloads answer `500` with `Failed to write <path>`, `Failed to read <path>`, `Failed to HEAD <key>`, `Failed to list <path>` or `Failed to remove <path>`.
 
 * **Cause:** the S3 request failed for a reason other than a missing key or a `403`. That covers the network, the endpoint, the region, the credentials and server errors. The log holds the exception under `S3 Storage Provider failed to <operation>`.
-* **Fix:** read the exception in the log. Check the endpoint, the region, the access key and the secret key in the storage settings. Test the bucket with the same credentials from the host. See [Use S3 storage](use-s3-storage.md).
+* **Fix:** read the exception in the log. Check the endpoint, the region, the access key and the secret key in the storage settings. Test the bucket with the same credentials from the host. See [Use S3 storage](../set-up/cluster/use-s3-storage.md).
 
 **Symptom:** files that you know are in the bucket answer `404`.
 
@@ -123,7 +123,7 @@ A deploy authenticates with the token name and secret, sent in an HTTP basic `Au
 **Symptom:** a deploy of a large file fails with `413 Request Entity Too Large`, or the proxy in front of Ingot answers `413` before Ingot logs the request.
 
 * **Cause:** a request body limit is too small. The edge (ingress, nginx, a gateway) has its own limit, such as `client_max_body_size` in nginx. If the edge allows the body, Ingot has a limit too. Its default is the Javalin default, and it is raised with the system property `javalin.maxRequestSize` in bytes.
-* **Fix:** raise the limit at the edge first, then in Ingot if the `413` still comes from Ingot. See [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md).
+* **Fix:** raise the limit at the edge first, then in Ingot if the `413` still comes from Ingot. See [Configure the edge for large uploads](../set-up/network/configure-the-edge-for-large-uploads.md).
 
 ## Proxy and mirror
 
@@ -190,7 +190,7 @@ Artifact search has its own state, which you can read from the index status endp
 
 ## Cluster bus
 
-The cluster bus is optional. Without `INGOT_CLUSTER_URL` it is off, and nothing in this section applies. The settings are in [Configure the cluster bus](configure-cluster-bus.md).
+The cluster bus is optional. Without `INGOT_CLUSTER_URL` it is off, and nothing in this section applies. The settings are in [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md).
 
 **Symptom:** the start stops with `Cluster bus URL cannot be parsed`, `Cluster bus URL has no host`, or `Cluster bus URL uses an unsupported scheme`.
 
@@ -210,7 +210,7 @@ The cluster bus is optional. Without `INGOT_CLUSTER_URL` it is off, and nothing 
 **Symptom:** the log shows `no transport is available for <scheme> in this build`.
 
 * **Cause:** the build of Ingot does not contain a transport for that scheme.
-* **Fix:** use a scheme that the build supports. The bus URL reference in [Configure the cluster bus](configure-cluster-bus.md) lists the schemes.
+* **Fix:** use a scheme that the build supports. The bus URL reference in [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md) lists the schemes.
 
 **Symptom:** the status endpoint shows a bus state of `reconnecting`, and the other replicas look out of date.
 
@@ -224,12 +224,12 @@ Read [Back up before upgrading](back-up-before-upgrading.md) first, and keep the
 **Symptom:** the start stops with `Identity migration copied <n> token(s), expected <m>`, `created <n> machine principal(s)`, `created <n> grant(s)` or `grant plan disagrees with the legacy routes`.
 
 * **Cause:** a check of the migration found that the copied rows do not match the legacy rows. The check rolls the migration back, so the data is in the state of the previous release.
-* **Fix:** collect the log and a support bundle. Then either retry the start after the cause is fixed, or restore the backup you took before the upgrade. See [Roll back an upgrade](roll-back-an-upgrade.md) and [Token migration](../explanation/token-migration.md).
+* **Fix:** collect the log and a support bundle. Then either retry the start after the cause is fixed, or restore the backup you took before the upgrade. See [Roll back an upgrade](roll-back-an-upgrade.md) and [Token migration](../set-up/migrate/token-migration.md).
 
 **Symptom:** a token from Reposilite does not work, or it works with other rights.
 
 * **Cause:** the token became a machine account. Its rights moved to the private team of that account, and the old route matching is kept in that team. A token whose name differs from another token only in case gets a principal with a different name, and the log says so.
-* **Fix:** check the account with [Check what a principal can do](check-access.md). See [Token migration](../explanation/token-migration.md).
+* **Fix:** check the account with [Check what a principal can do](check-access.md). See [Token migration](../set-up/migrate/token-migration.md).
 
 **Symptom:** a setting that you changed in an environment variable has no effect.
 

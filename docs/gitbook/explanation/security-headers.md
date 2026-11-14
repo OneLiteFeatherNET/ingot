@@ -45,7 +45,7 @@ Repository files and the generated directory index are served with `Content-Secu
 ## Related
 
 * [Environment variables](../reference/environment-variables.md#security-header-variables)
-* [Run behind a reverse proxy](../how-to/run-behind-reverse-proxy.md)
+* [Run behind a reverse proxy](../set-up/network/run-behind-reverse-proxy.md)
 
 ## Plugin pages
 

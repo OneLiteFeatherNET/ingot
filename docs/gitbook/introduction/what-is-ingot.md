@@ -30,8 +30,8 @@ New settings get the `INGOT_` prefix, and the `REPOSILITE_` spelling stays valid
 * **Repository types.** Hosted, proxy and group repositories that enforce their rules. See [Repository types](../reference/repository-types.md).
 * **Artifact search** across all repositories, with a built-in database backend and a plugin point for others, including an OpenSearch backend. See [Search for artifacts](../how-to/search-for-artifacts.md).
 * **Several replicas.** A shared database, an optional cluster bus and an S3 storage provider support more than one replica. See [High availability support](../explanation/high-availability-support.md) for what is supported and what is tested.
-* **Operations.** An audit log with CSV export, cleanup policies, a write freeze for maintenance, a support bundle and a Helm chart. See [Review the audit log](../how-to/review-audit-log.md) and [Run on Kubernetes](../how-to/run-on-kubernetes.md).
-* **Import.** A bundled importer that copies Maven repositories from Sonatype Nexus Repository 3. See [Import from Nexus](../how-to/import-from-nexus.md).
+* **Operations.** An audit log with CSV export, cleanup policies, a write freeze for maintenance, a support bundle and a Helm chart. See [Review the audit log](../how-to/review-audit-log.md) and [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md).
+* **Import.** A bundled importer that copies Maven repositories from Sonatype Nexus Repository 3. See [Import from Nexus](../set-up/migrate/import-from-nexus.md).
 * **A rebuilt dashboard** in Material Design 3, which can also run in its own container. See [Dashboard pages](../reference/dashboard-pages.md).
 
 ## Licence

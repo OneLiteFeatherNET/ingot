@@ -8,7 +8,7 @@
 #
 # The plain docker-compose.yml next to this file runs the server on its own, serving the
 # dashboard itself. That is the simpler deployment; see
-# docs/gitbook/how-to/run-split-dashboard-container.md for when this one is worth the extra
+# docs/gitbook/set-up/deploy/run-split-dashboard-container.md for when this one is worth the extra
 # moving part.
 services:
   dashboard:

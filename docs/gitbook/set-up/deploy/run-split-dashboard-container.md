@@ -93,7 +93,7 @@ The dashboard can be served under a path, such as `/ingot/`, without building a 
       - INGOT_BASE_PATH=/ingot/
 ```
 
-The dashboard then answers below `/ingot/`, and it removes that prefix before it proxies a request, so the server sees `/api/...` as it does at the root. The server itself is still served at `/`, so the reverse proxy in front of the stack should pass the `/ingot/` prefix on unchanged. Do not strip it there. See [Serve under a path](run-behind-reverse-proxy.md#serve-under-a-path) for the proxy side.
+The dashboard then answers below `/ingot/`, and it removes that prefix before it proxies a request, so the server sees `/api/...` as it does at the root. The server itself is still served at `/`, so the reverse proxy in front of the stack should pass the `/ingot/` prefix on unchanged. Do not strip it there. See [Serve under a path](../network/run-behind-reverse-proxy.md#serve-under-a-path) for the proxy side.
 
 The `/healthz` endpoint stays at the root, whatever the base path is, so health checks need no change.
 
@@ -109,7 +109,7 @@ Use the local tag `ingot-dashboard` in the compose file in place of the publishe
 
 ## Behind a proxy that terminates TLS
 
-Put the proxy in front of the dashboard container, as in [Run behind a reverse proxy](run-behind-reverse-proxy.md). The dashboard passes the `X-Forwarded-Proto` header of that proxy on to the server, so the server sees the scheme the browser used and marks session cookies `Secure` where it should. A proxy that sets the header must do so on every request.
+Put the proxy in front of the dashboard container, as in [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md). The dashboard passes the `X-Forwarded-Proto` header of that proxy on to the server, so the server sees the scheme the browser used and marks session cookies `Secure` where it should. A proxy that sets the header must do so on every request.
 
 ## Verify
 
@@ -120,5 +120,5 @@ Put the proxy in front of the dashboard container, as in [Run behind a reverse p
 
 ## Related
 
-* [Run behind a reverse proxy](run-behind-reverse-proxy.md)
-* [Enable TLS](enable-tls.md)
+* [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md)
+* [Enable TLS](../network/enable-tls.md)

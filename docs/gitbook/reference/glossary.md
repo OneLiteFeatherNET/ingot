@@ -48,7 +48,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Deploy target.** What the instance serves. `all` serves the dashboard, the API and the repositories. `server` serves the API and the repositories only. See [Deploy targets](deploy-targets.md).
 
-**Cluster bus.** The optional channel through which replicas share cache invalidations, revocations and log lines. It is off unless a bus URL is set. See [Configure the cluster bus](../how-to/configure-cluster-bus.md).
+**Cluster bus.** The optional channel through which replicas share cache invalidations, revocations and log lines. It is off unless a bus URL is set. See [Configure the cluster bus](../set-up/cluster/configure-cluster-bus.md).
 
 **Replica.** One running instance of Ingot that shares a database and storage with others. See [Multi-replica operation](../explanation/multi-replica-operation.md).
 

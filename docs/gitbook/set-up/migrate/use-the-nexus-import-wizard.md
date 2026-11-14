@@ -44,10 +44,10 @@ A secret reference avoids a literal password in the browser altogether. The serv
 
 ## Trust a private certificate
 
-The wizard has no setting for the trust of a certificate. Ingot checks Nexus against the trust store of the Java runtime. If the connection test reports that the certificate chain is not trusted, provide the certificate authority through `INGOT_EXTRA_CA_CERTS` and restart Ingot. The setting and its format are described in the [environment variables reference](../reference/environment-variables.md).
+The wizard has no setting for the trust of a certificate. Ingot checks Nexus against the trust store of the Java runtime. If the connection test reports that the certificate chain is not trusted, provide the certificate authority through `INGOT_EXTRA_CA_CERTS` and restart Ingot. The setting and its format are described in the [environment variables reference](../../reference/environment-variables.md).
 
 ## After the wizard
 
 * Keep the Nexus repositories read-only until the clients have switched, so no client writes to Nexus while it is being copied from.
-* The import creates the repository definitions in Ingot. Check their access settings before you hand out tokens. See [Manage users, teams and machine accounts](manage-users-teams-and-machine-accounts.md).
+* The import creates the repository definitions in Ingot. Check their access settings before you hand out tokens. See [Manage users, teams and machine accounts](../../how-to/manage-users-teams-and-machine-accounts.md).
 * Remove the finished verify job from the Cut-over step once you are done. The repositories stay.

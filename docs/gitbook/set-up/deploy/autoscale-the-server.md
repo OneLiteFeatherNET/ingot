@@ -13,9 +13,9 @@ Read [Running more than one replica](run-on-kubernetes.md#running-more-than-one-
 * A release of the Ingot chart that runs on Kubernetes, see [Run on Kubernetes](run-on-kubernetes.md).
 * The Kubernetes metrics server. The autoscaler reads CPU and memory from it.
 * A shared database, such as MariaDB or PostgreSQL, set with `database.existingSecret`. The install notes warn when more than one replica runs without one.
-* Storage that every replica can mount, either S3 for the repositories or a volume with an access mode that allows several nodes. See [Use S3 storage](use-s3-storage.md).
+* Storage that every replica can mount, either S3 for the repositories or a volume with an access mode that allows several nodes. See [Use S3 storage](../cluster/use-s3-storage.md).
 
-The cluster bus is optional. Without it, the replicas converge through the database on the next poll, and the install notes warn about the missing `INGOT_CLUSTER_URL`. See [Configure the cluster bus](configure-cluster-bus.md).
+The cluster bus is optional. Without it, the replicas converge through the database on the next poll, and the install notes warn about the missing `INGOT_CLUSTER_URL`. See [Configure the cluster bus](../cluster/configure-cluster-bus.md).
 
 ## Set the bounds and the metrics
 
@@ -100,4 +100,4 @@ Every pod should show `1/1` in the `READY` column. A pod that stays at `0/1` has
 * [Set a disruption budget](set-a-disruption-budget.md) limits how many pods a node drain can evict at once.
 * [Set Helm values for high availability](set-helm-values-for-high-availability.md) lists the other values that a multi-replica release needs.
 * [Size the deployment](size-the-deployment.md) describes how to choose the heap and the memory limit.
-* [Helm chart values](../reference/helm-values.md#scaling-and-availability) lists every key of the autoscaler.
+* [Helm chart values](../../reference/helm-values.md#scaling-and-availability) lists every key of the autoscaler.

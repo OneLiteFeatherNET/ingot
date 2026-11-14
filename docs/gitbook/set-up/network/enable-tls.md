@@ -77,5 +77,5 @@ The HTTP connector on `port` stays open when TLS is enabled.
 
 ## Related
 
-* [Run the JAR](install-jar.md)
+* [Run the JAR](../deploy/install-jar.md)
 * [Run behind a reverse proxy](run-behind-reverse-proxy.md)

@@ -49,7 +49,7 @@ deployment:
     drainSeconds: 30
 ```
 
-With `preStopSeconds` above `0`, the chart runs a `preStop` sleep before Kubernetes sends `SIGTERM`. During the sleep the replica serves normally while the endpoints are removed, and then `SIGTERM` starts the drain. The sleep therefore does the work of `INGOT_SHUTDOWN_DELAY`, which the chart does not set. The chart sets `INGOT_SHUTDOWN_TIMEOUT` from `drainSeconds`, and it sets `terminationGracePeriodSeconds` to `preStopSeconds + drainSeconds + 10`. The details, including what happens when you set `deployment.lifecycle` yourself, are in [Shutdown budget](run-on-kubernetes.md#shutdown-budget).
+With `preStopSeconds` above `0`, the chart runs a `preStop` sleep before Kubernetes sends `SIGTERM`. During the sleep the replica serves normally while the endpoints are removed, and then `SIGTERM` starts the drain. The sleep therefore does the work of `INGOT_SHUTDOWN_DELAY`, which the chart does not set. The chart sets `INGOT_SHUTDOWN_TIMEOUT` from `drainSeconds`, and it sets `terminationGracePeriodSeconds` to `preStopSeconds + drainSeconds + 10`. The details, including what happens when you set `deployment.lifecycle` yourself, are in [Shutdown budget](../set-up/deploy/run-on-kubernetes.md#shutdown-budget).
 
 ## Step 4: Probe the status paths
 
@@ -63,7 +63,7 @@ probes:
   readinessPath: /api/status/ready
 ```
 
-`probes.path` sets liveness in the all-in-one mode, and `probes.readinessPath` sets readiness only. Set both. In split mode the chart already uses these paths, see [Run the dashboard split from the server with Helm](run-split-with-helm.md#probes-and-shutdown).
+`probes.path` sets liveness in the all-in-one mode, and `probes.readinessPath` sets readiness only. Set both. In split mode the chart already uses these paths, see [Run the dashboard split from the server with Helm](../set-up/deploy/run-split-with-helm.md#probes-and-shutdown).
 
 ## Step 5: Check the stop in the log
 
