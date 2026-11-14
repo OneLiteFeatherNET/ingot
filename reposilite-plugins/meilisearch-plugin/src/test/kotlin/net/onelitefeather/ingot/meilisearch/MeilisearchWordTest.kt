@@ -51,11 +51,38 @@ internal class MeilisearchWordTest {
     )
 
     @Test
-    fun `should give each word of a query its own prefix condition`() {
+    fun `should give each word of a query its own condition, the last word by prefix`() {
         // when / then: both words are kept, lower-cased, and each must match
         assertThat(MeilisearchFilters.wordConditions("Spri  Core"))
             .`as`("conditions of the words of the query")
-            .containsExactly("word_prefixes = \"spri\"", "word_prefixes = \"core\"")
+            .containsExactly(
+                "(word_heads = \"spri\" OR tokens = \"spri\")",
+                "(word_heads = \"core\" OR word_prefixes = \"core\")",
+            )
+    }
+
+    @Test
+    fun `should match a word before the last one by a whole token only when it is no main prefix`() {
+        // when / then: a word before the last one has no prefix branch over the tokens, as the database rule has none
+        assertThat(MeilisearchFilters.wordConditions("springf core").first())
+            .`as`("condition of the word springf, which is no main prefix and before the last word")
+            .doesNotContain("word_prefixes")
+    }
+
+    @Test
+    fun `should match the parts of a word with a separator one by one, the last part by prefix`() {
+        // when / then: the groupId or artifactId prefix matches the whole word, a token branch matches the parts
+        assertThat(MeilisearchFilters.wordConditions("spring-c"))
+            .`as`("condition of a last word of two parts")
+            .containsExactly("(word_heads = \"spring-c\" OR (tokens = \"spring\" AND word_prefixes = \"c\"))")
+    }
+
+    @Test
+    fun `should give a word with more parts than the database allows no token branch`() {
+        // when / then: the database drops the token branch above eight parts, and so does the condition
+        assertThat(MeilisearchFilters.wordConditions("a-b-c-d-e-f-g-h-i"))
+            .`as`("condition of a word of nine parts")
+            .containsExactly("word_heads = \"a-b-c-d-e-f-g-h-i\"")
     }
 
     @Test
@@ -75,6 +102,16 @@ internal class MeilisearchWordTest {
         // then: a prefix of a token is in it, and a word that is no prefix of any token is not
         assertThat(prefixes).`as`("prefixes of the tokens").contains("spri", "spring", "core")
         assertThat(prefixes).`as`("prefixes of the tokens").doesNotContain("frame")
+    }
+
+    @Test
+    fun `should index the prefixes of the groupId and the artifactId, and the whole version, as word heads`() {
+        // when: the document of the row is built
+        val heads = MeilisearchDocument.of(springCore()).path("word_heads").map { it.asText() }
+
+        // then: the main rule matches a prefix of the groupId or the artifactId, and the version as a whole
+        assertThat(heads).`as`("word heads of the document").contains("org", "org.spring", "spring-c", "spring-core", "6.1.0")
+        assertThat(heads).`as`("word heads of the document: no token that starts neither the groupId nor the artifactId").doesNotContain("springf")
     }
 
 }
