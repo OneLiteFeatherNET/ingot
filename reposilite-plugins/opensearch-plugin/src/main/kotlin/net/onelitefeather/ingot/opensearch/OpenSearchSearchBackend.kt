@@ -56,13 +56,14 @@ import kotlin.random.Random
  * of the user name, even when the cluster echoes them.
  *
  * [sslContext] is null in production, which uses the JVM default context with hostname verification. The container tests pass
- * the context of their own authority.
+ * the context of their own authority. [warn] is the log sink of the backend (the logger of the context in production).
  */
 internal class OpenSearchSearchBackend(
     val settings: OpenSearchSettings,
     clock: Clock,
     sslContext: SSLContext?,
     exchange: HttpExchange? = null,
+    private val warn: (String) -> Unit = {},
 ) : ArtifactSearchBackend {
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
@@ -81,6 +82,10 @@ internal class OpenSearchSearchBackend(
     private val client = OpenSearchClient(http, breaker, redactor)
     private val writer = OpenSearchWriter(http, breaker, alias, settings.bulkSize, redactor)
     private val reader = OpenSearchReader(client, alias) { status() }
+
+    /** The uuid of the physical index, read at [open]; null before the backend is open. */
+    @Volatile
+    private var identity: String? = null
 
     override val id: String = OpenSearchBackendFactory.ID
 
@@ -101,15 +106,20 @@ internal class OpenSearchSearchBackend(
                 val indices = mapper.readTree(answer.body).fieldNames().asSequence().toList()
                 check(indices.size == 1) { "the alias $alias points to ${indices.size} indices, one is expected" }
                 verifyVersion(indices.single())
+                identity = readIdentity(indices.single())
             }
             404 -> {
                 createIndex()
                 verifyVersion(physical)
                 client.read("POST", "/_aliases", mapOf("actions" to listOf(mapOf("add" to mapOf("index" to physical, "alias" to alias)))))
+                identity = readIdentity(physical)
             }
             else -> throw IllegalStateException(redactor.redact("the alias $alias cannot be read, the cluster answered ${answer.status}"))
         }
     }
+
+    /** The uuid of the physical index that the alias points to, read at [open]. An operator who recreates the index gets a new uuid. */
+    override fun indexIdentity(): String? = identity
 
     /** Nothing to release: the connections belong to the JDK client, which closes with the process. */
     override fun close() = Unit
@@ -279,6 +289,27 @@ internal class OpenSearchSearchBackend(
 
     /** The refresh interval of the index. No connection detail is reported: the URL, the user name and the password stay out. */
     override fun properties(): Map<String, String> = mapOf("refreshInterval" to OpenSearchIndexDefinition.REFRESH_INTERVAL)
+
+    /**
+     * The uuid of [index] from its settings, or null when it cannot be read. The read needs indices:monitor/settings/get, which a
+     * custom role may lack, so a refusal or a reply without a uuid is not an error: the backend opens without an identity, which
+     * keeps the rebuild cursor as it was, and logs one warning.
+     */
+    private fun readIdentity(index: String): String? {
+        val reason = try {
+            val uuid = client.read("GET", "/$index/_settings/index.uuid").path(index)
+                .path("settings").path("index").path("uuid").asText()
+            if (uuid.isNotBlank()) return uuid
+            "the reply carries no uuid"
+        } catch (failure: Exception) {
+            redactor.redact(failure.message ?: OpenSearchClient.UNREACHABLE)
+        }
+        warn(
+            "the uuid of the index $index cannot be read ($reason), so a replaced index does not reset the rebuild cursor; " +
+                "the user may lack the indices:monitor/settings/get permission",
+        )
+        return null
+    }
 
     // ---- writes by query ----------------------------------------------------------------------------------------------
 
