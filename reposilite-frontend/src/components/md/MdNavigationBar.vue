@@ -20,8 +20,9 @@
  * Spec: 80px container on surface-container, 64 by 32 active indicator on secondary-container,
  * 24px icon, label-medium label that is always shown.
  *
- * Each item is { key, label, href? }. With `href` the item is a link. A plain left click
- * keeps the page in place and emits update:modelValue, so the parent switches the section
+ * Each item is { key, label, href?, shortLabel? }. `shortLabel`, when set, is the visible text and the accessible
+ * name of the item (axe label-content-name-mismatch compares whole words, so the name is the visible text), and
+ * `label` becomes its description (title). With `href` the item is a link. A plain left click keeps the page in place and emits update:modelValue, so the parent switches the section
  * through the router. A modified click (ctrl, shift, meta, alt or a middle click) is left
  * to the browser, so the link can open in a new tab without also switching this page.
  * Without `href` the item is a button and always emits.
@@ -83,6 +84,7 @@ const select = (item, event) => {
           :href="item.href"
           :type="item.href ? undefined : 'button'"
           :aria-current="isActive(item) ? 'page' : undefined"
+          :title="item.shortLabel ? item.label : undefined"
           class="md-state-layer md-focus-ring relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-corner-large p-1 no-underline transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard motion-reduce:transition-none"
           :class="isActive(item) ? 'text-on-surface' : 'text-on-surface-variant'"
           @click="select(item, $event)"
@@ -103,7 +105,7 @@ const select = (item, event) => {
           <span
             class="md-label-medium block max-w-full truncate whitespace-nowrap"
             :title="item.label"
-          >{{ item.label }}</span>
+          >{{ item.shortLabel ?? item.label }}</span>
         </component>
       </li>
     </ul>

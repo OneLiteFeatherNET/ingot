@@ -205,6 +205,7 @@ const locationOf = (key) => {
 const destinationOf = (entry) => ({
   key: entry.key,
   label: entry.label,
+  shortLabel: entry.shortLabel,
   href: router.resolve(locationOf(entry.key)).href,
 })
 
