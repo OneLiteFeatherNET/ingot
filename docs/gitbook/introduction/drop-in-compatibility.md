@@ -33,7 +33,7 @@ A data directory written by Reposilite is read by Ingot as it is. The configurat
 
 A repository may carry a `format` key in `configuration.shared.json`. A configuration without the key is read as it always was, because the key is optional and means `maven2`. Ingot does not add the key to a repository that did not have it. See [Repository settings](../references/repositories/repository-settings.md#format).
 
-Access tokens are carried over with their names, secrets, expiry dates and descriptions. Their rights are carried over exactly, including the old way of matching routes. The migration runs on the first start, inside one database transaction, and nothing needs to be run by hand. See [Token migration](../set-up/migrate/token-migration.md) for the design.
+Access tokens are carried over with their names, secrets, expiry dates and descriptions. Their rights are carried over exactly, including the old way of matching routes. The migration runs on the first start, inside one database transaction, and nothing needs to be run by hand. See [Token migration](../references/architecture/token-migration.md) for the design.
 
 ### The configuration
 
@@ -74,7 +74,7 @@ A repository with a `format` key is also a rollback concern. Reposilite and earl
 
 ## Related pages
 
-* [Token migration](../set-up/migrate/token-migration.md) explains how old tokens become machine accounts.
+* [Token migration](../references/architecture/token-migration.md) explains how old tokens become machine accounts.
 * [Upgrade from Reposilite 3.x](../set-up/migrate/upgrade-from-reposilite.md) lists the steps.
 * [Upgrade changes and supported paths](../release-notes/upgrade-changes.md) lists each change.
 * [Identity model](../references/architecture/identity-model.md) explains the new objects.

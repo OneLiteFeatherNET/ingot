@@ -110,7 +110,7 @@ The backend reports one of the states of [Backend states](../../configure/search
 
 In every state except `AVAILABLE`, search answers `503` with `Retry-After: 30`, as described in [Backend states](../../configure/search/choose-a-search-backend.md#backend-states). Writes are visible to search after the refresh interval of one second, and the `backend` block of the status reports the interval.
 
-Results of a write can lag behind a deploy by about a second. A file that was deleted can still appear for that long. The verify action of the Maintenance page repairs real drift, see [Rebuild the search index](../../manage/operate/rebuild-search-index.md).
+Results of a write can lag behind a deploy by about a second. A file that was deleted can still appear for that long. The verify action of the Maintenance page repairs real drift, see [Rebuild the search index](../../configure/search/rebuild-search-index.md).
 
 ## Related
 

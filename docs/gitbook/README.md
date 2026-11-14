@@ -40,7 +40,7 @@ To upgrade, start with [Back up before upgrading](manage/upgrade/back-up-before-
 
 ## Coming from Reposilite
 
-Ingot keeps the image, the data directory and the port of Reposilite. It also reads the `REPOSILITE_` names of the local settings, the options and the file ownership variables when the `INGOT_` name is not set. [Drop-in compatibility with Reposilite](introduction/drop-in-compatibility.md) lists what stays the same and what differs. Tokens from Reposilite 2.x are migrated with the steps in [Upgrade from Reposilite 2.x](set-up/migrate/upgrade-from-reposilite-2.md).
+Ingot keeps the image, the data directory and the port of Reposilite. It also reads the `REPOSILITE_` names of the local settings, the options and the file ownership variables when the `INGOT_` name is not set. [Drop-in compatibility with Reposilite](introduction/drop-in-compatibility.md) lists what stays the same and what differs. Tokens from Reposilite 2.x are migrated with the steps in [Upgrade from Reposilite 2.x](manage/upgrade/upgrade-from-reposilite-2.md).
 
 ## Sections
 

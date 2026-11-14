@@ -27,7 +27,7 @@ The database holds the S3 keys and the session signing key. Store the backups wi
 
 * Take the database copy and the bucket copy at the same time. The search index lives in the database. Files that the bucket received after the database copy are missing from the index, and the index can list files that the bucket does not hold.
 * Stop the instance for the copy when you can. That gives the cleanest result, especially for SQLite.
-* If you cannot stop the instance, copy the database first, then the bucket. Rebuild the search index after a restore that mixes older parts. See [Rebuild the search index](rebuild-search-index.md).
+* If you cannot stop the instance, copy the database first, then the bucket. Rebuild the search index after a restore that mixes older parts. See [Rebuild the search index](../../configure/search/rebuild-search-index.md).
 * The session signing key is stored in the database. If you restore the files without the database, or start with a new database, the signing key changes, every browser session stops working, and users sign in again.
 
 ## Back up the database
@@ -175,7 +175,7 @@ Restore in this order. The database defines which storage each repository uses, 
 
 5. Start the instance.
 
-6. Check the restore. Sign in. Open a repository and download an artifact that you know. Search for it. If the search does not find files that the repositories hold, [rebuild the search index](rebuild-search-index.md).
+6. Check the restore. Sign in. Open a repository and download an artifact that you know. Search for it. If the search does not find files that the repositories hold, [rebuild the search index](../../configure/search/rebuild-search-index.md).
 
 ## Result
 

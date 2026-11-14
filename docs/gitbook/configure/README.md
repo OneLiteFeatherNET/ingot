@@ -1,19 +1,10 @@
 ---
-description: Configure Ingot. Lists the how-to pages for settings secrets, branding, the frontend, request limits, login providers, repositories and search, and links to the reference for every setting.
+description: Configure Ingot. Lists the how-to pages for login providers, repositories, search, branding and the frontend, and links to the reference for every setting.
 ---
 
 # Configure Ingot
 
 This section changes the behaviour of a running instance. Every setting has a lookup entry in [Configuration file and startup parameters](../references/configuration/configuration-and-startup.md) and [Environment variables](../references/configuration/environment-variables.md). A variable with an `INGOT_` name takes precedence, and the `REPOSILITE_` name stays valid as a fallback.
-
-## Instance
-
-Secrets, branding, frontend and limits.
-
-* [Encrypt the settings secrets](encrypt-settings-secrets.md)
-* [Customize branding](customize-branding.md)
-* [Serve a custom frontend](serve-custom-frontend.md)
-* [Limit concurrent requests](limit-concurrent-requests.md)
 
 ## Authentication
 
@@ -39,6 +30,7 @@ Hosted, proxy and group repositories, version policies, cleanup and checksums.
 * [Create a group repository](repositories/create-a-group-repository.md)
 * [Separate releases and snapshots](repositories/separate-releases-and-snapshots.md)
 * [Set cleanup policies](repositories/set-cleanup-policies.md)
+* [Verify uploaded checksums](repositories/verify-uploaded-checksums.md)
 
 ## Search
 
@@ -46,3 +38,11 @@ The search backend and its index.
 
 * [Choose a search backend](search/choose-a-search-backend.md)
 * [Use OpenSearch for search](search/use-opensearch-for-search.md)
+* [Rebuild the search index](search/rebuild-search-index.md)
+
+## Dashboard
+
+Branding and a custom frontend.
+
+* [Customize branding](dashboard/customize-branding.md)
+* [Serve a custom frontend](dashboard/serve-custom-frontend.md)

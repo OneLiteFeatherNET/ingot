@@ -47,12 +47,10 @@
 * [Migrate](set-up/migrate/README.md)
   * [Move from Reposilite to Ingot](set-up/migrate/move-from-reposilite.md)
   * [Upgrade from Reposilite 3.x](set-up/migrate/upgrade-from-reposilite.md)
-  * [Upgrade from Reposilite 2.x](set-up/migrate/upgrade-from-reposilite-2.md)
   * [Migrate from the upstream Helm chart](set-up/migrate/migrate-from-upstream-chart.md)
   * [Import from other repository managers](set-up/migrate/import-from-other-repository-managers.md)
   * [Import from Nexus](set-up/migrate/import-from-nexus.md)
   * [Use the Nexus import wizard](set-up/migrate/use-the-nexus-import-wizard.md)
-  * [Token migration](set-up/migrate/token-migration.md)
 
 ## Configure
 
@@ -74,13 +72,14 @@
   * [Create a group repository](configure/repositories/create-a-group-repository.md)
   * [Separate releases and snapshots](configure/repositories/separate-releases-and-snapshots.md)
   * [Set cleanup policies](configure/repositories/set-cleanup-policies.md)
+  * [Verify uploaded checksums](configure/repositories/verify-uploaded-checksums.md)
 * [Search](configure/search/README.md)
   * [Choose a search backend](configure/search/choose-a-search-backend.md)
   * [Use OpenSearch for search](configure/search/use-opensearch-for-search.md)
-* [Encrypt the settings secrets](configure/encrypt-settings-secrets.md)
-* [Customize branding](configure/customize-branding.md)
-* [Serve a custom frontend](configure/serve-custom-frontend.md)
-* [Limit concurrent requests](configure/limit-concurrent-requests.md)
+  * [Rebuild the search index](configure/search/rebuild-search-index.md)
+* [Dashboard](configure/dashboard/README.md)
+  * [Customize branding](configure/dashboard/customize-branding.md)
+  * [Serve a custom frontend](configure/dashboard/serve-custom-frontend.md)
 
 ## Publish and consume
 
@@ -93,7 +92,6 @@
 * [Publish and consume with Leiningen](publish-and-consume/publish-and-consume-with-leiningen.md)
 * [Use tokens in CI](publish-and-consume/use-tokens-in-ci.md)
 * [Restrict a token to artifacts](publish-and-consume/restrict-token-to-artifacts.md)
-* [Verify uploaded checksums](publish-and-consume/verify-uploaded-checksums.md)
 * [Search for artifacts](publish-and-consume/search-for-artifacts.md)
 
 ## Manage
@@ -107,12 +105,14 @@
   * [Verify the SBOMs of a release](manage/operate/verify-release-sboms.md)
   * [Troubleshoot Ingot](manage/operate/troubleshoot.md)
   * [Collect a support bundle](manage/operate/collect-a-support-bundle.md)
-  * [Rebuild the search index](manage/operate/rebuild-search-index.md)
+  * [Encrypt the settings secrets](manage/operate/encrypt-settings-secrets.md)
+  * [Limit concurrent requests](manage/operate/limit-concurrent-requests.md)
 * [Upgrade](manage/upgrade/README.md)
   * [Back up before upgrading](manage/upgrade/back-up-before-upgrading.md)
   * [Upgrade from Ingot 1.1.x](manage/upgrade/upgrade-ingot.md)
   * [Verify an upgrade](manage/upgrade/verify-an-upgrade.md)
   * [Roll back an upgrade](manage/upgrade/roll-back-an-upgrade.md)
+  * [Upgrade from Reposilite 2.x](manage/upgrade/upgrade-from-reposilite-2.md)
 * [Monitor](manage/monitor/README.md)
   * [Monitor status and failures](manage/monitor/monitor-status-and-failures.md)
   * [Monitor with the Prometheus Operator](manage/monitor/monitor-with-the-prometheus-operator.md)
@@ -144,6 +144,7 @@
   * [Sessions, login and CSRF](references/architecture/sessions-and-login.md)
   * [Security headers](references/architecture/security-headers.md)
   * [How the search index stays current](references/architecture/how-the-search-index-stays-current.md)
+  * [Token migration](references/architecture/token-migration.md)
 * [Configuration](references/configuration/README.md)
   * [Configuration file and startup parameters](references/configuration/configuration-and-startup.md)
   * [Environment variables](references/configuration/environment-variables.md)

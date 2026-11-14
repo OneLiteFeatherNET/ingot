@@ -34,7 +34,7 @@ A team can inherit from parent teams. A member of a team gets the rights of its 
 
 Every machine account has a **private team**. Its name starts with `machine:` and it has exactly one member, the machine account. The private team holds the rights that belong only to that account. The team list does not show private teams, and the team endpoints refuse to change them. Deleting the machine account deletes its private team.
 
-Private teams also hold the rights of tokens that came from Reposilite 3.x. See [Token migration](../../set-up/migrate/token-migration.md).
+Private teams also hold the rights of tokens that came from Reposilite 3.x. See [Token migration](token-migration.md).
 
 ## Why tokens belong to a principal
 
@@ -76,7 +76,7 @@ Requests, the access check and artifact search all ask the same evaluator for a 
 ## Related pages
 
 * [How permissions are evaluated](permission-evaluation.md) explains the order of the decision.
-* [Token migration](../../set-up/migrate/token-migration.md) explains how old tokens became machine accounts.
+* [Token migration](token-migration.md) explains how old tokens became machine accounts.
 * [Drop-in compatibility with Reposilite](../../introduction/drop-in-compatibility.md) explains what stays the same for existing installations.
 * [Permission nodes](../identity/permission-nodes.md) lists the node grammar.
 * [Access tokens and routes](../identity/access-tokens-and-routes.md) lists the token formats and the legacy route grants.

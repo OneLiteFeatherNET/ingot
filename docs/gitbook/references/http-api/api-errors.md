@@ -42,7 +42,7 @@ A deploy of a checksum file (`.md5`, `.sha1`, `.sha256` or `.sha512`) answers `4
 }
 ```
 
-The same check under `warn` stores the file and answers as usual. See [Verify uploaded checksums](../../publish-and-consume/verify-uploaded-checksums.md).
+The same check under `warn` stores the file and answers as usual. See [Verify uploaded checksums](../../configure/repositories/verify-uploaded-checksums.md).
 
 ## Which answers use this shape
 

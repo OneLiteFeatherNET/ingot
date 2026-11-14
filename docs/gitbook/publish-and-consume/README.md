@@ -18,5 +18,4 @@ Start with the overview, then the page for your build tool.
 * [Publish and consume with Leiningen](publish-and-consume-with-leiningen.md)
 * [Use tokens in CI](use-tokens-in-ci.md)
 * [Restrict a token to artifacts](restrict-token-to-artifacts.md)
-* [Verify uploaded checksums](verify-uploaded-checksums.md)
 * [Search for artifacts](search-for-artifacts.md)

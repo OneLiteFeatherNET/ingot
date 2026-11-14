@@ -176,7 +176,7 @@ Artifact search has its own state, which you can read from the index status endp
 **Symptom:** search returns fewer artifacts than the repository holds, or nothing for a new upload.
 
 * **Cause:** the index is still building. After an upgrade the index is empty, and the first start runs a full rebuild in the background. The index state is `Building` until the run completes. A start that finds a stale heartbeat may also queue a gap rebuild, which the search setting `gapRebuild` controls.
-* **Fix:** wait for the run to finish. Check its progress on the Maintenance page or with the search index endpoint. If the result stays wrong, start a rebuild with [Rebuild the search index](rebuild-search-index.md).
+* **Fix:** wait for the run to finish. Check its progress on the Maintenance page or with the search index endpoint. If the result stays wrong, start a rebuild with [Rebuild the search index](../../configure/search/rebuild-search-index.md).
 
 **Symptom:** starting a rebuild or a verify run answers `409` with `A rebuild or verify run is already running.`
 
@@ -224,12 +224,12 @@ Read [Back up before upgrading](../upgrade/back-up-before-upgrading.md) first, a
 **Symptom:** the start stops with `Identity migration copied <n> token(s), expected <m>`, `created <n> machine principal(s)`, `created <n> grant(s)` or `grant plan disagrees with the legacy routes`.
 
 * **Cause:** a check of the migration found that the copied rows do not match the legacy rows. The check rolls the migration back, so the data is in the state of the previous release.
-* **Fix:** collect the log and a support bundle. Then either retry the start after the cause is fixed, or restore the backup you took before the upgrade. See [Roll back an upgrade](../upgrade/roll-back-an-upgrade.md) and [Token migration](../../set-up/migrate/token-migration.md).
+* **Fix:** collect the log and a support bundle. Then either retry the start after the cause is fixed, or restore the backup you took before the upgrade. See [Roll back an upgrade](../upgrade/roll-back-an-upgrade.md) and [Token migration](../../references/architecture/token-migration.md).
 
 **Symptom:** a token from Reposilite does not work, or it works with other rights.
 
 * **Cause:** the token became a machine account. Its rights moved to the private team of that account, and the old route matching is kept in that team. A token whose name differs from another token only in case gets a principal with a different name, and the log says so.
-* **Fix:** check the account with [Check what a principal can do](../access/check-access.md). See [Token migration](../../set-up/migrate/token-migration.md).
+* **Fix:** check the account with [Check what a principal can do](../access/check-access.md). See [Token migration](../../references/architecture/token-migration.md).
 
 **Symptom:** a setting that you changed in an environment variable has no effect.
 

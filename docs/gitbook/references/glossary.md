@@ -40,7 +40,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Group repository.** A repository that answers with the first of its local members that has the file. See [Create a group repository](../configure/repositories/create-a-group-repository.md).
 
-**Upload checksum policy.** The rule that decides what happens to an uploaded checksum file that does not match its artifact: `ignore`, `warn` or `reject`. See [Verify uploaded checksums](../publish-and-consume/verify-uploaded-checksums.md).
+**Upload checksum policy.** The rule that decides what happens to an uploaded checksum file that does not match its artifact: `ignore`, `warn` or `reject`. See [Verify uploaded checksums](../configure/repositories/verify-uploaded-checksums.md).
 
 **Read-only mode.** The instance-wide switch that refuses every write with `503` while reads keep working. It is not the same as the read-only setting of one repository. See [Freeze writes for maintenance](../manage/operate/freeze-writes-for-maintenance.md).
 
@@ -60,7 +60,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Search backend.** The component that holds the artifact index and answers search. Ingot ships the `database` backend, and a plugin can register another one, such as OpenSearch. All replicas of a cluster use the same backend. See [Choose a search backend](../configure/search/choose-a-search-backend.md).
 
-**Index state.** The state of the search index, such as `Building` while the first full rebuild runs. See [Rebuild the search index](../manage/operate/rebuild-search-index.md).
+**Index state.** The state of the search index, such as `Building` while the first full rebuild runs. See [Rebuild the search index](../configure/search/rebuild-search-index.md).
 
 ## Plugins
 
