@@ -19,10 +19,12 @@
 package net.onelitefeather.ingot.meilisearch
 
 import net.onelitefeather.ingot.search.ArtifactFileRecord
+import net.onelitefeather.ingot.search.InvalidSearchQueryException
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 /**
@@ -99,6 +101,46 @@ internal class MeilisearchWordTest {
         assertThat(MeilisearchFilters.wordConditions("spring.core"))
             .`as`("conditions of a dotted word")
             .containsExactly("word_heads = \"spring.core\"")
+    }
+
+    @Test
+    fun `should match a coordinate word by the groupId prefix and the artifactId prefix, as the database does`() {
+        // when / then: the groupId and the artifactId are prefixes, with no token branch
+        assertThat(MeilisearchFilters.wordConditions("org:spring-core"))
+            .`as`("conditions of a coordinate word with a groupId and an artifactId")
+            .containsExactly("(group_heads = \"org\" AND artifact_heads = \"spring-core\")")
+    }
+
+    @Test
+    fun `should match the exact version of a coordinate word`() {
+        // when / then: the version is exact, so it is compared as a whole
+        assertThat(MeilisearchFilters.wordConditions("org:spring:6.1.0"))
+            .`as`("conditions of a coordinate word with a version")
+            .containsExactly("(group_heads = \"org\" AND artifact_heads = \"spring\" AND version_lc = \"6.1.0\")")
+    }
+
+    @Test
+    fun `should refuse more than five words with the message of the database`() {
+        assertThatThrownBy { MeilisearchFilters.wordConditions("a b c d e f") }
+            .`as`("six words")
+            .isInstanceOf(InvalidSearchQueryException::class.java)
+            .hasMessage("q is limited to 5 tokens")
+    }
+
+    @Test
+    fun `should refuse more than two hundred characters with the message of the database`() {
+        assertThatThrownBy { MeilisearchFilters.wordConditions("a".repeat(201)) }
+            .`as`("201 characters")
+            .isInstanceOf(InvalidSearchQueryException::class.java)
+            .hasMessage("q is limited to 200 characters")
+    }
+
+    @Test
+    fun `should refuse a coordinate word of four parts with the message of the database`() {
+        assertThatThrownBy { MeilisearchFilters.wordConditions("a:b:c:d") }
+            .`as`("four coordinate parts")
+            .isInstanceOf(InvalidSearchQueryException::class.java)
+            .hasMessage("a coordinates token has at most groupId:artifactId:version")
     }
 
     @Test
