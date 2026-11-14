@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
 
 const LIGHT_LABEL = 'Theme: light. Switch to dark.'
 

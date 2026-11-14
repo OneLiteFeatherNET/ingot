@@ -18,7 +18,7 @@ import { ref } from "vue"
 import { createURL } from '../client'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
-import { useSession } from "../session.js"
+import { useSession } from "../session"
 
 const { client, authMode } = useSession()
 

@@ -15,7 +15,7 @@
  */
 
 import { expect } from '@playwright/test'
-import { siteUrl } from './api.js'
+import { siteUrl } from './api'
 
 /*
  * Sign in through the dashboard the way an operator does. The suite signs in with the password account

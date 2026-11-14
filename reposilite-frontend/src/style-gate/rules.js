@@ -23,7 +23,7 @@ import {
   styleBlocks,
   styleValues,
   utilityOf
-} from './scan.js'
+} from './scan'
 
 // The eight rules of the dashboard style gate, in the order of the design. Each rule has a scope (the file extensions it
 // reads), an allowlist file named after its id, and a hint that the test prints beside every finding.

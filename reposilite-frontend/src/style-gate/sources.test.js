@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { collectSources } from './sources.js'
+import { collectSources } from './sources'
 
 // The tree is built in a temporary directory of the test's own, so nothing is read from the repository sources.
 let src

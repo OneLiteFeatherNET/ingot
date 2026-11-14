@@ -16,9 +16,9 @@
 
 import { describe, it, expect } from 'vitest'
 import { join } from 'node:path'
-import { RULES } from './rules.js'
-import { scanFile } from './scan.js'
-import { createResolver } from './tailwind.js'
+import { RULES } from './rules'
+import { scanFile } from './scan'
+import { createResolver } from './tailwind'
 
 // Fixtures are strings built inside each test. Nothing is read from disk here, and the resolver is built per call.
 const SRC = join(process.cwd(), 'src')

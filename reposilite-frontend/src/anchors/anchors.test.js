@@ -28,9 +28,9 @@ import {
   partAndStateProblems,
   registryProblems,
   selectorProblems,
-} from "./checks.js"
+} from "./checks"
 import registry from "./registry.json"
-import { renderAnchorsDoc } from "./render.js"
+import { renderAnchorsDoc } from "./render"
 
 // Reads files and nothing else: no server, no clock, no network. Every fixture below is a string built inside its test.
 const FRONTEND_ROOT = resolve(import.meta.dirname, "../..")

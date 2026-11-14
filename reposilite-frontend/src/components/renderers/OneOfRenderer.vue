@@ -96,7 +96,7 @@ import MdSelect from '../md/MdSelect.vue'
 import isEqual from 'lodash/isEqual'
 import isPlainObject from 'lodash/isPlainObject'
 import {SCRIM_STYLE} from '../settings/dialog'
-import { descriptionText } from './description.js'
+import { descriptionText } from './description'
 
 /*
  * The variant is picked from an outlined select, the same field as an enum. The rank is above the

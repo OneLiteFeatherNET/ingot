@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
-import { unbrokenName } from './support/names.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
+import { unbrokenName } from './support/names'
 
 // The lines the text of an element occupies, counted from the boxes of its text. The box of a table cell is not
 // used: a cell is as tall as its row, so a tall neighbour would count as lines of the name.

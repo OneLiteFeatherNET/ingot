@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { readDashboardConfig, parseByteSize } from './config.js'
+import { readDashboardConfig, parseByteSize } from './config'
 
 // Every test passes its own environment map, so nothing is read from the process.
 describe('dashboard configuration', () => {

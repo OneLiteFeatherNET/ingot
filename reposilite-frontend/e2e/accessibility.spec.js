@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
-import { analyzeAccessibility } from './support/accessibility.js'
-import { signInAsAdmin } from './support/session.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
+import { analyzeAccessibility } from './support/accessibility'
+import { signInAsAdmin } from './support/session'
 
 // The covered pages in the state an operator sees them. The sign in dialog is checked open, on the page it opens from.
 // A page with a known fault carries its marker: the rules that fail today are named, and the issue that tracks them is cited.

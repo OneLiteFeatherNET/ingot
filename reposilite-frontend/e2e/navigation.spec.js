@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
-import { signInAsAdmin } from './support/session.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
+import { signInAsAdmin } from './support/session'
 
 // Every Administration page that the side navigation of the tree is drawn on, for an instance admin.
 const ADMINISTRATION_PAGES = [

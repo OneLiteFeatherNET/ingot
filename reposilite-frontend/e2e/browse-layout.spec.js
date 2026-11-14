@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
 
 // The start page and the browse view share one grid: the list on the left, the details card as a sidebar on the
 // right from 1024 px. These tests measure the layout in a real browser, so they assert geometry, not class names.

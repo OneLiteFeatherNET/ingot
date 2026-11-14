@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { classify } from './route-classifier.js'
+import { classify } from './route-classifier'
 
 const segments = ['browse', 'search', 'account', 'dashboard', 'analytics', 'access', 'tokens', 'console', 'maintenance', 'audit', 'settings']
 const root = { segments, basePath: '/' }

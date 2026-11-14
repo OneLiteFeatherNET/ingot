@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
 
 // The number of lines the label of a control is drawn on. A label that wraps has one text box per line, and the
 // boxes of one line share a top edge.

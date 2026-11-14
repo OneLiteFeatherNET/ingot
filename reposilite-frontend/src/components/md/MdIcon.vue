@@ -16,7 +16,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { GLYPHS } from './icons.js'
+import { GLYPHS } from './icons'
 
 /*
  * One icon of the dashboard, drawn from a path or from a glyph of the registry in icons.js. An icon is decorative unless

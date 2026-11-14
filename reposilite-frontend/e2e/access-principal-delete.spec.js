@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { createPrincipal, deletePrincipal, principalStatus, siteUrl } from './support/api.js'
+import { test, expect } from './support/fixtures'
+import { createPrincipal, deletePrincipal, principalStatus, siteUrl } from './support/api'
 
 // The user is disabled through its action menu, the state the operator reported, and then deleted through the
 // dialog of its detail page.

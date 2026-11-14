@@ -20,7 +20,7 @@ import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed } from 'vue'
 import MdChipInput from '../md/MdChipInput.vue'
-import { descriptionText } from './description.js'
+import { descriptionText } from './description'
 import { validateTag } from '../../store/maven/repositories'
 
 /*
