@@ -17,11 +17,10 @@
 <script setup lang="ts">
 // Material Symbols "terminal" (Apache 2.0). The outlined glyph is the frame with the prompt
 // filled in. The filled glyph is a solid window with the prompt cut out, which is the active one.
-defineProps({
-  filled: {
-    type: Boolean,
-    default: false
-  }
+withDefaults(defineProps<{
+  filled?: boolean
+}>(), {
+  filled: false
 })
 
 const OUTLINED = 'M140-160q-24 0-42-18t-18-42v-520q0-24 18-42t42-18h680q24 0 42 18t18 42v520q0 24-18 42t-42 18H140Zm0-60h680v-436H140v436Zm160-72-42-42 103-104-104-104 43-42 146 146-146 146Zm190 4v-60h220v60H490Z'

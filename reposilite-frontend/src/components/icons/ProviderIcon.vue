@@ -22,11 +22,10 @@ import { GENERIC_KEY_PATH, brandPathOf } from './providerIcons'
  * The mark of a sign in provider, drawn in the current text colour (MD3 keeps brand colours out of
  * the controls). Decorative: the control that shows it is named by the provider label.
  */
-const props = defineProps({
-  icon: {
-    type: String,
-    default: 'GENERIC'
-  }
+const props = withDefaults(defineProps<{
+  icon?: string
+}>(), {
+  icon: 'GENERIC'
 })
 
 const brand = computed(() => brandPathOf(props.icon))

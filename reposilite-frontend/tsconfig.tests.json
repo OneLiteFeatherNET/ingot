@@ -1,6 +1,6 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
-  "include": ["src/**/*.test.ts", "src/env.d.ts", "e2e/**/*"],
+  "include": ["src/**/*.test.ts", "src/components/icons/*.vue", "src/components/icons/providerIcons.ts", "src/env.d.ts", "e2e/**/*"],
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tests.tsbuildinfo",

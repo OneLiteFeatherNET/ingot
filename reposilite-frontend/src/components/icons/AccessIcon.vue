@@ -16,11 +16,10 @@
 
 <script setup lang="ts">
 // Two people, drawn for the Access section. The active one is drawn filled, the others outlined.
-defineProps({
-  filled: {
-    type: Boolean,
-    default: false
-  }
+withDefaults(defineProps<{
+  filled?: boolean
+}>(), {
+  filled: false
 })
 </script>
 
