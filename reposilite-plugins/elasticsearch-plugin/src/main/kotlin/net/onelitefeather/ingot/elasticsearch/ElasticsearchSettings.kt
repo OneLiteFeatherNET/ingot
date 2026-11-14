@@ -63,9 +63,13 @@ internal class ElasticsearchSettings private constructor(
         const val PLAIN_HTTP_WARNING: String =
             "INGOT_ELASTICSEARCH_ALLOW_HTTP is true, the cluster is reached over plain http and the credentials and the index travel unencrypted"
 
-        /** The warning of every start without any credential. It names the variables and never a value. */
+        /**
+         * The warning of every start without any credential (design D4, decided). It names the variables and never a value. Plain HTTP
+         * without a credential is refused by the URL rule unless the HTTP switch is on, so this warning is in practice logged for https.
+         */
         const val UNAUTHENTICATED_WARNING: String =
-            "no INGOT_ELASTICSEARCH_API_KEY or INGOT_ELASTICSEARCH_USERNAME is set, the cluster is reached without authentication"
+            "no INGOT_ELASTICSEARCH_API_KEY or INGOT_ELASTICSEARCH_USERNAME is set, the cluster is reached without credentials, " +
+                "which is only safe behind mTLS or a trusted network"
 
         /**
          * Reads the settings. [log] receives the warnings of a successful read: the plain HTTP switch and a missing credential.
@@ -89,10 +93,6 @@ internal class ElasticsearchSettings private constructor(
             }
             require(password == null || username != null) {
                 "INGOT_ELASTICSEARCH_PASSWORD is set without INGOT_ELASTICSEARCH_USERNAME"
-            }
-            require(apiKey != null || username != null || allowHttp) {
-                "INGOT_ELASTICSEARCH_URLS needs an INGOT_ELASTICSEARCH_API_KEY or an INGOT_ELASTICSEARCH_USERNAME with a password, " +
-                    "or INGOT_ELASTICSEARCH_ALLOW_HTTP=true for a cluster that runs without security"
             }
             val settings = ElasticsearchSettings(
                 urls = variables.urls(allowHttp, productName = "Elasticsearch"),
