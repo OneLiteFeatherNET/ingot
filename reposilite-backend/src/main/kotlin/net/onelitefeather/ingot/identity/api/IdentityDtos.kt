@@ -170,8 +170,17 @@ data class OwnAccessSummaryDto(
     val tokenNarrowed: Boolean,
     val teams: List<OwnTeamDto>,
     val nodes: List<String>,
-    val denials: List<String>,
+    val denials: List<OwnDenialDto>,
     val grants: List<OwnGrantDto>,
+)
+
+/**
+ * A denied node of the caller. [overridden] is true when a more specific allow of the caller wins for the node, as the
+ * access check decides it; a denial with [overridden] false is denied by the check too.
+ */
+data class OwnDenialDto(
+    val node: String,
+    val overridden: Boolean,
 )
 
 data class OwnPrincipalDto(

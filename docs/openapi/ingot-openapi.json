@@ -1302,7 +1302,7 @@
         "properties" : {
           "denials" : {
             "items" : {
-              "type" : "string"
+              "$ref" : "#/components/schemas/OwnDenialDto"
             },
             "type" : "array"
           },
@@ -1342,6 +1342,18 @@
           }
         },
         "required" : [ "instanceAdmin", "tokenNarrowed", "teams", "nodes", "denials", "grants" ],
+        "type" : "object"
+      },
+      "OwnDenialDto" : {
+        "properties" : {
+          "node" : {
+            "type" : "string"
+          },
+          "overridden" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "node", "overridden" ],
         "type" : "object"
       },
       "OwnGrantDto" : {

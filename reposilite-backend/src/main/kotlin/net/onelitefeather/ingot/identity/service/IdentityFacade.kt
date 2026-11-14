@@ -60,6 +60,7 @@ import net.onelitefeather.ingot.identity.api.GrantRequest
 import net.onelitefeather.ingot.identity.api.MemberDto
 import net.onelitefeather.ingot.identity.api.NodeDto
 import net.onelitefeather.ingot.identity.api.OwnAccessSummaryDto
+import net.onelitefeather.ingot.identity.api.OwnDenialDto
 import net.onelitefeather.ingot.identity.api.OwnGrantDto
 import net.onelitefeather.ingot.identity.api.OwnPrincipalDto
 import net.onelitefeather.ingot.identity.api.OwnTeamDto
@@ -927,7 +928,11 @@ class IdentityFacade(
             denials = subject.levels.flatMap { level -> level.rules.filterNot { it.allowed }.map { it.pattern.text } }
                 .plus(subject.tokenRules.orEmpty().filterNot { it.allowed }.map { it.pattern.text })
                 .distinct()
-                .sorted(),
+                .sorted()
+                .map { text ->
+                    // The same decision the check gives for this node, so a denial that nothing overrides agrees with the check.
+                    OwnDenialDto(node = text, overridden = PermissionEvaluator.decide(subject, NodePattern.of(text)).allowed)
+                },
             grants = subject.levels.flatMap { it.grants }
                 .map { grant -> OwnGrantDto(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name) },
         ).asSuccess()
