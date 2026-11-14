@@ -71,7 +71,7 @@ Some start refusals are not one line. A value that Ingot cannot parse at start, 
 
 ## Deploy: 401, 403 and 409
 
-A deploy authenticates with the token name and secret, sent in an HTTP basic `Authorization` header. See [Use tokens in CI](use-tokens-in-ci.md).
+A deploy authenticates with the token name and secret, sent in an HTTP basic `Authorization` header. See [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md).
 
 **Symptom:** `401` with `Missing authorization credentials`.
 

@@ -69,4 +69,4 @@ A proxy repository only lists the artifacts it has fetched at least once. An art
 ## Related
 
 * [Search filters and API](../reference/search-filters-and-api.md) lists every parameter.
-* [Rebuild the search index](rebuild-search-index.md) explains what an administrator does when the index is out of date.
+* [Rebuild the search index](../how-to/rebuild-search-index.md) explains what an administrator does when the index is out of date.

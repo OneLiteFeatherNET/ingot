@@ -61,3 +61,13 @@ redirects:
   how-to/set-cleanup-policies: configure/repositories/set-cleanup-policies.md
   how-to/choose-a-search-backend: configure/search/choose-a-search-backend.md
   how-to/use-opensearch-for-search: configure/search/use-opensearch-for-search.md
+  how-to/publish-and-consume-artifacts: publish-and-consume/publish-and-consume-artifacts.md
+  how-to/publish-and-consume-with-maven: publish-and-consume/publish-and-consume-with-maven.md
+  how-to/publish-and-consume-with-gradle-groovy: publish-and-consume/publish-and-consume-with-gradle-groovy.md
+  how-to/publish-and-consume-with-gradle-kotlin: publish-and-consume/publish-and-consume-with-gradle-kotlin.md
+  how-to/publish-and-consume-with-sbt: publish-and-consume/publish-and-consume-with-sbt.md
+  how-to/publish-and-consume-with-leiningen: publish-and-consume/publish-and-consume-with-leiningen.md
+  how-to/use-tokens-in-ci: publish-and-consume/use-tokens-in-ci.md
+  how-to/restrict-token-to-artifacts: publish-and-consume/restrict-token-to-artifacts.md
+  how-to/verify-uploaded-checksums: publish-and-consume/verify-uploaded-checksums.md
+  how-to/search-for-artifacts: publish-and-consume/search-for-artifacts.md

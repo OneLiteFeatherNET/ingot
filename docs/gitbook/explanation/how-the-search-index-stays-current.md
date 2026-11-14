@@ -94,6 +94,6 @@ The feature is on by default and needs no configuration change. Set `INGOT_LOCAL
 
 ## Related
 
-* [Search for artifacts](../how-to/search-for-artifacts.md) describes the search page.
+* [Search for artifacts](../publish-and-consume/search-for-artifacts.md) describes the search page.
 * [Rebuild the search index](../how-to/rebuild-search-index.md) describes the steps for a rebuild and a verify.
 * [Search filters and API](../reference/search-filters-and-api.md) lists the parameters, the endpoints and the settings.

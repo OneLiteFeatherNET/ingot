@@ -154,7 +154,7 @@ Visibility also sets the `Cache-Control` of downloaded files. A file of a `PUBLI
 | `warn` | Stored | Stored, the mismatch is audited with outcome `accepted` |
 | `reject` | Stored | Refused with `400` and the algorithm in the message. Nothing is stored, the artifact stays as it is, and the refusal is audited with outcome `rejected` |
 
-A checksum file that arrives before its artifact is stored without a check under every value. See [Verify uploaded checksums](../how-to/verify-uploaded-checksums.md).
+A checksum file that arrives before its artifact is stored without a check under every value. See [Verify uploaded checksums](../publish-and-consume/verify-uploaded-checksums.md).
 
 ## Redeployment
 

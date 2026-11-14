@@ -18,7 +18,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Private team.** The team of one machine account, named with the prefix `machine:`. It holds the rights that belong to that account only, and the team endpoints do not change it. See [Identity model](../explanation/identity-model.md#teams-and-private-teams).
 
-**Token.** A secret that belongs to one principal and authenticates requests as that principal. A token can narrow the rights of its owner, but it cannot add to them. See [Use tokens in CI](../how-to/use-tokens-in-ci.md) and [Restrict a token to artifacts](../how-to/restrict-token-to-artifacts.md).
+**Token.** A secret that belongs to one principal and authenticates requests as that principal. A token can narrow the rights of its owner, but it cannot add to them. See [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md) and [Restrict a token to artifacts](../publish-and-consume/restrict-token-to-artifacts.md).
 
 **Grant.** The role that a team holds on one repository, or on a path inside a repository. The roles are `READ`, `DEPLOY`, `MAINTAIN` and `ADMIN`, and each one includes the ones before it. See [Identity model](../explanation/identity-model.md#roles).
 
@@ -40,7 +40,7 @@ The terms are listed in the order of the identity model first, then the reposito
 
 **Group repository.** A repository that answers with the first of its local members that has the file. See [Create a group repository](../configure/repositories/create-a-group-repository.md).
 
-**Upload checksum policy.** The rule that decides what happens to an uploaded checksum file that does not match its artifact: `ignore`, `warn` or `reject`. See [Verify uploaded checksums](../how-to/verify-uploaded-checksums.md).
+**Upload checksum policy.** The rule that decides what happens to an uploaded checksum file that does not match its artifact: `ignore`, `warn` or `reject`. See [Verify uploaded checksums](../publish-and-consume/verify-uploaded-checksums.md).
 
 **Read-only mode.** The instance-wide switch that refuses every write with `503` while reads keep working. It is not the same as the read-only setting of one repository. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
 
