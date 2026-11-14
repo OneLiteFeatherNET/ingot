@@ -227,9 +227,32 @@ cmd_sign_catalogue() {
     echo "signed $CATALOGUE with $SIGNING_FINGERPRINT"
 }
 
+# Adds the public key to ingot-plugin-keys.asc at the repository root. Every key ever used stays in that file, so a
+# version signed by an earlier key keeps verifying. A key that is already listed is not added twice.
+publish_key_file() {
+    local work="$1" remote="$PLUGIN_REPOSITORY_URL/ingot-plugin-keys.asc" fingerprint status
+    fingerprint="$(gpg --batch --with-colons --show-keys "$PLUGIN_PUBLIC_KEY" | awk -F: '$1 == "fpr" { print $10; exit }')"
+    status="$(http_get_authenticated "$remote" "$work/keys.asc")"
+    case "$status" in
+        200)
+            if gpg --batch --with-colons --show-keys "$work/keys.asc" \
+                | awk -F: '$1 == "fpr" { print $10 }' | grep -Fx "$fingerprint" >/dev/null; then
+                echo "ingot-plugin-keys.asc already lists $fingerprint"
+                return 0
+            fi
+            cat "$PLUGIN_PUBLIC_KEY" >> "$work/keys.asc"
+            ;;
+        404) cp "$PLUGIN_PUBLIC_KEY" "$work/keys.asc" ;;
+        *) die "ingot-plugin-keys.asc answered HTTP $status" ;;
+    esac
+    put_authenticated "$work/keys.asc" "$remote"
+    echo "published ingot-plugin-keys.asc with $fingerprint"
+}
+
 cmd_upload() {
     require_var PLUGIN_REPOSITORY_URL
     require_var PLUGIN_STAGE
+    require_var PLUGIN_PUBLIC_KEY
     local jar relative remote work status
     work="$(mktemp -d "$RUNNER_TEMP/upload.XXXXXX")"
     # Jars and their signatures first, so the catalogue never names a file that is not there yet.
@@ -252,6 +275,7 @@ cmd_upload() {
             *) die "$relative answered HTTP $status" ;;
         esac
     done < <(find "$PLUGIN_STAGE/$GROUP_PATH" -name '*.jar' | sort)
+    publish_key_file "$work"
     rm -rf "$work"
 
     # The catalogue last, and only when it changed. An unchanged catalogue is already what the repository serves.
