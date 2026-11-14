@@ -23,16 +23,21 @@ import net.onelitefeather.ingot.search.backend.ArtifactSearchBackendFactory
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.SEARCH_BACKEND_API_VERSION
 import net.onelitefeather.ingot.search.backend.SearchBackendContext
+import javax.net.ssl.SSLContext
 
 /**
  * The factory of the `elasticsearch` backend (API version 1). The settings are read when the backend is created, which the core
  * does off the request threads. A refused setting makes the create call throw, and the core reports the backend as `OPEN_FAILED`
  * with the message of the refusal.
  *
+ * [sslContext] replaces the JVM default context of the connections. Only the container tests pass one, to trust the authority of
+ * their own cluster; the plugin registers the factory with null.
+ *
  * [settings] reads the settings and receives the log sink of the backend, which is the logger of the context at every create.
  */
 internal class ElasticsearchBackendFactory(
     private val settings: (log: (String) -> Unit) -> ElasticsearchSettings,
+    private val sslContext: SSLContext? = null,
 ) : ArtifactSearchBackendFactory {
 
     override val id: String = ID
@@ -41,8 +46,7 @@ internal class ElasticsearchBackendFactory(
 
     override fun create(context: SearchBackendContext): ArtifactSearchBackend {
         val logger = context.logger()
-        settings(logger::warn)
-        throw IllegalStateException("the elasticsearch backend has no query and write path in this build yet")
+        return ElasticsearchSearchBackend(settings(logger::warn), context.clock, sslContext)
     }
 
     companion object {
@@ -50,3 +54,13 @@ internal class ElasticsearchBackendFactory(
     }
 
 }
+
+/**
+ * The factory for [environment], as the registration of the plugin builds it, for the container tests of the server. The settings
+ * are read from [environment] when the backend is created. [sslContext] is for tests only (see [ElasticsearchBackendFactory]).
+ */
+@ExperimentalIngotSearchApi
+fun elasticsearchBackendFactory(
+    environment: Map<String, String>,
+    sslContext: SSLContext? = null,
+): ArtifactSearchBackendFactory = ElasticsearchBackendFactory({ log -> ElasticsearchSettings.read(environment, log = log) }, sslContext)
