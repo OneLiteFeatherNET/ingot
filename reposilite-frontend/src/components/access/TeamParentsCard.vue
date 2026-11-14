@@ -296,7 +296,7 @@ const save = async () => {
           >
             <svg
               viewBox="0 0 24 24"
-              class="size-[18px]"
+              class="size-md-icon"
               fill="currentColor"
               aria-hidden="true"
               focusable="false"

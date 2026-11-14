@@ -112,7 +112,7 @@ describe('MdButton', () => {
     const wrapper = mount(MdButton, { props: { variant: 'text', error: true, disabled: true }, slots: { default: 'Revoke' } })
 
     expect(wrapper.classes()).not.toContain('text-error')
-    expect(wrapper.classes()).toContain('text-on-surface/38')
+    expect(wrapper.classes()).toContain('text-on-surface/md-disabled-content')
   })
 
   it('reports the variant through data-variant', () => {

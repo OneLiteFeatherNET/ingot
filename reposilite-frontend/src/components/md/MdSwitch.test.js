@@ -164,15 +164,15 @@ describe('MdSwitch', () => {
   it('uses the MD3 state opacities on the state layer: hover 8, focus 12, pressed 12', () => {
     const wrapper = mountSwitch()
 
-    expect(stateLayer(wrapper).classes()).toContain('group-hover:opacity-[0.08]')
-    expect(stateLayer(wrapper).classes()).toContain('group-focus-visible:opacity-[0.12]')
-    expect(stateLayer(wrapper).classes()).toContain('group-active:opacity-[0.12]')
+    expect(stateLayer(wrapper).classes()).toContain('group-hover:opacity-md-state-hover')
+    expect(stateLayer(wrapper).classes()).toContain('group-focus-visible:opacity-md-state-focus')
+    expect(stateLayer(wrapper).classes()).toContain('group-active:opacity-md-state-pressed')
   })
 
   it('draws no state layer while disabled', () => {
     const wrapper = mountSwitch({ disabled: true })
 
-    expect(stateLayer(wrapper).classes()).not.toContain('group-hover:opacity-[0.08]')
+    expect(stateLayer(wrapper).classes()).not.toContain('group-hover:opacity-md-state-hover')
     expect(stateLayer(wrapper).classes()).toContain('opacity-0')
   })
 

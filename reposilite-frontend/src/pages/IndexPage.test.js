@@ -131,6 +131,9 @@ const navigations = (wrapper) => wrapper.findAll('nav[aria-label="Primary"]')
 // The four entries of the rail, which the bottom bar shows too for an administrator. Administration holds the rest.
 const SECTION_LABELS = ['Browse', 'Search', 'Dashboard', 'Administration']
 
+// The content sheet has no class of its own for a test to find, so it is found by its top-start corner rounding.
+const SHEET = '.medium\\:rounded-tl-corner-extra-large'
+
 describe('IndexPage footer and content sheet', () => {
   beforeEach(() => {
     session.isManager = null
@@ -139,7 +142,7 @@ describe('IndexPage footer and content sheet', () => {
   it('places a footer inside the content sheet when the navigation frame shows', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    const sheet = wrapper.find('.pane-sheet')
+    const sheet = wrapper.find(SHEET)
 
     expect(sheet.exists(), 'the navigation frame has a content sheet').toBe(true)
     expect(sheet.findAllComponents(PageFooter), 'the sheet closes with the footer').toHaveLength(1)
@@ -149,7 +152,7 @@ describe('IndexPage footer and content sheet', () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
     const footers = wrapper.findAllComponents(PageFooter)
-    const outsideSheet = footers.filter(footer => footer.element.closest('.pane-sheet') === null)
+    const outsideSheet = footers.filter(footer => footer.element.closest(SHEET) === null)
 
     expect(footers, 'one footer in the sheet and one below the page').toHaveLength(2)
     expect(outsideSheet, 'the page footer sits outside the sheet').toHaveLength(1)
@@ -158,8 +161,8 @@ describe('IndexPage footer and content sheet', () => {
   it('makes the sheet at least as tall as the window below the top bar', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
-    expect(wrapper.find('.pane-sheet').classes(), 'the sheet fills the window below the 4rem top bar')
-      .toContain('medium:min-h-[calc(100dvh_-_4rem)]')
+    expect(wrapper.find(SHEET).classes(), 'the sheet fills the window below the 4rem top bar')
+      .toContain('medium:min-h-[calc(100dvh_-_var(--spacing-md-top-bar))]')
   })
 })
 

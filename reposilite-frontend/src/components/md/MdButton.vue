@@ -53,27 +53,27 @@ const VARIANTS = {
   filled: {
     base: 'bg-primary text-on-primary',
     error: 'bg-error text-on-error',
-    disabled: 'bg-on-surface/12 text-on-surface/38'
+    disabled: 'bg-on-surface/md-disabled-containertext-on-surface/md-disabled-content'
   },
   tonal: {
     base: 'bg-secondary-container text-on-secondary-container',
     error: 'bg-error-container text-on-error-container',
-    disabled: 'bg-on-surface/12 text-on-surface/38'
+    disabled: 'bg-on-surface/md-disabled-container text-on-surface/md-disabled-content'
   },
   outlined: {
     base: 'border border-outline bg-transparent text-primary',
     error: 'border border-error bg-transparent text-error',
-    disabled: 'border border-on-surface/12 bg-transparent text-on-surface/38'
+    disabled: 'border border-on-surface/md-disabled-containerbg-transparent text-on-surface/md-disabled-content'
   },
   text: {
     base: 'bg-transparent text-primary',
     error: 'bg-transparent text-error',
-    disabled: 'bg-transparent text-on-surface/38'
+    disabled: 'bg-transparent text-on-surface/md-disabled-content'
   },
   elevated: {
     base: 'bg-surface-container-low text-primary shadow-elevation-1',
     error: 'bg-surface-container-low text-error shadow-elevation-1',
-    disabled: 'bg-on-surface/12 text-on-surface/38 shadow-none'
+    disabled: 'bg-on-surface/md-disabled-containertext-on-surface/md-disabled-content shadow-none'
   }
 }
 
@@ -108,7 +108,7 @@ const classes = computed(() => {
   >
     <span
       v-if="$slots.icon"
-      class="inline-flex shrink-0 [&>svg]:size-[18px]"
+      class="inline-flex shrink-0 md-icon-svg"
       aria-hidden="true"
     >
       <slot name="icon" />

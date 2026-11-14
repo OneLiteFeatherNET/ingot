@@ -79,7 +79,7 @@ const onKeydown = (event) => {
   <Teleport to="body">
     <div
       v-if="modelValue"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-scrim/md-scrim-strong p-4"
       data-ingot-component="migration-dialog"
       @keydown="onKeydown"
     >

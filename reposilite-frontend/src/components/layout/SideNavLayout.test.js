@@ -109,7 +109,7 @@ describe('SideNavLayout', () => {
 
     const classes = wrapper.find(SIDE_NAV).classes()
     expect(classes, 'the column is 208 pixels wide').toContain('w-52')
-    expect(classes, 'the column stops one rem below the top bar when it is sticky').toContain('top-[calc(4rem+1rem)]')
+    expect(classes, 'the column stops one rem below the top bar when it is sticky').toContain('top-[calc(var(--spacing-md-top-bar)+--spacing(4))]')
     expect(classes.some(name => name.startsWith('max-h-')), 'no maximum height that would make a scroll box').toBe(false)
     expect(classes, 'a tall column scrolls with the page, not inside itself').not.toContain('overflow-y-auto')
   })

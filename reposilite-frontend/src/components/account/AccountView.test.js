@@ -78,7 +78,7 @@ describe('AccountView', () => {
     await mountView()
 
     expect(Array.from(wrapper.element.classList), 'a reading page, at the start of the column').toEqual(
-      expect.arrayContaining(['max-w-[960px]'])
+      expect.arrayContaining(['max-w-md-reading'])
     )
   })
 

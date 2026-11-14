@@ -331,6 +331,7 @@
   --color-shadow: var(--md-sys-color-shadow);
   --color-success: var(--md-ext-color-success);
   --color-warning: var(--md-ext-color-warning);
+  --color-md-field-container: var(--md-field-container);
 }
 
 /*

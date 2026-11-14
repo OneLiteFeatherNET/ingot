@@ -88,7 +88,7 @@ const stateClass = computed(() => {
   >
     <svg
       v-if="isFilter && selected"
-      class="size-[18px] shrink-0"
+      class="size-md-icon shrink-0"
       viewBox="0 -960 960 960"
       aria-hidden="true"
       focusable="false"
@@ -100,7 +100,7 @@ const stateClass = computed(() => {
     </svg>
     <span
       v-if="$slots.icon"
-      class="inline-flex shrink-0 [&>svg]:size-[18px]"
+      class="inline-flex shrink-0 md-icon-svg"
       aria-hidden="true"
     >
       <slot name="icon" />

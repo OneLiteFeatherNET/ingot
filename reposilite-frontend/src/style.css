@@ -61,6 +61,17 @@
 }
 
 /*
+ * The icon of a control whose markup is slotted: the svg is a child of the control, so the size is set on the child.
+ * The icon size is the MD3 icon token.
+ */
+@utility md-icon-svg {
+  & > svg {
+    width: var(--spacing-md-icon);
+    height: var(--spacing-md-icon);
+  }
+}
+
+/*
  * The page gutter follows the window margin of the MD3 foundation: 16px in a compact window and 24px from the medium
  * window class.
  */

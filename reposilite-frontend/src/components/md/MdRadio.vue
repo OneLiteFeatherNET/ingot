@@ -122,7 +122,7 @@ const onKeydown = (event) => {
 // Every class name is spelled out in full so that Tailwind finds it in this file.
 const rootClass = computed(() => {
   if (!props.card) return 'flex items-center gap-2'
-  const base = 'relative flex items-start gap-3 has-focus-visible:outline-3 has-focus-visible:outline-solid has-focus-visible:outline-offset-2 has-focus-visible:outline-secondary'
+  const base = 'relative flex items-start gap-3 has-focus-visible:md-focus-ring-within'
   return props.disabled ? [base, 'cursor-not-allowed'] : [base, 'cursor-pointer']
 })
 
@@ -144,7 +144,7 @@ const stateLayerClass = computed(() => {
   const base = 'pointer-events-none absolute inset-0 rounded-corner-full opacity-0 transition-opacity duration-(--md-sys-motion-duration-short3) ease-md-standard'
   if (props.disabled) return base
   const colour = checked.value ? 'bg-primary' : 'bg-on-surface'
-  return [base, colour, 'peer-hover:opacity-[0.08] peer-focus-visible:opacity-[0.12] peer-active:opacity-[0.12]']
+  return [base, colour, 'peer-hover:opacity-md-state-hover peer-focus-visible:opacity-md-state-focus peer-active:opacity-md-state-pressed']
 })
 
 const labelClass = computed(() =>

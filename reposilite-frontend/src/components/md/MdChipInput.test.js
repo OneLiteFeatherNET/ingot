@@ -237,7 +237,7 @@ describe('MdChipInput outlined field', () => {
     mountInput({ modelValue: ['team-core'] })
 
     expect(wrapper.find('label').classes()).toContain('top-0')
-    expect(wrapper.find('label').classes()).toContain('bg-[var(--md-field-container,var(--md-sys-color-surface))]')
+    expect(wrapper.find('label').classes()).toContain('bg-md-field-container')
   })
 
   it('rests the label in the middle of an empty field that is not focused', () => {

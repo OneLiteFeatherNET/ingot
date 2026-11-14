@@ -123,7 +123,7 @@ const onKeydown = (event) => {
         aria-hidden="true"
         @click="dismiss"
       />
-      <div class="absolute inset-y-0 start-0 flex w-[min(320px,calc(100vw-56px))] flex-col gap-4 overflow-y-auto bg-surface-container-low p-4 text-on-surface shadow-elevation-2">
+      <div class="absolute inset-y-0 start-0 flex w-[min(var(--container-md-sheet),calc(100vw-56px))] flex-col gap-4 overflow-y-auto bg-surface-container-low p-4 text-on-surface shadow-elevation-2">
         <div class="flex items-center justify-between gap-2">
           <h2
             :id="titleId"

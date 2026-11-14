@@ -443,7 +443,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
                 class="inline-flex shrink-0 self-center items-center gap-1 md-label-large text-on-surface-variant"
               >
                 <svg
-                  class="size-[18px]"
+                  class="size-md-icon"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                   aria-hidden="true"

@@ -107,14 +107,14 @@ describe('AdministrationFrame', () => {
 
     const classes = wrapper.element.classList
     expect(classes, 'the header spans the container on both kinds of page').toContain('max-w-none')
-    expect(classes, 'no 960 pixel cap on the section, which would float the header shortcuts').not.toContain('max-w-[960px]')
+    expect(classes, 'no 960 pixel cap on the section, which would float the header shortcuts').not.toContain('max-w-md-reading')
   })
 
   it('keeps a reading page at a 960 pixel measure around the layout only, at the start of the content column', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: true })
 
     const measure = measureOf(wrapper)
-    expect(measure.classList, 'a reading page (text and forms) is at most 960 pixels wide').toContain('max-w-[960px]')
+    expect(measure.classList, 'a reading page (text and forms) is at most 960 pixels wide').toContain('max-w-md-reading')
     expect(measure.classList, 'it stays at the start of the column, not centred').not.toContain('mx-auto')
     expect(measure.querySelector('[aria-label="Administration"]'), 'the layout is measured').not.toBeNull()
     expect(measure.querySelector('header'), 'the header is not measured').toBeNull()
@@ -123,7 +123,7 @@ describe('AdministrationFrame', () => {
   it('draws no reading measure on a wide page', async () => {
     const wrapper = await mountFrame({ current: 'page:audit', reading: false })
 
-    expect(measureOf(wrapper).classList).not.toContain('max-w-[960px]')
+    expect(measureOf(wrapper).classList).not.toContain('max-w-md-reading')
   })
 
   it('draws the page heading and its actions in one row from 600 pixels', async () => {

@@ -48,7 +48,14 @@
   --md-sys-focus-ring-offset: 2px;
 }
 
+/*
+ * The opacity keys. A control that keeps its own opacity (a checkbox, a radio, a switch) takes the state values
+ * through these, as opacity-md-state-hover and its siblings; a state layer takes them through the md-state-* utilities.
+ */
 @theme inline {
+  --opacity-md-state-hover: var(--md-sys-state-hover-opacity);
+  --opacity-md-state-focus: var(--md-sys-state-focus-opacity);
+  --opacity-md-state-pressed: var(--md-sys-state-pressed-opacity);
   --opacity-md-disabled-container: var(--md-sys-state-disabled-container-opacity);
   --opacity-md-disabled-content: var(--md-sys-state-disabled-content-opacity);
 }

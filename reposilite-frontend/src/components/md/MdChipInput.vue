@@ -185,7 +185,7 @@ const labelClass = computed(() => {
     ? 'text-on-surface/38'
     : (invalid.value ? 'text-error' : (focused.value ? 'text-primary' : 'text-on-surface-variant'))
   const position = floated.value
-    ? 'top-0 -translate-y-1/2 bg-[var(--md-field-container,var(--md-sys-color-surface))] px-1 md-label-medium'
+    ? 'top-0 -translate-y-1/2 bg-md-field-container px-1 md-label-medium'
     : 'top-1/2 -translate-y-1/2 md-body-large'
   return [
     'pointer-events-none absolute left-4 transition-all duration-(--md-sys-motion-duration-short4) ease-md-standard',
@@ -227,7 +227,7 @@ const labelClass = computed(() => {
             >
               <svg
                 viewBox="0 0 24 24"
-                class="size-[18px]"
+                class="size-md-icon"
                 fill="currentColor"
                 aria-hidden="true"
                 focusable="false"

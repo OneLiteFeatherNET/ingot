@@ -372,7 +372,7 @@ onBeforeUnmount(() => {
       </div>
       <label
         :id="labelId"
-        class="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-[var(--md-field-container,var(--md-sys-color-surface))] px-1 md-label-medium"
+        class="pointer-events-none absolute left-3 top-0 -translate-y-1/2 bg-md-field-container px-1 md-label-medium"
         :class="labelClass"
       >{{ label }}</label>
       <span
@@ -414,8 +414,7 @@ onBeforeUnmount(() => {
           role="option"
           :aria-selected="index === selectedIndex ? 'true' : 'false'"
           class="md-state-layer relative flex min-h-12 cursor-pointer items-center gap-3 px-4 md-label-large"
-          :class="index === selectedIndex ? 'text-primary' : 'text-on-surface'"
-          :style="index === active ? { '--md-state-opacity': 0.12 } : undefined"
+          :class="[index === selectedIndex ? 'text-primary' : 'text-on-surface', index === active ? 'md-state-focus!' : '']"
           @click="chooseIndex(index)"
         >
           <span class="flex size-6 shrink-0 items-center justify-center">

@@ -75,7 +75,7 @@ const selected = computed(() => state.value !== 'unchecked')
 
 // Every class name is spelled out in full so that Tailwind finds it in this file.
 const boxClass = computed(() => {
-  const base = 'relative flex size-[18px] items-center justify-center rounded-[2px] border-2 pointer-events-none transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard'
+  const base = 'relative flex size-md-icon items-center justify-center rounded-[2px] border-2 pointer-events-none transition-colors duration-(--md-sys-motion-duration-short3) ease-md-standard'
   if (props.disabled) {
     return [base, selected.value ? 'border-transparent bg-on-surface/38' : 'border-on-surface/38 bg-transparent']
   }
@@ -98,7 +98,7 @@ const stateLayerClass = computed(() => {
   const base = 'pointer-events-none absolute inset-0 rounded-corner-full opacity-0 transition-opacity duration-(--md-sys-motion-duration-short3) ease-md-standard'
   if (props.disabled) return base
   const colour = props.error ? 'bg-error' : selected.value ? 'bg-primary' : 'bg-on-surface'
-  return [base, colour, 'peer-hover:opacity-[0.08] peer-focus-visible:opacity-[0.12] peer-active:opacity-[0.12]']
+  return [base, colour, 'peer-hover:opacity-md-state-hover peer-focus-visible:opacity-md-state-focus peer-active:opacity-md-state-pressed']
 })
 
 const labelClass = computed(() =>
@@ -141,7 +141,7 @@ const labelClass = computed(() =>
           viewBox="0 -960 960 960"
           focusable="false"
           aria-hidden="true"
-          class="size-[18px]"
+          class="size-md-icon"
           :class="markClass"
         >
           <path

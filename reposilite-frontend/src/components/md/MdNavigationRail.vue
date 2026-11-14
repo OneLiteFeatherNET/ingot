@@ -111,7 +111,7 @@ const select = (item, event) => {
 <template>
   <nav
     :aria-label="label"
-    class="flex h-full w-24 flex-col items-center bg-surface-container text-on-surface"
+    class="flex h-full w-md-rail flex-col items-center bg-surface-container text-on-surface"
     data-ingot-component="md-navigation-rail"
   >
     <div
@@ -147,7 +147,7 @@ const select = (item, event) => {
             @click="select(item, $event)"
           >
             <span
-              class="md-state-layer flex h-8 w-14 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-medium2) ease-md-standard group-hover:[--md-state-opacity:0.08] motion-reduce:transition-none [&>svg]:size-6"
+              class="md-state-layer flex h-8 w-14 items-center justify-center rounded-corner-full transition-colors duration-(--md-sys-motion-duration-medium2) ease-md-standard group-hover:md-state-hover motion-reduce:transition-none [&>svg]:size-6"
               :class="isActive(item) ? 'bg-secondary-container text-on-secondary-container' : ''"
               aria-hidden="true"
             >

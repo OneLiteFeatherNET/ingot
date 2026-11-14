@@ -102,7 +102,7 @@ const stateLayerClass = computed(() => {
     base,
     position,
     props.modelValue ? 'bg-primary' : 'bg-on-surface',
-    'group-hover:opacity-[0.08] group-focus-visible:opacity-[0.12] group-active:opacity-[0.12]'
+    'group-hover:opacity-md-state-hover group-focus-visible:opacity-md-state-focus group-active:opacity-md-state-pressed'
   ]
 })
 
