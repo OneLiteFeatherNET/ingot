@@ -16,6 +16,8 @@
 
 package net.onelitefeather.ingot.logging
 
+import io.opentelemetry.api.trace.Span
+
 /** The identifiers of the active span, as lowercase hexadecimal strings. */
 data class TraceIds(val traceId: String, val spanId: String)
 
@@ -27,57 +29,14 @@ fun interface TraceContext {
 }
 
 /**
- * Reads the active span through the OpenTelemetry API by reflection, so Ingot has no compile dependency on it. The probe
- * runs once, when the source is created. When the API is not visible to the class loader, the source reports no span
- * for the lifetime of the process, and the JSON lines carry no trace fields.
+ * Reads the span that is current on the calling thread through the OpenTelemetry API. Under the Java agent the agent's spans
+ * are visible here, because the agent bridges them to the API that the server ships. Without an active span it reports none.
  */
-class ReflectiveTraceContext private constructor(
-    private val currentSpan: () -> Any?,
-    private val spanContext: (Any) -> Any?,
-    private val isValid: (Any) -> Boolean,
-    private val traceId: (Any) -> String,
-    private val spanId: (Any) -> String,
-) : TraceContext {
+object OpenTelemetryTraceContext : TraceContext {
 
-    override fun current(): TraceIds? =
-        try {
-            val span = currentSpan() ?: return null
-            val context = spanContext(span) ?: return null
-            if (!isValid(context)) null else TraceIds(traceId = traceId(context), spanId = spanId(context))
-        } catch (exception: RuntimeException) {
-            // A span source that fails must not fail the log line that asked for it
-            null
-        }
-
-    companion object {
-
-        private const val SPAN = "io.opentelemetry.api.trace.Span"
-
-        /** The source of the class loader, or the one that reports no span when the API cannot be reached. */
-        fun create(classLoader: ClassLoader = ReflectiveTraceContext::class.java.classLoader): TraceContext =
-            try {
-                val spanClass = Class.forName(SPAN, false, classLoader)
-                val current = spanClass.getMethod("current")
-                val contextOf = spanClass.getMethod("getSpanContext")
-                val contextClass = contextOf.returnType
-                val valid = contextClass.getMethod("isValid")
-                val trace = contextClass.getMethod("getTraceId")
-                val span = contextClass.getMethod("getSpanId")
-                ReflectiveTraceContext(
-                    currentSpan = { current.invoke(null) },
-                    spanContext = { contextOf.invoke(it) },
-                    isValid = { valid.invoke(it) as Boolean },
-                    traceId = { trace.invoke(it) as String },
-                    spanId = { span.invoke(it) as String },
-                )
-            } catch (exception: ReflectiveOperationException) {
-                NONE
-            } catch (exception: LinkageError) {
-                NONE
-            }
-
-        private val NONE = TraceContext { null }
-
+    override fun current(): TraceIds? {
+        val context = Span.current().spanContext
+        return if (context.isValid) TraceIds(traceId = context.traceId, spanId = context.spanId) else null
     }
 
 }

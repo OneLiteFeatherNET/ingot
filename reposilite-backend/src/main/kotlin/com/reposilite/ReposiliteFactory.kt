@@ -40,7 +40,7 @@ import net.onelitefeather.ingot.logging.AccessLogSetting
 import net.onelitefeather.ingot.logging.JsonLogger
 import net.onelitefeather.ingot.logging.LogFormat
 import net.onelitefeather.ingot.logging.LogSettings
-import net.onelitefeather.ingot.logging.ReflectiveTraceContext
+import net.onelitefeather.ingot.logging.OpenTelemetryTraceContext
 import net.onelitefeather.ingot.logging.applyToTinyLog
 import net.onelitefeather.ingot.web.RequestLimitSettings
 import net.onelitefeather.ingot.web.ShutdownSettings
@@ -55,7 +55,7 @@ object ReposiliteFactory {
         logSettings.applyToTinyLog()
         val console = when (logSettings.format) {
             LogFormat.TEXT -> PrintStreamLogger(System.out, System.err, Channel.ALL, false)
-            LogFormat.JSON -> JsonLogger(System.out, System.err, Channel.ALL, Clock.systemUTC(), ReflectiveTraceContext.create())
+            LogFormat.JSON -> JsonLogger(System.out, System.err, Channel.ALL, Clock.systemUTC(), OpenTelemetryTraceContext)
         }
         return createReposilite(
             parameters,
