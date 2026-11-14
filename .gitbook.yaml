@@ -157,5 +157,4 @@ redirects:
   references/configuration/settings-encryption: references/settings/settings-encryption.md
   references/configuration/login-providers: references/settings/login-providers.md
   references/configuration/opensearch-search-backend: references/settings/opensearch-search-backend.md
-  references/dashboard/README: references/plugins/README.md
-  references/dashboard: references/plugins/README.md
+  references/dashboard: references/http-api/dashboard-pages.md
