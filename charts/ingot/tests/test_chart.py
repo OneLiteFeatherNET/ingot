@@ -492,6 +492,42 @@ class ChartRenderTest(unittest.TestCase):
         values = {"deployment": {"replicas": 2}, "env": [{"name": "REPOSILITE_LOCAL_DATABASE", "value": "postgresql"}]}
         self.assertNotIn(DATABASE_WARNING, notes(values), "the legacy REPOSILITE_LOCAL_DATABASE must silence the warning")
 
+    def test_notes_do_not_warn_about_the_database_when_the_existing_secret_is_set(self):
+        values = {"deployment": {"replicas": 2}, "database": {"existingSecret": "ingot-database"}}
+        self.assertNotIn(DATABASE_WARNING, notes(values),
+                         "database.existingSecret sets INGOT_LOCAL_DATABASE, so the database warning must not appear")
+
+    def test_notes_do_not_warn_about_the_cluster_bus_when_its_url_is_set(self):
+        values = {"deployment": {"replicas": 2}, "clusterBus": {"url": "nats://broker.example.org:4222"}}
+        self.assertNotIn(CLUSTER_WARNING, notes(values),
+                         "clusterBus.url sets INGOT_CLUSTER_URL, so the cluster bus warning must not appear")
+
+    def test_notes_still_warn_about_the_database_when_only_the_cluster_bus_is_set(self):
+        values = {"deployment": {"replicas": 2}, "clusterBus": {"url": "nats://broker.example.org:4222"}}
+        self.assertIn(DATABASE_WARNING, notes(values),
+                      "the cluster bus must not silence the database warning, which is a different setting")
+
+    def test_autoscaler_is_absent_by_default(self):
+        self.assertEqual([], of_kind(render(), "HorizontalPodAutoscaler"), "no HorizontalPodAutoscaler by default")
+
+    def test_autoscaler_renders_its_bounds_and_targets_the_server_deployment(self):
+        values = {"autoscaling": {"enabled": True, "minReplicas": 2, "maxReplicas": 5}}
+        autoscalers = of_kind(render(values), "HorizontalPodAutoscaler")
+        self.assertEqual(1, len(autoscalers), "autoscaling.enabled must render exactly one HorizontalPodAutoscaler")
+        spec = autoscalers[0]["spec"]
+        self.assertEqual(2, spec["minReplicas"], "minReplicas must come from autoscaling.minReplicas")
+        self.assertEqual(5, spec["maxReplicas"], "maxReplicas must come from autoscaling.maxReplicas")
+        self.assertEqual(
+            {"apiVersion": "apps/v1", "kind": "Deployment", "name": SERVER},
+            spec["scaleTargetRef"],
+            "the autoscaler must target the server Deployment, not the dashboard",
+        )
+
+    def test_autoscaler_renders_the_cpu_and_memory_metrics_by_default(self):
+        autoscaler = named(render({"autoscaling": {"enabled": True}}), "HorizontalPodAutoscaler", SERVER)
+        names = [metric["resource"]["name"] for metric in autoscaler["spec"]["metrics"]]
+        self.assertEqual(["cpu", "memory"], names, "the default autoscaler scales on cpu and memory")
+
     def test_notes_warn_about_the_memory_metric_only_with_the_autoscaler_on(self):
         self.assertIn(MEMORY_WARNING, notes({"autoscaling": {"enabled": True}}),
                       "the default autoscaler lists the memory metric, so the warning must appear")
