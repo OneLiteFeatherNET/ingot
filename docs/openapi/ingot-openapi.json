@@ -2420,6 +2420,11 @@
         "scheme" : "bearer",
         "type" : "http"
       },
+      "sessionCookie" : {
+        "in" : "cookie",
+        "name" : "ingot_session",
+        "type" : "apiKey"
+      },
       "tokenBasic" : {
         "scheme" : "basic",
         "type" : "http"
@@ -3420,9 +3425,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
-        }, {
-          "tokenBasic" : [ ]
+          "sessionCookie" : [ ]
         } ],
         "summary" : "List own second factors",
         "tags" : [ "Identity" ]
@@ -3454,9 +3457,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
-        }, {
-          "tokenBasic" : [ ]
+          "sessionCookie" : [ ]
         } ],
         "summary" : "Start an authenticator enrolment",
         "tags" : [ "Identity" ]
@@ -3527,9 +3528,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
-        }, {
-          "tokenBasic" : [ ]
+          "sessionCookie" : [ ]
         } ],
         "summary" : "Confirm an authenticator enrolment",
         "tags" : [ "Identity" ]
@@ -3602,9 +3601,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
-        }, {
-          "tokenBasic" : [ ]
+          "sessionCookie" : [ ]
         } ],
         "summary" : "Remove an own second factor",
         "tags" : [ "Identity" ]
@@ -3688,9 +3685,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
-        }, {
-          "tokenBasic" : [ ]
+          "sessionCookie" : [ ]
         } ],
         "summary" : "Regenerate recovery codes",
         "tags" : [ "Identity" ]
@@ -3906,7 +3901,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3940,7 +3935,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3991,7 +3986,7 @@
           }
         },
         "security" : [ {
-          "sessionBearer" : [ ]
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],

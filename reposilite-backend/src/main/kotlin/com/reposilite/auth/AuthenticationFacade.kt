@@ -161,6 +161,17 @@ class AuthenticationFacade(
      * Called after every change of a token. Drops the cached credentials of that name, whichever secret or address they
      * were presented with, and bumps the generation so that an authentication still in flight is not cached.
      */
+    /**
+     * Forgets every cached credential of this instance. Used when a second factor changes: a directory login that was accepted
+     * before the change must be checked again, because the factor now decides it.
+     */
+    fun forgetAllCachedCredentials() {
+        synchronized(cacheLock) {
+            tokenGeneration.incrementAndGet()
+            authenticationCache.invalidateAll()
+        }
+    }
+
     internal fun forgetCachedCredentials(tokenName: String) {
         synchronized(cacheLock) {
             tokenGeneration.incrementAndGet()

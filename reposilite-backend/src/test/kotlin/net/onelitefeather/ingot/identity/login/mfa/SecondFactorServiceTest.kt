@@ -539,6 +539,26 @@ internal class SecondFactorServiceTest {
     }
 
     @Test
+    fun `a correct code clears the failures of the account, so earlier wrong codes do not add up`() {
+        withFixture(settings = LoginSettings(maxFailedAttempts = 3, lockoutMinutes = 5)) { fixture ->
+            val seed = fixture.enrolAuthenticator()
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+            val first = fixture.signInChallenge()
+            repeat(2) { fixture.service.completeChallenge(first, wrongCodeFor(seed), "10.0.0.1") }
+            fixture.service.completeChallenge(first, currentCode(seed), "10.0.0.1")
+            clock.advance(Duration.ofSeconds(TotpAlgorithm.STEP_SECONDS))
+            val second = fixture.signInChallenge()
+
+            // From another address, so that only the account counter could carry the earlier two failures.
+            // Without the reset, the account would be at three and the second attempt would be blocked.
+            fixture.service.completeChallenge(second, wrongCodeFor(seed), "10.0.0.2")
+            val outcome = fixture.service.completeChallenge(second, wrongCodeFor(seed), "10.0.0.2")
+
+            assertThat(outcome).`as`("second wrong code from another address after a success").isEqualTo(ChallengeCompletion.WrongCode)
+        }
+    }
+
+    @Test
     fun `a failed code locks the account for every address, not only the one that failed`() {
         withFixture(settings = LoginSettings(maxFailedAttempts = 3, lockoutMinutes = 5)) { fixture ->
             fixture.enrolAuthenticator()

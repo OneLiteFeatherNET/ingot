@@ -43,6 +43,8 @@ class LoginFacade internal constructor(
     private val sessions: SessionService?,
     private val ownTokens: OwnTokens?,
     private val secondFactor: SecondFactorService? = null,
+    /** Called when a second factor is confirmed or reset, so that the cached credentials of the instance are checked again. */
+    private val onSecondFactorChanged: () -> Unit = {},
 ) : Facade {
 
     /** The providers the login page shows, see [LoginService.announcements]. */
@@ -105,8 +107,13 @@ class LoginFacade internal constructor(
         secondFactor?.enrolmentStart(principalId, account, code, ip)
             ?: TotpEnrolmentStart.Unavailable("Second factors need the database")
 
-    fun confirmAuthenticatorEnrolment(principalId: Int, account: String, code: String, ip: String): EnrolmentConfirmation =
-        secondFactor?.confirmEnrolment(principalId, account, code, ip) ?: EnrolmentConfirmation.NoPendingEnrolment
+    fun confirmAuthenticatorEnrolment(principalId: Int, account: String, code: String, ip: String): EnrolmentConfirmation {
+        val outcome = secondFactor?.confirmEnrolment(principalId, account, code, ip) ?: EnrolmentConfirmation.NoPendingEnrolment
+        if (outcome is EnrolmentConfirmation.Confirmed) {
+            onSecondFactorChanged()
+        }
+        return outcome
+    }
 
     fun removeSecondFactor(principalId: Int, account: String, factorId: Int, code: String, ip: String, actor: AuditActor): FactorRemoval =
         secondFactor?.removeFactor(principalId, account, factorId, code, ip, actor) ?: FactorRemoval.NotFound
@@ -121,6 +128,7 @@ class LoginFacade internal constructor(
     fun resetSecondFactors(principalName: String, factorId: Int?, actor: AuditActor): Int? {
         val principalId = service?.principalIdOf(principalName) ?: return null
         val removed = secondFactor?.resetFactors(principalId, principalName, factorId, actor) ?: 0
+        onSecondFactorChanged()
         sessions?.revokeAllSessions(principalId)
         return removed
     }

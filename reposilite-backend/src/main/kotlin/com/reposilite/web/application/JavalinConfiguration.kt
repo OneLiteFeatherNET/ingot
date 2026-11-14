@@ -28,6 +28,8 @@ import com.reposilite.web.api.HttpServerConfigurationEvent
 import io.javalin.http.Header
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
+import net.onelitefeather.ingot.identity.session.SessionCookies
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.web.openapi.ExtensibleEnumSchemas
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
@@ -225,6 +227,7 @@ internal object JavalinConfiguration {
                 // Routes that need a login refer to them by name, so a generated client knows to send either one.
                 builder.withBasicAuth(TOKEN_BASIC_SCHEME) { }
                 builder.withBearerAuth(SESSION_BEARER_SCHEME) { }
+                builder.withCookieAuth(SESSION_COOKIE_SCHEME, SessionCookies.SESSION) { }
             }
             // Enums that grow get x-extensible-enum, so clients accept values they do not know yet.
             openapi.withDefinitionProcessor { document ->

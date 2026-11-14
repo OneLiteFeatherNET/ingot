@@ -26,9 +26,9 @@ import com.reposilite.token.AccessTokenType
 import com.reposilite.token.AccessTokenIdentifier
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
-import com.reposilite.web.api.SESSION_BEARER_SCHEME
-import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
+import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import io.javalin.community.routing.Route
 import io.javalin.http.HttpStatus.CONFLICT
 import io.javalin.http.HttpStatus.FORBIDDEN
@@ -82,7 +82,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/me/factors",
         methods = [HttpMethod.GET],
         summary = "List own second factors",
@@ -101,7 +101,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/me/factors/totp",
         methods = [HttpMethod.POST],
         summary = "Start an authenticator enrolment",
@@ -130,7 +130,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/me/factors/totp/confirm",
         methods = [HttpMethod.POST],
         summary = "Confirm an authenticator enrolment",
@@ -165,7 +165,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/me/factors/{id}",
         methods = [HttpMethod.DELETE],
         summary = "Remove an own second factor",
@@ -202,7 +202,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/me/recovery-codes",
         methods = [HttpMethod.POST],
         summary = "Regenerate recovery codes",
@@ -237,7 +237,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/factors",
         methods = [HttpMethod.GET],
         summary = "List a user's second factors",
@@ -259,7 +259,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/factors",
         methods = [HttpMethod.DELETE],
         summary = "Reset a user's second factors",
@@ -281,7 +281,7 @@ internal class SecondFactorEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/factors/{id}",
         methods = [HttpMethod.DELETE],
         summary = "Reset one second factor of a user",

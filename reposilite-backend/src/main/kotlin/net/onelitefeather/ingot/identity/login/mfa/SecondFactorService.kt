@@ -348,6 +348,10 @@ internal class SecondFactorService(
             audit(failure(account, ip, context))
             return CodeCheck.Rejected
         }
+        // A correct code clears the failures of this account and address, so that earlier wrong codes do not add up to a lock.
+        // The address alone keeps its count, so a success cannot reset the attempts of an address.
+        limiter.forget(keys[0])
+        limiter.forget(keys[2])
         return accepted
     }
 

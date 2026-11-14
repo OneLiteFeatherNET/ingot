@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.identity.login.mfa
 
 import com.reposilite.audit.api.AuditAction
+import com.reposilite.audit.api.AuditActor
 import com.reposilite.audit.api.AuditEvent
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import java.nio.file.Path
@@ -54,6 +55,9 @@ internal class SecondFactorLoginGateTest {
     @TempDir
     lateinit var workingDirectory: Path
 
+    /** How often the login announced a change of the second factors, which clears the cached credentials of the instance. */
+    private var credentialChanges = 0
+
     private class Gate(
         val facade: LoginFacade,
         val factors: SecondFactorService,
@@ -89,7 +93,13 @@ internal class SecondFactorLoginGateTest {
                 random = SecureRandom(),
                 hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
             )
-            val facade = LoginFacade(login, sessions = null, ownTokens = null, secondFactor = factors)
+            val facade = LoginFacade(
+                login,
+                sessions = null,
+                ownTokens = null,
+                secondFactor = factors,
+                onSecondFactorChanged = { credentialChanges++ },
+            )
             block(Gate(facade, factors, identities, audit))
         }
     }
@@ -200,6 +210,33 @@ internal class SecondFactorLoginGateTest {
             val expired = gate.facade.completeSecondFactor(challenge, gate.codeNow(seed), IP)
 
             assertThat(expired).`as`("expired challenge").isEqualTo(ChallengeCompletion.Gone)
+        }
+    }
+
+    @Test
+    fun `confirming an authenticator announces a change of the credentials`() {
+        withGate { gate ->
+            val principalId = gate.userWithPassword()
+            credentialChanges = 0
+            val started = gate.facade.startAuthenticatorEnrolment(principalId, "alice", code = null, ip = IP) as TotpEnrolmentStart.Started
+            val code = TotpAlgorithm.code(started.seed, clock.instant().epochSecond / TotpAlgorithm.STEP_SECONDS)
+
+            gate.facade.confirmAuthenticatorEnrolment(principalId, "alice", code, IP)
+
+            assertThat(credentialChanges).`as`("announcements after a confirmed factor").isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun `resetting the factors of a user announces a change of the credentials`() {
+        withGate { gate ->
+            val principalId = gate.userWithPassword()
+            gate.enrolAuthenticator(principalId)
+            credentialChanges = 0
+
+            gate.facade.resetSecondFactors("alice", factorId = null, actor = AuditActor.SYSTEM_ACTOR)
+
+            assertThat(credentialChanges).`as`("announcements after a reset").isEqualTo(1)
         }
     }
 

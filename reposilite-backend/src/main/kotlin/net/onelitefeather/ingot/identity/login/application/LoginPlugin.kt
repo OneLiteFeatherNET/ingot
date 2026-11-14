@@ -6,6 +6,7 @@ import com.reposilite.auth.application.AuthenticationSettings
 import com.reposilite.configuration.ConfigurationFacade
 import com.reposilite.configuration.local.LocalConfiguration
 import com.reposilite.token.AccessTokenFacade
+import com.reposilite.auth.AuthenticationFacade
 import com.reposilite.configuration.shared.SharedConfigurationFacade
 import com.reposilite.plugin.api.Facade
 import com.reposilite.plugin.api.Plugin
@@ -184,7 +185,14 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
-        val loginFacade = LoginFacade(loginService, sessions, ownTokens, secondFactors)
+        val authenticationFacade = facade<AuthenticationFacade>()
+        val loginFacade = LoginFacade(
+            loginService,
+            sessions,
+            ownTokens,
+            secondFactors,
+            onSecondFactorChanged = { authenticationFacade.forgetAllCachedCredentials() },
+        )
         accessTokenFacade.secondFactorGuard = { principalId -> loginFacade.hasSecondFactor(principalId) }
         val basePath = facade<LocalConfiguration>().basePath
 

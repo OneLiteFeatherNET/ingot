@@ -178,6 +178,18 @@ internal class SecondFactorIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `a bearer access token gets 403 on a factor route`() {
+        val (principalId, _) = userWithAuthenticator("wade-mfa")
+        val token = issueToken(principalId, "wade-ci")
+
+        val response = http.get("$base/api/identity/me/factors")
+            .header("Authorization", "Bearer ${token.secret}")
+            .asString()
+
+        assertThat(response.status).`as`("status of a bearer token request").isEqualTo(FORBIDDEN.code)
+    }
+
+    @Test
     fun `a basic token cannot start an authenticator enrolment`() {
         val (principalId, _) = userWithAuthenticator("tara-mfa")
         val token = issueToken(principalId, "tara-ci")
