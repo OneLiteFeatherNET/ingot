@@ -87,7 +87,9 @@ The `INGOT_` names are read first. Where a `REPOSILITE_` name exists, it is read
 
 ### Linking a team to a provider group needs the idp area
 
-Writes that set, change or clear the external reference of a team now need the admin area `ingot.admin.idp`, or `ingot.admin.*`. A token that holds only `ingot.admin.teams` gets 403 for such writes. Grant `ingot.admin.idp` to that token before the upgrade. As a temporary fallback, set `INGOT_IDENTITY_IDP_GUARD=warn`, then remove it once the grant is in place. Existing references, memberships and read-only calls are not changed by the upgrade. See [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md) and [Environment variables](environment-variables.md#identity-variables).
+Writes that set, change or clear the external reference of a team now need the admin area `ingot.admin.idp`, or `ingot.admin.*`. A token that holds only `ingot.admin.teams` gets 403 for such writes. Grant `ingot.admin.idp` to that token before the upgrade. As a temporary fallback, set `INGOT_IDENTITY_IDP_GUARD=warn`, then remove it once the grant is in place. Existing references, memberships and read-only calls are not changed by the upgrade. The same rule covers the identity fields of the `login` domain: a settings write that changes a provider's issuer, client credentials, claims or admin groups, or the LDAP connection or admin groups, needs `ingot.admin.idp` too. A settings token with only `ingot.admin.settings` can still change every other login setting, such as the session lifetimes.
+
+Mixed-version rolling upgrades are not guarded until every replica runs this release. An old replica accepts the writes that a new one refuses, because it has no guard, and the guard applies to the replica that serves the request. Upgrade all replicas before you grant or remove rights that depend on the guard, or stop the writes of automation until the upgrade is complete. See [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md) and [Environment variables](environment-variables.md#identity-variables).
 
 ### Cookie requests from other sites
 
