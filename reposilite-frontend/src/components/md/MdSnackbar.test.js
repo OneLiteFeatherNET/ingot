@@ -122,7 +122,7 @@ describe('MdSnackbar', () => {
     const host = wrapper.get('div').classes().join(' ')
 
     expect(host, 'the side offset comes from the rail width, not the bottom bar height').toContain(
-      'min-[600px]:left-[calc(var(--app-rail-width,0px)+1.5rem)]'
+      'medium:left-[calc(var(--app-rail-width,0px)+1.5rem)]'
     )
   })
 
@@ -131,7 +131,7 @@ describe('MdSnackbar', () => {
     const host = wrapper.get('div').classes().join(' ')
 
     expect(host, 'the offset adds the bar height and the safe area to the normal margin').toContain(
-      'max-[600px]:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))]'
+      'max-medium:bottom-[calc(1rem+var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom))]'
     )
   })
 })

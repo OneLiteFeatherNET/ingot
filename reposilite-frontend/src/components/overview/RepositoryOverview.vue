@@ -382,7 +382,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
             data-test="repository-row"
             :to="browseLocation(repository.id)"
             :aria-label="`Browse ${repository.id}`"
-            :class="['md-state-layer md-focus-ring-inset relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 px-4 text-on-surface no-underline min-[600px]:flex min-[600px]:gap-4', rowLayout(repository)]"
+            :class="['md-state-layer md-focus-ring-inset relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] gap-x-4 px-4 text-on-surface no-underline medium:flex medium:gap-4', rowLayout(repository)]"
           >
             <span
               class="flex size-10 shrink-0 items-center justify-center rounded-corner-full bg-secondary-container text-on-secondary-container"
@@ -426,7 +426,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
             -->
             <span
               data-test="marks"
-              class="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-2 min-[600px]:contents"
+              class="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-2 medium:contents"
             >
               <RepositoryTypeBadge
                 :repository="repository"

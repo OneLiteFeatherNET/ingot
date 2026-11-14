@@ -645,7 +645,7 @@ watch(
     <div
       v-if="hasUnsavedChanges"
       ref="barElement"
-      class="settings-save-bar sticky bottom-0 z-10 mt-6 max-[599px]:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]"
+      class="settings-save-bar sticky bottom-0 z-10 mt-6 max-medium:bottom-[calc(var(--app-bottom-bar-height,0px)+env(safe-area-inset-bottom,0px))]"
     >
       <UnsavedChangesBar
         :count="countOfChanges"

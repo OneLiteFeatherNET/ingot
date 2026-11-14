@@ -278,7 +278,7 @@ const formLayout = computed(() => {
       class="flex items-center gap-2"
     >
       <MdIconButton
-        class="min-[840px]:hidden"
+        class="expanded:hidden"
         :aria-label="backLabel"
         @click="emit('back')"
       >

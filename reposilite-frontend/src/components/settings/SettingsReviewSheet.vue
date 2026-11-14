@@ -92,7 +92,7 @@ const revertLabelOf = (change) => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-review-title"
-      class="flex min-h-full w-full flex-col bg-surface-container-low text-on-surface shadow-elevation-3 min-[840px]:w-[28rem] min-[840px]:rounded-l-corner-extra-large"
+      class="flex min-h-full w-full flex-col bg-surface-container-low text-on-surface shadow-elevation-3 expanded:w-[28rem] expanded:rounded-l-corner-extra-large"
       data-ingot-component="settings-review-sheet"
     >
       <header

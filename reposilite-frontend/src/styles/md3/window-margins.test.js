@@ -25,26 +25,23 @@ import { fileURLToPath } from 'node:url'
  * not process CSS imports, which is why the source is read directly.
  *
  * MD3 window size classes set the margins: 16px on compact windows (below 600px), 24px on
- * medium and expanded windows (600px and up). The rule has to sit inside @layer components.
- * Outside a layer it would beat every view's own px-* utility.
+ * medium and expanded windows (600px and up). The margins are the window margin tokens, and the
+ * rule is the container utility, which Tailwind places in the utilities layer.
  */
 const globalStyles = readFileSync(fileURLToPath(new URL('../../style.css', import.meta.url)), 'utf8')
 
 describe('shared container gutter', () => {
   it('pads the container 16px on compact windows', () => {
-    expect(globalStyles).toMatch(/\.container \{\s*padding-inline: 16px;\s*\}/)
+    expect(globalStyles).toMatch(/@utility container \{[\s\S]*?padding-inline: var\(--md-sys-window-margin-compact\);/)
   })
 
   it('pads the container 24px from 600px up, the medium window size', () => {
-    expect(globalStyles).toMatch(/@media \(width >= 600px\) \{\s*\.container \{\s*padding-inline: 24px;\s*\}\s*\}/)
+    expect(globalStyles).toMatch(/@utility container \{[\s\S]*?@media \(width >= 600px\) \{\s*padding-inline: var\(--md-sys-window-margin-medium\);\s*\}/)
   })
 
-  it('keeps the gutter rule inside the components layer', () => {
-    const layerStart = globalStyles.indexOf('@layer components {')
-    const containerRule = globalStyles.indexOf('.container {')
-
-    expect(layerStart).toBeGreaterThan(-1)
-    expect(containerRule).toBeGreaterThan(layerStart)
+  it('declares the gutter as a utility, not as a plain class rule', () => {
+    expect(globalStyles, 'the container gutter is a @utility, so Tailwind layers it with the other utilities').toContain('@utility container {')
+    expect(globalStyles, 'no plain .container rule remains').not.toMatch(/(^|\n)\s*\.container \{/)
   })
 
   it('no longer uses the 40px padding of the old rule', () => {

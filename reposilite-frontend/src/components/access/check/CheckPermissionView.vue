@@ -309,7 +309,7 @@ onMounted(() => {
     </div>
 
     <form
-      class="grid grid-cols-1 gap-4 rounded-corner-large bg-surface-container-low px-4 py-4 min-[840px]:grid-cols-2"
+      class="grid grid-cols-1 gap-4 rounded-corner-large bg-surface-container-low px-4 py-4 expanded:grid-cols-2"
       novalidate
       data-test="check-form"
       @submit.prevent="submit"
@@ -326,7 +326,7 @@ onMounted(() => {
         @update:model-value="onPrincipal"
       />
       <div
-        class="min-[840px]:col-span-2"
+        class="expanded:col-span-2"
       >
         <SegmentedControl label="Check by">
           <SegmentedOption
@@ -405,7 +405,7 @@ onMounted(() => {
           @update:model-value="onToken"
         />
       </div>
-      <div class="flex items-start min-[840px]:col-span-2">
+      <div class="flex items-start expanded:col-span-2">
         <MdButton
           type="submit"
           variant="filled"

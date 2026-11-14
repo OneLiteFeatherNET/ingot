@@ -83,12 +83,12 @@ const deleted = (name) => {
   <section
     aria-label="Teams"
     data-test="teams"
-    class="grid overflow-hidden min-[840px]:rounded-corner-large min-[840px]:border min-[840px]:border-outline-variant min-[840px]:grid-cols-[minmax(0,380px)_minmax(0,1fr)]"
+    class="grid overflow-hidden expanded:rounded-corner-large expanded:border expanded:border-outline-variant expanded:grid-cols-[minmax(0,380px)_minmax(0,1fr)]"
     data-ingot-component="teams-panel"
   >
     <div
-      class="flex min-w-0 flex-col gap-3 min-[840px]:border-r min-[840px]:border-outline-variant min-[840px]:p-3"
-      :class="name ? 'max-[839px]:hidden' : ''"
+      class="flex min-w-0 flex-col gap-3 expanded:border-r expanded:border-outline-variant expanded:p-3"
+      :class="name ? 'max-expanded:hidden' : ''"
     >
       <MdButton
         data-test="new-team"
@@ -193,8 +193,8 @@ const deleted = (name) => {
     </div>
 
     <div
-      class="min-w-0 min-[840px]:p-6"
-      :class="name ? '' : 'max-[839px]:hidden'"
+      class="min-w-0 expanded:p-6"
+      :class="name ? '' : 'max-expanded:hidden'"
     >
       <TeamDetail
         v-if="name"
