@@ -21,15 +21,15 @@ SUMMARY = os.path.join(GITBOOK_DIR, "SUMMARY.md")
 VALUES = os.path.join(REPO_DIR, "charts", "ingot", "values.yaml")
 
 NEW_GUIDES = [
-    "how-to/terminate-tls-at-the-gateway.md",
-    "how-to/configure-the-edge-for-large-uploads.md",
-    "how-to/manage-secrets-with-gitops.md",
-    "how-to/size-the-deployment.md",
-    "explanation/deployment-options-compared.md",
+    "set-up/kubernetes/terminate-tls-at-the-gateway.md",
+    "set-up/network/configure-the-edge-for-large-uploads.md",
+    "set-up/kubernetes/manage-secrets-with-gitops.md",
+    "set-up/size-the-deployment.md",
+    "set-up/deployment-options-compared.md",
 ]
 
 # Pages that carry a values block of this change: the new guides and the pages they update.
-CHECKED_PAGES = NEW_GUIDES + ["how-to/use-s3-storage.md", "how-to/run-on-kubernetes.md"]
+CHECKED_PAGES = NEW_GUIDES + ["set-up/cluster/use-s3-storage.md", "set-up/kubernetes/run-on-kubernetes.md"]
 
 SUMMARY_LINK = re.compile(r"\]\(([^)\s]+\.md)\)")
 YAML_BLOCK = re.compile(r"^([ \t]*)```yaml[^\n]*\n(.*?)^\1```", re.DOTALL | re.MULTILINE)
