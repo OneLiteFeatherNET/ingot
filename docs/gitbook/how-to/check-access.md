@@ -91,7 +91,7 @@ To list every principal that has access to a repository, with the reason for eac
 
 ## Your own access
 
-To see what you may do yourself, without the instance admin role, call `GET /api/identity/me/access` with your own session or token. The answer lists your teams with their direct parents, your allowed nodes, the nodes you are denied, your grants and whether you are an instance admin. It never describes another principal, and it accepts no principal parameter.
+To see what you may do yourself, without the instance admin role, call `GET /api/identity/me/access` with your own session or token. The answer lists your teams with their direct parents, your allowed nodes, the nodes you are denied, your grants and whether you are an instance admin. Each denied node has an `overridden` flag: `true` means a more specific allow of yours wins for that node, and `false` means the access check denies it too. It never describes another principal, and it accepts no principal parameter.
 
 ```bash
 curl -H "Authorization: Bearer $INGOT_TOKEN" "$INGOT_URL/api/identity/me/access"
