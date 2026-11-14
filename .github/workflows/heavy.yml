@@ -73,7 +73,7 @@ jobs:
   # asked for them, and is red on a release pull request until every heavy job ran in full and passed.
   heavy-tests:
     name: "Heavy tests"
-    needs: [ gate, images, helm, ha, e2e ]
+    needs: [ gate, integration, images, helm, ha, e2e ]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -598,5 +598,94 @@ jobs:
           path: |
             reposilite-frontend/playwright-report
             reposilite-frontend/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The Testcontainers integration suite, about 108 minutes in full. A labelled pull request runs the integration tests
+  # its change can reach (select_backend_tests.py), and a release pull request or a manual run on main runs the whole
+  # suite. A selection that names no integration filter, or a failing script, runs the whole suite as well.
+  integration:
+    name: "Integration tests (backend)"
+    needs: [ gate ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.integration == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    env:
+      # Four forks instead of the two that half of the four runner cores give. Every fork starts its own MariaDB,
+      # PostgreSQL, S3, NATS and Valkey containers, so memory scales with it. Read by integrationForks() in
+      # build.gradle.kts.
+      INGOT_TEST_FORKS: "4"
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          # The selection diffs the pull request against its base.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Validate Gradle wrapper"
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      - name: "Set up Java"
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      # Only a labelled pull request on a normal branch gets a partial run. A release pull request, a dispatch, a
+      # failed gate, a missing diff and a failing script all give mode=full.
+      - name: "Select the integration tests"
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          FULL: ${{ needs.gate.outputs.full }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          selection="$RUNNER_TEMP/integration-selection.txt"
+          changed="$RUNNER_TEMP/integration-changed.txt"
+          if [ "$EVENT" != "pull_request" ] || [ "$FULL" = "true" ]; then
+            printf '%s\n' "mode=full" "reason=a full run was asked for" > "$selection"
+          elif [ -z "$BASE" ] || [ -z "$HEAD" ] || ! git diff --name-only "$BASE...$HEAD" > "$changed"; then
+            printf '%s\n' "mode=full" "reason=the pull request diff is not available" > "$selection"
+          elif ! python3 .github/scripts/select_backend_tests.py < "$changed" > "$selection"; then
+            printf '%s\n' "mode=full" "reason=the selection script failed" > "$selection"
+          fi
+          mode="$(sed -n 's/^mode=//p' "$selection" | head -n 1)"
+          if [ "$mode" != "partial" ] || ! grep -q '^integration=' "$selection"; then
+            mode=full
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Integration test selection"
+            echo
+            echo "- Mode: \`$mode\`"
+            sed -n 's/^reason=/- Reason: /p' "$selection"
+            sed -n 's/^integration=\(.*\)$/- Filter: `\1`/p' "$selection"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "Run the selected integration tests"
+        if: ${{ steps.select.outputs.mode == 'partial' }}
+        run: |
+          selection="$RUNNER_TEMP/integration-selection.txt"
+          test_args=()
+          while IFS= read -r pattern; do test_args+=(--tests "$pattern"); done < <(sed -n 's/^integration=//p' "$selection")
+          ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration "${test_args[@]}"
+
+      - name: "Run the full integration suite"
+        if: ${{ steps.select.outputs.mode != 'partial' }}
+        run: ./gradlew --no-daemon --max-workers=2 --build-cache :reposilite-backend:integration
+
+      - name: "Publish the integration test report"
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: integration-test-report
+          path: reposilite-backend/build/reports/tests/integration
           retention-days: 7
           if-no-files-found: ignore
