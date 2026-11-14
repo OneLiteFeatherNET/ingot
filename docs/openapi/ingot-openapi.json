@@ -717,6 +717,15 @@
         "required" : [ "value", "count" ],
         "type" : "object"
       },
+      "FactorResetDto" : {
+        "properties" : {
+          "removed" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "FailureResponse" : {
         "properties" : {
           "count" : {
@@ -3915,6 +3924,134 @@
           "tokenBasic" : [ ]
         } ],
         "summary" : "Updates the display name or the disabled flag of a principal. Note: Requires the users area (ingot.admin.users)",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}/factors" : {
+      "delete" : {
+        "description" : "Instance admins only. Removes every second factor and recovery code of a user, and ends the sessions of the user. The next sign-in needs no second factor",
+        "parameters" : [ {
+          "description" : "Name of the user",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FactorResetDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Not Found"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Reset a user's second factors",
+        "tags" : [ "Identity" ]
+      },
+      "get" : {
+        "description" : "Instance admins only. Names, kinds and times of the factors of a user, never secrets",
+        "parameters" : [ {
+          "description" : "Name of the user",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The factors of the user"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Not Found"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "List a user's second factors",
+        "tags" : [ "Identity" ]
+      }
+    },
+    "/api/identity/principals/{name}/factors/{id}" : {
+      "delete" : {
+        "description" : "Instance admins only. Removes one factor of a user and ends the sessions of the user",
+        "parameters" : [ {
+          "description" : "Name of the user",
+          "in" : "path",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Id of the factor",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FactorResetDto"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description" : "Not Found"
+          }
+        },
+        "security" : [ {
+          "sessionCookie" : [ ]
+        }, {
+          "tokenBasic" : [ ]
+        } ],
+        "summary" : "Reset one second factor of a user",
         "tags" : [ "Identity" ]
       }
     },
