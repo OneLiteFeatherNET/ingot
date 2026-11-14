@@ -18,6 +18,7 @@
 
 package net.onelitefeather.ingot.meilisearch
 
+import net.onelitefeather.ingot.search.InvalidSearchQueryException
 import net.onelitefeather.ingot.search.SearchUnavailableException
 import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.SearchAccess
@@ -111,12 +112,60 @@ internal object MeilisearchFilters {
     /** A string value of the filter language, with the backslash and the quote escaped. */
     fun quote(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
+    /** The most words of a query text, and the most characters, as the database backend refuses them. */
+    const val MAX_QUERY_WORDS: Int = 5
+    const val MAX_QUERY_LENGTH: Int = 200
+
+    /** The most parts of a coordinate word, `groupId:artifactId:version`. */
+    const val MAX_COORDINATE_PARTS: Int = 3
+
+    /**
+     * The lower-cased words of a query text. A text longer than [MAX_QUERY_LENGTH] characters, or with more than [MAX_QUERY_WORDS]
+     * words, is refused with the message of the database backend.
+     */
+    fun wordsOf(text: String?): List<String> {
+        val trimmed = text?.trim().orEmpty()
+        if (trimmed.length > MAX_QUERY_LENGTH) throw InvalidSearchQueryException("q", "q is limited to $MAX_QUERY_LENGTH characters")
+        val words = trimmed.lowercase(Locale.ROOT).split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (words.size > MAX_QUERY_WORDS) throw InvalidSearchQueryException("q", "q is limited to $MAX_QUERY_WORDS tokens")
+        return words
+    }
+
     /**
      * The conditions of the words of a query text, one per word, all of which must match, as on the database backend.
      */
-    fun wordConditions(text: String): List<String> {
-        val words = text.trim().lowercase(Locale.ROOT).split(Regex("\\s+")).filter { it.isNotEmpty() }
+    fun wordConditions(text: String?): List<String> {
+        val words = wordsOf(text)
         return words.mapIndexed { index, word -> wordCondition(word, last = index == words.lastIndex) }
+    }
+
+    /**
+     * The parts of a coordinate word, `groupId:artifactId:version`, each one optional and empty when absent. A word with more parts
+     * than [MAX_COORDINATE_PARTS] is refused, as on the database backend.
+     */
+    fun coordinatePartsOf(word: String): List<String> {
+        val parts = word.split(':')
+        if (parts.size > MAX_COORDINATE_PARTS) {
+            throw InvalidSearchQueryException("q", "a coordinates token has at most groupId:artifactId:version")
+        }
+        return parts + List(MAX_COORDINATE_PARTS - parts.size) { "" }
+    }
+
+    /**
+     * The condition of a coordinate word, as the database matches it: the groupId is a prefix of the groupId, the artifactId a prefix
+     * of the artifactId and the version the exact version. A word without any part is refused, and it has no token branch.
+     */
+    private fun coordinateCondition(word: String): String {
+        val (group, artifact, version) = coordinatePartsOf(word)
+        val conditions = listOfNotNull(
+            group.takeIf { it.isNotEmpty() }?.let { "group_heads = ${quote(it)}" },
+            artifact.takeIf { it.isNotEmpty() }?.let { "artifact_heads = ${quote(it)}" },
+            version.takeIf { it.isNotEmpty() }?.let { "version_lc = ${quote(it)}" },
+        )
+        if (conditions.isEmpty()) {
+            throw InvalidSearchQueryException("q", "a coordinates token needs a groupId, an artifactId or a version")
+        }
+        return if (conditions.size == 1) conditions.single() else conditions.joinToString(separator = " AND ", prefix = "(", postfix = ")")
     }
 
     /**
@@ -127,6 +176,7 @@ internal object MeilisearchFilters {
      */
     private fun wordCondition(word: String, last: Boolean): String {
         val head = "word_heads = ${quote(word)}"
+        if (':' in word) return coordinateCondition(word)
         if ('.' in word) return head
         val parts = SearchTokens.partsOf(word)
         if (parts.isEmpty() || parts.size > MAX_WORD_PARTS) return head
