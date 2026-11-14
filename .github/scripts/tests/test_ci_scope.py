@@ -316,7 +316,7 @@ class CoverageJobsInWorkflowTest(unittest.TestCase):
         block = job_block(self.workflow, "coverage-backend")
         step = step_block(block, "Run tests with coverage")
         self.assertIsNotNone(step, "backend job has no full coverage step")
-        self.assertIn("./gradlew :reposilite-backend:testCoverage", step)
+        self.assertIn("./gradlew --build-cache :reposilite-backend:testCoverage", step)
         self.assertIn("needs.coverage-changes.outputs.frontend_only != 'true'", step)
 
     def test_backend_job_runs_only_the_dashboard_tests_on_frontend_only_changes(self):
