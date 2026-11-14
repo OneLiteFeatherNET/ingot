@@ -18,25 +18,25 @@ GITBOOK_DIR = os.path.join(REPO_DIR, "docs", "gitbook")
 SUMMARY = os.path.join(GITBOOK_DIR, "SUMMARY.md")
 LOGIN_SOURCES = os.path.join(REPO_DIR, "reposilite-backend", "src", "main", "kotlin", "net", "onelitefeather", "ingot", "identity", "login")
 OIDC_SETTINGS = os.path.join(LOGIN_SOURCES, "oidc", "OidcSettings.kt")
-TROUBLESHOOTING = "how-to/troubleshoot-external-login.md"
+TROUBLESHOOTING = "configure/authentication/troubleshoot-external-login.md"
 
 NEW_PAGES = [
-    "how-to/configure-keycloak-login.md",
-    "how-to/configure-authentik-login.md",
-    "how-to/configure-okta-login.md",
-    "how-to/configure-google-workspace-login.md",
-    "how-to/map-provider-groups-to-teams.md",
+    "configure/authentication/configure-keycloak-login.md",
+    "configure/authentication/configure-authentik-login.md",
+    "configure/authentication/configure-okta-login.md",
+    "configure/authentication/configure-google-workspace-login.md",
+    "configure/authentication/map-provider-groups-to-teams.md",
     TROUBLESHOOTING,
 ]
 
 # The provider recipes: the four new ones plus the two existing pages brought to the same shape.
 RECIPES = [
-    "how-to/configure-keycloak-login.md",
-    "how-to/configure-authentik-login.md",
-    "how-to/configure-okta-login.md",
-    "how-to/configure-google-workspace-login.md",
-    "how-to/configure-entra-id-login.md",
-    "how-to/configure-github-login.md",
+    "configure/authentication/configure-keycloak-login.md",
+    "configure/authentication/configure-authentik-login.md",
+    "configure/authentication/configure-okta-login.md",
+    "configure/authentication/configure-google-workspace-login.md",
+    "configure/authentication/configure-entra-id-login.md",
+    "configure/authentication/configure-github-login.md",
 ]
 
 SECTION_ORDER = [
