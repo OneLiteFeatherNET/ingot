@@ -32,8 +32,9 @@ import MdButton from './MdButton.vue'
  *          An item with `type: 'radio'` and `checked` is a menu radio button, drawn as the choice in use. An item
  *          with `type: 'separator'` is a divider between groups, and takes no focus.
  * Slots:
- *   trigger  the content of the button, in place of the word Actions. The button is then named by its content,
- *            so the label names the menu alone; a visible name must not differ from the label of the button
+ *   trigger  the content of the button, in place of the word Actions. The button is then named by its content, so the
+ *            content carries the name: visually hidden text that says it opens a menu, followed by the visible name.
+ *            The label names the menu alone (the menu element is labelled by it)
  *   header   a line above the items, such as the name of the signed in user; it is not a menu item
  * Emits:
  *   select  the value of the chosen item; the menu closes and the focus returns to the button

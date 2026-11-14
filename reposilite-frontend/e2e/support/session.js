@@ -40,7 +40,7 @@ const signInAsAdmin = async (page) => {
   await dialog.getByLabel('Password', { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD)
   await dialog.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByRole('button', { name: ACCOUNT_NAME, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Account menu for ${ACCOUNT_NAME}`, exact: true })).toBeVisible()
 }
 
 const signInWithAccessToken = async (page) => {
@@ -52,9 +52,9 @@ const signInWithAccessToken = async (page) => {
 }
 
 const signOut = async (page) => {
-  await page.getByRole('button', { name: ACCOUNT_NAME, exact: true }).click()
+  await page.getByRole('button', { name: `Account menu for ${ACCOUNT_NAME}`, exact: true }).click()
   await page.getByRole('menuitem', { name: 'Logout', exact: true }).click()
-  await expect(page.getByRole('button', { name: ACCOUNT_NAME, exact: true })).toBeHidden()
+  await expect(page.getByRole('button', { name: `Account menu for ${ACCOUNT_NAME}`, exact: true })).toBeHidden()
   await expect(page.getByRole('button', { name: 'Sign in', exact: true }).first()).toBeVisible()
 }
 

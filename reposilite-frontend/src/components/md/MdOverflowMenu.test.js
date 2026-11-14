@@ -16,6 +16,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { computeAccessibleName } from 'dom-accessibility-api'
 import MdOverflowMenu from './MdOverflowMenu.vue'
 
 // The menu is teleported to the body, so it is read from the document and not from the wrapper.
@@ -185,9 +186,9 @@ describe('MdOverflowMenu', () => {
   })
 
   describe('trigger and header slots', () => {
-    it('draws the trigger slot in place of the Actions text, and leaves the name to the visible content', async () => {
+    it('draws the trigger slot in place of the Actions text', async () => {
       wrapper = mount(MdOverflowMenu, {
-        props: { label: 'Account menu', items: ITEMS },
+        props: { label: 'Account menu for Alice', items: ITEMS },
         slots: { trigger: '<span data-test="custom-trigger">Alice</span>' },
         attachTo: document.body
       })
@@ -195,7 +196,33 @@ describe('MdOverflowMenu', () => {
 
       expect(wrapper.find('[data-test="custom-trigger"]').exists(), 'the slot content is the trigger').toBe(true)
       expect(trigger().text(), 'the default text is not drawn').not.toBe('Actions')
-      expect(trigger().attributes('aria-label'), 'a label that differs from the visible name would mismatch it').toBeUndefined()
+    })
+
+    it('leaves the name of a trigger with a slot to its content, so the content can carry the visible name', async () => {
+      wrapper = mount(MdOverflowMenu, {
+        props: { label: 'Account menu for Alice', items: ITEMS },
+        slots: { trigger: '<span class="sr-only">Account menu for</span> <span aria-hidden="true">A</span> <span>Alice</span>' },
+        attachTo: document.body
+      })
+      await flushPromises()
+
+      expect(trigger().attributes('aria-label'), 'no label overrides the content (WCAG 2.5.3, Label in Name)').toBeUndefined()
+      expect(computeAccessibleName(trigger().element), 'the content gives the name, and the visible name is part of it').toBe('Account menu for Alice')
+    })
+
+    it('keeps aria-haspopup and aria-expanded correct on a trigger with a slot', async () => {
+      wrapper = mount(MdOverflowMenu, {
+        props: { label: 'Account menu for Alice', items: ITEMS },
+        slots: { trigger: '<span>Alice</span>' },
+        attachTo: document.body
+      })
+      await flushPromises()
+
+      expect(trigger().attributes('aria-haspopup'), 'the trigger opens a menu').toBe('menu')
+      expect(trigger().attributes('aria-expanded'), 'the menu is closed at first').toBe('false')
+      await trigger().trigger('click')
+      await flushPromises()
+      expect(trigger().attributes('aria-expanded'), 'the trigger reports the open menu').toBe('true')
     })
 
     it('names the menu by the label when the trigger carries its own content', async () => {
