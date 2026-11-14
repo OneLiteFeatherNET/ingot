@@ -23,6 +23,13 @@ import com.reposilite.token.AccessTokenType.PRINCIPAL
 import net.onelitefeather.ingot.identity.api.TokenDto
 import net.onelitefeather.ingot.identity.login.api.SelfTokenRequest
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
+import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
+import net.onelitefeather.ingot.identity.login.mfa.EnrolmentConfirmation
+import net.onelitefeather.ingot.identity.login.mfa.FactorRecord
+import net.onelitefeather.ingot.identity.login.mfa.FactorRemoval
+import net.onelitefeather.ingot.identity.login.mfa.RecoveryCodesOutcome
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
+import net.onelitefeather.ingot.identity.login.mfa.TotpEnrolmentStart
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionTokens
 
@@ -35,6 +42,7 @@ class LoginFacade internal constructor(
     private val service: LoginService?,
     private val sessions: SessionService?,
     private val ownTokens: OwnTokens?,
+    private val secondFactor: SecondFactorService? = null,
 ) : Facade {
 
     /** The providers the login page shows, see [LoginService.announcements]. */
@@ -51,8 +59,66 @@ class LoginFacade internal constructor(
     fun completeSetup(givenCode: String, username: String, password: String, displayName: String?, ip: String): SetupOutcome =
         service?.completeSetup(givenCode, username, password, displayName, ip) ?: SetupOutcome.NotRequired
 
-    fun login(providerId: String, username: String, password: String, ip: String): LoginOutcome =
-        service?.login(providerId, username, password, ip) ?: LoginOutcome.UnknownProvider
+    /**
+     * A password login. When the password is right and the user has an authenticator, no session starts: the outcome is
+     * [LoginOutcome.SecondFactorRequired], and [completeSecondFactor] finishes the sign-in.
+     */
+    fun login(providerId: String, username: String, password: String, ip: String): LoginOutcome {
+        val outcome = service?.login(providerId, username, password, ip) ?: return LoginOutcome.UnknownProvider
+        if (outcome !is LoginOutcome.Succeeded) {
+            return outcome
+        }
+        val factors = secondFactor ?: return outcome
+        if (!factors.requiresSecondFactor(outcome.principal.id)) {
+            return outcome
+        }
+        return LoginOutcome.SecondFactorRequired(challenge = factors.startChallenge(outcome.principal.id))
+    }
+
+    /** Completes a sign-in that waits for its second factor. The caller starts the session only on [ChallengeCompletion.Verified]. */
+    fun completeSecondFactor(challenge: String, code: String, ip: String): ChallengeCompletion =
+        secondFactor?.completeChallenge(challenge, code, ip) ?: ChallengeCompletion.Gone
+
+    /** Whether a principal has a second factor, which an external sign-in must not skip. */
+    fun hasSecondFactor(principalId: Int): Boolean =
+        secondFactor?.requiresSecondFactor(principalId) ?: false
+
+    fun secondFactorsOf(principalId: Int): List<FactorRecord> =
+        secondFactor?.factorsOf(principalId).orEmpty()
+
+    /** The factors of a user, for an administrator. `null` when no user has that name. */
+    fun secondFactorsOfPrincipal(principalName: String): List<FactorRecord>? {
+        val principalId = service?.principalIdOf(principalName) ?: return null
+        return secondFactorsOf(principalId)
+    }
+
+    /** Whether the user must choose a new password at the next sign-in. */
+    fun mustChangePassword(principalId: Int): Boolean =
+        service?.mustChangePassword(principalId) ?: false
+
+    fun startAuthenticatorEnrolment(principalId: Int, account: String): TotpEnrolmentStart =
+        secondFactor?.enrolmentStart(principalId, account)
+            ?: TotpEnrolmentStart.Unavailable("Second factors need the database")
+
+    fun confirmAuthenticatorEnrolment(principalId: Int, account: String, code: String, ip: String): EnrolmentConfirmation =
+        secondFactor?.confirmEnrolment(principalId, account, code, ip) ?: EnrolmentConfirmation.NoPendingEnrolment
+
+    fun removeSecondFactor(principalId: Int, account: String, factorId: Int, code: String, ip: String, actor: AuditActor): FactorRemoval =
+        secondFactor?.removeFactor(principalId, account, factorId, code, ip, actor) ?: FactorRemoval.NotFound
+
+    fun regenerateRecoveryCodes(principalId: Int, account: String, code: String, ip: String, actor: AuditActor): RecoveryCodesOutcome =
+        secondFactor?.regenerateRecoveryCodes(principalId, account, code, ip, actor) ?: RecoveryCodesOutcome.NoFactor
+
+    /**
+     * An administrator removes the factors of a user, all of them or the one [factorId] names. The sessions of the user end at
+     * once, so that the next sign-in has to pass the factors that are left.
+     */
+    fun resetSecondFactors(principalName: String, factorId: Int?, actor: AuditActor): Int? {
+        val principalId = service?.principalIdOf(principalName) ?: return null
+        val removed = secondFactor?.resetFactors(principalId, principalName, factorId, actor) ?: 0
+        sessions?.revokeAllSessions(principalId)
+        return removed
+    }
 
     /** Creates a human user with a local password. Returns `null` when the name is taken. */
     fun createUser(name: String, displayName: String, password: String, disabled: Boolean = false): PrincipalRecord? =

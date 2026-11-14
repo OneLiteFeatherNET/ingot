@@ -42,6 +42,12 @@ sealed interface LoginOutcome {
     /** The directory cannot be reached. The credentials were not judged, so the failure limit does not count this. */
     data object Unavailable : LoginOutcome
 
+    /**
+     * The password was right, and the user has a second factor. No session starts. [challenge] is the id of the sign-in
+     * challenge, which the browser keeps in a cookie until the factor completes the sign-in.
+     */
+    data class SecondFactorRequired(val challenge: String) : LoginOutcome
+
 }
 
 /** The result of a password change or reset. */

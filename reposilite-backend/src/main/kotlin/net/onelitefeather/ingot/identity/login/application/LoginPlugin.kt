@@ -15,6 +15,7 @@ import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginProviderType
 import net.onelitefeather.ingot.identity.login.LoginService
@@ -24,10 +25,13 @@ import net.onelitefeather.ingot.identity.login.PasswordHasher
 import net.onelitefeather.ingot.identity.login.ProviderAnnouncement
 import net.onelitefeather.ingot.identity.login.api.AuthLoginEndpoints
 import net.onelitefeather.ingot.identity.login.api.ProviderTestEndpoints
+import net.onelitefeather.ingot.identity.login.api.SecondFactorEndpoints
 import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
 import net.onelitefeather.ingot.identity.login.ldap.LdapDirectories
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
+import net.onelitefeather.ingot.identity.login.mfa.SettingsSeedCipher
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
 import net.onelitefeather.ingot.identity.login.oidc.IdTokenValidator
 import net.onelitefeather.ingot.identity.login.oidc.JdkHttpFetcher
@@ -37,6 +41,7 @@ import net.onelitefeather.ingot.identity.login.oidc.OidcMetadata
 import net.onelitefeather.ingot.identity.login.oidc.OidcProviderCatalog
 import net.onelitefeather.ingot.identity.login.oidc.OidcStateCookie
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
+import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionSigner
 import net.onelitefeather.ingot.identity.storage.IdentityStore
@@ -121,6 +126,21 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // Second factors of password logins. Authenticator seeds are sealed with the settings key, read on every use, so a key
+        // that is set later applies without a restart. Without a key, authenticator codes are refused and nothing else changes.
+        val secondFactors = database?.let { database ->
+            val credentials = LoginStore(database, clock)
+            SecondFactorService(
+                store = SecondFactorStore(database, clock),
+                identities = IdentityStore(database),
+                limiter = LoginAttemptLimiter(credentials, loginSettings, clock),
+                seeds = SettingsSeedCipher(codecs = { facade<SharedConfigurationFacade>().settingsCodecs() }),
+                clock = clock,
+                audit = audit,
+                hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
+            )
+        }
+
         // One cache of discovery documents and key sets, shared by the logins and the connection test.
         val oidcMetadata = OidcMetadata(JdkHttpFetcher(), clock)
 
@@ -162,13 +182,14 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
-        val loginFacade = LoginFacade(loginService, sessions, ownTokens)
+        val loginFacade = LoginFacade(loginService, sessions, ownTokens, secondFactors)
         val basePath = facade<LocalConfiguration>().basePath
 
         event { event: RoutingSetupEvent ->
             if (loginService != null) {
                 event.registerRoutes(AuthLoginEndpoints(loginFacade, basePath))
                 event.registerRoutes(SelfServiceEndpoints(loginFacade, accessTokenFacade))
+                event.registerRoutes(SecondFactorEndpoints(loginFacade, accessTokenFacade))
                 event.registerRoutes(ProviderTestEndpoints(OidcConnectionCheck(oidcCatalog, oidcMetadata), loginSettings))
             }
             if (oidcService != null) {

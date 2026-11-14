@@ -96,14 +96,12 @@ internal class SettingsAuditAndLogTest {
         // given / when
         val actions = AuditAction.entries.map { it.name }
 
-        // then: the new names follow the last action that existed before, in the order of the design
-        val tail = actions.takeLast(4)
-        assertThat(tail)
-            .describedAs("last four audit actions")
+        // then: the new names follow the last action that existed before, in the order of the design. Later actions are
+        // appended after them, so the check looks at the four positions that follow the support bundle action.
+        val before = actions.indexOf("SUPPORT_BUNDLE_DOWNLOADED")
+        assertThat(actions.subList(before + 1, before + 5))
+            .describedAs("the four actions after the support bundle action")
             .containsExactly("SETTINGS_EXPORTED", "SETTINGS_IMPORT_DECRYPTED", "SETTINGS_IMPORT_REFUSED", "SETTINGS_SECRETS_REENCRYPTED")
-        assertThat(actions.indexOf("SUPPORT_BUNDLE_DOWNLOADED"))
-            .describedAs("position of the action before the new ones")
-            .isEqualTo(actions.size - 5)
     }
 
     @Test

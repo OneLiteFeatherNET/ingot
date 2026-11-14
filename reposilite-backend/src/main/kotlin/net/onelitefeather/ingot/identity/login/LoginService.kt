@@ -111,7 +111,7 @@ class LoginService internal constructor(
             // The password was judged to be wrong for this account: counted like a rejection by the audit trail.
             is LoginOutcome.Refused -> recordRejected(username, ip)
             // The directory did not answer, so nothing was judged and nothing counts towards the limit.
-            LoginOutcome.Unavailable, is Blocked, UnknownProvider -> Unit
+            LoginOutcome.Unavailable, is Blocked, UnknownProvider, is LoginOutcome.SecondFactorRequired -> Unit
         }
         return outcome
     }
@@ -167,6 +167,10 @@ class LoginService internal constructor(
     /** Whether at least one human principal exists. The setup code is needed exactly as long as this is `false`. */
     fun hasUsers(): Boolean =
         identities.listPrincipals(PrincipalKind.USER).isNotEmpty()
+
+    /** Whether the user must choose a new password at the next sign-in, which an administrator reset asks for. */
+    fun mustChangePassword(principalId: Int): Boolean =
+        credentials.findCredential(principalId)?.mustChangePassword ?: false
 
     fun principalIdOf(principalName: String): Int? =
         identities.findPrincipal(principalName)?.id
