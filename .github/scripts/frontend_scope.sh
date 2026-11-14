@@ -88,7 +88,7 @@ printf '%s\n' "${related[@]}" > "$out_dir/related.txt"
 
 # Test files that read source text from disk. Their reads are invisible to the module graph.
 if [ -d "$frontend_dir/src" ] || [ -d "$frontend_dir/server" ]; then
-  grep -rl --include='*.test.js' 'readFileSync' "$frontend_dir/src" "$frontend_dir/server" 2>/dev/null \
+  grep -rl --include='*.test.js' --include='*.test.ts' 'readFileSync' "$frontend_dir/src" "$frontend_dir/server" 2>/dev/null \
     | sed "s#^$prefix##" | sort > "$out_dir/readers.txt" || true
 fi
 

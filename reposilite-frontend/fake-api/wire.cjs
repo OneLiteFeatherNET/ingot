@@ -16,7 +16,7 @@
 
 /*
  * The fake keeps times as ISO-8601 strings and converts them where it answers, to the shapes the
- * real backend sends (ApiTimeWireFormatTest pins them; frontend/src/helpers/apiTime.js reads them):
+ * real backend sends (ApiTimeWireFormatTest pins them; frontend/src/helpers/apiTime.ts reads them):
  *
  *   Instant    -> a number of Unix epoch seconds, as Jackson writes java.time.Instant
  *   LocalDate  -> an array [year, month, day]

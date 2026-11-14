@@ -75,7 +75,7 @@
     "count": 3
   },
   {
-    "file": "src/helpers/useTreeFits.js",
+    "file": "src/helpers/useTreeFits.ts",
     "match": ".settings-save-bar",
     "count": 1
   }

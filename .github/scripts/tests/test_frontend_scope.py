@@ -130,7 +130,7 @@ class FrontendScopeTest(unittest.TestCase):
         self.assertFull(["M\t" + f"{FRONTEND}/src/styles/md3/color.css"])
 
     def test_js_file_under_styles_is_full_because_tests_read_it_as_text(self):
-        self.assertFull(["M\t" + f"{FRONTEND}/src/styles/md3/color.test.js"])
+        self.assertFull(["M\t" + f"{FRONTEND}/src/styles/md3/color.test.ts"])
 
     def test_anchor_registry_is_full(self):
         self.assertFull(["M\t" + f"{FRONTEND}/src/anchors/registry.json"])
@@ -176,6 +176,15 @@ class FrontendScopeFixtureTest(unittest.TestCase):
             result, out_dir = run_scope(root, ["M\t" + f"{FRONTEND}/src/a.js"])
             self.assertEqual(result, "frontend_scope=related")
             self.assertEqual(read_lines(os.path.join(out_dir, "readers.txt")), [])
+
+    def test_typescript_test_that_reads_source_from_disk_is_a_reader(self):
+        with tempfile.TemporaryDirectory() as root:
+            write(root, f"{FRONTEND}/src/a.js", "")
+            write(root, f"{FRONTEND}/src/a.test.ts",
+                  "import { readFileSync } from 'node:fs'\nconst css = readFileSync('x', 'utf8')\n")
+            result, out_dir = run_scope(root, ["M\t" + f"{FRONTEND}/src/a.js"])
+            self.assertEqual(result, "frontend_scope=related")
+            self.assertEqual(read_lines(os.path.join(out_dir, "readers.txt")), ["src/a.test.ts"])
 
 
 class FrontendJobInWorkflowTest(unittest.TestCase):
