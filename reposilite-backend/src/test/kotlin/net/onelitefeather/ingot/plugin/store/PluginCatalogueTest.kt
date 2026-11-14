@@ -71,7 +71,7 @@ internal class PluginCatalogueTest {
         val result = PluginCatalogue.parse(bytes)
 
         // then: the whole catalogue is refused and the reason names both numbers
-        assertThat(result.isError).describedAs("schema 2 must be refused").isTrue()
+        assertThat(result.isOk).describedAs("schema 2 must be refused").isFalse()
         assertThat(result.error)
             .describedAs("the reason must name the schema found and the one read")
             .contains("2", "1")
@@ -122,7 +122,7 @@ internal class PluginCatalogueTest {
         val result = PluginCatalogue.parse("<html>not a catalogue</html>".toByteArray())
 
         // then: the catalogue is refused with a reason
-        assertThat(result.isError).describedAs("a page that is not JSON must be refused").isTrue()
+        assertThat(result.isOk).describedAs("a page that is not JSON must be refused").isFalse()
         assertThat(result.error).describedAs("the reason must say the catalogue is unreadable").contains("catalogue")
     }
 
