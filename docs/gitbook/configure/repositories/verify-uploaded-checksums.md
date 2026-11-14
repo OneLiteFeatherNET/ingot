@@ -11,11 +11,11 @@ The check is off by default. Nothing changes for an instance until you set a pol
 ## Prerequisites
 
 * An instance you can configure, and a repository that takes uploads. A proxy or a group repository takes no uploads, so the policy has no effect on it.
-* An account that can read the audit log, if you want to review the events. See [Review the audit log](../manage/monitor/review-audit-log.md).
+* An account that can read the audit log, if you want to review the events. See [Review the audit log](../../manage/monitor/review-audit-log.md).
 
 ## Choose a policy
 
-The policy is set per repository with `uploadChecksumPolicy` in the [repository settings](../references/repositories/repository-settings.md#upload-checksum-policy). A repository that leaves the key out takes the instance default, which is set with `INGOT_UPLOAD_CHECKSUM_POLICY` and is `ignore` when unset. A repository value always wins over the instance default.
+The policy is set per repository with `uploadChecksumPolicy` in the [repository settings](../../references/repositories/repository-settings.md#upload-checksum-policy). A repository that leaves the key out takes the instance default, which is set with `INGOT_UPLOAD_CHECKSUM_POLICY` and is `ignore` when unset. A repository value always wins over the instance default.
 
 ```json
 {
@@ -39,7 +39,7 @@ To turn the check on for every repository that does not set its own value, set t
 INGOT_UPLOAD_CHECKSUM_POLICY=warn
 ```
 
-The variable is read at start. The older `REPOSILITE_UPLOAD_CHECKSUM_POLICY` is read when the `INGOT_` name is not set. An unknown value stops the start with a message that names the variable. See [Environment variables](../references/configuration/environment-variables.md#upload-checksum-policy).
+The variable is read at start. The older `REPOSILITE_UPLOAD_CHECKSUM_POLICY` is read when the `INGOT_` name is not set. An unknown value stops the start with a message that names the variable. See [Environment variables](../../references/configuration/environment-variables.md#upload-checksum-policy).
 
 ## What is checked
 
@@ -59,7 +59,7 @@ Artifacts that were stored before the policy was turned on are not checked. Ingo
 
 ## Refused uploads
 
-Under `reject` the answer to a refused checksum file is `400` with a message that names the algorithm, for example `SHA1 checksum file lib-1.0.0.jar.sha1 does not match the stored artifact, so it was refused`. The problem type is `urn:ingot:problem:upload-checksum-mismatch`, which tells the refusal apart from other `400` answers. See [API errors](../references/http-api/api-errors.md#checksum-file-refused).
+Under `reject` the answer to a refused checksum file is `400` with a message that names the algorithm, for example `SHA1 checksum file lib-1.0.0.jar.sha1 does not match the stored artifact, so it was refused`. The problem type is `urn:ingot:problem:upload-checksum-mismatch`, which tells the refusal apart from other `400` answers. See [API errors](../../references/http-api/api-errors.md#checksum-file-refused).
 
 A refused redeployment still answers `409`, as it does without the policy. When a checksum file already exists and redeployment is off, the conflict is reported first and the checksum is not compared.
 
@@ -69,7 +69,7 @@ Ingot writes the file of the refused upload nowhere, not even to a temporary loc
 
 Every mismatch under `warn` and `reject` is written to the audit log as `UPLOAD_CHECKSUM_MISMATCH`. The row names the repository, the path of the checksum file and the uploader. Its details hold `algorithm` (`md5`, `sha1`, `sha256` or `sha512`) and `outcome` (`accepted` or `rejected`). Digests are never written.
 
-To list the mismatches of one repository in the dashboard, choose the checksum mismatch action in the **Action** select of the audit log and enter the repository name in the filter form. See [Review the audit log](../manage/monitor/review-audit-log.md). A match writes no event, so an empty result under `warn` means that every checksum file that was checked matched.
+To list the mismatches of one repository in the dashboard, choose the checksum mismatch action in the **Action** select of the audit log and enter the repository name in the filter form. See [Review the audit log](../../manage/monitor/review-audit-log.md). A match writes no event, so an empty result under `warn` means that every checksum file that was checked matched.
 
 Refusals are also counted in the deploy metric `ingot_deploy_results_total` with the result `checksum_mismatch`. That series appears after the first refusal, so an instance that never refuses a file shows no change in its metrics.
 
@@ -88,7 +88,7 @@ If the egress matters for your bill, keep `ignore` on the large repositories, or
 
 ## Related
 
-* [Repository settings](../references/repositories/repository-settings.md#upload-checksum-policy)
-* [Environment variables](../references/configuration/environment-variables.md#upload-checksum-policy)
-* [Audit events](../references/identity/audit-events.md)
-* [Check checksums of proxied files](../configure/repositories/create-proxy-repositories.md#check-checksums), which does the same check for the copies a proxy stores
+* [Repository settings](../../references/repositories/repository-settings.md#upload-checksum-policy)
+* [Environment variables](../../references/configuration/environment-variables.md#upload-checksum-policy)
+* [Audit events](../../references/identity/audit-events.md)
+* [Check checksums of proxied files](create-proxy-repositories.md#check-checksums), which does the same check for the copies a proxy stores

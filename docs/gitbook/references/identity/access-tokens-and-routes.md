@@ -176,4 +176,4 @@ At the first start of Ingot 1.2 or later, the rows of the legacy token table are
 - A ledger records each row that was copied, so a row is never copied twice. A row written later by an older version is copied at the next start.
 - When two legacy names differ only in case, the second principal is named `<name>-<tokenId>`. Its token keeps its exact name, so logins are unchanged.
 
-The full explanation is in [Token migration](../../set-up/migrate/token-migration.md).
+The full explanation is in [Token migration](../architecture/token-migration.md).

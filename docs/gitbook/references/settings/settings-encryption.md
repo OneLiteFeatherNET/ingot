@@ -1,6 +1,6 @@
 # Settings encryption
 
-The secret values of the shared settings can be stored encrypted. This page describes what is sealed, how the key is found, what the server checks at start, and what is not protected. The steps to turn it on, rotate the key or go back are in [Encrypt the settings secrets](../../configure/encrypt-settings-secrets.md).
+The secret values of the shared settings can be stored encrypted. This page describes what is sealed, how the key is found, what the server checks at start, and what is not protected. The steps to turn it on, rotate the key or go back are in [Encrypt the settings secrets](../../manage/operate/encrypt-settings-secrets.md).
 
 ## What is sealed
 

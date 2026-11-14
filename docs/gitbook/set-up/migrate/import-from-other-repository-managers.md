@@ -31,7 +31,7 @@ Filesystem repositories keep their files under the working directory. By default
 1. Create the target repository and let Ingot create its directory. Look for the directory in the working directory.
 2. Copy the export into that directory, keeping the Maven paths. The repository root is the first directory level under the repository name, so `com/example/app/1.0/app-1.0.jar` goes directly into `releases/`.
 3. Make the files owned by the service user of the instance. In the container, that is the user set by `PUID` and `PGID`.
-4. Rebuild the search index. The search index only sees files that Ingot wrote itself, so copied files are missing from search until the rebuild. See [Rebuild the search index](../../manage/operate/rebuild-search-index.md).
+4. Rebuild the search index. The search index only sees files that Ingot wrote itself, so copied files are missing from search until the rebuild. See [Rebuild the search index](../../configure/search/rebuild-search-index.md).
 
 {% hint style="warning" %}
 This page does not verify copying into a running instance. Copy into a repository that receives no traffic, or stop the instance before the copy.
@@ -97,7 +97,7 @@ The export and import steps for each source are the responsibility of the source
 
 ## Related
 
-* [Rebuild and verify the search index](../../manage/operate/rebuild-search-index.md) after a copy.
+* [Rebuild and verify the search index](../../configure/search/rebuild-search-index.md) after a copy.
 * [Create hosted repositories](../../configure/repositories/create-hosted-repositories.md) for the target repository.
 * [Create proxy repositories](../../configure/repositories/create-proxy-repositories.md) if you want to keep the upstream instead of importing its files.
 

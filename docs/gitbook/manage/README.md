@@ -17,7 +17,8 @@ Backups, maintenance, hardening, limits and troubleshooting.
 * [Verify the SBOMs of a release](operate/verify-release-sboms.md)
 * [Troubleshoot Ingot](operate/troubleshoot.md)
 * [Collect a support bundle](operate/collect-a-support-bundle.md)
-* [Rebuild the search index](operate/rebuild-search-index.md)
+* [Encrypt the settings secrets](operate/encrypt-settings-secrets.md)
+* [Limit concurrent requests](operate/limit-concurrent-requests.md)
 
 ## Upgrade
 
@@ -27,6 +28,7 @@ The steps before, during and after an upgrade.
 * [Upgrade from Ingot 1.1.x](upgrade/upgrade-ingot.md)
 * [Verify an upgrade](upgrade/verify-an-upgrade.md)
 * [Roll back an upgrade](upgrade/roll-back-an-upgrade.md)
+* [Upgrade from Reposilite 2.x](upgrade/upgrade-from-reposilite-2.md)
 
 ## Monitor
 

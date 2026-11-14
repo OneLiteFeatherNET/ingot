@@ -1,6 +1,6 @@
 # Encrypt the settings secrets
 
-This guide turns on encryption of the secret values in the shared settings, rotates the key and goes back to a build without it. The rules behind each step are in [Settings encryption](../references/settings/settings-encryption.md).
+This guide turns on encryption of the secret values in the shared settings, rotates the key and goes back to a build without it. The rules behind each step are in [Settings encryption](../../references/settings/settings-encryption.md).
 
 Nothing changes for an instance that does not set a key. Its secrets stay as they were, and the existing data directory starts unchanged.
 
@@ -65,7 +65,7 @@ A start with the key still set would seal the values again, so the key comes out
 
 ## Settings that hold a secret
 
-The secrets are the S3 access and secret keys, the mirror credentials and proxy URLs, the LDAP bind password, the OIDC client secret and the search user password. A reference such as `${env:NAME}` is not sealed, because it names a secret without holding one. See [Settings domains](../references/settings/settings-domains.md).
+The secrets are the S3 access and secret keys, the mirror credentials and proxy URLs, the LDAP bind password, the OIDC client secret and the search user password. A reference such as `${env:NAME}` is not sealed, because it names a secret without holding one. See [Settings domains](../../references/settings/settings-domains.md).
 
 ## Troubleshooting
 

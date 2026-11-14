@@ -11,7 +11,7 @@ A plugin can change the dashboard in four ways today: it declares pages, it fill
 - **Declare pages.** A plugin adds its own pages to the dashboard with the `plugin-ui` facade. The text, tables, forms, actions and status blocks are drawn by the dashboard's own components, so the plugin chooses the words and the order. See [Dashboard pages](../../references/plugins/plugin-api.md#dashboard-pages).
 - **Fill placeholders.** A plugin can substitute a value into the bundled `index.html` and `.js` files with `FrontendFacade.registerPlaceholder`. A placeholder carries a value, not a rule. See [Frontend placeholders](../../references/plugins/plugin-api.md#frontend-placeholders).
 - **Ship a stylesheet.** A plugin delivers one CSS file that the dashboard loads for signed in callers. The file is checked when the server starts, and the rules sit in a layer of their own. See [Ship a stylesheet](#ship-a-stylesheet) below.
-- **Set the appearance.** Colours, the logo, the favicon and the footer text are configuration, see [Customize branding](../../configure/customize-branding.md). They are settings, not CSS.
+- **Set the appearance.** Colours, the logo, the favicon and the footer text are configuration, see [Customize branding](../../configure/dashboard/customize-branding.md). They are settings, not CSS.
 
 ## What a plugin can aim at
 

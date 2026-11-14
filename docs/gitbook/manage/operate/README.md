@@ -1,5 +1,5 @@
 ---
-description: Operate Ingot. Lists the pages for backups, maintenance, shutdown, hardening, SBOM checks, troubleshooting, support bundles and search index rebuilds.
+description: Operate Ingot. Lists the pages for backups, maintenance, shutdown, hardening, settings secrets, request limits, SBOM checks, troubleshooting and support bundles.
 ---
 
 # Operate
@@ -13,4 +13,5 @@ These pages keep a running instance healthy.
 * [Verify the SBOMs of a release](verify-release-sboms.md)
 * [Troubleshoot Ingot](troubleshoot.md)
 * [Collect a support bundle](collect-a-support-bundle.md)
-* [Rebuild the search index](rebuild-search-index.md)
+* [Encrypt the settings secrets](encrypt-settings-secrets.md)
+* [Limit concurrent requests](limit-concurrent-requests.md)

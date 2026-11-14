@@ -82,7 +82,7 @@ At most one run is live at a time, whether it is a rebuild or a verify. A start 
 
 During a rolling upgrade, pods of the previous version can still write artifacts. Those writes do not reach the index, because that version does not maintain it. A verify does not find them either, because it starts from the rows it has. Only a rebuild indexes them. The gap rule does not help while the old pods are up, because the new pods keep the heartbeat fresh.
 
-Once the last pod of the previous version has stopped, start a rebuild of all repositories, or enable the schedule. The [rebuild how-to](../../manage/operate/rebuild-search-index.md) describes the steps.
+Once the last pod of the previous version has stopped, start a rebuild of all repositories, or enable the schedule. The [rebuild how-to](../../configure/search/rebuild-search-index.md) describes the steps.
 
 Rolling back to the previous version needs no step. That version does not read the search tables, so the index stays where it is. Files stored while the older version runs are not indexed. With `gapRebuild` on, which is the default, the next start of the newer version finds the heartbeat too old and starts a rebuild. Ingot never drops the search tables.
 
@@ -95,5 +95,5 @@ The feature is on by default and needs no configuration change. Set `INGOT_LOCAL
 ## Related
 
 * [Search for artifacts](../../publish-and-consume/search-for-artifacts.md) describes the search page.
-* [Rebuild the search index](../../manage/operate/rebuild-search-index.md) describes the steps for a rebuild and a verify.
+* [Rebuild the search index](../../configure/search/rebuild-search-index.md) describes the steps for a rebuild and a verify.
 * [Search filters and API](../http-api/search-filters-and-api.md) lists the parameters, the endpoints and the settings.

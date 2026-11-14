@@ -58,9 +58,7 @@ Moving from Reposilite, Nexus and other repository managers.
 
 * [Move from Reposilite to Ingot](migrate/move-from-reposilite.md)
 * [Upgrade from Reposilite 3.x](migrate/upgrade-from-reposilite.md)
-* [Upgrade from Reposilite 2.x](migrate/upgrade-from-reposilite-2.md)
 * [Migrate from the upstream Helm chart](migrate/migrate-from-upstream-chart.md)
 * [Import from other repository managers](migrate/import-from-other-repository-managers.md)
 * [Import from Nexus](migrate/import-from-nexus.md)
 * [Use the Nexus import wizard](migrate/use-the-nexus-import-wizard.md)
-* [Token migration](migrate/token-migration.md)

@@ -33,7 +33,7 @@ Ingot can serve your own static files next to its API. Use this for a landing pa
 
    * top-level files whose name contains `.html` or `.js`. This includes `index.html`, and it also matches names such as `data.json`.
 
-   Files in subdirectories are served unchanged. The placeholder names and values are listed in the [Plugin API reference](../references/plugins/plugin-api.md#frontend-placeholders).
+   Files in subdirectories are served unchanged. The placeholder names and values are listed in the [Plugin API reference](../../references/plugins/plugin-api.md#frontend-placeholders).
 
    ```html
    <!doctype html>
@@ -94,6 +94,6 @@ Your `index.html` answers the root path when the bundled dashboard is off. When 
 
 ## Related
 
-* [Plugin API, frontend placeholders](../references/plugins/plugin-api.md#frontend-placeholders): the placeholder list, and how a plugin adds its own.
-* [Write a plugin](../manage/plugins/write-a-plugin.md): a plugin can register a placeholder for your files to use.
-* [Extend the dashboard from a plugin](../manage/plugins/extend-the-dashboard-from-a-plugin.md): a plugin can also ship one stylesheet for the bundled dashboard. Your own files in this directory are not affected by it.
+* [Plugin API, frontend placeholders](../../references/plugins/plugin-api.md#frontend-placeholders): the placeholder list, and how a plugin adds its own.
+* [Write a plugin](../../manage/plugins/write-a-plugin.md): a plugin can register a placeholder for your files to use.
+* [Extend the dashboard from a plugin](../../manage/plugins/extend-the-dashboard-from-a-plugin.md): a plugin can also ship one stylesheet for the bundled dashboard. Your own files in this directory are not affected by it.

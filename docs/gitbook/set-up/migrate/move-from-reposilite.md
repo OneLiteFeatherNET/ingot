@@ -12,7 +12,7 @@ For the steps of a Reposilite 3.x upgrade, including the start on an existing da
 
 * A [backup](../../manage/upgrade/back-up-before-upgrading.md) of the data directory and, for MariaDB, of the database. The first start of Ingot migrates the data, and a rollback to Reposilite does not take that migration back.
 * The Reposilite release you run now. Keep its image reference or JAR name, because you need it for a rollback.
-* Reposilite 3.x. For a Reposilite 2.x installation, follow [Upgrade from Reposilite 2.x](upgrade-from-reposilite-2.md) instead, because it needs its own steps.
+* Reposilite 3.x. For a Reposilite 2.x installation, follow [Upgrade from Reposilite 2.x](../../manage/upgrade/upgrade-from-reposilite-2.md) instead, because it needs its own steps.
 
 ## Change the one line
 

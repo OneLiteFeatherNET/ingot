@@ -167,7 +167,7 @@ Limits of this version:
 
 ## Frontend placeholders
 
-The dashboard and the files in the custom frontend directory can contain placeholders such as `{{REPOSILITE.TITLE}}`. The server replaces them when it serves a file. See [Serve a custom frontend](../../configure/serve-custom-frontend.md) for which files are scanned.
+The dashboard and the files in the custom frontend directory can contain placeholders such as `{{REPOSILITE.TITLE}}`. The server replaces them when it serves a file. See [Serve a custom frontend](../../configure/dashboard/serve-custom-frontend.md) for which files are scanned.
 
 Ingot provides these placeholders:
 

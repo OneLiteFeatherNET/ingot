@@ -14,7 +14,7 @@ A rebuild only reads storage. It never deletes or changes a file. Search keeps a
 
 * A manager account, which is the only account that sees the Maintenance page and the index endpoints.
 * Search turned on. If the Maintenance page says that search is turned off, set `INGOT_LOCAL_SEARCHENABLED` to `true` and restart Ingot. The [configuration keys](../../references/http-api/search-filters-and-api.md#configuration-keys) list the names.
-* A search backend that is available. While the backend is not available, the rebuild, verify and cancel endpoints answer `503`. See [Backend states](../../configure/search/choose-a-search-backend.md#backend-states).
+* A search backend that is available. While the backend is not available, the rebuild, verify and cancel endpoints answer `503`. See [Backend states](choose-a-search-backend.md#backend-states).
 
 ## Rebuild from the Maintenance page
 
@@ -82,7 +82,7 @@ Start a verify with `POST /api/maven/search/index/verify`. Read the progress wit
 
 A switch to another search backend starts a full rebuild of all repositories by itself. The first replica of the new backend that becomes available stores its id, clears the date of the last full rebuild and starts the rebuild with the trigger `BACKEND`. You do not start it by hand.
 
-Follow the rebuild in the **Search index** panel. The index state reads **Building** until the rebuild completes, and search results can be partial until then. The steps of a switch are in [The three-minute switch](../../configure/search/choose-a-search-backend.md#the-three-minute-switch).
+Follow the rebuild in the **Search index** panel. The index state reads **Building** until the rebuild completes, and search results can be partial until then. The steps of a switch are in [The three-minute switch](choose-a-search-backend.md#the-three-minute-switch).
 
 ## Rebuilds on start
 
@@ -103,9 +103,9 @@ Ingot does not rebuild on a timer by default, because a full walk of a large buc
 
 ## After an upgrade
 
-On a single instance, the first start of [Ingot 1.2.0](../upgrade/upgrade-ingot.md) builds the index without a manual step. Check the state on the Maintenance page until the run completes.
+On a single instance, the first start of [Ingot 1.2.0](../../manage/upgrade/upgrade-ingot.md) builds the index without a manual step. Check the state on the Maintenance page until the run completes.
 
-If an older replica runs next to 1.2.0 replicas during a rolling upgrade, the artifacts it writes are not indexed. That mixed setup is not tested, so see [Upgrade Ingot](../upgrade/upgrade-ingot.md) for the recommended window. Start a rebuild of all repositories after the last older replica has stopped.
+If an older replica runs next to 1.2.0 replicas during a rolling upgrade, the artifacts it writes are not indexed. That mixed setup is not tested, so see [Upgrade Ingot](../../manage/upgrade/upgrade-ingot.md) for the recommended window. Start a rebuild of all repositories after the last older replica has stopped.
 
 ## Related
 

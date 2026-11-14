@@ -39,7 +39,7 @@ A rolling upgrade, with replicas of the old and the new release on one database,
 
 4. Read the log of the first start. If the instance had persistent tokens, the migration line is there. Run the checks in [Verify an upgrade](verify-an-upgrade.md).
 
-5. Open the **Maintenance** page and wait for the **Search index** rebuild to finish. The state then reads **Ready**. If it reads **Degraded**, see [Rebuild the search index](../operate/rebuild-search-index.md#index-states).
+5. Open the **Maintenance** page and wait for the **Search index** rebuild to finish. The state then reads **Ready**. If it reads **Degraded**, see [Rebuild the search index](../../configure/search/rebuild-search-index.md#index-states).
 
 ## Result
 

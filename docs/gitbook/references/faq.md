@@ -12,12 +12,12 @@ For the image, the data directory, the configuration and the clients, yes. Movin
 
 Some things do change under the hood, and they are visible to an operator:
 
-* Tokens become machine accounts, and their rights move to a private team. See [Token migration](../set-up/migrate/token-migration.md).
+* Tokens become machine accounts, and their rights move to a private team. See [Token migration](architecture/token-migration.md).
 * The old MANAGER permission becomes the instance administrator role. See [Identity model](architecture/identity-model.md).
 * The dashboard has a login, and users sign in with a password or an external provider.
 * Some features are on by default, such as artifact search. Check the defaults before you assume that a feature is off.
 
-The full list is in [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md). Each upgrade path has its own steps in [Upgrade from Reposilite 3.x](../set-up/migrate/upgrade-from-reposilite.md) and [Upgrade from Reposilite 2.x](../set-up/migrate/upgrade-from-reposilite-2.md).
+The full list is in [Drop-in compatibility with Reposilite](../introduction/drop-in-compatibility.md). Each upgrade path has its own steps in [Upgrade from Reposilite 3.x](../set-up/migrate/upgrade-from-reposilite.md) and [Upgrade from Reposilite 2.x](../manage/upgrade/upgrade-from-reposilite-2.md).
 
 ## Do Reposilite plugins work with Ingot?
 

@@ -21,6 +21,7 @@ How the parts of Ingot work and why.
 * [Sessions, login and CSRF](architecture/sessions-and-login.md)
 * [Security headers](architecture/security-headers.md)
 * [How the search index stays current](architecture/how-the-search-index-stays-current.md)
+* [Token migration](architecture/token-migration.md)
 
 ## Instance configuration
 

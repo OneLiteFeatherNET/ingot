@@ -26,7 +26,7 @@ Four kinds of entry can match a request. They share the same ranking, which is d
 * **Permission nodes** of the owner and its teams. A repository node such as `ingot.repository.releases.read` covers reads of that repository. A wildcard such as `ingot.repository.*.read` covers reads of every repository.
 * **Artifact nodes** such as `ingot.artifact.net.example.read`. They cover a part of a repository tree, by Maven group and artifact. See [Artifact permission nodes](../identity/artifact-permission-nodes.md).
 * **Role grants** of a team. A grant gives a role on one repository, or on every repository when it has none. It can also be limited to a path prefix inside a repository. A grant with a prefix only covers paths under that prefix, matched on whole path segments and case-sensitively. So a prefix `net/example` covers `net/example/app` but not `net/examples`.
-* **Legacy route grants.** These exist only on private teams of migrated tokens. They match the request path as a plain case-insensitive prefix, without a segment boundary. A route `/rel` therefore also covers `/releases`. This is kept on purpose, so that migrated tokens keep their exact rights. See [Token migration](../../set-up/migrate/token-migration.md).
+* **Legacy route grants.** These exist only on private teams of migrated tokens. They match the request path as a plain case-insensitive prefix, without a segment boundary. A route `/rel` therefore also covers `/releases`. This is kept on purpose, so that migrated tokens keep their exact rights. See [Token migration](token-migration.md).
 
 ## Specificity and ties
 
@@ -101,4 +101,4 @@ The check can name one token of the principal. Its node list is then applied as 
 * [Permission nodes](../identity/permission-nodes.md) lists the node grammar and the rules for each form.
 * [Artifact permission nodes](../identity/artifact-permission-nodes.md) describes the artifact form in detail.
 * [Access tokens and routes](../identity/access-tokens-and-routes.md) describes token formats and legacy route grants.
-* [Token migration](../../set-up/migrate/token-migration.md) explains why legacy route matching is kept.
+* [Token migration](token-migration.md) explains why legacy route matching is kept.
