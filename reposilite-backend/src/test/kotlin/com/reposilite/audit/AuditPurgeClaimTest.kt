@@ -122,6 +122,7 @@ internal class AuditPurgeClaimTest {
     /** The claims of an instance that stops before it completes its purge, so the day is never marked as done. */
     private class StoppedClaims(private val delegate: ScheduledJobClaims) : ScheduledJobClaims by delegate {
         override fun complete(key: String, done: Boolean) = Unit
+        override fun release(lease: ScheduledJobClaims.Lease, done: Boolean) = Unit
     }
 
     /** Stops every purge before it deletes anything. */
