@@ -325,9 +325,7 @@ class CoverageJobsInWorkflowTest(unittest.TestCase):
         self.assertIsNotNone(step, "backend job has no dashboard-only step")
         self.assertIn("needs.coverage-changes.outputs.frontend_only == 'true'", step)
         self.assertIn(":reposilite-backend:test --tests 'com.reposilite.frontend.*'", step)
-        self.assertIn(":reposilite-backend:integration --tests 'com.reposilite.frontend.*'", step)
-        self.assertIn("--tests 'com.reposilite.web.DashboardRoutesIntegrationTest*'", step)
-        self.assertIn("--tests 'com.reposilite.web.SecurityHeadersIntegrationTest*'", step)
+        self.assertNotIn(":reposilite-backend:integration", step)
         self.assertNotIn("testCoverage", step)
 
     def test_backend_job_skips_codecov_upload_on_frontend_only_changes(self):

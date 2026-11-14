@@ -55,9 +55,11 @@ jobs:
     with:
       java-version: "17"
       java-distribution: "temurin"
-      # The integration suite runs once, in Coverage (backend), on JDK 21. Both task names are excluded: `integration`
-      # is the suite itself and `integrationTest` is its alias, which would otherwise run the full suite again.
-      gradle-task: "build test -x integration -x integrationTest"
+      # Compile and unit tests only. `build` also made javadoc, the shadow jar and the distributions, about 80 seconds
+      # that no test needs. The container images job builds the jar. The integration suite is left to main and to a
+      # maintainer's request. Both task names are excluded: `integration` is the suite itself and `integrationTest` is
+      # its alias, which would otherwise run the full suite again.
+      gradle-task: "test -x integration -x integrationTest"
       # The default 3-OS matrix is narrowed to Linux on purpose: the backend integration
       # tests use Testcontainers, and only the ubuntu runners ship a usable Docker daemon.
       runs-on: '["ubuntu-latest"]'
@@ -882,40 +884,38 @@ jobs:
             sed -n 's/^package=\(.*\)$/- Package: `\1`/p' "$selection"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The backend tests the pull request can reach. The smoke set is always in the filters. --tests applies to the
-      # task before it, so each task gets its own filters. A partial run builds no coverage report and uploads nothing.
+      # The backend unit tests the pull request can reach. The smoke set is always in the filters. A pull request runs no
+      # integration test: that suite starts containers and takes about two hours, so it runs on main and when a
+      # maintainer asks for it. A partial run builds no coverage report and uploads nothing.
       - name: "Run the selected backend tests"
         if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'partial' }}
         run: |
           selection="$RUNNER_TEMP/backend-selection.txt"
           test_args=()
           while IFS= read -r pattern; do test_args+=(--tests "$pattern"); done < <(sed -n 's/^test=//p' "$selection")
-          integration_args=()
-          while IFS= read -r pattern; do integration_args+=(--tests "$pattern"); done < <(sed -n 's/^integration=//p' "$selection")
-          if [ "${#test_args[@]}" -eq 0 ] || [ "${#integration_args[@]}" -eq 0 ]; then
-            echo "::error::The selection named no filter for one of the two tasks."
+          if [ "${#test_args[@]}" -eq 0 ]; then
+            echo "::error::The selection named no filter for the unit tests."
             exit 1
           fi
-          ./gradlew --build-cache :reposilite-backend:test "${test_args[@]}" :reposilite-backend:integration "${integration_args[@]}"
+          ./gradlew --build-cache :reposilite-backend:test "${test_args[@]}"
 
-      # The backend tests that serve the dashboard, unit and integration. The filters select the frontend
-      # package, the dashboard policy, the dashboard route and caching tests, and the security header tests
-      # of the dashboard document. --tests applies to each task, so the two tasks run in separate invocations.
+      # The backend unit tests that serve the dashboard. The filters select the frontend package and the dashboard policy.
       - name: "Run the dashboard tests of the backend"
         if: ${{ needs.coverage-changes.outputs.frontend_only == 'true' }}
         run: |
           ./gradlew --build-cache :reposilite-backend:test --tests 'com.reposilite.frontend.*' --tests 'net.onelitefeather.ingot.web.DashboardPolicyTest'
-          ./gradlew --build-cache :reposilite-backend:integration --tests 'com.reposilite.frontend.*' \
-            --tests 'com.reposilite.web.DashboardRoutesIntegrationTest*' \
-            --tests 'com.reposilite.web.DashboardCachingIntegrationTest*' \
-            --tests 'com.reposilite.web.SecurityHeadersIntegrationTest*'
+
+      # A pull request that the selection sends to the full suite runs every unit test, with no report and no upload.
+      - name: "Run the backend unit tests"
+        if: ${{ github.event_name == 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        run: ./gradlew --build-cache :reposilite-backend:test
 
       - name: "Run tests with coverage"
-        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ github.event_name != 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         run: ./gradlew --build-cache :reposilite-backend:testCoverage
 
       - name: "Upload coverage to Codecov"
-        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
+        if: ${{ github.event_name != 'pull_request' && needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
         with:
           files: "./reposilite-backend/build/reports/jacoco/reposilite-backend-report.xml"
