@@ -225,12 +225,121 @@ internal class ExternalRefGuardTest {
         assertThat(NodePattern.ADMIN_AREAS).describedAs("admin areas").contains("idp")
     }
 
-    private fun callerWithNodes(service: IdentityFacade, store: IdentityStore, name: String, vararg nodes: String): AccessTokenIdentifier {
+    @Test
+    fun `an idp holder who lacks the rights of the team is refused in enforce`() {
+        withService(IdpGuardMode.ENFORCE) { service, store, events, _ ->
+            // given: a linked team with a repository right, and a caller with the idp right but no repository right
+            store.createTeam("ops", "", "oidc:corp:ops-admins")
+            service.replaceTeamNodes("ops", listOf(NodeDto("ingot.repository.releases.deploy", allowed = true)), ifMatch = null)
+            val caller = callerWithNodes(service, store, "idp-admin", "ingot.admin.idp", "ingot.admin.teams")
+
+            // when: the caller unlinks the team
+            val refused = service.updateTeam("ops", UpdateTeamRequest(externalRef = ""), ifMatch = null, actor = operator, caller = caller)
+
+            // then
+            assertThat(refused.error.status).describedAs("status of the refusal").isEqualTo(403)
+            assertThat(store.findTeam("ops")?.externalRef).describedAs("the reference after the refusal").isEqualTo("oidc:corp:ops-admins")
+            assertThat(events.filter { it.action == AuditAction.EXTERNAL_REF_UNGUARDED }.single().details)
+                .containsEntry("reason", "rights").containsEntry("outcome", "refused")
+        }
+    }
+
+    @Test
+    fun `warn allows an update of a link without the idp right, records it and logs a warning`() {
+        withService(IdpGuardMode.WARN) { service, store, events, warnings ->
+            // given
+            store.createTeam("ops", "", null)
+            val caller = callerWithNodes(service, store, "teams-admin", "ingot.admin.teams")
+
+            // when
+            val updated = service.updateTeam("ops", UpdateTeamRequest(externalRef = "oidc:corp:ops-admins"), ifMatch = null, actor = operator, caller = caller)
+
+            // then
+            assertThat(updated.isOk).describedAs("the update in warn mode").isTrue
+            assertThat(store.findTeam("ops")?.externalRef).isEqualTo("oidc:corp:ops-admins")
+            assertThat(events.single { it.action == AuditAction.EXTERNAL_REF_UNGUARDED }.details)
+                .containsEntry("outcome", "allowed").containsEntry("mode", "warn")
+            assertThat(warnings).describedAs("warning lines").singleElement().asString().contains("oidc:corp:ops-admins")
+        }
+    }
+
+    @Test
+    fun `a repeated reference with surrounding whitespace needs no right and leaves the stored value as it was`() {
+        withService(IdpGuardMode.ENFORCE) { service, store, events, _ ->
+            // given
+            store.createTeam("ops", "", "oidc:corp:ops-admins")
+            val caller = callerWithNodes(service, store, "teams-admin", "ingot.admin.teams")
+
+            // when
+            val updated = service.updateTeam("ops", UpdateTeamRequest(externalRef = "  oidc:corp:ops-admins "), ifMatch = null, actor = operator, caller = caller)
+
+            // then
+            assertThat(updated.isOk).describedAs("the repeated reference").isTrue
+            assertThat(store.findTeam("ops")?.externalRef).describedAs("the stored reference").isEqualTo("oidc:corp:ops-admins")
+            assertThat(events.map { it.action }).describedAs("events").doesNotContain(AuditAction.EXTERNAL_REF_UNGUARDED)
+        }
+    }
+
+    @Test
+    fun `a reference that differs in letter case is a change and needs the idp right`() {
+        withService(IdpGuardMode.ENFORCE) { service, store, _, _ ->
+            store.createTeam("ops", "", "oidc:corp:ops-admins")
+            val caller = callerWithNodes(service, store, "teams-admin", "ingot.admin.teams")
+
+            val refused = service.updateTeam("ops", UpdateTeamRequest(externalRef = "OIDC:corp:ops-admins"), ifMatch = null, actor = operator, caller = caller)
+
+            assertThat(refused.error.status).describedAs("status of the refusal").isEqualTo(403)
+            assertThat(store.findTeam("ops")?.externalRef).isEqualTo("oidc:corp:ops-admins")
+        }
+    }
+
+    @Test
+    fun `an absent reference leaves the link and needs no right`() {
+        withService(IdpGuardMode.ENFORCE) { service, store, events, _ ->
+            store.createTeam("ops", "", "oidc:corp:ops-admins")
+            val caller = callerWithNodes(service, store, "teams-admin", "ingot.admin.teams")
+
+            val updated = service.updateTeam("ops", UpdateTeamRequest(description = "Operations"), ifMatch = null, actor = operator, caller = caller)
+
+            assertThat(updated.isOk).describedAs("the update without a reference").isTrue
+            assertThat(store.findTeam("ops")?.externalRef).isEqualTo("oidc:corp:ops-admins")
+            assertThat(events.map { it.action }).doesNotContain(AuditAction.EXTERNAL_REF_UNGUARDED)
+        }
+    }
+
+    @Test
+    fun `an empty reference on a team without a link needs no right and writes no link`() {
+        withService(IdpGuardMode.ENFORCE) { service, store, events, _ ->
+            store.createTeam("ops", "", null)
+            val caller = callerWithNodes(service, store, "teams-admin", "ingot.admin.teams")
+
+            val updated = service.updateTeam("ops", UpdateTeamRequest(externalRef = ""), ifMatch = null, actor = operator, caller = caller)
+
+            assertThat(updated.isOk).describedAs("the empty reference on an unlinked team").isTrue
+            assertThat(store.findTeam("ops")?.externalRef).describedAs("the reference").isNull()
+            assertThat(events.map { it.action }).doesNotContain(AuditAction.EXTERNAL_REF_UNGUARDED)
+        }
+    }
+
+    @Test
+    fun `the refusal body names neither the provider reference nor the caller`() {
+        withService(IdpGuardMode.ENFORCE) { service, store, _, _ ->
+            val caller = callerWithNodes(service, store, "teams-admin", "ingot.admin.teams")
+
+            val message = service.createTeam(CreateTeamRequest(name = "ops", externalRef = "oidc:corp:ops-admins"), operator, caller)
+                .error.message
+
+            assertThat(message).describedAs("generic refusal").doesNotContain("oidc:corp:ops-admins").doesNotContain("teams-admin")
+            assertThat(message).contains("ingot.admin.idp")
+        }
+    }
+
+    private fun callerWithNodes(service: IdentityFacade, store: IdentityStore, name: String, vararg nodes: String): WriteCaller {
         service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = name), operator)
         service.replacePrincipalNodes(name, nodes.map { NodeDto(it, allowed = true) }, ifMatch = null)
         val principal = store.findPrincipal(name)!!
         val record = store.createToken(principal.id, "$name-token", AccessTokenSecurityProvider.encodeSecret("secret"), null, null, LocalDate.of(2026, 10, 1), "")!!
-        return AccessTokenIdentifier(PERSISTENT, record.id)
+        return WriteCaller.Token(AccessTokenIdentifier(PERSISTENT, record.id))
     }
 
     private fun withService(
