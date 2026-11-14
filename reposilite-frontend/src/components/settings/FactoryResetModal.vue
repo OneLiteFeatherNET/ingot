@@ -35,6 +35,7 @@ export default {
 <template>
   <div
     id="factory-reset"
+    class="shrink-0"
     data-ingot-component="factory-reset-modal"
   >
     <VueFinalModal

@@ -642,7 +642,7 @@ watch(
             variant="outlined"
             type="button"
             error
-            class="shrink-0"
+            class="shrink-0 whitespace-nowrap"
           >
             Factory reset
           </MdButton>
