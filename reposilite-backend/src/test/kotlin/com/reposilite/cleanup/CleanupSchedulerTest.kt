@@ -48,13 +48,14 @@ internal class CleanupSchedulerTest {
         schedule = schedule,
     )
 
-    private fun scheduler(clock: Clock, vararg policies: CleanupPolicy, started: MutableList<String>) =
+    private fun scheduler(clock: Clock, vararg policies: CleanupPolicy, started: MutableList<String>, catchUp: Boolean = false) =
         CleanupScheduler(
             clock = clock,
             policies = { policies.toList() },
             start = { policy, _ -> started += policy.id },
             claims = ScheduledJobClaims.Unshared,
             journalist = InMemoryLogger(),
+            catchUp = catchUp,
         )
 
     @Test
@@ -80,6 +81,58 @@ internal class CleanupSchedulerTest {
         scheduler(clock, policy("nightly"), started = started).tick()
 
         // then: nothing is started
+        assertEquals(emptyList<String>(), started)
+    }
+
+    @Test
+    fun `should not make up a missed policy at a later tick by default`() {
+        // given: a daily policy at 02:00, an instance that was down until 02:40, and catch-up left at its default
+        val clock = MovableClock(Instant.parse("2026-10-15T02:40:00Z"))
+        val started = mutableListOf<String>()
+
+        // when: the scheduler ticks
+        scheduler(clock, policy("nightly"), started = started).tick()
+
+        // then: the missed run is not started
+        assertEquals(emptyList<String>(), started)
+    }
+
+    @Test
+    fun `should make up a missed policy at the first tick after its scheduled time when catch-up is on`() {
+        // given: a daily policy at 02:00 and an instance that was down until 02:40, with catch-up on
+        val clock = MovableClock(Instant.parse("2026-10-15T02:40:00Z"))
+        val started = mutableListOf<String>()
+
+        // when: the scheduler ticks
+        scheduler(clock, policy("nightly"), started = started, catchUp = true).tick()
+
+        // then: the run is made up at that tick
+        assertEquals(listOf("nightly"), started)
+    }
+
+    @Test
+    fun `should start a policy at the last tick inside its catch-up window when catch-up is on`() {
+        // given: a daily policy at 02:00 and a clock one second before the window of six hours closes
+        val clock = MovableClock(Instant.parse("2026-10-15T07:59:59Z"))
+        val started = mutableListOf<String>()
+
+        // when: the scheduler ticks
+        scheduler(clock, policy("nightly"), started = started, catchUp = true).tick()
+
+        // then: the run is started
+        assertEquals(listOf("nightly"), started)
+    }
+
+    @Test
+    fun `should not start a policy after its catch-up window when catch-up is on`() {
+        // given: a daily policy at 02:00 and a clock at the end of its window of six hours, with catch-up on
+        val clock = MovableClock(Instant.parse("2026-10-15T08:00:00Z"))
+        val started = mutableListOf<String>()
+
+        // when: the scheduler ticks
+        scheduler(clock, policy("nightly"), started = started, catchUp = true).tick()
+
+        // then: nothing is started on that day
         assertEquals(emptyList<String>(), started)
     }
 
