@@ -45,3 +45,12 @@ reposilite-plugins/*
 !reposilite-plugins/prometheus-plugin
 .github/
 .codecov.yml
+
+# Documentation, OpenSpec proposals and the Helm chart. Neither Dockerfile reads them: the server build runs the
+# shadowJar tasks only, and the dashboard build reads its own module and the favicon. The one build input under docs/
+# is the OpenAPI snapshot, which only the integration task reads. Markdown anywhere in the context is documentation
+# too, including the module READMEs and the design notes of the dashboard.
+docs/
+openspec/
+charts/
+**/*.md
