@@ -680,13 +680,37 @@ jobs:
       - name: "Run the workflow script tests"
         run: python3 -m unittest discover -s .github/scripts/tests -t .github/scripts/tests -v
 
+  # The guide tests check the GitBook pages against docs/gitbook/SUMMARY.md. They used to run only in the heavy
+  # Helm chart job, so a docs change that moved a page passed every pull request. They need nothing but PyYAML, so
+  # they run here on every pull request.
+  docs-tests:
+    name: "Docs tests"
+    if: ${{ !cancelled() && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "Install test dependencies"
+        run: python3 -m pip install "pyyaml==6.0.3"
+
+      - name: "Run the docs guide tests"
+        run: python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -p 'test_*guides.py' -v
+
   # The required check for everything that must stay fast. It is green when each light job succeeded or was skipped,
   # and red when one failed or was cancelled. The summary lists each light job's duration against its budget, and a
   # job over budget only warns, so a slow runner does not block a merge. Container images, the Helm chart, the HA smoke
   # test and the dashboard end-to-end job are heavy and are not part of it.
   light-checks:
     name: "Light checks"
-    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, script-tests]
+    needs: [build, coverage-changes, coverage-backend, coverage-frontend, frontend, licenses, vulnerabilities, sbom, plugin-api, script-tests, docs-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
