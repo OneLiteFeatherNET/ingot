@@ -739,6 +739,13 @@
       "states": []
     },
     {
+      "name": "md-icon",
+      "file": "src/components/md/MdIcon.vue",
+      "stability": "experimental",
+      "parts": [],
+      "states": []
+    },
+    {
       "name": "md-icon-button",
       "file": "src/components/md/MdIconButton.vue",
       "stability": "experimental",
