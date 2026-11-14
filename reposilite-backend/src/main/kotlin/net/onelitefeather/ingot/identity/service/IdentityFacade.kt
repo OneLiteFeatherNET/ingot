@@ -924,19 +924,24 @@ class IdentityFacade(
             teams = subject.teams.mapNotNull { store.findTeam(it) }.filterNot { it.isPrivate }
                 .map { team -> OwnTeamDto(name = team.name, parents = parentNamesOf(team).sorted()) },
             nodes = PermissionEvaluator.effectiveNodes(subject),
-            denials = PermissionEvaluator.effectiveDenials(subject),
+            denials = subject.levels.flatMap { level -> level.rules.filterNot { it.allowed }.map { it.pattern.text } }
+                .plus(subject.tokenRules.orEmpty().filterNot { it.allowed }.map { it.pattern.text })
+                .distinct()
+                .sorted(),
             grants = subject.levels.flatMap { it.grants }
                 .map { grant -> OwnGrantDto(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name) },
         ).asSuccess()
     }
 
+    /** The caller's record with its login providers: `local` for a password, then the kinds of its external links. */
     private fun ownPrincipalOf(principal: PrincipalRecord): OwnPrincipalDto {
         val withPassword = principal.kind == PrincipalKind.USER && principal.id in store.listPrincipalIdsWithLocalCredential()
+        val external = store.externalProviderKindsOf(principal.id)
         return OwnPrincipalDto(
             name = principal.name,
             displayName = principal.displayName,
             kind = principal.kind.name,
-            providers = if (withPassword) listOf(LocalLoginProvider.ID) else emptyList(),
+            providers = (if (withPassword) listOf(LocalLoginProvider.ID) else emptyList()) + external.sorted(),
         )
     }
 
