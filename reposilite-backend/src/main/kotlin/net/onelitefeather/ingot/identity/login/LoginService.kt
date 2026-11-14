@@ -18,6 +18,7 @@ package net.onelitefeather.ingot.identity.login
 
 import com.reposilite.audit.api.AuditAction.LOGIN_FAILED
 import com.reposilite.audit.api.AuditAction.LOGIN_SUCCEEDED
+import com.reposilite.audit.api.AuditAction.MFA_FIRST_FACTOR_ACCEPTED
 import com.reposilite.audit.api.AuditAction.PASSWORD_CHANGED
 import com.reposilite.audit.api.AuditAction.PASSWORD_RESET
 import com.reposilite.audit.api.AuditAction.SETUP_COMPLETED
@@ -60,6 +61,8 @@ class LoginService internal constructor(
     private val externalPasswordProviders: () -> List<LoginProvider> = { emptyList() },
     /** Providers that redirect the browser, and the LDAP provider when it is enabled. */
     private val externalAnnouncements: () -> List<ProviderAnnouncement> = { emptyList() },
+    /** Whether a principal whose password was accepted still owes a second factor. Then no login is recorded yet. */
+    private val secondFactorRequired: (PrincipalRecord) -> Boolean = { false },
 ) {
 
     private val limiter = LoginAttemptLimiter(credentials, settings, clock)
@@ -100,7 +103,9 @@ class LoginService internal constructor(
         when (outcome) {
             is Succeeded -> {
                 limiter.forget(userKey)
-                audit(AuditEvent(action = LOGIN_SUCCEEDED, actor = AuditActor.named(outcome.principal.name, ip)))
+                // A login is recorded when its session starts. A user who owes a second factor has only passed the first one.
+                val action = if (secondFactorRequired(outcome.principal)) MFA_FIRST_FACTOR_ACCEPTED else LOGIN_SUCCEEDED
+                audit(AuditEvent(action = action, actor = AuditActor.named(outcome.principal.name, ip)))
             }
             Rejected -> {
                 limiter.recordFailure(keys)
@@ -111,9 +116,14 @@ class LoginService internal constructor(
             // The password was judged to be wrong for this account: counted like a rejection by the audit trail.
             is LoginOutcome.Refused -> recordRejected(username, ip)
             // The directory did not answer, so nothing was judged and nothing counts towards the limit.
-            LoginOutcome.Unavailable, is Blocked, UnknownProvider -> Unit
+            LoginOutcome.Unavailable, is Blocked, UnknownProvider, is LoginOutcome.SecondFactorRequired -> Unit
         }
         return outcome
+    }
+
+    /** Records that the session of a user has started, after the second factor was completed. */
+    fun recordLoginSucceeded(principalName: String, ip: String) {
+        audit(AuditEvent(action = LOGIN_SUCCEEDED, actor = AuditActor.named(principalName, ip)))
     }
 
     /** Sets the local password of a principal. [mustChange] makes the next login ask for a new one. */
@@ -167,6 +177,10 @@ class LoginService internal constructor(
     /** Whether at least one human principal exists. The setup code is needed exactly as long as this is `false`. */
     fun hasUsers(): Boolean =
         identities.listPrincipals(PrincipalKind.USER).isNotEmpty()
+
+    /** Whether the user must choose a new password at the next sign-in, which an administrator reset asks for. */
+    fun mustChangePassword(principalId: Int): Boolean =
+        credentials.findCredential(principalId)?.mustChangePassword ?: false
 
     fun principalIdOf(principalName: String): Int? =
         identities.findPrincipal(principalName)?.id

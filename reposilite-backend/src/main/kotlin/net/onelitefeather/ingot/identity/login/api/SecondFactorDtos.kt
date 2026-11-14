@@ -1,0 +1,39 @@
+/*
+ * Copyright (c) 2026 OneLiteFeather
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.onelitefeather.ingot.identity.login.api
+
+import io.javalin.openapi.JsonSchema
+
+/** The methods a user with an authenticator may complete a sign-in with. */
+internal const val METHOD_AUTHENTICATOR = "AUTHENTICATOR"
+internal const val METHOD_RECOVERY_CODE = "RECOVERY_CODE"
+
+/** `POST /api/auth/mfa/verify`: the code of the authenticator app, or one recovery code. */
+@JsonSchema(requireNonNulls = false)
+data class SecondFactorRequest(
+    val code: String? = null,
+)
+
+/**
+ * The answer of a password login for a user with a second factor. No session cookie is set. The challenge cookie is, and
+ * [methods] lists what the verification takes.
+ */
+@JsonSchema(requireNonNulls = false)
+data class SecondFactorRequiredResponse(
+    val mfaRequired: Boolean,
+    val methods: List<String>,
+)

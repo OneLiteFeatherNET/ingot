@@ -13,8 +13,10 @@ import com.reposilite.plugin.api.ReposiliteInitializeEvent
 import com.reposilite.plugin.api.ReposilitePlugin
 import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
+import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.identity.login.LoginAttemptLimiter
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginProviderType
 import net.onelitefeather.ingot.identity.login.LoginService
@@ -28,6 +30,8 @@ import net.onelitefeather.ingot.identity.login.api.SelfServiceEndpoints
 import net.onelitefeather.ingot.identity.login.external.ExternalAccountService
 import net.onelitefeather.ingot.identity.login.external.ExternalIdentityStore
 import net.onelitefeather.ingot.identity.login.ldap.LdapDirectories
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorService
+import net.onelitefeather.ingot.identity.login.mfa.SettingsSeedCipher
 import net.onelitefeather.ingot.identity.login.oidc.AuthOidcEndpoints
 import net.onelitefeather.ingot.identity.login.oidc.IdTokenValidator
 import net.onelitefeather.ingot.identity.login.oidc.JdkHttpFetcher
@@ -37,6 +41,7 @@ import net.onelitefeather.ingot.identity.login.oidc.OidcMetadata
 import net.onelitefeather.ingot.identity.login.oidc.OidcProviderCatalog
 import net.onelitefeather.ingot.identity.login.oidc.OidcStateCookie
 import net.onelitefeather.ingot.identity.login.storage.LoginStore
+import net.onelitefeather.ingot.identity.login.storage.SecondFactorStore
 import net.onelitefeather.ingot.identity.session.SessionService
 import net.onelitefeather.ingot.identity.session.SessionSigner
 import net.onelitefeather.ingot.identity.storage.IdentityStore
@@ -54,7 +59,7 @@ class LoginPlugin : ReposilitePlugin() {
     override fun initialize(): Facade {
         val database = reposilite().database
         val auditExtensions = extensions()
-        val clock = Clock.systemUTC()
+        val clock = parameters().clock ?: Clock.systemUTC()
         val loginSettings = facade<SharedConfigurationFacade>().getDomainSettings<LoginSettings>()
         val audit: (AuditEvent) -> Unit = { auditExtensions.emitEvent(it) }
         val oidcCatalog = OidcProviderCatalog(loginSettings, warn = { logger.warn(it) })
@@ -97,6 +102,21 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
+        // Second factors of password logins. Authenticator seeds are sealed with the settings key, read on every use, so a key
+        // that is set later applies without a restart. Without a key, authenticator codes are refused and nothing else changes.
+        val secondFactors = database?.let { database ->
+            val credentials = LoginStore(database, clock)
+            SecondFactorService(
+                store = SecondFactorStore(database, clock),
+                identities = IdentityStore(database),
+                limiter = LoginAttemptLimiter(credentials, loginSettings, clock),
+                seeds = SettingsSeedCipher(codecs = { facade<SharedConfigurationFacade>().settingsCodecs() }),
+                clock = clock,
+                audit = audit,
+                hasLocalPassword = { principalId -> credentials.findCredential(principalId) != null },
+            )
+        }
+
         val loginService = database?.let { database ->
             LoginService(
                 identities = IdentityStore(database),
@@ -105,6 +125,7 @@ class LoginPlugin : ReposilitePlugin() {
                 settings = loginSettings,
                 clock = clock,
                 audit = audit,
+                secondFactorRequired = { principal -> secondFactors?.requiresSecondFactor(principal.id) ?: false },
                 externalPasswordProviders = { directories?.provider()?.let { listOf(it) }.orEmpty() },
                 externalAnnouncements = {
                     val oidc = oidcCatalog.announced().map {
@@ -162,7 +183,7 @@ class LoginPlugin : ReposilitePlugin() {
             )
         }
 
-        val loginFacade = LoginFacade(loginService, sessions, ownTokens)
+        val loginFacade = LoginFacade(loginService, sessions, ownTokens, secondFactors)
         val basePath = facade<LocalConfiguration>().basePath
 
         event { event: RoutingSetupEvent ->

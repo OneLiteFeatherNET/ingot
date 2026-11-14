@@ -37,6 +37,8 @@ import io.javalin.openapi.OpenApiResponse
 import net.onelitefeather.ingot.identity.login.LoginFacade
 import net.onelitefeather.ingot.identity.login.LoginOutcome
 import net.onelitefeather.ingot.identity.login.SetupOutcome
+import net.onelitefeather.ingot.identity.login.mfa.ChallengeCompletion
+import net.onelitefeather.ingot.identity.login.mfa.SecondFactorCookie
 import net.onelitefeather.ingot.identity.model.PrincipalRecord
 import net.onelitefeather.ingot.identity.session.SessionCookies
 import net.onelitefeather.ingot.identity.session.SessionTokens
@@ -75,7 +77,7 @@ internal class AuthLoginEndpoints(
         path = "/api/auth/login",
         methods = [HttpMethod.POST],
         summary = "Log in with a login provider",
-        description = "Checks the credentials of a human user and starts a browser session. Wrong credentials and unknown users get the same answer",
+        description = "Checks the credentials of a human user and starts a browser session. Wrong credentials and unknown users get the same answer. A user with an authenticator gets 200 with mfaRequired set instead of a session: the challenge cookie then goes to /api/auth/mfa/verify",
         tags = ["Auth"],
         requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = LoginRequest::class) ]),
         responses = [
@@ -86,7 +88,7 @@ internal class AuthLoginEndpoints(
             OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
         ]
     )
-    private val login = ReposiliteRoute<LoginResponse>("/api/auth/login", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+    private val login = ReposiliteRoute<Any>("/api/auth/login", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
         val request = runCatching { body<LoginRequest>() }.getOrNull()
         val provider = request?.provider?.takeIf { it.isNotBlank() }
         val username = request?.username?.takeIf { it.isNotBlank() }
@@ -97,12 +99,50 @@ internal class AuthLoginEndpoints(
         } else {
             when (val outcome = facade.login(provider, username, password, ctx.ip())) {
                 is LoginOutcome.Succeeded -> startLoginSession(ctx, facade, basePath.get(), outcome.principal, outcome.mustChangePassword)
+                is LoginOutcome.SecondFactorRequired -> secondFactorChallenge(ctx, basePath.get(), outcome.challenge)
                 LoginOutcome.Rejected -> unauthorizedError("Invalid username or password")
                 LoginOutcome.Disabled -> errorResponse(FORBIDDEN, "This user is disabled")
                 is LoginOutcome.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed login attempts, try again later")
                 LoginOutcome.UnknownProvider -> badRequestError("Unknown login provider")
                 is LoginOutcome.Refused -> errorResponse(FORBIDDEN, outcome.reason.code)
                 LoginOutcome.Unavailable -> errorResponse(SERVICE_UNAVAILABLE, "The login provider cannot be reached, try again later")
+            }
+        }
+    }
+
+    @OpenApi(
+        path = "/api/auth/mfa/verify",
+        methods = [HttpMethod.POST],
+        summary = "Complete a sign-in with a second factor",
+        description = "Completes the sign-in that the login route started for a user with an authenticator. Takes the code from the authenticator app or a recovery code, and needs the challenge cookie. The challenge is single use and expires after five minutes. Starts the browser session on success",
+        tags = ["Auth"],
+        requestBody = OpenApiRequestBody(content = [ OpenApiContent(from = SecondFactorRequest::class) ]),
+        responses = [
+            OpenApiResponse(status = "200", content = [ OpenApiContent(from = LoginResponse::class) ]),
+            OpenApiResponse(status = "400", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "401", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+            OpenApiResponse(status = "429", content = [ OpenApiContent(from = ErrorResponse::class) ]),
+        ]
+    )
+    private val verifySecondFactor = ReposiliteRoute<LoginResponse>("/api/auth/mfa/verify", Route.POST, bodyLimit = SMALL_JSON_BODY_LIMIT) {
+        val challenge = ctx.cookie(SecondFactorCookie.NAME)
+        val code = runCatching { body<SecondFactorRequest>() }.getOrNull()?.code?.takeIf { it.isNotBlank() }
+
+        response = when {
+            challenge == null -> unauthorizedError("Sign in with your password first")
+            code == null -> badRequestError("Verification requires code")
+            else -> when (val outcome = facade.completeSecondFactor(challenge, code, ctx.ip())) {
+                is ChallengeCompletion.Verified -> {
+                    ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
+                    startLoginSession(ctx, facade, basePath.get(), outcome.principal, facade.mustChangePassword(outcome.principal.id))
+                        .also { if (it.isOk) facade.recordSessionIssued(outcome.principal.name, ctx.ip()) }
+                }
+                ChallengeCompletion.WrongCode -> unauthorizedError("Invalid code")
+                ChallengeCompletion.Gone -> {
+                    ctx.res().addHeader("Set-Cookie", SecondFactorCookie.clear(basePath.get(), secure(ctx)))
+                    unauthorizedError("The sign-in expired, start again")
+                }
+                is ChallengeCompletion.Blocked -> tooManyRequests(ctx, outcome.retryAfterSeconds, "Too many failed codes, try again later")
             }
         }
     }
@@ -198,14 +238,20 @@ internal class AuthLoginEndpoints(
         response = Unit.asSuccess()
     }
 
-    override val routes = routes(providers, login, setupStatus, setup, refresh, logout)
+    override val routes = routes(providers, login, verifySecondFactor, setupStatus, setup, refresh, logout)
 
 }
 
 /** A 429 that tells the client when to try again, as `Retry-After` in whole seconds. */
-private fun <V> tooManyRequests(ctx: Context, retryAfterSeconds: Long, message: String): Result<V, ErrorResponse> {
+internal fun <V> tooManyRequests(ctx: Context, retryAfterSeconds: Long, message: String): Result<V, ErrorResponse> {
     ctx.header("Retry-After", retryAfterSeconds.toString())
     return errorResponse(TOO_MANY_REQUESTS, message)
+}
+
+/** The answer of a password login that needs a second factor: no session, and the challenge cookie for the verification. */
+private fun secondFactorChallenge(ctx: Context, basePath: String, challenge: String): Result<Any, ErrorResponse> {
+    ctx.res().addHeader("Set-Cookie", SecondFactorCookie.set(challenge, basePath, secure(ctx)))
+    return SecondFactorRequiredResponse(mfaRequired = true, methods = listOf(METHOD_AUTHENTICATOR, METHOD_RECOVERY_CODE)).asSuccess()
 }
 
 private fun startLoginSession(
