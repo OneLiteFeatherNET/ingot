@@ -23,8 +23,12 @@ plugins {
 
 dependencies {
     compileOnly(project(":reposilite-backend"))
+    // The server's Jackson: compile against the version the server ships, the plugin loader resolves it to the server copy at run time.
+    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.7")
 
     testImplementation(project(":reposilite-backend"))
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.7")
+    testImplementation(testFixtures(project(":reposilite-backend")))
 }
 
 // Not part of the image. The jar is installed by the operator, and its presence in the plugins directory is its own switch.
