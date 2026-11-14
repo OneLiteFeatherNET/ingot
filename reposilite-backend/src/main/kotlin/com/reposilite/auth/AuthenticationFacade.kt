@@ -238,6 +238,7 @@ class AuthenticationFacade(
                     principal = SessionPrincipal(id = subject.principalId, kind = subject.kind.name, name = subject.principalName ?: it.name),
                     teams = subject.teams,
                     nodes = PermissionEvaluator.effectiveNodes(subject),
+                    instanceAdmin = PermissionEvaluator.isInstanceAdmin(subject),
                     grants = subject.levels.flatMap { it.grants }.map { grant ->
                         SessionGrant(team = grant.team, repository = grant.repository, pathPrefix = grant.pathPrefix, role = grant.role.name)
                     },

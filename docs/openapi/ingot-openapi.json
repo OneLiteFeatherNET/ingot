@@ -1936,6 +1936,9 @@
             },
             "type" : "array"
           },
+          "instanceAdmin" : {
+            "type" : "boolean"
+          },
           "nodes" : {
             "items" : {
               "type" : "string"
@@ -1968,7 +1971,7 @@
             "type" : "array"
           }
         },
-        "required" : [ "accessToken", "permissions", "routes", "teams", "grants", "nodes" ],
+        "required" : [ "accessToken", "permissions", "routes", "teams", "grants", "nodes", "instanceAdmin" ],
         "type" : "object"
       },
       "SessionGrant" : {
