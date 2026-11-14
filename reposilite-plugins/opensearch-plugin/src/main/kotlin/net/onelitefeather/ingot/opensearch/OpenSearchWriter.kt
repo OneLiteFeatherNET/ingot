@@ -20,6 +20,10 @@ package net.onelitefeather.ingot.opensearch
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.reposilite.ReposiliteObjectMapper
+import net.onelitefeather.ingot.search.http.CredentialRedactor
+import net.onelitefeather.ingot.search.http.SearchCircuitBreaker
+import net.onelitefeather.ingot.search.http.SearchHttpClient
+import net.onelitefeather.ingot.search.http.HttpAnswer
 import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
@@ -41,11 +45,11 @@ internal class OpenSearchRejectedException(message: String) : RuntimeException(m
  * A removal of a document that does not exist counts as applied, so a replay changes nothing.
  */
 internal class OpenSearchWriter(
-    private val http: OpenSearchHttp,
-    private val breaker: OpenSearchCircuitBreaker,
+    private val http: SearchHttpClient,
+    private val breaker: SearchCircuitBreaker,
     private val index: String,
     private val bulkSize: Int,
-    private val redactor: OpenSearchRedactor,
+    private val redactor: CredentialRedactor,
 ) {
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
@@ -60,7 +64,7 @@ internal class OpenSearchWriter(
     }
 
     private fun bulk(step: WriteStep.Bulk) {
-        val answer = breaker.call { http.send("POST", "/_bulk", step.body, OpenSearchHttp.NDJSON) }
+        val answer = breaker.call { http.send("POST", "/_bulk", step.body, SearchHttpClient.NDJSON) }
         checkStatus(answer, "the bulk request")
         val report = mapper.readTree(answer.body)
         if (!report.path("errors").asBoolean()) return

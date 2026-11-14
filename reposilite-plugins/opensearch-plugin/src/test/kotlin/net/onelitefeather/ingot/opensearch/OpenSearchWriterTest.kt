@@ -29,6 +29,10 @@ import java.io.IOException
 import java.net.URI
 import java.time.Duration
 import java.time.Instant
+import net.onelitefeather.ingot.search.http.HttpAnswer
+import net.onelitefeather.ingot.search.http.SearchHttpClient as OpenSearchHttp
+import net.onelitefeather.ingot.search.http.CredentialRedactor as OpenSearchRedactor
+import net.onelitefeather.ingot.search.http.SearchCircuitBreaker as OpenSearchCircuitBreaker
 
 /** The write path on a fake transport: the status mapping, the rejected documents and the requests of the removals. */
 internal class OpenSearchWriterTest {

@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package net.onelitefeather.ingot.opensearch
+package net.onelitefeather.ingot.search.http
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 /** The redaction of every text that leaves the plugin: a cluster may echo its credentials in an error body. */
-internal class OpenSearchRedactorTest {
+internal class CredentialRedactorTest {
 
-    private val redactor = OpenSearchRedactor(listOf("s3cret", "indexer"))
+    private val redactor = CredentialRedactor(listOf("s3cret", "indexer"))
 
     @Test
     fun `should remove the password from an error text that echoes it`() {
@@ -54,7 +54,7 @@ internal class OpenSearchRedactorTest {
     @Test
     fun `should leave the text unchanged when every configured secret is blank`() {
         // given: a redactor with blank secrets only, which must not match between every character
-        val blankRedactor = OpenSearchRedactor(listOf("", "   "))
+        val blankRedactor = CredentialRedactor(listOf("", "   "))
 
         // when: a plain text is redacted
         val shown = blankRedactor.redact("plain text")

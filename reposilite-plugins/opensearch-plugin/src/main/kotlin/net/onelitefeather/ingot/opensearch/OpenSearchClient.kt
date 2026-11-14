@@ -20,6 +20,10 @@ package net.onelitefeather.ingot.opensearch
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.reposilite.ReposiliteObjectMapper
+import net.onelitefeather.ingot.search.http.CredentialRedactor
+import net.onelitefeather.ingot.search.http.SearchCircuitBreaker
+import net.onelitefeather.ingot.search.http.SearchHttpClient
+import net.onelitefeather.ingot.search.http.HttpAnswer
 import net.onelitefeather.ingot.search.SearchUnavailableException
 import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
@@ -31,15 +35,15 @@ import java.io.IOException
  * detail that carries a secret. [send] returns the answer as it came, for the callers that decide what a status means.
  */
 internal class OpenSearchClient(
-    private val http: OpenSearchHttp,
-    private val breaker: OpenSearchCircuitBreaker,
-    private val redactor: OpenSearchRedactor,
+    private val http: SearchHttpClient,
+    private val breaker: SearchCircuitBreaker,
+    private val redactor: CredentialRedactor,
 ) {
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 
     /** One request through the breaker. Only a transport failure or a busy breaker is thrown. */
-    fun send(method: String, path: String, body: String? = null, contentType: String = OpenSearchHttp.JSON): HttpAnswer =
+    fun send(method: String, path: String, body: String? = null, contentType: String = SearchHttpClient.JSON): HttpAnswer =
         breaker.call { http.send(method, path, body, contentType) }
 
     /** One request whose answer must be a success, parsed as JSON. [body] is serialised as JSON when it is not null. */

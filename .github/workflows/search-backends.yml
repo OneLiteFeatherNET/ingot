@@ -10,6 +10,7 @@ on:
     branches: [ "main" ]
     paths:
       - "reposilite-plugins/opensearch-plugin/**"
+      - "reposilite-search-http/**"
       - "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/search/**"
       - "reposilite-backend/src/integration/kotlin/net/onelitefeather/ingot/search/opensearch/**"
   schedule:

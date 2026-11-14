@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package net.onelitefeather.ingot.opensearch
+package net.onelitefeather.ingot.search.http
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -25,7 +25,7 @@ import java.time.Duration
 import java.util.Base64
 
 /** The only class that speaks HTTP: its requests, its credentials and its failover between URLs, on a fake transport. */
-internal class OpenSearchHttpTest {
+internal class SearchHttpClientTest {
 
     private val first = URI.create("https://first.example.test:9200")
     private val second = URI.create("https://second.example.test:9200")
@@ -34,7 +34,7 @@ internal class OpenSearchHttpTest {
     fun `should send the basic authorization header built from the user and the password`() {
         // given: a client with credentials and a transport that answers
         val exchange = FakeExchange()
-        val http = OpenSearchHttp(listOf(first), username = "indexer", password = "s3cret", timeout = Duration.ofSeconds(30), exchange = exchange)
+        val http = SearchHttpClient(listOf(first), username = "indexer", password = "s3cret", timeout = Duration.ofSeconds(30), exchange = exchange)
 
         // when: a request is sent
         http.send("GET", "/_cluster/health")
@@ -48,7 +48,7 @@ internal class OpenSearchHttpTest {
     fun `should send no authorization header when no user is configured`() {
         // given: a client without credentials
         val exchange = FakeExchange()
-        val http = OpenSearchHttp(listOf(first), username = null, password = null, timeout = Duration.ofSeconds(30), exchange = exchange)
+        val http = SearchHttpClient(listOf(first), username = null, password = null, timeout = Duration.ofSeconds(30), exchange = exchange)
 
         // when: a request is sent
         http.send("GET", "/_cluster/health")
@@ -61,7 +61,7 @@ internal class OpenSearchHttpTest {
     fun `should send the request to the base URL with the path and the query`() {
         // given: a client with a base URL that ends in a slash
         val exchange = FakeExchange()
-        val http = OpenSearchHttp(listOf(URI.create("https://first.example.test:9200/")), null, null, Duration.ofSeconds(30), exchange)
+        val http = SearchHttpClient(listOf(URI.create("https://first.example.test:9200/")), null, null, Duration.ofSeconds(30), exchange)
 
         // when: a request with a query is sent
         http.send("POST", "/ingot-artifacts/_delete_by_query?conflicts=proceed", body = "{}")
@@ -79,7 +79,7 @@ internal class OpenSearchHttpTest {
             if (call.uri.host == first.host) throw IOException("connection refused")
             HttpAnswer(200, emptyMap(), "{}")
         }
-        val http = OpenSearchHttp(listOf(first, second), null, null, Duration.ofSeconds(30), exchange)
+        val http = SearchHttpClient(listOf(first, second), null, null, Duration.ofSeconds(30), exchange)
 
         // when: a request is sent
         val answer = http.send("GET", "/_cluster/health")
@@ -93,7 +93,7 @@ internal class OpenSearchHttpTest {
     fun `should report a transport failure when every URL is unreachable`() {
         // given: two clusters that both refuse the connection
         val exchange = FakeExchange { throw IOException("connection refused") }
-        val http = OpenSearchHttp(listOf(first, second), null, null, Duration.ofSeconds(30), exchange)
+        val http = SearchHttpClient(listOf(first, second), null, null, Duration.ofSeconds(30), exchange)
 
         // when: a request is sent
         // then: the failure reaches the caller as a transport failure, which the circuit breaker counts

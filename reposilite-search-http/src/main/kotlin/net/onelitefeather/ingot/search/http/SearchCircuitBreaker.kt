@@ -16,7 +16,7 @@
 
 @file:OptIn(ExperimentalIngotSearchApi::class)
 
-package net.onelitefeather.ingot.opensearch
+package net.onelitefeather.ingot.search.http
 
 import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
@@ -33,7 +33,7 @@ import java.time.Instant
  *
  * Time comes from [clock] only, so that the tests move it by hand.
  */
-internal class OpenSearchCircuitBreaker(
+class SearchCircuitBreaker(
     private val clock: Clock,
     private val threshold: Int = FAILURES_TO_OPEN,
     private val openFor: Duration = OPEN_FOR,
@@ -75,7 +75,7 @@ internal class OpenSearchCircuitBreaker(
             throw BackendBusyException("the search cluster is not reachable, requests are paused", Duration.between(now, until))
         }
         if (probing) {
-            throw BackendBusyException("the search cluster is being probed, the request waits for its answer", DEFAULT_RETRY_AFTER)
+            throw BackendBusyException("the search cluster is being probed, the request waits for its answer", PROBE_RETRY_AFTER)
         }
         probing = true
     }
@@ -97,6 +97,7 @@ internal class OpenSearchCircuitBreaker(
     companion object {
         const val FAILURES_TO_OPEN: Int = 5
         val OPEN_FOR: Duration = Duration.ofSeconds(30)
+        private val PROBE_RETRY_AFTER: Duration = Duration.ofSeconds(5)
     }
 
 }
