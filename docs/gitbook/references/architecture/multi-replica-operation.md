@@ -6,6 +6,25 @@ description: Explains how several Ingot replicas share one database and what eac
 
 Several Ingot replicas can serve the same instance. They share one database, and the database holds nearly all state that matters. This page explains which state is shared, how replicas avoid doing the same work twice, and what each replica keeps for itself. It describes the behaviour of the current release. For the setups that are supported with several replicas, and the tests behind each statement, read [High availability support](high-availability-support.md).
 
+The diagram shows what several replicas share. A dashed arrow is optional.
+
+```mermaid
+flowchart LR
+    Clients["Clients"] --> Address["One address"]
+    Address --> R1["Replica 1"]
+    Address --> R2["Replica 2"]
+    Address --> R3["Replica 3"]
+    R1 --> DB[("Shared database")]
+    R2 --> DB
+    R3 --> DB
+    R1 --> Storage[("Object storage (S3)")]
+    R2 --> Storage
+    R3 --> Storage
+    R1 -.-> Bus["Cluster bus"]
+    R2 -.-> Bus
+    R3 -.-> Bus
+```
+
 ## What a replica needs
 
 Every replica must reach the same database server. SQLite is a single file on one machine, so it suits one instance only. For more than one replica, use a database server. MariaDB and PostgreSQL are the supported choices. MySQL and H2 are experimental.
