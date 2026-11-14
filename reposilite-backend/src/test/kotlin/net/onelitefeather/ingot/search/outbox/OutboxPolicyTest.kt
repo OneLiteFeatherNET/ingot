@@ -27,8 +27,8 @@ internal class OutboxPolicyTest {
     private val now = Instant.parse("2026-10-16T10:00:00Z")
 
     @Test
-    fun `a claim holds its entry for sixty seconds`() {
-        assertThat(OutboxPolicy.leaseUntil(now)).isEqualTo(now.plusSeconds(60))
+    fun `a claim holds its entry for ninety seconds`() {
+        assertThat(OutboxPolicy.leaseUntil(now)).isEqualTo(now.plusSeconds(90))
     }
 
     @Test
