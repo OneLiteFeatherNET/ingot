@@ -1,4 +1,4 @@
-"""Tests for the `dashboard-e2e` job of .github/workflows/ci.yml.
+"""Tests for the `e2e` job of .github/workflows/heavy.yml.
 
 The job runs the browser suite of the dashboard. These tests read the workflow file as text and check its shape: the
 name the branch protection rule refers to, the time limit, the pinned actions, the failure-only artifact and the order
@@ -16,9 +16,9 @@ import unittest
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPOSITORY_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(TESTS_DIR)))
-WORKFLOW = os.path.join(REPOSITORY_ROOT, ".github", "workflows", "ci.yml")
+WORKFLOW = os.path.join(REPOSITORY_ROOT, ".github", "workflows", "heavy.yml")
 
-JOB_ID = "dashboard-e2e"
+JOB_ID = "e2e"
 JOB_NAME = "Dashboard end-to-end"
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 
@@ -95,9 +95,9 @@ class DashboardE2eJobTest(unittest.TestCase):
         self.assertEqual(job_value(self.block, "name"), JOB_NAME,
                          "the name is the check name that branch protection shows")
 
-    def test_job_has_no_needs(self):
-        self.assertIsNone(job_value(self.block, "needs"),
-                          "the job runs in parallel with the others and does not wait for them")
+    def test_job_waits_for_the_heavy_gate_only(self):
+        self.assertEqual(job_value(self.block, "needs"), "[ gate ]",
+                         "the job runs in parallel with the other heavy jobs and waits for the gate alone")
 
     def test_job_times_out_after_fifteen_minutes(self):
         self.assertEqual(job_value(self.block, "timeout-minutes"), "15",
