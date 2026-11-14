@@ -23,15 +23,17 @@ import com.reposilite.configuration.shared.infrastructure.SettingsWriteGuard
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.token.AccessTokenIdentifier
 import io.javalin.http.HttpStatus.FORBIDDEN
+import com.reposilite.auth.application.AuthenticationSettings
+import com.reposilite.auth.application.LdapSettings
 import net.onelitefeather.ingot.identity.login.ldap.LdapLoginSettings
 import net.onelitefeather.ingot.identity.login.oidc.OidcProviderSettings
 import net.onelitefeather.ingot.identity.service.IdpGuardMode
 
 /**
- * The guard of the `login` domain. A write that changes an identity-relevant field needs the admin area `ingot.admin.idp`,
- * because such a field decides who logs in and which groups become instance administrators. The mode is the same switch as
- * the one of team links. Enforce refuses with a generic 403, warn allows and records, off checks nothing. A write that changes
- * no identity field is not guarded, and neither is any other domain.
+ * The guard of the `login` and the legacy `authentication` domains. A write that changes an identity-relevant field needs the
+ * admin area `ingot.admin.idp`, because such a field decides who logs in and which groups become instance administrators.
+ * The mode is the same switch as the one of team links. Enforce refuses with a generic 403, warn allows and records, off
+ * checks nothing. A write that changes no identity field is not guarded, and neither is any other domain.
  */
 internal class LoginIdentityGuard(
     private val mode: IdpGuardMode,
@@ -47,8 +49,13 @@ internal class LoginIdentityGuard(
         caller: AccessTokenIdentifier,
         actor: AuditActor,
     ): ErrorResponse? {
-        if (domain != DOMAIN || mode == IdpGuardMode.OFF || before !is LoginSettings || after !is LoginSettings) return null
-        val fields = LoginIdentityFields.changed(before, after)
+        if (mode == IdpGuardMode.OFF) return null
+        val fields = when {
+            domain == DOMAIN && before is LoginSettings && after is LoginSettings -> LoginIdentityFields.changed(before, after)
+            domain == AUTHENTICATION_DOMAIN && before is AuthenticationSettings && after is AuthenticationSettings ->
+                AuthenticationIdentityFields.changed(before, after)
+            else -> return null
+        }
         if (fields.isEmpty() || holdsIdp(caller)) return null
 
         val refused = mode == IdpGuardMode.ENFORCE
@@ -67,12 +74,13 @@ internal class LoginIdentityGuard(
         if (refused) {
             return ErrorResponse(FORBIDDEN.code, "Changing the identity provider settings needs the admin area ingot.admin.idp.")
         }
-        warnings("The login settings $fields are changed without ingot.admin.idp")
+        warnings("The settings of domain $domain are changed without ingot.admin.idp: $fields")
         return null
     }
 
     companion object {
         const val DOMAIN = "login"
+        const val AUTHENTICATION_DOMAIN = "authentication"
     }
 }
 
@@ -92,6 +100,9 @@ internal object LoginIdentityFields {
         "groupsClaim" to { p: OidcProviderSettings -> p.groupsClaim },
         "usernameClaim" to { p: OidcProviderSettings -> p.usernameClaim },
         "adminGroups" to { p: OidcProviderSettings -> p.adminGroups },
+        "emailClaim" to { p: OidcProviderSettings -> p.emailClaim },
+        "allowedEmailDomains" to { p: OidcProviderSettings -> p.allowedEmailDomains },
+        "autoCreateUsers" to { p: OidcProviderSettings -> p.autoCreateUsers },
     )
 
     private val LDAP_FIELDS: List<Pair<String, (LdapLoginSettings) -> Any?>> = listOf(
@@ -107,6 +118,7 @@ internal object LoginIdentityFields {
         "groupFilter" to { p: LdapLoginSettings -> p.groupFilter },
         "groupNameAttribute" to { p: LdapLoginSettings -> p.groupNameAttribute },
         "adminGroups" to { p: LdapLoginSettings -> p.adminGroups },
+        "autoCreateUsers" to { p: LdapLoginSettings -> p.autoCreateUsers },
     )
 
     /** The paths of the identity fields that differ between [before] and [after]. Providers are matched by their id. */
@@ -132,4 +144,30 @@ internal object LoginIdentityFields {
         }
         return changed
     }
+}
+
+/**
+ * The fields of the legacy `authentication` domain that decide who may authenticate through its LDAP directory: whether it is
+ * on, where it points and how it searches. Each changed field is named as `ldap.<field>`. The brute force protection is not
+ * listed, because it only limits attempts.
+ */
+internal object AuthenticationIdentityFields {
+
+    private val LDAP_FIELDS: List<Pair<String, (LdapSettings) -> Any?>> = listOf(
+        "enabled" to { l: LdapSettings -> l.enabled },
+        "ssl" to { l: LdapSettings -> l.ssl },
+        "hostname" to { l: LdapSettings -> l.hostname },
+        "port" to { l: LdapSettings -> l.port },
+        "baseDn" to { l: LdapSettings -> l.baseDn },
+        "searchUserDn" to { l: LdapSettings -> l.searchUserDn },
+        "searchUserPassword" to { l: LdapSettings -> l.searchUserPassword },
+        "typeAttribute" to { l: LdapSettings -> l.typeAttribute },
+        "userAttribute" to { l: LdapSettings -> l.userAttribute },
+        "userFilter" to { l: LdapSettings -> l.userFilter },
+        "userType" to { l: LdapSettings -> l.userType },
+    )
+
+    /** The paths of the identity fields that differ between [before] and [after]. */
+    fun changed(before: AuthenticationSettings, after: AuthenticationSettings): List<String> =
+        LDAP_FIELDS.mapNotNull { (name, read) -> "ldap.$name".takeIf { read(before.ldap) != read(after.ldap) } }
 }
