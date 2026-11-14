@@ -36,7 +36,10 @@ import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.schema.SchemaLockFactory
 import net.onelitefeather.ingot.schema.SchemaLockRequest
 import java.time.Clock
+import net.onelitefeather.ingot.logging.JsonLogger
+import net.onelitefeather.ingot.logging.LogFormat
 import net.onelitefeather.ingot.logging.LogSettings
+import net.onelitefeather.ingot.logging.TraceContext
 import net.onelitefeather.ingot.logging.applyToTinyLog
 import net.onelitefeather.ingot.web.RequestLimitSettings
 import net.onelitefeather.ingot.web.ShutdownSettings
@@ -49,7 +52,11 @@ object ReposiliteFactory {
         // Read first, because tinylog reads its configuration once, when the first logger uses it
         val logSettings = LogSettings.read()
         logSettings.applyToTinyLog()
-        return createReposilite(parameters, PrintStreamLogger(System.out, System.err, Channel.ALL, false), logSettings = logSettings)
+        val console = when (logSettings.format) {
+            LogFormat.TEXT -> PrintStreamLogger(System.out, System.err, Channel.ALL, false)
+            LogFormat.JSON -> JsonLogger(System.out, System.err, Channel.ALL, Clock.systemUTC(), TraceContext { null })
+        }
+        return createReposilite(parameters, console, logSettings = logSettings)
     }
 
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite =
