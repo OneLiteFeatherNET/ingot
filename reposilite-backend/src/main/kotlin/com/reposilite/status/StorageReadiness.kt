@@ -14,10 +14,16 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package com.reposilite.status
 
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.storage.StorageProvider
+import com.reposilite.storage.api.Location
 import io.javalin.http.HttpStatus.NOT_FOUND
+import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
+import net.onelitefeather.ingot.storage.capability.ReadinessProbe
 import panda.std.Result
 
 /**
@@ -27,3 +33,20 @@ import panda.std.Result
  */
 internal fun <T> Result<T, ErrorResponse>.answersListing(): Boolean =
     fold({ true }, { it.status == NOT_FOUND.code })
+
+/**
+ * The probe of a storage without its own [net.onelitefeather.ingot.storage.capability.ReadinessProbe]: its root is listed. An answer
+ * that the root does not exist is [ReadinessOutcome.NotFoundOk], because the backend answered. Any other failure is reported with its message.
+ */
+internal fun StorageProvider.probeListing(): ReadinessOutcome =
+    getFiles(Location.empty()).fold(
+        { ReadinessOutcome.Ok },
+        { error -> if (error.status == NOT_FOUND.code) ReadinessOutcome.NotFoundOk else ReadinessOutcome.Failed(error.message) },
+    )
+
+/** The readiness of a storage: its own probe when it declares one, else the listing of its root. */
+internal fun readinessOf(storage: StorageProvider): ReadinessOutcome =
+    (storage as? ReadinessProbe)?.probe() ?: storage.probeListing()
+
+/** Whether an outcome counts as the backend having answered. A failed probe does not. */
+internal fun ReadinessOutcome.answered(): Boolean = this !is ReadinessOutcome.Failed

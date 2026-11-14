@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotStorageApi::class)
+
 package com.reposilite.storage.filesystem
 
 import com.reposilite.journalist.Journalist
@@ -51,6 +53,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.UncheckedIOException
 import java.nio.file.AtomicMoveNotSupportedException
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.UsageCapability
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
@@ -71,6 +75,7 @@ import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.fileSize
+import kotlin.io.path.fileStore
 import kotlin.io.path.getLastModifiedTime
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
@@ -86,7 +91,15 @@ abstract class FileSystemStorageProvider protected constructor(
     val rootDirectory: Path,
     private val failureFacade: FailureFacade,
     private val clock: Clock,
-) : StorageProvider, StorageEntrySource by FileSystemEntrySource(rootDirectory, failureFacade) {
+) : StorageProvider, StorageEntrySource by FileSystemEntrySource(rootDirectory, failureFacade), UsageCapability {
+
+    override val reportsUsage: Boolean = true
+
+    override val supportsQuota: Boolean = true
+
+    /** The total space of the disk the repository lives on, which is the base of a percentage quota. Null when the disk cannot be read. */
+    override fun totalCapacityBytes(): Long? =
+        runCatching { rootDirectory.fileStore().totalSpace }.getOrNull()
 
     private enum class LockMode {
         READ,

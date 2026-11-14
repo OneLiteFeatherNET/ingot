@@ -56,7 +56,7 @@ data class OperatingSystemInformation(val name: String, val version: String, val
 /** The kind of the database, and for a networked kind its host and port. */
 data class DatabaseInformation(val kind: String, val endpoint: String?)
 
-data class StorageInformation(val repository: String, val kind: String, val region: String?)
+data class StorageInformation(val repository: String, val kind: String, val region: String?, val details: Map<String, String> = emptyMap())
 
 data class PluginInformation(val name: String, val version: String, val dependencies: List<String>)
 

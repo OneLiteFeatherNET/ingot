@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalIngotStorageApi::class)
+
 package com.reposilite.storage.s3
 
 import com.reposilite.journalist.Journalist
@@ -31,11 +33,19 @@ import com.reposilite.storage.api.FileDetails
 import com.reposilite.storage.api.Location
 import com.reposilite.storage.api.SimpleDirectoryInfo
 import com.reposilite.storage.api.UNKNOWN_LENGTH
+import com.reposilite.status.probeListing
 import io.javalin.http.ContentType
 import io.javalin.http.ContentType.APPLICATION_OCTET_STREAM
 import io.javalin.http.ContentType.Companion.OCTET_STREAM
 import io.javalin.http.HttpStatus.FORBIDDEN
 import io.javalin.http.HttpStatus.NOT_FOUND
+import net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi
+import net.onelitefeather.ingot.storage.capability.ClusterBus
+import net.onelitefeather.ingot.storage.capability.ClusterCacheAware
+import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
+import net.onelitefeather.ingot.storage.capability.ReadinessProbe
+import net.onelitefeather.ingot.storage.capability.RelatedKeyAware
+import net.onelitefeather.ingot.storage.capability.UsageCapability
 import panda.std.Result
 import panda.std.Result.ok
 import panda.std.asSuccess
@@ -67,6 +77,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.PushbackInputStream
 import java.nio.file.attribute.FileTime
+import java.time.Duration
 import java.time.Instant
 
 private val skipBucketCreation = System.getProperty("reposilite.s3.skip-bucket-creation", "false") == "true"
@@ -81,7 +92,8 @@ class S3StorageProvider(
     private val keyPrefix: String = "",
     /** Restores the temporary file path for every upload, see `INGOT_S3_BUFFER_TO_DISK`. */
     private val bufferToDisk: Boolean = false,
-) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix, failureFacade), Journalist, RelatedKeyAware {
+) : StorageProvider, StorageEntrySource by S3EntrySource(s3, bucket, keyPrefix, failureFacade), Journalist,
+    RelatedKeyAware, ClusterCacheAware, ReadinessProbe, UsageCapability {
 
     init {
         if (!skipBucketCreation) {
@@ -119,6 +131,24 @@ class S3StorageProvider(
     override fun useRelatedKeys(rule: RelatedKeyRule) {
         (s3 as? CachableS3Client)?.useRelatedKeys(rule)
     }
+
+    /** Bounds the head cache by [maxAge], once the cluster bus is open. */
+    override fun bind(clusterBus: ClusterBus, maxAge: Duration) {
+        (s3 as? CachableS3Client)?.bindToClusterBus(maxAge)
+    }
+
+    override fun invalidate(keys: Collection<String>) {
+        (s3 as? CachableS3Client)?.invalidateKeys(keys)
+    }
+
+    /** The listing of the root, as every storage without its own probe is read. */
+    override fun probe(): ReadinessOutcome =
+        probeListing()
+
+    /** S3 answers every write made through this instance, so the bucket is never a fixed size and no quota is reported. */
+    override val reportsUsage: Boolean = false
+
+    override val supportsQuota: Boolean = false
 
     override fun putFile(location: Location, inputStream: InputStream): Result<Unit, ErrorResponse> =
         inputStream.use { data ->

@@ -37,6 +37,7 @@ internal object StorageUsageMessage {
                 .put("id", figure.id)
                 .put("usedBytes", figure.usedBytes)
                 .put("fileCount", figure.fileCount)
+                .put("storageType", figure.storageType)
         }
         return payload
     }
@@ -49,7 +50,12 @@ internal object StorageUsageMessage {
         val repositories = payload.path("repositories").takeIf { it.isArray } ?: return null
         val figures = repositories.map { node ->
             val id = node.path("id").takeIf { it.isTextual }?.asText() ?: return null
-            StorageUsageFigure(id = id, usedBytes = node.path("usedBytes").asLong(), fileCount = node.path("fileCount").asLong())
+            StorageUsageFigure(
+                id = id,
+                usedBytes = node.path("usedBytes").asLong(),
+                fileCount = node.path("fileCount").asLong(),
+                storageType = node.path("storageType").takeIf { it.isTextual }?.asText() ?: "unknown",
+            )
         }
         return StorageUsageRefreshedEvent(computedAt, figures)
     }

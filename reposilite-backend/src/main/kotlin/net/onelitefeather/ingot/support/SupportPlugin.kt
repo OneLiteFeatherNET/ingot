@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package net.onelitefeather.ingot.support
 
 import com.fasterxml.jackson.databind.JsonNode
@@ -30,6 +32,7 @@ import com.reposilite.plugin.facade
 import com.reposilite.plugin.reposilite
 import com.reposilite.status.StatusFacade
 import com.reposilite.storage.s3.S3StorageProviderSettings
+import net.onelitefeather.ingot.storage.capability.SupportDetails
 import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.cluster.ClusterSettings
 import net.onelitefeather.ingot.cluster.ClusterSources
@@ -78,6 +81,7 @@ internal class SupportPlugin : ReposilitePlugin() {
             localValues = { localValues(localConfiguration) },
             sharedDomains = { sharedDomains(shared) },
             repositoryStorage = { repositoryStorage(shared) },
+            repositoryDetails = { repositoryDetails(shared) },
             plugins = {
                 reposilite.extensions.getPlugins().values.map { entry ->
                     PluginFact(entry.metadata.name, entry.metadata.version, entry.metadata.dependencies.toList())
@@ -156,6 +160,11 @@ internal class SupportPlugin : ReposilitePlugin() {
             // The resolved view: a reference is replaced by its value, so the known secrets include the values behind references
             val document: JsonNode = DEFAULT_OBJECT_MAPPER.valueToTree(shared.getDomainSettings(type).get())
             SharedDomainDocument(name, type, document)
+        }
+
+    private fun repositoryDetails(shared: SharedConfigurationFacade): Map<String, Map<String, String>> =
+        shared.getDomainSettings<MavenSettings>().get().repositories.associate { repository ->
+            repository.id to ((repository.storageProvider as? SupportDetails)?.describe().orEmpty())
         }
 
     private fun repositoryStorage(shared: SharedConfigurationFacade): List<RepositoryStorage> =

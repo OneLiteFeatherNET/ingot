@@ -1,3 +1,5 @@
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package com.reposilite.storage.s3
 
 import com.github.benmanes.caffeine.cache.Cache
@@ -43,12 +45,15 @@ val defaultRelatedKeys: RelatedKeyRule = { key ->
     Path.of(key).parent?.parent?.resolve("maven-metadata.xml")?.toString()?.let { listOf(it) }.orEmpty()
 }
 
-/** A storage whose head cache takes the related keys of the format that stores in it, see [RelatedKeyRule]. */
-interface RelatedKeyAware {
-
-    fun useRelatedKeys(rule: RelatedKeyRule)
-
-}
+/**
+ * The former name of [net.onelitefeather.ingot.storage.capability.RelatedKeyAware]. It declares no member of its own, so a provider
+ * compiled against it keeps linking, and it receives the related keys through the capability it extends.
+ */
+@Deprecated(
+    message = "Use net.onelitefeather.ingot.storage.capability.RelatedKeyAware",
+    replaceWith = ReplaceWith("RelatedKeyAware", "net.onelitefeather.ingot.storage.capability.RelatedKeyAware"),
+)
+interface RelatedKeyAware : net.onelitefeather.ingot.storage.capability.RelatedKeyAware
 
 /**
  * This S3 clients caches head object requests
@@ -83,7 +88,7 @@ class CachableS3Client : DelegatingS3Client {
         this.delegate = s3
         this.settings = settings
         this.ticker = ticker
-        this.cache = newHeadObjectCache(settings, clusterBound = false, ticker = ticker)
+        this.cache = newHeadObjectCache(settings, clusterMaxAge = null, ticker = ticker)
     }
 
     override fun headObject(headObjectRequest: HeadObjectRequest): HeadObjectResponse {
@@ -118,13 +123,18 @@ class CachableS3Client : DelegatingS3Client {
      * and reads do not extend that. Answers stored before the bus opened are dropped, because they were stored without the bound.
      */
     @Synchronized
-    internal fun bindToClusterBus() {
+    internal fun bindToClusterBus(maxAge: Duration = Duration.ofSeconds(CLUSTER_HEAD_CACHE_MAX_AGE_SECONDS)) {
         val cacheSettings = checkNotNull(settings) { "A cache passed in as a Cache instance cannot be bound to the cluster" }
         if (clusterBound) {
             return
         }
         clusterBound = true
-        cache = newHeadObjectCache(cacheSettings, clusterBound = true, ticker = ticker)
+        cache = newHeadObjectCache(cacheSettings, clusterMaxAge = maxAge, ticker = ticker)
+    }
+
+    /** Drops the answers of [keys] and their related keys, as writes made by another instance require. */
+    internal fun invalidateKeys(keys: Collection<String>) {
+        keys.forEach { invalidate(it) }
     }
 
     /** Replaces the rule of the keys a write makes stale. A format calls it once, when its repository is built. */
@@ -143,19 +153,19 @@ class CachableS3Client : DelegatingS3Client {
 }
 
 /**
- * The cache of head object answers. The configured creation expiry is capped at [CLUSTER_HEAD_CACHE_MAX_AGE_SECONDS] when [clusterBound].
- * A write expiry is measured from the store time and a read does not renew it, so the cap cannot be extended by reads.
- * The access expiry is unchanged.
+ * The cache of head object answers. The configured creation expiry is capped at [clusterMaxAge] when the cache is bound to the cluster
+ * bus, and is unchanged when [clusterMaxAge] is null. A write expiry is measured from the store time and a read does not renew it, so
+ * the cap cannot be extended by reads. The access expiry is unchanged.
  */
 private fun newHeadObjectCache(
     settings: S3MetadataCacheSettings,
-    clusterBound: Boolean,
+    clusterMaxAge: Duration?,
     ticker: Ticker,
 ): Cache<String, HeadObjectResponse> {
     val creation = Duration.ofSeconds(settings.expireAfterCreationSeconds)
-    val writeExpiry = when {
-        clusterBound -> minOf(creation, Duration.ofSeconds(CLUSTER_HEAD_CACHE_MAX_AGE_SECONDS))
-        else -> creation
+    val writeExpiry = when (clusterMaxAge) {
+        null -> creation
+        else -> minOf(creation, clusterMaxAge)
     }
     return Caffeine.newBuilder()
         .maximumSize(settings.maximumSize)

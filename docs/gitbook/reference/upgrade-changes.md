@@ -162,6 +162,15 @@ The image ships `opensearch-plugin.jar` in `/app/bundled-plugins/`. It is loaded
 
 See [OpenSearch search backend](opensearch-search-backend.md) for the variables and the security obligations of the cluster.
 
+### Storage behaviour follows interfaces, and the support bundle gains details
+
+Core now decides storage behaviour through the interfaces of `net.onelitefeather.ingot.storage.capability` instead of the classes of the built-in providers. A configured `fs` or `s3` repository behaves as before, with the same usage figures, quota, conflict messages and readiness. No configuration, environment variable, volume, manifest or plugin changes for existing deployments.
+
+* The support bundle entry of each repository storage gains a `details` map. `region` keeps its meaning.
+* A usage figure of a repository without settings on this replica reports the storage type `unknown` instead of `fs`. A configured repository reports its real type.
+* The cluster usage event carries the storage type of each figure. A replica of the previous version reads a figure without it as `unknown`, and such a replica still decodes the new event.
+* The package `net.onelitefeather.ingot.storage.capability` is experimental. `com.reposilite.storage.s3.RelatedKeyAware` stays, deprecated, so plugins compiled against it still link.
+
 ### The default colour is steel blue
 
 An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](settings-domains.md)). No configuration file, environment variable, volume or plugin changes.
