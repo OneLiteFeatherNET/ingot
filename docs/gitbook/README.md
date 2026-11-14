@@ -1,15 +1,20 @@
 ---
-description: Start page of the Ingot documentation. Explains what Ingot is, where to start, and how the four sections are organized.
+description: Start page of the Ingot documentation. Pitches what Ingot is, gives a reading path for each audience, and explains how the four sections are organized.
 ---
 
 # Ingot documentation
 
-Ingot is a Maven repository manager. It is a drop-in replacement for Reposilite 3.x, so existing Maven, Gradle, sbt and Ivy setups keep working.
+Ingot is a self-hosted Maven repository manager. It hosts, proxies and caches artifacts over the plain Maven protocol, adds users, teams, single sign on, search and an audit log, and runs as one JVM process or as several replicas on a shared database. It is a drop-in replacement for Reposilite 3.x: moving over costs one changed line, and existing Maven, Gradle, sbt and Ivy setups keep working. Ingot hosts Maven repositories only, and it is free software under the Apache License 2.0.
 
 ## Start here
 
-* [First steps with Docker](tutorials/first-steps-with-docker.md) starts Ingot, creates the first administrator and publishes a library. Plan for about 30 minutes.
-* [Set up users, teams and single sign on](tutorials/set-up-users-teams-and-sso.md) adds people, teams and a login provider.
+Pick the path that matches your role.
+
+* **Evaluator.** Read [What is Ingot](explanation/what-is-ingot.md), then [How Ingot compares](explanation/how-ingot-compares.md) and the [Architecture overview](explanation/architecture-overview.md). Start an instance with [First steps with Docker](tutorials/first-steps-with-docker.md). It takes about 30 minutes.
+* **Operator.** Start with [Install with Docker](how-to/install-with-docker.md) or [Run on Kubernetes](how-to/run-on-kubernetes.md). Then read [Size the deployment](how-to/size-the-deployment.md), [Back up and restore](how-to/back-up-and-restore.md) and [Monitor status and failures](how-to/monitor-status-and-failures.md). For more than one replica, read [High availability support](explanation/high-availability-support.md).
+* **Administrator.** Follow [Set up users, teams and single sign on](tutorials/set-up-users-teams-and-sso.md). Then read [Identity model](explanation/identity-model.md), [Grant permissions with nodes](how-to/grant-permissions-with-nodes.md) and [Review the audit log](how-to/review-audit-log.md).
+* **Developer.** Read [Publish and consume artifacts](how-to/publish-and-consume-artifacts.md) and [Use tokens in CI](how-to/use-tokens-in-ci.md). Use [Search for artifacts](how-to/search-for-artifacts.md) to find what you need.
+* **Plugin author.** Read [Write a plugin](how-to/write-a-plugin.md), then the [Plugin API](reference/plugin-api.md) and [Backend architecture](explanation/backend-architecture.md). To extend the dashboard, see [Extend the dashboard from a plugin](how-to/extend-the-dashboard-from-a-plugin.md).
 
 ## Choose by task
 
