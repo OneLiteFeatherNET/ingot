@@ -1,0 +1,29 @@
+{
+  "size": 0,
+  "query": {
+    "bool": {
+      "filter": [
+        { "terms": { "gav": ["abc123"] } },
+        {
+          "bool": {
+            "should": [ { "term": { "repository": "releases" } } ],
+            "minimum_should_match": 1
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "gavs": {
+      "terms": { "field": "gav", "size": 1 },
+      "aggs": {
+        "repositories": {
+          "terms": { "field": "repository", "size": 1000 },
+          "aggs": {
+            "origins": { "terms": { "field": "origin", "size": 2 } }
+          }
+        }
+      }
+    }
+  }
+}

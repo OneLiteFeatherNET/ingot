@@ -17,8 +17,11 @@ package net.onelitefeather.ingot.elasticsearch.query
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import net.onelitefeather.ingot.search.ArtifactFilesQuery
 import net.onelitefeather.ingot.search.ArtifactSearchQuery
 import net.onelitefeather.ingot.search.OriginFilter
+import net.onelitefeather.ingot.search.SearchOrder
+import net.onelitefeather.ingot.search.SearchSort
 import net.onelitefeather.ingot.search.SnapshotFilter
 import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.RepositoryAccess
@@ -133,6 +136,49 @@ internal class ElasticsearchQueryGoldenTest {
             "facet-classifier",
             ElasticsearchQueries.facet(FilterKind.CLASSIFIER, ArtifactSearchQuery(extensions = listOf("jar")), access),
         )
+    }
+
+    @Test
+    fun `should window the groups with a composite aggregation in the requested sort order`() {
+        assertGolden("group-window", ElasticsearchQueries.groupWindow(ArtifactSearchQuery(page = 1, size = 20), access, GroupPart.MAIN, window = 40))
+    }
+
+    @Test
+    fun `should window the groups by the summed size when the request sorts by size`() {
+        val query = ArtifactSearchQuery(sort = SearchSort.SIZE, order = SearchOrder.DESC, page = 1, size = 20)
+        assertGolden("group-window-size", ElasticsearchQueries.groupWindow(query, access, GroupPart.MAIN, window = 40))
+    }
+
+    @Test
+    fun `should count the groups up to one above the total cap`() {
+        assertGolden("total", ElasticsearchQueries.groupTotal(ArtifactSearchQuery(groupId = "net"), access, GroupPart.MAIN))
+    }
+
+    @Test
+    fun `should list the repositories and origins of the groups with the access value only`() {
+        assertGolden("presence", ElasticsearchQueries.presence(listOf("abc123"), access))
+    }
+
+    @Test
+    fun `should find the versions of each artifact key without the request filters`() {
+        assertGolden(
+            "latest-version",
+            ElasticsearchQueries.latestVersions(listOf("net.onelitefeather:mycelium", "com.example:app"), access),
+        )
+    }
+
+    @Test
+    fun `should list the files of one version in path order with the origin and repository filters`() {
+        val query = ArtifactFilesQuery(
+            groupId = "Net.OneLiteFeather",
+            artifactId = "Mycelium",
+            version = "2.0",
+            origin = OriginFilter.HOSTED,
+            repositories = listOf("releases"),
+            page = 1,
+            size = 50,
+        )
+        assertGolden("files", ElasticsearchQueries.files(query, access))
     }
 
     private fun assertGolden(name: String, body: JsonNode) {

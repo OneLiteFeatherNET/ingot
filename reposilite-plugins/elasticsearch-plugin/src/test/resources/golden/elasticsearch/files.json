@@ -1,0 +1,18 @@
+{
+  "from": 50,
+  "size": 50,
+  "track_total_hits": true,
+  "query": {
+    "bool": {
+      "filter": [
+        {"term": {"group_id_lc": "net.onelitefeather"}},
+        {"term": {"artifact_id_lc": "mycelium"}},
+        {"term": {"version_lc": "2.0"}},
+        {"term": {"origin": "HOSTED"}},
+        {"terms": {"repository": ["releases"]}},
+        {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+      ]
+    }
+  },
+  "sort": [{"path": {"order": "asc"}}, {"repository": {"order": "asc"}}]
+}
