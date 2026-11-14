@@ -449,6 +449,15 @@ dependencies {
     )
 }
 
+// The Meilisearch backend of its plugin, as compiled classes only, for the same reason as the OpenSearch one above.
+val meilisearchPlugin = project(":reposilite-plugins:meilisearch-plugin")
+dependencies {
+    "integrationImplementation"(
+        files(meilisearchPlugin.layout.buildDirectory.dir("classes/kotlin/main"))
+            .builtBy(":reposilite-plugins:meilisearch-plugin:compileKotlin"),
+    )
+}
+
 tasks.named<Test>("integration") {
     // Never replayed from the build cache. The suite starts containers that Gradle cannot see, so a cached pass would
     // say nothing about the images and services of this run. CI reads the cache with --build-cache for the unit suite.
