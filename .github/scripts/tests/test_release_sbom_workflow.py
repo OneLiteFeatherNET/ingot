@@ -214,16 +214,16 @@ class CiSbomJobTest(unittest.TestCase):
                 self.assertEqual(leaked, [], f"job '{name}' must not generate or validate an SBOM")
 
     def test_jsonschema_is_installed_before_the_discover_command_runs(self):
-        steps = self.workflow["jobs"]["images-build"]["steps"]
+        steps = self.workflow["jobs"]["script-tests"]["steps"]
         install = first_index(
             steps,
             lambda s: "pip install" in (s.get("run") or "") and "jsonschema==" in (s.get("run") or ""),
-            "installs the pinned jsonschema for the image job",
+            "installs the pinned jsonschema for the script tests job",
         )
         discover = first_index(
             steps,
             lambda s: "unittest discover -s .github/scripts/tests" in (s.get("run") or ""),
-            "runs the discover command of the image job",
+            "runs the discover command of the script tests job",
         )
 
         self.assertLess(install, discover, "test_verify_sbom.py imports jsonschema, so it must be installed first")

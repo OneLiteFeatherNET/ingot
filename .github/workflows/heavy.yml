@@ -73,7 +73,7 @@ jobs:
   # asked for them, and is red on a release pull request until every heavy job ran in full and passed.
   heavy-tests:
     name: "Heavy tests"
-    needs: [ gate ]
+    needs: [ gate, images, helm, ha ]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -108,3 +108,413 @@ jobs:
             echo "::error::$message"
             exit 1
           fi
+
+  # Both images were only ever built while cutting a release, so a broken Dockerfile would
+  # surface at the worst possible moment, with a tag already pushed. Building them here
+  # costs a few minutes and moves that discovery to the pull request that caused it.
+  #
+  # Nothing is pushed. This answers "does it build", which is the failure mode that used to
+  # escape; the release job stays the only thing that publishes.
+  # Builds the two amd64 images once for this commit and hands them to the jobs that run them. The arm64 images
+  # are built by their own job, in parallel, so nothing that waits for this archive waits for them.
+  images-build:
+    name: "Build the container images"
+    needs: [ gate ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.images == 'true' || needs.gate.outputs.helm == 'true' || needs.gate.outputs.ha == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Set up Buildx"
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+
+      # Built for the host architecture and loaded, because the jobs that use them run them.
+      - name: "Build the server image"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ingot:ci
+          cache-from: type=gha,scope=ci-server
+          # Pushes to main keep a minimal export for the next run. Pull requests export nothing: a
+          # key built from COPY . changes with every commit, so nothing the pull request writes is read back.
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=min,scope=ci-server' || '' }}
+
+      - name: "Build the dashboard image"
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          # The repository root, not the module: the image needs branding assets from
+          # outside reposilite-frontend.
+          context: .
+          file: reposilite-frontend/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ingot-dashboard:ci
+          cache-from: type=gha,scope=ci-dashboard
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=min,scope=ci-dashboard' || '' }}
+
+      # The jobs below load these into their own Docker stores. Both tags are kept by the save.
+      - name: "Save the container images"
+        run: docker save ingot:ci ingot-dashboard:ci --output "$RUNNER_TEMP/ingot-images.tar"
+
+      # The archive holds compressed layers already, so the upload stores it without compressing it again.
+      - name: "Publish the container images"
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: container-images
+          path: ${{ runner.temp }}/ingot-images.tar
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+  # The arm64 legs run beside the amd64 build rather than after it, so they add no time to the jobs that
+  # wait for the archive. Only the run stages are emulated; the Gradle and npm work is pinned to the native
+  # platform in the Dockerfiles, so this job runs that stage once more on its own runner, about two minutes.
+  images-arm64:
+    name: "Build the container images for arm64"
+    needs: [ gate ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || (needs.gate.outputs.images == 'true')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Set up QEMU"
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4.2.0
+
+      - name: "Set up Buildx"
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
+
+      # Neither loaded nor pushed: a single Docker image store cannot hold two
+      # architectures under one tag, and the question here is only whether it builds.
+      # No cache export: nothing reads it, and the build stage is not shared with the amd64 job.
+      - name: "Build the server image for arm64"
+        if: github.event_name != 'push'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+
+      - name: "Build the dashboard image for arm64"
+        if: github.event_name != 'push'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
+        with:
+          context: .
+          file: reposilite-frontend/Dockerfile
+          platforms: linux/arm64
+          push: false
+
+  # Runs the server image and the dashboard image the way a deployment does. It needs an image that
+  # already exists, which is why it cannot be part of the normal build.
+  container-tests:
+    name: "Container tests"
+    needs: [ gate, images-build ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || (needs.gate.outputs.images == 'true')) }}
+    # On push to main only the amd64 builds run, to write the layer cache. The tests ran on the pull request.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Download the container images"
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: container-images
+          path: ${{ runner.temp }}/container-images
+
+      - name: "Load the container images"
+        run: docker load --input "$RUNNER_TEMP/container-images/ingot-images.tar"
+
+      # The suite lives in reposilite-backend/src/containerTest and runs both images the way
+      # a deployment does, including an upgrade rehearsal against the real upstream image,
+      # two replicas that find each other through a NATS broker on one MariaDB database, and
+      # the previous release running beside the new image on that database.
+      - name: "Set up Java"
+        if: github.event_name != 'push'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: "Set up Gradle"
+        if: github.event_name != 'push'
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
+
+      # The previous release is the highest version tag, so the mixed-version case always pairs the current build with the
+      # release an operator upgrades from. This checkout is shallow and fetches no tags, so the tags are read from the remote.
+      - name: "Resolve the latest release"
+        if: github.event_name != 'push'
+        id: previous
+        run: |
+          tag=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's#.*refs/tags/##' | sort -V | tail -n 1)
+          test -n "$tag"
+          echo "Previous release: $tag"
+          echo "image=ghcr.io/onelitefeathernet/ingot:${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: "Run the container tests"
+        if: github.event_name != 'push'
+        env:
+          PREVIOUS_IMAGE: ${{ steps.previous.outputs.image }}
+        run: ./gradlew :reposilite-backend:containerTest -Dingot.previous.image="$PREVIOUS_IMAGE"
+
+      - name: "Publish the container test results"
+        if: always() && github.event_name != 'push'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: container-test-results
+          path: reposilite-backend/build/reports/tests/containerTest
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # The vulnerabilities job next to this one scans the Gradle and npm trees, which says
+      # nothing about the base image underneath them. That is where an unpatched openssl or
+      # zlib would sit, and it is the half that is shipped without anyone here declaring it.
+      #
+      # Only fixable findings fail the build. An advisory with no released fix cannot be
+      # acted on by bumping anything, so failing on it would train everyone to ignore this
+      # step; those are caught by the Renovate base image bumps instead.
+      - name: "Scan the server image"
+        if: github.event_name != 'push'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ingot:ci
+          scanners: vuln,secret
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: "Scan the dashboard image"
+        if: github.event_name != 'push'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ingot-dashboard:ci
+          scanners: vuln,secret
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+  # The required check. It passes only when the amd64 build, the container tests and the arm64 build all succeeded.
+  images:
+    name: "Container images"
+    needs: [ gate, images-build, container-tests, images-arm64 ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || (needs.gate.outputs.images == 'true')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: "Check the image build and the container tests"
+        env:
+          BUILD: ${{ needs.images-build.result }}
+          TESTS: ${{ needs.container-tests.result }}
+          EVENT: ${{ github.event_name }}
+          ARM64: ${{ needs.images-arm64.result }}
+        run: |
+          echo "Image build: $BUILD. Container tests: $TESTS. arm64 build: $ARM64."
+          test "$BUILD" = success
+          test "$TESTS" = success || { test "$EVENT" = push && test "$TESTS" = skipped; }
+          test "$ARM64" = success || { test "$EVENT" = push && test "$ARM64" = skipped; }
+
+  # The chart is linted and rendered without a cluster first, because a broken template is the
+  # cheapest thing to catch. Then chart-testing installs both deploy modes on a kind cluster
+  # with the images this commit builds, so the probes and the wiring are exercised for real.
+  #
+  # The cmp is the drift check of the dashboard segment list: the chart carries a copy of the
+  # source that the frontend router and the backend read, and an edit of one without the other
+  # fails here.
+  helm:
+    name: "Helm chart"
+    needs: [ gate, images-build ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || (needs.gate.outputs.helm == 'true' && needs.images-build.result == 'success')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Set up Helm"
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
+        with:
+          version: v4.3.0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "Install the chart test dependencies"
+        run: python3 -m pip install "pyyaml==6.0.3"
+
+      - name: "Install promtool"
+        # Prometheus 3.5.0 release archive, verified against the sha256 published with the release.
+        run: |
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/prometheus.tar.gz" \
+            https://github.com/prometheus/prometheus/releases/download/v3.5.0/prometheus-3.5.0.linux-amd64.tar.gz
+          echo "e811827af26d822afb09a4f28314f61b618b12cff5369835a67f674d8b46f39a  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum --check --strict -
+          tar --extract --gzip --file "$RUNNER_TEMP/prometheus.tar.gz" --directory "$RUNNER_TEMP" prometheus-3.5.0.linux-amd64/promtool
+          echo "PROMTOOL=$RUNNER_TEMP/prometheus-3.5.0.linux-amd64/promtool" >> "$GITHUB_ENV"
+
+      - name: "Lint the chart in both deploy modes"
+        run: |
+          helm lint charts/ingot --strict -f charts/ingot/ci/allinone-values.yaml
+          helm lint charts/ingot --strict -f charts/ingot/ci/split-values.yaml
+
+      - name: "Check the alert rules with promtool"
+        run: |
+          helm template ingot charts/ingot --namespace reposilite-staging --set prometheusRule.enabled=true \
+            --show-only templates/prometheusrule.yaml > "$RUNNER_TEMP/prometheusrule.yaml"
+          python3 -c 'import sys, yaml; print(yaml.safe_dump(yaml.safe_load(open(sys.argv[1]))["spec"]))' \
+            "$RUNNER_TEMP/prometheusrule.yaml" > "$RUNNER_TEMP/rules.yaml"
+          "$PROMTOOL" check rules "$RUNNER_TEMP/rules.yaml"
+
+      - name: "Run the chart tests"
+        run: python3 -m unittest discover -s charts/ingot/tests -t charts/ingot/tests -v
+
+      - name: "Check the dashboard segment copy against its source"
+        run: cmp charts/ingot/files/dashboard-segments.json reposilite-frontend/src/router/dashboard-segments.json
+
+      - name: "Set up chart-testing"
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f  # v2.8.0
+        with:
+          version: "3.14.0"
+
+      - name: "Lint the chart with chart-testing"
+        run: ct lint --config ct.yaml --all
+
+      - name: "Set up kind"
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa  # v1.15.1
+        with:
+          cluster_name: ingot
+
+      - name: "Download the container images"
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: container-images
+          path: ${{ runner.temp }}/container-images
+
+      - name: "Load the container images"
+        run: docker load --input "$RUNNER_TEMP/container-images/ingot-images.tar"
+
+      - name: "Load the images into kind"
+        run: kind load docker-image ingot:ci ingot-dashboard:ci --name ingot
+
+      # Installs each ci/*-values.yaml of the chart in turn, with the readiness and liveness probes
+      # of both workloads, and waits until the pods are ready.
+      - name: "Install the chart in both deploy modes"
+        run: ct install --config ct.yaml --all
+
+      # The restricted profile is installed into a namespace that enforces the Pod Security
+      # restricted level, so the API server rejects the pod unless the render meets that level.
+      # The Deployment is available only when its pod is ready, and the pod wait checks it again.
+      - name: "Install the restricted profile into a restricted namespace"
+        run: |
+          kubectl create namespace ingot-restricted
+          kubectl label namespace ingot-restricted pod-security.kubernetes.io/enforce=restricted
+          helm install ingot-restricted charts/ingot --namespace ingot-restricted \
+            -f charts/ingot/ci/allinone-values.yaml --set deployment.securityProfile=restricted
+          kubectl -n ingot-restricted wait --for=condition=available deployment/ingot-restricted --timeout=300s
+          kubectl -n ingot-restricted wait --for=condition=Ready pod -l app.kubernetes.io/instance=ingot-restricted --timeout=300s
+
+      # Runs the server image the way the restricted pod runs it, outside Kubernetes: a read-only
+      # root filesystem, uid 977, every capability dropped and no privilege escalation. The three
+      # writable paths are tmpfs mounts, as the emptyDir volumes and the data claim are in the pod.
+      - name: "Check the server answers health as uid 977 on a read-only root"
+        run: |
+          docker run --detach --name ingot-readonly \
+            --read-only --user 977:977 --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:exec,mode=1777 --tmpfs /var/log/reposilite:uid=977,gid=977 --tmpfs /app/data:uid=977,gid=977 \
+            --publish 127.0.0.1:8080:8080 ingot:ci
+          status=000
+          for attempt in $(seq 1 60); do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/api/status/health || true)
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ "$status" != "200" ]; then
+            echo "The health endpoint answered $status, expected 200"
+            docker logs ingot-readonly
+            exit 1
+          fi
+
+      - name: "Remove the read-only container"
+        if: always()
+        run: docker rm --force ingot-readonly
+
+  # Two server replicas on one MariaDB server, one Floci bucket and one NATS broker, on their own kind cluster.
+  # The dependencies come from charts/ingot/tests/ha/dependencies.yaml and the replicas from the CI values of the
+  # same directory. chart-testing never installs those values, so the chart job above is unaffected by them.
+  # The driver runs five checks: a rolling restart without a failed read, the takeover of a killed cleanup run,
+  # two deploys at the same moment, a refresh token moved between replicas, and both replicas listing both instances.
+  ha:
+    name: "HA smoke test"
+    needs: [ gate, images-build ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || (needs.gate.outputs.ha == 'true' && needs.images-build.result == 'success')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Set up Helm"
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
+        with:
+          version: v4.3.0
+
+      - name: "Set up Python"
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+        with:
+          python-version: "3.12"
+
+      - name: "Download the container images"
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: container-images
+          path: ${{ runner.temp }}/container-images
+
+      - name: "Load the container images"
+        run: docker load --input "$RUNNER_TEMP/container-images/ingot-images.tar"
+
+      - name: "Set up kind"
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa  # v1.15.1
+        with:
+          cluster_name: ingot-ha
+
+      - name: "Load the images into kind"
+        run: kind load docker-image ingot:ci ingot-dashboard:ci --name ingot-ha
+
+      # Applies the dependencies, installs the replicas, and runs the five checks. A failed check prints the pod
+      # state, the events and the logs of every replica and dependency before the step fails.
+      - name: "Run the two-replica smoke test"
+        run: python3 charts/ingot/tests/ha_smoke.py
