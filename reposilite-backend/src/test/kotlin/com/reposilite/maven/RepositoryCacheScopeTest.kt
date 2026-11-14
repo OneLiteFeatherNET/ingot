@@ -18,9 +18,11 @@ package com.reposilite.maven
 
 import com.reposilite.maven.RepositoryVisibility.PRIVATE
 import com.reposilite.maven.RepositoryVisibility.PUBLIC
+import com.reposilite.maven.application.MirrorCredentials
 import com.reposilite.maven.application.MirroredRepositorySettings
 import com.reposilite.maven.application.RepositorySettings
 import com.reposilite.maven.specification.MavenSpecification
+import com.reposilite.shared.http.AuthenticationMethod
 import com.reposilite.shared.http.CacheScope
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -37,9 +39,25 @@ internal class RepositoryCacheScopeTest : MavenSpecification() {
             MirroredRepositorySettings(reference = "open"),
             MirroredRepositorySettings(reference = "closed"),
         )),
-        // Remote references only: this instance cannot judge the access rules of the upstream host
+        // A remote mirror without credentials: the upstream is anonymous, so the answer keeps the public scope
+        RepositorySettings("anonymous-proxy", visibility = PUBLIC, proxied = mutableListOf(
+            MirroredRepositorySettings(reference = REMOTE_REPOSITORY, store = true),
+        )),
+        // A remote mirror with basic credentials: the upstream refuses anonymous readers, so the answer is private
         RepositorySettings("remote-proxy", visibility = PUBLIC, proxied = mutableListOf(
             MirroredRepositorySettings(reference = REMOTE_REPOSITORY, store = true, authorization = REMOTE_AUTH),
+        )),
+        // A group that reaches the credentialed mirror through another local repository
+        RepositorySettings("credentialed-group", visibility = PUBLIC, proxied = mutableListOf(
+            MirroredRepositorySettings(reference = "remote-proxy"),
+        )),
+        // A remote mirror with a custom header carries credentials as well
+        RepositorySettings("header-proxy", visibility = PUBLIC, proxied = mutableListOf(
+            MirroredRepositorySettings(
+                reference = REMOTE_REPOSITORY,
+                store = true,
+                authorization = MirrorCredentials(AuthenticationMethod.CUSTOM_HEADER, "X-Mirror-Token", "secret"),
+            ),
         )),
     )
 
@@ -54,8 +72,23 @@ internal class RepositoryCacheScopeTest : MavenSpecification() {
     }
 
     @Test
-    fun `should answer public for a public repository that references only remote hosts`() {
-        assertThat(mavenFacade.cacheScopeOf("remote-proxy")).describedAs("scope of remote-proxy").isEqualTo(CacheScope.PUBLIC)
+    fun `should answer public for a public repository whose remote mirror has no credentials`() {
+        assertThat(mavenFacade.cacheScopeOf("anonymous-proxy")).describedAs("scope of anonymous-proxy").isEqualTo(CacheScope.PUBLIC)
+    }
+
+    @Test
+    fun `should answer private for a public repository whose remote mirror has basic credentials`() {
+        assertThat(mavenFacade.cacheScopeOf("remote-proxy")).describedAs("scope of remote-proxy").isEqualTo(CacheScope.PRIVATE)
+    }
+
+    @Test
+    fun `should answer private for a public group that reaches a credentialed mirror through another repository`() {
+        assertThat(mavenFacade.cacheScopeOf("credentialed-group")).describedAs("scope of credentialed-group").isEqualTo(CacheScope.PRIVATE)
+    }
+
+    @Test
+    fun `should answer private for a public repository whose remote mirror has a custom header`() {
+        assertThat(mavenFacade.cacheScopeOf("header-proxy")).describedAs("scope of header-proxy").isEqualTo(CacheScope.PRIVATE)
     }
 
 }
