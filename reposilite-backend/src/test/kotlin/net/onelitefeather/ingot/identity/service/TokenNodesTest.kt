@@ -15,6 +15,7 @@
  */
 package net.onelitefeather.ingot.identity.service
 
+import com.reposilite.audit.api.AuditActor
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
@@ -104,7 +105,7 @@ internal class TokenNodesTest {
         withService { service, _, _ ->
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
             service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
             service.createToken("alice", CreateTokenRequest(name = "alice-read", nodes = listOf(NodeDto("ingot.repository.*.read", true))))

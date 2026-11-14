@@ -15,6 +15,7 @@
  */
 package net.onelitefeather.ingot.identity.service
 
+import com.reposilite.audit.api.AuditActor
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
@@ -68,9 +69,9 @@ internal class OwnAccessSummaryTest {
     fun `the teams of the caller are listed with their direct parents only`() {
         withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "root"))
-            service.createTeam(CreateTeamRequest(name = "maintainers"))
-            service.createTeam(CreateTeamRequest(name = "releases-maintainers"))
+            service.createTeam(CreateTeamRequest(name = "root"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "maintainers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "releases-maintainers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamParents("maintainers", listOf("root"), ifMatch = null)
             service.replaceTeamParents("releases-maintainers", listOf("maintainers"), ifMatch = null)
             service.replaceMembers("releases-maintainers", listOf("alice"), ifMatch = null)
@@ -100,7 +101,7 @@ internal class OwnAccessSummaryTest {
         withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("deployers", listOf(NodeDto("ingot.repository.releases.deploy", true)), ifMatch = null)
             service.replaceMembers("deployers", listOf("alice"), ifMatch = null)
 
@@ -115,7 +116,7 @@ internal class OwnAccessSummaryTest {
     fun `a token narrows the nodes of its owner and marks the answer as narrowed`() {
         withService { service, store, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes(
                 "deployers",
                 listOf(NodeDto("ingot.repository.releases.read", true), NodeDto("ingot.repository.releases.deploy", true)),
@@ -137,7 +138,7 @@ internal class OwnAccessSummaryTest {
         withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
-            service.createTeam(CreateTeamRequest(name = "readers"))
+            service.createTeam(CreateTeamRequest(name = "readers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("readers", listOf(NodeDto("ingot.repository.releases.delete", false)), ifMatch = null)
             service.replaceMembers("readers", listOf("alice"), ifMatch = null)
 
@@ -208,7 +209,7 @@ internal class OwnAccessSummaryTest {
         withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.delete", true)), ifMatch = null)
-            service.createTeam(CreateTeamRequest(name = "readers"))
+            service.createTeam(CreateTeamRequest(name = "readers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("readers", listOf(NodeDto("ingot.repository.releases.delete", false)), ifMatch = null)
             service.replaceMembers("readers", listOf("alice"), ifMatch = null)
 
@@ -223,7 +224,7 @@ internal class OwnAccessSummaryTest {
     fun `a denial that no allow overrides is not marked overridden`() {
         withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
-            service.createTeam(CreateTeamRequest(name = "readers"))
+            service.createTeam(CreateTeamRequest(name = "readers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes("readers", listOf(NodeDto("ingot.repository.releases.delete", false)), ifMatch = null)
             service.replaceMembers("readers", listOf("alice"), ifMatch = null)
 
@@ -253,7 +254,7 @@ internal class OwnAccessSummaryTest {
             val admin = bootstrapAdmin(service)
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.read", true)), ifMatch = null)
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceTeamNodes(
                 "deployers",
                 listOf(NodeDto("ingot.repository.releases.deploy", true), NodeDto("ingot.repository.releases.delete", false)),

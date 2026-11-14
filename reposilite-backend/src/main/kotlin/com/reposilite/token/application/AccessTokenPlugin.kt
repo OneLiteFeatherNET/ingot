@@ -43,6 +43,7 @@ import com.reposilite.web.api.RoutingSetupEvent
 import net.onelitefeather.ingot.repository.RepositoryRegistry
 import net.onelitefeather.ingot.identity.api.IdentityApiEndpoints
 import net.onelitefeather.ingot.identity.service.IdentityFacade
+import net.onelitefeather.ingot.identity.service.IdpGuardMode
 import net.onelitefeather.ingot.identity.storage.IdentityStore
 
 @Plugin(name = "access-token", dependencies = ["configuration"])
@@ -75,6 +76,8 @@ internal class AccessTokenPlugin : ReposilitePlugin() {
                 // Resolved per request, so that the repository service is only needed once the API is used.
                 visibilityOf = { repository -> facade<RepositoryRegistry>().repository(repository)?.visibility?.name },
                 repositoryNames = { facade<RepositoryRegistry>().repositories().map { it.name } },
+                idpGuard = IdpGuardMode.read(),
+                warnings = { message -> logger.warn(message) },
             )
         }
 

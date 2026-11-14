@@ -44,13 +44,14 @@ The action `*` covers all four actions.
 | `users` | Principal endpoints: list, create, read, update, delete, instance admin role |
 | `tokens` | Token endpoints of a principal: list, create, delete |
 | `teams` | Team endpoints: list, create, read, update, delete, grants, members, parents, instance admin role |
-| `settings` | None. Accepted in node text. Its endpoints need the instance admin status. |
+| `settings` | The settings domain endpoints (list, schema, read and write of a domain), the encryption state, and the export and import of the settings file. A write that changes an identity field of the `login` domain also needs `ingot.admin.idp`, see below. |
 | `maintenance` | The read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh. |
-| `audit` | None. Accepted in node text. The audit endpoints need the instance admin status. |
+| `audit` | The audit log and its export. |
 | `console` | The console endpoints and the support endpoints: the system information (`/api/admin/support/system-info`), the support bundle (`/api/admin/support/bundle`) and their availability. The console needs the instance admin status. |
-| `dashboard` | None. Accepted in node text. |
+| `dashboard` | The status and statistics endpoints the dashboard reads. |
+| `idp` | Linking a team to an identity provider group, and the identity fields of the login settings. A write that sets, changes or clears the external reference of a team needs this area, and so does a write of the `login` domain that changes its providers, their issuers, client credentials, claims, email rules or admin groups, or the LDAP connection, bind, search or admin groups, and a write of the legacy `authentication` domain that changes its LDAP directory. The area is checked by the team links and the settings writes only. Note that `ingot.admin.idp` together with `ingot.admin.settings` is effectively instance admin, because the settings can add the group of the holder to the admin groups of a provider. Grant the two together only to principals that are instance admins; see [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md#the-external-reference-of-a-team). |
 
-The areas `users`, `tokens` and `teams` are checked by their own endpoints. Every other endpoint that requires an admin checks the instance admin status, which means `ingot.admin.*` (or `*`). The HTTP API page lists which endpoint needs which check.
+Each admin endpoint checks the area of the table that names it, and the HTTP API page lists which endpoint needs which area. An instance admin, which means `ingot.admin.*` (or `*`), passes every area check.
 
 `ingot.admin.<area>` alone does not make a principal an instance admin. For example, `ingot.admin.users` lets a principal manage users, but it does not open the audit log.
 
@@ -59,7 +60,7 @@ A denial of an area works against an instance admin. A principal that holds `ing
 {% endhint %}
 
 {% hint style="warning" %}
-The areas `settings` and `dashboard` are valid node text, but no endpoint checks them by area. Granting one of them has no effect on any endpoint today. The `maintenance` area gates the read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh. The `console` area gates the support endpoints, which are read-only, so a principal that holds it can download the support bundle of the answering instance.
+The `maintenance` area gates the read-only toggle, the cleanup endpoints, the search index endpoints and the storage refresh. The `console` area gates the support endpoints, which are read-only, so a principal that holds it can download the support bundle of the answering instance.
 {% endhint %}
 
 ## Wildcards
@@ -152,7 +153,7 @@ Checks and messages, with the placeholders as they appear in the message:
 | Wildcard inside a repository name | The repository '...' of '...' is invalid, a wildcard must be the whole repository segment |
 | Empty repository segment | The repository '...' of '...' is invalid, a wildcard must be the whole repository segment |
 | Repository name with an `artifact` segment | The repository node '...' is invalid. A repository name may not contain a segment named 'artifact', because the first '.artifact.' after 'ingot.repository.' separates the repository from the artifact part |
-| Unknown admin area | The admin area '...' of '...' is unknown, supported: settings, users, teams, tokens, maintenance, audit, console, dashboard or * |
+| Unknown admin area | The admin area '...' of '...' is unknown, supported: settings, users, teams, tokens, maintenance, audit, console, dashboard, idp or * |
 | Artifact node without an action | The artifact node '...' needs a groupId and an action, for example ingot.artifact.net.example.deploy |
 | Unknown artifact action | The action '...' of '...' is unknown for an artifact node, supported: read, deploy, delete or * (manage is not scoped to a path, use a repository node) |
 | More than one colon | The coordinate '...' of '...' can contain only one ':' between the groupId and the artifactId |

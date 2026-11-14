@@ -19,7 +19,10 @@ import com.reposilite.plugin.event
 import com.reposilite.plugin.facade
 import com.reposilite.plugin.parameters
 import com.reposilite.plugin.reposilite
+import com.reposilite.token.AccessTokenFacade
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.identity.login.LoginIdentityGuard
+import net.onelitefeather.ingot.identity.service.IdpGuardMode
 import net.onelitefeather.ingot.settings.encryption.KeyStartOutcome
 import net.onelitefeather.ingot.settings.encryption.SettingsKeyConfiguration
 import net.onelitefeather.ingot.settings.encryption.SettingsKeyGuard
@@ -35,6 +38,8 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
 
     override fun initialize(): SharedConfigurationFacade {
         val localConfiguration = facade<LocalConfiguration>()
+        // The same switch as the team links: enforce unless an operator sets warn or off, and an unknown value stops the start.
+        val idpGuard = IdpGuardMode.read()
         val settingsEnvironment = parameters().settingsSecretEnvironment ?: System.getenv()
         val keyConfiguration = SettingsKeySources.read(settingsEnvironment)
         val secretCipher = SettingsSecretCipher.of(keyConfiguration)
@@ -95,7 +100,19 @@ class SharedConfigurationPlugin : ReposilitePlugin() {
         }
 
         event { event: RoutingSetupEvent ->
-            event.registerRoutes(SettingsEndpoints(sharedConfigurationFacade, localConfiguration.hideSettingsSecrets, facade()))
+            event.registerRoutes(
+                SettingsEndpoints(
+                    sharedConfigurationFacade = sharedConfigurationFacade,
+                    hideSecrets = localConfiguration.hideSettingsSecrets,
+                    failureFacade = facade(),
+                    identityGuard = LoginIdentityGuard(
+                        mode = idpGuard,
+                        holdsIdp = { identifier -> facade<AccessTokenFacade>().hasAdminArea(identifier, "idp") },
+                        audit = { auditEvent -> extensions().emitEvent(auditEvent) },
+                        warnings = { message -> logger.warn(message) },
+                    ),
+                )
+            )
         }
 
         event { event: RoutingSetupEvent ->

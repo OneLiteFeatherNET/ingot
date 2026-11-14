@@ -177,7 +177,7 @@ internal class IdentityFacadeTest {
     fun `refuses a team named like a private team`() {
         withService { service, _ ->
             // when / then: the machine prefix belongs to private teams
-            assertThat(service.createTeam(CreateTeamRequest(name = "machine:ci")).error.status).isEqualTo(409)
+            assertThat(service.createTeam(CreateTeamRequest(name = "machine:ci"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System).error.status).isEqualTo(409)
         }
     }
 
@@ -198,7 +198,7 @@ internal class IdentityFacadeTest {
     fun `refuses a legacy role in a team grant`() {
         withService { service, _ ->
             // given: a team
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             // when: a legacy role is assigned
             val result = service.replaceGrants("deployers", ReplaceGrantsRequest(listOf(GrantRequest(repository = "releases", role = "LEGACY_WRITE"))).grants, ifMatch = null)
@@ -212,7 +212,7 @@ internal class IdentityFacadeTest {
     fun `a team grant is stored with its path prefix normalised`() {
         withService { service, _ ->
             // given: a team
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             // when: a grant with slashes around the path prefix is set
             val detail = service.replaceGrants(
@@ -230,7 +230,7 @@ internal class IdentityFacadeTest {
     fun `the access explanation lists the team grant with the team as its reason`() {
         withService { service, store ->
             // given: a DEPLOY grant on releases, held by a member principal
-            service.createTeam(CreateTeamRequest(name = "deployers"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "DEPLOY")), ifMatch = null)
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "ci"))
             store.addMember(store.findTeam("deployers")!!.id, store.findPrincipal("ci")!!.id, TeamMemberSource.MANUAL)
@@ -272,8 +272,8 @@ internal class IdentityFacadeTest {
     @Test
     fun `a team cannot be created twice in another letter case`() {
         withService { service, _ ->
-            service.createTeam(CreateTeamRequest(name = "Deployers"))
-            assertThat(service.createTeam(CreateTeamRequest(name = "deployers")).error.status).isEqualTo(409)
+            service.createTeam(CreateTeamRequest(name = "Deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            assertThat(service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System).error.status).isEqualTo(409)
         }
     }
 
@@ -281,11 +281,11 @@ internal class IdentityFacadeTest {
     fun `a team update with a stale tag is refused`() {
         withService { service, _ ->
             // given: a team read once, then changed
-            val first = service.createTeam(CreateTeamRequest(name = "deployers")).orNull()!!
-            service.updateTeam("deployers", UpdateTeamRequest(description = "changed"), ifMatch = null)
+            val first = service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System).orNull()!!
+            service.updateTeam("deployers", UpdateTeamRequest(description = "changed"), ifMatch = null, actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
 
             // when / then
-            assertThat(service.updateTeam("deployers", UpdateTeamRequest(description = "again"), ifMatch = first.etag).error.status).isEqualTo(412)
+            assertThat(service.updateTeam("deployers", UpdateTeamRequest(description = "again"), ifMatch = first.etag, actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System).error.status).isEqualTo(412)
         }
     }
 
