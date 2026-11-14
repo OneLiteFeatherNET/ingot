@@ -42,7 +42,7 @@ spec:
         livenessProbe:
           failureThreshold: 3
           httpGet:
-            path: /
+            path: /api/status/health
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 2
@@ -57,7 +57,7 @@ spec:
         readinessProbe:
           failureThreshold: 1
           httpGet:
-            path: /
+            path: /api/status/ready
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 2

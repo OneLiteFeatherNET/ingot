@@ -262,11 +262,32 @@ class ChartRenderTest(unittest.TestCase):
         self.assertNotIn("runAsUser", container(deployment).get("securityContext", {}),
                          "runAsUser must stay unset so that PUID and PGID keep working")
 
-    def test_all_in_one_probes_use_the_root_path(self):
+    # The root path answers 503 while a replica drains or is at its request limit, so a liveness probe on it restarts
+    # the pod. The health endpoint bypasses the drain and the request limit, and it never checks the database.
+    def test_all_in_one_liveness_uses_the_health_endpoint(self):
         deployment = named(render(), "Deployment", SERVER)
-        for probe in ("readinessProbe", "livenessProbe"):
-            self.assertEqual("/", container(deployment)[probe]["httpGet"]["path"],
-                             f"the all-in-one {probe} must use the root path as upstream does")
+        self.assertEqual(
+            "/api/status/health", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "the all-in-one liveness must use the health endpoint, which stays 200 while draining or saturated",
+        )
+
+    def test_all_in_one_readiness_uses_the_readiness_endpoint(self):
+        deployment = named(render(), "Deployment", SERVER)
+        self.assertEqual(
+            "/api/status/ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "the all-in-one readiness must use /api/status/ready, which answers 503 while draining",
+        )
+
+    def test_all_in_one_probes_path_override_moves_liveness_only(self):
+        deployment = named(render({"probes": {"path": "/custom-live"}}), "Deployment", SERVER)
+        self.assertEqual(
+            "/custom-live", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "probes.path must still override the all-in-one liveness path",
+        )
+        self.assertEqual(
+            "/api/status/ready", container(deployment)["readinessProbe"]["httpGet"]["path"],
+            "probes.path must not change the all-in-one readiness default",
+        )
 
     # Replaces test_startup_probe_is_absent_by_default for split: the startup probe is on by default in split, so a
     # first start that takes longer than the liveness budget is not restarted. All-in-one keeps it off.
@@ -288,11 +309,11 @@ class ChartRenderTest(unittest.TestCase):
         deployment = named(render(values), "Deployment", SERVER)
         self.assertNotIn("startupProbe", container(deployment), "an explicit enabled: false must win over the split default")
 
-    def test_enabled_startup_probe_uses_the_root_path_in_all_in_one_mode(self):
+    def test_enabled_startup_probe_uses_the_health_endpoint_in_all_in_one_mode(self):
         deployment = named(render({"probes": {"startup": {"enabled": True}}}), "Deployment", SERVER)
         self.assertEqual(
-            "/", container(deployment)["startupProbe"]["httpGet"]["path"],
-            "the all-in-one startup probe must use the root path, like the other server probes",
+            "/api/status/health", container(deployment)["startupProbe"]["httpGet"]["path"],
+            "the all-in-one startup probe must use the health endpoint, like the liveness probe",
         )
 
     def test_enabled_startup_probe_uses_the_api_health_endpoint_in_split_mode(self):
@@ -344,7 +365,7 @@ class ChartRenderTest(unittest.TestCase):
             "an explicit probes.readinessPath must win over the all-in-one default",
         )
         self.assertEqual(
-            "/", container(deployment)["livenessProbe"]["httpGet"]["path"],
+            "/api/status/health", container(deployment)["livenessProbe"]["httpGet"]["path"],
             "probes.readinessPath must not change the liveness probe",
         )
 
