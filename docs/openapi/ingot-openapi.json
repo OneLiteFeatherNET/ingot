@@ -2362,8 +2362,14 @@
     },
     "securitySchemes" : {
       "sessionBearer" : {
+        "description" : "The secret of an access token, sent as a bearer value. Browser logins are not credentials of this scheme.",
         "scheme" : "bearer",
         "type" : "http"
+      },
+      "sessionCookie" : {
+        "in" : "cookie",
+        "name" : "ingot_session",
+        "type" : "apiKey"
       },
       "tokenBasic" : {
         "scheme" : "basic",
@@ -2394,6 +2400,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Turns read-only off again. Note: Requires the maintenance area",
@@ -2410,6 +2418,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -2430,6 +2440,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -2527,6 +2539,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Returns audited events, newest first. Filters: actor, action (one or more, comma separated or repeated), repository, q, from, to. Pages with cursor and limit. Note: Requires manager",
@@ -2548,6 +2562,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -2672,6 +2688,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Get token details",
@@ -2772,6 +2790,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Test the LDAP login",
@@ -2807,6 +2827,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -2984,6 +3006,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Preview a cleanup policy",
@@ -3026,6 +3050,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Run a cleanup policy",
@@ -3045,6 +3071,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3109,6 +3137,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Remote command execution",
@@ -3166,6 +3196,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3259,6 +3291,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Decides one node for a principal, optionally narrowed by one of its tokens, with the candidates considered. Or decides a repository path with the query parameters repository, path and action (or the action of a node). Instance admins may check any principal, others only their own.",
@@ -3292,6 +3326,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Lists the caller's own access: its teams with their direct parents, its allowed and denied nodes, its grants and whether it is an instance administrator. Any signed-in principal may read it; it never describes another principal.",
@@ -3304,6 +3340,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3318,6 +3356,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "List own tokens",
@@ -3328,6 +3368,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3342,6 +3384,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Delete an own token",
@@ -3355,6 +3399,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Rotate an own token",
@@ -3366,6 +3412,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3379,6 +3427,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Lists the predefined node bundles of the user interface. Note: Requires the instance admin (ingot.admin.*)",
@@ -3390,6 +3440,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3410,6 +3462,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3432,6 +3486,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Deletes a principal with its tokens, memberships and instance role. Note: Requires the users area (ingot.admin.users)",
@@ -3450,6 +3506,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3480,6 +3538,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Updates the display name or the disabled flag of a principal. Note: Requires the users area (ingot.admin.users)",
@@ -3501,6 +3561,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
@@ -3519,6 +3581,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3540,6 +3604,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3570,6 +3636,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Replaces the whole permission node list of a principal. A caller may only give rights it holds. Note: Requires the users area (ingot.admin.users)",
@@ -3582,6 +3650,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3603,6 +3673,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3633,6 +3705,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Creates a token for a principal. The secret is returned once. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -3662,6 +3736,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Deletes a token of a principal. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -3683,6 +3759,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Explains who has which access on a repository, and why. Note: Requires the users area (ingot.admin.users)",
@@ -3694,6 +3772,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3714,6 +3794,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3736,6 +3818,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Deletes a team with its memberships and grants. Note: Requires the teams area (ingot.admin.teams)",
@@ -3754,6 +3838,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3783,6 +3869,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3815,6 +3903,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Replaces all grants of a team. Roles: READ, DEPLOY, MAINTAIN, ADMIN. Note: Requires the teams area (ingot.admin.teams)",
@@ -3836,6 +3926,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
@@ -3854,6 +3946,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3886,6 +3980,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Replaces the manual members of a team. Synchronised members are kept. Note: Requires the teams area (ingot.admin.teams)",
@@ -3906,6 +4002,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3936,6 +4034,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Replaces the whole permission node list of a team. A caller may only give rights it holds. Note: Requires the teams area (ingot.admin.teams)",
@@ -3956,6 +4056,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -3985,6 +4087,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -4135,6 +4239,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -4666,6 +4772,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Get the state of the search index",
@@ -4714,6 +4822,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Start a rebuild of the index from storage",
@@ -4752,6 +4862,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Cancel a live index run",
@@ -4788,6 +4900,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Start a verify run",
@@ -4815,6 +4929,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Get the storage usage of the repositories",
@@ -4841,6 +4957,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -4910,6 +5028,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Find configuration",
@@ -4939,6 +5059,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Update configuration",
@@ -4957,6 +5079,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -4988,6 +5112,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Get the settings encryption state",
@@ -5018,6 +5144,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Export settings",
@@ -5040,6 +5168,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5079,6 +5209,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Get schema",
@@ -5111,6 +5243,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5190,6 +5324,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "tags" : [ "Statistics" ]
@@ -5223,6 +5359,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "tags" : [ "Statistics" ]
@@ -5237,6 +5375,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5258,6 +5398,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5307,6 +5449,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ]
@@ -5360,6 +5504,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ]
       }
@@ -5369,6 +5515,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5391,6 +5539,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Deletes the token specified via it's name. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -5409,6 +5559,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5440,6 +5592,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Updates token metadata (description, permissions, routes, expiry) without regenerating the secret. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -5470,6 +5624,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Creates / Updates a token via the specified body. Note: Requires manager permission.",
@@ -5490,6 +5646,8 @@
         "responses" : { },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5524,6 +5682,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],
@@ -5613,6 +5773,8 @@
         "security" : [ {
           "sessionBearer" : [ ]
         }, {
+          "sessionCookie" : [ ]
+        }, {
           "tokenBasic" : [ ]
         } ],
         "summary" : "Deploy artifact to the repository",
@@ -5666,6 +5828,8 @@
         },
         "security" : [ {
           "sessionBearer" : [ ]
+        }, {
+          "sessionCookie" : [ ]
         }, {
           "tokenBasic" : [ ]
         } ],

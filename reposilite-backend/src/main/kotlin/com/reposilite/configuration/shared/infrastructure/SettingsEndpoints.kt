@@ -30,6 +30,7 @@ import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.status.FailureFacade
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route
 import io.javalin.community.routing.Route.GET
@@ -62,7 +63,7 @@ internal class SettingsEndpoints(
 ) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/settings/domains",
         methods = [HttpMethod.GET],
         tags = ["Settings"],
@@ -79,7 +80,7 @@ internal class SettingsEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/settings/schema/{name}",
         methods = [HttpMethod.GET],
         tags = ["Settings"],
@@ -108,7 +109,7 @@ internal class SettingsEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/settings/domain/{name}",
         methods = [HttpMethod.GET],
         tags = ["Settings"],
@@ -144,7 +145,7 @@ internal class SettingsEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/settings/domain/{name}",
         methods = [HttpMethod.PUT],
         tags = ["Settings"],

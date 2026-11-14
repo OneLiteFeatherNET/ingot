@@ -22,6 +22,7 @@ import com.reposilite.maven.StorageUsage
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.GET
 import io.javalin.community.routing.Route.POST
@@ -40,7 +41,7 @@ import java.time.format.DateTimeFormatter
 internal class MavenStorageEndpoints(private val mavenFacade: MavenFacade) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Maven"],
         path = "/api/maven/storage",
         methods = [HttpMethod.GET],
@@ -62,7 +63,7 @@ internal class MavenStorageEndpoints(private val mavenFacade: MavenFacade) : Rep
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Maven"],
         path = "/api/maven/storage/refresh",
         methods = [HttpMethod.POST],
