@@ -17,6 +17,7 @@
 package com.reposilite.cleanup.application
 
 import com.reposilite.cleanup.CleanupActor
+import com.reposilite.cleanup.CleanupCatchUp
 import com.reposilite.cleanup.CleanupScheduler
 import com.reposilite.cleanup.CleanupService
 import com.reposilite.cleanup.CleanupTarget
@@ -89,6 +90,7 @@ internal class CleanupPlugin : ReposilitePlugin() {
             claims = claims,
             journalist = this,
             readOnly = { readOnlyFacade.isReadOnly() },
+            catchUp = CleanupCatchUp.read(),
         )
         val tick = reposilite().scheduler.scheduleWithFixedDelay({
             reposilite().ioService.execute {

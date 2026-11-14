@@ -203,6 +203,14 @@ The guard of external references decides whether linking a team to a provider gr
 | --- | --- | --- | --- |
 | `INGOT_IDENTITY_IDP_GUARD` | `REPOSILITE_IDENTITY_IDP_GUARD` | `enforce` | `enforce` refuses a write that links, changes or clears a team's external reference without `ingot.admin.idp` or `ingot.admin.*` (or without the rights of the team), and a settings write of the `login` or the `authentication` domain that changes an identity field without `ingot.admin.idp`, with 403. In `warn`, a settings write of these domains is recorded as `IDP_SETTINGS_UNGUARDED` with outcome `allowed`, in addition to the audit event of team links. `warn` is a temporary fallback for automation that is not yet granted the right: the write proceeds, is audited as `EXTERNAL_REF_UNGUARDED`, and logs a warning. `off` turns the check and the audit event off. The `INGOT_` name wins when both are set. A value other than these three stops the start, and the message names the variable. |
 
+## Cleanup variables
+
+The cleanup plugin reads this variable at start. See [Cleanup policies](cleanup-policies.md#schedule) for what it changes.
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_CLEANUP_CATCHUP` | `REPOSILITE_CLEANUP_CATCHUP` | `false` | `true` in any case makes up a scheduled cleanup run that an instance was too late for, at the first check within six hours of its scheduled time, once per UTC day. Any other value, including `yes`, leaves it off, so a missed run is skipped as before. |
+
 ## Names that do not follow the rule
 
 These settings are read directly. They do not accept the `INGOT_LOCAL_` prefix, and most of them do not accept an `INGOT_` spelling at all.
