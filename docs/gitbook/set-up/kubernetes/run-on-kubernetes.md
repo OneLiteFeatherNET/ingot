@@ -163,7 +163,7 @@ The answer is `{"status":"UP"}` with status `200`. A failing instance answers `5
 
 ## Health checks
 
-The chart runs a readiness probe and a liveness probe on port `8080`. In the default all-in-one mode the liveness probe sends `GET /api/status/health`, and the readiness probe sends `GET /api/status/ready`. Set `probes.path` to change the liveness path, for example for a proxy that only forwards some paths.
+The chart runs a readiness probe and a liveness probe on the container port, which is `service.port` and `8080` by default. In the default all-in-one mode the liveness probe sends `GET /api/status/health`, and the readiness probe sends `GET /api/status/ready`. Set `probes.path` to change the liveness path, for example for a proxy that only forwards some paths. Set `probes.port` only to probe another port, since it overrides `service.port` for the probes.
 
 The liveness probe uses the health endpoint on purpose. It answers `200` while the replica drains and while it is at its request limit, so an overloaded or draining replica is not restarted. Its readiness answer is `503` during a drain, which takes the replica out of rotation.
 

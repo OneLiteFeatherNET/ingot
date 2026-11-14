@@ -80,20 +80,20 @@ spec:
         readinessProbe:
           httpGet:
             path: {{ include "ingot.readinessProbePath" . }}
-            port: {{ .Values.probes.port }}
+            port: {{ include "ingot.probePort" . }}
             scheme: {{ .Values.probes.scheme }}
           {{- toYaml (ternary .Values.probes.split.readiness .Values.probes.readiness (eq .Values.mode "split")) | nindent 10 }}
         livenessProbe:
           httpGet:
             path: {{ include "ingot.serverProbePath" . }}
-            port: {{ .Values.probes.port }}
+            port: {{ include "ingot.probePort" . }}
             scheme: {{ .Values.probes.scheme }}
           {{- toYaml .Values.probes.liveness | nindent 10 }}
         {{- if eq (include "ingot.startupProbeEnabled" .) "true" }}
         startupProbe:
           httpGet:
             path: {{ include "ingot.serverProbePath" . }}
-            port: {{ .Values.probes.port }}
+            port: {{ include "ingot.probePort" . }}
             scheme: {{ .Values.probes.scheme }}
           periodSeconds: {{ .Values.probes.startup.periodSeconds }}
           timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}

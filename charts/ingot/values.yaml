@@ -347,7 +347,8 @@ rollingUpdate:
 ## 200 while the server drains or is at its request limit, so a busy replica is not restarted. In split mode the server is
 ## probed on `serverPath`, because the server root is not a page of the server there.
 probes:
-  port: 8080  # The port Ingot is running on inside the pod.
+  # Port of the probes. Empty uses service.port, the container port Ingot listens on. Set it only to probe another port.
+  port: ""
   scheme: "HTTP"  # Scheme to use in GET requests.
   path: "/api/status/health"
   serverPath: "/api/status/health"
