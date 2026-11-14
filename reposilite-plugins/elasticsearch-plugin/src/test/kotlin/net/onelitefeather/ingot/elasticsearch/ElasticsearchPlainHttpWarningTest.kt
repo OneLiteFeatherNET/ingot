@@ -19,10 +19,15 @@ package net.onelitefeather.ingot.elasticsearch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-/** The warning of plain HTTP (design D2): a captured sink receives it at every read, and no secret reaches it. */
+/**
+ * The warning of plain HTTP (design D4): a captured sink receives it at every read, and no secret reaches it. Every environment
+ * carries an API key, because a cluster without any credential is refused unless plain HTTP is on, and then it logs its own warning.
+ */
 internal class ElasticsearchPlainHttpWarningTest {
 
     private val noFileExpected: (String) -> String = { path -> error("the password file $path must not be read") }
+
+    private val apiKey = "INGOT_ELASTICSEARCH_API_KEY" to "QXBpS2V5SWQ6c2VjcmV0"
 
     private val messages = mutableListOf<String>()
 
@@ -30,7 +35,7 @@ internal class ElasticsearchPlainHttpWarningTest {
     fun `should warn through the log sink when plain HTTP is accepted`() {
         // when: the settings are read with the plain HTTP switch on
         ElasticsearchSettings.read(
-            mapOf("INGOT_ELASTICSEARCH_URLS" to "http://search.example.test:9200", "INGOT_ELASTICSEARCH_ALLOW_HTTP" to "true"),
+            mapOf("INGOT_ELASTICSEARCH_URLS" to "http://search.example.test:9200", "INGOT_ELASTICSEARCH_ALLOW_HTTP" to "true", apiKey),
             noFileExpected,
             log = messages::add,
         )
@@ -43,7 +48,11 @@ internal class ElasticsearchPlainHttpWarningTest {
     @Test
     fun `should warn again at every read so that every start shows the warning`() {
         // when: the settings are read twice, as two starts do
-        val environment = mapOf("INGOT_ELASTICSEARCH_URLS" to "https://search.example.test:9200", "INGOT_ELASTICSEARCH_ALLOW_HTTP" to "true")
+        val environment = mapOf(
+            "INGOT_ELASTICSEARCH_URLS" to "http://search.example.test:9200",
+            "INGOT_ELASTICSEARCH_ALLOW_HTTP" to "true",
+            apiKey,
+        )
         ElasticsearchSettings.read(environment, noFileExpected, log = messages::add)
         ElasticsearchSettings.read(environment, noFileExpected, log = messages::add)
 
@@ -55,7 +64,7 @@ internal class ElasticsearchPlainHttpWarningTest {
     fun `should not warn when plain HTTP is not accepted`() {
         // when: the settings are read with HTTPS only
         ElasticsearchSettings.read(
-            mapOf("INGOT_ELASTICSEARCH_URLS" to "https://search.example.test:9200"),
+            mapOf("INGOT_ELASTICSEARCH_URLS" to "https://search.example.test:9200", apiKey),
             noFileExpected,
             log = messages::add,
         )
