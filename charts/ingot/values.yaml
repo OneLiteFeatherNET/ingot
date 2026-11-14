@@ -225,9 +225,9 @@ serviceMonitor:
   path: /metrics
   interval: 30s
   labels: {}
-  # Basic auth for the scrape. The Prometheus plugin answers 401 without it. The plugin is not part of the image:
-  # build it, add it to the plugins directory, and set REPOSILITE_PROMETHEUS_USER and REPOSILITE_PROMETHEUS_PASSWORD
-  # on the server with the same credentials as the Secret below (env or envFrom).
+  # Basic auth for the scrape. The Prometheus plugin answers 401 without it. The image bundles the plugin, and
+  # INGOT_METRICS_ENABLED=true loads it. Set INGOT_PROMETHEUS_USER and INGOT_PROMETHEUS_PASSWORD on the server with the
+  # same credentials as the Secret below (env or envFrom).
   basicAuth:
     enabled: false
     # Name of a Secret in the release namespace that holds both credentials.
