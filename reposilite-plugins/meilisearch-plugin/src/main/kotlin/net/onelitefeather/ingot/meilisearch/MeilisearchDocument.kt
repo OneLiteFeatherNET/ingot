@@ -70,6 +70,12 @@ internal object MeilisearchDocument {
         tokenList.forEach { tokens.add(it) }
         val prefixes = document.putArray("word_prefixes")
         tokenList.flatMap { token -> (1..token.length).map { token.substring(0, it) } }.distinct().forEach { prefixes.add(it) }
+        // The main rule of a word: a prefix of the whole groupId or artifactId, and the whole version.
+        val heads = document.putArray("word_heads")
+        listOf(lower(file.groupId), lower(file.artifactId)).flatMap { value -> (1..value.length).map { value.substring(0, it) } }
+            .plus(lower(file.version))
+            .distinct()
+            .forEach { heads.add(it) }
         return document
     }
 

@@ -23,6 +23,7 @@ import net.onelitefeather.ingot.search.access.PathPredicate
 import net.onelitefeather.ingot.search.access.SearchAccess
 import net.onelitefeather.ingot.search.SearchTokens
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
+import java.util.Locale
 
 /**
  * The filter expressions of the Meilisearch backend (design D6). The access value of a caller becomes one filter of every
@@ -111,13 +112,33 @@ internal object MeilisearchFilters {
     fun quote(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
     /**
-     * The conditions of the words of a query text (contract: each word is a prefix of a token of the GAV, and every word must match).
-     * A text with a dot is a coordinate prefix and gets no word conditions: its groups are chosen by the caller.
+     * The conditions of the words of a query text, one per word, all of which must match. A text with a dot is a coordinate prefix
+     * and gets no word conditions: its groups are chosen by the caller.
      */
     fun wordConditions(text: String): List<String> {
         if ('.' in text) return emptyList()
-        return text.trim().split(Regex("\\s+")).flatMap { SearchTokens.partsOf(it) }.map { "word_prefixes = ${quote(it)}" }
+        val words = text.trim().lowercase(Locale.ROOT).split(Regex("\\s+")).filter { it.isNotEmpty() }
+        return words.mapIndexed { index, word -> wordCondition(word, last = index == words.lastIndex) }
     }
+
+    /**
+     * The condition of one word, the rule of the database backend (its word match and main predicate): the word is a prefix of the
+     * groupId or the artifactId, or the exact version (`word_heads`), or its parts match the tokens. A part equals a token, and only the
+     * last part of the last word is a prefix of a token. A word of more than [MAX_WORD_PARTS] parts, or without parts, has no token branch.
+     */
+    private fun wordCondition(word: String, last: Boolean): String {
+        val head = "word_heads = ${quote(word)}"
+        val parts = SearchTokens.partsOf(word)
+        if (parts.isEmpty() || parts.size > MAX_WORD_PARTS) return head
+        val terms = parts.mapIndexed { index, part ->
+            if (last && index == parts.lastIndex) "word_prefixes = ${quote(part)}" else "tokens = ${quote(part)}"
+        }
+        val branch = if (terms.size == 1) terms.single() else terms.joinToString(separator = " AND ", prefix = "(", postfix = ")")
+        return "($head OR $branch)"
+    }
+
+    /** The most parts of a word that get a token branch: the database rule, which allows eight constraints per query word. */
+    const val MAX_WORD_PARTS: Int = 8
 
     /** A list of values as the `IN` list of the filter language. */
     fun inList(values: Collection<String>): String = values.joinToString(separator = ", ", prefix = "[", postfix = "]") { quote(it) }
