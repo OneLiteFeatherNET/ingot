@@ -87,6 +87,33 @@ internal class MeilisearchWordRuleCasesTest {
         }
     }
 
+    @Test
+    fun `a dotted word before a plain word keeps its main prefix and the plain word still matches`() {
+        withIndexOf(SPRING_CORE) { backend ->
+            assertThat(searchNamed(backend, "org.spring core"))
+                .`as`("groups of q=org.spring core: org.spring prefixes the groupId, core is a prefix of a token")
+                .containsExactly("org.springframework")
+        }
+    }
+
+    @Test
+    fun `a dotted word that is a prefix of the version only finds nothing`() {
+        withIndexOf(SPRING_CORE) { backend ->
+            assertThat(searchNamed(backend, "6.1"))
+                .`as`("groups of q=6.1: the database matches a dotted word to the whole version, not to a prefix of it")
+                .isEmpty()
+        }
+    }
+
+    @Test
+    fun `a dotted word that is the whole version and a plain word still finds the group`() {
+        withIndexOf(SPRING_CORE) { backend ->
+            assertThat(searchNamed(backend, "6.1.0 core"))
+                .`as`("groups of q=6.1.0 core: 6.1.0 is the whole version, core is a token")
+                .containsExactly("org.springframework")
+        }
+    }
+
     private fun withIndexOf(path: String, block: (ArtifactSearchBackend) -> Unit) {
         val index = newIndexName()
         val backend = createMeilisearchBackend(meilisearchTestEnvironment(shared.url(), index))

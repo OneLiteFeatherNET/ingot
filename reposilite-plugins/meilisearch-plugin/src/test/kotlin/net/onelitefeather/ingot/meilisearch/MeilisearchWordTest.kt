@@ -86,11 +86,19 @@ internal class MeilisearchWordTest {
     }
 
     @Test
-    fun `should give a dotted query no word conditions because it is a coordinate prefix`() {
-        // when / then: the dotted query is matched by the groupId or the version prefix instead
+    fun `should give a dotted word the main condition only, and a plain word in the same query its word condition`() {
+        // when / then: a dotted word has no token branch, as on the database, and the plain word keeps its own
+        assertThat(MeilisearchFilters.wordConditions("org.spring core"))
+            .`as`("conditions of a dotted word followed by a plain word")
+            .containsExactly("word_heads = \"org.spring\"", "(word_heads = \"core\" OR word_prefixes = \"core\")")
+    }
+
+    @Test
+    fun `should give a dotted word the main condition only when it is the whole query`() {
+        // when / then: the groupId, artifactId or whole version prefix, and no token of the coordinates
         assertThat(MeilisearchFilters.wordConditions("spring.core"))
-            .`as`("word conditions of a dotted query")
-            .isEmpty()
+            .`as`("conditions of a dotted word")
+            .containsExactly("word_heads = \"spring.core\"")
     }
 
     @Test
