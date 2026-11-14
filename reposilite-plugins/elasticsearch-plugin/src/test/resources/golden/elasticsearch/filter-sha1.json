@@ -1,0 +1,8 @@
+{
+  "bool": {
+    "filter": [
+      {"term": {"sha1": "abcdef0123456789abcdef0123456789abcdef01"}},
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

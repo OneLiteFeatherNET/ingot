@@ -1,0 +1,8 @@
+{
+  "bool": {
+    "filter": [
+      {"range": {"size_bytes": {"gte": 1024, "lte": 4096}}},
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}

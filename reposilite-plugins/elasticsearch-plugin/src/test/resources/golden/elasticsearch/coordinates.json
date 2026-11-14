@@ -1,0 +1,16 @@
+{
+  "bool": {
+    "filter": [
+      {
+        "bool": {
+          "filter": [
+            {"prefix": {"group_id_lc": "net.onelitefeather"}},
+            {"prefix": {"artifact_id_lc": "mycelium"}},
+            {"term": {"version_lc": "2.0"}}
+          ]
+        }
+      },
+      {"bool": {"should": [{"term": {"repository": "releases"}}], "minimum_should_match": 1}}
+    ]
+  }
+}
