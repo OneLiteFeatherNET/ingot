@@ -71,15 +71,13 @@ internal class MeilisearchReader(
         val base = MeilisearchFilters.access(access) ?: return emptyPage(query)
         val conditions = listOf(base) + conditionsOf(query).map { it.second }
         val text = query.q?.trim()?.lowercase().orEmpty()
-        val (wordConditions, dottedQuery) = textRule(query)
-        val window = search(conditions + wordConditions, dottedQuery, distinct = GAV, hitsPerPage = WINDOW_FETCH)
-        val dotted = '.' in text
+        val window = search(conditions + MeilisearchFilters.wordConditions(text), null, distinct = GAV, hitsPerPage = WINDOW_FETCH)
         val windowTotal = window.path("totalHits").asLong(0L)
         val rows = window.path("hits").map(::groupOf).filter { row ->
             query.versionPrefix?.let { row.version.lowercase().startsWith(it.lowercase()) } ?: true
-        }.filter { row -> !dotted || isMain(row, text) }
-        // The total is the count of the rows after the in-memory rules, where the server's count cannot apply them.
-        val total = if (dotted || query.versionPrefix != null) rows.size.toLong() else windowTotal
+        }
+        // The total is the count of the rows after the in-memory rule of the version prefix, where the server's count cannot apply it.
+        val total = if (query.versionPrefix != null) rows.size.toLong() else windowTotal
         val aggregates = aggregatesOf(rows, query, base, conditions.drop(1), sortsByAggregate(query.sort))
         val order = GroupOrder.comparator(query.sort, query.order)
         // The groups the query is a coordinate prefix of come first, in the order of the database; the word-only groups follow.
@@ -122,10 +120,10 @@ internal class MeilisearchReader(
             throw SearchUnavailableException("a version prefix is not supported for facets by the meilisearch backend, drop it")
         }
         val all = conditionsOf(query)
-        val (wordConditions, dottedQuery) = textRule(query)
+        val wordConditions = MeilisearchFilters.wordConditions(query.q?.trim().orEmpty())
         fun buckets(attribute: String): List<FacetBucket> {
             val conditions = listOf(base) + all.filter { it.first != attribute }.map { it.second } + wordConditions
-            val answer = search(conditions, dottedQuery, facets = listOf(attribute), hitsPerPage = 0)
+            val answer = search(conditions, null, facets = listOf(attribute), hitsPerPage = 0)
             return answer.path("facetDistribution").path(attribute).fields().asSequence()
                 .map { (value, count) -> FacetBucket(value, count.asLong()) }
                 .sortedBy { it.value }
@@ -262,20 +260,13 @@ internal class MeilisearchReader(
 
     // ---- mapping -----------------------------------------------------------------------------------------------------
 
-    /** The word conditions of the query text, and the text sent to the server only for a dotted query (see [MeilisearchFilters.wordConditions]). */
-    private fun textRule(query: ArtifactSearchQuery): Pair<List<String>, String?> {
-        val text = query.q?.trim().orEmpty()
-        return if ('.' in text) emptyList<String>() to query.q else MeilisearchFilters.wordConditions(text) to null
-    }
-
     /**
-     * Whether a group is a main group of the query: a dotted query is a prefix of the groupId or of the version, any other text is a
-     * prefix of the groupId, the artifactId or the version. Every other group is matched only by a word.
+     * Whether a group is a main group of the query, the database rule: every word of the text is a main match, which is a prefix of
+     * the groupId or the artifactId, or the exact version. Every other group is matched only by a word.
      */
     private fun isMain(row: GroupRow, text: String): Boolean {
-        if (text.isEmpty()) return true
-        if ('.' in text) return row.key.groupLc.startsWith(text) || row.key.versionLc.startsWith(text)
-        return listOf(row.key.groupLc, row.key.artifactLc, row.key.versionLc).any { it.startsWith(text) }
+        val words = text.split(WHITESPACE).filter { it.isNotEmpty() }
+        return words.all { word -> row.key.groupLc.startsWith(word) || row.key.artifactLc.startsWith(word) || row.key.versionLc == word }
     }
 
     private fun groupOf(hit: JsonNode): GroupRow = GroupRow(
@@ -368,6 +359,7 @@ internal class MeilisearchReader(
 
     companion object {
         const val GAV = "gav"
+        private val WHITESPACE = Regex("\\s+")
         /** The bound of a page, as the database engine validates it. */
         const val WINDOW = 10_000
 

@@ -112,11 +112,9 @@ internal object MeilisearchFilters {
     fun quote(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
     /**
-     * The conditions of the words of a query text, one per word, all of which must match. A text with a dot is a coordinate prefix
-     * and gets no word conditions: its groups are chosen by the caller.
+     * The conditions of the words of a query text, one per word, all of which must match, as on the database backend.
      */
     fun wordConditions(text: String): List<String> {
-        if ('.' in text) return emptyList()
         val words = text.trim().lowercase(Locale.ROOT).split(Regex("\\s+")).filter { it.isNotEmpty() }
         return words.mapIndexed { index, word -> wordCondition(word, last = index == words.lastIndex) }
     }
@@ -124,10 +122,12 @@ internal object MeilisearchFilters {
     /**
      * The condition of one word, the rule of the database backend (its word match and main predicate): the word is a prefix of the
      * groupId or the artifactId, or the exact version (`word_heads`), or its parts match the tokens. A part equals a token, and only the
-     * last part of the last word is a prefix of a token. A word of more than [MAX_WORD_PARTS] parts, or without parts, has no token branch.
+     * last part of the last word is a prefix of a token. A word with a dot has no token branch, and a word of more than [MAX_WORD_PARTS]
+     * parts or without parts has none either.
      */
     private fun wordCondition(word: String, last: Boolean): String {
         val head = "word_heads = ${quote(word)}"
+        if ('.' in word) return head
         val parts = SearchTokens.partsOf(word)
         if (parts.isEmpty() || parts.size > MAX_WORD_PARTS) return head
         val terms = parts.mapIndexed { index, part ->
