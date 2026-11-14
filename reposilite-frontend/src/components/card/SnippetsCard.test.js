@@ -362,3 +362,24 @@ describe('SnippetsCard snippet text', () => {
     expect(wrapper.find('[role="status"]').text()).toBe('Copied')
   })
 })
+
+describe('SnippetsCard snippet box height', () => {
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+  })
+
+  it('keeps the minimum height on the code block while the skeleton is shown', async () => {
+    await mountCard('releases/com/example')
+
+    expect(wrapper.find('.card-editor .skeleton-bars').exists(), 'the loading skeleton is shown').toBe(true)
+    expect(wrapper.find('.card-editor').classes(), 'the skeleton keeps its four bars inside the box').toContain('min-h-29')
+  })
+
+  it('lets the code block hug the loaded snippet instead of keeping the skeleton height', async () => {
+    await mountCard('')
+
+    expect(wrapper.find('.card-editor .skeleton-bars').exists(), 'the snippet has loaded').toBe(false)
+    expect(wrapper.find('.card-editor').classes(), 'a one-line snippet does not get an empty four-line box').not.toContain('min-h-29')
+  })
+})

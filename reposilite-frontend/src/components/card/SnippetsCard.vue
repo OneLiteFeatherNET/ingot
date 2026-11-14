@@ -266,7 +266,8 @@ const selectTab = (tab) =>
                   role="region"
                   tabindex="0"
                   :aria-label="`${selectedTab ?? 'Snippet'} snippet, scrolls sideways`"
-                  class="md-focus-ring card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small min-h-29 px-4 pb-3 pt-1"
+                  class="md-focus-ring card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small px-4 pb-3 pt-1"
+                  :class="{ 'min-h-29': loading }"
                 >
                   <div
                     v-if="loading"
