@@ -58,6 +58,13 @@ interface ArtifactSearchBackend : ArtifactSearchEngine {
     fun tokensComplete(): Boolean = true
 
     /**
+     * Identifies the physical index this backend writes to, or null when it has none to tell (the default). A backend whose index
+     * is replaced reports a new identity, and the core then resets the rebuild cursor, so that the rebuild writes every row of the
+     * new index instead of continuing after the old position. A backend that returns null keeps its rebuild cursor.
+     */
+    fun indexIdentity(): String? = null
+
+    /**
      * The settings of this backend that the status block shows, such as its refresh interval. A value is shown as it is, so it
      * never holds a URL, a user name or a password; the core redacts every key and value before it is shown.
      */

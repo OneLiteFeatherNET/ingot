@@ -27,8 +27,18 @@ internal class OutboxPolicyTest {
     private val now = Instant.parse("2026-10-16T10:00:00Z")
 
     @Test
-    fun `a claim holds its entry for sixty seconds`() {
-        assertThat(OutboxPolicy.leaseUntil(now)).isEqualTo(now.plusSeconds(60))
+    fun `a claim holds its entry for ninety seconds`() {
+        assertThat(OutboxPolicy.leaseUntil(now)).isEqualTo(now.plusSeconds(90))
+    }
+
+    @Test
+    fun `the claim lease outlives the longest task wait of a search backend`() {
+        // Precondition 0.3 of add-meilisearch-search-plugin: the task wait of apply is at most 60 seconds (its TASK_WAIT_SECONDS),
+        // and a claim must not expire while that wait runs, or a second replica claims a batch that is still being written.
+        val longestTaskWait = Duration.ofSeconds(60)
+        assertThat(OutboxPolicy.LEASE)
+            .`as`("claim lease must be longer than the 60 second task wait bound of the meilisearch backend")
+            .isGreaterThan(longestTaskWait)
     }
 
     @Test

@@ -112,7 +112,7 @@ internal class OutboxClaimExclusivityTest {
     }
 
     private companion object {
-        val LEASE: Duration = Duration.ofSeconds(60)
+        val LEASE: Duration = OutboxPolicy.LEASE
     }
 
 }

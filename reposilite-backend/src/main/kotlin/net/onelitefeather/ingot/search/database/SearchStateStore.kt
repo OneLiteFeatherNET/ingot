@@ -51,6 +51,9 @@ internal object SearchStateKey {
     /** The id of the search backend that owns the index of the cluster (search backend registration, D5). */
     const val BACKEND_ID = "backend_id"
 
+    /** The index identity (`indexIdentity()` of the search backend) the rebuild cursor was last written against. Absent until a backend reports one. */
+    const val INDEX_IDENTITY = "index_identity"
+
     /** The prefix of one heartbeat per replica: `backend_heartbeat.<instance>` holds `<backend id>|<epoch milliseconds>`. */
     const val BACKEND_HEARTBEAT_PREFIX = "backend_heartbeat."
 }

@@ -53,8 +53,11 @@ data class OutboxEntry(
  */
 object OutboxPolicy {
 
-    /** How long a claim holds an entry before another instance may take it over. */
-    val LEASE: Duration = Duration.ofSeconds(60)
+    /**
+     * How long a claim holds an entry before another instance may take it over. It must outlast the longest task wait of a
+     * search backend (60 seconds for meilisearch), or a second replica takes a batch that is still being written.
+     */
+    val LEASE: Duration = Duration.ofSeconds(90)
 
     /** How often a busy worker extends the leases of the entries it still holds. */
     val LEASE_EXTENSION_INTERVAL: Duration = Duration.ofSeconds(20)

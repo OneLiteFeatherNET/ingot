@@ -125,6 +125,7 @@ internal class RebuildService(
         val start = checkNotNull(runs.get(handle.runId)) { "run ${handle.runId} does not exist" }
         val progress = Progress(start)
         return try {
+            resetCursorOnNewIdentity(handle, progress)
             run(handle, start, progress)
         } catch (interrupted: RunInterrupted) {
             checkNotNull(runs.get(handle.runId))
@@ -133,6 +134,22 @@ internal class RebuildService(
             runs.finish(handle, RunStatus.FAILED, progress.counters, progress.lastError)
             checkNotNull(runs.get(handle.runId))
         }
+    }
+
+    /**
+     * Moves the cursor of the run back to its first page when the backend reports an identity other than the stored one: the
+     * cursor was written against an index that was replaced. The new identity is stored in the same transaction. A backend
+     * that reports no identity keeps its cursor.
+     */
+    private fun resetCursorOnNewIdentity(handle: RunHandle, progress: Progress) {
+        val identity = backend.indexIdentity() ?: return
+        if (state.get(SearchStateKey.INDEX_IDENTITY) == identity) return
+        runs.atomically {
+            if (!runs.progress(handle, null, null, progress.counters, progress.lastError)) throw RunInterrupted()
+            state.put(SearchStateKey.INDEX_IDENTITY, identity)
+        }
+        progress.cursorRepository = null
+        progress.cursorPath = null
     }
 
     private fun run(handle: RunHandle, start: RunSummary, progress: Progress): RunSummary {
