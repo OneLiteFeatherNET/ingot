@@ -75,3 +75,44 @@ object LoginAttemptTable : Table("login_attempt") {
 
     override val primaryKey = PrimaryKey(attemptKey)
 }
+
+/**
+ * Second factors of a user. A confirmed row is a factor; a row without [confirmedAt] is an enrolment that waits for its first
+ * code and counts for nothing at sign-in. For an authenticator, [secret] is the seed sealed with the settings key, and
+ * [lastUsedStep] is the last time step whose code was accepted, which keeps a code from being used twice.
+ * [factorKey] names the factor in the envelope of its seed, so the seed cannot be moved to another row.
+ */
+object MfaFactorTable : IntIdTable("mfa_factor") {
+    val principalId = reference("principal_id", PrincipalTable, onDelete = CASCADE).index()
+    val kind = varchar("kind", 16)
+    val name = varchar("name", 128)
+    val factorKey = varchar("factor_key", 36).uniqueIndex()
+    val secret = varchar("secret", 512).nullable()
+    val confirmedAt = timestamp("confirmed_at").nullable()
+    val lastUsedStep = long("last_used_step").nullable()
+    val createdAt = timestamp("created_at")
+    val lastUsedAt = timestamp("last_used_at").nullable()
+}
+
+/** Recovery codes of a user, as SHA-256 hashes of their normalised form. A code is spent by setting [usedAt]. */
+object MfaRecoveryCodeTable : IntIdTable("mfa_recovery_code") {
+    val principalId = reference("principal_id", PrincipalTable, onDelete = CASCADE).index()
+    val codeHash = varchar("code_hash", 64).uniqueIndex()
+    val createdAt = timestamp("created_at")
+    val usedAt = timestamp("used_at").nullable()
+}
+
+/**
+ * Sign-in challenges that wait for a second factor after a password was accepted. Only a SHA-256 hash of the challenge id is
+ * stored; the id itself lives in the browser cookie. A challenge is single use ([usedAt]) and short lived ([expiresAt]).
+ */
+object AuthChallengeTable : Table("auth_challenge") {
+    val idHash = varchar("id_hash", 64)
+    val kind = varchar("kind", 32)
+    val principalId = reference("principal_id", PrincipalTable, onDelete = CASCADE).index()
+    val createdAt = timestamp("created_at")
+    val expiresAt = timestamp("expires_at").index()
+    val usedAt = timestamp("used_at").nullable()
+
+    override val primaryKey = PrimaryKey(idHash)
+}
