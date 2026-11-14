@@ -426,6 +426,15 @@ dependencies {
     )
 }
 
+// The Meilisearch backend of its plugin, as compiled classes only, for the same reason as the OpenSearch one above.
+val meilisearchPlugin = project(":reposilite-plugins:meilisearch-plugin")
+dependencies {
+    "integrationImplementation"(
+        files(meilisearchPlugin.layout.buildDirectory.dir("classes/kotlin/main"))
+            .builtBy(":reposilite-plugins:meilisearch-plugin:compileKotlin"),
+    )
+}
+
 tasks.named<Test>("integration") {
     // Floci (used in S3 integration tests) does not auto-rewrite virtual-host requests
     // to the container's random port, so the AWS SDK must use path-style addressing.

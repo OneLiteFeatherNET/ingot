@@ -162,6 +162,15 @@ The image ships `opensearch-plugin.jar` in `/app/bundled-plugins/`. It is loaded
 
 See [OpenSearch search backend](opensearch-search-backend.md) for the variables and the security obligations of the cluster.
 
+### Meilisearch search backend is an installable plugin (unreleased)
+
+The Meilisearch backend is not in the image. Install `meilisearch-plugin.jar` into the plugins directory, which is `/app/data/plugins` in the container image, and nothing is loaded before that. A plugin in that directory is loaded at every start, so the jar is the switch and no `INGOT_` enable variable exists for it.
+
+* The search backend stays `database` until `searchEngine` is set to `meilisearch` on every replica. Install the jar first and set the search backend second, as described in [Use Meilisearch for search](../how-to/use-meilisearch-for-search.md).
+* An installation without the jar sees no change, and no configuration, volume or manifest changes for existing deployments.
+
+See [Meilisearch search backend](meilisearch-search-backend.md) for the variables, the named exceptions and the operator obligations.
+
 ### The default colour is steel blue
 
 An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](settings-domains.md)). No configuration file, environment variable, volume or plugin changes.

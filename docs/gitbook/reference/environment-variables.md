@@ -250,6 +250,22 @@ The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in 
 
 The search backend is chosen with `searchEngine`, which is `INGOT_LOCAL_SEARCHENGINE` and is set to `opensearch` only after the plugin is on. See [Choose a search backend](../how-to/choose-a-search-backend.md).
 
+### Meilisearch search backend
+
+The Meilisearch backend is not part of the image. Its jar `meilisearch-plugin.jar` is loaded from the plugins directory, and it is selected with `searchEngine` set to `meilisearch`. Each variable falls back to its `REPOSILITE_MEILISEARCH_` spelling when the `INGOT_` name is unset or blank. The rules, the named exceptions and the operator obligations are in the [Meilisearch search backend](meilisearch-search-backend.md) reference.
+
+| Variable | Default | Allowed values | Meaning |
+|---|---|---|---|
+| `INGOT_MEILISEARCH_URL` | none | an `https` URL | Base URL of the server. Required when selected. |
+| `INGOT_MEILISEARCH_ALLOW_HTTP` | `false` | `true` or `false` | Accepts an `http` URL. Logged at every start. |
+| `INGOT_MEILISEARCH_API_KEY` | none | text | API key, sent only in the `Authorization` header. |
+| `INGOT_MEILISEARCH_API_KEY_FILE` | none | a readable file | File holding the key. The plain variable wins. |
+| `INGOT_MEILISEARCH_INDEX` | `ingot-artifacts` | 1 to 64 letters, digits, `-` or `_` | Index uid. |
+| `INGOT_MEILISEARCH_TIMEOUT_SECONDS` | `30` | 1 to 300 | Timeout of one request. |
+| `INGOT_MEILISEARCH_TASK_WAIT_SECONDS` | `20` | 1 to 60 | Bound of the wait for the tasks of one batch. |
+| `INGOT_MEILISEARCH_BATCH_SIZE` | `1000` | 1 to 10 000 | Documents per request. |
+| `INGOT_MEILISEARCH_AGGREGATE_SORT_LIMIT` | `100000` | 1 to 1 000 000 | Files read for a group sort by modification or size. |
+
 ### Support bundle switch
 
 The system information page and the support bundle are on by default, because both are read-only and need the console area. A support bundle lists what the instance runs on and never holds a secret, see [Collect a support bundle](../how-to/collect-a-support-bundle.md).

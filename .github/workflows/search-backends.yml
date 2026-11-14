@@ -1,5 +1,6 @@
 # Container tests of the search backends that are not the database: the OpenSearch backend of the plugin, which runs a secured
-# OpenSearch 2.x container through Testcontainers.
+# OpenSearch 2.x container through Testcontainers, and the Meilisearch backend of its plugin, which runs a Meilisearch 1.15
+# container through Testcontainers.
 #
 # Runs on pull requests that touch the plugin or the backend's search package, and nightly for everything else, so that a
 # change of the server or of the container image shows up on the next night even when no pull request touched the plugin.
@@ -10,9 +11,11 @@ on:
     branches: [ "main" ]
     paths:
       - "reposilite-plugins/opensearch-plugin/**"
+      - "reposilite-plugins/meilisearch-plugin/**"
       - "reposilite-search-http/**"
       - "reposilite-backend/src/main/kotlin/net/onelitefeather/ingot/search/**"
       - "reposilite-backend/src/integration/kotlin/net/onelitefeather/ingot/search/opensearch/**"
+      - "reposilite-backend/src/integration/kotlin/net/onelitefeather/ingot/search/meilisearch/**"
   schedule:
     # Nightly, 03:17 UTC.
     - cron: "17 3 * * *"
@@ -53,3 +56,7 @@ jobs:
       # The filter selects the OpenSearch contract suite and its container helpers in the integration source set.
       - name: "Run the OpenSearch backend tests"
         run: ./gradlew :reposilite-backend:integration --tests '*OpenSearch*' --max-workers=2
+
+      # The filter selects the Meilisearch contract suite and its container helpers in the integration source set.
+      - name: "Run the Meilisearch backend tests"
+        run: ./gradlew :reposilite-backend:integration --tests '*Meilisearch*' --max-workers=2

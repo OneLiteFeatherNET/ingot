@@ -34,6 +34,17 @@ fun SearchVariables.urls(allowHttp: Boolean, productName: String): List<URI> {
     return entries.map { entry -> url(variable, entry, allowHttp) }
 }
 
+/**
+ * The single base URL of a product, read from `INGOT_<PRODUCT>_URL` (or its fallback), with the same rules as [urls]. A product with
+ * one server, such as Meilisearch, reads its URL with this function.
+ */
+fun SearchVariables.singleUrl(allowHttp: Boolean, productName: String): URI {
+    val (variable, raw) = lookup(URL)
+        ?: throw IllegalArgumentException("${name(URL)} is required when the $productName plugin is enabled")
+    return url(variable, raw.trim(), allowHttp)
+}
+
+private const val URL = "URL"
 private const val URLS = "URLS"
 
 private fun SearchVariables.url(variable: String, entry: String, allowHttp: Boolean): URI {
@@ -43,7 +54,7 @@ private fun SearchVariables.url(variable: String, entry: String, allowHttp: Bool
         throw IllegalArgumentException("$variable contains a value that is not a valid URL")
     }
     require(uri.rawAuthority?.contains('@') != true) {
-        "$variable contains a URL with user information, set ${name("USERNAME")} and ${name("PASSWORD")} instead"
+        "$variable contains a URL with user information, remove it and set the credentials in their own variables instead"
     }
     when (uri.scheme?.lowercase()) {
         "https" -> Unit

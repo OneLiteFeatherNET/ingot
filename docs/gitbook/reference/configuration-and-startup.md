@@ -124,6 +124,7 @@ The image ships three plugins in `/app/bundled-plugins/`, and each one loads onl
 | `INGOT_METRICS_ENABLED` | `prometheus-plugin.jar` | off | Metrics endpoint. See [Prometheus plugin](environment-variables.md#prometheus-plugin). |
 | `INGOT_NEXUS_IMPORT_ENABLED` | `nexus-import-plugin.jar` | off | Nexus Repository 3 importer. See [Nexus import variables](environment-variables.md#nexus-import-variables). |
 | `INGOT_OPENSEARCH_ENABLED` | `opensearch-plugin.jar` | off | OpenSearch search backend, which registers the id `opensearch`. See [OpenSearch search backend](opensearch-search-backend.md). |
+| (none, the jar is the switch) | `meilisearch-plugin.jar`, installed by hand | not loaded | Meilisearch search backend, which registers the id `meilisearch`. Not in the image. See [Meilisearch search backend](meilisearch-search-backend.md). |
 
 ### Debug
 
