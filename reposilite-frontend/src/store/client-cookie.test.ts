@@ -15,6 +15,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
+import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import type * as ClientModule from './client'
 
 vi.mock('axios', () => ({
   default: {
@@ -25,10 +28,26 @@ vi.mock('axios', () => ({
   }
 }))
 
-const responseError = (status) =>
+// The request config as far as these tests read it.
+type RequestConfig = { url?: string; withCredentials?: boolean }
+
+type MockedAxios = {
+  get: Mock<(url: string, config?: RequestConfig) => Promise<unknown>>
+  post: Mock<(url: string, body?: unknown, config?: RequestConfig) => Promise<unknown>>
+  request: Mock<(config: RequestConfig) => Promise<unknown>>
+  interceptors: { request: { use: Mock }, response: { use: Mock } }
+}
+
+// The fields the tests set on a request config. The headers are a plain object or a mock with set().
+type RequestInput = { method: string, headers: object, withCredentials?: boolean }
+
+const requestConfig = (config: RequestInput): InternalAxiosRequestConfig =>
+  config as unknown as InternalAxiosRequestConfig
+
+const responseError = (status: number): AxiosError =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: {} }
-  })
+  }) as unknown as AxiosError
 
 const clearCookies = () => {
   document.cookie.split(';').forEach(part => {
@@ -38,7 +57,7 @@ const clearCookies = () => {
 }
 
 describe('cookie mode request interceptor', () => {
-  let client
+  let client: typeof ClientModule
 
   beforeEach(async () => {
     clearCookies()
@@ -59,7 +78,7 @@ describe('cookie mode request interceptor', () => {
   })
 
   it('registers the request interceptor on axios', async () => {
-    const axios = (await import('axios')).default
+    const axios = (await import('axios')).default as unknown as MockedAxios
 
     expect(axios.interceptors.request.use, 'the interceptor must be installed at import')
       .toHaveBeenCalledWith(client.handleRequest)
@@ -68,7 +87,7 @@ describe('cookie mode request interceptor', () => {
   it('leaves a request alone outside cookie mode', () => {
     document.cookie = 'ingot_csrf=abc'
 
-    const config = client.handleRequest({ method: 'post', headers: {} })
+    const config = client.handleRequest(requestConfig({ method: 'post', headers: {} }))
 
     expect(config.withCredentials, 'token mode must not send cookies').toBeUndefined()
     expect(config.headers).toEqual({})
@@ -78,7 +97,7 @@ describe('cookie mode request interceptor', () => {
     document.cookie = 'ingot_csrf=abc'
     client.setCookieMode(true)
 
-    const config = client.handleRequest({ method: 'post', headers: {} })
+    const config = client.handleRequest(requestConfig({ method: 'post', headers: {} }))
 
     expect(config.withCredentials).toBe(true)
     expect(config.headers['X-CSRF-Token'], 'an unsafe cookie request must echo the csrf cookie').toBe('abc')
@@ -88,14 +107,14 @@ describe('cookie mode request interceptor', () => {
     document.cookie = 'ingot_csrf=abc'
     client.setCookieMode(true)
 
-    expect(client.handleRequest({ method, headers: {} }).headers['X-CSRF-Token']).toBe('abc')
+    expect(client.handleRequest(requestConfig({ method, headers: {} })).headers['X-CSRF-Token']).toBe('abc')
   })
 
   it('sends credentials but no csrf header on a GET in cookie mode', () => {
     document.cookie = 'ingot_csrf=abc'
     client.setCookieMode(true)
 
-    const config = client.handleRequest({ method: 'get', headers: {} })
+    const config = client.handleRequest(requestConfig({ method: 'get', headers: {} }))
 
     expect(config.withCredentials).toBe(true)
     expect(config.headers, 'a safe method needs no csrf header').not.toHaveProperty('X-CSRF-Token')
@@ -104,13 +123,13 @@ describe('cookie mode request interceptor', () => {
   it('sends no csrf header when the cookie is not there', () => {
     client.setCookieMode(true)
 
-    expect(client.handleRequest({ method: 'post', headers: {} }).headers).not.toHaveProperty('X-CSRF-Token')
+    expect(client.handleRequest(requestConfig({ method: 'post', headers: {} })).headers).not.toHaveProperty('X-CSRF-Token')
   })
 
   it('treats a request that asks for credentials like a cookie mode request', () => {
     document.cookie = 'ingot_csrf=abc'
 
-    const config = client.handleRequest({ method: 'post', headers: {}, withCredentials: true })
+    const config = client.handleRequest(requestConfig({ method: 'post', headers: {}, withCredentials: true }))
 
     expect(config.headers['X-CSRF-Token']).toBe('abc')
   })
@@ -120,29 +139,29 @@ describe('cookie mode request interceptor', () => {
     client.setCookieMode(true)
     const headers = { set: vi.fn() }
 
-    client.handleRequest({ method: 'post', headers })
+    client.handleRequest(requestConfig({ method: 'post', headers }))
 
     expect(headers.set).toHaveBeenCalledWith('X-CSRF-Token', 'abc')
   })
 })
 
 describe('cookie mode refresh on 401', () => {
-  let axios
-  let client
-  let handler
+  let axios: MockedAxios
+  let client: typeof ClientModule
+  let handler: Mock<(error: unknown) => void>
 
   beforeEach(async () => {
     vi.resetModules()
-    axios = (await import('axios')).default
+    axios = (await import('axios')).default as unknown as MockedAxios
     axios.post.mockReset()
     axios.request.mockReset()
     client = await import('./client')
-    handler = vi.fn()
+    handler = vi.fn<(error: unknown) => void>()
     client.setUnauthorizedHandler(handler)
     client.setCookieMode(true)
   })
 
-  const rejected = (url = '/api/maven/details/', config = {}) =>
+  const rejected = (url = '/api/maven/details/', config: Record<string, unknown> = {}) =>
     Object.assign(responseError(401), { config: { url, method: 'get', ...config } })
 
   it('refreshes once and retries the original request once', async () => {
@@ -230,37 +249,37 @@ describe('cookie mode refresh on 401', () => {
 })
 
 describe('auth calls', () => {
-  let axios
-  let client
+  let axios: MockedAxios
+  let client: typeof ClientModule
 
   beforeEach(async () => {
     vi.resetModules()
-    axios = (await import('axios')).default
+    axios = (await import('axios')).default as unknown as MockedAxios
     axios.get.mockReset()
     axios.post.mockReset()
     client = await import('./client')
   })
 
-  it('posts the local provider with the username and password to the login endpoint', () => {
-    client.createClient('', '').auth.login({ username: 'alice', password: 'correct horse' })
+  it('posts the local provider with the username and password to the login endpoint', async () => {
+    await client.createClient('', '').auth.login({ username: 'alice', password: 'correct horse' })
 
     const [url, body, config] = axios.post.mock.calls[0]
     expect(url).toMatch(/\/api\/auth\/login$/)
     expect(body).toEqual({ provider: 'local', username: 'alice', password: 'correct horse' })
-    expect(config.withCredentials).toBe(true)
+    expect(config?.withCredentials).toBe(true)
   })
 
-  it('posts the setup request without an empty display name', () => {
-    client.createClient('', '').auth.setup({ setupCode: 'abc', username: 'root', password: 'long enough pass', displayName: '' })
+  it('posts the setup request without an empty display name', async () => {
+    await client.createClient('', '').auth.setup({ setupCode: 'abc', username: 'root', password: 'long enough pass', displayName: '' })
 
     expect(axios.post.mock.calls[0][0]).toMatch(/\/api\/auth\/setup$/)
     expect(axios.post.mock.calls[0][1]).toEqual({ setupCode: 'abc', username: 'root', password: 'long enough pass' })
   })
 
-  it('asks for the providers with credentials', () => {
-    client.createClient('', '').auth.providers()
+  it('asks for the providers with credentials', async () => {
+    await client.createClient('', '').auth.providers()
 
     expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/auth\/providers$/)
-    expect(axios.get.mock.calls[0][1].withCredentials).toBe(true)
+    expect(axios.get.mock.calls[0][1]?.withCredentials).toBe(true)
   })
 })

@@ -23,9 +23,18 @@
  */
 const SESSION_CHANNEL_NAME = 'ingot-session'
 
-const TYPES = ['signed-in', 'signed-out']
+/* A principal as the caller holds it. Only the public fields below ever leave the tab. */
+export interface ChannelPrincipal {
+  id?: number | string
+  kind?: string
+  name?: string
+  displayName?: string
+  [field: string]: unknown
+}
 
-const publicPrincipal = (principal) =>
+export type ChannelMessage = { type: 'signed-in'; principal?: ChannelPrincipal } | { type: 'signed-out' }
+
+const publicPrincipal = (principal: ChannelPrincipal | null | undefined): ChannelPrincipal | undefined =>
   principal
     ? {
         id: principal.id,
@@ -36,28 +45,31 @@ const publicPrincipal = (principal) =>
     : undefined
 
 // Only the two known types get through, and only with the public fields of the principal.
-const parse = (data) => {
-  if (!data || typeof data !== 'object' || !TYPES.includes(data.type)) {
+const parse = (data: unknown): ChannelMessage | null => {
+  if (!data || typeof data !== 'object') {
     return null
   }
-  const message = { type: data.type }
-  if (data.type === 'signed-in' && data.principal && typeof data.principal === 'object') {
-    message.principal = publicPrincipal(data.principal)
+  const { type, principal } = data as { type?: unknown; principal?: unknown }
+  if (type !== 'signed-in' && type !== 'signed-out') {
+    return null
   }
-  return message
+  if (type === 'signed-in' && principal && typeof principal === 'object') {
+    return { type, principal: publicPrincipal(principal as ChannelPrincipal) }
+  }
+  return { type }
 }
 
-const defaultFactory = (name) => new BroadcastChannel(name)
+const defaultFactory = (name: string): BroadcastChannel => new BroadcastChannel(name)
 
-const openSessionChannel = (factory = defaultFactory) => {
-  let transport = null
+const openSessionChannel = (factory: (name: string) => BroadcastChannel = defaultFactory) => {
+  let transport: BroadcastChannel | null = null
   try {
     transport = factory(SESSION_CHANNEL_NAME)
   } catch {
     transport = null
   }
 
-  const post = (message) => {
+  const post = (message: ChannelMessage) => {
     try {
       transport?.postMessage(message)
     } catch {
@@ -66,22 +78,23 @@ const openSessionChannel = (factory = defaultFactory) => {
   }
 
   return {
-    signedIn(principal) {
+    signedIn(principal: ChannelPrincipal | null | undefined) {
       post({ type: 'signed-in', principal: publicPrincipal(principal) })
     },
     signedOut() {
       post({ type: 'signed-out' })
     },
-    subscribe(handler) {
-      if (!transport) {
+    subscribe(handler: (message: ChannelMessage) => void): () => void {
+      const channel = transport
+      if (!channel) {
         return () => {}
       }
-      const listener = (event) => {
+      const listener = (event: MessageEvent) => {
         const message = parse(event?.data)
         if (message) handler(message)
       }
-      transport.addEventListener('message', listener)
-      return () => transport.removeEventListener('message', listener)
+      channel.addEventListener('message', listener)
+      return () => channel.removeEventListener('message', listener)
     },
     close() {
       try {

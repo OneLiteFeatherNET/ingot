@@ -23,6 +23,17 @@ import {
   validateTokenName,
   isDraftDirty
 } from './tokens'
+import type { createClient } from './client'
+
+type StoreClient = ReturnType<typeof createClient>
+
+type FakeTokens = {
+  list: () => Promise<unknown>
+  createOrUpdate: () => Promise<unknown>
+  update: () => Promise<unknown>
+  delete: () => Promise<unknown>
+  regenerateSecret: () => Promise<unknown>
+}
 
 // Every test builds its own store around its own fake client, so no state leaks between tests.
 const deferred = () => {
@@ -33,15 +44,15 @@ const deferred = () => {
 }
 
 const recordingNotify = () => {
-  const calls = { success: [], error: [] }
+  const calls: { success: string[]; error: string[] } = { success: [], error: [] }
   return {
     calls,
-    success: (message) => calls.success.push(message),
-    error: (message) => calls.error.push(message)
+    success: (message: string) => calls.success.push(message),
+    error: (message: string) => calls.error.push(message)
   }
 }
 
-const fakeClient = (tokens = {}) => ({
+const fakeClient = (tokens: Partial<FakeTokens> = {}) => ({
   tokens: {
     list: () => Promise.resolve({ data: [] }),
     createOrUpdate: () => Promise.resolve({ data: {} }),
@@ -50,12 +61,12 @@ const fakeClient = (tokens = {}) => ({
     regenerateSecret: () => Promise.resolve({ data: '' }),
     ...tokens
   }
-})
+}) as unknown as StoreClient
 
-const newStore = (client, notify = recordingNotify()) =>
+const newStore = (client: StoreClient, notify = recordingNotify()) =>
   createTokenStore({ getClient: () => client, notify })
 
-const tokenWithRoutes = (...paths) => ({
+const tokenWithRoutes = (...paths: string[]) => ({
   name: 'ci',
   permissions: [],
   routes: paths.map(path => ({ path, permission: { identifier: 'route:read' } }))
@@ -66,7 +77,7 @@ describe('token list loading', () => {
     const pending = deferred()
     const store = newStore(fakeClient({ list: () => pending.promise }))
 
-    store.fetchTokens()
+    void store.fetchTokens()
 
     expect(store.loading.value).toBe(true)
   })
@@ -75,7 +86,7 @@ describe('token list loading', () => {
     const pending = deferred()
     const store = newStore(fakeClient({ list: () => pending.promise }))
 
-    store.fetchTokens()
+    void store.fetchTokens()
 
     expect(store.loaded.value).toBe(false)
   })
@@ -219,7 +230,7 @@ describe('route path validation', () => {
   it('returns the existing route that a duplicate path collides with', () => {
     const result = checkRouteDraft(tokenWithRoutes('/releases'), { path: '/releases' })
 
-    expect(result.existing.path).toBe('/releases')
+    expect(result.existing?.path).toBe('/releases')
   })
 
   it('does not report the route being edited as a duplicate of itself', () => {

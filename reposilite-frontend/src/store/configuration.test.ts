@@ -19,6 +19,12 @@ import { ref } from 'vue'
 import { createConfigurationStore } from './configuration'
 import { createSuccessToast, createErrorToast } from '../helpers/toast'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+/* The fake client implements only the settings calls the store makes, so it is cast to the store's client type. */
+const clientRef = (client: unknown): ClientRef => ref(client) as unknown as ClientRef
+type Server = Record<string, Record<string, unknown>>
+type FakeUpdate = (domain: string, content: unknown, etag?: string) => Promise<{ data: unknown }>
+
 // The store is built per test with a fake client, so no module state leaks between tests.
 // Session and toast are replaced so that importing the store touches neither the network
 // nor the DOM.
@@ -26,7 +32,7 @@ vi.mock('./session', () => ({ useSession: () => ({ client: { value: null } }) })
 vi.mock('../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | undefined)?.message ?? String(error)
 }))
 
 const SCHEMA = {
@@ -34,24 +40,24 @@ const SCHEMA = {
   properties: { name: { type: 'string' } }
 }
 
-const fakeClient = ({ update = async () => ({ data: {} }) } = {}) => {
-  const server = {
+const fakeClient = ({ update = () => Promise.resolve({ data: {} }) }: { update?: FakeUpdate } = {}) => {
+  const server: Server = {
     maven: { name: 'server-maven' },
     frontend: { name: 'server-frontend' }
   }
   return {
     server,
     settings: {
-      domains: async () => ({ data: ['maven', 'frontend'] }),
-      schema: async (domain) => ({ data: { ...SCHEMA, title: domain } }),
-      fetch: async (domain) => ({ data: { ...server[domain] } }),
+      domains: () => Promise.resolve({ data: ['maven', 'frontend'] }),
+      schema: (domain: string) => Promise.resolve({ data: { ...SCHEMA, title: domain } }),
+      fetch: (domain: string) => Promise.resolve({ data: { ...server[domain] } }),
       update
     }
   }
 }
 
-const loadedStore = async (client = fakeClient()) => {
-  const store = createConfigurationStore(ref(client))
+const loadedStore = async (client: unknown = fakeClient()) => {
+  const store = createConfigurationStore(clientRef(client))
   const loaded = await store.fetchConfiguration()
   expect(loaded, 'the fixture configuration should load').toBe(true)
   return store
@@ -65,10 +71,10 @@ describe('configuration store with the schema dialect of the backend', () => {
     const schema = { $schema: DIALECT_2020, type: 'object', properties: { port: { type: 'integer' } } }
     const client = {
       settings: {
-        domains: async () => ({ data: ['authentication'] }),
-        schema: async () => ({ data: schema }),
-        fetch: async () => ({ data: { port: 389 } }),
-        update: async () => ({ data: {} })
+        domains: () => Promise.resolve({ data: ['authentication'] }),
+        schema: () => Promise.resolve({ data: schema }),
+        fetch: () => Promise.resolve({ data: { port: 389 } }),
+        update: () => Promise.resolve({ data: {} })
       }
     }
     const store = await loadedStore(client)
@@ -82,13 +88,13 @@ describe('configuration store with the schema dialect of the backend', () => {
 
 describe('configuration store', () => {
   it('selects the first settings tab by default, never the domain that is managed under Access or on another page', async () => {
-    const server = { login: { ldap: {} }, maven: { name: 'server-maven' }, ingot: { name: 'server-ingot' } }
+    const server: Server = { login: { ldap: {} }, maven: { name: 'server-maven' }, ingot: { name: 'server-ingot' } }
     const client = {
       settings: {
-        domains: async () => ({ data: ['login', 'maven', 'ingot'] }),
-        schema: async (domain) => ({ data: { ...SCHEMA, title: domain } }),
-        fetch: async (domain) => ({ data: { ...server[domain] } }),
-        update: async () => ({ data: {} })
+        domains: () => Promise.resolve({ data: ['login', 'maven', 'ingot'] }),
+        schema: (domain: string) => Promise.resolve({ data: { ...SCHEMA, title: domain } }),
+        fetch: (domain: string) => Promise.resolve({ data: { ...server[domain] } }),
+        update: () => Promise.resolve({ data: {} })
       }
     }
 
@@ -98,7 +104,7 @@ describe('configuration store', () => {
   })
 
   it('keeps the edited values dirty when saving fails', async () => {
-    const client = fakeClient({ update: async () => { throw new Error('connection refused') } })
+    const client = fakeClient({ update: () => Promise.reject(new Error('connection refused')) })
     const store = await loadedStore(client)
     store.setDomainData('maven', { name: 'edited' })
 
@@ -111,7 +117,7 @@ describe('configuration store', () => {
 
   it('clears the dirty state after a successful save', async () => {
     const client = fakeClient()
-    client.settings.fetch = async (domain) => ({ data: { name: `saved-${domain}` } })
+    client.settings.fetch = (domain) => Promise.resolve({ data: { name: `saved-${domain}` } })
     const store = await loadedStore(client)
     store.setDomainData('maven', { name: 'edited' })
 
@@ -161,7 +167,7 @@ describe('configuration store', () => {
 
   it('refuses to save while any domain is invalid', async () => {
     let updateCalls = 0
-    const client = fakeClient({ update: async () => { updateCalls++; return { data: {} } } })
+    const client = fakeClient({ update: () => { updateCalls++; return Promise.resolve({ data: {} }) } })
     const store = await loadedStore(client)
     store.setDomainData('maven', { name: 'edited' })
     store.setValidity('frontend', false)
@@ -173,8 +179,8 @@ describe('configuration store', () => {
   })
 
   it('saves only the named domains and keeps the edits of the others as a draft', async () => {
-    const written = []
-    const client = fakeClient({ update: async (domain) => { written.push(domain); return { data: {} } } })
+    const written: string[] = []
+    const client = fakeClient({ update: (domain: string) => { written.push(domain); return Promise.resolve({ data: {} }) } })
     const store = await loadedStore(client)
     store.setDomainData('maven', { name: 'edited' })
     store.setDomainData('frontend', { name: 'edited' })
@@ -209,17 +215,17 @@ describe('configuration store', () => {
   it('still announces a failed load', async () => {
     vi.clearAllMocks()
     const client = fakeClient()
-    client.settings.domains = async () => { throw new Error('unreachable') }
+    client.settings.domains = () => Promise.reject(new Error('unreachable'))
 
-    await createConfigurationStore(ref(client)).fetchConfiguration()
+    await createConfigurationStore(clientRef(client)).fetchConfiguration()
 
     expect(createErrorToast, 'a failed load must raise an error notice').toHaveBeenCalledTimes(1)
   })
 
   it('reports a failed load and no domains', async () => {
     const client = fakeClient()
-    client.settings.domains = async () => { throw new Error('unreachable') }
-    const store = createConfigurationStore(ref(client))
+    client.settings.domains = () => Promise.reject(new Error('unreachable'))
+    const store = createConfigurationStore(clientRef(client))
 
     const loaded = await store.fetchConfiguration()
 

@@ -15,32 +15,50 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
+import type useConsoleFactory from './connection'
 
 // The store reads the session for its client and token at import time, and it talks to the
 // stream through EventSource. Both are replaced so the test runs without a server, a token
 // or a browser stream.
-const session = vi.hoisted(() => ({ client: null, token: null, authMode: null }))
+const session = vi.hoisted(() => ({
+  client: null as Ref<unknown> | null,
+  token: null,
+  authMode: null as Ref<string | undefined> | null
+}))
 vi.mock('../session', () => ({ useSession: () => session }))
-vi.mock('../client', () => ({ createURL: (path) => `http://localhost${path}` }))
+vi.mock('../client', () => ({ createURL: (path: string) => `http://localhost${path}` }))
 vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error.message
+  errorMessage: (error: Error) => error.message
 }))
+
+interface StreamOptions {
+  withCredentials?: boolean
+  headers?: Record<string, string>
+  disableRetry?: boolean
+}
 
 // A stream that never leaves the test: the test reads what the store attached to it and
 // fires the events itself, so nothing waits on a socket.
 const { FakeEventSource } = vi.hoisted(() => {
   class FakeEventSource {
-    constructor(url, options) {
+    static instances: FakeEventSource[]
+    url: string
+    options: StreamOptions
+    listeners: Map<string, (event: { data: unknown }) => void>
+    closed?: boolean
+    declare onerror: (error: Event) => void
+
+    constructor(url: string, options: StreamOptions) {
       this.url = url
       this.options = options
       this.listeners = new Map()
       FakeEventSource.instances.push(this)
     }
 
-    addEventListener(type, handler) {
+    addEventListener(type: string, handler: (event: { data: unknown }) => void) {
       this.listeners.set(type, handler)
     }
 
@@ -99,7 +117,7 @@ describe('useConsole', () => {
   })
 
   describe('authenticating the stream', () => {
-    const open = async (mode, token) => {
+    const open = async (mode: string | undefined, token: { name: string; secret: string }) => {
       session.client = ref({ console: { execute: vi.fn() } })
       session.authMode = ref(mode)
       const { default: useConsole } = await import('./connection')
@@ -123,14 +141,14 @@ describe('useConsole', () => {
     it('keeps the token header in token mode', async () => {
       const stream = await open('token', { name: 'ops', secret: 'secret' })
 
-      expect(stream.options.headers.Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
+      expect((stream.options.headers as Record<string, string>).Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
       expect(stream.options.withCredentials, 'a token session does not need cookies').toBeFalsy()
     })
 
     it('keeps the token header when nobody is known to be signed in', async () => {
       const stream = await open(undefined, { name: 'ops', secret: 'secret' })
 
-      expect(stream.options.headers.Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
+      expect((stream.options.headers as Record<string, string>).Authorization).toBe(`xBasic ${btoa('ops:secret')}`)
     })
 
     it('still never retries on its own', async () => {
@@ -141,11 +159,11 @@ describe('useConsole', () => {
   })
 
   describe('stream failure', () => {
-    const streamWithProbe = (probe) => {
+    const streamWithProbe = (probe: () => Promise<unknown>) => {
       session.client = ref({ auth: { me: probe }, console: { execute: vi.fn() } })
     }
 
-    const failStream = async (useConsole) => {
+    const failStream = async (useConsole: typeof useConsoleFactory) => {
       const store = useConsole()
       store.connect({ name: 'ops', secret: 'secret' })
       FakeEventSource.instances[0].onerror(new Event('error'))

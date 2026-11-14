@@ -16,14 +16,16 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import type { Mock } from 'vitest'
+import type { AxiosError, AxiosRequestHeaders } from 'axios'
 
 // Cookie sessions, the sign in actions and the cross tab channel. The server and the browser
 // channel are doubles; every test loads a fresh copy of the session module.
 vi.mock('axios', () => ({
   default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    request: vi.fn(),
+    get: vi.fn<AxiosGet>(),
+    post: vi.fn<AxiosPost>(),
+    request: vi.fn<AxiosRequest>(),
     interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } }
   }
 }))
@@ -44,27 +46,42 @@ const ME = {
   data: { permissions: [], routes: [], principal: PRINCIPAL, teams: ['core'], grants: [], instanceAdmin: true }
 }
 
-const responseError = (status, config) =>
+const responseError = (status: number, config?: unknown): AxiosError =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: {} },
     config
-  })
+  }) as unknown as AxiosError
+
+// The call signatures of the three axios methods the session uses.
+type AxiosGetConfig = { headers?: Record<string, string>; withCredentials?: boolean }
+type AxiosGet = (url: string, config?: AxiosGetConfig) => Promise<unknown>
+type AxiosPost = (url: string, body?: unknown, config?: unknown) => Promise<unknown>
+type AxiosRequest = (config: unknown) => Promise<unknown>
+// The mocked axios module: the three call methods are typed vi.fn() doubles.
+type AxiosDouble = { get: Mock<AxiosGet>; post: Mock<AxiosPost>; request: Mock<AxiosRequest> }
+type ChannelEvent = { data: unknown }
+// A reply the mocked axios answers with: a resolved response body, or a rejection.
+type Reply = { data: unknown } | Error
+type ServeOptions = { login?: Reply; me?: Reply; providers?: unknown; setup?: Reply }
 
 // BroadcastChannel double. Every instance a module creates is kept, so a test can read what
 // was posted and deliver a message from "another tab".
-const channels = []
+const channels: FakeBroadcastChannel[] = []
 class FakeBroadcastChannel {
-  constructor(name) {
+  name: string
+  posted: unknown[]
+  listener: ((event: ChannelEvent) => void) | null
+  constructor(name: string) {
     this.name = name
     this.posted = []
     this.listener = null
     channels.push(this)
   }
-  postMessage(message) { this.posted.push(message) }
-  addEventListener(type, listener) { if (type === 'message') this.listener = listener }
+  postMessage(message: unknown) { this.posted.push(message) }
+  addEventListener(type: string, listener: (event: ChannelEvent) => void) { if (type === 'message') this.listener = listener }
   removeEventListener() { this.listener = null }
   close() {}
-  receive(data) { this.listener?.({ data }) }
+  receive(data: unknown) { this.listener?.({ data }) }
 }
 
 const clearCookies = () => {
@@ -74,16 +91,16 @@ const clearCookies = () => {
   })
 }
 
-const loaded = []
+const loaded: { stopSharingSession: () => void }[] = []
 
 // Routes the mocked axios by URL, so each test states only the answers it cares about.
-const serve = (axios, { login = LOGIN, me = ME, providers, setup } = {}) => {
-  axios.get.mockImplementation((url) => {
+const serve = (axios: AxiosDouble, { login = LOGIN, me = ME, providers, setup }: ServeOptions = {}) => {
+  axios.get.mockImplementation((url: string) => {
     if (url.endsWith('/api/auth/providers')) return Promise.resolve({ data: providers })
     if (url.endsWith('/api/auth/me')) return me instanceof Error ? Promise.reject(me) : Promise.resolve(me)
     return Promise.reject(new Error(`unexpected GET ${url}`))
   })
-  axios.post.mockImplementation((url) => {
+  axios.post.mockImplementation((url: string) => {
     if (url.endsWith('/api/auth/login')) return login instanceof Error ? Promise.reject(login) : Promise.resolve(login)
     if (url.endsWith('/api/auth/setup')) return setup instanceof Error ? Promise.reject(setup) : Promise.resolve(setup)
     if (url.endsWith('/api/auth/refresh')) return Promise.resolve({ data: {} })
@@ -97,10 +114,10 @@ const loadSession = async () => {
   sessionStorage.clear()
   clearCookies()
   channels.length = 0
-  globalThis.BroadcastChannel = FakeBroadcastChannel
+  globalThis.BroadcastChannel = FakeBroadcastChannel as unknown as typeof BroadcastChannel
 
   vi.resetModules()
-  const axios = (await import('axios')).default
+  const axios = (await import('axios')).default as unknown as AxiosDouble
   axios.get.mockReset()
   axios.post.mockReset()
   axios.request.mockReset()
@@ -114,7 +131,7 @@ const loadSession = async () => {
 
 afterEach(() => {
   loaded.splice(0).forEach(session => session.stopSharingSession())
-  delete globalThis.BroadcastChannel
+  delete (globalThis as { BroadcastChannel?: unknown }).BroadcastChannel
   clearCookies()
 })
 
@@ -126,7 +143,7 @@ describe('sign in with a password', () => {
     await store.signInWithPassword({ username: 'alice', password: PASSWORD })
 
     const loginCall = axios.post.mock.calls.find(call => call[0].endsWith('/api/auth/login'))
-    expect(loginCall[1]).toEqual({ provider: 'local', username: 'alice', password: PASSWORD })
+    expect(loginCall?.[1]).toEqual({ provider: 'local', username: 'alice', password: PASSWORD })
   })
 
   it('sets cookie mode and the principal from the response', async () => {
@@ -184,7 +201,7 @@ describe('sign in with a password', () => {
     await store.signInWithPassword({ username: 'alice', password: PASSWORD })
     await flushPromises()
 
-    const dump = (storage) => JSON.stringify(Object.fromEntries(
+    const dump = (storage: Storage) => JSON.stringify(Object.fromEntries(
       Object.keys(storage).map(key => [key, storage.getItem(key)])
     ))
     expect(dump(localStorage), 'the password must not reach localStorage').not.toContain(PASSWORD)
@@ -221,7 +238,7 @@ describe('sign in with a password', () => {
 
     await store.signInWithPassword({ username: 'alice', password: PASSWORD })
 
-    const config = client.handleRequest({ method: 'post', headers: {} })
+    const config = client.handleRequest({ method: 'post', headers: {} as AxiosRequestHeaders })
     expect(config.withCredentials).toBe(true)
     expect(config.headers['X-CSRF-Token']).toBe('abc')
   })
@@ -258,10 +275,10 @@ describe('sign out', () => {
     serve(axios)
     document.cookie = 'ingot_csrf=abc'
     await store.signInWithPassword({ username: 'alice', password: PASSWORD })
-    let headers = null
-    axios.post.mockImplementation((url) => {
+    let headers: AxiosRequestHeaders | undefined
+    axios.post.mockImplementation((url: string) => {
       if (url.endsWith('/api/auth/logout')) {
-        headers = client.handleRequest({ method: 'post', headers: {} }).headers
+        headers = client.handleRequest({ method: 'post', headers: {} as AxiosRequestHeaders }).headers
       }
       return Promise.resolve({ data: {} })
     })
@@ -278,7 +295,7 @@ describe('sign out', () => {
 
     await store.signOut()
 
-    expect(client.handleRequest({ method: 'get', headers: {} }).withCredentials).toBeUndefined()
+    expect(client.handleRequest({ method: 'get', headers: {} as AxiosRequestHeaders }).withCredentials).toBeUndefined()
   })
 
   it('tells the other tabs that the session ended', async () => {
@@ -372,7 +389,7 @@ describe('startup with a cookie session', () => {
   })
 
   describe('the must change password flag', () => {
-    const meWith = (flag) => ({ data: { ...ME.data, ...(flag === undefined ? {} : { mustChangePassword: flag }) } })
+    const meWith = (flag: boolean | undefined) => ({ data: { ...ME.data, ...(flag === undefined ? {} : { mustChangePassword: flag }) } })
 
     it('is read from GET /api/auth/me after a reload', async () => {
       const { axios, store } = await loadSession()
@@ -397,7 +414,7 @@ describe('startup with a cookie session', () => {
       document.cookie = 'ingot_csrf=abc'
       let answers = 0
       serve(axios)
-      axios.get.mockImplementation((url) => {
+      axios.get.mockImplementation((url: string) => {
         if (!url.endsWith('/api/auth/me')) return Promise.reject(new Error('unexpected'))
         answers++
         return answers === 1 ? Promise.reject(responseError(401)) : Promise.resolve(meWith(true))
@@ -445,7 +462,7 @@ describe('startup with a cookie session', () => {
     document.cookie = 'ingot_csrf=abc'
     let answers = 0
     serve(axios)
-    axios.get.mockImplementation((url) => {
+    axios.get.mockImplementation((url: string) => {
       if (!url.endsWith('/api/auth/me')) return Promise.reject(new Error('unexpected'))
       answers++
       return answers === 1 ? Promise.reject(responseError(401)) : Promise.resolve(ME)
@@ -568,8 +585,8 @@ describe('token mode', () => {
     await store.signInWithToken('ci', 's3cret')
 
     const meCall = axios.get.mock.calls.find(call => call[0].endsWith('/api/auth/me'))
-    expect(meCall[1].headers.Authorization).toBe(`xBasic ${btoa('ci:s3cret')}`)
-    expect(client.handleRequest({ method: 'post', headers: {} }).withCredentials,
+    expect(meCall?.[1]?.headers?.Authorization).toBe(`xBasic ${btoa('ci:s3cret')}`)
+    expect(client.handleRequest({ method: 'post', headers: {} as AxiosRequestHeaders }).withCredentials,
       'token mode never sends cookies').toBeUndefined()
   })
 
@@ -629,7 +646,7 @@ describe('providers and setup', () => {
     await store.completeSetup({ setupCode: 'abc', username: 'alice', password: PASSWORD, displayName: 'Alice' })
 
     const setupCall = axios.post.mock.calls.find(call => call[0].endsWith('/api/auth/setup'))
-    expect(setupCall[1]).toEqual({ setupCode: 'abc', username: 'alice', password: PASSWORD, displayName: 'Alice' })
+    expect(setupCall?.[1]).toEqual({ setupCode: 'abc', username: 'alice', password: PASSWORD, displayName: 'Alice' })
     expect(axios.post.mock.calls.some(call => call[0].endsWith('/api/auth/login')),
       'the setup response already signed the user in').toBe(false)
     expect(store.authMode.value).toBe('cookie')
@@ -640,10 +657,10 @@ describe('providers and setup', () => {
     const { axios, store } = await loadSession()
     serve(axios, { setup: { data: {} } })
 
-    await store.completeSetup({ setupCode: 'abc', username: 'alice', password: PASSWORD })
+    await store.completeSetup({ setupCode: 'abc', username: 'alice', password: PASSWORD } as Parameters<typeof store.completeSetup>[0])
 
     const loginCall = axios.post.mock.calls.find(call => call[0].endsWith('/api/auth/login'))
-    expect(loginCall[1]).toEqual({ provider: 'local', username: 'alice', password: PASSWORD })
+    expect(loginCall?.[1]).toEqual({ provider: 'local', username: 'alice', password: PASSWORD })
     expect(store.authMode.value).toBe('cookie')
   })
 })

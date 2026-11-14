@@ -18,14 +18,21 @@ import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import { createConfigurationStore } from './configuration'
 
+type Store = ReturnType<typeof createConfigurationStore>
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+interface RepositoryEntry { id: string; visibility: string; redeployment: boolean }
+
 // Session and toast are replaced, as in configuration-collections.test.js, so that the store
 // touches neither the network nor the DOM.
 vi.mock('./session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | undefined)?.message ?? String(error)
 }))
+
+// JSON round trip that keeps the value's type, so fixtures do not leak untyped values.
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const SCHEMA = {
   type: 'object',
@@ -46,7 +53,7 @@ const SCHEMA = {
   }
 }
 
-const SERVER = {
+const SERVER: Record<string, unknown> = {
   maven: {
     repositories: [
       { id: 'releases', visibility: 'PUBLIC', redeployment: false },
@@ -58,19 +65,19 @@ const SERVER = {
 const loadedStore = async () => {
   const client = {
     settings: {
-      domains: async () => ({ data: ['maven'] }),
-      schema: async () => ({ data: SCHEMA }),
-      fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(SERVER[domain])) }),
-      update: async () => ({ data: {} })
+      domains: () => Promise.resolve({ data: ['maven'] }),
+      schema: () => Promise.resolve({ data: SCHEMA }),
+      fetch: (domain: string) => Promise.resolve({ data: cloneJson(SERVER[domain]) }),
+      update: () => Promise.resolve({ data: {} })
     }
   }
-  const store = createConfigurationStore(ref(client))
+  const store = createConfigurationStore(ref(client) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   return store
 }
 
-const repositories = (store) => store.configurations.value.maven.repositories
-const keysOf = (store) => store.entryKeysOf('maven', 'repositories')
+const repositories = (store: Store): RepositoryEntry[] => store.configurations.value.maven.repositories as RepositoryEntry[]
+const keysOf = (store: Store) => store.entryKeysOf('maven', 'repositories')
 
 describe('configuration store entry keys', () => {
   it('gives every entry a key of its own', async () => {

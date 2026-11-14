@@ -37,36 +37,60 @@ import { computed, ref } from 'vue'
 export const AUTO_DISMISS_MS = 4000
 export const MAX_WAITING = 3
 
-const DURATION_MS = { success: 4000, info: 4000, warning: 6000, error: 10000 }
+export type SnackbarTone = 'success' | 'info' | 'warning' | 'error'
 
-const defaultDuration = (tone, action) => (action ? null : DURATION_MS[tone] ?? DURATION_MS.info)
+export interface SnackbarAction {
+  label?: string
+  onClick?: () => void
+}
 
-const systemTimers = {
+export interface SnackbarEntry {
+  id: number
+  message: string
+  tone: SnackbarTone
+  action: SnackbarAction | null
+  duration: number | null
+}
+
+/* The timer handle is whatever the host returns; the queue only hands it back to clearTimeout. */
+type TimerHandle = Parameters<typeof globalThis.clearTimeout>[0]
+
+export interface SnackbarTimers {
+  setTimeout: (callback: () => void, ms: number) => TimerHandle
+  clearTimeout: (handle: TimerHandle) => void
+}
+
+const DURATION_MS: Record<SnackbarTone, number> = { success: 4000, info: 4000, warning: 6000, error: 10000 }
+
+const defaultDuration = (tone: SnackbarTone, action: SnackbarAction | null): number | null =>
+  (action ? null : DURATION_MS[tone] ?? DURATION_MS.info)
+
+const systemTimers: SnackbarTimers = {
   setTimeout: (callback, ms) => globalThis.setTimeout(callback, ms),
   clearTimeout: (handle) => globalThis.clearTimeout(handle)
 }
 
-export function createSnackbarQueue({ timers = systemTimers } = {}) {
-  const entries = ref([])
-  const timerHandles = new Map()
+export function createSnackbarQueue({ timers = systemTimers }: { timers?: SnackbarTimers } = {}) {
+  const entries = ref<SnackbarEntry[]>([])
+  const timerHandles = new Map<number, TimerHandle>()
   let nextId = 1
 
   // The entry on screen. Everything behind it waits.
   const current = computed(() => entries.value[0] ?? null)
 
-  const cancelTimer = (id) => {
+  const cancelTimer = (id: number) => {
     if (timerHandles.has(id)) {
       timers.clearTimeout(timerHandles.get(id))
       timerHandles.delete(id)
     }
   }
 
-  const startTimer = (entry) => {
+  const startTimer = (entry: SnackbarEntry) => {
     if (entry.duration === null) return
     timerHandles.set(entry.id, timers.setTimeout(() => dismiss(entry.id), entry.duration))
   }
 
-  function dismiss(id) {
+  function dismiss(id: number) {
     if (!entries.value.some(entry => entry.id === id)) return
     cancelTimer(id)
     entries.value = entries.value.filter(entry => entry.id !== id)
@@ -78,7 +102,7 @@ export function createSnackbarQueue({ timers = systemTimers } = {}) {
    * on screen, otherwise after the notices ahead of it have been dismissed. A notice without
    * text is ignored and yields `null`.
    */
-  function enqueue({ message, tone = 'info', action = null, duration }) {
+  function enqueue({ message, tone = 'info', action = null, duration }: { message: string; tone?: SnackbarTone; action?: SnackbarAction | null; duration?: number | null }): number | null {
     // A notice without text would be an empty bar on screen. Nothing is shown for it.
     if (!message || !String(message).trim()) {
       return null
@@ -119,7 +143,7 @@ export function createSnackbarQueue({ timers = systemTimers } = {}) {
 
   // Runs the action of a notice, then dismisses it. Dismissal happens even when the
   // callback throws, so a failing action cannot leave the notice stuck on screen.
-  function runAction(id) {
+  function runAction(id: number) {
     const entry = entries.value.find(item => item.id === id)
     if (!entry) return
     try {

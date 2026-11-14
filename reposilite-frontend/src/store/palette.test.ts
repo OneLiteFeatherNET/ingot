@@ -25,7 +25,7 @@ const root = () => document.documentElement
 
 // jsdom does not load color.css, so the test plays the stylesheet's part: it sets the same
 // custom properties on the root that the real theme sets, and the palette has to read them.
-const setRole = (name, value) => root().style.setProperty(name, value)
+const setRole = (name: string, value: string) => root().style.setProperty(name, value)
 
 const CHART_VALUES = ['#100001', '#100002', '#100003', '#100004', '#100005', '#100006', '#100007', '#100008']
 

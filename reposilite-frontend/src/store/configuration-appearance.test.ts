@@ -19,6 +19,8 @@ import { ref } from 'vue'
 import { createConfigurationStore } from './configuration'
 import { setAppearance, applyAppearance } from './appearance'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+
 // The appearance is replaced by spies, so the test sees the calls the store makes and nothing
 // touches the document.
 vi.mock('./appearance', () => ({
@@ -29,35 +31,38 @@ vi.mock('./session', () => ({ useSession: () => ({ client: { value: null } }) })
 vi.mock('../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | undefined)?.message ?? String(error)
 }))
+
+// JSON round trip that keeps the value's type, so fixtures do not leak untyped values.
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const SCHEMA = { type: 'object', properties: { name: { type: 'string' } } }
 
 // A fresh server per test. A write stores what it was given, as the real server does, unless the
 // test makes the write fail.
 const fakeClient = ({ failWrites = false } = {}) => {
-  const server = {
+  const server: Record<string, unknown> = {
     maven: { name: 'server-maven' },
     frontend: { appearance: { seedColor: '#006a6a' } }
   }
   return {
     server,
     settings: {
-      domains: async () => ({ data: ['maven', 'frontend'] }),
-      schema: async (domain) => ({ data: { ...SCHEMA, title: domain } }),
-      fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
-      update: vi.fn(async (domain, data) => {
-        if (failWrites) throw new Error('connection refused')
+      domains: () => Promise.resolve({ data: ['maven', 'frontend'] }),
+      schema: (domain: string) => Promise.resolve({ data: { ...SCHEMA, title: domain } }),
+      fetch: (domain: string) => Promise.resolve({ data: cloneJson(server[domain]) }),
+      update: vi.fn((domain: string, data: unknown) => {
+        if (failWrites) return Promise.reject(new Error('connection refused'))
         server[domain] = JSON.parse(JSON.stringify(data))
-        return { data: {} }
+        return Promise.resolve({ data: {} })
       })
     }
   }
 }
 
 const loadedStore = async (client = fakeClient()) => {
-  const store = createConfigurationStore(ref(client))
+  const store = createConfigurationStore(ref(client) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   return store
 }
@@ -73,13 +78,13 @@ describe('saving the frontend settings', () => {
 
     await store.saveConfiguration()
 
-    expect(setAppearance).toHaveBeenCalledWith({ seedColor: '#8a1c1c' }), 'the saved value is what the server now holds'
+    expect(setAppearance, 'the saved value is what the server now holds').toHaveBeenCalledWith({ seedColor: '#8a1c1c' })
     expect(applyAppearance).toHaveBeenCalledTimes(1)
   })
 
   it('applies the appearance of the server response, not of the edited form', async () => {
     const client = fakeClient()
-    client.settings.fetch = async () => ({ data: { appearance: { seedColor: '#123456' } } })
+    client.settings.fetch = () => Promise.resolve({ data: { appearance: { seedColor: '#123456' } } })
     const store = await loadedStore(client)
     store.setDomainData('frontend', { appearance: { seedColor: '#8a1c1c' } })
 

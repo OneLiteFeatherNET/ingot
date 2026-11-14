@@ -27,7 +27,7 @@ import { normalizeAppearance, applyFavicon, devSeedFromSearch, removeTheme } fro
 let current = normalizeAppearance({})
 
 /* Development only: a ?theme-seed query parameter overrides the seed for previewing. */
-const withDevelopmentSeed = (raw) => {
+const withDevelopmentSeed = (raw: Record<string, unknown> | undefined): Record<string, unknown> | undefined => {
   if (!import.meta.env.DEV) {
     return raw
   }
@@ -35,7 +35,7 @@ const withDevelopmentSeed = (raw) => {
   return seed ? { ...raw, seedColor: seed } : raw
 }
 
-export function setAppearance(raw) {
+export function setAppearance(raw: Record<string, unknown> | undefined) {
   current = normalizeAppearance(withDevelopmentSeed(raw))
 }
 

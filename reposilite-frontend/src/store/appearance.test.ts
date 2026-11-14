@@ -102,12 +102,12 @@ describe('applyAppearance after a change in the settings', () => {
     const doc = builtPage()
     setAppearance({ seedColor: '#006a6a' })
     await applyAppearance(doc)
-    expect(doc.querySelector('meta[name="theme-color"]').getAttribute('content')).not.toBe('#fff8f8')
+    expect((doc.querySelector('meta[name="theme-color"]') as HTMLMetaElement).getAttribute('content')).not.toBe('#fff8f8')
 
     setAppearance({})
     await applyAppearance(doc)
 
-    expect(doc.querySelector('meta[name="theme-color"]').getAttribute('content')).toBe('#fff8f8')
+    expect((doc.querySelector('meta[name="theme-color"]') as HTMLMetaElement).getAttribute('content')).toBe('#fff8f8')
   })
 
   it('puts the built icon back when the favicon is cleared', async () => {
@@ -118,7 +118,7 @@ describe('applyAppearance after a change in the settings', () => {
     setAppearance({})
     await applyAppearance(doc)
 
-    expect(doc.querySelector('link[rel="icon"]').getAttribute('href')).toBe('/favicon.png')
+    expect((doc.querySelector('link[rel="icon"]') as HTMLLinkElement).getAttribute('href')).toBe('/favicon.png')
   })
 
   it('replaces the theme on the page when the seed changes, without a second style element', async () => {
@@ -130,6 +130,6 @@ describe('applyAppearance after a change in the settings', () => {
     await applyAppearance(doc)
 
     expect(doc.querySelectorAll(`#${THEME_STYLE_ID}`)).toHaveLength(1)
-    expect(doc.getElementById(THEME_STYLE_ID).textContent).toContain('--md-sys-color-primary')
+    expect((doc.getElementById(THEME_STYLE_ID) as HTMLElement).textContent).toContain('--md-sys-color-primary')
   })
 })

@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createSnackbarQueue, AUTO_DISMISS_MS } from './snackbar'
+import { createSnackbarQueue, AUTO_DISMISS_MS, type SnackbarTone } from './snackbar'
 
 // The lifetimes are part of the behaviour under test, so they are written out here rather
 // than imported: a change to the store must show up as a failing test.
@@ -36,7 +36,7 @@ describe('snackbar notices without text', () => {
     const queue = createSnackbarQueue()
 
     queue.enqueue({ message: '   ', tone: 'error' })
-    queue.enqueue({ tone: 'warning' })
+    queue.enqueue({ tone: 'warning' } as unknown as { message: string; tone: SnackbarTone })
 
     expect(queue.entries.value, 'blank notices are dropped, not queued').toHaveLength(0)
   })
@@ -53,7 +53,7 @@ describe('snackbar notices without text', () => {
 
 // Each test builds its own queue and its own fake clock, so no state or timer carries over.
 describe('snackbar queue', () => {
-  let queue
+  let queue: ReturnType<typeof createSnackbarQueue>
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -77,6 +77,7 @@ describe('snackbar queue', () => {
   it('shows the next notice once the visible one is dismissed', () => {
     const first = queue.enqueue({ message: 'First', tone: 'error' })
     queue.enqueue({ message: 'Second', tone: 'error' })
+    if (first === null) throw new Error('the first notice was not queued')
 
     queue.dismiss(first)
 
@@ -140,6 +141,7 @@ describe('snackbar queue', () => {
 
   it('dismisses a notice with an action when the user dismisses it', () => {
     const id = queue.enqueue({ message: 'Deleted', tone: 'success', action: { label: 'Undo', onClick: () => {} } })
+    if (id === null) throw new Error('the notice was not queued')
 
     queue.dismiss(id)
 
@@ -206,6 +208,7 @@ describe('snackbar queue', () => {
   it('starts the timer of the next success notice only when it becomes visible', () => {
     const first = queue.enqueue({ message: 'Saved', tone: 'success' })
     queue.enqueue({ message: 'Uploaded', tone: 'success' })
+    if (first === null) throw new Error('the first notice was not queued')
 
     vi.advanceTimersByTime(AUTO_DISMISS_MS - 1000)
     queue.dismiss(first)
@@ -228,7 +231,9 @@ describe('snackbar queue', () => {
     const onClick = vi.fn()
     queue.enqueue({ message: 'Deleted', tone: 'success', action: { label: 'Undo', onClick } })
 
-    queue.runAction(queue.current.value.id)
+    const shown = queue.current.value
+    if (!shown) throw new Error('no notice on screen')
+    queue.runAction(shown.id)
 
     expect(onClick, 'the action callback must run exactly once').toHaveBeenCalledTimes(1)
     expect(messageOnScreen(), 'the notice must be dismissed after its action ran').toBeNull()
@@ -241,7 +246,9 @@ describe('snackbar queue', () => {
       action: { label: 'Retry', onClick: () => { throw new Error('boom') } }
     })
 
-    expect(() => queue.runAction(queue.current.value.id), 'the error must reach the caller').toThrow('boom')
+    const shown = queue.current.value
+    if (!shown) throw new Error('no notice on screen')
+    expect(() => queue.runAction(shown.id), 'the error must reach the caller').toThrow('boom')
     expect(messageOnScreen(), 'a failing action must not leave the notice stuck on screen').toBeNull()
   })
 

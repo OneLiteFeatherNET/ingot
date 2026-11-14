@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Mock } from 'vitest'
 import axios from 'axios'
 import { createClient } from './client'
 
@@ -28,15 +29,22 @@ vi.mock('axios', () => ({
   }
 }))
 
+// The post of the mocked axios default export, typed as far as these tests read it.
+type MockedAxios = {
+  post: Mock<(url: string, body?: unknown, config?: { withCredentials?: boolean }) => Promise<unknown>>
+}
+
+const http = axios as unknown as MockedAxios
+
 describe('auth login request', () => {
   beforeEach(() => {
-    axios.post.mockReset().mockResolvedValue({ data: {} })
+    http.post.mockReset().mockResolvedValue({ data: {} })
   })
 
   it('posts the id of the chosen provider with the credentials', async () => {
     await createClient('', '').auth.login({ provider: 'ldap', username: 'ldapuser', password: 'ldap-password-12' })
 
-    expect(axios.post).toHaveBeenCalledWith(
+    expect(http.post).toHaveBeenCalledWith(
       expect.stringContaining('/api/auth/login'),
       { provider: 'ldap', username: 'ldapuser', password: 'ldap-password-12' },
       expect.objectContaining({ withCredentials: true })
@@ -46,6 +54,6 @@ describe('auth login request', () => {
   it('posts the Ingot account provider when no provider is named', async () => {
     await createClient('', '').auth.login({ username: 'alice', password: 'correct horse battery' })
 
-    expect(axios.post.mock.calls[0][1]).toEqual({ provider: 'local', username: 'alice', password: 'correct horse battery' })
+    expect(http.post.mock.calls[0][1]).toEqual({ provider: 'local', username: 'alice', password: 'correct horse battery' })
   })
 })

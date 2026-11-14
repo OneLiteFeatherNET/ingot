@@ -20,18 +20,19 @@
  * instance answers 404, which means no support page is listed.
  */
 
-import axios from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosRequestHeaders } from 'axios'
 import { ref } from 'vue'
 import { createURL, handleRequest } from './client'
 import { setSupportBundleOffered } from '../navigation/registry'
+import type { components } from '../types/api'
 
 // False until the answer for the current session is known, so a support page that waits for it is not judged.
 const supportBundleReady = ref(false)
 
-const loadSupportBundle = async (credentials = {}) => {
+const loadSupportBundle = async (credentials: Pick<AxiosRequestConfig, 'headers'> = {}) => {
   supportBundleReady.value = false
   try {
-    const { data } = await axios.get(createURL('/api/admin/support/availability'), handleRequest({ withCredentials: true, headers: { ...credentials.headers } }))
+    const { data } = await axios.get<components['schemas']['SupportAvailability']>(createURL('/api/admin/support/availability'), handleRequest({ withCredentials: true, headers: { ...credentials.headers } as AxiosRequestHeaders }))
     setSupportBundleOffered(data?.enabled === true)
   } catch {
     setSupportBundleOffered(false)

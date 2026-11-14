@@ -15,6 +15,18 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Mock } from 'vitest'
+import type { AxiosError } from 'axios'
+import type * as Client from './client'
+
+// The request config as far as these tests read it: the headers and the status check.
+type RequestConfig = { headers?: Record<string, string | undefined>; validateStatus?: (status: number) => boolean }
+
+// The parts of the mocked axios default export that these tests drive.
+type MockedAxios = {
+  get: Mock<(url: string, config?: RequestConfig) => Promise<unknown>>
+  post: Mock<(url: string, body?: unknown, config?: RequestConfig) => Promise<unknown>>
+}
 
 // The real axios is never reached. The module only needs the interceptor registry to exist,
 // and the handler under test is called directly with a hand-made error.
@@ -27,13 +39,13 @@ vi.mock('axios', () => ({
   }
 }))
 
-const responseError = (status) =>
+const responseError = (status: number): AxiosError =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: {} }
-  })
+  }) as unknown as AxiosError
 
 describe('client response interceptor', () => {
-  let client
+  let client: typeof Client
 
   beforeEach(async () => {
     vi.resetModules()
@@ -70,13 +82,13 @@ describe('client response interceptor', () => {
 })
 
 describe('token mode session check on 401', () => {
-  let axios
-  let client
-  let handler
+  let axios: MockedAxios
+  let client: typeof Client
+  let handler: Mock
 
   beforeEach(async () => {
     vi.resetModules()
-    axios = (await import('axios')).default
+    axios = (await import('axios')).default as unknown as MockedAxios
     axios.get.mockReset()
     client = await import('./client')
     handler = vi.fn()
@@ -95,7 +107,7 @@ describe('token mode session check on 401', () => {
     await expect(client.handleResponseError(error)).rejects.toBe(error)
 
     expect(axios.get.mock.calls[0][0], 'the session is asked about with the same credentials').toMatch(/\/api\/auth\/me$/)
-    expect(axios.get.mock.calls[0][1].headers.Authorization).toBe('xBasic dG9rZW46c2VjcmV0')
+    expect(axios.get.mock.calls[0][1]?.headers?.Authorization).toBe('xBasic dG9rZW46c2VjcmV0')
     expect(handler, 'a 401 on a listing is not a rejected token').not.toHaveBeenCalled()
   })
 
@@ -119,11 +131,11 @@ describe('token mode session check on 401', () => {
 
 describe('client repositories call', () => {
   // The module and the axios mock are loaded together, so the client sees the mock the test inspects.
-  let http
+  let http: MockedAxios
 
   beforeEach(async () => {
     vi.resetModules()
-    http = (await import('axios')).default
+    http = (await import('axios')).default as unknown as MockedAxios
     http.get.mockReset()
     http.get.mockResolvedValue({ data: { repositories: [] } })
   })
@@ -131,7 +143,7 @@ describe('client repositories call', () => {
   it('requests the overview without a query when no filter is given', async () => {
     const { createClient } = await import('./client')
 
-    await createClient().maven.repositories()
+    await createClient(undefined, undefined).maven.repositories()
 
     expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories$/)
   })
@@ -139,99 +151,99 @@ describe('client repositories call', () => {
   it('writes the text as q and every tag as its own tag parameter, which the endpoint reads as AND', async () => {
     const { createClient } = await import('./client')
 
-    await createClient().maven.repositories({ q: 'nightly builds', tags: ['team-core', 'ci'] })
+    await createClient(undefined, undefined).maven.repositories({ q: 'nightly builds', tags: ['team-core', 'ci'] })
 
     expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories\?q=nightly\+builds&tag=team-core&tag=ci$/)
   })
 })
 
 describe('maintenance endpoints', () => {
-  let axios
-  let client
+  let axios: MockedAxios
+  let client: typeof Client
 
   beforeEach(async () => {
     vi.resetModules()
-    axios = (await import('axios')).default
+    axios = (await import('axios')).default as unknown as MockedAxios
     axios.get.mockReset()
     axios.post.mockReset()
     client = await import('./client')
   })
 
-  it('reads the storage figures from the storage endpoint', () => {
-    client.createClient('ci', 'secret').maven.storage()
+  it('reads the storage figures from the storage endpoint', async () => {
+    await client.createClient('ci', 'secret').maven.storage()
 
     expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/maven\/storage$/)
   })
 
-  it('asks for a storage refresh with a POST to the refresh endpoint', () => {
-    client.createClient('ci', 'secret').maven.refreshStorage()
+  it('asks for a storage refresh with a POST to the refresh endpoint', async () => {
+    await client.createClient('ci', 'secret').maven.refreshStorage()
 
     expect(axios.post.mock.calls[0][0]).toMatch(/\/api\/maven\/storage\/refresh$/)
   })
 
-  it('posts a dry run to the policy it names, with the id escaped', () => {
-    client.createClient('ci', 'secret').cleanup.dryRun('weekly snapshots')
+  it('posts a dry run to the policy it names, with the id escaped', async () => {
+    await client.createClient('ci', 'secret').cleanup.dryRun('weekly snapshots')
 
     expect(axios.post.mock.calls[0][0]).toMatch(/\/api\/cleanup\/policies\/weekly%20snapshots\/dry-run$/)
   })
 
-  it('posts a run to the policy it names', () => {
-    client.createClient('ci', 'secret').cleanup.run('snapshots-weekly')
+  it('posts a run to the policy it names', async () => {
+    await client.createClient('ci', 'secret').cleanup.run('snapshots-weekly')
 
     expect(axios.post.mock.calls[0][0]).toMatch(/\/api\/cleanup\/policies\/snapshots-weekly\/run$/)
   })
 
-  it('lists every run when no policy is named', () => {
-    client.createClient('ci', 'secret').cleanup.runs()
+  it('lists every run when no policy is named', async () => {
+    await client.createClient('ci', 'secret').cleanup.runs()
 
     expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/cleanup\/runs$/)
   })
 
-  it('lists the runs of one policy when it is named', () => {
-    client.createClient('ci', 'secret').cleanup.runs('snapshots-weekly')
+  it('lists the runs of one policy when it is named', async () => {
+    await client.createClient('ci', 'secret').cleanup.runs('snapshots-weekly')
 
     expect(axios.get.mock.calls[0][0]).toMatch(/\/api\/cleanup\/runs\?policy=snapshots-weekly$/)
   })
 })
 
 describe('status probe', () => {
-  let axios
-  let client
+  let axios: MockedAxios
+  let client: typeof Client
 
   beforeEach(async () => {
     vi.resetModules()
-    axios = (await import('axios')).default
+    axios = (await import('axios')).default as unknown as MockedAxios
     axios.get.mockReset()
     axios.get.mockResolvedValue({ status: 401, headers: {}, data: '' })
     client = await import('./client')
   })
 
-  it('sends the session credentials, so a protected integration can answer 200', () => {
-    client.createClient('ci', 'secret').status.probe('/metrics')
+  it('sends the session credentials, so a protected integration can answer 200', async () => {
+    await client.createClient('ci', 'secret').status.probe('/metrics')
 
-    expect(axios.get.mock.calls[0][1].headers.Authorization, 'the probe must authenticate like every other call')
+    expect(axios.get.mock.calls[0][1]?.headers?.Authorization, 'the probe must authenticate like every other call')
       .toBe(`xBasic ${btoa('ci:secret')}`)
   })
 
-  it('sends no credentials when nobody is signed in', () => {
-    client.createClient('', '').status.probe('/metrics')
+  it('sends no credentials when nobody is signed in', async () => {
+    await client.createClient('', '').status.probe('/metrics')
 
-    expect(axios.get.mock.calls[0][1].headers, 'an anonymous probe carries no authorization header').toBeUndefined()
+    expect(axios.get.mock.calls[0][1]?.headers, 'an anonymous probe carries no authorization header').toBeUndefined()
   })
 
-  it('treats any status as an answer, so a 401 does not reach the error path', () => {
-    client.createClient('ci', 'secret').status.probe('/metrics')
+  it('treats any status as an answer, so a 401 does not reach the error path', async () => {
+    await client.createClient('ci', 'secret').status.probe('/metrics')
 
-    expect(axios.get.mock.calls[0][1].validateStatus(401)).toBe(true)
+    expect(axios.get.mock.calls[0][1]?.validateStatus?.(401)).toBe(true)
   })
 })
 
 describe('client members call', () => {
-  let http
+  let http: MockedAxios
 
   beforeEach(async () => {
     vi.resetModules()
-    http = (await import('axios')).default
+    http = (await import('axios')).default as unknown as MockedAxios
     http.get.mockReset()
     http.get.mockResolvedValue({ data: { members: [] } })
   })
@@ -239,18 +251,18 @@ describe('client members call', () => {
   it('asks for the references of a group with the repository escaped in the path', async () => {
     const { createClient } = await import('./client')
 
-    await createClient().maven.members('public')
+    await createClient(undefined, undefined).maven.members('public')
 
     expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/repositories\/public\/members$/)
   })
 })
 
 describe('client search calls', () => {
-  let http
+  let http: MockedAxios
 
   beforeEach(async () => {
     vi.resetModules()
-    http = (await import('axios')).default
+    http = (await import('axios')).default as unknown as MockedAxios
     http.get.mockReset()
     http.get.mockResolvedValue({ data: {} })
   })
@@ -258,7 +270,7 @@ describe('client search calls', () => {
   it('requests the search without a query string when the query is empty', async () => {
     const { createClient } = await import('./client')
 
-    await createClient().maven.search('')
+    await createClient(undefined, undefined).maven.search('')
 
     expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/search$/)
   })
@@ -266,7 +278,7 @@ describe('client search calls', () => {
   it('passes the query string of the page through to the search endpoint', async () => {
     const { createClient } = await import('./client')
 
-    await createClient().maven.search('q=commons&extension=jar&extension=pom')
+    await createClient(undefined, undefined).maven.search('q=commons&extension=jar&extension=pom')
 
     expect(http.get.mock.calls[0][0]).toMatch(/\/api\/maven\/search\?q=commons&extension=jar&extension=pom$/)
   })
@@ -274,7 +286,7 @@ describe('client search calls', () => {
   it('asks for the files of a version with its coordinates, and repeats the repository filter', async () => {
     const { createClient } = await import('./client')
 
-    await createClient().maven.searchFiles({
+    await createClient(undefined, undefined).maven.searchFiles({
       groupId: 'org.apache', artifactId: 'lang', version: '1.0', origin: 'mirror', repository: ['a', 'b'], page: 1, size: 100
     })
 
@@ -286,18 +298,18 @@ describe('client search calls', () => {
   it('leaves out the origin of the files request while it is the default', async () => {
     const { createClient } = await import('./client')
 
-    await createClient().maven.searchFiles({ groupId: 'g', artifactId: 'a', version: '1' })
+    await createClient(undefined, undefined).maven.searchFiles({ groupId: 'g', artifactId: 'a', version: '1' })
 
     expect(http.get.mock.calls[0][0]).not.toContain('origin=')
   })
 })
 
 describe('client search index calls', () => {
-  let http
+  let http: MockedAxios
 
   beforeEach(async () => {
     vi.resetModules()
-    http = (await import('axios')).default
+    http = (await import('axios')).default as unknown as MockedAxios
     http.get.mockReset()
     http.post.mockReset()
     http.get.mockResolvedValue({ data: {} })
@@ -340,7 +352,7 @@ describe('client search index calls', () => {
   it('cancels a run by its id', async () => {
     const { createClient } = await import('./client')
 
-    await createClient('ci', 'secret').maven.cancelIndexRun(42)
+    await createClient('ci', 'secret').maven.cancelIndexRun(42 as unknown as string)
 
     expect(http.post.mock.calls[0][0]).toMatch(/\/api\/maven\/search\/index\/runs\/42\/cancel$/)
   })

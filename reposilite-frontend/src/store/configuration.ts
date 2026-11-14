@@ -4,6 +4,8 @@ import isPlainObject from 'lodash/isPlainObject'
 import { useSession } from './session'
 import { createSuccessToast, createErrorToast, errorMessage } from '../helpers/toast'
 import { createAjv } from '@jsonforms/core'
+import type { JsonFormsRendererRegistryEntry, JsonSchema, TesterContext, UISchemaElement } from '@jsonforms/core'
+import type { AxiosResponse } from 'axios'
 import { defaultStyles, mergeStyles, vanillaRenderers } from '@dzikoysk/vue-vanilla'
 import { default as ObjectRenderer, tester as objectTester } from '../components/renderers/ObjectRenderer.vue'
 import { default as AllOfRenderer, tester as allOfTester } from '../components/renderers/AllOfRenderer.vue'
@@ -25,18 +27,41 @@ import { default as UnsupportedRenderer, tester as unsupportedTester } from '../
 import { invalidColourFields } from '../theme/settings'
 import { setAppearance, applyAppearance } from './appearance'
 import { etagOf, isPreconditionFailed } from './client'
+import type { createClient } from './client'
 import { settingsDomainNames } from './settingsDomains'
 import { frontendSecretsHidden } from './placeholders'
 import { diffSettings } from '../components/settings/settingsDiff'
 
-const cloneJson = (value) => JSON.parse(JSON.stringify(value))
+type Client = ReturnType<typeof createClient>
+/* A holder of the client: the session provides it as a computed ref. */
+interface ClientRef { readonly value: Client }
+/* The stored settings of one domain. The form reads and writes them by key, so the keys stay open. */
+type DomainData = Record<string, unknown>
+/* The form schema of a domain as formSchemaOf returns it. Only its title is read here. */
+export interface FormSchema { title?: string; [field: string]: unknown }
+/* One change of the conflict review, as settingsDiff lists it. Only the fields the review reads are named here. */
+export interface SettingsChange { id: string; domain: string; domainTitle: string; kind: string; group: { key: string; title: string; id: string } | null; path: unknown[]; label: string; masked: boolean; before: unknown; after: unknown; index?: number }
+/* The domain whose stored settings changed elsewhere, as the conflict dialog holds it. */
+export interface SettingsConflict { kind: 'settings'; name: string; title: string; reviewed: boolean; server: DomainData | null }
+/* A domain as the initial load receives it, before the schema defaults are applied. */
+interface LoadedDomain { domain: string; schema: unknown; configuration: DomainData; etag: string | null }
+/* A domain write that failed, with the error the client raised. */
+interface DomainFailure { domain: string; error: Parameters<typeof isPreconditionFailed>[0] }
+
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+const isRecord = (value: unknown): value is DomainData => isPlainObject(value)
+type Tester = (uischema: UISchemaElement, schema: JsonSchema, context: TesterContext) => number
+/* The client answers with untyped axios responses. This names the body a settings call returns. */
+const bodyAs = <T>(request: Promise<AxiosResponse>): Promise<AxiosResponse<T>> => request as Promise<AxiosResponse<T>>
+/* The renderers are .vue components, which eslint's type program cannot resolve, so each entry is named here. */
+const rendererOf = (tester: unknown, renderer: unknown): JsonFormsRendererRegistryEntry => ({ tester, renderer } as JsonFormsRendererRegistryEntry)
 
 /*
  * How many values differ between an edited configuration and the server snapshot. Objects are
  * compared key by key, arrays position by position, and a value present on only one side counts
  * once. So an edited field counts as one change, and an added or removed entry as one change too.
  */
-export const countDifferences = (current, saved) => {
+export const countDifferences = (current: unknown, saved: unknown): number => {
   if (isEqual(current, saved)) return 0
   if (Array.isArray(current) && Array.isArray(saved)) {
     const length = Math.max(current.length, saved.length)
@@ -46,7 +71,7 @@ export const countDifferences = (current, saved) => {
     }
     return count
   }
-  if (isPlainObject(current) && isPlainObject(saved)) {
+  if (isRecord(current) && isRecord(saved)) {
     const keys = new Set([...Object.keys(current), ...Object.keys(saved)])
     let count = 0
     for (const key of keys) count += countDifferences(current[key], saved[key])
@@ -64,20 +89,20 @@ export const countDifferences = (current, saved) => {
  * its edited value differs from that snapshot, so the flag is derived from the data and
  * survives the settings view being unmounted and mounted again.
  */
-export const createConfigurationStore = (client, { secretsHidden: serverHidesSecrets = frontendSecretsHidden } = {}) => {
-  const domains = ref([])
-  const schemas = ref({})
-  const configurations = ref({})
-  const snapshots = ref({})
-  const validity = ref({})
+export const createConfigurationStore = (client: ClientRef, { secretsHidden: serverHidesSecrets = frontendSecretsHidden }: { secretsHidden?: () => boolean } = {}) => {
+  const domains = ref<string[]>([])
+  const schemas = ref<Record<string, FormSchema>>({})
+  const configurations = ref<Record<string, DomainData>>({})
+  const snapshots = ref<Record<string, DomainData>>({})
+  const validity = ref<Record<string, boolean>>({})
   const selectedDomain = ref('')
-  const loadError = ref(null)
-  const saveError = ref(null)
+  const loadError = ref<string | null>(null)
+  const saveError = ref<string | null>(null)
   const saving = ref(false)
   /* The tag each domain was last read or written with. A write sends it back, so the server can refuse a stale draft. */
-  const etags = ref({})
+  const etags = ref<Record<string, string | null>>({})
   /* The domain whose stored settings changed elsewhere, or null. The conflict dialog renders it. */
-  const conflict = ref(null)
+  const conflict = ref<SettingsConflict | null>(null)
   // Whether the server returns secrets as ******** instead of their values. Read with the configuration.
   const secretsHidden = ref(false)
 
@@ -89,7 +114,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
       'repositories.storageProvider.quota': /^([1-9]\d*)([KkMmGg][Bb]|%)$/,
       'repositories.id': {
         type: 'string',
-        validate: (name) => name in configurations.value['maven'].repositories || name.startsWith(' ') || name.endsWith(' ')
+        validate: (name) => name in (configurations.value['maven'] as { repositories: DomainData }).repositories ||name.startsWith(' ') || name.endsWith(' ')
       },
       'repositories.proxied.allowedGroups': /^(\w+\.)*\w+$/,
     }
@@ -99,14 +124,14 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     validate: (value) => !value.endsWith(' ')
   })
 
-  const titleOf = (domain) => schemas.value[domain]?.title ?? domain
+  const titleOf = (domain: string): string => schemas.value[domain]?.title ?? domain
 
   /*
    * Ajv fills in schema defaults, and JsonForms does the same on mount and reports the result
    * as a change. The server snapshot gets the same defaults, or every tab would open dirty.
    * A schema that does not compile is left to the form to report, and the data stays as it is.
    */
-  const withDefaults = (domain, data) => {
+  const withDefaults = (domain: string, data: DomainData): DomainData => {
     try {
       configurationValidator.compile(schemas.value[domain])(data)
     } catch {
@@ -115,7 +140,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     return data
   }
 
-  const isDirty = (domain) => !isEqual(configurations.value[domain], snapshots.value[domain])
+  const isDirty = (domain: string): boolean => !isEqual(configurations.value[domain], snapshots.value[domain])
   const dirtyDomains = computed(() => domains.value.filter(isDirty))
   const hasChanges = computed(() => dirtyDomains.value.length > 0)
   const invalidDomains = computed(() => domains.value.filter(domain => validity.value[domain] === false))
@@ -131,30 +156,30 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * The one place a domain takes the state the server confirmed: the draft, the saved snapshot and the tag
    * the write will carry move together, so a later save can never pair a tag with a state it does not describe.
    */
-  const setSavedState = (domain, server, etag) => {
+  const setSavedState = (domain: string, server: DomainData, etag: string | null): void => {
     configurations.value[domain] = server
     snapshots.value[domain] = cloneJson(server)
     etags.value[domain] = etag
     delete validity.value[domain]
   }
 
-  const fetchConfiguration = async () => {
+  const fetchConfiguration = async (): Promise<boolean> => {
     try {
       const domainNames = await settingsDomainNames(client.value)
-      const loaded = await Promise.all(domainNames.map(async domain => {
+      const loaded = await Promise.all(domainNames.map(async (domain): Promise<LoadedDomain> => {
         const [schema, configuration] = await Promise.all([
-          client.value.settings.schema(domain),
-          client.value.settings.fetch(domain)
+          bodyAs<unknown>(client.value.settings.schema(domain)),
+          bodyAs<DomainData>(client.value.settings.fetch(domain))
         ])
         return { domain, schema: schema.data, configuration: configuration.data, etag: etagOf(configuration) }
       }))
 
       domains.value = domainNames
-      loaded.forEach(({ domain, schema }) => { schemas.value[domain] = formSchemaOf(schema) })
+      loaded.forEach(({ domain, schema }) => { schemas.value[domain] = formSchemaOf(schema) as FormSchema })
       loaded.forEach(({ domain, configuration, etag }) => {
         setSavedState(domain, withDefaults(domain, cloneJson(configuration)), etag)
       })
-      if (!domainNames.includes(selectedDomain.value)) selectedDomain.value = settingsTabDomains(domainNames)[0] ?? domainNames[0]
+      if (!domainNames.includes(selectedDomain.value)) selectedDomain.value = (settingsTabDomains(domainNames) as string[])[0] ?? domainNames[0]
       secretsHidden.value = serverHidesSecrets() === true
 
       loadError.value = null
@@ -167,22 +192,22 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   }
 
   /* The stored state of a domain as the server has it now, with the schema defaults applied as on load, and its tag. */
-  const loadServerState = async (domain) => {
-    const response = await client.value.settings.fetch(domain)
+  const loadServerState = async (domain: string): Promise<{ server: DomainData; etag: string | null }> => {
+    const response = await bodyAs<DomainData>(client.value.settings.fetch(domain))
     return { server: withDefaults(domain, cloneJson(response.data)), etag: etagOf(response) }
   }
 
   /* Makes the server state the draft and the snapshot of a domain, and keeps the tag it came with. */
-  const adoptServerState = async (domain, server, etag) => {
+  const adoptServerState = async (domain: string, server: DomainData, etag: string | null): Promise<void> => {
     setSavedState(domain, server, etag)
     // The dashboard shows its appearance from these settings, so the admin sees the result now.
     if (domain === 'frontend') {
-      setAppearance(server.appearance)
+      setAppearance(server.appearance as Record<string, unknown> | undefined)
       await applyAppearance()
     }
   }
 
-  const openSettingsConflict = (domain) => {
+  const openSettingsConflict = (domain: string): void => {
     conflict.value = { kind: 'settings', name: domain, title: titleOf(domain), reviewed: false, server: null }
   }
 
@@ -193,7 +218,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * Any other failure stays dirty too and is named in saveError.
    * `onlyDomains` limits the write to the named domains, so a page that edits one domain does not write the drafts of others.
    */
-  const saveConfiguration = async (onlyDomains) => {
+  const saveConfiguration = async (onlyDomains?: string[]): Promise<boolean> => {
     const scope = onlyDomains ?? domains.value
     if (saving.value || invalidDomains.value.some(domain => scope.includes(domain))) return false
     const pending = dirtyDomains.value.filter(domain => scope.includes(domain))
@@ -210,8 +235,8 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     saving.value = false
 
     const failures = outcomes
-      .map((outcome, index) => outcome.status === 'rejected' ? { domain: pending[index], error: outcome.reason } : null)
-      .filter(Boolean)
+      .map((outcome, index) => outcome.status === 'rejected' ? { domain: pending[index], error: outcome.reason as DomainFailure['error'] } : null)
+      .filter((failure): failure is DomainFailure => failure !== null)
     const stale = failures.filter(failure => isPreconditionFailed(failure.error))
     const others = failures.filter(failure => !isPreconditionFailed(failure.error))
 
@@ -232,7 +257,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * Fetches what the server has now and keeps it on the conflict, so the review can list the changes between it and
    * the draft. Neither the draft nor the tag changes: the next save still carries the tag it was read with.
    */
-  const reviewConflict = async () => {
+  const reviewConflict = async (): Promise<boolean> => {
     const current = conflict.value
     if (current?.kind !== 'settings') return false
     try {
@@ -247,7 +272,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   }
 
   /* Takes the server state and drops the local draft of that domain. */
-  const reloadConflict = async () => {
+  const reloadConflict = async (): Promise<boolean> => {
     const current = conflict.value
     if (current?.kind !== 'settings') return false
     try {
@@ -267,7 +292,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * Sends the local draft of the conflicting domain without a precondition, which replaces the change made
    * elsewhere. The dialog asks for a second confirmation before this runs.
    */
-  const overwriteConflict = async () => {
+  const overwriteConflict = async (): Promise<boolean> => {
     const current = conflict.value
     if (current?.kind !== 'settings' || saving.value) return false
     saving.value = true
@@ -290,12 +315,12 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   }
 
   /* Closes the dialog and keeps the draft. It stays dirty, so the next save meets the same conflict. */
-  const dismissConflict = () => {
+  const dismissConflict = (): void => {
     conflict.value = null
   }
 
   /* Puts every edited domain back to its server snapshot. Nothing is sent. */
-  const discardChanges = () => {
+  const discardChanges = (): void => {
     dirtyDomains.value.forEach(domain => {
       configurations.value[domain] = cloneJson(snapshots.value[domain])
       delete validity.value[domain]
@@ -304,7 +329,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
   }
 
   /* Empties every domain and saves it at once. The server treats an empty domain as its defaults. */
-  const factoryReset = () => {
+  const factoryReset = (): Promise<boolean> => {
     domains.value.forEach(domain => {
       configurations.value[domain] = {}
       delete validity.value[domain]
@@ -312,7 +337,7 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     return saveConfiguration()
   }
 
-  const setDomainData = (domain, data) => {
+  const setDomainData = (domain: string, data: DomainData): void => {
     configurations.value[domain] = data
   }
 
@@ -320,13 +345,13 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * The saved state as a password protected file. The server reads the stored values, so the draft is never part of it.
    * The response is the file itself; the caller saves it.
    */
-  const exportSaved = async (password) => (await client.value.settings.exportSaved(password)).data
+  const exportSaved = async (password: string) =>(await bodyAs<unknown>(client.value.settings.exportSaved(password))).data
 
   /* Decrypts a password protected file for review. Nothing is stored here: the result goes into the draft like a plain file. */
-  const openExport = async (password, exported) => (await client.value.settings.openExport(password, exported)).data
+  const openExport = async (password: string, exported: unknown): Promise<Record<string, DomainData>> =>(await bodyAs<Record<string, DomainData>>(client.value.settings.openExport(password, exported))).data
 
   /* Puts checked values of the domains into the draft. Nothing is written: the user reviews and saves them like any edit. */
-  const importDomains = (byDomain) => {
+  const importDomains = (byDomain: Record<string, DomainData>): void => {
     Object.entries(byDomain).forEach(([domain, data]) => {
       setDomainData(domain, data)
       validateDomain(domain)
@@ -338,8 +363,8 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * at a time, so a per-form report would forget a broken entry as soon as the user moved on.
    * A schema that does not compile is reported by the form, so it does not block the domain here.
    */
-  const validateDomain = (domain) => {
-    let valid
+  const validateDomain = (domain: string): void => {
+    let valid: boolean
     try {
       valid = configurationValidator.compile(schemas.value[domain])(configurations.value[domain]) === true
     } catch {
@@ -353,18 +378,18 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * characters, and unique in its collection. An entry without one has no address, so the domain
    * cannot be saved or downloaded until it has one.
    */
-  const idsAreUsable = (domain) => collectionsOf(schemas.value[domain]).every((collection) => {
-    const entries = configurations.value[domain]?.[collection.key] ?? []
+  const idsAreUsable = (domain: string): boolean => collectionsOf(schemas.value[domain]).every((collection) => {
+    const entries = (configurations.value[domain]?.[collection.key] ?? []) as unknown[]
     return entries.every((entry, index) => {
       const others = entries.filter((_, other) => other !== index).map(idText)
-      return validateNewId(idText(entry), others, collection.noun) === ''
+      return validateNewId(String(idText(entry)), others, String(collection.noun)) === ''
     })
   })
 
-  const entriesOf = (domain, collection) => {
+  const entriesOf = (domain: string, collection: string): unknown[] => {
     if (!configurations.value[domain]) configurations.value[domain] = {}
     if (!Array.isArray(configurations.value[domain][collection])) configurations.value[domain][collection] = []
-    return configurations.value[domain][collection]
+    return configurations.value[domain][collection] as unknown[]
   }
 
   /*
@@ -374,31 +399,31 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
    * only reads them.
    */
   let keySequence = 0
-  const keysByCollection = new Map()
+  const keysByCollection = new Map<string, string[]>()
   // The live key list, kept at one key per entry. It is only written by the edits below, never by a read.
-  const keysFor = (domain, collection, count) => {
+  const keysFor = (domain: string, collection: string, count: number): string[] => {
     const name = `${domain}/${collection}`
     if (!keysByCollection.has(name)) keysByCollection.set(name, [])
-    const keys = keysByCollection.get(name)
+    const keys = keysByCollection.get(name) ?? []
     while (keys.length < count) keys.push(`entry-${++keySequence}`)
     keys.length = count
     return keys
   }
 
   // A copy, read during render, so it writes nothing into the reactive state.
-  const entryKeysOf = (domain, collection) => [...keysFor(domain, collection, configurations.value[domain]?.[collection]?.length ?? 0)]
+  const entryKeysOf = (domain: string, collection: string): string[] => [...keysFor(domain, collection, (configurations.value[domain]?.[collection] as unknown[] | undefined)?.length ?? 0)]
 
   /* Replaces the entry at `index`. An edit that arrives without an id keeps the id the entry had, so a change of the form can never drop an entry from the list. */
-  const setEntry = (domain, collection, index, entry) => {
+  const setEntry = (domain: string, collection: string, index: number, entry: unknown): void => {
     const entries = entriesOf(domain, collection)
     const previous = entries[index]
-    const keepsId = isPlainObject(entry) && entry.id === undefined && isPlainObject(previous) && previous.id !== undefined
+    const keepsId = isRecord(entry) && entry.id === undefined && isRecord(previous) && previous.id !== undefined
     entries[index] = keepsId ? { id: previous.id, ...entry } : entry
     validateDomain(domain)
   }
 
   /* Appends an entry and returns its position in the collection. */
-  const addEntry = (domain, collection, entry) => {
+  const addEntry = (domain: string, collection: string, entry: unknown): number => {
     const entries = entriesOf(domain, collection)
     keysFor(domain, collection, entries.length)
     entries.push(entry)
@@ -407,33 +432,33 @@ export const createConfigurationStore = (client, { secretsHidden: serverHidesSec
     return entries.length - 1
   }
 
-  const removeEntry = (domain, collection, index) => {
+  const removeEntry = (domain: string, collection: string, index: number): void => {
     const entries = entriesOf(domain, collection)
     keysFor(domain, collection, entries.length).splice(index, 1)
     entries.splice(index, 1)
     validateDomain(domain)
   }
 
-  const setValidity = (domain, valid) => {
+  const setValidity = (domain: string, valid: boolean): void => {
     validity.value[domain] = valid
   }
 
   /* What the server last confirmed for a domain, or undefined before it has loaded. Unsaved edits never show here. */
   const savedSettings = computed(() => snapshots.value)
-  const savedConfiguration = (domain) => savedSettings.value[domain]
+  const savedConfiguration = (domain: string): DomainData | undefined => savedSettings.value[domain]
 
   /*
    * The changes between the server state the conflict review fetched and the draft, as the review sheet lists them.
    * Empty until the review has run. Reverting a change in the draft shrinks the list, as it would for unsaved changes.
    */
-  const conflictChanges = computed(() => {
+  const conflictChanges = computed((): SettingsChange[] => {
     const current = conflict.value
     if (current?.kind !== 'settings' || !current.server) return []
     return diffSettings(
       { [current.name]: current.server },
       { [current.name]: configurations.value[current.name] ?? {} },
       schemas.value
-    )
+    ) as SettingsChange[]
   })
 
   return {
@@ -485,36 +510,33 @@ export const configurationStoreKey = Symbol('configuration-store')
 
 const renderers = markRaw([
   // Outlined fields for text, numbers and enums. They outrank the vanilla renderers, which they replace.
-  { tester: mdSelectTester, renderer: MdSelectRenderer },
-  { tester: mdOneOfSelectTester, renderer: MdSelectRenderer },
+  rendererOf(mdSelectTester, MdSelectRenderer),
+  rendererOf(mdOneOfSelectTester, MdSelectRenderer),
   // Colour fields outrank the text field they are strings of. They are not enums, so MdSelect does not take them.
-  { tester: mdColourFieldTester, renderer: MdColourFieldRenderer },
+  rendererOf(mdColourFieldTester, MdColourFieldRenderer),
   // The tags of a repository are chips; they outrank the generic list of strings, which they replace.
-  { tester: tagsFieldTester, renderer: TagsFieldRenderer },
+  rendererOf(tagsFieldTester, TagsFieldRenderer),
   // Prose with a length limit is a multi-line field with a counter, above the single line field.
-  { tester: mdTextAreaTester, renderer: MdTextAreaRenderer },
-  { tester: mdTextFieldTester, renderer: MdTextFieldRenderer },
-  { tester: booleanSwitchTester, renderer: BooleanSwitchRenderer },
-  { tester: arrayListTester, renderer: ArrayListRenderer },
-  { tester: allOfTester, renderer: AllOfRenderer },
-  { tester: oneOfTester, renderer: OneOfRenderer },
-  { tester: constantTester, renderer: ConstantRenderer },
-  { tester: optionalTester, renderer: OptionalRenderer },
+  rendererOf(mdTextAreaTester, MdTextAreaRenderer),
+  rendererOf(mdTextFieldTester, MdTextFieldRenderer),
+  rendererOf(booleanSwitchTester, BooleanSwitchRenderer),
+  rendererOf(arrayListTester, ArrayListRenderer),
+  rendererOf(allOfTester, AllOfRenderer),
+  rendererOf(oneOfTester, OneOfRenderer),
+  rendererOf(constantTester, ConstantRenderer),
+  rendererOf(optionalTester, OptionalRenderer),
   // The Appearance group of the dashboard settings, with a live preview of its colours under it.
-  { tester: appearanceSectionTester, renderer: AppearanceSectionRenderer },
+  rendererOf(appearanceSectionTester, AppearanceSectionRenderer),
   // Groups become titled sections, replacing the fieldset of the vanilla group.
-  { tester: sectionTester, renderer: SectionRenderer },
-  {
-    // needed because without it hangs TODO find out why
-    tester: (uischema, schema) => {
-      let rank = objectTester(uischema, schema)
-      return rank === -1 || schema.title === 'Proxied Maven Repository' ? -1 : rank
-    },
-    renderer: ObjectRenderer
-  },
-  ...vanillaRenderers,
+  rendererOf(sectionTester, SectionRenderer),
+  // needed because without it hangs TODO find out why
+  rendererOf((uischema: UISchemaElement, schema: JsonSchema, context: TesterContext) => {
+    const rank = (objectTester as Tester)(uischema, schema, context)
+    return rank === -1 || schema.title === 'Proxied Maven Repository' ? -1 : rank
+  }, ObjectRenderer),
+  ...(vanillaRenderers as JsonFormsRendererRegistryEntry[]),
   // Last of all: a schema node that no renderer above can draw shows a pointer to the JSON download, not nothing.
-  { tester: unsupportedTester, renderer: UnsupportedRenderer },
+  rendererOf(unsupportedTester, UnsupportedRenderer),
 ])
 
 /*

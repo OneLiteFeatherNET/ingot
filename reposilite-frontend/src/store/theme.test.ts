@@ -21,13 +21,13 @@ const THEME_KEY = 'theme-mode'
 
 // jsdom has no matchMedia. The stub answers only the dark-scheme query, and only with the
 // preference the test sets, so nothing reads the real system settings.
-const stubSystemPreference = (prefersDark) => {
-  window.matchMedia = (query) => ({
+const stubSystemPreference = (prefersDark: boolean) => {
+  window.matchMedia = (query: string) => ({
     matches: prefersDark && query === '(prefers-color-scheme: dark)',
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {}
-  })
+  }) as unknown as MediaQueryList
 }
 
 describe('useTheme', () => {
@@ -36,7 +36,7 @@ describe('useTheme', () => {
   })
 
   afterEach(() => {
-    delete window.matchMedia
+    delete (window as Partial<Window>).matchMedia
     localStorage.clear()
   })
 

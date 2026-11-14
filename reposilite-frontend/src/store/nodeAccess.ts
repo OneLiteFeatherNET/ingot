@@ -39,7 +39,14 @@ const INSTANCE_ADMIN_NODE = 'ingot.admin.*'
 // The Access section is open to whoever may use at least one of its three lists.
 const ACCESS_NODES = [ADMIN_NODES.users, ADMIN_NODES.tokens, ADMIN_NODES.teams]
 
-const entryMatches = (entry, node) => {
+/* The route metadata the gates read: a node, a list of nodes of which one is enough, or the legacy manager flag. */
+export interface RouteMeta {
+  node?: string
+  anyNode?: readonly string[]
+  manager?: boolean
+}
+
+const entryMatches = (entry: string, node: string): boolean => {
   if (entry === '*') return true
   const entrySegments = entry.split('.')
   const nodeSegments = node.split('.')
@@ -47,19 +54,20 @@ const entryMatches = (entry, node) => {
     && entrySegments.every((segment, index) => segment === '*' || segment === nodeSegments[index])
 }
 
-const canUse = (nodes, node) =>
+const canUse = (nodes: unknown, node: unknown): boolean =>
   Array.isArray(nodes)
   && typeof node === 'string'
   && nodes.some(entry => typeof entry === 'string' && entryMatches(entry, node))
 
 // The nodes a route asks for: `node` for one, `anyNode` for a list of which one is enough.
-const requiredNodes = (meta) => [meta?.node, ...(meta?.anyNode ?? [])].filter(Boolean)
+const requiredNodes = (meta: RouteMeta | undefined): string[] =>
+  [meta?.node, ...(meta?.anyNode ?? [])].filter((node): node is string => Boolean(node))
 
 /*
  * Whether a route may be used. `can` answers for a node and `isManager` is the legacy answer.
  * A route that names no node falls back to the manager flag it carries.
  */
-const routeAllowed = (meta, can, isManager) => {
+const routeAllowed = (meta: RouteMeta | undefined, can: (node: string) => boolean, isManager: boolean): boolean => {
   const required = requiredNodes(meta)
   if (required.length > 0) {
     return required.some(node => can(node))

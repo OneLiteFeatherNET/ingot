@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { reactive, ref } from 'vue'
 
 // The route is replaced per test: its qualifier is the only part the store reads.
-const { route } = vi.hoisted(() => ({ route: { params: { qualifier: undefined } } }))
+const { route } = vi.hoisted((): { route: { params: { qualifier?: string } } } => ({ route: { params: { qualifier: undefined } } }))
 
 vi.mock('vue-router', () => ({
   useRoute: () => route,
@@ -31,7 +31,7 @@ vi.mock('./session', () => ({
 
 // Each test loads a fresh store, so the path and the reload counter of one test cannot reach
 // the next.
-const loadStore = async (path) => {
+const loadStore = async (path: string) => {
   vi.resetModules()
   route.params = reactive({ qualifier: path })
   return (await import('./qualifier')).default

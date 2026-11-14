@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import type { AxiosError } from 'axios'
+
+// The mocked axios default export: only get is driven by these tests.
+type AxiosGet = (url: string, config: { withCredentials?: boolean }) => Promise<unknown>
+type AxiosGetMock = Mock<AxiosGet>
 
 // Every test gets a fresh copy of the session module, so the token ref and the stored
 // credentials of one test cannot leak into the next. The toast helper is replaced, which
 // keeps the tests off the real notification component.
 vi.mock('axios', () => ({
   default: {
-    get: vi.fn(),
+    get: vi.fn<AxiosGet>(),
     interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } }
   }
 }))
@@ -35,20 +40,20 @@ vi.mock('../helpers/toast', async (importOriginal) => ({
   createErrorToast: vi.fn()
 }))
 
-const responseError = (status) =>
+const responseError = (status: number): AxiosError =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: {} }
-  })
+  }) as unknown as AxiosError
 
 const SIGNED_IN_DETAILS = { permissions: [], routes: [] }
 
-const loadSession = async ({ storedName = '', storedSecret = '' } = {}) => {
+const loadSession = async ({ storedName = '', storedSecret = '' }: { storedName?: string; storedSecret?: string } = {}) => {
   localStorage.clear()
   if (storedName) localStorage.setItem('token-name', storedName)
   if (storedSecret) localStorage.setItem('token-secret', storedSecret)
 
   vi.resetModules()
-  const axios = (await import('axios')).default
+  const axios = (await import('axios')).default as unknown as { get: AxiosGetMock }
   const session = await import('./session')
   const client = await import('./client')
   const toast = await import('../helpers/toast')
@@ -59,7 +64,7 @@ const loadSession = async ({ storedName = '', storedSecret = '' } = {}) => {
 
 // A session loaded by a test keeps listening to storage events until it is told to stop, so
 // a test cannot react to the session of an earlier test.
-const loaded = []
+const loaded: (typeof import('./session'))[] = []
 afterEach(() => {
   loaded.splice(0).forEach(session => session.stopSharingSession())
 })
@@ -79,7 +84,7 @@ describe('loginFailureMessage', () => {
   it('shows the transport message when the server cannot be reached', async () => {
     const { session } = await loadSession()
 
-    expect(session.loginFailureMessage(new Error('Network Error')))
+    expect(session.loginFailureMessage(new Error('Network Error') as AxiosError))
       .toBe('Network Error')
   })
 
@@ -101,7 +106,7 @@ describe('logout', () => {
     axios.get.mockResolvedValue({ data: SIGNED_IN_DETAILS })
     await store.login('alice', 'secret')
 
-    store.logout()
+    await store.logout()
 
     expect(toast.createInfoToast, 'the user must see that the sign out happened')
       .toHaveBeenCalledWith('Signed out')
@@ -286,7 +291,7 @@ describe('whenSessionKnown', () => {
     const { axios, store, session } = await loadSession({ storedName: 'alice', storedSecret: 'secret' })
     axios.get.mockResolvedValue({ data: SIGNED_IN_DETAILS })
     let known = false
-    session.whenSessionKnown().then(() => { known = true })
+    void session.whenSessionKnown().then(() => { known = true })
 
     expect(store.sessionReady.value, 'the flag stays false until the check answers').toBe(false)
     expect(known, 'the router waits while the flag is false').toBe(false)

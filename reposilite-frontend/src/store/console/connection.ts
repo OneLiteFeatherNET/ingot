@@ -15,6 +15,7 @@
  */
 
 import { ref } from "vue"
+import type { AxiosError } from 'axios'
 import { createURL } from '../client'
 import { createErrorToast, errorMessage } from '../../helpers/toast'
 import { EventSource as Eventsource } from 'extended-eventsource'
@@ -22,7 +23,7 @@ import { useSession } from "../session"
 
 const { client, authMode } = useSession()
 
-const connection = ref()
+const connection = ref<Eventsource | undefined>()
 const command = ref("")
 
 /**
@@ -32,8 +33,10 @@ const command = ref("")
  *
  * One of 'idle', 'connecting', 'open', 'closed' or 'error'.
  */
-const status = ref('idle')
-const failure = ref(null)
+export type ConsoleStatus = 'idle' | 'connecting' | 'open' | 'closed' | 'error'
+
+const status = ref<ConsoleStatus>('idle')
+const failure = ref<string | null>(null)
 // Set when the session check answers 401 after the stream failed. The reader can fix that
 // with the sign in button, which a generic "stream closed" message would never tell them.
 const sessionExpired = ref(false)
@@ -42,7 +45,7 @@ const sessionExpired = ref(false)
  * The command history belongs to the session, not to the view. The view is mounted each time
  * its tab is opened, and a history created per mount would start empty on every visit.
  */
-const history = ref([''])
+const history = ref<string[]>([''])
 const historyIdx = ref(0)
 
 export default function useConsole() {
@@ -63,7 +66,7 @@ export default function useConsole() {
     status.value = 'closed'
   }
 
-  const addCommandToHistory = (command) => {
+  const addCommandToHistory = (command: string) => {
     if (history.value[history.value.length - 1] == '')
       history.value.pop()
     history.value.push(command)
@@ -91,7 +94,7 @@ export default function useConsole() {
   const nextCommand = () =>
     traverseHistory(1)
 
-  const traverseHistory = (direction) => {
+  const traverseHistory = (direction: number) => {
     const currentCommand = command.value
     const commands = history.value
     const lastCommandIdx = commands.length - 1
@@ -103,17 +106,17 @@ export default function useConsole() {
     command.value = history.value[historyIdx.value]
   }
 
-  const onOpen = ref()
-  const onMessage = ref()
-  const onError = ref()
-  const onClose = ref()
+  const onOpen = ref<(() => void) | undefined>()
+  const onMessage = ref<((data: string) => void) | undefined>()
+  const onError = ref<((error: unknown) => void) | undefined>()
+  const onClose = ref<(() => void) | undefined>()
 
   // An EventSource error carries no status code, so a 401 cannot be read from the stream. The
   // session is asked directly instead. Its answer only counts while the stream still reports
   // the failure: a reconnect that started in the meantime has nothing to explain.
   const checkSession = () =>
     client.value.auth.me()
-      .catch(error => {
+      .catch((error: AxiosError | undefined) => {
         if (error?.response?.status !== 401 || status.value !== 'error') return
         sessionExpired.value = true
         failure.value = 'Your session has expired. Sign in again, then reconnect.'
@@ -121,12 +124,12 @@ export default function useConsole() {
 
   // A cookie session has no token to send: the browser attaches the HttpOnly session cookie to
   // the stream (withCredentials). A token session, or one not known yet, sends the token as before.
-  const streamOptions = (token) =>
+  const streamOptions = (token: { name: string; secret: string }) =>
     authMode?.value === 'cookie'
       ? { withCredentials: true }
       : { headers: { Authorization: `xBasic ${btoa(`${token.name}:${token.secret}`)}` } }
 
-  const connect = (token) => {
+  const connect = (token: { name: string; secret: string }) => {
     status.value = 'connecting'
     failure.value = null
     sessionExpired.value = false
@@ -151,7 +154,7 @@ export default function useConsole() {
         onOpen.value?.()
       }
 
-      connection.value.addEventListener("log", (event) => {
+      connection.value.addEventListener("log", (event: MessageEvent<string>) => {
         if (!event.data.toString().includes("GET /api/status/instance from"))
           onMessage.value?.(event.data)
       })
@@ -160,10 +163,10 @@ export default function useConsole() {
         status.value = 'error'
         failure.value = describe(error)
         onError.value?.(error)
-        checkSession()
+        void checkSession()
       }
 
-      connection.value.onclose = () => {
+      ;(connection.value as Eventsource & { onclose?: () => void }).onclose = () => {
         // An error already says more than a close does, so it keeps the field.
         if (status.value !== 'error') status.value = 'closed'
         onClose.value?.()
@@ -200,7 +203,7 @@ export default function useConsole() {
  * is actually known instead of inventing a cause: whether the browser is offline is the one
  * distinction that changes what the reader should do next.
  */
-function describe(error) {
+function describe(error: unknown): string {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return 'This browser is offline.'
   }

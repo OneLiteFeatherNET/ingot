@@ -15,6 +15,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Mock } from 'vitest'
+import type { createClient } from './client'
 
 vi.mock('axios', () => ({
   default: {
@@ -28,13 +30,20 @@ vi.mock('axios', () => ({
   }
 }))
 
+type MockedAxios = Record<'get' | 'post' | 'put' | 'patch' | 'delete', Mock>
+
+/** Matches an axios request config whose headers carry the given If-Match entity tag. */
+function ifMatch(etag: string): unknown {
+  return expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': etag }) as object })
+}
+
 describe('client identity namespace', () => {
-  let axios
-  let identity
+  let axios: MockedAxios
+  let identity: ReturnType<typeof createClient>['identity']
 
   beforeEach(async () => {
     vi.resetModules()
-    axios = (await import('axios')).default
+    axios = (await import('axios')).default as unknown as MockedAxios
     axios.get.mockClear()
     axios.post.mockClear()
     axios.delete.mockClear()
@@ -46,7 +55,7 @@ describe('client identity namespace', () => {
 
   describe('me', () => {
     it('posts the exact password payload to the self service endpoint', () => {
-      identity.me.changePassword({ currentPassword: 'old-password-1', newPassword: 'new-password-12' })
+      void identity.me.changePassword({ currentPassword: 'old-password-1', newPassword: 'new-password-12' })
 
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/me\/password$/),
@@ -56,13 +65,13 @@ describe('client identity namespace', () => {
     })
 
     it('lists the tokens of the signed in principal', () => {
-      identity.me.tokens.list()
+      void identity.me.tokens.list()
 
       expect(axios.get).toHaveBeenCalledWith(expect.stringMatching(/\/api\/identity\/me\/tokens$/), expect.anything())
     })
 
     it('creates a token with the body it is given', () => {
-      identity.me.tokens.create({ name: 'laptop', expiresAt: null, scopes: null })
+      void identity.me.tokens.create({ name: 'laptop', expiresAt: null, scopes: null })
 
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/me\/tokens$/),
@@ -72,7 +81,7 @@ describe('client identity namespace', () => {
     })
 
     it('rotates a token by its encoded name', () => {
-      identity.me.tokens.rotate('my token')
+      void identity.me.tokens.rotate?.('my token')
 
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/me\/tokens\/my%20token\/rotate$/),
@@ -82,7 +91,7 @@ describe('client identity namespace', () => {
     })
 
     it('revokes a token by its encoded name', () => {
-      identity.me.tokens.revoke('my token')
+      void identity.me.tokens.revoke('my token')
 
       expect(axios.delete).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/me\/tokens\/my%20token$/),
@@ -93,7 +102,7 @@ describe('client identity namespace', () => {
 
   describe('principalTokens', () => {
     it('lists the tokens of the named principal', () => {
-      identity.principalTokens('ci-bot').list()
+      void identity.principalTokens('ci-bot').list()
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/ci-bot\/tokens$/),
@@ -104,8 +113,8 @@ describe('client identity namespace', () => {
     it('creates and revokes below the principal', () => {
       const api = identity.principalTokens('ci bot')
 
-      api.create({ name: 'deploy' })
-      api.revoke('deploy')
+      void api.create({ name: 'deploy' })
+      void api.revoke('deploy')
 
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/ci%20bot\/tokens$/),
@@ -124,7 +133,7 @@ describe('client identity namespace', () => {
   })
   describe('principals', () => {
     it('lists the principals of one kind', () => {
-      identity.principals.list('USER')
+      void identity.principals.list('USER')
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\?kind=USER$/),
@@ -133,7 +142,7 @@ describe('client identity namespace', () => {
     })
 
     it('reads one principal by its encoded name', () => {
-      identity.principals.get('ann marie')
+      void identity.principals.get('ann marie')
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/ann%20marie$/),
@@ -142,7 +151,7 @@ describe('client identity namespace', () => {
     })
 
     it('creates a principal with the body it is given', () => {
-      identity.principals.create({ kind: 'MACHINE', name: 'ci' })
+      void identity.principals.create({ kind: 'MACHINE', name: 'ci' })
 
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals$/),
@@ -152,23 +161,25 @@ describe('client identity namespace', () => {
     })
 
     it('patches a principal and sends the entity tag as If-Match', () => {
-      identity.principals.update('alice', { disabled: true }, '"7"')
+      void identity.principals.update('alice', { disabled: true }, '"7"')
 
       expect(axios.patch).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/alice$/),
         { disabled: true },
-        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"7"' }) })
+        ifMatch('"7"')
       )
     })
 
     it('sends no If-Match header without an entity tag', () => {
-      identity.principals.update('alice', { disabled: true }, null)
+      void identity.principals.update('alice', { disabled: true }, null)
 
-      expect(axios.patch.mock.calls[0][2].headers).not.toHaveProperty('If-Match')
+      const [, , config] = axios.patch.mock.calls[0] as [unknown, unknown, { headers: object }]
+
+      expect(config.headers).not.toHaveProperty('If-Match')
     })
 
     it('deletes a principal by its encoded name', () => {
-      identity.principals.remove('alice')
+      void identity.principals.remove('alice')
 
       expect(axios.delete).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/alice$/),
@@ -177,7 +188,7 @@ describe('client identity namespace', () => {
     })
 
     it('posts the new password as the exact payload', () => {
-      identity.principals.setPassword('alice', 'a-long-password-1')
+      void identity.principals.setPassword('alice', 'a-long-password-1')
 
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/alice\/password$/),
@@ -187,7 +198,7 @@ describe('client identity namespace', () => {
     })
 
     it('grants the instance admin role with a PUT', () => {
-      identity.principals.grantInstanceAdmin('alice')
+      void identity.principals.grantInstanceAdmin('alice')
 
       expect(axios.put).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/alice\/instance-admin$/),
@@ -197,7 +208,7 @@ describe('client identity namespace', () => {
     })
 
     it('revokes the instance admin role with a DELETE', () => {
-      identity.principals.revokeInstanceAdmin('alice')
+      void identity.principals.revokeInstanceAdmin('alice')
 
       expect(axios.delete).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/alice\/instance-admin$/),
@@ -207,13 +218,13 @@ describe('client identity namespace', () => {
   })
   describe('teams', () => {
     it('lists the teams', () => {
-      identity.teams.list()
+      void identity.teams.list()
 
       expect(axios.get).toHaveBeenCalledWith(expect.stringMatching(/\/api\/identity\/teams$/), expect.anything())
     })
 
     it('reads one team by its encoded name', () => {
-      identity.teams.get('release team')
+      void identity.teams.get('release team')
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/release%20team$/),
@@ -222,7 +233,7 @@ describe('client identity namespace', () => {
     })
 
     it('creates a team with the body it is given', () => {
-      identity.teams.create({ name: 'qa', description: 'Testers' })
+      void identity.teams.create({ name: 'qa', description: 'Testers' })
 
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams$/),
@@ -232,17 +243,17 @@ describe('client identity namespace', () => {
     })
 
     it('patches a team and sends the entity tag as If-Match', () => {
-      identity.teams.update('qa', { description: 'x', externalRef: null }, '"3"')
+      void identity.teams.update('qa', { description: 'x', externalRef: null }, '"3"')
 
       expect(axios.patch).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/qa$/),
         { description: 'x', externalRef: null },
-        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+        ifMatch('"3"')
       )
     })
 
     it('deletes a team by its encoded name', () => {
-      identity.teams.remove('qa')
+      void identity.teams.remove('qa')
 
       expect(axios.delete).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/qa$/),
@@ -251,50 +262,50 @@ describe('client identity namespace', () => {
     })
 
     it('replaces the members with a PUT of {members} and If-Match', () => {
-      identity.teams.setMembers('qa', ['alice'], '"3"')
+      void identity.teams.setMembers('qa', ['alice'], '"3"')
 
       expect(axios.put).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/qa\/members$/),
         { members: ['alice'] },
-        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+        ifMatch('"3"')
       )
     })
 
     it('replaces the grants with a PUT of {grants} and If-Match', () => {
       const grants = [{ repository: null, pathPrefix: null, role: 'READ' }]
 
-      identity.teams.setGrants('qa', grants, '"3"')
+      void identity.teams.setGrants('qa', grants, '"3"')
 
       expect(axios.put).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/qa\/grants$/),
         { grants },
-        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+        ifMatch('"3"')
       )
     })
 
     it('grants the instance admin role with a PUT and If-Match', () => {
-      identity.teams.grantInstanceAdmin('qa', '"3"')
+      void identity.teams.grantInstanceAdmin('qa', '"3"')
 
       expect(axios.put).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/qa\/instance-admin$/),
         {},
-        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+        ifMatch('"3"')
       )
     })
 
     it('revokes the instance admin role with a DELETE and If-Match', () => {
-      identity.teams.revokeInstanceAdmin('qa', '"3"')
+      void identity.teams.revokeInstanceAdmin('qa', '"3"')
 
       expect(axios.delete).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/qa\/instance-admin$/),
-        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"3"' }) })
+        ifMatch('"3"')
       )
     })
   })
 
   describe('nodes', () => {
     it('reads the nodes of a principal by its encoded name', () => {
-      identity.nodes.get('principals', 'a b')
+      void identity.nodes.get('principals', 'a b')
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/principals\/a%20b\/nodes$/),
@@ -303,17 +314,17 @@ describe('client identity namespace', () => {
     })
 
     it('puts the nodes of a team as { nodes } with the entity tag as If-Match', () => {
-      identity.nodes.set('teams', 'qa', [{ node: 'ingot.admin.users', allowed: true }], '"4"')
+      void identity.nodes.set('teams', 'qa', [{ node: 'ingot.admin.users', allowed: true }], '"4"')
 
       expect(axios.put).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/teams\/qa\/nodes$/),
         { nodes: [{ node: 'ingot.admin.users', allowed: true }] },
-        expect.objectContaining({ headers: expect.objectContaining({ 'If-Match': '"4"' }) })
+        ifMatch('"4"')
       )
     })
 
     it('asks the catalog with an encoded prefix', () => {
-      identity.nodes.catalog('ingot.repository.')
+      void identity.nodes.catalog('ingot.repository.')
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/nodes\/catalog\?prefix=ingot\.repository\.$/),
@@ -322,7 +333,7 @@ describe('client identity namespace', () => {
     })
 
     it('reads the templates', () => {
-      identity.nodes.templates()
+      void identity.nodes.templates()
 
       expect(axios.get).toHaveBeenCalledWith(expect.stringMatching(/\/api\/identity\/nodes\/templates$/), expect.anything())
     })
@@ -330,7 +341,7 @@ describe('client identity namespace', () => {
 
   describe('check', () => {
     it('asks the check endpoint with the encoded principal and node', () => {
-      identity.check({ principal: 'a b', node: 'ingot.admin.users' })
+      void identity.check({ principal: 'a b', node: 'ingot.admin.users' })
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/check\?principal=a%20b&node=ingot\.admin\.users$/),
@@ -339,7 +350,7 @@ describe('client identity namespace', () => {
     })
 
     it('adds the token only when one is given', () => {
-      identity.check({ principal: 'ci-bot', node: '*', token: 'deploy' })
+      void identity.check({ principal: 'ci-bot', node: '*', token: 'deploy' })
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/check\?principal=ci-bot&node=\*&token=deploy$/),
@@ -350,7 +361,7 @@ describe('client identity namespace', () => {
 
   describe('check by path', () => {
     it('sends the repository, the raw path and the action instead of a node', () => {
-      identity.check({ principal: 'ci-bot', repository: 'releases', path: 'net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom', action: 'deploy' })
+      void identity.check({ principal: 'ci-bot', repository: 'releases', path: 'net/onelitefeather/mycelium-bom/1.8.9/mycelium-bom-1.8.9.pom', action: 'deploy' })
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/check\?principal=ci-bot&repository=releases&path=net%2Fonelitefeather%2Fmycelium-bom%2F1\.8\.9%2Fmycelium-bom-1\.8\.9\.pom&action=deploy$/),
@@ -359,7 +370,7 @@ describe('client identity namespace', () => {
     })
 
     it('adds the token after the path when one is given', () => {
-      identity.check({ principal: 'ci-bot', repository: 'releases', path: 'net/lib', action: 'read', token: 'docs' })
+      void identity.check({ principal: 'ci-bot', repository: 'releases', path: 'net/lib', action: 'read', token: 'docs' })
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/check\?principal=ci-bot&repository=releases&path=net%2Flib&action=read&token=docs$/),
@@ -370,7 +381,7 @@ describe('client identity namespace', () => {
 
   describe('repositoryAccess', () => {
     it('reads who has access to a repository by its encoded name', () => {
-      identity.repositoryAccess('my repo')
+      void identity.repositoryAccess('my repo')
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringMatching(/\/api\/identity\/repositories\/my%20repo\/access$/),

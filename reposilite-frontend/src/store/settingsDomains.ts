@@ -6,31 +6,47 @@
  * A failed request is not kept, so the next caller asks again.
  */
 
-const domainNamesOf = new WeakMap()
-const titlesOf = new WeakMap()
+import type { AxiosResponse } from 'axios'
+import type { createClient } from './client'
 
-const once = (cache, client, load) => {
+type Client = ReturnType<typeof createClient>
+
+// The part of a settings schema the dashboard reads. The generated spec types the schema body as plain text.
+interface SettingsSchemaBody {
+  title?: string | null
+}
+
+const domainNamesOf = new WeakMap<Client, Promise<string[]>>()
+const titlesOf = new WeakMap<Client, Promise<Record<string, string>>>()
+
+const once = <T>(cache: WeakMap<Client, Promise<T>>, client: Client, load: (current: Client) => Promise<T>): Promise<T> => {
   if (!cache.has(client)) {
     const request = load(client)
     cache.set(client, request)
     request.catch(() => cache.delete(client))
   }
-  return cache.get(client)
+  return cache.get(client) as Promise<T>
 }
 
+const requestDomainNames = (client: Client): Promise<string[]> =>
+  client.settings.domains().then((response: AxiosResponse<string[]>) => response.data)
+
+const requestSchemaTitle = (client: Client, name: string): Promise<string | null | undefined> =>
+  client.settings.schema(name).then((response: AxiosResponse<SettingsSchemaBody | undefined>) => response.data?.title)
+
 // The names of the settings domains, in the order the server lists them.
-const settingsDomainNames = (client) => once(domainNamesOf, client, async (current) => {
-  const { data } = await current.settings.domains()
-  return data
+const settingsDomainNames = (client: Client): Promise<string[]> => once(domainNamesOf, client, async (current) => {
+  const names: string[] = await requestDomainNames(current)
+  return names
 })
 
 // The title of each settings domain: the title of its schema, or its name when the schema does not give one.
-const settingsDomainTitles = (client) => once(titlesOf, client, async (current) => {
+const settingsDomainTitles = (client: Client): Promise<Record<string, string>> => once(titlesOf, client, async (current) => {
   const names = await settingsDomainNames(current)
-  const entries = await Promise.all(names.map(async (name) => {
+  const entries = await Promise.all(names.map(async (name): Promise<[string, string]> => {
     try {
-      const { data } = await current.settings.schema(name)
-      return [name, data?.title ?? name]
+      const title = await requestSchemaTitle(current, name)
+      return [name, title ?? name]
     } catch {
       return [name, name]
     }

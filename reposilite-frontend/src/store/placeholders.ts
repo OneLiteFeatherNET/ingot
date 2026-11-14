@@ -36,13 +36,24 @@
 
 import { setAppearance } from './appearance'
 
+// Vite replaces process.env.NODE_ENV in the bundle; this declaration only tells the type checker about it.
+declare const process: { env: { NODE_ENV?: string } }
+
+/* The public settings the server sends. Only the fields the dashboard reads are named. */
+export interface FrontendSettings {
+  secretsHidden?: boolean
+  appearance?: Record<string, unknown>
+  placeholders?: Record<string, string>
+  [field: string]: unknown
+}
+
 /* global __INGOT_FAKE_API_PORT__ */
 // Development only: the fake backend, whose port vite.config.js defines. The typeof guard keeps
 // the test runner, which does not apply that define, on the default port.
 const DEV_API_PORT = typeof __INGOT_FAKE_API_PORT__ === 'undefined' ? '8887' : __INGOT_FAKE_API_PORT__
 const DEV_API_ORIGIN = `http://localhost:${DEV_API_PORT}`
 
-const FALLBACKS = {
+const FALLBACKS: Record<string, string> = {
   'REPOSILITE.BASE_PATH': '/',
   'REPOSILITE.ID': 'ingot-repository',
   'REPOSILITE.TITLE': 'Ingot Repository',
@@ -56,7 +67,7 @@ const FALLBACKS = {
 
 // The settings field behind each token. The typed fields are read first; the placeholder map
 // the server sends alongside them is only a fallback for an older server.
-const TYPED_FIELDS = {
+const TYPED_FIELDS: Record<string, string> = {
   'REPOSILITE.ID': 'id',
   'REPOSILITE.TITLE': 'title',
   'REPOSILITE.DESCRIPTION': 'description',
@@ -69,13 +80,13 @@ const TYPED_FIELDS = {
 const SETTINGS_TIMEOUT_MS = 2000
 
 // The settings as the server last sent them, or null when they could not be had.
-let fetched = null
+let fetched: FrontendSettings | null = null
 
 /* Whether the server masks its secrets, as the public settings report it. False until they are loaded. */
 export const frontendSecretsHidden = () => fetched?.secretsHidden === true
 
 /* A placeholder that still names its own token was never substituted. */
-const substituted = (value, token) => !value.includes(token)
+const substituted = (value: string, token: string): boolean => !value.includes(token)
 
 /*
  * The mount point of the dashboard. A bundled dashboard has the server's base path where the
@@ -85,8 +96,8 @@ const substituted = (value, token) => !value.includes(token)
  * The bundled Vite base is relative (the server strips its slashes), so it is not used there.
  */
 export const resolveMountPath = (
-  bundledValue = '{{REPOSILITE.BASE_PATH}}',
-  viteBase = import.meta.env.BASE_URL
+  bundledValue: string = '{{REPOSILITE.BASE_PATH}}',
+  viteBase: string = import.meta.env.BASE_URL
 ) => {
   if (substituted(bundledValue, 'REPOSILITE.BASE_PATH')) {
     return bundledValue
@@ -95,13 +106,13 @@ export const resolveMountPath = (
   return href ? new URL(href, location.href).pathname : viteBase
 }
 
-const read = (value, token) => {
+const read = (value: string, token: string): string => {
   if (substituted(value, token)) {
     return value
   }
   const field = TYPED_FIELDS[token]
   if (fetched && field && fetched[field] !== undefined && fetched[field] !== null) {
-    return fetched[field]
+    return fetched[field] as string
   }
   const key = `{{${token}}}`
   if (fetched?.placeholders?.[key] !== undefined) {
@@ -114,7 +125,7 @@ const read = (value, token) => {
  * The settings endpoint below the mount point. In production it is a path under the mount point,
  * never under the current address, which may be a deep link of the client router.
  */
-export const settingsUrlFor = ({ mountPath, origin, production }) => {
+export const settingsUrlFor = ({ mountPath, origin, production }: { mountPath: string; origin: string; production: boolean }) => {
   if (!production) {
     return `${DEV_API_ORIGIN}/api/frontend/settings`
   }
@@ -130,7 +141,7 @@ export const settingsUrlFor = ({ mountPath, origin, production }) => {
 export async function loadFrontendSettings({
   mountPath = resolveMountPath(),
   timeoutMs = SETTINGS_TIMEOUT_MS
-} = {}) {
+}: { mountPath?: string; timeoutMs?: number } = {}): Promise<void> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -144,7 +155,7 @@ export async function loadFrontendSettings({
     if (!response.ok) {
       throw new Error(`${response.status} ${response.statusText}`)
     }
-    const settings = await response.json()
+    const settings = (await response.json()) as FrontendSettings
     fetched = settings
     // An older server sends no appearance block, which means the default theme.
     setAppearance(settings.appearance)

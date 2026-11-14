@@ -19,19 +19,20 @@
  * manifest: the pages are for signed in callers, and the server answers 401 to anyone else.
  */
 
-import axios from 'axios'
+import axios, { type AxiosRequestConfig, type AxiosRequestHeaders } from 'axios'
 import { ref } from 'vue'
 import { createURL, handleRequest } from './client'
 import { setContributions } from '../navigation/registry'
 import { applyPluginStyles } from './pluginStyles'
+import type { components } from '../types/api'
 
 // False until the manifest of the current session is known, so a page that is waiting for it is not judged.
 const pluginUiReady = ref(false)
 
-const loadPluginUi = async (credentials = {}) => {
+const loadPluginUi = async (credentials: Pick<AxiosRequestConfig, 'headers'> = {}) => {
   pluginUiReady.value = false
   try {
-    const { data } = await axios.get(createURL('/api/frontend/plugin-ui'), handleRequest({ withCredentials: true, headers: { ...credentials.headers } }))
+    const { data } = await axios.get<components['schemas']['PluginUiManifest']>(createURL('/api/frontend/plugin-ui'), handleRequest({ withCredentials: true, headers: { ...credentials.headers } as AxiosRequestHeaders }))
     setContributions(data)
     applyPluginStyles(data?.stylesheets)
   } catch {

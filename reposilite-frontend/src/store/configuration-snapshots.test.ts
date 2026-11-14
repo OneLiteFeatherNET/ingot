@@ -18,12 +18,20 @@ import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import { createConfigurationStore } from './configuration'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+/* The fake client implements only the settings calls the store makes, so it is cast to the store's client type. */
+const clientRef = (client: unknown): ClientRef => ref(client) as unknown as ClientRef
+type Repository = { id: string; visibility: string }
+
 vi.mock('../store/session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | undefined)?.message ?? String(error)
 }))
+
+// JSON round trip that keeps the value's type, so fixtures do not leak untyped values.
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const SCHEMA = {
   type: 'object',
@@ -40,14 +48,14 @@ const SCHEMA = {
   }
 }
 
-const fakeClient = (server) => ({
+const fakeClient = (server: Record<string, unknown>) => ({
   settings: {
-    domains: async () => ({ data: ['maven'] }),
-    schema: async () => ({ data: SCHEMA }),
-    fetch: async () => ({ data: JSON.parse(JSON.stringify(server.maven)) }),
-    update: async (domain, content) => {
+    domains: () => Promise.resolve({ data: ['maven'] }),
+    schema: () => Promise.resolve({ data: SCHEMA }),
+    fetch: () => Promise.resolve({ data: cloneJson(server.maven) }),
+    update: (domain: string, content: unknown) => {
       server[domain] = JSON.parse(JSON.stringify(content))
-      return { data: {} }
+      return Promise.resolve({ data: {} })
     }
   }
 })
@@ -55,29 +63,29 @@ const fakeClient = (server) => ({
 describe('configuration store snapshots', () => {
   it('keeps the server state as the snapshot while the draft is edited', async () => {
     const server = { maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] } }
-    const store = createConfigurationStore(ref(fakeClient(server)))
+    const store = createConfigurationStore(clientRef(fakeClient(server)))
     await store.fetchConfiguration()
 
     store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE' })
 
-    expect(store.savedSettings.value.maven.repositories[0].visibility, 'the saved state is not the draft').toBe('PUBLIC')
-    expect(store.configurations.value.maven.repositories[0].visibility).toBe('PRIVATE')
+    expect((store.savedSettings.value.maven.repositories as Repository[])[0].visibility, 'the saved state is not the draft').toBe('PUBLIC')
+    expect((store.configurations.value.maven.repositories as Repository[])[0].visibility).toBe('PRIVATE')
   })
 
   it('moves the snapshot to the written state once the save is confirmed', async () => {
     const server = { maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] } }
-    const store = createConfigurationStore(ref(fakeClient(server)))
+    const store = createConfigurationStore(clientRef(fakeClient(server)))
     await store.fetchConfiguration()
     store.setEntry('maven', 'repositories', 0, { id: 'releases', visibility: 'PRIVATE' })
 
     await store.saveConfiguration()
 
-    expect(store.savedSettings.value.maven.repositories[0].visibility).toBe('PRIVATE')
+    expect((store.savedSettings.value.maven.repositories as Repository[])[0].visibility).toBe('PRIVATE')
   })
 
   it('reports that the server hides secrets, as the injected flag says', async () => {
     const server = { maven: { repositories: [] } }
-    const store = createConfigurationStore(ref(fakeClient(server)), { secretsHidden: () => true })
+    const store = createConfigurationStore(clientRef(fakeClient(server)), { secretsHidden: () => true })
 
     await store.fetchConfiguration()
 
@@ -86,7 +94,7 @@ describe('configuration store snapshots', () => {
 
   it('does not report hidden secrets unless the server says so', async () => {
     const server = { maven: { repositories: [] } }
-    const store = createConfigurationStore(ref(fakeClient(server)))
+    const store = createConfigurationStore(clientRef(fakeClient(server)))
 
     await store.fetchConfiguration()
 
@@ -97,15 +105,15 @@ describe('configuration store snapshots', () => {
     const server = { maven: { repositories: [{ id: 'releases', visibility: 'PUBLIC' }] } }
     const client = fakeClient(server)
     let writes = 0
-    client.settings.update = async () => { writes++; return { data: {} } }
-    const store = createConfigurationStore(ref(client))
+    client.settings.update = () => { writes++; return Promise.resolve({ data: {} }) }
+    const store = createConfigurationStore(clientRef(client))
     await store.fetchConfiguration()
 
     store.importDomains({ maven: { repositories: [{ id: 'releases', visibility: 'PRIVATE' }] } })
 
-    expect(store.configurations.value.maven.repositories[0].visibility).toBe('PRIVATE')
+    expect((store.configurations.value.maven.repositories as Repository[])[0].visibility).toBe('PRIVATE')
     expect(store.hasUnsavedChanges.value, 'the import is an unsaved change').toBe(true)
-    expect(store.savedSettings.value.maven.repositories[0].visibility).toBe('PUBLIC')
+    expect((store.savedSettings.value.maven.repositories as Repository[])[0].visibility).toBe('PUBLIC')
     expect(writes).toBe(0)
   })
 })

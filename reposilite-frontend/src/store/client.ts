@@ -15,13 +15,40 @@
  */
 
 import axios from "axios"
+import type {
+  AxiosError,
+  AxiosHeaders,
+  AxiosHeaderValue,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios"
 import usePlaceholders from "./placeholders"
+import type { components } from "../types/api"
+
+// The request config with the flags this module sets on its own retried and checked requests.
+type SessionRequestConfig = AxiosRequestConfig & {
+  _retried?: boolean
+  _sessionAlive?: boolean
+  _sessionCheck?: boolean
+}
+
+// The optional query values of a list call. Empty ones are left out of the query string.
+type QueryParams = Record<string, string | number | boolean | null | undefined>
+
+// The token endpoints of one principal. rotate exists only where the server has the endpoint.
+export interface TokenEndpoints {
+  list(): Promise<AxiosResponse>
+  create(body: unknown): Promise<AxiosResponse>
+  revoke(name: string): Promise<AxiosResponse>
+  rotate?: (name: string) => Promise<AxiosResponse>
+}
 
 // Told once that the server rejected the credentials of a request. The session registers
 // itself here, because this module cannot import the session without a cycle.
-let onUnauthorized = () => {}
+let onUnauthorized: (error: unknown) => void = () => {}
 
-const setUnauthorizedHandler = (handler) => {
+const setUnauthorizedHandler = (handler: (error: unknown) => void) => {
   onUnauthorized = handler
 }
 
@@ -34,11 +61,11 @@ const CSRF_COOKIE = "ingot_csrf"
 const CSRF_HEADER = "X-CSRF-Token"
 const UNSAFE_METHODS = ["POST", "PUT", "PATCH", "DELETE"]
 
-const setCookieMode = (enabled) => {
+const setCookieMode = (enabled: unknown) => {
   cookieMode = enabled === true
 }
 
-const readCsrfToken = (cookies = typeof document === "undefined" ? "" : document.cookie) => {
+const readCsrfToken = (cookies: string = typeof document === "undefined" ? "" : document.cookie): string | null => {
   for (const part of String(cookies || "").split(";")) {
     const separator = part.indexOf("=")
     if (separator !== -1 && part.slice(0, separator).trim() === CSRF_COOKIE) {
@@ -50,7 +77,7 @@ const readCsrfToken = (cookies = typeof document === "undefined" ? "" : document
 
 // A request that asked for credentials explicitly (the sign in calls) gets the same treatment
 // as one made in cookie mode, so the very first cookie request does not depend on the mode flag.
-const handleRequest = (config) => {
+const handleRequest = (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
   if (!cookieMode && !config.withCredentials) {
     return config
   }
@@ -60,7 +87,7 @@ const handleRequest = (config) => {
     if (typeof config.headers?.set === "function") {
       config.headers.set(CSRF_HEADER, csrf)
     } else {
-      config.headers = { ...config.headers, [CSRF_HEADER]: csrf }
+      config.headers = Object.assign({}, config.headers, { [CSRF_HEADER]: csrf })
     }
   }
   return config
@@ -69,18 +96,18 @@ const handleRequest = (config) => {
 // Answers to these are answers about the sign in itself, not about a session that expired, so
 // they neither trigger a refresh nor the unauthorized handler.
 const AUTH_ENDPOINTS = ["/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/setup", "/api/auth/providers"]
-const isAuthEndpoint = (url) =>
+const isAuthEndpoint = (url: string | undefined): boolean =>
   AUTH_ENDPOINTS.some(endpoint => String(url || "").includes(endpoint))
 
 // Read per call rather than once at import. This module is imported while the settings
 // are still being fetched, so capturing the base url here would freeze the fallback in
 // place and break any deployment mounted under a sub path.
-const createURL = (endpoint) =>
+const createURL = (endpoint: string): string =>
   usePlaceholders().baseUrl + endpoint
 
 // Concurrent rejections share one refresh call.
-let refreshing = null
-const refreshSession = () => {
+let refreshing: Promise<AxiosResponse> | null = null
+const refreshSession = (): Promise<AxiosResponse> => {
   if (!refreshing) {
     refreshing = axios
       .post(createURL("/api/auth/refresh"), {}, { withCredentials: true })
@@ -92,27 +119,33 @@ const refreshSession = () => {
 }
 
 // The value of one request header, read from a plain object or from AxiosHeaders.
-const headerOf = (config, name) =>
-  typeof config?.headers?.get === 'function' ? config.headers.get(name) : config?.headers?.[name]
+const headerOf = (config: SessionRequestConfig | undefined, name: string): AxiosHeaderValue | undefined => {
+  const headers = config?.headers as AxiosHeaders | Record<string, AxiosHeaderValue> | undefined
+  const plain: Record<string, AxiosHeaderValue> | undefined = headers
+  return typeof (headers as AxiosHeaders | undefined)?.get === 'function'
+    ? (headers as AxiosHeaders).get(name)
+    : plain?.[name]
+}
 
 // A 401 on a request does not by itself end the session: the server may be refusing that one request
 // (a group whose private members refuse the mirror, or a listing the user may not read). The session
 // is asked about with the same credentials, and only a 401 from that check ends it. A request without
 // credentials of its own has no session to check, so the unauthorized handler decides as it always did.
-const sessionRejected = (config) => {
+const sessionRejected = (config: SessionRequestConfig | undefined): Promise<boolean> => {
   const authorization = headerOf(config, 'Authorization')
   if (!authorization) {
     return Promise.resolve(true)
   }
+  const check: SessionRequestConfig = {
+    withCredentials: true,
+    headers: { Authorization: authorization },
+    _sessionCheck: true,
+  }
   return axios
-    .get(createURL('/api/auth/me'), {
-      withCredentials: true,
-      headers: { Authorization: authorization },
-      _sessionCheck: true,
-    })
+    .get(createURL('/api/auth/me'), check)
     .then(
       () => false,
-      (error) => error?.response?.status === 401
+      (error: AxiosError | undefined) => error?.response?.status === 401
     )
 }
 
@@ -120,11 +153,11 @@ const sessionRejected = (config) => {
 // request retried once. A refresh that is refused ends the session. A retry that is refused after a
 // successful refresh says nothing about the session, because the refresh just proved it stands. In
 // token mode the session check decides. Every failure is rethrown so that each caller still sees its own.
-const handleResponseError = async (error) => {
+const handleResponseError = async (error: AxiosError): Promise<AxiosResponse> => {
   if (error?.response?.status !== 401) {
     return Promise.reject(error)
   }
-  const config = error.config
+  const config = error.config as SessionRequestConfig | undefined
   if (isAuthEndpoint(config?.url) || config?._sessionCheck) {
     return Promise.reject(error)
   }
@@ -139,7 +172,8 @@ const handleResponseError = async (error) => {
       onUnauthorized(error)
       return Promise.reject(error)
     }
-    return axios.request({ ...config, _sessionAlive: true })
+    const retry: SessionRequestConfig = { ...config, _sessionAlive: true }
+    return axios.request(retry)
   }
   return sessionRejected(config).then(rejected => {
     if (rejected) {
@@ -153,29 +187,32 @@ axios.interceptors.request.use(handleRequest)
 axios.interceptors.response.use(response => response, handleResponseError)
 
 /* The entity tag of a response. Null when the server sent none, and the next write is then unconditional. */
-const etagOf = (response) =>
-  response?.headers?.etag ?? null
+const etagOf = (response: AxiosResponse | undefined): string | null =>
+  typeof response?.headers?.etag === 'string' ? response.headers.etag : null
 
 /* The 412 the server answers when the stored state changed since this client read it. */
-const isPreconditionFailed = (error) =>
+const isPreconditionFailed = (error: AxiosError | undefined): boolean =>
   error?.response?.status === 412
 
 // The request config that carries an access token, or nothing for a cookie session. Requests made outside
 // createClient (the plugin manifest, the support availability) use it too, so a token session sends its token.
-const tokenCredentials = (name, secret) =>
+const tokenCredentials = (
+  name: string | null | undefined,
+  secret: string | null | undefined
+): { headers?: { Authorization: string } } =>
   name && secret
     ? { headers: { Authorization: `xBasic ${btoa(`${name}:${secret}`)}` } }
     : {}
 
-const createClient = (defaultName, defaultSecret) => {
+const createClient = (defaultName: string | null | undefined, defaultSecret: string | null | undefined) => {
   const defaultAuthorization = () => tokenCredentials(defaultName, defaultSecret)
 
   // The precondition of an optimistic write. Without a known tag no header is sent, which is what an older server expects.
-  const ifMatch = (etag) =>
+  const ifMatch = (etag: string | null | undefined): Record<string, string> =>
     etag ? { "If-Match": etag } : {}
 
   // The request options of a write that carries the entity tag it was based on.
-  const conditional = (etag) => ({
+  const conditional = (etag: string | null | undefined) => ({
     headers: {
       "Content-Type": "application/json",
       ...ifMatch(etag),
@@ -183,7 +220,7 @@ const createClient = (defaultName, defaultSecret) => {
     },
   })
 
-  const get = (endpoint, credentials) =>
+  const get = (endpoint: string, credentials?: AxiosRequestConfig) =>
     axios.get(createURL(endpoint), {
       ...(credentials || defaultAuthorization()),
     })
@@ -193,20 +230,20 @@ const createClient = (defaultName, defaultSecret) => {
    * `api` prop: { list, create, revoke } and, where the server has the endpoint, rotate. The
    * calls return the axios promise, so a caller reads `response.data`.
    */
-  const tokenEndpoints = (base, { rotate = false } = {}) => {
-    const api = {
+  const tokenEndpoints = (base: string, { rotate = false }: { rotate?: boolean } = {}): TokenEndpoints => {
+    const api: TokenEndpoints = {
       list() {
         return get(base)
       },
-      create(body) {
+      create(body: unknown) {
         return axios.post(createURL(base), body, { ...defaultAuthorization() })
       },
-      revoke(name) {
+      revoke(name: string) {
         return axios.delete(createURL(`${base}/${encodeURIComponent(name)}`), { ...defaultAuthorization() })
       },
     }
     if (rotate) {
-      api.rotate = (name) =>
+      api.rotate = (name: string) =>
         axios.post(createURL(`${base}/${encodeURIComponent(name)}/rotate`), {}, { ...defaultAuthorization() })
     }
     return api
@@ -215,24 +252,29 @@ const createClient = (defaultName, defaultSecret) => {
   return {
     auth: {
       me() {
-        return get("/api/auth/me")
+        return axios.get<components["schemas"]["SessionDetails"]>(createURL("/api/auth/me"), { ...defaultAuthorization() })
       },
       // The same question asked with the browser's cookies, for a session that is not known yet.
       meWithCookie() {
-        return axios.get(createURL("/api/auth/me"), { withCredentials: true })
+        return axios.get<components["schemas"]["SessionDetails"]>(createURL("/api/auth/me"), { withCredentials: true })
       },
       providers() {
-        return axios.get(createURL("/api/auth/providers"), { withCredentials: true })
+        return axios.get<components["schemas"]["LoginProvidersResponse"]>(createURL("/api/auth/providers"), { withCredentials: true })
       },
       // The provider is the id from GET /api/auth/providers: "local" for the Ingot account, "ldap" for
       // the directory. The server rejects a provider it does not know, so the default is the local one.
-      login({ provider = "local", username, password }) {
-        return axios.post(createURL("/api/auth/login"), { provider, username, password }, { withCredentials: true })
+      login({ provider = "local", username, password }: { provider?: string; username: string; password: string }) {
+        return axios.post<components["schemas"]["LoginResponse"]>(createURL("/api/auth/login"), { provider, username, password }, { withCredentials: true })
       },
-      setup({ setupCode, username, password, displayName }) {
-        const body = { setupCode, username, password }
+      setup({ setupCode, username, password, displayName }: {
+        setupCode: string
+        username: string
+        password: string
+        displayName?: string
+      }) {
+        const body: { setupCode: string; username: string; password: string; displayName?: string } = { setupCode, username, password }
         if (displayName) body.displayName = displayName
-        return axios.post(createURL("/api/auth/setup"), body, { withCredentials: true })
+        return axios.post<components["schemas"]["LoginResponse"]>(createURL("/api/auth/setup"), body, { withCredentials: true })
       },
       refresh() {
         return refreshSession()
@@ -242,19 +284,19 @@ const createClient = (defaultName, defaultSecret) => {
       },
       // Tests the saved configuration of a single sign on provider (not an unsaved draft).
       // Resolves with { ok, issuer, endpoints, error? }.
-      testOidcProvider(id) {
+      testOidcProvider(id: string) {
         return axios.post(createURL(`/api/auth/providers/oidc/${encodeURIComponent(id)}/test`), {}, { ...defaultAuthorization() })
       },
       // Tests the saved LDAP configuration, optionally with a user to look up. Resolves with
       // { ok, userDn?, groups?, error? }.
-      testLdapProvider(body = {}) {
+      testLdapProvider(body: unknown = {}) {
         return axios.post(createURL("/api/auth/providers/ldap/test"), body, { ...defaultAuthorization() })
       },
     },
     identity: {
       // The signed in principal looking after itself.
       me: {
-        changePassword({ currentPassword, newPassword }) {
+        changePassword({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) {
           return axios.post(
             createURL("/api/identity/me/password"),
             { currentPassword, newPassword },
@@ -264,22 +306,22 @@ const createClient = (defaultName, defaultSecret) => {
         tokens: tokenEndpoints("/api/identity/me/tokens", { rotate: true }),
       },
       // The tokens of any principal, for an instance admin. The server has no rotate endpoint here.
-      principalTokens(principalName) {
+      principalTokens(principalName: string) {
         return tokenEndpoints(`/api/identity/principals/${encodeURIComponent(principalName)}/tokens`)
       },
       // The principals, for an instance admin. get() resolves with the ETag header, which a later
       // update() sends back as If-Match; a missing tag means an unconditional write.
       principals: {
-        list(kind) {
+        list(kind?: string) {
           return get(`/api/identity/principals${kind ? `?kind=${encodeURIComponent(kind)}` : ""}`)
         },
-        get(name) {
+        get(name: string) {
           return get(`/api/identity/principals/${encodeURIComponent(name)}`)
         },
-        create(body) {
+        create(body: unknown) {
           return axios.post(createURL("/api/identity/principals"), body, { ...defaultAuthorization() })
         },
-        update(name, body, etag) {
+        update(name: string, body: unknown, etag?: string | null) {
           return axios.patch(createURL(`/api/identity/principals/${encodeURIComponent(name)}`), body, {
             headers: {
               "Content-Type": "application/json",
@@ -288,27 +330,27 @@ const createClient = (defaultName, defaultSecret) => {
             },
           })
         },
-        remove(name) {
+        remove(name: string) {
           return axios.delete(createURL(`/api/identity/principals/${encodeURIComponent(name)}`), {
             ...defaultAuthorization(),
           })
         },
         // 204. The principal must choose a new password at the next sign in.
-        setPassword(name, password) {
+        setPassword(name: string, password: string) {
           return axios.post(
             createURL(`/api/identity/principals/${encodeURIComponent(name)}/password`),
             { password },
             { ...defaultAuthorization() }
           )
         },
-        grantInstanceAdmin(name) {
+        grantInstanceAdmin(name: string) {
           return axios.put(
             createURL(`/api/identity/principals/${encodeURIComponent(name)}/instance-admin`),
             {},
             { ...defaultAuthorization() }
           )
         },
-        revokeInstanceAdmin(name) {
+        revokeInstanceAdmin(name: string) {
           return axios.delete(createURL(`/api/identity/principals/${encodeURIComponent(name)}/instance-admin`), {
             ...defaultAuthorization(),
           })
@@ -320,52 +362,52 @@ const createClient = (defaultName, defaultSecret) => {
         list() {
           return get("/api/identity/teams")
         },
-        get(name) {
+        get(name: string) {
           return get(`/api/identity/teams/${encodeURIComponent(name)}`)
         },
-        create(body) {
+        create(body: unknown) {
           return axios.post(createURL("/api/identity/teams"), body, { ...defaultAuthorization() })
         },
-        update(name, body, etag) {
+        update(name: string, body: unknown, etag?: string | null) {
           return axios.patch(createURL(`/api/identity/teams/${encodeURIComponent(name)}`), body, conditional(etag))
         },
-        remove(name) {
+        remove(name: string) {
           return axios.delete(createURL(`/api/identity/teams/${encodeURIComponent(name)}`), {
             ...defaultAuthorization(),
           })
         },
         // Replaces the MANUAL memberships; the server keeps the SYNC rows.
-        setMembers(name, members, etag) {
+        setMembers(name: string, members: unknown, etag?: string | null) {
           return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/members`), { members }, conditional(etag))
         },
         // Replaces all grants: [{ repository, pathPrefix, role }].
-        setGrants(name, grants, etag) {
+        setGrants(name: string, grants: unknown, etag?: string | null) {
           return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/grants`), { grants }, conditional(etag))
         },
-        grantInstanceAdmin(name, etag) {
+        grantInstanceAdmin(name: string, etag?: string | null) {
           return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/instance-admin`), {}, conditional(etag))
         },
-        revokeInstanceAdmin(name, etag) {
+        revokeInstanceAdmin(name: string, etag?: string | null) {
           return axios.delete(createURL(`/api/identity/teams/${encodeURIComponent(name)}/instance-admin`), conditional(etag))
         },
         // The parent teams a team inherits from. parents() resolves with the ETag header; setParents() sends it back as If-Match.
-        parents(name) {
+        parents(name: string) {
           return get(`/api/identity/teams/${encodeURIComponent(name)}/parents`)
         },
-        setParents(name, parents, etag) {
+        setParents(name: string, parents: unknown, etag?: string | null) {
           return axios.put(createURL(`/api/identity/teams/${encodeURIComponent(name)}/parents`), { parents }, conditional(etag))
         },
       },
       // The permission nodes of a principal or a team (kind is "principals" or "teams"). get() resolves
       // with the ETag header; set() sends it back as If-Match. The catalog and the templates feed the editor.
       nodes: {
-        get(kind, name) {
+        get(kind: string, name: string) {
           return get(`/api/identity/${kind}/${encodeURIComponent(name)}/nodes`)
         },
-        set(kind, name, nodes, etag) {
+        set(kind: string, name: string, nodes: unknown, etag?: string | null) {
           return axios.put(createURL(`/api/identity/${kind}/${encodeURIComponent(name)}/nodes`), { nodes }, conditional(etag))
         },
-        catalog(prefix) {
+        catalog(prefix?: string) {
           return get(`/api/identity/nodes/catalog${prefix ? `?prefix=${encodeURIComponent(prefix)}` : ""}`)
         },
         templates() {
@@ -376,23 +418,30 @@ const createClient = (defaultName, defaultSecret) => {
       // is { allowed, decision, trace }: the decision and every step that led to it. With repository,
       // path and action instead of a node, asks whether the principal may do the action on that path
       // of the repository; the path is sent as it was typed, and the server reads its directories.
-      check({ principal, node, token, repository, path, action }) {
+      check({ principal, node, token, repository, path, action }: {
+        principal: string
+        node?: string
+        token?: string
+        repository?: string
+        path?: string
+        action?: string
+      }) {
         const query = [`principal=${encodeURIComponent(principal)}`]
         if (repository !== undefined || path !== undefined) {
-          query.push(`repository=${encodeURIComponent(repository)}`, `path=${encodeURIComponent(path)}`, `action=${encodeURIComponent(action)}`)
+          query.push(`repository=${encodeURIComponent(String(repository))}`, `path=${encodeURIComponent(String(path))}`, `action=${encodeURIComponent(String(action))}`)
         } else {
-          query.push(`node=${encodeURIComponent(node)}`)
+          query.push(`node=${encodeURIComponent(String(node))}`)
         }
         if (token) query.push(`token=${encodeURIComponent(token)}`)
         return get(`/api/identity/check?${query.join("&")}`)
       },
       // Who can reach a repository and through which team: { repository, visibility, entries }.
-      repositoryAccess(repository) {
+      repositoryAccess(repository: string) {
         return get(`/api/identity/repositories/${encodeURIComponent(repository)}/access`)
       },
     },
     console: {
-      execute(command) {
+      execute(command: unknown) {
         return axios.post(
             createURL(`/api/console/execute`), command, {
               headers: {
@@ -438,7 +487,7 @@ const createClient = (defaultName, defaultSecret) => {
       // Sent with the session's credentials, like every other call of this client, so a protected
       // integration answers 200 instead of a 401 the browser logs on every visit. A 401, 403 or 404
       // is still an answer rather than an error. The reply is cut down to what the probe reads.
-      probe(endpoint) {
+      probe(endpoint: string) {
         return axios.get(createURL(endpoint), {
           ...defaultAuthorization(),
           validateStatus: () => true,
@@ -450,7 +499,7 @@ const createClient = (defaultName, defaultSecret) => {
             body: typeof response.data === "string" ? response.data.slice(0, 16384) : "",
           }))
       },
-      url(endpoint) {
+      url(endpoint: string) {
         return createURL(endpoint)
       },
     },
@@ -464,7 +513,7 @@ const createClient = (defaultName, defaultSecret) => {
        * The repositories the caller may see. `q` searches id, description and tags; each tag is a
        * repeated parameter and all of them must match. Both are optional.
        */
-      repositories({ q, tags = [] } = {}) {
+      repositories({ q, tags = [] }: { q?: string; tags?: string[] } = {}) {
         const params = new URLSearchParams()
         if (q) params.set("q", q)
         for (const tag of tags) params.append("tag", tag)
@@ -475,14 +524,22 @@ const createClient = (defaultName, defaultSecret) => {
        * One page of the artifact search. `query` is the query string of the page, already built from
        * its address (see components/search/searchQuery.js), without the leading question mark.
        */
-      search(query) {
+      search(query?: string) {
         return get(`/api/maven/search${query ? `?${query}` : ""}`)
       },
       /*
        * The files of one version found by the search. The coordinates are required; the repository and
        * origin filters of the search narrow the files the same way they narrowed the version.
        */
-      searchFiles({ groupId, artifactId, version, origin = "all", repository = [], page = 0, size = 50 }) {
+      searchFiles({ groupId, artifactId, version, origin = "all", repository = [], page = 0, size = 50 }: {
+        groupId: string
+        artifactId: string
+        version: string
+        origin?: string
+        repository?: string[]
+        page?: number
+        size?: number
+      }) {
         const params = new URLSearchParams({ groupId, artifactId, version })
         if (origin !== "all") params.set("origin", origin)
         for (const name of repository) params.append("repository", name)
@@ -493,22 +550,22 @@ const createClient = (defaultName, defaultSecret) => {
       /*
        * The repositories a group references through loopback mirrors, in configuration order.
        */
-      members(repository) {
+      members(repository: string) {
         return get(`/api/maven/repositories/${encodeURIComponent(repository)}/members`)
       },
-      content(gav) {
+      content(gav: string) {
         return get(`/${gav}`)
       },
-      details(gav) {
+      details(gav?: string) {
         return get(`/api/maven/details/${gav || ""}`)
       },
-      download(gav) {
+      download(gav: string) {
         return get(`/${gav}`, {
           responseType: "blob",
           ...defaultAuthorization(),
         })
       },
-      deploy(gav, file, generateChecksums) {
+      deploy(gav: string, file: unknown, generateChecksums: boolean) {
         return axios.put(createURL(`/${gav}`), file, {
           headers: {
             "Content-Type": "application/octet-stream",
@@ -517,7 +574,7 @@ const createClient = (defaultName, defaultSecret) => {
           }
         })
       },
-      generatePom(gav, groupId, artifactId, version) {
+      generatePom(gav: string, groupId: string, artifactId: string, version: string) {
         return axios.post(
           createURL(`/api/maven/generate/pom/${gav}/${artifactId}-${version}.pom`),
           {
@@ -532,7 +589,7 @@ const createClient = (defaultName, defaultSecret) => {
           }
         )
       },
-      delete(gav) {
+      delete(gav: string) {
         return axios.delete(createURL(`/${gav}`), {
           ...defaultAuthorization(),
         })
@@ -556,7 +613,7 @@ const createClient = (defaultName, defaultSecret) => {
        * Starts a rebuild. The body names repositories to rebuild, or is empty for all of them. The answer
        * is 202 with { runId }; 409 while a rebuild or a verify run is live.
        */
-      startIndexRebuild(body = {}) {
+      startIndexRebuild(body: unknown = {}) {
         return axios.post(createURL("/api/maven/search/index/rebuild"), body, {
           ...defaultAuthorization(),
         })
@@ -566,24 +623,24 @@ const createClient = (defaultName, defaultSecret) => {
           ...defaultAuthorization(),
         })
       },
-      cancelIndexRun(runId) {
+      cancelIndexRun(runId: string) {
         return axios.post(createURL(`/api/maven/search/index/runs/${encodeURIComponent(runId)}/cancel`), {}, {
           ...defaultAuthorization(),
         })
       }
     },
     cleanup: {
-      dryRun(policyId) {
+      dryRun(policyId: string) {
         return axios.post(createURL(`/api/cleanup/policies/${encodeURIComponent(policyId)}/dry-run`), {}, {
           ...defaultAuthorization(),
         })
       },
-      run(policyId) {
+      run(policyId: string) {
         return axios.post(createURL(`/api/cleanup/policies/${encodeURIComponent(policyId)}/run`), {}, {
           ...defaultAuthorization(),
         })
       },
-      runs(policyId) {
+      runs(policyId?: string) {
         const query = policyId ? `?policy=${encodeURIComponent(policyId)}` : ""
         return get(`/api/cleanup/runs${query}`)
       }
@@ -597,7 +654,7 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
-      schema(name) {
+      schema(name: string) {
         return axios.get(createURL(`/api/settings/schema/${name}`), {
           headers: {
             Accepts: "application/json",
@@ -606,7 +663,7 @@ const createClient = (defaultName, defaultSecret) => {
         })
       },
       // The dashboard always asks for the hidden form, so no secret value reaches the browser.
-      fetch(name) {
+      fetch(name: string) {
         return axios.get(createURL(`/api/settings/domain/${name}?secrets=hidden`), {
           headers: {
             Accepts: "application/json",
@@ -622,7 +679,7 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
-      exportSaved(password) {
+      exportSaved(password: string) {
         return axios.post(createURL("/api/settings/export"), { password }, {
           headers: {
             "Content-Type": "application/json",
@@ -631,7 +688,7 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
-      openExport(password, exported) {
+      openExport(password: string, exported: unknown) {
         return axios.post(createURL("/api/settings/import/open"), { password, export: exported }, {
           headers: {
             "Content-Type": "application/json",
@@ -640,7 +697,7 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
-      update(name, content, etag) {
+      update(name: string, content: unknown, etag?: string | null) {
         return axios.put(createURL(`/api/settings/domain/${name}`), content, {
           headers: {
             "Content-Type": "application/json",
@@ -655,10 +712,10 @@ const createClient = (defaultName, defaultSecret) => {
       list() {
         return get("/api/tokens")
       },
-      get(name) {
+      get(name: string) {
         return get(`/api/tokens/${encodeURIComponent(name)}`)
       },
-      createOrUpdate(name, request, etag) {
+      createOrUpdate(name: string, request: unknown, etag?: string | null) {
         return axios.put(createURL(`/api/tokens/${encodeURIComponent(name)}`), request, {
           headers: {
             "Content-Type": "application/json",
@@ -667,7 +724,7 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
-      update(name, request, etag) {
+      update(name: string, request: unknown, etag?: string | null) {
         return axios.patch(createURL(`/api/tokens/${encodeURIComponent(name)}`), request, {
           headers: {
             "Content-Type": "application/json",
@@ -676,12 +733,12 @@ const createClient = (defaultName, defaultSecret) => {
           },
         })
       },
-      delete(name) {
+      delete(name: string) {
         return axios.delete(createURL(`/api/tokens/${encodeURIComponent(name)}`), {
           ...defaultAuthorization(),
         })
       },
-      regenerateSecret(name) {
+      regenerateSecret(name: string) {
         return axios.post(createURL(`/api/tokens/${encodeURIComponent(name)}/secret`), {}, {
           ...defaultAuthorization(),
         })
@@ -705,10 +762,10 @@ const createClient = (defaultName, defaultSecret) => {
       },
     },
     audit: {
-      list(params) {
+      list(params?: QueryParams) {
         return get(`/api/audit${queryString(params)}`)
       },
-      exportCsv(params) {
+      exportCsv(params?: QueryParams) {
         return axios.get(createURL(`/api/audit/export${queryString(params)}`), {
           responseType: "blob",
           ...defaultAuthorization(),
@@ -719,9 +776,11 @@ const createClient = (defaultName, defaultSecret) => {
 }
 
 // Empty parameters are left out, so an unfiltered call has no question mark at all.
-const queryString = (params = {}) => {
+const queryString = (params: QueryParams = {}): string => {
   const search = new URLSearchParams(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([key, value]): [string, string] => [key, String(value)])
   ).toString()
   return search ? `?${search}` : ""
 }

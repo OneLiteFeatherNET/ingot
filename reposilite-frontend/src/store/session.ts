@@ -16,10 +16,56 @@
 
 import { computed, ref, watch, watchEffect } from "vue"
 import { createClient, readCsrfToken, setCookieMode, setUnauthorizedHandler, tokenCredentials } from './client'
-import { openSessionChannel } from './session-channel'
+import { openSessionChannel, type ChannelMessage } from './session-channel'
 import { createInfoToast, createWarningToast, errorMessage } from '../helpers/toast'
 import { rateLimitMessage, retryAfterSeconds } from '../helpers/rate-limit'
 import { canUse } from './nodeAccess'
+import type { AxiosError } from 'axios'
+import type { components } from '../types/api'
+
+/* The signed-in principal as the dashboard reads it. */
+export type Principal = {
+  id: number
+  kind: string
+  name: string
+  displayName: string
+}
+
+/* The answer of GET /api/auth/me as the API schema types it. */
+type ApiSessionDetails = components['schemas']['SessionDetails']
+/* The principal of a sign in response as the API schema types it. */
+type ApiLoginPrincipal = components['schemas']['LoginPrincipalDto']
+
+/* The answer of GET /api/auth/me, as the dashboard reads it. */
+export interface SessionDetails {
+  accessToken?: {
+    identifier: {
+      type: string
+      value: number
+    }
+    name: string
+    createdAt: string
+    description: string
+  }
+  permissions: {
+    identifier: string
+    shortcut: string
+  }[]
+  routes: {
+    path: string
+    permission: {
+      identifier: string
+      shortcut: string
+    }
+  }[]
+  principal?: Principal
+  instanceAdmin?: boolean
+  nodes?: string[]
+  mustChangePassword?: boolean
+}
+
+/* A login provider as GET /api/auth/providers lists it. */
+export type LoginProvider = components['schemas']['LoginProviderDto']
 
 // The access token of a token sign in. These two keys are the one legacy place where a secret
 // sits in localStorage; they are kept so existing token sessions survive, and they stay empty
@@ -28,7 +74,7 @@ const token = ref({
   name: localStorage.getItem('token-name') || '',
   secret: localStorage.getItem('token-secret') || '',
 })
-const setToken = (name, secret) => {
+const setToken = (name: string, secret: string) => {
   token.value = { name, secret }
 }
 
@@ -46,42 +92,15 @@ const sessionReady = ref(false)
 
 // How this tab is signed in: "cookie" (HttpOnly cookies, the server holds the session),
 // "token" (an access token kept in the legacy storage keys) or undefined (anonymous).
-const authMode = ref(undefined)
-const principal = ref(undefined)
+const authMode = ref<'cookie' | 'token' | undefined>(undefined)
+const principal = ref<Principal | undefined>(undefined)
 const mustChangePassword = ref(false)
 // What GET /api/auth/providers last said, for the sign in dialog.
-const providers = ref([])
+const providers = ref<LoginProvider[]>([])
 const setupRequired = ref(false)
 
-/**
- * @type {(undefined|{
- *    accessToken: {
- *      identifier: {
- *        type: string,
- *        value: number
- *      },
- *      name: string,
- *      createdAt: string,
- *      description: string
- *    },
- *    permissions: {
- *      identifier: string,
- *      shortcut: string
- *    }[],
- *    routes: {
- *      path: string,
- *      permission: {
- *        identifier: string,
- *        shortcut: string
-*       }
- *    }[],
- *    principal?: { id: string, kind: string, name: string, displayName: string },
- *    instanceAdmin?: boolean,
- *    nodes?: string[]
- *  })}
- */
-const defaultDetails = undefined
-const details = ref(defaultDetails)
+const defaultDetails: SessionDetails | undefined = undefined
+const details = ref<SessionDetails | undefined>(defaultDetails)
 
 const clearSession = () => {
   setToken('', '')
@@ -92,8 +111,17 @@ const clearSession = () => {
   setCookieMode(false)
 }
 
+// The dashboard's view of the answer of GET /api/auth/me. The schema describes the wire shape and
+// the view names the fields the dashboard reads; the JSON is the same, so the value is passed on as is.
+const viewOf = (data: ApiSessionDetails | undefined): SessionDetails | undefined =>
+  data as unknown as SessionDetails | undefined
+
+// The principal of a sign in response, as the dashboard holds it.
+const principalOf = (loginPrincipal: ApiLoginPrincipal | undefined): Principal | undefined =>
+  loginPrincipal as Principal | undefined
+
 // The answer of GET /api/auth/me, in either mode.
-const applyMe = (data) => {
+const applyMe = (data: SessionDetails | undefined) => {
   details.value = data
   if (data?.principal) {
     principal.value = data.principal
@@ -103,7 +131,7 @@ const applyMe = (data) => {
   mustChangePassword.value = data?.mustChangePassword === true
 }
 
-const login = (name, secret) =>
+const login = (name: string, secret: string) =>
   createClient(name, secret)
     .auth
     .me()
@@ -111,7 +139,7 @@ const login = (name, secret) =>
       setCookieMode(false)
       setToken(name, secret)
       authMode.value = 'token'
-      applyMe(response.data)
+      applyMe(viewOf(response.data))
     })
 
 const signInWithToken = login
@@ -121,15 +149,15 @@ const channel = openSessionChannel()
 
 // Asks the server for the session behind the cookies. Rejects when it cannot be answered.
 const loadCookieDetails = () =>
-  anonymousApi().meWithCookie().then(response => applyMe(response.data))
+  anonymousApi().meWithCookie().then(response => applyMe(viewOf(response.data)))
 
 // The session started in this tab: the sign in response names the principal, then the server is
 // asked for the permissions that go with it. Other tabs are told who signed in, and nothing else.
-const startCookieSession = async (data) => {
+const startCookieSession = async (data: { principal?: ApiLoginPrincipal; mustChangePassword?: boolean } | undefined) => {
   setCookieMode(true)
   setToken('', '')
   authMode.value = 'cookie'
-  principal.value = data?.principal
+  principal.value = principalOf(data?.principal)
   mustChangePassword.value = data?.mustChangePassword === true
   try {
     await loadCookieDetails()
@@ -142,14 +170,14 @@ const startCookieSession = async (data) => {
 
 // The provider id decides which directory checks the pair: the Ingot account by default, or the LDAP
 // provider of the server. Both answer alike, so the dialog shows the same failure for either.
-const signInWithPassword = ({ provider = 'local', username, password }) =>
+const signInWithPassword = ({ provider = 'local', username, password }: { provider?: string; username: string; password: string }) =>
   anonymousApi()
     .login({ provider, username, password })
     .then(response => startCookieSession(response.data))
 
 // First run: the setup response signs the new administrator in. A server that answers without a
 // principal gets the same credentials once more as an ordinary sign in.
-const completeSetup = async ({ setupCode, username, password, displayName }) => {
+const completeSetup = async ({ setupCode, username, password, displayName }: { setupCode: string; username: string; password: string; displayName: string }) => {
   const response = await anonymousApi().setup({ setupCode, username, password, displayName })
   if (response.data?.principal) {
     await startCookieSession(response.data)
@@ -159,7 +187,7 @@ const completeSetup = async ({ setupCode, username, password, displayName }) => 
   setupRequired.value = false
 }
 
-const loadProviders = () =>
+const loadProviders = (): Promise<components["schemas"]["LoginProvidersResponse"]> =>
   anonymousApi().providers().then(response => {
     providers.value = response.data?.providers ?? []
     setupRequired.value = response.data?.setupRequired === true
@@ -168,7 +196,7 @@ const loadProviders = () =>
 
 // The sign in dialog shows this under the fields. A rejected pair is the one case worth
 // naming, because "Request failed with status 401" tells the user nothing they can act on.
-const loginFailureMessage = (error) =>
+const loginFailureMessage = (error: AxiosError): string =>
   error?.response?.status === 401
     ? 'Name or secret is incorrect'
     : errorMessage(error)
@@ -176,17 +204,17 @@ const loginFailureMessage = (error) =>
 // The wording for a rejected password. A disabled account answers 403, and both are shown
 // alike, so the message never tells whether a user exists. A 429 is the rate limit: its
 // Retry-After header says how long to wait.
-const passwordFailureMessage = (error) => {
+const passwordFailureMessage = (error: AxiosError): string => {
   const status = error?.response?.status
   if (status === 429) return rateLimitMessage(retryAfterSeconds(error))
-  return [401, 403].includes(status) ? 'Username or password is incorrect' : errorMessage(error)
+  return status !== undefined && [401, 403].includes(status) ? 'Username or password is incorrect' : errorMessage(error)
 }
 
 // The wording for a rejected first-admin setup. The backend uses 403 for a wrong setup code and for an
 // instance that is already set up, and 409 for a lost race with another instance and for a taken user
 // name. The status alone cannot tell those apart, so the body message decides. A 400 carries the rule
 // the server names, and a 429 carries Retry-After.
-const setupFailureMessage = (error) => {
+const setupFailureMessage = (error: AxiosError<{ message?: string }>): string => {
   const status = error?.response?.status
   const message = String(error?.response?.data?.message ?? '')
   if (status === 429) return rateLimitMessage(retryAfterSeconds(error))
@@ -197,7 +225,7 @@ const setupFailureMessage = (error) => {
   return errorMessage(error)
 }
 
-const finishSignOut = () => {
+const finishSignOut = (): void => {
   const mode = authMode.value
   clearSession()
   if (mode === 'cookie') {
@@ -208,7 +236,7 @@ const finishSignOut = () => {
 
 // A cookie session is ended on the server first, while the CSRF header is still sent. A request
 // that fails does not keep the user signed in here. A token session is only forgotten locally.
-const signOut = () => {
+const signOut = (): Promise<void> => {
   if (authMode.value !== 'cookie') {
     finishSignOut()
     return Promise.resolve()
@@ -221,7 +249,7 @@ const logout = signOut
 // The server rejected the credentials of a request made while signed in. Once the session
 // is cleared, every later rejection in the same burst finds nobody signed in and does
 // nothing, so the user sees exactly one notice.
-const expireSession = () => {
+const expireSession = (): void => {
   if (!isLogged.value) {
     return
   }
@@ -237,7 +265,7 @@ const credentials = computed(() => tokenCredentials(token.value.name, token.valu
 // A rejected secret stays useless on every later visit, so it is forgotten here. A server
 // that cannot be reached at all says nothing about the credentials and keeps them. Without
 // a stored token the server is asked about a cookie session instead.
-const initializeSession = async () => {
+const initializeSession = async (): Promise<void> => {
   shareSession()
   try {
     if (token.value.name && token.value.secret) {
@@ -245,7 +273,7 @@ const initializeSession = async () => {
         await login(token.value.name, token.value.secret)
         return
       } catch (error) {
-        if (error?.response?.status !== 401) {
+        if ((error as AxiosError | undefined)?.response?.status !== 401) {
           throw error
         }
         clearSession()
@@ -260,14 +288,14 @@ const initializeSession = async () => {
 // Only the server can say whether HttpOnly cookies hold a session. When the access cookie has
 // run out, a readable CSRF cookie shows that a session once existed, and one refresh is tried
 // before the visit counts as anonymous. A visit that never signed in sends no refresh.
-const probeCookieSession = async () => {
+const probeCookieSession = async (): Promise<void> => {
   const api = anonymousApi()
   try {
-    let response
+    let response: Awaited<ReturnType<typeof api.meWithCookie>>
     try {
       response = await api.meWithCookie()
     } catch (error) {
-      if (error?.response?.status !== 401 || !readCsrfToken()) {
+      if ((error as AxiosError | undefined)?.response?.status !== 401 || !readCsrfToken()) {
         throw error
       }
       await api.refresh()
@@ -275,7 +303,7 @@ const probeCookieSession = async () => {
     }
     setCookieMode(true)
     authMode.value = 'cookie'
-    applyMe(response.data)
+    applyMe(viewOf(response.data))
   } catch {
     // Anonymous, or the server could not be reached; the views report their own failures.
   }
@@ -283,7 +311,7 @@ const probeCookieSession = async () => {
 
 // Resolves once sessionReady is true. The watcher is stopped as soon as it has fired, so a
 // settled wait holds no listener.
-const whenSessionKnown = () => new Promise(resolve => {
+const whenSessionKnown = () => new Promise<void>(resolve => {
   if (sessionReady.value) {
     resolve()
     return
@@ -301,9 +329,9 @@ const whenSessionKnown = () => new Promise(resolve => {
 // A cookie session travels through the session channel, which carries no secret.
 const SESSION_KEYS = ['token-name', 'token-secret']
 let sharing = false
-let stopListening = () => {}
+let stopListening: () => void = () => {}
 
-const onStorage = (event) => {
+const onStorage = (event: StorageEvent) => {
   if (event.key !== null && !SESSION_KEYS.includes(event.key)) {
     return
   }
@@ -325,7 +353,7 @@ const onStorage = (event) => {
 
 // A cookie session started or ended in another tab. The message names only the principal; the
 // details of the session are read from the server, so nothing secret depends on the channel.
-const onChannelMessage = (message) => {
+const onChannelMessage = (message: ChannelMessage) => {
   if (message.type === 'signed-out') {
     if (authMode.value === 'cookie') {
       clearSession()
@@ -337,7 +365,7 @@ const onChannelMessage = (message) => {
   }
   setCookieMode(true)
   authMode.value = 'cookie'
-  principal.value = message.principal
+  principal.value = message.principal as Principal | undefined
   loadCookieDetails().catch(() => {
     if (authMode.value === 'cookie') {
       clearSession()
@@ -345,14 +373,14 @@ const onChannelMessage = (message) => {
   })
 }
 
-const shareSession = () => {
+const shareSession = (): void => {
   if (sharing) return
   window.addEventListener('storage', onStorage)
   stopListening = channel.subscribe(onChannelMessage)
   sharing = true
 }
 
-const stopSharingSession = () => {
+const stopSharingSession = (): void => {
   window.removeEventListener('storage', onStorage)
   stopListening()
   stopListening = () => {}
@@ -363,7 +391,7 @@ const isLogged = computed(() => details.value !== undefined)
 
 // The server's instanceAdmin answer decides when it sends one. An older server does not, and then
 // the access-token manager permission is the best answer it can give.
-const instanceAdmin = computed(() => {
+const instanceAdmin = computed<boolean>(() => {
   if (typeof details.value?.instanceAdmin === 'boolean') {
     return details.value.instanceAdmin
   }
@@ -372,21 +400,21 @@ const instanceAdmin = computed(() => {
     ?.some(entry => entry.identifier === 'access-token:manager') === true
 })
 
-const isManager = computed(() => instanceAdmin.value)
+const isManager = computed<boolean>(() => instanceAdmin.value)
 
 // The allowed nodes of the principal, as /api/auth/me lists them. A server that does not send the
 // list gives an empty one here; `can` tells the two cases apart.
-const nodes = computed(() => Array.isArray(details.value?.nodes) ? details.value.nodes : [])
+const nodes = computed<string[]>(() => Array.isArray(details.value?.nodes) ? details.value.nodes : [])
 
 // The one place where permission nodes meet the legacy flags. A session that carries a node list
 // is decided by the list alone. A session without one (an older server) is decided by the manager
 // or instance admin flag, which is what every admin gate did before nodes existed.
-const can = (node) =>
+const can = (node: string): boolean =>
   Array.isArray(details.value?.nodes)
     ? canUse(details.value.nodes, node)
     : isManager.value
 
-const hasPermissionTo = (path, permission) => {
+const hasPermissionTo = (path: string, permission: string): boolean => {
   if (isManager.value) {
     return true
   }

@@ -26,15 +26,17 @@ const ATTRIBUTE = 'data-ingot-plugin-style'
 const STYLE_PATH = /^\/api\/frontend\/plugin-styles\/([a-z0-9-]{1,32})\/[0-9a-f]{16}\.css$/
 
 // The links this module added, by plugin. The map is the record, so the document is not queried for them.
-const linksByPlugin = new Map()
+const linksByPlugin = new Map<string, { path: string; link: HTMLLinkElement }>()
 
 /** The stylesheet entries of a manifest whose path matches the served pattern, keyed by the plugin the path names. */
-const wantedStyles = (stylesheets) => {
-  const wanted = new Map()
+const wantedStyles = (stylesheets: unknown): Map<string, string> => {
+  const wanted = new Map<string, string>()
   if (!Array.isArray(stylesheets)) return wanted
-  for (const entry of stylesheets) {
-    const match = typeof entry?.path === 'string' ? STYLE_PATH.exec(entry.path) : null
-    if (match) wanted.set(match[1], entry.path)
+  for (const entry of stylesheets as Array<{ path?: unknown }>) {
+    const path = entry?.path
+    if (typeof path !== 'string') continue
+    const match = STYLE_PATH.exec(path)
+    if (match) wanted.set(match[1], path)
   }
   return wanted
 }
@@ -43,7 +45,7 @@ const wantedStyles = (stylesheets) => {
  * Makes the plugin links of the document match [stylesheets], the list of the manifest. A link of a plugin that is no
  * longer listed, or whose path changed, is removed. A listed path without a link gets one, appended to the head.
  */
-const applyPluginStyles = (stylesheets) => {
+const applyPluginStyles = (stylesheets: unknown) => {
   const wanted = wantedStyles(stylesheets)
 
   for (const [plugin, { path, link }] of linksByPlugin) {

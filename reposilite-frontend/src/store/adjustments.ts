@@ -18,18 +18,24 @@ import { ref, watchEffect } from 'vue'
 import { createSemverComparator } from '../store/maven/semver'
 
 const reversedFileOrder = ref(localStorage.getItem('reversedFileOrder') === 'true')
-watchEffect(() => localStorage.setItem('reversedFileOrder', reversedFileOrder.value))
+watchEffect(() => localStorage.setItem('reversedFileOrder', String(reversedFileOrder.value)))
 
 const displayHashFiles = ref(localStorage.getItem('displayHashFiles') === 'true')
-watchEffect(() => localStorage.setItem('displayHashFiles', displayHashFiles.value))
+watchEffect(() => localStorage.setItem('displayHashFiles', String(displayHashFiles.value)))
 
 const UTILITY_EXTENSIONS = ['.asc', '.md5', '.sha1', '.sha256', '.sha512']
+
+/* A listed entry: only the fields the adjustments read. */
+export interface ListedFile {
+  name: string
+  type: string
+}
 
 /*
  * Checksum and signature files that sit next to an artifact. They are hidden by default,
  * which is why a directory holding only these looks empty unless the count is shown.
  */
-const isUtilityFile = (file) =>
+const isUtilityFile = (file: ListedFile): boolean =>
   UTILITY_EXTENSIONS.some(ext => file.name.endsWith(ext))
 
 export function useAdjustments() {
@@ -37,10 +43,10 @@ export function useAdjustments() {
    * The number of entries the current adjustments hide. Counted on the unfiltered listing,
    * so an empty-looking directory can say what is in it.
    */
-  const countHiddenFiles = (files) =>
+  const countHiddenFiles = (files: ListedFile[]): number =>
     displayHashFiles.value ? 0 : files.filter(isUtilityFile).length
 
-  const applyAdjustments = (files) => {
+  const applyAdjustments = (files: ListedFile[]): ListedFile[] => {
     if (!displayHashFiles.value) {
       files = files.filter(file => !isUtilityFile(file))
     }
@@ -48,8 +54,8 @@ export function useAdjustments() {
     if (reversedFileOrder.value) {
       const semverComparator = createSemverComparator(
         true,
-        (a, b) => a.type === 'DIRECTORY' && b.type === 'DIRECTORY',
-        (file) => file.name,
+        (a: ListedFile, b: ListedFile) => a.type === 'DIRECTORY' && b.type === 'DIRECTORY',
+        (file: ListedFile) => file.name,
       )
 
       files = files.sort(semverComparator)

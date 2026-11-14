@@ -15,13 +15,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createTokenStore } from './tokens'
+import { createTokenStore, type Notifier, type Token, type TokenUpdate } from './tokens'
+import type { createClient } from './client'
+
+type StoreClient = ReturnType<typeof createClient>
 
 // No timers and no network: the fake server below answers from memory and enforces If-Match.
 vi.mock('../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: Error | undefined) => error?.message ?? `${error}`
 }))
 
 const preconditionFailed = () =>
@@ -31,49 +34,49 @@ const preconditionFailed = () =>
  * One token per name. The list carries no tag, the details do, and an update is refused with 412 when its tag no
  * longer describes the stored token.
  */
-const fakeServer = (names) => {
-  const tokens = Object.fromEntries(names.map(name => [name, { name, description: '', permissions: [], routes: [], expiresAt: null }]))
-  const versions = Object.fromEntries(names.map(name => [name, 1]))
-  const tagOf = (name) => `"${name}-${versions[name]}"`
+const fakeServer = (names: string[]) => {
+  const tokens: Record<string, Token> = Object.fromEntries(names.map((name): [string, Token] => [name, { name, description: '', permissions: [], routes: [], expiresAt: null }]))
+  const versions: Record<string, number> = Object.fromEntries(names.map((name): [string, number] => [name, 1]))
+  const tagOf = (name: string) => `"${name}-${versions[name]}"`
 
-  const update = vi.fn(async (name, request, etag) => {
-    if (etag !== undefined && etag !== tagOf(name)) throw preconditionFailed()
+  const update = vi.fn((name: string, request: TokenUpdate, etag: string | undefined) => {
+    if (etag !== undefined && etag !== tagOf(name)) return Promise.reject(preconditionFailed())
     tokens[name] = { ...tokens[name], description: request.description }
     versions[name] += 1
-    return { data: {} }
+    return Promise.resolve({ data: {} })
   })
 
   return {
     tokens,
     update,
     /* Another admin edits the token. */
-    changeElsewhere: (name, description) => {
+    changeElsewhere: (name: string, description: string) => {
       tokens[name] = { ...tokens[name], description }
       versions[name] += 1
     },
     client: {
       tokens: {
-        list: async () => ({ data: Object.values(tokens).map(token => ({ ...token })) }),
-        get: async (name) => ({ data: { ...tokens[name] }, headers: { etag: tagOf(name) } }),
-        createOrUpdate: async () => ({ data: {} }),
+        list: () => Promise.resolve({ data: Object.values(tokens).map(token => ({ ...token })) }),
+        get: (name: string) => Promise.resolve({ data: { ...tokens[name] }, headers: { etag: tagOf(name) } }),
+        createOrUpdate: () => Promise.resolve({ data: {} }),
         update,
-        delete: async () => ({}),
-        regenerateSecret: async () => ({ data: '' })
+        delete: () => Promise.resolve({}),
+        regenerateSecret: () => Promise.resolve({ data: '' })
       }
-    }
+    } as unknown as StoreClient
   }
 }
 
 const recordingNotify = () => {
-  const calls = { success: [], error: [] }
+  const calls: { success: string[]; error: string[] } = { success: [], error: [] }
   return {
     calls,
-    success: (message) => calls.success.push(message),
-    error: (message) => calls.error.push(message)
+    success: (message: string) => calls.success.push(message),
+    error: (message: string) => calls.error.push(message)
   }
 }
 
-const loadedStore = async (server, notify) => {
+const loadedStore = async (server: ReturnType<typeof fakeServer>, notify: Notifier) => {
   const store = createTokenStore({ getClient: () => server.client, notify })
   await store.fetchTokens()
   return store

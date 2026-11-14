@@ -44,7 +44,21 @@ export const COLOUR_CLASSES = {
 const ESC = '\u001b'
 const CONTROL_SEQUENCE = new RegExp(`${ESC}\\[([0-9;]*)([A-Za-z])`, 'g')
 
-const applySgr = (style, params) => {
+type ColourCode = keyof typeof COLOUR_CLASSES
+
+/* One run of text with the classes of the style that was active when it was written. */
+export interface AnsiSegment {
+  text: string
+  classes: string[]
+}
+
+interface SgrStyle {
+  bold: boolean
+  underline: boolean
+  colour: ColourCode | null
+}
+
+const applySgr = (style: SgrStyle, params: string): void => {
   const codes = params === '' ? [0] : params.split(';').map(Number)
   for (let i = 0; i < codes.length; i++) {
     const code = codes[i]
@@ -63,7 +77,7 @@ const applySgr = (style, params) => {
     } else if (code === 39) {
       style.colour = null
     } else if (code in COLOUR_CLASSES) {
-      style.colour = code
+      style.colour = code as ColourCode
     } else if (code === 38 || code === 48) {
       // Extended colours (5;n or 2;r;g;b) are not supported; skip their parameters.
       if (codes[i + 1] === 5) i += 2
@@ -72,18 +86,18 @@ const applySgr = (style, params) => {
   }
 }
 
-const classesOf = style => [
+const classesOf = (style: SgrStyle): string[] => [
   ...(style.bold ? ['font-bold'] : []),
   ...(style.underline ? ['underline'] : []),
   ...(style.colour === null ? [] : [COLOUR_CLASSES[style.colour]])
 ]
 
-export function parseAnsi(message) {
-  const segments = []
-  const style = { bold: false, underline: false, colour: null }
+export function parseAnsi(message: string): AnsiSegment[] {
+  const segments: AnsiSegment[] = []
+  const style: SgrStyle = { bold: false, underline: false, colour: null }
   let position = 0
 
-  const pushText = text => {
+  const pushText = (text: string) => {
     if (text.length > 0) segments.push({ text, classes: classesOf(style) })
   }
 

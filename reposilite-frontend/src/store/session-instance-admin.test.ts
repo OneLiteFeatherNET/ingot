@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import type { SessionDetails } from './session'
+
+// The answer of /api/auth/me as these tests send it: a permission may leave out its shortcut.
+type MeAnswer = Omit<Partial<SessionDetails>, 'permissions'> & { permissions: { identifier: string }[] }
+// The mocked axios default export: only get is driven by these tests.
+type AxiosGetMock = Mock<(url: string, config: { withCredentials?: boolean }) => Promise<unknown>>
 
 // A fresh copy of the session module per test, with the client mocked, so the flags of one test
 // cannot reach the next.
@@ -31,12 +37,12 @@ vi.mock('../helpers/toast', async (importOriginal) => ({
   createWarningToast: vi.fn()
 }))
 
-const loaded = []
+const loaded: (typeof import('./session'))[] = []
 
-const signIn = async (details) => {
+const signIn = async (details: MeAnswer) => {
   localStorage.clear()
   vi.resetModules()
-  const axios = (await import('axios')).default
+  const axios = (await import('axios')).default as unknown as { get: AxiosGetMock }
   const session = await import('./session')
   loaded.push(session)
   axios.get.mockResolvedValue({ data: details })

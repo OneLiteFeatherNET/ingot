@@ -37,7 +37,7 @@ export default function useTheme() {
     theme.isDark = storedTheme === 'dark'
   }
 
-  const changeTheme = (mode) => {
+  const changeTheme = (mode: string) => {
     localStorage.setItem(themeKey, mode)
     fetchColorMode()
   }

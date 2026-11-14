@@ -19,13 +19,17 @@ import { ref } from 'vue'
 import { createConfigurationStore } from './configuration'
 import { createSuccessToast, createErrorToast } from '../helpers/toast'
 
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+/* The fake client implements only the settings calls the store makes, so it is cast to the store's client type. */
+const clientRef = (client: unknown): ClientRef => ref(client) as unknown as ClientRef
+
 // The store is built per test against a fake server. Session and toast are replaced so that
 // importing the store touches neither the network nor the DOM. No timers are used.
 vi.mock('./session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | undefined)?.message ?? String(error)
 }))
 
 const SCHEMA = {
@@ -33,7 +37,7 @@ const SCHEMA = {
   properties: { name: { type: 'string' }, size: { type: 'number' } }
 }
 
-const response = (data, etag) => ({ data, headers: { etag } })
+const response = (data: unknown, etag: string) => ({ data, headers: { etag } })
 
 const preconditionFailed = () =>
   Object.assign(new Error('Precondition Failed'), { response: { status: 412, data: {} } })
@@ -42,39 +46,39 @@ const preconditionFailed = () =>
  * A server with one state per domain that enforces If-Match the way the backend does: a write that carries a tag
  * which no longer describes the stored state is refused with 412 and changes nothing.
  */
-const fakeServer = (initial) => {
+const fakeServer = (initial: Record<string, unknown>) => {
   const state = structuredClone(initial)
-  const versions = Object.fromEntries(Object.keys(state).map(domain => [domain, 1]))
-  const tagOf = (domain) => `"${domain}-${versions[domain]}"`
+  const versions = Object.fromEntries(Object.keys(state).map((domain): [string, number] => [domain, 1]))
+  const tagOf = (domain: string) => `"${domain}-${versions[domain]}"`
 
-  const update = vi.fn(async (domain, content, etag) => {
-    if (etag !== undefined && etag !== tagOf(domain)) throw preconditionFailed()
+  const update = vi.fn((domain: string, content: unknown, etag?: string) => {
+    if (etag !== undefined && etag !== tagOf(domain)) return Promise.reject(preconditionFailed())
     state[domain] = structuredClone(content)
     versions[domain] += 1
-    return response(structuredClone(content), tagOf(domain))
+    return Promise.resolve(response(structuredClone(content), tagOf(domain)))
   })
 
   return {
     state,
     update,
     /* Another admin saves the domain. */
-    changeElsewhere: (domain, content) => {
+    changeElsewhere: (domain: string, content: unknown) => {
       state[domain] = structuredClone(content)
       versions[domain] += 1
     },
     client: {
       settings: {
-        domains: async () => ({ data: Object.keys(state) }),
-        schema: async (domain) => ({ data: { ...SCHEMA, title: domain } }),
-        fetch: async (domain) => response(structuredClone(state[domain]), tagOf(domain)),
+        domains: () => Promise.resolve({ data: Object.keys(state) }),
+        schema: (domain: string) => Promise.resolve({ data: { ...SCHEMA, title: domain } }),
+        fetch: (domain: string) => Promise.resolve(response(structuredClone(state[domain]), tagOf(domain))),
         update
       }
     }
   }
 }
 
-const loadedStore = async (server) => {
-  const store = createConfigurationStore(ref(server.client))
+const loadedStore = async (server: ReturnType<typeof fakeServer>) => {
+  const store = createConfigurationStore(clientRef(server.client))
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   return store
 }
@@ -202,7 +206,7 @@ describe('settings conflict resolution', () => {
 
     await store.reviewConflict()
 
-    expect(store.conflict.value.reviewed).toBe(true)
+    expect(store.conflict.value?.reviewed).toBe(true)
     expect(store.conflictChanges.value).toEqual([
       expect.objectContaining({ domain: 'maven', kind: 'changed', before: 'other-admin', after: 'mine' })
     ])

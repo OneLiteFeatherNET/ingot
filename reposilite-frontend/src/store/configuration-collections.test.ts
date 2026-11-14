@@ -18,14 +18,21 @@ import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import { createConfigurationStore, countDifferences } from './configuration'
 
+type Store = ReturnType<typeof createConfigurationStore>
+type ClientRef = Parameters<typeof createConfigurationStore>[0]
+interface RepositoryEntry { id: string; visibility: string; redeployment: boolean }
+
 // Session and toast are replaced, as in configuration.test.js, so that the store touches
 // neither the network nor the DOM.
 vi.mock('./session', () => ({ useSession: () => ({ client: { value: null } }) }))
 vi.mock('../helpers/toast', () => ({
   createSuccessToast: vi.fn(),
   createErrorToast: vi.fn(),
-  errorMessage: (error) => error?.message ?? `${error}`
+  errorMessage: (error: unknown) => (error as { message?: string } | undefined)?.message ?? String(error)
 }))
+
+// JSON round trip that keeps the value's type, so fixtures do not leak untyped values.
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const REPOSITORY_SCHEMA = {
   type: 'object',
@@ -54,23 +61,23 @@ const serverWithRepositories = () => ({
   }
 })
 
-const fakeClient = (server = serverWithRepositories()) => ({
+const fakeClient = (server: Record<string, unknown> = serverWithRepositories()) => ({
   server,
   settings: {
-    domains: async () => ({ data: ['maven'] }),
-    schema: async () => ({ data: { ...REPOSITORY_SCHEMA, title: 'Maven' } }),
-    fetch: async (domain) => ({ data: JSON.parse(JSON.stringify(server[domain])) }),
-    update: async () => ({ data: {} })
+    domains: () => Promise.resolve({ data: ['maven'] }),
+    schema: () => Promise.resolve({ data: { ...REPOSITORY_SCHEMA, title: 'Maven' } }),
+    fetch: (domain: string) => Promise.resolve({ data: cloneJson(server[domain]) }),
+    update: () => Promise.resolve({ data: {} })
   }
 })
 
 const loadedStore = async () => {
-  const store = createConfigurationStore(ref(fakeClient()))
+  const store = createConfigurationStore(ref(fakeClient()) as unknown as ClientRef)
   expect(await store.fetchConfiguration(), 'the fixture configuration should load').toBe(true)
   return store
 }
 
-const repositories = (store) => store.configurations.value.maven.repositories
+const repositories = (store: Store): RepositoryEntry[] => store.configurations.value.maven.repositories as RepositoryEntry[]
 
 describe('countDifferences', () => {
   it('is zero for equal values', () => {

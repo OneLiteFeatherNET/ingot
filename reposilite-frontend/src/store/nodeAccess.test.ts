@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { ACCESS_NODES, canUse, requiredNodes, routeAllowed } from './nodeAccess'
+import { ACCESS_NODES, canUse, requiredNodes, routeAllowed, type RouteMeta } from './nodeAccess'
 
 describe('canUse', () => {
   it('allows every node for a lone wildcard', () => {
@@ -69,12 +69,12 @@ describe('requiredNodes', () => {
   })
 
   it('reads nothing from a route without nodes', () => {
-    expect(requiredNodes({ section: 'overview' })).toEqual([])
+    expect(requiredNodes({ section: 'overview' } as RouteMeta)).toEqual([])
   })
 })
 
 describe('routeAllowed', () => {
-  const canOnly = (...allowed) => (node) => allowed.includes(node)
+  const canOnly = (...allowed: string[]) => (node: string) => allowed.includes(node)
 
   it('allows a route when its node is allowed', () => {
     expect(routeAllowed({ node: 'ingot.admin.audit', manager: true }, canOnly('ingot.admin.audit'), false)).toBe(true)
@@ -93,6 +93,6 @@ describe('routeAllowed', () => {
   })
 
   it('allows a route that needs nothing', () => {
-    expect(routeAllowed({ section: 'overview' }, canOnly(), false)).toBe(true)
+    expect(routeAllowed({ section: 'overview' } as RouteMeta, canOnly(), false)).toBe(true)
   })
 })

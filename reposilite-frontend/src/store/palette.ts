@@ -31,7 +31,7 @@
 
 const FALLBACK = 'CanvasText'
 
-const readVariable = (name) => {
+const readVariable = (name: string): string => {
   if (typeof document === 'undefined') return FALLBACK
   const root = document.documentElement
   const resolved = getComputedStyle(root).getPropertyValue(name).trim()
@@ -39,7 +39,7 @@ const readVariable = (name) => {
   return value || FALLBACK
 }
 
-const role = (name) => readVariable(`--md-sys-color-${name}`)
+const role = (name: string): string => readVariable(`--md-sys-color-${name}`)
 
 const CHART_SERIES = 8
 

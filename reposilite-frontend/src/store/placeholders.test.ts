@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest'
+import type * as Placeholders from './placeholders'
+import type * as Appearance from './appearance'
 
 // Both modules keep state at module level, so every test loads a fresh copy.
-let placeholders
-let appearance
+let placeholders: typeof Placeholders
+let appearance: typeof Appearance
 
 beforeEach(async () => {
   vi.resetModules()
@@ -32,7 +34,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-const settingsResponse = (overrides = {}) => ({
+const settingsResponse = (overrides: Record<string, unknown> = {}) => ({
   placeholders: {
     '{{REPOSILITE.BASE_PATH}}': '/ingot/',
     '{{REPOSILITE.VITE_BASE_PATH}}': 'ingot',
@@ -49,12 +51,12 @@ const settingsResponse = (overrides = {}) => ({
   ...overrides
 })
 
-const respondWith = (body, init = {}) => {
-  const fetchMock = vi.fn(async () => new Response(JSON.stringify(body), {
+const respondWith = (body: unknown, init: { status?: number; statusText?: string } = {}) => {
+  const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(new Response(JSON.stringify(body), {
     status: init.status ?? 200,
     statusText: init.statusText ?? 'OK',
     headers: { 'Content-Type': 'application/json' }
-  }))
+  })))
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
@@ -109,7 +111,7 @@ describe('loadFrontendSettings in a detached dashboard', () => {
 })
 
 describe('loadFrontendSettings when the settings cannot be had', () => {
-  let consoleError
+  let consoleError: MockInstance<typeof console.error>
 
   beforeEach(() => {
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -120,7 +122,7 @@ describe('loadFrontendSettings when the settings cannot be had', () => {
   })
 
   it('keeps the default appearance when the request fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(() => Promise.reject(new TypeError('Failed to fetch'))))
 
     await expect(placeholders.loadFrontendSettings({ mountPath: '/' })).resolves.toBeUndefined()
 
@@ -137,7 +139,7 @@ describe('loadFrontendSettings when the settings cannot be had', () => {
   })
 
   it('reports the failure in the console, not with a user facing error', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(() => Promise.reject(new TypeError('Failed to fetch'))))
 
     await placeholders.loadFrontendSettings({ mountPath: '/' })
 
@@ -146,8 +148,8 @@ describe('loadFrontendSettings when the settings cannot be had', () => {
 
   it('stops waiting after the timeout and keeps the defaults', async () => {
     vi.useFakeTimers()
-    vi.stubGlobal('fetch', vi.fn((url, { signal }) => new Promise((_, reject) => {
-      signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>((_input, init) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
     })))
 
     const pending = placeholders.loadFrontendSettings({ mountPath: '/', timeoutMs: 2000 })
@@ -201,7 +203,7 @@ describe('organization website', () => {
 
   it('is empty, not the dashboard address, when the settings cannot be had', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(() => Promise.reject(new TypeError('Failed to fetch'))))
 
     await placeholders.loadFrontendSettings({ mountPath: '/' })
 

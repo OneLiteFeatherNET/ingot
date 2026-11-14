@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('axios', () => ({ default: { get: vi.fn() } }))
-vi.mock('./client', () => ({ createURL: (path) => path, handleRequest: (config) => config }))
+vi.mock('./client', () => ({ createURL: (path: string) => path, handleRequest: (config: unknown) => config }))
 vi.mock('../navigation/registry', () => ({ setContributions: vi.fn() }))
 
 const frontendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -28,8 +28,8 @@ const frontendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..'
 const HASH_A = '3f9c1a2b7d4e6f80'
 const HASH_B = '0a1b2c3d4e5f6071'
 
-const pathOf = (plugin, hash) => `/api/frontend/plugin-styles/${plugin}/${hash}.css`
-const entry = (plugin, hash = HASH_A) => ({ plugin, path: pathOf(plugin, hash), sha256: `${hash}${'0'.repeat(48)}` })
+const pathOf = (plugin: string, hash: string) => `/api/frontend/plugin-styles/${plugin}/${hash}.css`
+const entry = (plugin: string, hash = HASH_A) => ({ plugin, path: pathOf(plugin, hash), sha256: `${hash}${'0'.repeat(48)}` })
 
 /** The head of a dashboard document before any plugin stylesheet: its own stylesheet link and a style element. */
 const dashboardHead = () => {
@@ -45,7 +45,7 @@ const dashboardHead = () => {
 const pluginLinks = () => [...document.head.querySelectorAll('link')].filter((link) => link.hasAttribute('data-ingot-plugin-style'))
 
 describe('applyPluginStyles', () => {
-  let applyPluginStyles
+  let applyPluginStyles: (stylesheets: unknown) => void
 
   beforeEach(async () => {
     // A fresh module per test: the module keeps the links it added, so no test sees the links of another.
@@ -60,6 +60,7 @@ describe('applyPluginStyles', () => {
 
     // then: the link is the last element of the head, after the dashboard's own link and style element
     const last = document.head.lastElementChild
+    if (!last) throw new Error('the head has no element')
     expect(last.tagName, 'last element of the head').toBe('LINK')
     expect(last.getAttribute('rel'), 'rel').toBe('stylesheet')
     expect(last.getAttribute('href'), 'href from the manifest').toBe(pathOf('example', HASH_A))
@@ -169,7 +170,7 @@ describe('the plugin manifest of the dashboard', () => {
   it('adds the stylesheet links of the manifest once it is loaded', async () => {
     // given: a manifest that lists the stylesheet of the plugin example
     const axios = (await import('axios')).default
-    axios.get.mockResolvedValueOnce({ data: { version: 1, pages: [], sections: [], enabledPlugins: ['example'], stylesheets: [entry('example')] } })
+    vi.mocked(axios).get.mockResolvedValueOnce({ data: { version: 1, pages: [], sections: [], enabledPlugins: ['example'], stylesheets: [entry('example')] } })
     const { loadPluginUi } = await import('./pluginUi')
 
     // when: the manifest is loaded
@@ -184,7 +185,7 @@ describe('the plugin manifest of the dashboard', () => {
   it('removes the stylesheet links when the visitor signs out', async () => {
     // given: a loaded manifest with a stylesheet
     const axios = (await import('axios')).default
-    axios.get.mockResolvedValueOnce({ data: { version: 1, pages: [], sections: [], enabledPlugins: ['example'], stylesheets: [entry('example')] } })
+    vi.mocked(axios).get.mockResolvedValueOnce({ data: { version: 1, pages: [], sections: [], enabledPlugins: ['example'], stylesheets: [entry('example')] } })
     const { loadPluginUi, clearPluginUi } = await import('./pluginUi')
     await loadPluginUi()
 
@@ -198,7 +199,7 @@ describe('the plugin manifest of the dashboard', () => {
   it('adds no link when the manifest cannot be loaded', async () => {
     // given: a manifest request that is refused
     const axios = (await import('axios')).default
-    axios.get.mockRejectedValueOnce(new Error('401'))
+    vi.mocked(axios).get.mockRejectedValueOnce(new Error('401'))
     const { loadPluginUi } = await import('./pluginUi')
 
     // when: the manifest is loaded

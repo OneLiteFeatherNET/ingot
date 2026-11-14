@@ -30,14 +30,14 @@ const TOKEN_AUTHORIZATION = 'xBasic ZTJlLWFkbWluOnNlY3JldA=='
 
 describe('plugin manifest request', () => {
   beforeEach(() => {
-    vi.mocked(axios.get).mockReset()
-    vi.mocked(axios.get).mockResolvedValue({ data: [] })
+    vi.mocked(axios).get.mockReset()
+    vi.mocked(axios).get.mockResolvedValue({ data: [] })
   })
 
   it('sends the access token of a token session with the manifest request', async () => {
     await loadPluginUi({ headers: { Authorization: TOKEN_AUTHORIZATION } })
 
-    const [, config] = vi.mocked(axios.get).mock.calls[0]
+    const [, config] = vi.mocked(axios).get.mock.calls[0] as [string, { headers: Record<string, string> }]
     expect(config.headers.Authorization, 'the Authorization header of the manifest request').toBe(TOKEN_AUTHORIZATION)
   })
 })

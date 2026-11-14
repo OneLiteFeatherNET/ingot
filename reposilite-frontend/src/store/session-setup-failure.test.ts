@@ -15,15 +15,16 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import type { AxiosError } from 'axios'
 import { setupFailureMessage } from './session'
 
 // The answers of POST /api/auth/setup as the backend sends them (AuthLoginEndpoints.kt). The status
 // alone does not tell the cases apart: 403 covers a wrong code and an instance that is already set
 // up, and 409 covers a lost race and a taken name. The body message is what tells them apart.
-const answer = (status, message, headers = {}) =>
+const answer = (status: number, message: string, headers: Record<string, string> = {}) =>
   Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: { status, message }, headers }
-  })
+  }) as unknown as AxiosError<{ message?: string }>
 
 describe('setupFailureMessage', () => {
   it('says the setup code is incorrect when the code does not match', () => {

@@ -17,9 +17,23 @@
 import { describe, it, expect, vi } from 'vitest'
 import { openSessionChannel, SESSION_CHANNEL_NAME } from './session-channel'
 
+type MessageListener = (event: { data: unknown }) => void
+
+interface FakeTransport {
+  name: string | null
+  posted: unknown[]
+  listener: MessageListener | null
+  closed: boolean
+  postMessage: (message: unknown) => void
+  addEventListener: (type: string, listener: MessageListener) => void
+  removeEventListener: () => void
+  close: () => void
+  receive: (data: unknown) => void
+}
+
 // A channel double: it records what is posted and lets a test deliver a message.
-const fakeTransport = () => {
-  const transport = {
+const fakeTransport = (): FakeTransport => {
+  const transport: FakeTransport = {
     name: null,
     posted: [],
     listener: null,
@@ -43,7 +57,7 @@ const open = () => {
   const transport = fakeTransport()
   const channel = openSessionChannel((name) => {
     transport.name = name
-    return transport
+    return transport as unknown as BroadcastChannel
   })
   return { transport, channel }
 }
