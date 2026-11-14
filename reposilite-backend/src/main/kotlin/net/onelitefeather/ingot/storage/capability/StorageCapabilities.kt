@@ -100,18 +100,18 @@ interface SupportDetails {
 
 }
 
-/** The namespace of a storage configuration, which two repositories must not share. */
+/**
+ * The namespace of a storage configuration, which two repositories must not share. Core never reads a key: it passes the keys of two
+ * repositories to [overlaps] of the settings they were built from, so the rule that decides a collision belongs to the settings.
+ */
 @ExperimentalIngotStorageApi
 interface SharedNamespaceAware {
 
-    /** An opaque key of the namespace, or null when this configuration has no shared namespace to check. */
-    fun namespaceKey(): String?
+    /** An opaque key of the namespace of [repositoryName], or null when this configuration has no shared namespace to check. */
+    fun namespaceKey(repositoryName: String): String?
 
-    /** Whether this namespace collides with [other]. The default is equality of the keys. */
-    fun overlaps(other: SharedNamespaceAware): Boolean {
-        val key = namespaceKey() ?: return false
-        return key == other.namespaceKey()
-    }
+    /** Whether the namespace [key] collides with [otherKey], both produced by this type. The default is equality of the keys. */
+    fun overlaps(key: String, otherKey: String): Boolean = key == otherKey
 
     /** The message of a repository refused because its namespace overlaps another one. */
     fun overlapMessage(): String =
