@@ -28,6 +28,7 @@ import com.reposilite.web.api.HttpServerConfigurationEvent
 import io.javalin.http.Header
 import com.reposilite.web.api.HttpServerStartedEvent
 import com.reposilite.web.api.RoutingSetupEvent
+import net.onelitefeather.ingot.logging.AccessLogHandler
 import net.onelitefeather.ingot.search.runs.RunTrigger
 import net.onelitefeather.ingot.web.openapi.ExtensibleEnumSchemas
 import com.reposilite.web.api.SESSION_COOKIE_SCHEME
@@ -80,6 +81,13 @@ internal object JavalinConfiguration {
                 event.registerRoutes(EndpointAccessLoggingHandler())
                 event.registerRoutes(ApiCacheBypassHandler())
                 reposilite.logger.debug("CacheBypassHandler has been registered")
+            }
+        }
+
+        // Independent of the cache bypass, so the record is written whether or not the bypass is on
+        if (reposilite.accessLogSetting.enabled) {
+            reposilite.extensions.registerEvent { event: RoutingSetupEvent ->
+                event.registerRoutes(AccessLogHandler(reposilite.accessLogSetting.nanoTime, reposilite.accessLogSetting.sink))
             }
         }
 

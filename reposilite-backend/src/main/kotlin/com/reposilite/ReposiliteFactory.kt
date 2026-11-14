@@ -36,6 +36,7 @@ import net.onelitefeather.ingot.schema.SchemaLock
 import net.onelitefeather.ingot.schema.SchemaLockFactory
 import net.onelitefeather.ingot.schema.SchemaLockRequest
 import java.time.Clock
+import net.onelitefeather.ingot.logging.AccessLogSetting
 import net.onelitefeather.ingot.logging.JsonLogger
 import net.onelitefeather.ingot.logging.LogFormat
 import net.onelitefeather.ingot.logging.LogSettings
@@ -56,7 +57,12 @@ object ReposiliteFactory {
             LogFormat.TEXT -> PrintStreamLogger(System.out, System.err, Channel.ALL, false)
             LogFormat.JSON -> JsonLogger(System.out, System.err, Channel.ALL, Clock.systemUTC(), OpenTelemetryTraceContext)
         }
-        return createReposilite(parameters, console, logSettings = logSettings)
+        return createReposilite(
+            parameters,
+            console,
+            logSettings = logSettings,
+            accessLogSetting = AccessLogSetting.read(),
+        )
     }
 
     fun createReposilite(parameters: ReposiliteParameters, rootJournalist: Journalist): Reposilite =
@@ -76,6 +82,8 @@ object ReposiliteFactory {
         supportBundleSetting: SupportBundleSetting = SupportBundleSetting.read(),
         // The defaults of the logging variables, so a test does not depend on the environment of its machine
         logSettings: LogSettings = LogSettings(),
+        // The access record is off unless the caller switches it on, like the other opt-in handlers
+        accessLogSetting: AccessLogSetting = AccessLogSetting(enabled = false),
         awaitDelay: (Duration) -> Unit = { duration -> Thread.sleep(duration.toMillis()) },
     ): Reposilite {
         val localConfiguration = LocalConfigurationFactory.createLocalConfiguration(null, parameters)
@@ -134,6 +142,7 @@ object ReposiliteFactory {
             maxConcurrentRequests = maxConcurrentRequests,
             readOnlySetting = readOnlySetting,
             supportBundleSetting = supportBundleSetting,
+            accessLogSetting = accessLogSetting,
             awaitDelay = awaitDelay,
         )
 
