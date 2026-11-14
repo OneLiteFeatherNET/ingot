@@ -44,9 +44,10 @@ The `INGOT_ELASTICSEARCH_API_KEY_FILE` and `INGOT_ELASTICSEARCH_PASSWORD_FILE` v
 | A URL with any other scheme, such as `ftp` | The backend stops, and the message names the variable. |
 | An API key together with a user name | The backend stops and names both variables. Choose one of them. |
 | A username without a password, or a password without a username | The backend stops, and the message names the variable that is missing. |
-| Neither an API key nor a user name, and `INGOT_ELASTICSEARCH_ALLOW_HTTP` is `false` | The backend stops, and the message names the variables that are needed. |
+| Neither an API key nor a user name, with `https://` URLs | The backend starts. Every start logs one warning that the cluster is reached without credentials, which is only safe behind mTLS or a trusted network. The warning names the variables and no value. |
+| Neither an API key nor a user name, with an `http://` URL and `INGOT_ELASTICSEARCH_ALLOW_HTTP` is `false` | The backend stops, and the message names the switch. |
 
-Without any credential the backend starts only when `INGOT_ELASTICSEARCH_ALLOW_HTTP` is `true`, for a cluster that runs without security. Every start then logs a warning that names the variables and no value.
+Without any credential the backend starts over `https://` and logs the warning above. Plain `http://` without a credential needs `INGOT_ELASTICSEARCH_ALLOW_HTTP=true`, for a cluster that runs without security; that start logs the plain HTTP warning as well.
 
 ## Versions
 
