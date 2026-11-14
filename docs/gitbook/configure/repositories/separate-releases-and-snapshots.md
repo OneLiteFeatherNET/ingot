@@ -74,4 +74,4 @@ The repository list shows the write policy of every repository that takes upload
 
 ## Roll back
 
-A settings document that contains `versionPolicy` or `readOnly` is read by an older version of Ingot or Reposilite with those keys ignored. After a rollback the policies are no longer enforced, and a frozen repository accepts writes again until the settings are saved by a version that knows the keys. Remove the keys before a rollback if the policies must stay off, see [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md).
+A settings document that contains `versionPolicy` or `readOnly` is read by an older version of Ingot or Reposilite with those keys ignored. After a rollback the policies are no longer enforced, and a frozen repository accepts writes again until the settings are saved by a version that knows the keys. Remove the keys before a rollback if the policies must stay off, see [Roll back an upgrade](../../manage/upgrade/upgrade-ingot.md#roll-back-an-upgrade).

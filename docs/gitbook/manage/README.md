@@ -24,10 +24,7 @@ Backups, maintenance, hardening, limits and troubleshooting.
 
 The steps before, during and after an upgrade.
 
-* [Back up before upgrading](upgrade/back-up-before-upgrading.md)
-* [Upgrade from Ingot 1.1.x](upgrade/upgrade-ingot.md)
-* [Verify an upgrade](upgrade/verify-an-upgrade.md)
-* [Roll back an upgrade](upgrade/roll-back-an-upgrade.md)
+* [Upgrade Ingot](upgrade/upgrade-ingot.md)
 * [Upgrade from Reposilite 2.x](upgrade/upgrade-from-reposilite-2.md)
 
 ## Monitor

@@ -4,7 +4,7 @@ description: Get back into an Ingot instance when no administrator can sign in, 
 
 # Recover admin access
 
-Use this guide when nobody can sign in as an instance administrator: the password is lost, the only admin left through a provider group change, or the sign-in is locked after failed attempts. The steps below change the instance, so keep a backup of the data first, see [Back up before upgrading](../upgrade/back-up-before-upgrading.md).
+Use this guide when nobody can sign in as an instance administrator: the password is lost, the only admin left through a provider group change, or the sign-in is locked after failed attempts. The steps below change the instance, so keep a backup of the data first, see [Back up before upgrading](../upgrade/upgrade-ingot.md#back-up-before-upgrading).
 
 ## Find your case
 

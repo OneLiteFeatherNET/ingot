@@ -79,10 +79,10 @@ redirects:
   how-to/troubleshoot: manage/operate/troubleshoot.md
   how-to/collect-a-support-bundle: manage/operate/collect-a-support-bundle.md
   how-to/rebuild-search-index: configure/search/rebuild-search-index.md
-  how-to/back-up-before-upgrading: manage/upgrade/back-up-before-upgrading.md
+  how-to/back-up-before-upgrading: manage/upgrade/upgrade-ingot.md
   how-to/upgrade-ingot: manage/upgrade/upgrade-ingot.md
-  how-to/verify-an-upgrade: manage/upgrade/verify-an-upgrade.md
-  how-to/roll-back-an-upgrade: manage/upgrade/roll-back-an-upgrade.md
+  how-to/verify-an-upgrade: manage/upgrade/upgrade-ingot.md
+  how-to/roll-back-an-upgrade: manage/upgrade/upgrade-ingot.md
   how-to/monitor-status-and-failures: manage/monitor/monitor-status-and-failures.md
   how-to/monitor-with-the-prometheus-operator: manage/monitor/monitor-with-the-prometheus-operator.md
   how-to/review-audit-log: manage/monitor/review-audit-log.md
@@ -167,3 +167,6 @@ redirects:
   configure/serve-custom-frontend: configure/dashboard/serve-custom-frontend.md
   set-up/migrate/upgrade-from-reposilite: set-up/migrate/move-from-reposilite.md
   set-up/migrate/import-from-nexus: set-up/migrate/import-from-other-repository-managers.md
+  manage/upgrade/back-up-before-upgrading: manage/upgrade/upgrade-ingot.md
+  manage/upgrade/verify-an-upgrade: manage/upgrade/upgrade-ingot.md
+  manage/upgrade/roll-back-an-upgrade: manage/upgrade/upgrade-ingot.md

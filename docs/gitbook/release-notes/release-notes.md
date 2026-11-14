@@ -21,5 +21,5 @@ The changelog lists every change. The effects of the changes on an upgrade are c
 ## Related pages
 
 * [Upgrade changes and supported paths](upgrade-changes.md) lists the changes that an upgrade can affect.
-* [Back up before upgrading](../manage/upgrade/back-up-before-upgrading.md) describes the backup to take first.
-* [Verify an upgrade](../manage/upgrade/verify-an-upgrade.md) lists the checks after the upgrade.
+* [Back up before upgrading](../manage/upgrade/upgrade-ingot.md#back-up-before-upgrading) describes the backup to take first.
+* [Verify an upgrade](../manage/upgrade/upgrade-ingot.md#verify-an-upgrade) lists the checks after the upgrade.

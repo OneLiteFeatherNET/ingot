@@ -119,5 +119,5 @@ The delay and the timeout together must fit into the grace period of your orches
 * [How the search index stays current](how-the-search-index-stays-current.md) explains the outbox and the rebuild in detail.
 * [Sessions, login and CSRF](sessions-and-login.md) explains the sessions that replicas share.
 * [Identity model](identity-model.md) explains the data that every replica reads.
-* [Back up before upgrading](../../manage/upgrade/back-up-before-upgrading.md) describes what to save before a change to a shared database.
+* [Back up before upgrading](../../manage/upgrade/upgrade-ingot.md#back-up-before-upgrading) describes what to save before a change to a shared database.
 * [Configure the cluster bus](../../set-up/cluster/configure-cluster-bus.md) describes the optional bus between replicas.

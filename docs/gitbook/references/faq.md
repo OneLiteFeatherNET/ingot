@@ -37,7 +37,7 @@ See [Configure a database](../set-up/cluster/configure-database.md) for the conn
 
 Yes, if you take a backup before the upgrade. The old version reads the state it had before the first start of Ingot, so a rollback restores that state. Anything created in Ingot after the upgrade is not visible to Reposilite, and tokens created in Ingot do not work there.
 
-The steps and the list of what is lost are in [Roll back an upgrade](../manage/upgrade/roll-back-an-upgrade.md). Read it before you start the upgrade.
+The steps and the list of what is lost are in [Roll back an upgrade](../manage/upgrade/upgrade-ingot.md#roll-back-an-upgrade). Read it before you start the upgrade.
 
 ## What does high availability need?
 

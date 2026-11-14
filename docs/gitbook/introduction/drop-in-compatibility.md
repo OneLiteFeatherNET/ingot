@@ -64,11 +64,11 @@ Ingot adds to Reposilite. New environment variables get the `INGOT_` prefix, new
 
 ## Checking an upgrade
 
-Ingot keeps the promise for the image, the data and the clients. It does not replace checking the result. The checks after an upgrade are listed in [Verify an upgrade](../manage/upgrade/verify-an-upgrade.md).
+Ingot keeps the promise for the image, the data and the clients. It does not replace checking the result. The checks after an upgrade are listed in [Verify an upgrade](../manage/upgrade/upgrade-ingot.md#verify-an-upgrade).
 
 ## What cannot be undone
 
-A rollback to Reposilite restores the old state, and nothing created in Ingot survives it. Users, machine accounts, tokens and rights created in Ingot are not visible to Reposilite. Tokens created in Ingot do not work there. Take a backup before you upgrade, and read [Roll back an upgrade](../manage/upgrade/roll-back-an-upgrade.md) before you start.
+A rollback to Reposilite restores the old state, and nothing created in Ingot survives it. Users, machine accounts, tokens and rights created in Ingot are not visible to Reposilite. Tokens created in Ingot do not work there. Take a backup before you upgrade, and read [Roll back an upgrade](../manage/upgrade/upgrade-ingot.md#roll-back-an-upgrade) before you start.
 
 A repository with a `format` key is also a rollback concern. Reposilite and earlier Ingot releases ignore the key when they read the configuration, and they drop it the next time they save it. A repository that names a format other than `maven2` would then be served as Maven by the older release. This version has no such format in its user interface, so only a key written by hand can create one.
 

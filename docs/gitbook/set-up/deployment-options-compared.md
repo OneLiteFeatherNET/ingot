@@ -13,7 +13,7 @@ Ingot runs in four shapes. They serve the same API, the same repositories and th
 | Helm all-in-one chart | `helm upgrade --install` with one `--version` and one values file | The same command with a newer `--version` | `helm rollback` to the revision before the upgrade |
 | Helm split chart | The same command, with the dashboard workload in the values file | The same command with a newer `--version` | `helm rollback` to a revision before the split |
 
-In every shape the data stays where the instance keeps it, the working directory or the data volume. The rollback steps therefore depend on the data as much as on the binary, and they are the same for all four shapes. Read [Back up before upgrading](../manage/upgrade/back-up-before-upgrading.md) and [Roll back an upgrade](../manage/upgrade/roll-back-an-upgrade.md) before any upgrade.
+In every shape the data stays where the instance keeps it, the working directory or the data volume. The rollback steps therefore depend on the data as much as on the binary, and they are the same for all four shapes. Read [Back up before upgrading](../manage/upgrade/upgrade-ingot.md#back-up-before-upgrading) and [Roll back an upgrade](../manage/upgrade/upgrade-ingot.md#roll-back-an-upgrade) before any upgrade.
 
 ## JAR
 
@@ -21,7 +21,7 @@ The JAR is the most direct shape. Ingot writes its configuration, database and r
 
 * Install: [Run the JAR](deploy/install-jar.md).
 * Upgrade: [Upgrade from Ingot 1.1.x](../manage/upgrade/upgrade-ingot.md), or [Upgrade from Reposilite 3.x](migrate/move-from-reposilite.md) for an instance that is still on Reposilite.
-* Roll back: [Roll back an upgrade](../manage/upgrade/roll-back-an-upgrade.md).
+* Roll back: [Roll back an upgrade](../manage/upgrade/upgrade-ingot.md#roll-back-an-upgrade).
 
 ## Container image
 
@@ -29,7 +29,7 @@ The container image is the same server in a container. The data lives in the vol
 
 * Install: [Install with Docker](deploy/install-with-docker.md).
 * Upgrade: [Upgrade from Ingot 1.1.x](../manage/upgrade/upgrade-ingot.md) or [Upgrade from Reposilite 3.x](migrate/move-from-reposilite.md), depending on the version you run.
-* Roll back: [Roll back an upgrade](../manage/upgrade/roll-back-an-upgrade.md). It lists what the older version cannot read after an upgrade.
+* Roll back: [Roll back an upgrade](../manage/upgrade/upgrade-ingot.md#roll-back-an-upgrade). It lists what the older version cannot read after an upgrade.
 
 ## Helm all-in-one chart
 

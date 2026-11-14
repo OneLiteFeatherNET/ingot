@@ -10,7 +10,7 @@ This page covers Reposilite 3.x. Ingot is based on Reposilite 3.5.28. The contai
 
 ## Before you begin
 
-* A [backup](../../manage/upgrade/back-up-before-upgrading.md) of the data directory and, for MariaDB, of the database. The first start of Ingot migrates the data, and a rollback to Reposilite does not take that migration back.
+* A [backup](../../manage/upgrade/upgrade-ingot.md#back-up-before-upgrading) of the data directory and, for MariaDB, of the database. The first start of Ingot migrates the data, and a rollback to Reposilite does not take that migration back.
 * The image `ghcr.io/onelitefeathernet/ingot:1.2.0`. Earlier Ingot releases do not run this migration.
 * The Reposilite release you run now. Keep its image reference or JAR name, because you need it for a rollback.
 * Reposilite 3.x. For a Reposilite 2.x installation, follow [Upgrade from Reposilite 2.x](../../manage/upgrade/upgrade-from-reposilite-2.md) instead, because it needs its own steps.
@@ -96,7 +96,7 @@ What changes is listed in [Drop-in compatibility with Reposilite](../../introduc
 
 3. Check the repositories. `GET /api/maven/repositories` lists the repositories that Ingot serves, and they should match the ones you had.
 4. Resolve and deploy one artifact with your build tool. A test deploy must go to a repository that accepts it, and a release file that already exists returns `409`.
-5. Work through the rest of the checks in [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md). When they pass, the server answers on its port and the move is done.
+5. Work through the rest of the checks in [Verify an upgrade](../../manage/upgrade/upgrade-ingot.md#verify-an-upgrade). When they pass, the server answers on its port and the move is done.
 
 Ingot rewrites `configuration.cdn` on every start in its default mode. The file looks different after the first start, and settings that come from environment variables are not written into it. This is expected.
 
@@ -123,9 +123,9 @@ Before you upgrade from 3.6.x, keep a copy of `configuration.cdn` and of the sha
 
 ## Going back
 
-A rollback restores the old state. Nothing created in Ingot, such as users, machine accounts or tokens, is visible to Reposilite, so keep the backup until you have checked the move. [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md) lists the steps.
+A rollback restores the old state. Nothing created in Ingot, such as users, machine accounts or tokens, is visible to Reposilite, so keep the backup until you have checked the move. [Roll back an upgrade](../../manage/upgrade/upgrade-ingot.md#roll-back-an-upgrade) lists the steps.
 
 ## Related pages
 
 * [Drop-in compatibility with Reposilite](../../introduction/drop-in-compatibility.md) explains what stays the same and why.
-* [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md) lists the checks after the start.
+* [Verify an upgrade](../../manage/upgrade/upgrade-ingot.md#verify-an-upgrade) lists the checks after the start.
