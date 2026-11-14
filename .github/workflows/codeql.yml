@@ -3,13 +3,13 @@
 # Report only: a finding never fails the run. Findings are uploaded to code scanning and show up on the pull request
 # and in the Security tab. The gate on new high and critical alerts is a repository ruleset, not part of this file.
 #
-# Runs on pull requests into main, on pushes to main and once a week. A fork's pull request runs with a read-only
-# token, so its results are not recorded; the runs on main cover the code that merges.
+# Called by the heavy workflow (heavy.yml) when a pull request carries ci:codeql or ci:heavy, and on a release pull
+# request. It runs on pushes to main and once a week on its own. A fork's pull request runs with a read-only token,
+# so its results are not recorded; the runs on main cover the code that merges.
 name: "CodeQL"
 
 on:
-  pull_request:
-    branches: [ "main" ]
+  workflow_call:
   push:
     branches: [ "main" ]
   schedule:
