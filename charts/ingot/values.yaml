@@ -343,15 +343,17 @@ rollingUpdate:
   maxSurge: 1
 
 ## Readiness and liveness probes of the server.
-## `path` is used in allInOne mode. In split mode the server is probed on `serverPath`, because the server root is not a
-## page of the server there.
+## `path` is the liveness path in allInOne mode and the startup path too. It defaults to the health endpoint, which stays
+## 200 while the server drains or is at its request limit, so a busy replica is not restarted. In split mode the server is
+## probed on `serverPath`, because the server root is not a page of the server there.
 probes:
   port: 8080  # The port Ingot is running on inside the pod.
   scheme: "HTTP"  # Scheme to use in GET requests.
-  path: "/"
+  path: "/api/status/health"
   serverPath: "/api/status/health"
-  # Path of the readiness probe. Empty uses `path` in allInOne mode and /api/status/ready in split mode. Liveness is not
-  # affected. Split readiness needs an image that ships /api/status/ready, see the split how-to.
+  # Path of the readiness probe. Empty uses /api/status/ready in both modes. Liveness is not affected. Readiness answers
+  # 503 while the replica drains, which takes it out of rotation. The image must ship /api/status/ready, which the
+  # release 1.1.1 does not. An older pinned image needs readinessPath set to /api/status/health, see the how-to.
   readinessPath: ""
   readiness:
     initialDelaySeconds: 2
