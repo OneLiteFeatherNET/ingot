@@ -152,11 +152,26 @@ class FailSafeTest(unittest.TestCase):
 
 
 class DispatchTest(unittest.TestCase):
-    def test_dispatch_runs_everything_in_full(self):
-        decision = heavy_gate.decide("workflow_dispatch", "", [], "main", REPO, REPO)
+    def test_dispatch_on_main_runs_everything_in_full(self):
+        decision = heavy_gate.decide("workflow_dispatch", "", [], "", "", "", ref="refs/heads/main")
         self.assertEqual(ALL, set(decision.jobs))
         self.assertTrue(decision.full)
         self.assertTrue(decision.ok)
+
+    def test_dispatch_on_another_branch_runs_nothing_and_fails(self):
+        decision = heavy_gate.decide("workflow_dispatch", "", [], "", "", "", ref="refs/heads/feature/x")
+        self.assertEqual((), decision.jobs)
+        self.assertFalse(decision.ok)
+        self.assertIn("main", decision.reason)
+
+    def test_dispatch_without_a_ref_runs_nothing_and_fails(self):
+        self.assertFalse(heavy_gate.decide("workflow_dispatch", "", [], "", "", "").ok)
+
+    def test_dispatch_command_line_takes_the_ref(self):
+        with contextlib.redirect_stdout(io.StringIO()) as buffer:
+            code = heavy_gate.main(["decide", "--event-name", "workflow_dispatch", "--ref", "refs/heads/main"])
+        self.assertEqual(0, code)
+        self.assertIn("full=true", buffer.getvalue())
 
 
 class RenderTest(unittest.TestCase):

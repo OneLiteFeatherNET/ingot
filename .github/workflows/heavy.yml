@@ -62,10 +62,11 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           REPO: ${{ github.repository }}
+          REF: ${{ github.ref }}
         run: |
           python3 .github/scripts/heavy_gate.py decide \
             --event-name "$EVENT_NAME" --action "$ACTION" --labels "$LABELS" \
-            --head-ref "$HEAD_REF" --head-repo "$HEAD_REPO" --repo "$REPO" \
+            --head-ref "$HEAD_REF" --head-repo "$HEAD_REPO" --repo "$REPO" --ref "$REF" \
             --output "$GITHUB_OUTPUT"
 
   # Required check. Green on an ordinary pull request that asked for nothing, follows the heavy jobs when a label
