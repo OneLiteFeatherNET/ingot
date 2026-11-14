@@ -1,4 +1,10 @@
 # Builds and tests the project on pull requests and on pushes to main.
+#
+# A pull request runs every job. A push to main runs only what main needs: the Coverage (backend) and
+# Coverage (frontend) jobs, which write the Gradle and npm caches and the Codecov base that pull requests read,
+# the dashboard end-to-end job, which writes the Playwright browser cache, and the two amd64 image builds, which
+# write the Docker layer cache. Everything else was already proven by the pull request that merged. A nightly run
+# and a manual run cover the whole workflow.
 name: "CI"
 
 on:
@@ -6,13 +12,19 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # Nightly full run of this workflow on main, so main gets every job once a day even though a push runs a subset.
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Superseded pull request runs are cancelled. Runs on main, scheduled runs and manual runs are not: each one
+# finishes its own work, so a later push cannot cut short the caches and the coverage base of an earlier one.
 concurrency:
-  group: "ci-${{ github.workflow }}-${{ github.ref }}"
-  cancel-in-progress: true
+  group: "ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Baseline build on the minimum supported JDK. The project compiles with
@@ -54,6 +66,7 @@ jobs:
   # the JVM and npm trees fail in completely different ways.
   licenses:
     name: "Licenses"
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -102,6 +115,7 @@ jobs:
   # configuration fails the job. The unit tests run in Coverage (frontend), once, with coverage.
   frontend:
     name: "Frontend"
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -209,6 +223,7 @@ jobs:
   # this one answers a different question entirely.
   vulnerabilities:
     name: "Vulnerabilities"
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -269,13 +284,16 @@ jobs:
 
       # For the arm64 leg further down. Only the run stages are emulated; the Gradle and npm
       # builds are pinned to the native platform in the Dockerfiles.
+      # On push to main only the two amd64 builds run, since they write the Docker layer cache that pull requests read.
       - name: "Set up QEMU"
+        if: github.event_name != 'push'
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8  # v4.2.0
 
       - name: "Set up Buildx"
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
 
       - name: "Set up Python"
+        if: github.event_name != 'push'
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
         with:
           python-version: "3.12"
@@ -283,11 +301,13 @@ jobs:
       # The workflow script tests import PyYAML and the SBOM validation tests import jsonschema,
       # neither of which the runner image guarantees. The versions are pinned like the chart job.
       - name: "Install test dependencies"
+        if: github.event_name != 'push'
         run: python3 -m pip install "pyyaml==6.0.3" "jsonschema==4.26.0"
 
       # The annotation check that the release job runs on pushed images. Its tests use
       # fixture files only, so they need neither a registry nor the Docker daemon.
       - name: "Run the release script tests"
+        if: github.event_name != 'push'
         run: python3 -m unittest discover -s .github/scripts/tests -t .github/scripts/tests -v
 
       # Built for the host architecture and loaded, because the checks below run it. The
@@ -329,17 +349,20 @@ jobs:
       # It is a suite of its own because it needs an image that already exists, which is why
       # it cannot be part of the normal build.
       - name: "Set up Java"
+        if: github.event_name != 'push'
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961  # v5.7.0
         with:
           java-version: "21"
           distribution: "temurin"
 
       - name: "Set up Gradle"
+        if: github.event_name != 'push'
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
       # The previous release is the highest version tag, so the mixed-version case always pairs the current build with the
       # release an operator upgrades from. This checkout is shallow and fetches no tags, so the tags are read from the remote.
       - name: "Resolve the latest release"
+        if: github.event_name != 'push'
         id: previous
         run: |
           tag=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's#.*refs/tags/##' | sort -V | tail -n 1)
@@ -348,12 +371,13 @@ jobs:
           echo "image=ghcr.io/onelitefeathernet/ingot:${tag#v}" >> "$GITHUB_OUTPUT"
 
       - name: "Run the container tests"
+        if: github.event_name != 'push'
         env:
           PREVIOUS_IMAGE: ${{ steps.previous.outputs.image }}
         run: ./gradlew :reposilite-backend:containerTest -Dingot.previous.image="$PREVIOUS_IMAGE"
 
       - name: "Publish the container test results"
-        if: always()
+        if: always() && github.event_name != 'push'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: container-test-results
@@ -369,6 +393,7 @@ jobs:
       # acted on by bumping anything, so failing on it would train everyone to ignore this
       # step; those are caught by the Renovate base image bumps instead.
       - name: "Scan the server image"
+        if: github.event_name != 'push'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           scan-type: image
@@ -379,6 +404,7 @@ jobs:
           exit-code: "1"
 
       - name: "Scan the dashboard image"
+        if: github.event_name != 'push'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           scan-type: image
@@ -397,6 +423,7 @@ jobs:
       # Neither loaded nor pushed: a single Docker image store cannot hold two
       # architectures under one tag, and the question here is only whether it builds.
       - name: "Build the server image for arm64"
+        if: github.event_name != 'push'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
@@ -406,6 +433,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=ci-server-arm64
 
       - name: "Build the dashboard image for arm64"
+        if: github.event_name != 'push'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7.3.0
         with:
           context: .
@@ -427,7 +455,7 @@ jobs:
   # that breaks it. It only reads the repository: no identity token and no write permission.
   sbom:
     name: "SBOM"
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -478,6 +506,7 @@ jobs:
 
   chart:
     name: "Helm chart"
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -619,6 +648,7 @@ jobs:
   # two deploys at the same moment, a refresh token moved between replicas, and both replicas listing both instances.
   ha-smoke:
     name: "HA smoke test"
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -920,7 +950,7 @@ jobs:
   # a later change, once the first report has been triaged. The bundled plugin tests are ordinary tests and still do.
   plugin-api:
     name: "Plugin API"
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
