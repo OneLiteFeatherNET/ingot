@@ -100,28 +100,28 @@ export const RULES = [
   {
     id: 'arbitrary-value',
     number: 2,
-    scope: ['.vue', '.js'],
+    scope: ['.vue', '.js', '.ts'],
     allowlist: 'arbitrary-value.json',
     hint: 'Arbitrary value: use a token, an MD3 role, or a window variant (medium:, expanded:, large:, xlarge:, max-medium:, max-expanded:) for a breakpoint.',
-    appliesTo: scopedTo(['.vue', '.js']),
+    appliesTo: scopedTo(['.vue', '.js', '.ts']),
     match: ({ file, text, ctx }) => classTokensOf({ file, text, ctx }).filter((token) => token.includes('['))
   },
   {
     id: 'raw-colour',
     number: 3,
-    scope: ['.vue', '.js', '.css'],
+    scope: ['.vue', '.js', '.ts', '.css'],
     allowlist: 'raw-colour.json',
     hint: 'Raw colour: use a role utility such as text-on-surface or bg-surface-container.',
-    appliesTo: scopedTo(['.vue', '.js', '.css'], (file) => file === 'src/styles/md3/color.css'),
+    appliesTo: scopedTo(['.vue', '.js', '.ts', '.css'], (file) => file === 'src/styles/md3/color.css'),
     match: ({ text }) => colourLiterals(text)
   },
   {
     id: 'non-md3-default',
     number: 4,
-    scope: ['.vue', '.js'],
+    scope: ['.vue', '.js', '.ts'],
     allowlist: 'non-md3-default.json',
     hint: 'Tailwind default or palette colour: use md-* type classes, rounded-corner-*, shadow-elevation-*, the motion, z-index or opacity tokens, md-state-layer, or a role colour.',
-    appliesTo: scopedTo(['.vue', '.js']),
+    appliesTo: scopedTo(['.vue', '.js', '.ts']),
     match: ({ file, text, ctx }) => classTokensOf({ file, text, ctx }).filter(isNonMd3Default)
   },
   {
@@ -136,28 +136,28 @@ export const RULES = [
   {
     id: 'class-token',
     number: 6,
-    scope: ['.vue', '.js'],
+    scope: ['.vue', '.js', '.ts'],
     allowlist: 'class-token.json',
     hint: 'Class does not resolve: it is no Tailwind utility, @utility, @theme name or stylesheet rule. A runtime-built class is allowlisted by file with a reason.',
-    appliesTo: scopedTo(['.vue', '.js']),
+    appliesTo: scopedTo(['.vue', '.js', '.ts']),
     match: ({ file, text, ctx }) => classTokensOf({ file, text, ctx }).filter((token) => !ctx.resolves(token))
   },
   {
     id: 'class-selector',
     number: 7,
-    scope: ['.vue', '.js', '.css'],
+    scope: ['.vue', '.js', '.ts', '.css'],
     allowlist: 'class-selector.json',
     hint: 'Class selector: select with data-test or a role, or move the rule into a documented hook (.dark, .vfm).',
-    appliesTo: scopedTo(['.vue', '.js', '.css']),
+    appliesTo: scopedTo(['.vue', '.js', '.ts', '.css']),
     match: ({ file, text }) => selectorFindings({ file, text })
   },
   {
     id: 'inline-svg',
     number: 8,
-    scope: ['.vue', '.js'],
+    scope: ['.vue', '.js', '.ts'],
     allowlist: 'inline-svg.json',
     hint: 'Inline svg: use MdIcon, or a component in src/components/icons/.',
-    appliesTo: scopedTo(['.vue', '.js'], (file) => inFolder(file, ['src/components/icons/', 'src/components/md/'])),
+    appliesTo: scopedTo(['.vue', '.js', '.ts'], (file) => inFolder(file, ['src/components/icons/', 'src/components/md/'])),
     match: ({ text }) => matchesOf(/<svg(?=[\s>])/g, text)
   }
 ]

@@ -23,7 +23,7 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.js", "server/**/*.test.js"],
+    include: ["src/**/*.test.{js,ts}", "server/**/*.test.{js,ts}"],
     // Only read when the coverage script runs. The report lands in reposilite-frontend/coverage, which CI uploads.
     coverage: {
       provider: "v8",

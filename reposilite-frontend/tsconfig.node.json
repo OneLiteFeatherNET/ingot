@@ -1,0 +1,22 @@
+{
+  // @vue/tsconfig 0.9.1 ships no tsconfig.node.json, so its base file is extended and the library set is chosen here.
+  "extends": "@vue/tsconfig/tsconfig.json",
+  "include": [
+    "vite.config.js",
+    "vitest.config.js",
+    "playwright.config.js",
+    "eslint.config.js",
+    "nitro.config.mjs",
+    "scripts/**/*",
+    "server/**/*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "lib": ["ES2023"],
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "types": []
+  }
+}
