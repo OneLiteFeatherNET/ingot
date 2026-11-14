@@ -15,7 +15,7 @@ description: Lookup tables for the upgrade to Ingot. Lists the supported upgrade
 
 ## What the first start changes
 
-Settings encryption adds one configuration row, `settings-key`, which holds the key identifier and a check value and no key. It is written only when a settings key is configured. Without a key, the default `INGOT_SETTINGS_ENCRYPTION=optional` keeps every stored value, the start and the settings API as they were. With a key, the first start writes the stored secrets sealed once. See [Settings encryption](../references/configuration/settings-encryption.md).
+Settings encryption adds one configuration row, `settings-key`, which holds the key identifier and a check value and no key. It is written only when a settings key is configured. Without a key, the default `INGOT_SETTINGS_ENCRYPTION=optional` keeps every stored value, the start and the settings API as they were. With a key, the first start writes the stored secrets sealed once. See [Settings encryption](../references/settings/settings-encryption.md).
 
 ### Database tables
 
@@ -160,8 +160,8 @@ The image ships `opensearch-plugin.jar` in `/app/bundled-plugins/`. It is loaded
 
 * The search backend stays `database` until `searchEngine` is set to `opensearch` on every replica. Set the switch first and the search backend second, as described in [Use OpenSearch for search](../configure/search/use-opensearch-for-search.md).
 
-See [OpenSearch search backend](../references/configuration/opensearch-search-backend.md) for the variables and the security obligations of the cluster.
+See [OpenSearch search backend](../references/settings/opensearch-search-backend.md) for the variables and the security obligations of the cluster.
 
 ### The default colour is steel blue
 
-An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](../references/configuration/settings-domains.md)). No configuration file, environment variable, volume or plugin changes.
+An installation without a `seedColor` looks steel blue instead of Reposilite magenta. To keep the previous look, set `frontend.appearance.seedColor` to `#ac1c67` (see [Settings domains](../references/settings/settings-domains.md)). No configuration file, environment variable, volume or plugin changes.

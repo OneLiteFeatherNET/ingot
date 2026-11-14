@@ -23,7 +23,7 @@ When Ingot refuses to start for a configuration reason, it prints one line that 
 | `<variable> names <file>, which does not exist`, `is a directory`, `is not a readable file`, `cannot be read` or `does not contain valid UTF-8 text` | A variable with the `_FILE` suffix, such as `INGOT_LOCAL_KEYPASSWORD_FILE`, names a file that Ingot cannot read as text. | Point the variable at a readable UTF-8 file, or set the plain variable instead. See [Environment variables](../../references/configuration/environment-variables.md#file-values). |
 | `<variable> names <value>, which is not a valid path` | The path in a `_FILE` variable cannot be parsed. | Correct the path. |
 | `Set either INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE, not both` | Both the inline key and the key file are set. | Keep one of them. |
-| `... is not valid base64`, `must hold base64 of 32 bytes` or `names a file that cannot be read` | The settings key is malformed or unreadable. The message names the variable, never the key. | Generate the key again with 32 random bytes, base64 encoded, and check the file. See [Settings encryption](../../references/configuration/settings-encryption.md). |
+| `... is not valid base64`, `must hold base64 of 32 bytes` or `names a file that cannot be read` | The settings key is malformed or unreadable. The message names the variable, never the key. | Generate the key again with 32 random bytes, base64 encoded, and check the file. See [Settings encryption](../../references/settings/settings-encryption.md). |
 | `INGOT_SETTINGS_ENCRYPTION is 'required', but no settings key is configured.` | The mode is `required` and no key is set. | Set `INGOT_SETTINGS_KEY` or `INGOT_SETTINGS_KEY_FILE`, or set the mode to `optional`. |
 | `Settings domain '<domain>', property '<path>' is encrypted, but no settings key is configured.` | The stored settings were sealed with a key, and this start has none. | Start with the key that wrote them. |
 | `The settings key does not match the key of this database (key id <id>).` or `... the key that sealed the stored settings (key id <id>).` | The configured key is not the one the database or the other replicas use. | Start with the key the other instances use. Do not change the key to get past this, because the stored secrets stay unreadable. |
@@ -91,11 +91,11 @@ A deploy authenticates with the token name and secret, sent in an HTTP basic `Au
 **Symptom:** `409` with `Redeployment is not allowed`.
 
 * **Cause:** the file exists and the repository does not accept redeployment. Redeployment is off by default.
-* **Fix:** deploy a new version. Change the repository only when you need to replace published files, see [Repository settings](../../references/configuration/repository-settings.md).
+* **Fix:** deploy a new version. Change the repository only when you need to replace published files, see [Repository settings](../../references/repositories/repository-settings.md).
 
 **Symptom:** `405` with `is read-only and does not accept deployments or deletions`, or with `is a proxy` or `is a group and does not accept uploads`.
 
-* **Cause:** the repository is read-only, or it is a proxy or a group repository, which take no uploads. See [Repository types](../../references/configuration/repository-types.md).
+* **Cause:** the repository is read-only, or it is a proxy or a group repository, which take no uploads. See [Repository types](../../references/repositories/repository-types.md).
 * **Fix:** deploy to a hosted repository, or clear the read-only setting if it was set on purpose by mistake.
 
 **Symptom:** `503` with `The instance is read-only, writes are refused until read-only mode is turned off`, and a `Retry-After` header of 30 seconds.
@@ -111,7 +111,7 @@ A deploy authenticates with the token name and secret, sent in an HTTP basic `Au
 **Symptom:** `400` with a version policy message on a deploy.
 
 * **Cause:** the repository has a version policy that refuses this version, for example a snapshot in a release repository.
-* **Fix:** deploy to the repository that matches the version, or change the version policy. See [Version policy and read-only](../../references/configuration/repository-settings.md#version-policy-and-read-only).
+* **Fix:** deploy to the repository that matches the version, or change the version policy. See [Version policy and read-only](../../references/repositories/repository-settings.md#version-policy-and-read-only).
 
 **Symptom:** `507`, which the API documents as "not enough disk space".
 

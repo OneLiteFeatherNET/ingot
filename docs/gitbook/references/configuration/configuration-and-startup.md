@@ -4,7 +4,7 @@ description: Reference for the Ingot configuration files, the keys of the local 
 
 # Configuration file and startup parameters
 
-Ingot reads two kinds of configuration. The local configuration holds the settings of one instance and is read at start. The shared settings are kept in the database and are shared by all instances. This page covers the local configuration and the command line. The shared settings are in [Settings domains](settings-domains.md).
+Ingot reads two kinds of configuration. The local configuration holds the settings of one instance and is read at start. The shared settings are kept in the database and are shared by all instances. This page covers the local configuration and the command line. The shared settings are in [Settings domains](../settings/settings-domains.md).
 
 ## Configuration sources
 
@@ -112,7 +112,7 @@ Each key is a property of the local configuration. Types are `Boolean`, `Int`, `
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `hideSettingsSecrets` | Boolean | `false` | Replaces every non-empty secret in the settings API with `********`. Sending `********` back keeps the stored value. See [Settings domains](settings-domains.md#settings-api). |
+| `hideSettingsSecrets` | Boolean | `false` | Replaces every non-empty secret in the settings API with `********`. Sending `********` back keeps the stored value. See [Settings domains](../settings/settings-domains.md#settings-api). |
 | `searchEnabled` | Boolean | `true` | `false` makes the search endpoints answer `404` and stops the index workers. The search tables stay. |
 | `searchEngine` | String | `database` | Search backend that answers artifact search and holds the index. `database` ships with Ingot, and a plugin can register more ids. Environment variable `INGOT_LOCAL_SEARCHENGINE`, with `REPOSILITE_LOCAL_SEARCHENGINE` as fallback. An id that no backend has registered answers `503` on the search routes, instead of `404`. The id `opensearch` is registered by the bundled OpenSearch plugin, and only while its switch is on. See [Choose a search backend](../../configure/search/choose-a-search-backend.md). |
 
@@ -124,7 +124,7 @@ The image ships three plugins in `/app/bundled-plugins/`, and each one loads onl
 | --- | --- | --- | --- |
 | `INGOT_METRICS_ENABLED` | `prometheus-plugin.jar` | off | Metrics endpoint. See [Prometheus plugin](environment-variables.md#prometheus-plugin). |
 | `INGOT_NEXUS_IMPORT_ENABLED` | `nexus-import-plugin.jar` | off | Nexus Repository 3 importer. See [Nexus import variables](environment-variables.md#nexus-import-variables). |
-| `INGOT_OPENSEARCH_ENABLED` | `opensearch-plugin.jar` | off | OpenSearch search backend, which registers the id `opensearch`. See [OpenSearch search backend](opensearch-search-backend.md). |
+| `INGOT_OPENSEARCH_ENABLED` | `opensearch-plugin.jar` | off | OpenSearch search backend, which registers the id `opensearch`. See [OpenSearch search backend](../settings/opensearch-search-backend.md). |
 
 ### Debug
 
@@ -250,6 +250,6 @@ The identity migrations run automatically at start. The migrations of `--run-mig
 ## Related pages
 
 * [Environment variables](environment-variables.md)
-* [Settings domains](settings-domains.md)
-* [Storage providers](storage-providers.md)
+* [Settings domains](../settings/settings-domains.md)
+* [Storage providers](../repositories/storage-providers.md)
 * [Upgrade changes and supported paths](../../release-notes/upgrade-changes.md)

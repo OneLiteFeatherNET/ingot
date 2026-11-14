@@ -235,7 +235,7 @@ There is no variable that turns off certificate verification. Nexus certificates
 
 ### OpenSearch search backend
 
-The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in `/app/bundled-plugins/`. It is loaded only when `INGOT_OPENSEARCH_ENABLED` is `true`. Off, nothing is loaded and no connection is made. Each variable below falls back to its `REPOSILITE_OPENSEARCH_` spelling when the `INGOT_` name is unset or blank, and the `INGOT_` name wins when it is set. The switch is the exception: the `REPOSILITE_` spelling is read only when `INGOT_OPENSEARCH_ENABLED` is absent, so an empty value keeps the plugin off. A refused value makes the backend report `OPEN_FAILED` with a message that names the variable, and the server keeps running. The rules, the index layout and the security obligations are in the [OpenSearch search backend](opensearch-search-backend.md) reference.
+The image also ships `opensearch-plugin.jar`, the OpenSearch search backend, in `/app/bundled-plugins/`. It is loaded only when `INGOT_OPENSEARCH_ENABLED` is `true`. Off, nothing is loaded and no connection is made. Each variable below falls back to its `REPOSILITE_OPENSEARCH_` spelling when the `INGOT_` name is unset or blank, and the `INGOT_` name wins when it is set. The switch is the exception: the `REPOSILITE_` spelling is read only when `INGOT_OPENSEARCH_ENABLED` is absent, so an empty value keeps the plugin off. A refused value makes the backend report `OPEN_FAILED` with a message that names the variable, and the server keeps running. The rules, the index layout and the security obligations are in the [OpenSearch search backend](../settings/opensearch-search-backend.md) reference.
 
 | Environment variable | Legacy environment variable | Default | Range or values | Meaning |
 | --- | --- | --- | --- | --- |
@@ -290,7 +290,7 @@ These are JVM system properties. There is no environment variable form. Pass the
 | `reposilite.s3.use-s3-v4-signer` | `false` | Signs requests with the AWS S3 V4 signer. |
 | `reposilite.s3.skip-bucket-creation` | `false` | Does not create the bucket when it does not exist. |
 
-The S3 client also reads the standard `AWS_REGION` environment variable when a repository sets no `region`. See [Storage providers](storage-providers.md).
+The S3 client also reads the standard `AWS_REGION` environment variable when a repository sets no `region`. See [Storage providers](../repositories/storage-providers.md).
 
 ### Proxy upstream status
 
@@ -337,7 +337,7 @@ Read once at startup from `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`, or from the leg
 | `false` (default) | A file of a `HIDDEN` or `PRIVATE` repository, or of a group that reaches one, is answered with `Cache-Control: private`. A shared cache does not store it. |
 | `true` | Those answers are answered with `Cache-Control: public` again, as before. Use it only when the cache in front of Ingot may hold access-controlled files for other clients. |
 
-The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`. See [Visibility](repository-settings.md#visibility).
+The value is compared without regard to case, and an empty value counts as not set. Any other value stops the startup with a message that names `INGOT_MAVEN_CACHE_PRIVATE_AS_PUBLIC`. See [Visibility](../repositories/repository-settings.md#visibility).
 
 ### Shared configuration reload
 
@@ -362,7 +362,7 @@ Read once at startup. They turn on the `${env:NAME}` and `${file:PATH}` referenc
 | `INGOT_SETTINGS_SECRET_ENV` | empty | Comma separated names of the variables that `${env:NAME}` may read. Empty refuses every `${env:...}`. The legacy spelling `REPOSILITE_SETTINGS_SECRET_ENV` is the fallback. |
 | `INGOT_SETTINGS_SECRET_FILES` | empty | Comma separated absolute directories that `${file:PATH}` may read from. A file outside them, or reached through `..` or a symbolic link that leaves them, is refused. Empty refuses every `${file:...}`. The legacy spelling `REPOSILITE_SETTINGS_SECRET_FILES` is the fallback. |
 
-The settings encryption variables follow. They are read from the environment only, see [Settings encryption](settings-encryption.md).
+The settings encryption variables follow. They are read from the environment only, see [Settings encryption](../settings/settings-encryption.md).
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -404,5 +404,5 @@ The variables compare the value without regard to case, and an empty value count
 ## Related pages
 
 * [Configuration file and startup parameters](configuration-and-startup.md)
-* [Storage providers](storage-providers.md)
+* [Storage providers](../repositories/storage-providers.md)
 * [Upgrade changes and supported paths](../../release-notes/upgrade-changes.md)

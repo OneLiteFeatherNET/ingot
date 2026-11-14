@@ -110,7 +110,7 @@ Routes are the legacy path grants of a token.
 
 ### Settings commands
 
-These commands act on the secret values of the shared settings. They need a settings key in `INGOT_SETTINGS_KEY` or `INGOT_SETTINGS_KEY_FILE`, see [Settings encryption](configuration/settings-encryption.md). Neither command takes an argument.
+These commands act on the secret values of the shared settings. They need a settings key in `INGOT_SETTINGS_KEY` or `INGOT_SETTINGS_KEY_FILE`, see [Settings encryption](settings/settings-encryption.md). Neither command takes an argument.
 
 | Command | Arguments | Behavior |
 | --- | --- | --- |

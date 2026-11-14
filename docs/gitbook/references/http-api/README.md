@@ -1,8 +1,8 @@
 ---
-description: HTTP API references. Lists the pages for the REST endpoints, the errors, the search API, the web routes and the access token formats.
+description: HTTP API references. Lists the pages for the REST endpoints, errors, the search API, the web routes and the dashboard routes.
 ---
 
-# HTTP API
+# HTTP API and dashboard
 
 These pages list what the server answers over HTTP.
 
@@ -10,4 +10,4 @@ These pages list what the server answers over HTTP.
 * [API errors](api-errors.md)
 * [Search filters and API](search-filters-and-api.md)
 * [Web routes](web-routes.md)
-* [Access tokens and routes](access-tokens-and-routes.md)
+* [Dashboard pages](dashboard-pages.md)

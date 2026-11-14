@@ -84,7 +84,7 @@ For a file, the response carries these headers:
 | `Content-Disposition` | `attachment; filename="<name>"` for content types that are not human readable. |
 | `Content-Length` | Set when `compressionStrategy` is `none` and the length is known. |
 | `Last-Modified` | Set when the modification time is known. |
-| `Cache-Control` | `public, max-age=<seconds>` when the repository does not allow redeployment, the file is not `maven-metadata.xml`, and the repository is `PUBLIC` with every local repository it reaches through a loopback reference `PUBLIC`. `private, max-age=<seconds>` for the same cacheable file when a repository it reaches is `HIDDEN` or `PRIVATE`. Otherwise `no-cache, no-store, max-age=0`, which is also the answer of a `401` for a file. Remote references do not count. Groups take the scope of the local repositories they reach. See [Visibility](../configuration/repository-settings.md#visibility) and [Maven cache control](../configuration/environment-variables.md#maven-cache-control). |
+| `Cache-Control` | `public, max-age=<seconds>` when the repository does not allow redeployment, the file is not `maven-metadata.xml`, and the repository is `PUBLIC` with every local repository it reaches through a loopback reference `PUBLIC`. `private, max-age=<seconds>` for the same cacheable file when a repository it reaches is `HIDDEN` or `PRIVATE`. Otherwise `no-cache, no-store, max-age=0`, which is also the answer of a `401` for a file. Remote references do not count. Groups take the scope of the local repositories they reach. See [Visibility](../repositories/repository-settings.md#visibility) and [Maven cache control](../configuration/environment-variables.md#maven-cache-control). |
 | `ETag` | A strong entity tag, set when the length and modification time are known. See [Range and conditional requests](#range-and-conditional-requests). |
 | `Accept-Ranges` | `bytes` when the length is known. |
 
@@ -283,7 +283,7 @@ The dashboard is a single page application. These routes answer with the bundled
 | `/account` | None. |
 | `/assets/<path>` | Bundled files. `GET` only. |
 
-The router adds no segment of its own below `/settings` and `/access`. `/settings` without a domain shows the settings hub, `/settings/login` redirects to `/access/sso`, `/settings/authentication` redirects to `/access/ldap`, and `/access` is forwarded to a page or shows the index of the Access pages on a narrow screen. A signed-in visitor who opens a dashboard page without its permission node stays at the address and sees "You do not have access to this page" with a link to Repositories; the router no longer redirects to `overview`. See [Dashboard pages](../dashboard/dashboard-pages.md).
+The router adds no segment of its own below `/settings` and `/access`. `/settings` without a domain shows the settings hub, `/settings/login` redirects to `/access/sso`, `/settings/authentication` redirects to `/access/ldap`, and `/access` is forwarded to a page or shows the index of the Access pages on a narrow screen. A signed-in visitor who opens a dashboard page without its permission node stays at the address and sees "You do not have access to this page" with a link to Repositories; the router no longer redirects to `overview`. See [Dashboard pages](dashboard-pages.md).
 
 All of these answer `GET` and `HEAD` except `/assets/<path>`. A path that is not in this list is not served the dashboard shell. There is no catch-all.
 

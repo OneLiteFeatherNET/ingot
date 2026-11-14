@@ -15,7 +15,7 @@ A plugin can change the dashboard in four ways today: it declares pages, it fill
 
 ## What a plugin can aim at
 
-Every component of the dashboard carries a stable name in the DOM. The names are listed in [Dashboard anchors](../../references/dashboard/dashboard-anchors.md), with the parts and states that each component exposes:
+Every component of the dashboard carries a stable name in the DOM. The names are listed in [Dashboard anchors](../../references/plugins/dashboard-anchors.md), with the parts and states that each component exposes:
 
 - `data-ingot-component="<name>"` on the element that renders a component,
 - `data-ingot-part="<part>"` on a named region inside it,
@@ -88,6 +88,6 @@ End-to-end and component tests select by role and accessible name first, by `dat
 
 ## Related
 
-- [Dashboard anchors](../../references/dashboard/dashboard-anchors.md) lists every name, its parts and states, and its stability.
+- [Dashboard anchors](../../references/plugins/dashboard-anchors.md) lists every name, its parts and states, and its stability.
 - [Dashboard pages](../../references/plugins/plugin-api.md#dashboard-pages) describes the pages a plugin declares.
 - [Write a plugin](write-a-plugin.md) builds a first plugin.

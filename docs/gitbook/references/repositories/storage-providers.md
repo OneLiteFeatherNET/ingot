@@ -4,7 +4,7 @@ description: Reference for the storage providers of Ingot, the file system (fs) 
 
 # Storage providers
 
-A storage provider holds the files of one repository. Each repository chooses its provider in the `storageProvider` field of its settings, see [Settings domains](settings-domains.md#maven). Ingot ships two providers.
+A storage provider holds the files of one repository. Each repository chooses its provider in the `storageProvider` field of its settings, see [Settings domains](../settings/settings-domains.md#maven). Ingot ships two providers.
 
 | Provider | `type` | Holds the files in |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ A storage provider holds the files of one repository. Each repository chooses it
 
 When a stored `storageProvider` has no `type`, Ingot uses `s3` if the document contains `bucketName` and `fs` otherwise. A repository without a `storageProvider` uses the file system provider with its defaults.
 
-Provider settings are part of the repository settings. By default these are shared settings in the database, not files in the storage provider. For the databases Ingot supports, see [Database connection](configuration-and-startup.md#database-connection): SQLite, MariaDB and PostgreSQL are supported, MySQL and H2 are experimental.
+Provider settings are part of the repository settings. By default these are shared settings in the database, not files in the storage provider. For the databases Ingot supports, see [Database connection](../configuration/configuration-and-startup.md#database-connection): SQLite, MariaDB and PostgreSQL are supported, MySQL and H2 are experimental.
 
 ## File system provider
 
@@ -86,7 +86,7 @@ The cache is local to one instance. Instances do not share it, so:
 * Mutable metadata is never cached. Every `maven-metadata*` file, with its checksums, and every file inside a `-SNAPSHOT` directory is read from S3 on each request.
 * With a cluster bus configured, a cached answer is used at most 300 seconds after it was stored, whatever `expireAfterAccessSeconds` and `expireAfterCreationSeconds` say. Reads do not extend this bound. Without a bus, the two expiry fields apply unchanged.
 
-The setting names are camelCase (`bucketName`, `accessKey`, `secretKey`). Secret fields are masked in the settings API when `hideSettingsSecrets` is `true`, see [Settings domains](settings-domains.md#settings-api).
+The setting names are camelCase (`bucketName`, `accessKey`, `secretKey`). Secret fields are masked in the settings API when `hideSettingsSecrets` is `true`, see [Settings domains](../settings/settings-domains.md#settings-api).
 
 ### Region and credentials
 
@@ -98,7 +98,7 @@ The setting names are camelCase (`bucketName`, `accessKey`, `secretKey`). Secret
 
 ### System properties
 
-These are JVM system properties and have no environment variable form. Pass them in `JAVA_OPTS`. See [Environment variables](environment-variables.md#s3-storage-system-properties).
+These are JVM system properties and have no environment variable form. Pass them in `JAVA_OPTS`. See [Environment variables](../configuration/environment-variables.md#s3-storage-system-properties).
 
 | System property | Default | Meaning |
 | --- | --- | --- |
@@ -110,7 +110,7 @@ They apply to every S3 repository of the instance. There is no per-repository se
 
 ### Upload path
 
-An upload above 8 MiB is sent as a multipart upload in parts of 8 MiB, and it does not pass through the system temporary directory. A failed upload is aborted. `INGOT_S3_BUFFER_TO_DISK=true` restores the temporary file path for every upload. See [Large uploads](../../set-up/cluster/use-s3-storage.md#large-uploads) and [Environment variables](environment-variables.md#s3-upload-variable).
+An upload above 8 MiB is sent as a multipart upload in parts of 8 MiB, and it does not pass through the system temporary directory. A failed upload is aborted. `INGOT_S3_BUFFER_TO_DISK=true` restores the temporary file path for every upload. See [Large uploads](../../set-up/cluster/use-s3-storage.md#large-uploads) and [Environment variables](../configuration/environment-variables.md#s3-upload-variable).
 
 ### Object keys
 
@@ -156,6 +156,6 @@ Response fields:
 
 ## Related pages
 
-* [Settings domains](settings-domains.md)
-* [Environment variables](environment-variables.md)
-* [Configuration file and startup parameters](configuration-and-startup.md)
+* [Settings domains](../settings/settings-domains.md)
+* [Environment variables](../configuration/environment-variables.md)
+* [Configuration file and startup parameters](../configuration/configuration-and-startup.md)

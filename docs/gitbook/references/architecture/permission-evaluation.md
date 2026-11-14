@@ -100,5 +100,5 @@ The check can name one token of the principal. Its node list is then applied as 
 * [Identity model](identity-model.md) explains the objects that the decision uses.
 * [Permission nodes](../identity/permission-nodes.md) lists the node grammar and the rules for each form.
 * [Artifact permission nodes](../identity/artifact-permission-nodes.md) describes the artifact form in detail.
-* [Access tokens and routes](../http-api/access-tokens-and-routes.md) describes token formats and legacy route grants.
+* [Access tokens and routes](../identity/access-tokens-and-routes.md) describes token formats and legacy route grants.
 * [Token migration](../../set-up/migrate/token-migration.md) explains why legacy route matching is kept.

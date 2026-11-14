@@ -10,7 +10,7 @@ Ingot accepts three kinds of credentials for the HTTP API and for Maven paths.
 | --- | --- | --- |
 | Token secret `ingot_<id>_<random>` | `Authorization: Bearer <secret>`, or Basic with the token name | Identity API: `POST /api/identity/me/tokens` and `POST /api/identity/principals/{name}/tokens` |
 | Legacy token secret, without a prefix | HTTP Basic with the token name and the secret | Legacy API `PUT /api/tokens/{name}`, console `token-generate`, and the migration |
-| Browser session | Cookies set by a login | A login, see [Login providers](../configuration/login-providers.md) |
+| Browser session | Cookies set by a login | A login, see [Login providers](../settings/login-providers.md) |
 
 The `--token` option of the server creates one more kind of token on every start, see [Recovery token](#recovery-token).
 
@@ -88,7 +88,7 @@ POST /api/identity/me/tokens
 }
 ```
 
-The token can only do what both the owner and the token allow. See [Artifact permission nodes](../identity/artifact-permission-nodes.md) for the artifact forms.
+The token can only do what both the owner and the token allow. See [Artifact permission nodes](artifact-permission-nodes.md) for the artifact forms.
 
 ## Scopes and nodes narrow a token
 
@@ -111,7 +111,7 @@ Rules for narrowing:
 - A token with a node list is narrowed to exactly those nodes. A request is allowed only when the owner and the token both allow it. A node the token does not list is denied, even when the owner may use it.
 - A token can only remove rights. A node that the owner lacks gives nothing.
 - When `scopes` and `nodes` are both given, the nodes narrow the token. The scopes are stored with the token and do not narrow it.
-- Narrowing applies to an instance admin too. Only a token narrowing limits an admin token. See [Permission nodes](../identity/permission-nodes.md).
+- Narrowing applies to an instance admin too. Only a token narrowing limits an admin token. See [Permission nodes](permission-nodes.md).
 
 ## Legacy tokens
 

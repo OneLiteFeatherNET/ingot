@@ -4,13 +4,13 @@ description: Reference for the shared settings domains of Ingot (authentication,
 
 # Settings domains
 
-Shared settings are the settings that all instances of one installation have in common. They are grouped in domains. Each domain has a name, a document and a JSON schema. The local settings of one instance are not part of them, see [Configuration file and startup parameters](configuration-and-startup.md).
+Shared settings are the settings that all instances of one installation have in common. They are grouped in domains. Each domain has a name, a document and a JSON schema. The local settings of one instance are not part of them, see [Configuration file and startup parameters](../configuration/configuration-and-startup.md).
 
 ## Where the settings live
 
 | Aspect | Behavior |
 | --- | --- |
-| Storage | By default the `settings` table of the database, under the name `remote-shared-configuration`. With `--shared-configuration` a JSON file is used instead, see [Shared settings source](configuration-and-startup.md#shared-settings-source). |
+| Storage | By default the `settings` table of the database, under the name `remote-shared-configuration`. With `--shared-configuration` a JSON file is used instead, see [Shared settings source](../configuration/configuration-and-startup.md#shared-settings-source). |
 | Document | One JSON document. The top-level keys are the domain names. A domain that is missing from the document has its default values. |
 | Refresh | Instances that use the database check it every 10 seconds. A change reaches every instance within about 10 seconds. |
 | Domain name | The title of the domain in lower case, for example `authentication`. |
@@ -84,7 +84,7 @@ Settings of the Basic authentication of Maven clients and tools.
 
 ## cleanup
 
-Validated: a domain with a violation is refused. Nothing is deleted unless a policy is run by hand or enabled with a schedule. The rules are in [Cleanup policies](cleanup-policies.md).
+Validated: a domain with a violation is refused. Nothing is deleted unless a policy is run by hand or enabled with a schedule. The rules are in [Cleanup policies](../repositories/cleanup-policies.md).
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -206,7 +206,7 @@ The directory login is usable when `url` and `userBaseDn` are set. For the provi
 
 ## maven
 
-Validated: the description and tags of each repository are checked. The repository fields are described in [Repository settings](repository-settings.md).
+Validated: the description and tags of each repository are checked. The repository fields are described in [Repository settings](../repositories/repository-settings.md).
 
 The domain is edited on the Repositories page of the dashboard (`/settings/repositories`). The repositories are in its table, and the domain-level field below it is in the **Maven options** section. The former Maven page at `/settings/maven` redirects there.
 
@@ -224,7 +224,7 @@ Fields of a repository:
 | `tags` | List of String | empty | Labels. At most 10 tags. Each tag has 1 to 32 lower case letters, digits or dashes, starts with a letter or digit and appears once. |
 | `redeployment` | Boolean | `false` | Accepts redeployment of the same artifact version. |
 | `preserveSnapshots` | Boolean | `false` | Keeps old snapshot build files. By default Ingot deletes them. |
-| `storageProvider` | Object | file system | Storage of the repository. See [Storage providers](storage-providers.md). |
+| `storageProvider` | Object | file system | Storage of the repository. See [Storage providers](../repositories/storage-providers.md). |
 | `storagePolicy` | `PRIORITIZE_UPSTREAM_METADATA` or `STRICT` | `PRIORITIZE_UPSTREAM_METADATA` | How requests are handled when mirrors are configured. `STRICT` reads the stored copy first and asks the upstream only when it is missing. It is not an offline mode. |
 | `metadataMaxAge` | Long | `0` | Seconds that fetched metadata files stay valid with `PRIORITIZE_UPSTREAM_METADATA`. `0` fetches every time. |
 | `resolutionCacheMaxEntries` | Int | `0` | Size of the cache for routing decisions of metadata reads. `0` turns it off. At least 0. |
@@ -293,6 +293,6 @@ These fields are masked when `hideSettingsSecrets` is `true`. The dashboard alwa
 
 ## Related pages
 
-* [Configuration file and startup parameters](configuration-and-startup.md)
-* [Storage providers](storage-providers.md)
-* [Environment variables](environment-variables.md)
+* [Configuration file and startup parameters](../configuration/configuration-and-startup.md)
+* [Storage providers](../repositories/storage-providers.md)
+* [Environment variables](../configuration/environment-variables.md)

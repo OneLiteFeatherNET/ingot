@@ -115,7 +115,7 @@ Opened without a domain, `/settings` is **Overview**: its heading is **Overview*
 * **At a glance** counts the entries of every settings collection, from the saved settings, for example Repositories 7 and Cleanup policies 0. A zero is shown as 0. The page makes no request beyond the ones the settings page made before, so the counts come from what is already loaded.
 * A link to the **Dashboard**, where the instance status and the resources are, when the visitor may open it.
 
-The root of the content keeps the anchor `settings-hub` (see [Dashboard anchors](dashboard-anchors.md)). The card grid of the earlier settings hub is gone, and so is the line that sent sign in and security to Access, which the tree lists.
+The root of the content keeps the anchor `settings-hub` (see [Dashboard anchors](../plugins/dashboard-anchors.md)). The card grid of the earlier settings hub is gone, and so is the line that sent sign in and security to Access, which the tree lists.
 
 **Import settings** and **Download as JSON** are in the page header of Overview only, since they act on the whole configuration. Import loads a settings file into the draft and asks for no confirmation; nothing is stored until Save. Download saves the saved state, or the draft when asked for it. The settings domain pages and the Repositories page do not show these two actions.
 
@@ -252,6 +252,6 @@ This section covers the Administration tree and the **Repositories** page. It de
 
 ## Related
 
-* [Search filters and API](../http-api/search-filters-and-api.md)
+* [Search filters and API](search-filters-and-api.md)
 * [Artifact permission nodes](../identity/artifact-permission-nodes.md)
 * [Review the audit log](../../manage/monitor/review-audit-log.md)

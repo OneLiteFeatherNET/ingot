@@ -15,7 +15,7 @@ The check is off by default. Nothing changes for an instance until you set a pol
 
 ## Choose a policy
 
-The policy is set per repository with `uploadChecksumPolicy` in the [repository settings](../references/configuration/repository-settings.md#upload-checksum-policy). A repository that leaves the key out takes the instance default, which is set with `INGOT_UPLOAD_CHECKSUM_POLICY` and is `ignore` when unset. A repository value always wins over the instance default.
+The policy is set per repository with `uploadChecksumPolicy` in the [repository settings](../references/repositories/repository-settings.md#upload-checksum-policy). A repository that leaves the key out takes the instance default, which is set with `INGOT_UPLOAD_CHECKSUM_POLICY` and is `ignore` when unset. A repository value always wins over the instance default.
 
 ```json
 {
@@ -88,7 +88,7 @@ If the egress matters for your bill, keep `ignore` on the large repositories, or
 
 ## Related
 
-* [Repository settings](../references/configuration/repository-settings.md#upload-checksum-policy)
+* [Repository settings](../references/repositories/repository-settings.md#upload-checksum-policy)
 * [Environment variables](../references/configuration/environment-variables.md#upload-checksum-policy)
 * [Audit events](../references/identity/audit-events.md)
 * [Check checksums of proxied files](../configure/repositories/create-proxy-repositories.md#check-checksums), which does the same check for the copies a proxy stores

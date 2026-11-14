@@ -10,7 +10,7 @@ A group repository serves the artifacts of several local repositories under one 
 
 * Know which local repositories the group should serve, for example `releases` and `snapshots`. Each one must already exist in the maven settings.
 * Be a manager of the instance, so that you can change the maven settings.
-* Read the [repository types reference](../../references/configuration/repository-types.md) once. It lists the rules that the steps below satisfy.
+* Read the [repository types reference](../../references/repositories/repository-types.md) once. It lists the rules that the steps below satisfy.
 
 ## Choose the members
 

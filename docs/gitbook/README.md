@@ -36,7 +36,7 @@ To upgrade, start with [Back up before upgrading](manage/upgrade/back-up-before-
 
 * The identity model adds users, teams, machine accounts and permission nodes. See [Identity model](references/architecture/identity-model.md).
 * Artifact search runs across all repositories. See [Search for artifacts](publish-and-consume/search-for-artifacts.md).
-* The dashboard is rebuilt with Material Design 3. See [Dashboard pages](references/dashboard/dashboard-pages.md).
+* The dashboard is rebuilt with Material Design 3. See [Dashboard pages](references/http-api/dashboard-pages.md).
 
 ## Coming from Reposilite
 

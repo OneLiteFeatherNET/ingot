@@ -33,7 +33,7 @@ The compatibility rule is the one the pull request check enforces. Removing an e
 | Instance admin | The caller holds `ingot.admin.*` (or `*`). Token narrowing applies. |
 | Admin area `<area>` | The caller holds `ingot.admin.<area>` (or `ingot.admin.*`). Token narrowing applies. Only the areas `users`, `tokens`, `teams`, `console` and `audit` are checked this way, and the support endpoints use `console`. |
 
-Wrong or missing credentials answer with `401`. A valid caller without the right answers with `403`. Read [Permission nodes](../identity/permission-nodes.md) and [Access tokens and routes](access-tokens-and-routes.md) for what the rights are.
+Wrong or missing credentials answer with `401`. A valid caller without the right answers with `403`. Read [Permission nodes](../identity/permission-nodes.md) and [Access tokens and routes](../identity/access-tokens-and-routes.md) for what the rights are.
 
 ## Support
 
@@ -63,7 +63,7 @@ A bundle is built under one permit. A second download while one is being built w
 | GET | `/api/auth/setup` | None | Tells whether the first administrator must still be created. |
 | POST | `/api/auth/setup` | None, only while no user exists | Creates the first administrator with the setup code from the log. |
 
-See [Login providers](../configuration/login-providers.md) for the settings behind these endpoints.
+See [Login providers](../settings/login-providers.md) for the settings behind these endpoints.
 
 ## Identity: own account and tokens
 
@@ -136,7 +136,7 @@ See [Login providers](../configuration/login-providers.md) for the settings behi
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/maven/repositories` | Optional token | Lists the repositories that the caller may see, sorted by id, with visibility, description and tags. Each entry also carries `versionPolicy` (`RELEASE`, `SNAPSHOT` or `MIXED`), `readOnly` (boolean) and `writePolicy` (`ALLOW`, `ALLOW_ONCE` or `READ_ONLY`, absent for a declared proxy or group). Older clients ignore the new fields. See [Repository settings](../configuration/repository-settings.md#version-policy-and-read-only). |
+| GET | `/api/maven/repositories` | Optional token | Lists the repositories that the caller may see, sorted by id, with visibility, description and tags. Each entry also carries `versionPolicy` (`RELEASE`, `SNAPSHOT` or `MIXED`), `readOnly` (boolean) and `writePolicy` (`ALLOW`, `ALLOW_ONCE` or `READ_ONLY`, absent for a declared proxy or group). Older clients ignore the new fields. See [Repository settings](../repositories/repository-settings.md#version-policy-and-read-only). |
 | GET | `/api/maven/repositories/{repository}/members` | Optional token | Lists the repositories that a group references. |
 | GET | `/api/maven/versions/{repository}/<gav>` | Optional token | Lists the versions of an artifact from its metadata. `filter` is a version prefix. `sorted` (default `true`) set to `false` keeps the raw order. |
 | GET | `/api/maven/latest/version/{repository}/<gav>` | Optional token | Returns the latest version of an artifact. `filter` is a version prefix, and `sorted` works as for the versions. |

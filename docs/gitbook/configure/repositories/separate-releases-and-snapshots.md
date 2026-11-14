@@ -10,7 +10,7 @@ Release builds and snapshot builds often end up in the same repository, or a sna
 
 * Be a manager of the instance, so that you can change the maven settings.
 * Know which repositories hold your release builds and which hold snapshots, for example `releases` and `snapshots`.
-* Read the [repository settings reference](../../references/configuration/repository-settings.md#version-policy-and-read-only) once. It lists every status code and the write policies.
+* Read the [repository settings reference](../../references/repositories/repository-settings.md#version-policy-and-read-only) once. It lists every status code and the write policies.
 
 Nothing is rewritten by this change. A repository that sets neither key keeps accepting both kinds of version, and no stored file is deleted when you set a policy.
 
@@ -32,7 +32,7 @@ In the settings document the same choice is the key `versionPolicy`:
 }
 ```
 
-Choose **Not set, accepts both** to remove the key again. A proxy and a group take no version policy, so the choice is not offered for them, see [Repository types](../../references/configuration/repository-types.md).
+Choose **Not set, accepts both** to remove the key again. A proxy and a group take no version policy, so the choice is not offered for them, see [Repository types](../../references/repositories/repository-types.md).
 
 ## Check the setup with a deploy
 
