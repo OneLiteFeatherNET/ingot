@@ -101,4 +101,4 @@ curl -H "Authorization: Bearer $INGOT_TOKEN" "$INGOT_URL/api/identity/me/access"
 
 * [Grant permissions with nodes](grant-permissions-with-nodes.md) shows recipes whose checks are on this page.
 * [Restrict a token to artifacts](../../publish-and-consume/restrict-token-to-artifacts.md) shows how a token check reveals the narrowing.
-* [Permission nodes](../../reference/permission-nodes.md) lists the node grammar.
+* [Permission nodes](../../references/identity/permission-nodes.md) lists the node grammar.

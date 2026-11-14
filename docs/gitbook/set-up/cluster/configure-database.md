@@ -137,7 +137,7 @@ While a deploy or a removal updates the `maven-metadata.xml` of an artifact, the
 
 An update that cannot get its row within 10 seconds is refused with `503 Service Unavailable` and a `Retry-After` header. Nothing is written, so the client retries the request. Galera reports a conflict on these writes as error 1213 or SQLSTATE 40001, and Ingot retries those, so the client does not see them. A client that uploads its own `maven-metadata.xml` is not serialised by this lock, as before.
 
-A replica that waits longer than `INGOT_LOCAL_SCHEMALOCKTIMEOUT` seconds stops its start. The default is `300`, and `REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT` is read when the `INGOT_` name is not set. See [Multi-replica operation](../../explanation/multi-replica-operation.md#schema-initialisation).
+A replica that waits longer than `INGOT_LOCAL_SCHEMALOCKTIMEOUT` seconds stops its start. The default is `300`, and `REPOSILITE_LOCAL_SCHEMALOCKTIMEOUT` is read when the `INGOT_` name is not set. See [Multi-replica operation](../../references/architecture/multi-replica-operation.md#schema-initialisation).
 
 ## Result
 

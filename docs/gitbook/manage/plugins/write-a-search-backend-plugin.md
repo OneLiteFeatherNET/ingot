@@ -146,5 +146,5 @@ Ingot also removes every value that the backend reads through `secret()` from it
 ## Related
 
 * [Choose a search backend](../../configure/search/choose-a-search-backend.md) covers the states of a backend and the switch between backends.
-* [Plugin API](../../reference/plugin-api.md#events) lists the events of the plugin lifecycle.
+* [Plugin API](../../references/plugins/plugin-api.md#events) lists the events of the plugin lifecycle.
 * [Write a plugin](write-a-plugin.md) covers the jar, the plugin class and the service file.

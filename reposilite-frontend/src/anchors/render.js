@@ -32,7 +32,7 @@ export function renderAnchorsDoc(registry) {
     "",
     "<!-- Generated from reposilite-frontend/src/anchors/registry.json by `npm run anchors:doc`. Change the registry, not this page. -->",
     "",
-    `This page lists every stable name that the dashboard puts into the DOM, contract ${registry.contract}. A plugin author or an operator who builds a dashboard can target these names instead of the utility classes, which change with each restyle. For what a plugin can use today, see [Extend the dashboard from a plugin](../how-to/extend-the-dashboard-from-a-plugin.md).`,
+    `This page lists every stable name that the dashboard puts into the DOM, contract ${registry.contract}. A plugin author or an operator who builds a dashboard can target these names instead of the utility classes, which change with each restyle. For what a plugin can use today, see [Extend the dashboard from a plugin](../../manage/plugins/extend-the-dashboard-from-a-plugin.md).`,
     "",
     "## Attributes",
     "",

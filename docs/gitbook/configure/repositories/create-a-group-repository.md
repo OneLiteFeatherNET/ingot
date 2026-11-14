@@ -10,7 +10,7 @@ A group repository serves the artifacts of several local repositories under one 
 
 * Know which local repositories the group should serve, for example `releases` and `snapshots`. Each one must already exist in the maven settings.
 * Be a manager of the instance, so that you can change the maven settings.
-* Read the [repository types reference](../../reference/repository-types.md) once. It lists the rules that the steps below satisfy.
+* Read the [repository types reference](../../references/configuration/repository-types.md) once. It lists the rules that the steps below satisfy.
 
 ## Choose the members
 
@@ -106,7 +106,7 @@ Here `central` is a `PROXY` repository. For a coordinate under `net.onelitefeath
 * The key is accepted only on a `GROUP`. Ingot refuses it on a hosted, proxy or mixed repository, and the message names the key.
 * The list is empty by default, so existing groups behave as before until you set it.
 
-Each refusal writes the audit event `NAMESPACE_PROXY_REFUSED` (see [audit events](../../reference/audit-events.md#mirrors-and-protected-groups)) and counts in `ingot_namespace_refusals_total` (see [monitor status and failures](../../manage/monitor/monitor-status-and-failures.md)). A refusal means either an attack or a build that expects an artifact your hosted members do not hold yet. Check the artifact first. If it is missing, deploy it to the hosted member.
+Each refusal writes the audit event `NAMESPACE_PROXY_REFUSED` (see [audit events](../../references/identity/audit-events.md#mirrors-and-protected-groups)) and counts in `ingot_namespace_refusals_total` (see [monitor status and failures](../../manage/monitor/monitor-status-and-failures.md)). A refusal means either an attack or a build that expects an artifact your hosted members do not hold yet. Check the artifact first. If it is missing, deploy it to the hosted member.
 
 ## Verify the result
 

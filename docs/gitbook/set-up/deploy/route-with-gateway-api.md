@@ -63,4 +63,4 @@ The first command prints `True` when the Gateway accepts the route. The second p
 * [Terminate TLS at the gateway](../network/terminate-tls-at-the-gateway.md) creates the certificate and the HTTPS listener.
 * [Run on Kubernetes](run-on-kubernetes.md#expose-the-instance-with-ingress) describes the ingress that you use instead of the route.
 * [Run behind a reverse proxy](../network/run-behind-reverse-proxy.md) explains the client address that Ingot sees behind a proxy.
-* [Helm chart values](../../reference/helm-values.md#routing-and-network) lists the keys of the route.
+* [Helm chart values](../../references/configuration/helm-values.md#routing-and-network) lists the keys of the route.

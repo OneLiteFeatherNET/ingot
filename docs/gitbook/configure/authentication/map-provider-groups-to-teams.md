@@ -82,4 +82,4 @@ If it happens anyway, follow [Recover admin access](../../manage/access/recover-
 * [Configure generic OIDC login](configure-oidc-login.md)
 * [Configure LDAP login](configure-ldap-login.md)
 * [Recover admin access](../../manage/access/recover-admin-access.md)
-* [Login providers](../../reference/login-providers.md)
+* [Login providers](../../references/configuration/login-providers.md)

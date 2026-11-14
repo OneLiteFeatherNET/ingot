@@ -4,7 +4,7 @@ description: Set the Helm chart values for a server with more than one replica, 
 
 # Set Helm values for high availability
 
-This page collects the chart values that a release with more than one server replica needs. It does not replace [Running more than one replica](run-on-kubernetes.md#running-more-than-one-replica), which explains each requirement, and it does not decide whether your setup is supported. For that, read [High availability support](../../explanation/high-availability-support.md) and [Multi-replica operation](../../explanation/multi-replica-operation.md) first.
+This page collects the chart values that a release with more than one server replica needs. It does not replace [Running more than one replica](run-on-kubernetes.md#running-more-than-one-replica), which explains each requirement, and it does not decide whether your setup is supported. For that, read [High availability support](../../references/architecture/high-availability-support.md) and [Multi-replica operation](../../references/architecture/multi-replica-operation.md) first.
 
 ## Which setups are supported
 
@@ -90,7 +90,7 @@ The memory limit must cover the heap and the memory that the JVM uses around it.
 * `podDisruptionBudget` keeps one server pod down at a time during a node drain. See [Set a disruption budget](set-a-disruption-budget.md).
 * `probes.readinessPath` takes a replica out of the load balancer while its database or storage check fails. Without it, the all-in-one readiness probe only checks that `/` answers.
 
-For every key, see [Helm chart values](../../reference/helm-values.md).
+For every key, see [Helm chart values](../../references/configuration/helm-values.md).
 
 ## Render and check before you install
 
@@ -121,11 +121,11 @@ Both pods must be `Running`. With the spread constraint, they land in different 
 
 ## Upgrade a multi-replica release
 
-Upgrade one release at a time with the same chart version and values file as before. During a rolling update, a replica of the previous release may keep running while the new release changes the schema. The rule that makes this safe, and its test evidence, is in [Rolling upgrade rule](../../explanation/high-availability-support.md#rolling-upgrade-rule). Read it before you upgrade across a release that changes the schema. Start with [Back up before upgrading](../../manage/upgrade/back-up-before-upgrading.md).
+Upgrade one release at a time with the same chart version and values file as before. During a rolling update, a replica of the previous release may keep running while the new release changes the schema. The rule that makes this safe, and its test evidence, is in [Rolling upgrade rule](../../references/architecture/high-availability-support.md#rolling-upgrade-rule). Read it before you upgrade across a release that changes the schema. Start with [Back up before upgrading](../../manage/upgrade/back-up-before-upgrading.md).
 
 ## Related
 
 * [Run on Kubernetes](run-on-kubernetes.md) installs the chart step by step.
-* [Multi-replica operation](../../explanation/multi-replica-operation.md) explains what each replica shares and what it keeps for itself.
-* [High availability support](../../explanation/high-availability-support.md) lists the tested and the untested topologies.
+* [Multi-replica operation](../../references/architecture/multi-replica-operation.md) explains what each replica shares and what it keeps for itself.
+* [High availability support](../../references/architecture/high-availability-support.md) lists the tested and the untested topologies.
 * [Autoscale the server](autoscale-the-server.md) and [Set a disruption budget](set-a-disruption-budget.md) cover the two availability features of the chart.

@@ -4,7 +4,7 @@ description: Configure Ingot. Lists the how-to pages for settings secrets, brand
 
 # Configure Ingot
 
-This section changes the behaviour of a running instance. Every setting has a lookup entry in [Configuration file and startup parameters](../reference/configuration-and-startup.md) and [Environment variables](../reference/environment-variables.md). A variable with an `INGOT_` name takes precedence, and the `REPOSILITE_` name stays valid as a fallback.
+This section changes the behaviour of a running instance. Every setting has a lookup entry in [Configuration file and startup parameters](../references/configuration/configuration-and-startup.md) and [Environment variables](../references/configuration/environment-variables.md). A variable with an `INGOT_` name takes precedence, and the `REPOSILITE_` name stays valid as a fallback.
 
 ## Instance
 

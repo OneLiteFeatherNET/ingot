@@ -15,7 +15,7 @@ The check is off by default. Nothing changes for an instance until you set a pol
 
 ## Choose a policy
 
-The policy is set per repository with `uploadChecksumPolicy` in the [repository settings](../reference/repository-settings.md#upload-checksum-policy). A repository that leaves the key out takes the instance default, which is set with `INGOT_UPLOAD_CHECKSUM_POLICY` and is `ignore` when unset. A repository value always wins over the instance default.
+The policy is set per repository with `uploadChecksumPolicy` in the [repository settings](../references/configuration/repository-settings.md#upload-checksum-policy). A repository that leaves the key out takes the instance default, which is set with `INGOT_UPLOAD_CHECKSUM_POLICY` and is `ignore` when unset. A repository value always wins over the instance default.
 
 ```json
 {
@@ -39,7 +39,7 @@ To turn the check on for every repository that does not set its own value, set t
 INGOT_UPLOAD_CHECKSUM_POLICY=warn
 ```
 
-The variable is read at start. The older `REPOSILITE_UPLOAD_CHECKSUM_POLICY` is read when the `INGOT_` name is not set. An unknown value stops the start with a message that names the variable. See [Environment variables](../reference/environment-variables.md#upload-checksum-policy).
+The variable is read at start. The older `REPOSILITE_UPLOAD_CHECKSUM_POLICY` is read when the `INGOT_` name is not set. An unknown value stops the start with a message that names the variable. See [Environment variables](../references/configuration/environment-variables.md#upload-checksum-policy).
 
 ## What is checked
 
@@ -59,7 +59,7 @@ Artifacts that were stored before the policy was turned on are not checked. Ingo
 
 ## Refused uploads
 
-Under `reject` the answer to a refused checksum file is `400` with a message that names the algorithm, for example `SHA1 checksum file lib-1.0.0.jar.sha1 does not match the stored artifact, so it was refused`. The problem type is `urn:ingot:problem:upload-checksum-mismatch`, which tells the refusal apart from other `400` answers. See [API errors](../reference/api-errors.md#checksum-file-refused).
+Under `reject` the answer to a refused checksum file is `400` with a message that names the algorithm, for example `SHA1 checksum file lib-1.0.0.jar.sha1 does not match the stored artifact, so it was refused`. The problem type is `urn:ingot:problem:upload-checksum-mismatch`, which tells the refusal apart from other `400` answers. See [API errors](../references/http-api/api-errors.md#checksum-file-refused).
 
 A refused redeployment still answers `409`, as it does without the policy. When a checksum file already exists and redeployment is off, the conflict is reported first and the checksum is not compared.
 
@@ -88,7 +88,7 @@ If the egress matters for your bill, keep `ignore` on the large repositories, or
 
 ## Related
 
-* [Repository settings](../reference/repository-settings.md#upload-checksum-policy)
-* [Environment variables](../reference/environment-variables.md#upload-checksum-policy)
-* [Audit events](../reference/audit-events.md)
+* [Repository settings](../references/configuration/repository-settings.md#upload-checksum-policy)
+* [Environment variables](../references/configuration/environment-variables.md#upload-checksum-policy)
+* [Audit events](../references/identity/audit-events.md)
 * [Check checksums of proxied files](../configure/repositories/create-proxy-repositories.md#check-checksums), which does the same check for the copies a proxy stores

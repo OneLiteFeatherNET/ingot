@@ -55,4 +55,4 @@ Run `kubectl drain` on a node that runs a replica, and watch the eviction of the
 
 * [Autoscale the server](autoscale-the-server.md) changes the replica count while the budget stays in place.
 * [Set Helm values for high availability](set-helm-values-for-high-availability.md) lists the values that go with the budget.
-* [Helm chart values](../../reference/helm-values.md#scaling-and-availability) lists the keys of the budget.
+* [Helm chart values](../../references/configuration/helm-values.md#scaling-and-availability) lists the keys of the budget.

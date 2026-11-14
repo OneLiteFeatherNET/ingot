@@ -119,6 +119,6 @@ A full queue means the writer is slower than the events, for example a disk that
 
 ## Next steps
 
-* Read every field, the compatibility rule and the personal data notes in [Audit events](../../reference/audit-events.md#json-lines-sink).
-* Read the switches in [Environment variables](../../reference/environment-variables.md#audit-sink-variables).
+* Read every field, the compatibility rule and the personal data notes in [Audit events](../../references/identity/audit-events.md#json-lines-sink).
+* Read the switches in [Environment variables](../../references/configuration/environment-variables.md#audit-sink-variables).
 * Read the audit log in the dashboard in [Review the audit log](review-audit-log.md).

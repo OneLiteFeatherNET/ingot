@@ -97,11 +97,11 @@ These lines are written to the server log only. They say why a `loginError` was 
 
 * For the steps of a provider, see its guide, for example [Configure Keycloak login](configure-keycloak-login.md), [Configure Okta login](configure-okta-login.md) or [Configure Microsoft Entra ID login](configure-entra-id-login.md).
 * For the groups, see [Map provider groups to teams](map-provider-groups-to-teams.md).
-* For the settings and the codes in one place, see [Login providers](../../reference/login-providers.md).
+* For the settings and the codes in one place, see [Login providers](../../references/configuration/login-providers.md).
 * If nobody can sign in as an administrator any more, see [Recover admin access](../../manage/access/recover-admin-access.md).
 
 ## Related
 
 * [Configure generic OIDC login](configure-oidc-login.md)
 * [Configure LDAP login](configure-ldap-login.md)
-* [Login providers](../../reference/login-providers.md)
+* [Login providers](../../references/configuration/login-providers.md)

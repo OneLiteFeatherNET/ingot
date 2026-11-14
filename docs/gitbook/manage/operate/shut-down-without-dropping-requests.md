@@ -6,7 +6,7 @@ description: Stop an Ingot replica in an orderly way with INGOT_SHUTDOWN_DELAY a
 
 When an Ingot replica stops, a request that is still running can be cut off, and a client that is downloading or uploading gets a broken connection. Two settings let the replica leave in an orderly way. `INGOT_SHUTDOWN_DELAY` keeps it serving for a few seconds after it reports `draining` on readiness, so that a load balancer takes it out of rotation first. `INGOT_SHUTDOWN_TIMEOUT` lets the requests in flight finish, up to a limit, while new requests get `503`. Both default to `0`, which keeps the immediate stop of earlier versions.
 
-The order of the steps is described in [Rollout sequence](../../explanation/multi-replica-operation.md#rollout-sequence). This page sets the values and checks them.
+The order of the steps is described in [Rollout sequence](../../references/architecture/multi-replica-operation.md#rollout-sequence). This page sets the values and checks them.
 
 ## Before you begin
 
@@ -99,6 +99,6 @@ The log shows these lines, in this order:
 
 ## Related
 
-* [Multi-replica operation](../../explanation/multi-replica-operation.md) describes the sequence and what it does not provide.
+* [Multi-replica operation](../../references/architecture/multi-replica-operation.md) describes the sequence and what it does not provide.
 * [Limit concurrent requests](../../configure/limit-concurrent-requests.md) describes the refusals that the limit gives, which also spare the status endpoints.
 * [Monitor status and failures](../monitor/monitor-status-and-failures.md) describes the health and readiness answers in full.

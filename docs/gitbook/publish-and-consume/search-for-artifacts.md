@@ -47,7 +47,7 @@ Each row is one artifact with its group, artifact and version.
 
 * **Newer** followed by a version appears when the latest version you can see differs from the version in the row.
 * **Snapshot** marks a snapshot version.
-* Repository chips show where the artifact is stored. A chip that reads **cached from** a name is a copy that a proxy repository fetched from an upstream repository. Read [How the search index stays current](../explanation/how-the-search-index-stays-current.md) for what that marking does and does not tell you.
+* Repository chips show where the artifact is stored. A chip that reads **cached from** a name is a copy that a proxy repository fetched from an upstream repository. Read [How the search index stays current](../references/architecture/how-the-search-index-stays-current.md) for what that marking does and does not tell you.
 * Open a row to list its files. Each file and each artifact links to its location in the browser.
 
 With the keyboard, Tab moves through the filters and the rows. Arrow Down and Arrow Up move between rows. Arrow Right opens the selected row, and Arrow Left closes it.
@@ -68,5 +68,5 @@ A proxy repository only lists the artifacts it has fetched at least once. An art
 
 ## Related
 
-* [Search filters and API](../reference/search-filters-and-api.md) lists every parameter.
+* [Search filters and API](../references/http-api/search-filters-and-api.md) lists every parameter.
 * [Rebuild the search index](../manage/operate/rebuild-search-index.md) explains what an administrator does when the index is out of date.

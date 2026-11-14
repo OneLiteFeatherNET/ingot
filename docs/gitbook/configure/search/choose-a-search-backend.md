@@ -12,13 +12,13 @@ A default installation needs none of this page. `searchEngine` defaults to `data
 
 ## Set the backend
 
-Set the local key `searchEngine` on every replica, to the same id. The id is `database`, or the id of a backend that a plugin registers. The environment variable is `INGOT_LOCAL_SEARCHENGINE`. The older `REPOSILITE_LOCAL_SEARCHENGINE` is read as a fallback. The key is read at start, so a change takes effect after a restart. The full list of keys is in [Configuration file and startup parameters](../../reference/configuration-and-startup.md#shared-settings-and-search).
+Set the local key `searchEngine` on every replica, to the same id. The id is `database`, or the id of a backend that a plugin registers. The environment variable is `INGOT_LOCAL_SEARCHENGINE`. The older `REPOSILITE_LOCAL_SEARCHENGINE` is read as a fallback. The key is read at start, so a change takes effect after a restart. The full list of keys is in [Configuration file and startup parameters](../../references/configuration/configuration-and-startup.md#shared-settings-and-search).
 
 The key is local to each replica. The cluster rule below keeps the replicas in agreement.
 
 ## Backend states
 
-Each replica reports one state for its backend. The state is in the `backend.state` field of `GET /api/maven/search/index`, which a manager can read. The API fields are described in [Search filters and API](../../reference/search-filters-and-api.md#index-administration).
+Each replica reports one state for its backend. The state is in the `backend.state` field of `GET /api/maven/search/index`, which a manager can read. The API fields are described in [Search filters and API](../../references/http-api/search-filters-and-api.md#index-administration).
 
 | State | What it means | What to do |
 | --- | --- | --- |
@@ -66,5 +66,5 @@ A switch back to the old backend follows the same steps. The rebuild starts agai
 
 * [Write a search backend plugin](../../manage/plugins/write-a-search-backend-plugin.md) describes the interfaces a plugin implements.
 * [Rebuild the search index](../../manage/operate/rebuild-search-index.md) covers the rebuild, its states and its triggers.
-* [Search filters and API](../../reference/search-filters-and-api.md) lists the status fields and the `503` answers.
-* [High availability support](../../explanation/high-availability-support.md) explains how replicas share one database.
+* [Search filters and API](../../references/http-api/search-filters-and-api.md) lists the status fields and the `503` answers.
+* [High availability support](../../references/architecture/high-availability-support.md) explains how replicas share one database.

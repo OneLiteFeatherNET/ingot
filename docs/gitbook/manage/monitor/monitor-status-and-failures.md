@@ -62,7 +62,7 @@ The container image has its own health check. It reads the address that Ingot wr
 
 The console command `status` prints the same values, plus whether the instance is active.
 
-`latestVersion` comes from the GitHub releases API. Ingot asks at most once an hour. To stop these outbound requests, for example on a network without internet access, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment of the instance. The older system property `-Dingot.status.remote-version-check=false` in `JAVA_OPTS` does the same and wins when both are set. To ask another endpoint, set `-Dingot.status.remote-version-url=<url>`. That endpoint can answer with a plain version string or with a GitHub release document. Every other connection that Ingot can open is listed in [Outbound connections](../../reference/outbound-connections.md).
+`latestVersion` comes from the GitHub releases API. Ingot asks at most once an hour. To stop these outbound requests, for example on a network without internet access, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment of the instance. The older system property `-Dingot.status.remote-version-check=false` in `JAVA_OPTS` does the same and wins when both are set. To ask another endpoint, set `-Dingot.status.remote-version-url=<url>`. That endpoint can answer with a plain version string or with a GitHub release document. Every other connection that Ingot can open is listed in [Outbound connections](../../references/configuration/outbound-connections.md).
 
 ## Look at memory and threads over time
 
@@ -186,4 +186,4 @@ Compose users, or anyone who runs Grafana without the sidecar, can import the sa
 ## Related
 
 * [Verify an upgrade](../upgrade/verify-an-upgrade.md) lists the checks to run after an upgrade.
-* [Search filters and API](../../reference/search-filters-and-api.md) describes the search index status, which is a separate endpoint.
+* [Search filters and API](../../references/http-api/search-filters-and-api.md) describes the search index status, which is a separate endpoint.

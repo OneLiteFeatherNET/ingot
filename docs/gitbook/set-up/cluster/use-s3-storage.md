@@ -15,7 +15,7 @@ Each repository has its own storage provider. A repository can keep its files on
 {% hint style="warning" %}
 Without references, the S3 keys are stored as plain text with the repository settings in the database. Anyone who can read the database can read them. The settings API hides them only when `hideSettingsSecrets` is enabled.
 
-To keep a key out of the database, turn on settings secret references with `INGOT_SETTINGS_SECRET_REFERENCES=true`, list the file directory in `INGOT_SETTINGS_SECRET_FILES`, and set the secret key to a reference such as `${file:/run/secrets/s3-secret-key}`. The database then stores the reference and not the key. See [Settings secret references](../../reference/configuration-and-startup.md#settings-secret-references).
+To keep a key out of the database, turn on settings secret references with `INGOT_SETTINGS_SECRET_REFERENCES=true`, list the file directory in `INGOT_SETTINGS_SECRET_FILES`, and set the secret key to a reference such as `${file:/run/secrets/s3-secret-key}`. The database then stores the reference and not the key. See [Settings secret references](../../references/configuration/configuration-and-startup.md#settings-secret-references).
 {% endhint %}
 
 ## Steps
@@ -95,7 +95,7 @@ Pod Identity needs no annotation on the service account. Create the association 
 
 The region of the repository is used first. When it is empty, Ingot reads `AWS_REGION` from the environment of the pod. The chart can supply it with `objectStorage.existingSecret`, see [Run on Kubernetes](../deploy/run-on-kubernetes.md#use-s3-for-repositories).
 
-For the fields of a repository, see [Storage providers](../../reference/storage-providers.md).
+For the fields of a repository, see [Storage providers](../../references/configuration/storage-providers.md).
 
 ## Large uploads
 

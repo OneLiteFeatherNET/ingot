@@ -13,7 +13,7 @@ A rebuild only reads storage. It never deletes or changes a file. Search keeps a
 ## Before you begin
 
 * A manager account, which is the only account that sees the Maintenance page and the index endpoints.
-* Search turned on. If the Maintenance page says that search is turned off, set `INGOT_LOCAL_SEARCHENABLED` to `true` and restart Ingot. The [configuration keys](../../reference/search-filters-and-api.md#configuration-keys) list the names.
+* Search turned on. If the Maintenance page says that search is turned off, set `INGOT_LOCAL_SEARCHENABLED` to `true` and restart Ingot. The [configuration keys](../../references/http-api/search-filters-and-api.md#configuration-keys) list the names.
 * A search backend that is available. While the backend is not available, the rebuild, verify and cancel endpoints answer `503`. See [Backend states](../../configure/search/choose-a-search-backend.md#backend-states).
 
 ## Rebuild from the Maintenance page
@@ -76,7 +76,7 @@ The answer is `202 Accepted` with the id of the run:
 { "runId": 12 }
 ```
 
-Start a verify with `POST /api/maven/search/index/verify`. Read the progress with `GET /api/maven/search/index`, and cancel the run with `POST /api/maven/search/index/runs/12/cancel`. The full list of endpoints and answers is in the [reference](../../reference/search-filters-and-api.md#index-administration).
+Start a verify with `POST /api/maven/search/index/verify`. Read the progress with `GET /api/maven/search/index`, and cancel the run with `POST /api/maven/search/index/runs/12/cancel`. The full list of endpoints and answers is in the [reference](../../references/http-api/search-filters-and-api.md#index-administration).
 
 ## After a backend switch
 
@@ -109,5 +109,5 @@ If an older replica runs next to 1.2.0 replicas during a rolling upgrade, the ar
 
 ## Related
 
-* [How the search index stays current](../../explanation/how-the-search-index-stays-current.md) explains when a rebuild is needed and what a verify checks.
-* [Search filters and API](../../reference/search-filters-and-api.md) lists the settings and the endpoints.
+* [How the search index stays current](../../references/architecture/how-the-search-index-stays-current.md) explains when a rebuild is needed and what a verify checks.
+* [Search filters and API](../../references/http-api/search-filters-and-api.md) lists the settings and the endpoints.

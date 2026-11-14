@@ -11,7 +11,7 @@ This page starts from what you see: a message at start, an HTTP status, or a sea
 * **The console and the log files.** Every failure is written to the log. In the container image the files are in `/var/log/reposilite`. See [Monitor status and failures](../monitor/monitor-status-and-failures.md).
 * **The failure list.** `GET /api/status/failures` with an instance admin token lists the recorded failures, newest first, with their message and stack trace. The console command `failures` prints the same list.
 * **The support bundle.** If you need help from someone else, collect a bundle instead of pasting settings. See [Collect a support bundle](collect-a-support-bundle.md).
-* **The API answer.** Errors under `/api` and on the repository paths use the problem shape described in [API errors](../../reference/api-errors.md). The `message` member holds the text quoted below.
+* **The API answer.** Errors under `/api` and on the repository paths use the problem shape described in [API errors](../../references/http-api/api-errors.md). The `message` member holds the text quoted below.
 
 ## Start refused
 
@@ -19,11 +19,11 @@ When Ingot refuses to start for a configuration reason, it prints one line that 
 
 | Line after `Ingot did not start:` | Cause | Fix |
 |---|---|---|
-| `Unknown deploy target '<value>' from <source>. Valid values: all, server.` | The deploy target is set to a value other than `all` or `server`. The source is `--target`, the property `ingot.target` or the variable `INGOT_TARGET`. There is no fallback. | Set the target to `all` or `server` in that source. See [Deploy targets](../../reference/deploy-targets.md). |
-| `<variable> names <file>, which does not exist`, `is a directory`, `is not a readable file`, `cannot be read` or `does not contain valid UTF-8 text` | A variable with the `_FILE` suffix, such as `INGOT_LOCAL_KEYPASSWORD_FILE`, names a file that Ingot cannot read as text. | Point the variable at a readable UTF-8 file, or set the plain variable instead. See [Environment variables](../../reference/environment-variables.md#file-values). |
+| `Unknown deploy target '<value>' from <source>. Valid values: all, server.` | The deploy target is set to a value other than `all` or `server`. The source is `--target`, the property `ingot.target` or the variable `INGOT_TARGET`. There is no fallback. | Set the target to `all` or `server` in that source. See [Deploy targets](../../references/configuration/deploy-targets.md). |
+| `<variable> names <file>, which does not exist`, `is a directory`, `is not a readable file`, `cannot be read` or `does not contain valid UTF-8 text` | A variable with the `_FILE` suffix, such as `INGOT_LOCAL_KEYPASSWORD_FILE`, names a file that Ingot cannot read as text. | Point the variable at a readable UTF-8 file, or set the plain variable instead. See [Environment variables](../../references/configuration/environment-variables.md#file-values). |
 | `<variable> names <value>, which is not a valid path` | The path in a `_FILE` variable cannot be parsed. | Correct the path. |
 | `Set either INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE, not both` | Both the inline key and the key file are set. | Keep one of them. |
-| `... is not valid base64`, `must hold base64 of 32 bytes` or `names a file that cannot be read` | The settings key is malformed or unreadable. The message names the variable, never the key. | Generate the key again with 32 random bytes, base64 encoded, and check the file. See [Settings encryption](../../reference/settings-encryption.md). |
+| `... is not valid base64`, `must hold base64 of 32 bytes` or `names a file that cannot be read` | The settings key is malformed or unreadable. The message names the variable, never the key. | Generate the key again with 32 random bytes, base64 encoded, and check the file. See [Settings encryption](../../references/configuration/settings-encryption.md). |
 | `INGOT_SETTINGS_ENCRYPTION is 'required', but no settings key is configured.` | The mode is `required` and no key is set. | Set `INGOT_SETTINGS_KEY` or `INGOT_SETTINGS_KEY_FILE`, or set the mode to `optional`. |
 | `Settings domain '<domain>', property '<path>' is encrypted, but no settings key is configured.` | The stored settings were sealed with a key, and this start has none. | Start with the key that wrote them. |
 | `The settings key does not match the key of this database (key id <id>).` or `... the key that sealed the stored settings (key id <id>).` | The configured key is not the one the database or the other replicas use. | Start with the key the other instances use. Do not change the key to get past this, because the stored secrets stay unreadable. |
@@ -49,7 +49,7 @@ Some start refusals are not one line. A value that Ingot cannot parse at start, 
 
 **Symptom:** a SQLite instance fails with two replicas, or a replica shows a database error after a restart.
 
-* **Cause:** SQLite is one file on one machine. It is not supported for more than one replica. See [High availability support](../../explanation/high-availability-support.md#not-supported).
+* **Cause:** SQLite is one file on one machine. It is not supported for more than one replica. See [High availability support](../../references/architecture/high-availability-support.md#not-supported).
 * **Fix:** move to MariaDB or PostgreSQL before you add a replica.
 
 ## Storage and S3
@@ -80,7 +80,7 @@ A deploy authenticates with the token name and secret, sent in an HTTP basic `Au
 
 **Symptom:** `401` with `Invalid authorization credentials`.
 
-* **Cause:** the token name or the secret is wrong, the token has been revoked, or the address is blocked. When brute force protection is on and an address has failed too often, Ingot answers the same message for every request from that address, including correct ones, until the ban ends. The protection is off by default. See [Sessions, login and CSRF](../../explanation/sessions-and-login.md).
+* **Cause:** the token name or the secret is wrong, the token has been revoked, or the address is blocked. When brute force protection is on and an address has failed too often, Ingot answers the same message for every request from that address, including correct ones, until the ban ends. The protection is off by default. See [Sessions, login and CSRF](../../references/architecture/sessions-and-login.md).
 * **Fix:** check the secret in the build tool. If the token is correct, wait for the ban to end. It lasts 300 seconds by default.
 
 **Symptom:** `403` with `This token is not authorized to access this path`.
@@ -91,11 +91,11 @@ A deploy authenticates with the token name and secret, sent in an HTTP basic `Au
 **Symptom:** `409` with `Redeployment is not allowed`.
 
 * **Cause:** the file exists and the repository does not accept redeployment. Redeployment is off by default.
-* **Fix:** deploy a new version. Change the repository only when you need to replace published files, see [Repository settings](../../reference/repository-settings.md).
+* **Fix:** deploy a new version. Change the repository only when you need to replace published files, see [Repository settings](../../references/configuration/repository-settings.md).
 
 **Symptom:** `405` with `is read-only and does not accept deployments or deletions`, or with `is a proxy` or `is a group and does not accept uploads`.
 
-* **Cause:** the repository is read-only, or it is a proxy or a group repository, which take no uploads. See [Repository types](../../reference/repository-types.md).
+* **Cause:** the repository is read-only, or it is a proxy or a group repository, which take no uploads. See [Repository types](../../references/configuration/repository-types.md).
 * **Fix:** deploy to a hosted repository, or clear the read-only setting if it was set on purpose by mistake.
 
 **Symptom:** `503` with `The instance is read-only, writes are refused until read-only mode is turned off`, and a `Retry-After` header of 30 seconds.
@@ -105,13 +105,13 @@ A deploy authenticates with the token name and secret, sent in an HTTP basic `Au
 
 **Symptom:** `400` with a checksum message, for example `SHA1 checksum file ... does not match the stored artifact, so it was refused`.
 
-* **Cause:** the repository has the `reject` upload checksum policy, and the uploaded checksum file does not match the artifact. See [API errors](../../reference/api-errors.md#checksum-file-refused).
+* **Cause:** the repository has the `reject` upload checksum policy, and the uploaded checksum file does not match the artifact. See [API errors](../../references/http-api/api-errors.md#checksum-file-refused).
 * **Fix:** check that the checksum was computed from the same bytes as the artifact. Upload the artifact again if it was changed after the checksum was made.
 
 **Symptom:** `400` with a version policy message on a deploy.
 
 * **Cause:** the repository has a version policy that refuses this version, for example a snapshot in a release repository.
-* **Fix:** deploy to the repository that matches the version, or change the version policy. See [Version policy and read-only](../../reference/repository-settings.md#version-policy-and-read-only).
+* **Fix:** deploy to the repository that matches the version, or change the version policy. See [Version policy and read-only](../../references/configuration/repository-settings.md#version-policy-and-read-only).
 
 **Symptom:** `507`, which the API documents as "not enough disk space".
 
@@ -142,7 +142,7 @@ A proxy repository fetches a file from its upstream and, when `store` is set, ke
 **Symptom:** `502` with `Upstream copy could not be verified against its checksum`.
 
 * **Cause:** the repository uses the `fail` checksum policy, and the upstream has no checksum file or a copy that does not match its checksum. The copy is not stored.
-* **Fix:** check that the upstream publishes a checksum for the artifact. If it does not, use the `warn` policy, which stores the copy and records the event. See [Storage and mirror caching](../../explanation/storage-and-mirror-caching.md).
+* **Fix:** check that the upstream publishes a checksum for the artifact. If it does not, use the `warn` policy, which stores the copy and records the event. See [Storage and mirror caching](../../references/architecture/storage-and-mirror-caching.md).
 
 **Symptom:** Gradle or Maven fails with `502` or `504` from the proxy, and does not try the next repository.
 
@@ -186,7 +186,7 @@ Artifact search has its own state, which you can read from the index status endp
 **Symptom:** search answers `503` with `The search timed out, narrow the filters`.
 
 * **Cause:** the query matched too much, or the backend was slow.
-* **Fix:** narrow the query with the filters in [Search filters and API](../../reference/search-filters-and-api.md).
+* **Fix:** narrow the query with the filters in [Search filters and API](../../references/http-api/search-filters-and-api.md).
 
 ## Cluster bus
 
@@ -205,7 +205,7 @@ The cluster bus is optional. Without `INGOT_CLUSTER_URL` it is off, and nothing 
 **Symptom:** the log shows `Cluster | The database cluster bus needs MariaDB, MySQL or PostgreSQL`, or `takes no host and no credentials`, and the instance runs without the bus.
 
 * **Cause:** the `database` transport was chosen on a database that cannot share it, or the URL carries a host or credentials. The start goes on with the bus off, so the replicas do not share events.
-* **Fix:** use `database:` alone as the URL on MariaDB, MySQL or PostgreSQL, or choose another bus. See [High availability support](../../explanation/high-availability-support.md).
+* **Fix:** use `database:` alone as the URL on MariaDB, MySQL or PostgreSQL, or choose another bus. See [High availability support](../../references/architecture/high-availability-support.md).
 
 **Symptom:** the log shows `no transport is available for <scheme> in this build`.
 
@@ -234,7 +234,7 @@ Read [Back up before upgrading](../upgrade/back-up-before-upgrading.md) first, a
 **Symptom:** a setting that you changed in an environment variable has no effect.
 
 * **Cause:** the name is misspelled, or a `REPOSILITE_` name is set where an `INGOT_` name is also set. The `INGOT_` name wins. An unknown `INGOT_LOCAL_` or `REPOSILITE_LOCAL_` variable is logged as a warning and ignored.
-* **Fix:** search the log for `Local configuration`. Correct the name. See [Environment variables](../../reference/environment-variables.md).
+* **Fix:** search the log for `Local configuration`. Correct the name. See [Environment variables](../../references/configuration/environment-variables.md).
 
 **Symptom:** the log warns `Deploy target 'all' from <source> overrides the legacy setting defaultFrontend=false`.
 
@@ -244,7 +244,7 @@ Read [Back up before upgrading](../upgrade/back-up-before-upgrading.md) first, a
 **Symptom:** the replicas of the old and the new release run side by side and one of them fails.
 
 * **Cause:** starting replicas of both releases at the same moment is not supported. Only adjacent releases are tested together.
-* **Fix:** follow the order in [High availability support](../../explanation/high-availability-support.md#rolling-upgrade-rule).
+* **Fix:** follow the order in [High availability support](../../references/architecture/high-availability-support.md#rolling-upgrade-rule).
 
 **Symptom:** the search index is `Building` for a long time after an upgrade.
 

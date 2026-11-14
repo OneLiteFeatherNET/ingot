@@ -34,7 +34,7 @@ Check the state with `GET /api/admin/read-only`. The answer carries `enabled` an
 {% endtab %}
 
 {% tab title="Environment" %}
-Set `INGOT_READ_ONLY=true` and restart the instance. The environment then forces read-only on this instance whatever is stored, and the toggle answers `409` for as long as the variable is set. Use this for a standby that must never accept writes. See [Environment variables](../../reference/environment-variables.md#read-only-variables).
+Set `INGOT_READ_ONLY=true` and restart the instance. The environment then forces read-only on this instance whatever is stored, and the toggle answers `409` for as long as the variable is set. Use this for a standby that must never accept writes. See [Environment variables](../../references/configuration/environment-variables.md#read-only-variables).
 {% endtab %}
 {% endtabs %}
 
@@ -59,7 +59,7 @@ Read-only mode alone does not give a consistent copy of an SQLite file, because 
 ## Related
 
 * [Back up and restore](back-up-and-restore.md)
-* [Environment variables](../../reference/environment-variables.md)
-* [API errors](../../reference/api-errors.md)
-* [HTTP API](../../reference/http-api.md)
-* [Audit events](../../reference/audit-events.md)
+* [Environment variables](../../references/configuration/environment-variables.md)
+* [API errors](../../references/http-api/api-errors.md)
+* [HTTP API](../../references/http-api/http-api.md)
+* [Audit events](../../references/identity/audit-events.md)

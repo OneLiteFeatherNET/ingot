@@ -100,4 +100,4 @@ Every pod should show `1/1` in the `READY` column. A pod that stays at `0/1` has
 * [Set a disruption budget](set-a-disruption-budget.md) limits how many pods a node drain can evict at once.
 * [Set Helm values for high availability](set-helm-values-for-high-availability.md) lists the other values that a multi-replica release needs.
 * [Size the deployment](size-the-deployment.md) describes how to choose the heap and the memory limit.
-* [Helm chart values](../../reference/helm-values.md#scaling-and-availability) lists every key of the autoscaler.
+* [Helm chart values](../../references/configuration/helm-values.md#scaling-and-availability) lists every key of the autoscaler.

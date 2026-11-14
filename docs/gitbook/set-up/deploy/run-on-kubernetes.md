@@ -7,7 +7,7 @@ description: Run Ingot on Kubernetes with the Ingot Helm chart, with a database 
 This page installs Ingot with the Ingot Helm chart, which is published as an OCI chart with each release. The chart sets the Deployment, Service, probes, persistence, autoscaling and ingress. You pass the Ingot settings through environment variables. Its values keep the keys of the upstream Reposilite chart, so [migrating an existing release](../migrate/migrate-from-upstream-chart.md) is a values diff. To run the dashboard as its own workload, see [Run the dashboard split from the server with Helm](run-split-with-helm.md).
 
 {% hint style="info" %}
-Which setups are supported with more than one replica, which are not, and the test behind each statement are listed in [High availability support](../../explanation/high-availability-support.md). Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
+Which setups are supported with more than one replica, which are not, and the test behind each statement are listed in [High availability support](../../references/architecture/high-availability-support.md). Read [Running more than one replica](#running-more-than-one-replica) before you set `replicas` above `1` or enable autoscaling.
 {% endhint %}
 
 ## Before you begin
@@ -22,7 +22,7 @@ The chart version and its `appVersion` are the Ingot release, so the chart and t
 
 ## Read the chart values
 
-The [Helm chart values](../../reference/helm-values.md) reference lists every key of the chart with its default and what it renders. Your own values file only needs the keys that change.
+The [Helm chart values](../../references/configuration/helm-values.md) reference lists every key of the chart with its default and what it renders. Your own values file only needs the keys that change.
 
 To read the values of the release that you deploy, run `helm show values` against that release, and replace `1.1.1` with its version:
 
@@ -340,7 +340,7 @@ env:
     value: "localhost,127.0.0.1,.svc,.cluster.local"
 ```
 
-The switch is off by default, so an existing installation keeps its routes until you set it. Put no user name or password into `HTTPS_PROXY` or `HTTP_PROXY`, because Ingot refuses such a value. Keep the credentials of the proxy on the mirror with `httpProxy` instead. The variables are described in [Environment variables](../../reference/environment-variables.md#mirror-environment-proxy).
+The switch is off by default, so an existing installation keeps its routes until you set it. Put no user name or password into `HTTPS_PROXY` or `HTTP_PROXY`, because Ingot refuses such a value. Keep the credentials of the proxy on the mirror with `httpProxy` instead. The variables are described in [Environment variables](../../references/configuration/environment-variables.md#mirror-environment-proxy).
 
 A NetworkPolicy that limits egress has to allow the same route. Without it the pod cannot reach the proxy, and the mirror requests fail with the upstream error. Allow the pods of this release to reach the proxy and DNS, and nothing else that the mirrors need:
 
@@ -430,7 +430,7 @@ Several replicas need all of the following:
 * A `ReadWriteMany` volume, or `persistence.enabled: false`, so that pods on other nodes can start.
 
 {% hint style="warning" %}
-The schema lock and the metadata lock are shared by all pods of one database. The tests for these locks run on MariaDB, and the page [High availability support](../../explanation/high-availability-support.md) names them and marks PostgreSQL with several replicas as not tested.
+The schema lock and the metadata lock are shared by all pods of one database. The tests for these locks run on MariaDB, and the page [High availability support](../../references/architecture/high-availability-support.md) names them and marks PostgreSQL with several replicas as not tested.
 
 These limits still apply:
 
@@ -440,7 +440,7 @@ These limits still apply:
 The design is in `docs/superpowers/specs/2026-08-08-kubernetes-ha-design.md` in the repository.
 {% endhint %}
 
-An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](../cluster/configure-cluster-bus.md). With more than one replica or the autoscaler on, the install notes warn about the settings that are missing, such as a `ReadWriteOnce` claim or no `INGOT_LOCAL_DATABASE`. The warnings do not stop the install. See [Multi-replica operation](../../explanation/multi-replica-operation.md#what-the-helm-chart-warns-about).
+An optional cluster bus lets the replicas drop cached state faster when another replica changes it. Without a bus URL nothing changes. See [Configure the cluster bus](../cluster/configure-cluster-bus.md). With more than one replica or the autoscaler on, the install notes warn about the settings that are missing, such as a `ReadWriteOnce` claim or no `INGOT_LOCAL_DATABASE`. The warnings do not stop the install. See [Multi-replica operation](../../references/architecture/multi-replica-operation.md#what-the-helm-chart-warns-about).
 
 ### Shutdown budget
 

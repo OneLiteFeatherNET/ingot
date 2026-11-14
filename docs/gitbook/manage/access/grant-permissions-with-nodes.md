@@ -10,7 +10,7 @@ A permission node says that a team or a principal may do one thing, such as read
 
 * A signed-in instance admin. Changing permission nodes needs the instance admin role.
 * The team and its members exist. See [Manage users, teams and machine accounts](manage-users-teams-and-machine-accounts.md).
-* The node grammar, in [Permission nodes](../../reference/permission-nodes.md).
+* The node grammar, in [Permission nodes](../../references/identity/permission-nodes.md).
 
 ## How nodes are applied
 

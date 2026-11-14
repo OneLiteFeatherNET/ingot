@@ -131,4 +131,4 @@ Users who sign in through an OIDC provider or LDAP are created at their first si
 * [Use tokens in CI](../../publish-and-consume/use-tokens-in-ci.md) creates the token that a machine account signs in with.
 * [Grant permissions with nodes](grant-permissions-with-nodes.md) gives teams and machine accounts their rights.
 * [Check what a principal can do](check-access.md) shows the effect of a team change before a build depends on it.
-* [Permission nodes](../../reference/permission-nodes.md) lists the node grammar.
+* [Permission nodes](../../references/identity/permission-nodes.md) lists the node grammar.
