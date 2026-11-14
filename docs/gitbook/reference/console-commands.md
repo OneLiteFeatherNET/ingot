@@ -55,6 +55,8 @@ The local console starts with the server unless you disable it with `--disable-i
 | `token-import` | none | `token-import <file>` | Import access tokens from file. |
 | `route-add` | none | `route-add <access_token> <path> <permissions>` | Add new route to access token or modify existing one. |
 | `route-remove` | none | `route-remove <access_token> <path>` | Remove route from access token. |
+| `settings-reencrypt` | none | `settings-reencrypt` | Seal the stored settings secrets with the active settings key. |
+| `settings-decrypt` | none | `settings-decrypt` | Write the stored settings secrets in clear, for a downgrade. |
 
 Square brackets mark optional arguments. All commands need the instance admin role on the remote entry points and nothing on the local console.
 
@@ -105,6 +107,17 @@ Routes are the legacy path grants of a token.
 | --- | --- | --- |
 | `route-add` | `<access_token>`: the token name.<br>`<path>`: the path prefix, for example `/releases/com/reposilite`.<br>`<permissions>`: letters `r` (read) and `w` (write). | Adds the route to the token. A path without a leading `/` gets one and the command says so. A route with the same path is replaced. Unknown letters fail and print the available ones. |
 | `route-remove` | `<access_token>`: the token name.<br>`<path>`: the path of the route. | Removes the route with that path for every permission. Fails for an unknown token. |
+
+### Settings commands
+
+These commands act on the secret values of the shared settings. They need a settings key in `INGOT_SETTINGS_KEY` or `INGOT_SETTINGS_KEY_FILE`, see [Settings encryption](settings-encryption.md). Neither command takes an argument.
+
+| Command | Arguments | Behavior |
+| --- | --- | --- |
+| `settings-reencrypt` | none | Seals every stored secret value with the active key and stores the key record. Prints `Sealed <n> stored secret values with the settings key id <key id>`. Run it once on one replica after a key rotation. Without an active key it fails with `No settings key is active, set INGOT_SETTINGS_KEY or INGOT_SETTINGS_KEY_FILE first`. |
+| `settings-decrypt` | none | Writes every stored secret value in clear and clears the key record. Prints `Wrote <n> stored secret values in clear, remove the settings key before starting an older build`. It needs the active key, and fails without one. Take an export first. |
+
+Both commands fail with `The stored settings could not be written, the settings may be managed by a file or changed concurrently` when the stored settings cannot be saved. The steps for a rotation and for a return to an older build are in [Encrypt settings secrets](../how-to/encrypt-settings-secrets.md).
 
 The help text of `route-add` states the matching rule: a route matches as a case-insensitive byte prefix, so `/releases` also covers `/releases-snapshots`. A trailing `/` anchors the route at a segment boundary, so `/releases/` does not match `/releases-snapshots`.
 
@@ -164,8 +177,26 @@ A temporary token replaces a persistent token with the same name. At startup the
 In the container, pass the option through `INGOT_OPTS`, for example `INGOT_OPTS=--token admin:secret`. A value in `INGOT_OPTS` replaces the arguments of an existing `REPOSILITE_OPTS`, because the entrypoint reads only one of them.
 {% endhint %}
 
+## Database snapshot: `--snapshot-database`
+
+`--snapshot-database` is a startup option, not a console command. It writes one online snapshot of the SQLite database into the `backups` directory of the working directory, prints its name and size, and exits without starting the server, the plugins, a port or the console. The audit log names the actor `command-line`.
+
+```sh
+java -jar ingot.jar --working-directory=/app/data --snapshot-database
+```
+
+In a container, run the same command in the running container, as the service account, as shown in [Back up and restore](../how-to/back-up-and-restore.md):
+
+```sh
+docker exec --user reposilite <container> java -jar /app/ingot.jar --working-directory=/app/data --snapshot-database
+```
+
+On success the command prints `Snapshot written: <file name> (<size> bytes) in backups/` and exits with `0`. On failure it prints `Ingot did not write a snapshot: <reason>` to the error output and exits with `1`. Only SQLite databases are supported. For MariaDB or PostgreSQL the command refuses before it connects and names the dump tool to use instead.
+
 ## Related
 
 * [Upgrade changes](upgrade-changes.md): how tokens are migrated and what happens to a `--token` token.
+* [Encrypt settings secrets](../how-to/encrypt-settings-secrets.md): the rotation steps behind `settings-reencrypt` and `settings-decrypt`.
+* [Back up and restore](../how-to/back-up-and-restore.md): when to take a snapshot and how to restore one.
 * [Upgrade from Reposilite 2.x](../how-to/upgrade-from-reposilite-2.md): uses `token-import`.
 * [Token migration](../explanation/token-migration.md): why tokens become machine accounts.
