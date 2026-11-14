@@ -22,6 +22,7 @@ import com.reposilite.shared.badRequest
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.DELETE
@@ -49,7 +50,7 @@ import panda.std.Result.supplyThrowing
 internal class IdentityApiEndpoints(private val identity: IdentityFacade) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals",
         tags = ["Identity"],
         summary = "Lists the principals (users and machine accounts). Note: Requires the users area (ingot.admin.users)",
@@ -62,7 +63,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals",
         tags = ["Identity"],
         summary = "Creates a principal. Note: Requires the users area (ingot.admin.users)",
@@ -81,7 +82,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}",
         tags = ["Identity"],
         summary = "Returns a principal with its teams and tokens (without secrets). Note: Requires the users area (ingot.admin.users)",
@@ -99,7 +100,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}",
         tags = ["Identity"],
         summary = "Updates the display name or the disabled flag of a principal. Note: Requires the users area (ingot.admin.users)",
@@ -119,7 +120,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}",
         tags = ["Identity"],
         summary = "Deletes a principal with its tokens, memberships and instance role. Note: Requires the users area (ingot.admin.users)",
@@ -133,7 +134,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/tokens",
         tags = ["Identity"],
         summary = "Lists the tokens of a principal. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -147,7 +148,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/tokens",
         tags = ["Identity"],
         summary = "Creates a token for a principal. The secret is returned once. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -163,7 +164,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/tokens/{tokenName}",
         tags = ["Identity"],
         summary = "Deletes a token of a principal. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -180,7 +181,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams",
         tags = ["Identity"],
         summary = "Lists the teams with their member and grant counts. Note: Requires the teams area (ingot.admin.teams)",
@@ -193,7 +194,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams",
         tags = ["Identity"],
         summary = "Creates a team. Note: Requires the teams area (ingot.admin.teams)",
@@ -212,7 +213,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}",
         tags = ["Identity"],
         summary = "Returns a team with its members and grants. Note: Requires the teams area (ingot.admin.teams)",
@@ -230,7 +231,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}",
         tags = ["Identity"],
         summary = "Updates the description or the external reference of a team. Note: Requires the teams area (ingot.admin.teams)",
@@ -250,7 +251,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}",
         tags = ["Identity"],
         summary = "Deletes a team with its memberships and grants. Note: Requires the teams area (ingot.admin.teams)",
@@ -264,7 +265,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/members",
         tags = ["Identity"],
         summary = "Replaces the manual members of a team. Synchronised members are kept. Note: Requires the teams area (ingot.admin.teams)",
@@ -284,7 +285,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/grants",
         tags = ["Identity"],
         summary = "Replaces all grants of a team. Roles: READ, DEPLOY, MAINTAIN, ADMIN. Note: Requires the teams area (ingot.admin.teams)",
@@ -304,7 +305,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/instance-admin",
         tags = ["Identity"],
         summary = "Grants the instance role to a principal. Granting it again changes nothing. Note: Requires the instance admin (ingot.admin.*)",
@@ -322,7 +323,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/instance-admin",
         tags = ["Identity"],
         summary = "Removes the instance role of a principal. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
@@ -340,7 +341,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/instance-admin",
         tags = ["Identity"],
         summary = "Grants the instance role to a team: its members with a valid token become instance admins. Note: Requires the instance admin (ingot.admin.*)",
@@ -358,7 +359,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/instance-admin",
         tags = ["Identity"],
         summary = "Removes the instance role of a team. The last usable instance admin cannot be removed (409). Note: Requires the instance admin (ingot.admin.*)",
@@ -376,7 +377,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/repositories/{repository}/access",
         tags = ["Identity"],
         summary = "Explains who has which access on a repository, and why. Note: Requires the users area (ingot.admin.users)",
@@ -390,7 +391,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/nodes",
         tags = ["Identity"],
         summary = "Returns the permission nodes of a principal, with its entity tag. Note: Requires the users area (ingot.admin.users)",
@@ -408,7 +409,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/principals/{name}/nodes",
         tags = ["Identity"],
         summary = "Replaces the whole permission node list of a principal. A caller may only give rights it holds. Note: Requires the users area (ingot.admin.users)",
@@ -428,7 +429,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/nodes",
         tags = ["Identity"],
         summary = "Returns the permission nodes of a team, with its entity tag. Note: Requires the teams area (ingot.admin.teams)",
@@ -446,7 +447,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/nodes",
         tags = ["Identity"],
         summary = "Replaces the whole permission node list of a team. A caller may only give rights it holds. Note: Requires the teams area (ingot.admin.teams)",
@@ -466,7 +467,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/parents",
         tags = ["Identity"],
         summary = "Returns the parent teams of a team, with its entity tag. Note: Requires the teams area (ingot.admin.teams)",
@@ -484,7 +485,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/teams/{name}/parents",
         tags = ["Identity"],
         summary = "Replaces the parent teams of a team. A cycle or a depth above 8 levels is refused with 409. Note: Requires the teams area (ingot.admin.teams)",
@@ -504,7 +505,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/nodes/catalog",
         tags = ["Identity"],
         summary = "Lists the permission nodes an operator can pick, optionally by prefix. Note: Requires the instance admin (ingot.admin.*)",
@@ -517,7 +518,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/nodes/templates",
         tags = ["Identity"],
         summary = "Lists the predefined node bundles of the user interface. Note: Requires the instance admin (ingot.admin.*)",
@@ -530,7 +531,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/check",
         tags = ["Identity"],
         summary = "Decides one node for a principal, optionally narrowed by one of its tokens, with the candidates considered. Or decides a repository path with the query parameters repository, path and action (or the action of a node). Instance admins may check any principal, others only their own.",
@@ -551,7 +552,7 @@ internal class IdentityApiEndpoints(private val identity: IdentityFacade) : Repo
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/identity/me/access",
         tags = ["Identity"],
         summary = "Lists the caller's own access: its teams with their direct parents, its allowed and denied nodes, its grants and whether it is an instance administrator. Any signed-in principal may read it; it never describes another principal.",

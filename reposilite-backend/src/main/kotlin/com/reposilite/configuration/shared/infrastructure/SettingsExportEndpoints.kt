@@ -29,6 +29,7 @@ import com.reposilite.shared.badRequestError
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.POST
 import io.javalin.http.Header
@@ -58,7 +59,7 @@ internal class SettingsExportEndpoints(
 ) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/settings/export",
         methods = [HttpMethod.POST],
         tags = ["Settings"],
@@ -82,7 +83,7 @@ internal class SettingsExportEndpoints(
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/settings/import/open",
         methods = [HttpMethod.POST],
         tags = ["Settings"],

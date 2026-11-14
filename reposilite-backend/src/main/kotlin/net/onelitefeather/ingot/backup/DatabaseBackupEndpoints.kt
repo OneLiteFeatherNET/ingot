@@ -20,6 +20,7 @@ import com.reposilite.audit.api.auditActor
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.POST
 import io.javalin.openapi.HttpMethod
@@ -33,7 +34,7 @@ import java.time.format.DateTimeFormatter
 internal class DatabaseBackupEndpoints(private val snapshotService: DatabaseSnapshotService) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         tags = ["Database"],
         path = "/api/database/snapshots",
         methods = [HttpMethod.POST],

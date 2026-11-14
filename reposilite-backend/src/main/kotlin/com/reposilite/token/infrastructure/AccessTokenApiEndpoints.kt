@@ -33,6 +33,7 @@ import com.reposilite.token.api.UpdateAccessTokenWithNoNameRequest
 import com.reposilite.web.api.ReposiliteRoute
 import com.reposilite.web.api.ReposiliteRoutes
 import com.reposilite.web.api.SESSION_BEARER_SCHEME
+import com.reposilite.web.api.SESSION_COOKIE_SCHEME
 import com.reposilite.web.api.SMALL_JSON_BODY_LIMIT
 import com.reposilite.web.api.TOKEN_BASIC_SCHEME
 import io.javalin.community.routing.Route.DELETE
@@ -55,7 +56,7 @@ import panda.std.asSuccess
 internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessTokenFacade) : ReposiliteRoutes() {
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/tokens",
         tags = ["Tokens"],
         summary = "Returns all existing tokens and data such as their permissions. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -68,7 +69,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/tokens/{name}",
         tags = ["Tokens"],
         summary = "Returns data about the token given via it's name. Note: Requires manager or you must be the token owner",
@@ -89,7 +90,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/tokens/{name}",
         tags = ["Tokens"],
         summary = "Creates / Updates a token via the specified body. Note: Requires manager permission.",
@@ -133,7 +134,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/tokens/{name}",
         tags = ["Tokens"],
         summary = "Updates token metadata (description, permissions, routes, expiry) without regenerating the secret. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -177,7 +178,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/tokens/{name}/secret",
         tags = ["Tokens"],
         summary = "Regenerates and returns a new secret for the token, invalidating the previous one. Note: Requires the tokens area (ingot.admin.tokens)",
@@ -193,7 +194,7 @@ internal class AccessTokenApiEndpoints(private val accessTokenFacade: AccessToke
     }
 
     @OpenApi(
-        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME)],
+        security = [OpenApiSecurity(name = TOKEN_BASIC_SCHEME), OpenApiSecurity(name = SESSION_BEARER_SCHEME), OpenApiSecurity(name = SESSION_COOKIE_SCHEME)],
         path = "/api/tokens/{name}",
         tags = ["Tokens"],
         summary = "Deletes the token specified via it's name. Note: Requires the tokens area (ingot.admin.tokens)",
