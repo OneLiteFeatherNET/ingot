@@ -221,8 +221,11 @@ READER = "ha-reader"
 ROLLING_GROUP = "net/onelitefeather/smoke"
 ROLLING_PATH = "net/onelitefeather/smoke/rolling/1.0.0/rolling-1.0.0.pom"
 LEASE_GROUP = "net/onelitefeather/smoke/lease"
-LEASE_VERSIONS = 80
-"""Versions seeded for the lease check. A run that keeps all but the newest one deletes this many less one."""
+LEASE_VERSIONS = 400
+"""Versions seeded for the lease check. A run that keeps all but the newest one deletes this many less one. About 25 ms
+per deletion keeps the run held for roughly 10 s, well above the observation and kill latency of the check."""
+LEASE_SEED_WORKERS = 8
+"""Parallel uploads while seeding the versions, so 400 of them stay well inside the job timeout."""
 LEASE_ATTEMPTS = 5
 """Attempts at the lease check. A cleanup run on the first replica can finish, or delete every version, between the
 409 the probe sees and the kill, or finish before the probe sees it hold the lease at all (a missed observation). Each
@@ -253,6 +256,17 @@ CURL_SCRIPT = (
 """One request from the client pod. Every call keeps its files in a directory of its own, because the concurrent deploys
 check runs two calls in the pod at the same moment."""
 """Runs one request from the client pod and prints the status, the headers and the base64 body."""
+
+CURL_BODYLESS_SCRIPT = (
+    'm="$1"; u="$2"; shift 2; d=$(mktemp -d)\n'
+    'code=$(curl -sS -X "$m" --max-time 240 -o "$d/out" -D "$d/hdr" -w "%{http_code}" "$@" "$u") || code=000\n'
+    'echo "$code"; cat "$d/hdr" 2>/dev/null | tr -d "\\r"; echo "---"; base64 "$d/out" 2>/dev/null | tr -d "\\n"; echo\n'
+    'rm -rf "$d"\n'
+)
+"""The same request without a body. It never reads stdin, so a stream that does not deliver end of input cannot stall it."""
+POD_TIMEOUT_SECONDS = 260
+"""The bound of one request inside the client pod, below the 300 s the driver allows kubectl exec, so a stuck request
+ends in the pod with its own message before the driver gives up."""
 
 
 def sha256_hex(data):
@@ -319,6 +333,16 @@ class Kubectl:
         return self.run(["get", "pod", pod, "-o", "jsonpath={.status.phase}"], check=False).stdout.decode().strip()
 
 
+def exec_args(method, url, headers, body):
+    """The kubectl exec arguments of one request in the client pod. A request with a body attaches stdin and streams the
+    body into the pod. A bodyless request attaches no stdin at all and runs the script that never reads it. Both are
+    bounded inside the pod by POD_TIMEOUT_SECONDS."""
+    bound = ["timeout", str(POD_TIMEOUT_SECONDS)]
+    if body:
+        return ["exec", "-i", CLIENT, "--", *bound, "sh", "-c", CURL_SCRIPT, "sh", method, url, *headers]
+    return ["exec", CLIENT, "--", *bound, "sh", "-c", CURL_BODYLESS_SCRIPT, "sh", method, url, *headers]
+
+
 class ClusterHttp:
     """Requests to the pods and the Service, sent from the in-cluster client pod."""
 
@@ -326,12 +350,16 @@ class ClusterHttp:
         self.kubectl = kubectl
 
     def request(self, method, url, *, headers=(), body=b"", timeout=300):
-        args = ["exec", "-i", CLIENT, "--", "sh", "-c", CURL_SCRIPT, "sh", method, url, *headers]
-        result = self.kubectl.run(args, stdin=body, timeout=timeout)
+        args = exec_args(method, url, headers, body)
+        try:
+            result = self.kubectl.run(args, stdin=body, timeout=timeout)
+        except subprocess.TimeoutExpired as expired:
+            stage = "sending the body" if body else "waiting for the answer"
+            raise SmokeFailure(f"{method} {url} did not finish within {timeout}s ({stage}, kubectl exec)") from expired
         return parse_curl_output(result.stdout.decode("utf-8", errors="replace"))
 
     def start(self, method, url, *, headers=()):
-        args = ["exec", "-i", CLIENT, "--", "sh", "-c", CURL_SCRIPT, "sh", method, url, *headers]
+        args = exec_args(method, url, headers, b"")
         return subprocess.Popen(self.kubectl.argv(args), stdin=subprocess.DEVNULL,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -517,13 +545,16 @@ class Smoke:
         first_ip, second_ip = ready[first], ready[second]
         artifact = f"lease-{attempt}"
         attempt_started = self.clock.wall()
-        for index in range(LEASE_VERSIONS):
-            self.deploy(first_ip, LEASE_GROUP, artifact, f"1.0.{index}", f"<project>lease {index}</project>\n".encode())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=LEASE_SEED_WORKERS) as pool:
+            list(pool.map(lambda index: self.deploy(first_ip, LEASE_GROUP, artifact, f"1.0.{index}",
+                                                    f"<project>lease {index}</project>\n".encode()),
+                          range(LEASE_VERSIONS)))
         held = self.http.start("POST", pod_url(first_ip, f"/api/cleanup/policies/{POLICY}/run"),
                                headers=basic_auth_header())
         try:
             outcome = wait_until(lambda: self.probe_run(second_ip), clock=self.clock, timeout=180, interval=1,
                                  describe="the run on the first replica to hold the lease")
+            observed_at = self.clock.wall()
             if outcome != "held":
                 # The run ended before the probe saw it hold the lease, so the takeover of a killed run cannot be
                 # checked in this attempt. The race is lost: the caller starts over with fresh versions.
@@ -531,6 +562,8 @@ class Smoke:
                          "(missed observation)")
                 return False
             killed_at = self.clock.wall()
+            self.out(f"check 2: attempt {attempt} observed the lease held, killing the holder "
+                     f"{killed_at - observed_at:.1f}s later")
             self.kubectl.run(["delete", "pod", first, "--force", "--grace-period=0"])
         finally:
             held.kill()
@@ -540,6 +573,10 @@ class Smoke:
                    timeout=LEASE_TTL_SECONDS + POLL_SECONDS + 120, interval=1,
                    describe="the other replica to take over the killed run")
         runs = self.runs(second_ip)
+        for run in runs:
+            if run.get("policyId") == POLICY and iso_to_epoch(run["startedAt"]) >= attempt_started:
+                self.out(f"check 2: attempt {attempt} run {run.get('id')} started {run['startedAt']}, "
+                         f"finished {run.get('finishedAt')}, deleted {run.get('deletedCount')}")
         if finished_before_kill(runs, POLICY, killed_at, since=attempt_started):
             return False
         recorded = takeover_run(runs, POLICY, killed_at)
