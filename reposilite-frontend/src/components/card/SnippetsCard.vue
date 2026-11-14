@@ -21,7 +21,6 @@ import { copyToClipboard, selectText } from './copySnippet'
 import { readDetailsCollapsed, writeDetailsCollapsed } from './detailsCollapsed'
 import useRepository from '../../store/maven/repository'
 import useMetadata from '../../store/maven/metadata'
-import MdCard from '../md/MdCard.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import BrowserIcon from '../browser/BrowserIcon.vue'
 import DownIcon from '../icons/DownIcon.vue'
@@ -49,6 +48,10 @@ const toggleCollapsed = () => {
 }
 
 const title = ref('')
+// The full name of the card for assistive technology: the visible title is the short part of it.
+const label = ref('')
+// The repository the details are for, shown under the heading. Empty on the root page and for an artifact.
+const subtitle = ref('')
 const rootPage = ref(false)
 const configurations = [
   { name: 'Maven', lang: 'xml' },
@@ -66,12 +69,16 @@ const { client } = useSession()
 const displayRepository = () => {
   const repository = props.qualifier.path.split('/')[0]
   rootPage.value = repository === ''
-  title.value = rootPage.value ? 'Use a repository' : `Repository details: ${repository}`
+  title.value = rootPage.value ? 'Use a repository' : 'Repository details'
+  label.value = rootPage.value ? 'Use a repository' : `Repository details: ${repository}`
+  subtitle.value = rootPage.value ? '' : repository
   data.value = createRepositories(props.qualifier)
 }
 
 const displayArtifact = (metadataSource, version) => {
   title.value = 'Artifact details'
+  label.value = 'Artifact details'
+  subtitle.value = ''
   const { groupId, artifactId, versions } = parseMetadata(metadataSource)
   const latestVersion = versions[version ? versions.indexOf(version) : versions.length - 1]
   data.value = { type: 'artifact', groupId, artifactId, version: latestVersion }
@@ -165,22 +172,23 @@ const selectTab = (tab) =>
 </script>
 
 <template>
-  <!-- Outlined on the surface: the file listing beside it is the tonal block, this card the quiet frame. -->
-  <MdCard
-    variant="outlined"
-    class="w-full min-w-0"
+  <!--
+    A sidebar on the page surface, like the listing beside it: no frame of its own, so its heading and the listing's
+    heading share one top line and its edges are the edges of the column.
+  -->
+  <div
+    class="w-full min-w-0 text-on-surface"
+    data-ingot-component="snippets-card"
   >
-    <div
-      class="px-2 pb-2"
-      data-ingot-component="snippets-card"
-    >
-      <div class="flex flex-row justify-between">
-        <h1 class="flex w-full items-center md-title-large">
+    <div>
+      <div class="flex min-h-12 flex-row items-center justify-between">
+        <h1 class="flex w-full min-w-0 items-center md-title-large">
           <button
             type="button"
-            class="md-state-layer md-focus-ring inline-flex min-h-12 min-w-0 max-w-full items-center gap-1 rounded-corner-small px-2 text-left text-on-surface"
+            class="md-state-layer md-focus-ring -mx-2 inline-flex min-h-12 min-w-0 max-w-full items-center gap-1 rounded-corner-small px-2 text-left text-on-surface"
             :aria-expanded="String(!collapsed)"
             :aria-controls="bodyId"
+            :aria-label="loading ? undefined : label"
             @click="toggleCollapsed"
           >
             <span
@@ -193,7 +201,7 @@ const selectTab = (tab) =>
             <!-- Points down while folded, up while open. The button's name and state are already announced. -->
             <span
               aria-hidden="true"
-              class="inline-flex shrink-0 transition-transform duration-(--md-sys-motion-duration-short3)"
+              class="inline-flex shrink-0 transition-transform duration-(--md-sys-motion-duration-short3) motion-reduce:transition-none"
               :class="collapsed ? '' : 'rotate-180'"
             >
               <DownIcon />
@@ -201,14 +209,22 @@ const selectTab = (tab) =>
           </button>
         </h1>
       </div>
+      <p
+        v-if="subtitle && !loading"
+        data-test="details-subtitle"
+        class="-mt-1 break-words md-body-medium text-on-surface-variant"
+      >
+        {{ subtitle }}
+      </p>
 
       <div
         v-show="!collapsed"
         :id="bodyId"
+        class="mt-4"
       >
         <p
           v-if="rootPage && !loading"
-          class="mb-4 px-2 md-body-medium text-on-surface-variant"
+          class="mb-4 md-body-medium text-on-surface-variant"
         >
           Replace <code class="font-mono">&lt;repository&gt;</code> with the id of a repository from the list.
           The id in the snippet is a label in your build file, so the instance id works too.
@@ -247,7 +263,10 @@ const selectTab = (tab) =>
                 <!-- Preformatted: lines keep their indentation and are never broken, so long ones scroll sideways. -->
                 <div
                   ref="codeBlock"
-                  class="card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small min-h-29 px-4 pb-3 pt-1"
+                  role="region"
+                  tabindex="0"
+                  :aria-label="`${selectedTab ?? 'Snippet'} snippet, scrolls sideways`"
+                  class="md-focus-ring card-editor max-w-full overflow-x-auto whitespace-pre break-normal font-mono md-body-small min-h-29 px-4 pb-3 pt-1"
                 >
                   <div
                     v-if="loading"
@@ -309,7 +328,7 @@ const selectTab = (tab) =>
         </div>
       </div>
     </div>
-  </MdCard>
+  </div>
 </template>
 
 <style>
@@ -318,18 +337,31 @@ const selectTab = (tab) =>
 .slide-left-enter-active,
 .slide-left-leave-active {
   transition: opacity .1s ease, transform .1s ease;
+
+  /* Viewers who ask the system for less motion get the fade without the slide. */
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity .1s ease;
+  }
 }
 
 .slide-right-leave-to,
 .slide-left-enter-from {
   opacity: 0;
   transform: translateX(60px);
+
+  @media (prefers-reduced-motion: reduce) {
+    transform: none;
+  }
 }
 
 .slide-right-enter-from,
 .slide-left-leave-to {
   opacity: 0;
   transform: translateX(-60px);
+
+  @media (prefers-reduced-motion: reduce) {
+    transform: none;
+  }
 }
 
 ::-webkit-scrollbar {

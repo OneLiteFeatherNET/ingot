@@ -220,7 +220,7 @@ const entryUrl = (file) =>
       v-if="!loading && !files.error && hasReferences"
       id="browser-includes"
       aria-labelledby="browser-includes-title"
-      class="px-4 pt-6"
+      class="pt-6"
     >
       <h2
         id="browser-includes-title"

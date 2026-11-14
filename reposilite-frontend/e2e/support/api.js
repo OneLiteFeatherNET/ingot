@@ -62,7 +62,7 @@ const changeRepositories = async (change) => {
   throw new Error(`the repository settings kept changing, gave up after ${MAX_ATTEMPTS} attempts`)
 }
 
-const repositoryTemplate = (id, { visibility = 'PUBLIC', description = '' } = {}) => ({
+const repositoryTemplate = (id, { visibility = 'PUBLIC', description = '', proxied = [] } = {}) => ({
   id,
   visibility,
   description,
@@ -73,7 +73,7 @@ const repositoryTemplate = (id, { visibility = 'PUBLIC', description = '' } = {}
   storagePolicy: 'PRIORITIZE_UPSTREAM_METADATA',
   metadataMaxAge: 0,
   resolutionCacheMaxEntries: 0,
-  proxied: [],
+  proxied,
   protectedGroupPrefixes: [],
 })
 

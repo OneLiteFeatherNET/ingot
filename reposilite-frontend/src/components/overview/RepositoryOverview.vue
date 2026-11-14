@@ -199,7 +199,7 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
   />
   <div
     v-else
-    class="container mx-auto mb-12 grid min-h-[320px] max-w-none grid-cols-[minmax(0,1fr)] gap-6 pt-7 min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] min-[1920px]:grid-cols-[2fr_1fr] lg:items-start"
+    class="container mx-auto mb-12 grid min-h-[320px] max-w-none grid-cols-[minmax(0,1fr)] gap-6 pt-7 min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start"
     data-ingot-component="repository-overview"
   >
     <!-- The list comes first in reading order. From 1024px the card keeps its column on the right, and below it follows the list. -->
@@ -209,53 +209,113 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
     >
       <h2
         id="overview-repositories-title"
-        class="md-title-large text-on-surface"
+        class="flex min-h-12 items-center md-title-large text-on-surface"
       >
         Repositories
       </h2>
 
       <div class="mt-4 flex flex-col gap-3">
-        <MdTextField
-          :model-value="text"
-          label="Filter repositories"
-          variant="outlined"
-          type="search"
-          autocomplete="off"
-          supporting-text="Search by id, description or tag. Use tag:name for one tag."
-          @update:model-value="setText"
-        >
-          <template #leading-icon>
-            <svg
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-              focusable="false"
+        <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
+          <div class="min-w-0 shrink grow basis-72">
+            <MdTextField
+              :model-value="text"
+              label="Filter repositories"
+              variant="outlined"
+              type="search"
+              autocomplete="off"
+              supporting-text="Search by id, description or tag. Use tag:name for one tag."
+              @update:model-value="setText"
             >
-              <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
-            </svg>
-          </template>
-          <template
-            v-if="text !== ''"
-            #trailing-icon
-          >
-            <button
-              type="button"
-              class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 items-center justify-center rounded-corner-full text-on-surface-variant"
-              aria-label="Clear search"
-              @click="setText('')"
-            >
-              <svg
-                class="size-6"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
+              <template #leading-icon>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
+                </svg>
+              </template>
+              <template
+                v-if="text !== ''"
+                #trailing-icon
               >
-                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              </svg>
-            </button>
-          </template>
-        </MdTextField>
+                <button
+                  type="button"
+                  class="md-state-layer md-focus-ring md-touch-target relative inline-flex size-10 items-center justify-center rounded-corner-full text-on-surface-variant"
+                  aria-label="Clear search"
+                  @click="setText('')"
+                >
+                  <svg
+                    class="size-6"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                  </svg>
+                </button>
+              </template>
+            </MdTextField>
+          </div>
+          <div class="flex flex-none flex-col">
+            <p
+              aria-hidden="true"
+              class="md-label-medium text-on-surface-variant"
+            >
+              Repository type
+            </p>
+            <div
+              role="group"
+              aria-label="Repository type"
+              class="flex flex-wrap gap-2 pt-1"
+            >
+              <MdChip
+                v-for="filter in DECLARED_FILTERS"
+                :key="filter.key"
+                variant="filter"
+                data-test="filter-type"
+                :selected="selectedTypes.includes(filter.key)"
+                @click="toggleType(filter.key)"
+              >
+                {{ filter.label }}
+              </MdChip>
+            </div>
+          </div>
+
+          <div class="flex flex-none flex-col">
+            <p
+              aria-hidden="true"
+              class="md-label-medium text-on-surface-variant"
+            >
+              Derived type
+            </p>
+            <div
+              role="group"
+              aria-label="Derived type"
+              aria-describedby="overview-derived-type-help"
+              class="flex flex-wrap gap-2 pt-1"
+            >
+              <MdChip
+                v-for="filter in DERIVED_FILTERS"
+                :key="filter.key"
+                variant="filter"
+                data-test="filter-type"
+                :selected="selectedTypes.includes(filter.key)"
+                @click="toggleType(filter.key)"
+              >
+                {{ filter.label }}
+              </MdChip>
+            </div>
+          </div>
+        </div>
+        <p
+          id="overview-derived-type-help"
+          class="md-body-small text-on-surface-variant"
+        >
+          {{ DERIVED_TYPE_HELP }}
+        </p>
 
         <div
           v-if="shownTags.length > 0"
@@ -273,63 +333,6 @@ const clearFilters = () => replaceQuery({ q: undefined, tag: undefined, type: un
           >
             {{ tag }}
           </MdChip>
-        </div>
-
-        <div class="flex flex-col">
-          <p
-            aria-hidden="true"
-            class="px-4 md-label-medium text-on-surface-variant"
-          >
-            Repository type
-          </p>
-          <div
-            role="group"
-            aria-label="Repository type"
-            class="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            <MdChip
-              v-for="filter in DECLARED_FILTERS"
-              :key="filter.key"
-              variant="filter"
-              data-test="filter-type"
-              :selected="selectedTypes.includes(filter.key)"
-              @click="toggleType(filter.key)"
-            >
-              {{ filter.label }}
-            </MdChip>
-          </div>
-        </div>
-
-        <div class="flex flex-col">
-          <p
-            aria-hidden="true"
-            class="px-4 md-label-medium text-on-surface-variant"
-          >
-            Derived type
-          </p>
-          <div
-            role="group"
-            aria-label="Derived type"
-            aria-describedby="overview-derived-type-help"
-            class="-mx-4 flex flex-nowrap gap-2 overflow-x-auto px-4 pt-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            <MdChip
-              v-for="filter in DERIVED_FILTERS"
-              :key="filter.key"
-              variant="filter"
-              data-test="filter-type"
-              :selected="selectedTypes.includes(filter.key)"
-              @click="toggleType(filter.key)"
-            >
-              {{ filter.label }}
-            </MdChip>
-          </div>
-          <p
-            id="overview-derived-type-help"
-            class="px-4 md-body-small text-on-surface-variant"
-          >
-            {{ DERIVED_TYPE_HELP }}
-          </p>
         </div>
       </div>
 

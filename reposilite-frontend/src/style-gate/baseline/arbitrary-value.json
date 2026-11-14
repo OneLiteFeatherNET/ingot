@@ -127,7 +127,7 @@
   {
     "file": "src/components/browser/FileBrowserView.vue",
     "match": "grid-cols-[minmax(0,1fr)]",
-    "count": 2
+    "count": 1
   },
   {
     "file": "src/components/browser/FileBrowserView.vue",
@@ -402,12 +402,12 @@
   {
     "file": "src/components/overview/RepositoryOverview.vue",
     "match": "[&::-webkit-scrollbar]:hidden",
-    "count": 3
+    "count": 1
   },
   {
     "file": "src/components/overview/RepositoryOverview.vue",
     "match": "[scrollbar-width:none]",
-    "count": 3
+    "count": 1
   },
   {
     "file": "src/components/overview/RepositoryOverview.vue",
@@ -427,11 +427,6 @@
   {
     "file": "src/components/overview/RepositoryOverview.vue",
     "match": "min-[1024px]:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]",
-    "count": 1
-  },
-  {
-    "file": "src/components/overview/RepositoryOverview.vue",
-    "match": "min-[1920px]:grid-cols-[2fr_1fr]",
     "count": 1
   },
   {

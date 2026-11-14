@@ -108,10 +108,13 @@ describe('SnippetsCard surface', () => {
     wrapper = undefined
   })
 
-  it('renders the details as an outlined card on the surface', async () => {
+  it('renders the details as a sidebar on the page surface, without a frame of its own', async () => {
     await mountCard()
 
-    expect(wrapper.find('[data-variant]').attributes('data-variant')).toBe('outlined')
+    const classes = wrapper.classes()
+
+    expect(classes, 'no border frames the heading row').not.toContain('border')
+    expect(classes, 'no fill frames the heading row').not.toContain('bg-surface')
   })
 
   it('sets the snippet text in the md body small role', async () => {
@@ -254,7 +257,8 @@ describe('SnippetsCard collapsible details', () => {
 })
 
 describe('SnippetsCard heading', () => {
-  const heading = () => wrapper.find('h1 button').text()
+  // The visible title is the short part; the full name of the card is the accessible name of its toggle.
+  const heading = () => wrapper.find('h1 button').attributes('aria-label')
 
   beforeEach(() => {
     content.mockImplementation(() => Promise.reject({ response: { status: 404 } }))
@@ -270,6 +274,13 @@ describe('SnippetsCard heading', () => {
     await mountCard('releases')
 
     expect(heading(), 'the heading says which repository the snippet describes').toContain('Repository details: releases')
+  })
+
+  it('shows the repository under the short heading, so the name is seen as well as announced', async () => {
+    await mountCard('releases')
+
+    expect(wrapper.find('[data-test="details-subtitle"]').text(), 'the repository is written under the heading').toBe('releases')
+    expect(wrapper.find('h1 button').text(), 'the visible heading stays short').toBe('Repository details')
   })
 
   it('names only the first segment of a deeper repository path', async () => {

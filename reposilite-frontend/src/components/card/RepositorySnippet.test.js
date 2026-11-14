@@ -32,14 +32,14 @@ describe('RepositorySnippet Maven text', () => {
   })
 })
 
-describe('RepositorySnippet url wrapping', () => {
-  it.each(['xml', 'groovy', 'kotlin', 'scala'])('marks the url of the %s snippet as the part that may wrap', (lang) => {
+describe('RepositorySnippet url', () => {
+  it.each(['xml', 'groovy', 'kotlin', 'scala'])('marks the url of the %s snippet as its own element, never broken', (lang) => {
     const url = render(lang).find('pre').element.querySelector('.snippet-url')
 
     expect(url, 'the url is wrapped in its own element').not.toBeNull()
     expect(url.textContent, 'the wrapped element holds the url and nothing else').toBe('http://localhost/releases')
-    expect(url.classList, 'the url may break at any character').toContain('wrap-anywhere')
-    expect(url.classList, 'the url is not held on one line').toContain('whitespace-normal')
+    expect(url.classList, 'the url is not allowed to break at any character').not.toContain('wrap-anywhere')
+    expect(url.classList, 'the url is not allowed to wrap').not.toContain('whitespace-normal')
   })
 
   it('wraps only the url, so the rest of the snippet keeps its line structure', () => {
@@ -63,12 +63,13 @@ describe('RepositorySnippet url wrapping', () => {
   })
 })
 
-describe('RepositorySnippet block wrapping', () => {
-  it.each(['xml', 'groovy', 'kotlin', 'scala'])('lets the %s block wrap long lines instead of scrolling sideways', (lang) => {
+describe('RepositorySnippet block', () => {
+  // A token is never broken across lines: the block keeps every line whole and the card scrolls sideways instead.
+  it.each(['xml', 'groovy', 'kotlin', 'scala'])('keeps the %s block on whole lines, so long tokens scroll sideways', (lang) => {
     const pre = render(lang).find('pre').element
 
-    expect(pre.classList, 'a long repository id on its own line may break at any character').toContain('wrap-anywhere')
-    expect(pre.classList, 'the block keeps its indentation while it wraps').toContain('whitespace-pre-wrap')
+    expect(pre.classList, 'no token may break at any character').not.toContain('wrap-anywhere')
+    expect(pre.classList, 'the block keeps its lines as they are').toContain('whitespace-pre')
   })
 })
 

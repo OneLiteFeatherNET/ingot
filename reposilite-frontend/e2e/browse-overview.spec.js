@@ -19,24 +19,19 @@ import { siteUrl } from './support/api.js'
 import { signInAsAdmin } from './support/session.js'
 
 test.describe('browse overview', () => {
-  test('shows the full repository URL in the build snippet without horizontal scrolling', async ({ page, seed }) => {
+  test('keeps the full repository URL of the build snippet on one line, scrolling sideways instead of breaking it', async ({ page, seed }) => {
     // A long identifier, close to the longest name the server accepts, so that the address is wider than the snippet.
     const repository = await seed.repository('long-address-snippet')
     await page.goto(siteUrl(`/browse/${repository}`))
 
     // The snippet is the block that holds the Maven repository element for this repository.
-    const snippet = page.locator('pre, code').filter({ hasText: `/${repository}</url>` }).first()
+    const snippet = page.locator('[data-ingot-component="repository-snippet"]').first()
     await expect(snippet, 'the snippet with the repository address').toContainText(`/${repository}`)
-    const sideways = await snippet.evaluate((element) => {
-      const scroller = [element, ...(function* ancestors() {
-        for (let node = element.parentElement; node; node = node.parentElement) yield node
-      })()].find(node => {
-        const overflow = getComputedStyle(node).overflowX
-        return overflow === 'auto' || overflow === 'scroll' || overflow === 'hidden'
-      }) ?? element
-      return scroller.scrollWidth - scroller.clientWidth
-    })
-    expect(sideways, 'horizontal overflow of the snippet container in px').toBeLessThanOrEqual(0)
+    const url = snippet.locator('.snippet-url').first()
+    expect(await url.evaluate(element => element.getClientRects().length), 'lines the url is broken into').toBe(1)
+    // The snippet scrolls inside its own region; the page itself never scrolls sideways.
+    const pageSideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(pageSideways, 'horizontal overflow of the page in px').toBeLessThanOrEqual(0)
   })
 
   test('labels the repository filter as a filter of the list', async ({ page }) => {

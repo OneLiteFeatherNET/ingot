@@ -50,19 +50,19 @@ defineExpose({ content })
   <pre
     v-if="configuration.lang === 'xml'"
     ref="preElement"
-    class="whitespace-pre-wrap wrap-anywhere"
+    class="whitespace-pre"
     data-ingot-component="repository-snippet"
   >
 <XmlTag name="repository">
   <XmlTag name="id">{{ data.repoId }}</XmlTag>
   <XmlTag name="name">{{ data.title }}</XmlTag>
-  <XmlTag name="url"><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></XmlTag>
+  <XmlTag name="url"><span class="snippet-url">{{ data.domain }}</span></XmlTag>
 </XmlTag>
 </pre>
   <pre
     v-else-if="configuration.lang === 'groovy'"
     ref="preElement"
-    class="whitespace-pre-wrap wrap-anywhere"
+    class="whitespace-pre"
     data-ingot-component="repository-snippet"
   >
 maven <CodeBrackets
@@ -70,13 +70,13 @@ start="{"
 end="}"
 >
     name <CodeString>{{ gradleId }}</CodeString>
-    url <CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString>
+    url <CodeString><span class="snippet-url">{{ data.domain }}</span></CodeString>
 </CodeBrackets>
 </pre>
   <pre
     v-else-if="configuration.lang === 'kotlin'"
     ref="preElement"
-    class="whitespace-pre-wrap wrap-anywhere"
+    class="whitespace-pre"
     data-ingot-component="repository-snippet"
   >
 maven <CodeBrackets
@@ -87,15 +87,15 @@ end="}"
     url = uri<CodeBrackets
 start="("
 end=")"
-><CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString></CodeBrackets>
+><CodeString><span class="snippet-url">{{ data.domain }}</span></CodeString></CodeBrackets>
 </CodeBrackets>
 </pre>
   <pre
     v-else-if="configuration.lang === 'scala'"
     ref="preElement"
-    class="whitespace-pre-wrap wrap-anywhere"
+    class="whitespace-pre"
     data-ingot-component="repository-snippet"
   >
-resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString><span class="snippet-url whitespace-normal wrap-anywhere">{{ data.domain }}</span></CodeString>
+resolvers += <CodeString>{{ data.repoId }}</CodeString> at <CodeString><span class="snippet-url">{{ data.domain }}</span></CodeString>
 </pre>
 </template>
