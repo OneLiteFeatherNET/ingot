@@ -15,6 +15,7 @@
  */
 package net.onelitefeather.ingot.identity.service
 
+import com.reposilite.audit.api.AuditActor
 import com.reposilite.configuration.local.infrastructure.DatabaseConnectionFactory
 import com.reposilite.journalist.backend.InMemoryLogger
 import com.reposilite.plugin.Extensions
@@ -118,7 +119,7 @@ internal class IdentityListSummaryTest {
             // given: a team with the role, one member and one outsider
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "member"))
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "outsider"))
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("member"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -137,7 +138,7 @@ internal class IdentityListSummaryTest {
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "direct"))
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "member"))
             service.grantPrincipalInstanceAdmin("direct", ifMatch = null)
-            service.createTeam(CreateTeamRequest(name = "operators"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("operators", listOf("member"), ifMatch = null)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
@@ -168,8 +169,8 @@ internal class IdentityListSummaryTest {
     fun `a team with the instance role is listed as instance admin`() {
         withService { service, _, _ ->
             // given
-            service.createTeam(CreateTeamRequest(name = "operators"))
-            service.createTeam(CreateTeamRequest(name = "readers"))
+            service.createTeam(CreateTeamRequest(name = "operators"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "readers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.grantTeamInstanceAdmin("operators", ifMatch = null)
 
             // when
@@ -186,8 +187,8 @@ internal class IdentityListSummaryTest {
             // given: a team with two members and one grant, and an empty team
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "first"))
             service.createPrincipal(CreatePrincipalRequest(kind = "MACHINE", name = "second"))
-            service.createTeam(CreateTeamRequest(name = "deployers"))
-            service.createTeam(CreateTeamRequest(name = "empty"))
+            service.createTeam(CreateTeamRequest(name = "deployers"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
+            service.createTeam(CreateTeamRequest(name = "empty"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
             service.replaceMembers("deployers", listOf("first", "second"), ifMatch = null)
             service.replaceGrants("deployers", listOf(GrantRequest(repository = "releases", pathPrefix = "com/example", role = "DEPLOY")), ifMatch = null)
 
@@ -227,12 +228,12 @@ internal class IdentityListSummaryTest {
     fun `listing teams needs the same number of statements however many teams exist`() {
         withService { service, store, _ ->
             // given: a list of two teams, measured
-            repeat(2) { service.createTeam(CreateTeamRequest(name = "team-$it")) }
+            repeat(2) { service.createTeam(CreateTeamRequest(name = "team-$it"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System) }
             val small = statementsOf(store) { service.listTeams() }
 
             // when: ten more teams with a grant exist
             repeat(10) {
-                service.createTeam(CreateTeamRequest(name = "more-$it"))
+                service.createTeam(CreateTeamRequest(name = "more-$it"), actor = AuditActor.SYSTEM_ACTOR, caller = WriteCaller.System)
                 service.replaceGrants("more-$it", listOf(GrantRequest(repository = "releases", pathPrefix = "com", role = "READ")), ifMatch = null)
             }
             val large = statementsOf(store) { service.listTeams() }

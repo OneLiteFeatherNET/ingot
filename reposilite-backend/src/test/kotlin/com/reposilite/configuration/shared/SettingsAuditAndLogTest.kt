@@ -92,18 +92,16 @@ internal class SettingsAuditAndLogTest {
         journalist.messages.filter { channel == null || it.key == channel }.map { it.value }
 
     @Test
-    fun `the four settings actions are appended after the support bundle action with their wire names`() {
+    fun `the four settings actions follow the support bundle action in order with their wire names`() {
         // given / when
         val actions = AuditAction.entries.map { it.name }
 
-        // then: the new names follow the last action that existed before, in the order of the design
-        val tail = actions.takeLast(4)
-        assertThat(tail)
-            .describedAs("last four audit actions")
+        // then: the names are contiguous and keep their order directly after the action that existed before them. Later
+        // actions are appended after them, so the position of the settings actions is what the names depend on.
+        val position = actions.indexOf("SUPPORT_BUNDLE_DOWNLOADED")
+        assertThat(actions.subList(position + 1, position + 5))
+            .describedAs("the four settings actions after the support bundle action")
             .containsExactly("SETTINGS_EXPORTED", "SETTINGS_IMPORT_DECRYPTED", "SETTINGS_IMPORT_REFUSED", "SETTINGS_SECRETS_REENCRYPTED")
-        assertThat(actions.indexOf("SUPPORT_BUNDLE_DOWNLOADED"))
-            .describedAs("position of the action before the new ones")
-            .isEqualTo(actions.size - 5)
     }
 
     @Test

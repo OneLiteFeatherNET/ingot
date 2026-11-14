@@ -131,6 +131,22 @@ internal class AdminAreaEnforcementIntegrationTest : ReposiliteSpecification() {
     }
 
     @Test
+    fun `by default a teams administrator cannot link a team to a provider group, the idp area can`() {
+        // given: a teams administrator and a caller that holds the idp area as well
+        val teamsAdmin = machine("teams-bot", nodes = listOf("ingot.admin.teams" to true))
+        val idpAdmin = machine("idp-bot", nodes = listOf("ingot.admin.teams" to true, "ingot.admin.idp" to true))
+        val link = "{\"name\":\"linked-team\",\"externalRef\":\"oidc:corp:ops-admins\"}"
+
+        // when / then
+        assertThat(statusOf("POST", "/api/identity/teams", teamsAdmin, link))
+            .describedAs("a teams administrator without the idp area")
+            .isEqualTo(403)
+        assertThat(statusOf("POST", "/api/identity/teams", idpAdmin, link))
+            .describedAs("a caller with the idp area")
+            .isEqualTo(200)
+    }
+
+    @Test
     fun `the check answers an admin area the way the endpoint does for an instance admin`() {
         machine("boss-bot", nodes = listOf("ingot.admin.*" to true, "ingot.admin.audit" to false))
 

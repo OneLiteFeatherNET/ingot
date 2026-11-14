@@ -67,6 +67,8 @@ An instance administrator can do everything on the instance. The role is called 
 
 The role is also a permission node, `ingot.admin.*`. An instance administrator is not limited by denials of repository nodes. The one limit is the token: if the administrator uses a token with a node list, the token decides what it may do. See [How permissions are evaluated](permission-evaluation.md) for the reason.
 
+The area `ingot.admin.idp` is the right to link a team to an identity provider group. `ingot.admin.*` covers it and `ingot.admin.teams` does not, so a team administrator cannot point a team at a provider group, and thereby at its admin right, by its own right alone.
+
 The API refuses a change that would leave the instance without a usable administrator. A usable administrator is an enabled principal that holds the admin right and has an unexpired token that still allows it.
 
 ## One evaluator
