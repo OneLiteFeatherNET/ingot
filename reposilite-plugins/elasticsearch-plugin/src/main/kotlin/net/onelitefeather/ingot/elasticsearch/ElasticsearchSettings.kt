@@ -16,8 +16,9 @@
 
 package net.onelitefeather.ingot.elasticsearch
 
+import net.onelitefeather.ingot.search.config.SearchVariables
+import net.onelitefeather.ingot.search.config.urls
 import java.net.URI
-import java.net.URISyntaxException
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -26,6 +27,9 @@ import java.nio.file.Path
  * `INGOT_` spelling wins when it is set. A blank value counts as unset. An invalid value is refused with an
  * [IllegalArgumentException] that names the variable and never its value, so that no message carries a key, a password or a URL
  * with user information.
+ *
+ * The rules of the variables, the URLs and the secrets are shared with the other search plugins in `reposilite-search-http`; this
+ * class only names the variables of this plugin, its defaults and the rules of the API key.
  *
  * The API key and the password are read from the plain variable or, when that is unset, once from the file named by the `_FILE`
  * variable through [readFile]. The reader is injected so that the rules can be tested without a file system.
@@ -46,17 +50,6 @@ internal class ElasticsearchSettings private constructor(
     val replicas: Int,
 ) {
 
-    /**
-     * The value of the `Authorization` header of every request: the `ApiKey` scheme of the key, or the basic scheme of the user and
-     * the password, or null for a cluster without security. The header never leaves the plugin except in a request.
-     */
-    val authorization: String? = when {
-        apiKey != null -> "ApiKey $apiKey"
-        username != null && password != null ->
-            "Basic " + java.util.Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
-        else -> null
-    }
-
     companion object {
 
         const val DEFAULT_INDEX: String = "ingot-artifacts"
@@ -64,7 +57,6 @@ internal class ElasticsearchSettings private constructor(
         const val DEFAULT_TIMEOUT_SECONDS: Int = 30
         const val DEFAULT_REPLICAS: Int = 1
 
-        private const val PREFIX = "ELASTICSEARCH_"
         private val INDEX_NAME = Regex("[a-z0-9][a-z0-9_-]{0,63}")
 
         /** The warning of every start while plain HTTP is accepted. It names the switch and never a URL, key, user or password. */
@@ -84,10 +76,11 @@ internal class ElasticsearchSettings private constructor(
             readFile: (String) -> String = { path -> Files.readString(Path.of(path)) },
             log: (String) -> Unit = {},
         ): ElasticsearchSettings {
-            val allowHttp = flag(environment, "ALLOW_HTTP")
-            val apiKey = secret(environment, readFile, "API_KEY")
-            val username = lookup(environment, "USERNAME")?.second
-            val password = secret(environment, readFile, "PASSWORD")
+            val variables = SearchVariables("ELASTICSEARCH", environment, readFile)
+            val allowHttp = variables.flag("ALLOW_HTTP")
+            val apiKey = variables.secret("API_KEY", kind = "value")
+            val username = variables.lookup("USERNAME")?.second
+            val password = variables.secret("PASSWORD", kind = "value")
             require(apiKey == null || username == null) {
                 "INGOT_ELASTICSEARCH_API_KEY and INGOT_ELASTICSEARCH_USERNAME cannot be set together, choose one of them"
             }
@@ -102,97 +95,28 @@ internal class ElasticsearchSettings private constructor(
                     "or INGOT_ELASTICSEARCH_ALLOW_HTTP=true for a cluster that runs without security"
             }
             val settings = ElasticsearchSettings(
-                urls = urls(environment, allowHttp),
+                urls = variables.urls(allowHttp, productName = "Elasticsearch"),
                 allowHttp = allowHttp,
-                index = index(environment),
+                index = index(variables),
                 apiKey = apiKey,
                 username = username,
                 password = password,
-                bulkSize = integer(environment, "BULK_SIZE", DEFAULT_BULK_SIZE, 1..5000),
-                timeoutSeconds = integer(environment, "TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS, 1..300),
-                replicas = integer(environment, "REPLICAS", DEFAULT_REPLICAS, 0..10),
+                bulkSize = variables.integer("BULK_SIZE", DEFAULT_BULK_SIZE, 1..5000),
+                timeoutSeconds = variables.integer("TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS, 1..300),
+                replicas = variables.integer("REPLICAS", DEFAULT_REPLICAS, 0..10),
             )
             if (allowHttp) log(PLAIN_HTTP_WARNING)
             if (apiKey == null && username == null) log(UNAUTHENTICATED_WARNING)
             return settings
         }
 
-        /** The variable that was read and its raw value, or null when neither spelling is set to a non-blank value. */
-        private fun lookup(environment: Map<String, String>, name: String): Pair<String, String>? =
-            listOf("INGOT_$PREFIX$name", "REPOSILITE_$PREFIX$name").firstNotNullOfOrNull { variable ->
-                environment[variable]?.takeIf { it.isNotBlank() }?.let { variable to it }
-            }
-
-        private fun urls(environment: Map<String, String>, allowHttp: Boolean): List<URI> {
-            val (variable, raw) = lookup(environment, "URLS")
-                ?: throw IllegalArgumentException("INGOT_ELASTICSEARCH_URLS is required when the Elasticsearch plugin is selected")
-            val entries = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-            require(entries.isNotEmpty()) { "$variable lists no URL" }
-            return entries.map { entry -> url(variable, entry, allowHttp) }
-        }
-
-        private fun url(variable: String, entry: String, allowHttp: Boolean): URI {
-            val uri = try {
-                URI(entry)
-            } catch (failure: URISyntaxException) {
-                throw IllegalArgumentException("$variable contains a value that is not a valid URL")
-            }
-            require(uri.rawAuthority?.contains('@') != true) {
-                "$variable contains a URL with user information, set INGOT_ELASTICSEARCH_USERNAME and INGOT_ELASTICSEARCH_PASSWORD instead"
-            }
-            when (uri.scheme?.lowercase()) {
-                "https" -> Unit
-                "http" -> require(allowHttp) {
-                    "$variable contains an http URL, set INGOT_ELASTICSEARCH_ALLOW_HTTP=true to accept plain HTTP"
-                }
-                else -> throw IllegalArgumentException("$variable only accepts https URLs")
-            }
-            require(!uri.host.isNullOrBlank()) { "$variable contains a URL without a host" }
-            return uri
-        }
-
-        /**
-         * The plain variable [name], or else the content of the file named by `<name>_FILE` read once. The file content loses its
-         * trailing line breaks, and the plain variable wins over the file, so the file is not read when the plain one is set.
-         */
-        private fun secret(environment: Map<String, String>, readFile: (String) -> String, name: String): String? {
-            lookup(environment, name)?.let { (_, value) -> return value }
-            val (variable, path) = lookup(environment, "${name}_FILE") ?: return null
-            val content = try {
-                readFile(path.trim())
-            } catch (failure: Exception) {
-                throw IllegalArgumentException("$variable cannot be read: ${failure.javaClass.simpleName}")
-            }
-            val secret = content.trimEnd('\r', '\n')
-            require(secret.isNotEmpty()) { "$variable names a file without a value" }
-            return secret
-        }
-
-        private fun index(environment: Map<String, String>): String {
-            val (variable, raw) = lookup(environment, "INDEX") ?: return DEFAULT_INDEX
+        private fun index(variables: SearchVariables): String {
+            val (variable, raw) = variables.lookup("INDEX") ?: return DEFAULT_INDEX
             val name = raw.trim()
             require(INDEX_NAME.matches(name)) {
                 "$variable must be 1 to 64 lower case letters, digits, dashes or underscores, starting with a letter or digit"
             }
             return name
-        }
-
-        private fun flag(environment: Map<String, String>, name: String): Boolean {
-            val (variable, raw) = lookup(environment, name) ?: return false
-            return when (raw.trim().lowercase()) {
-                "true" -> true
-                "false" -> false
-                else -> throw IllegalArgumentException("$variable must be true or false")
-            }
-        }
-
-        private fun integer(environment: Map<String, String>, name: String, default: Int, range: IntRange): Int {
-            val (variable, raw) = lookup(environment, name) ?: return default
-            val value = raw.trim().toIntOrNull()
-            require(value != null && value in range) {
-                "$variable must be a whole number from ${range.first} to ${range.last}, got '${raw.trim()}'"
-            }
-            return value
         }
     }
 }

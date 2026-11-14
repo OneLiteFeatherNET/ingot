@@ -39,6 +39,11 @@ import net.onelitefeather.ingot.search.backend.StoredRow
 import net.onelitefeather.ingot.search.database.pathHash
 import net.onelitefeather.ingot.search.Origin
 import net.onelitefeather.ingot.search.backend.SampledRow
+import net.onelitefeather.ingot.search.http.CredentialRedactor
+import net.onelitefeather.ingot.search.http.HttpExchange
+import net.onelitefeather.ingot.search.http.JdkHttpExchange
+import net.onelitefeather.ingot.search.http.SearchCircuitBreaker
+import net.onelitefeather.ingot.search.http.SearchHttpClient
 import java.time.Clock
 import java.time.Duration
 import javax.net.ssl.SSLContext
@@ -63,14 +68,16 @@ internal class ElasticsearchSearchBackend(
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
     private val alias: String = settings.index
     private val physical: String = "$alias-v1"
-    private val redactor = ElasticsearchRedactor(listOfNotNull(settings.apiKey, settings.password, settings.username))
+    private val redactor = CredentialRedactor(listOfNotNull(settings.apiKey, settings.password, settings.username))
     private val timeout: Duration = Duration.ofSeconds(settings.timeoutSeconds.toLong())
-    private val breaker = ElasticsearchCircuitBreaker(clock)
-    private val http = ElasticsearchHttp(
+    private val breaker = SearchCircuitBreaker(clock)
+    private val http = SearchHttpClient(
         settings.urls,
-        settings.authorization,
+        settings.username,
+        settings.password,
         timeout,
         exchange ?: JdkHttpExchange(timeout, sslContext),
+        apiKey = settings.apiKey,
     )
     private val client = ElasticsearchClient(http, breaker, redactor)
     private val writer = ElasticsearchWriter(http, breaker, alias, settings.bulkSize, redactor)
@@ -292,7 +299,7 @@ internal class ElasticsearchSearchBackend(
 
     private fun bulk(lines: List<Map<String, Any>>) {
         val body = lines.joinToString(separator = "") { mapper.writeValueAsString(it) + "\n" }
-        val answer = client.send("POST", "/_bulk", body, ElasticsearchHttp.NDJSON)
+        val answer = client.send("POST", "/_bulk", body, SearchHttpClient.NDJSON)
         if (answer.status !in 200..299) {
             throw ElasticsearchRejectedException(redactor.redact("the bulk request answered ${answer.status}"))
         }

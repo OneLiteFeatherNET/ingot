@@ -413,7 +413,7 @@ dependencies {
 // The OpenSearch backend of the plugin, as compiled classes only. Its service file stays out, so the integration tests do not
 // load the plugin; the container test builds the backend through the factory the plugin exposes.
 val openSearchPlugin = project(":reposilite-plugins:opensearch-plugin")
-// The HTTP classes that the OpenSearch backend uses from reposilite-search-http, which the plugin bundles in its shadow jar.
+// The HTTP classes that the search backends use from reposilite-search-http. Each plugin bundles its own copy in its shadow jar.
 val searchHttp = project(":reposilite-search-http")
 dependencies {
     "integrationImplementation"(

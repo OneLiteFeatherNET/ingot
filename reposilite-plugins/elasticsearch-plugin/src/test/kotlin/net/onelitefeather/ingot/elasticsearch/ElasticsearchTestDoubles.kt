@@ -22,6 +22,9 @@ import net.onelitefeather.ingot.search.ArtifactFileRecord
 import net.onelitefeather.ingot.search.IndexRow
 import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
+import net.onelitefeather.ingot.search.http.HttpAnswer
+import net.onelitefeather.ingot.search.http.HttpCall
+import net.onelitefeather.ingot.search.http.HttpExchange
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant

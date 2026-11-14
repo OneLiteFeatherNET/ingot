@@ -22,6 +22,8 @@ import com.reposilite.ReposiliteObjectMapper
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
 import net.onelitefeather.ingot.search.database.pathHash
+import net.onelitefeather.ingot.search.http.BulkStep
+import net.onelitefeather.ingot.search.http.NdjsonBulk
 
 /** One request of a write plan: a `_bulk` body, or one query request that cannot be a bulk action. */
 internal sealed interface WriteStep {
@@ -42,42 +44,18 @@ internal sealed interface WriteStep {
  */
 internal object ElasticsearchBulk {
 
-    /** The largest body of one bulk request (design D4). */
-    const val MAX_BYTES: Int = 5 * 1024 * 1024
+    /** The largest body of one bulk request (design D4), shared by the search plugins. */
+    const val MAX_BYTES: Int = NdjsonBulk.MAX_BYTES
 
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
 
-    fun plan(index: String, actions: List<IndexAction>, bulkSize: Int, maxBytes: Int = MAX_BYTES): List<WriteStep> {
-        val steps = mutableListOf<WriteStep>()
-        val body = StringBuilder()
-        var count = 0
-        var bytes = 0
-
-        fun flush() {
-            if (count > 0) steps.add(WriteStep.Bulk(body.toString(), count))
-            body.setLength(0)
-            count = 0
-            bytes = 0
-        }
-
-        for (action in actions) {
-            val lines = bulkLines(index, action)
-            if (lines == null) {
-                flush()
-                steps.add(WriteStep.Single(action))
-                continue
+    fun plan(index: String, actions: List<IndexAction>, bulkSize: Int, maxBytes: Int = MAX_BYTES): List<WriteStep> =
+        NdjsonBulk.plan(actions, bulkSize, maxBytes) { action -> bulkLines(index, action) }.map { step ->
+            when (step) {
+                is BulkStep.Bulk -> WriteStep.Bulk(step.body, step.actions)
+                is BulkStep.Single -> WriteStep.Single(step.item)
             }
-            val size = lines.sumOf { line -> line.toByteArray(Charsets.UTF_8).size + 1 }
-            if (count > 0 && (count == bulkSize || bytes + size > maxBytes)) {
-                flush()
-            }
-            lines.forEach { line -> body.append(line).append('\n') }
-            count += 1
-            bytes += size
         }
-        flush()
-        return steps
-    }
 
     /** The action line and, for an upsert, the document line of one bulk action. Null for an action that is not a bulk action. */
     private fun bulkLines(index: String, action: IndexAction): List<String>? = when (action) {

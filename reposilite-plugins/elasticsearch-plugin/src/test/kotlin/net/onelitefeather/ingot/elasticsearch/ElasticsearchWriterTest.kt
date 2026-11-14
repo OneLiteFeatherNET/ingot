@@ -22,6 +22,10 @@ import net.onelitefeather.ingot.search.Provenance
 import net.onelitefeather.ingot.search.backend.BackendBusyException
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
 import net.onelitefeather.ingot.search.backend.IndexAction
+import net.onelitefeather.ingot.search.http.CredentialRedactor
+import net.onelitefeather.ingot.search.http.HttpAnswer
+import net.onelitefeather.ingot.search.http.SearchCircuitBreaker
+import net.onelitefeather.ingot.search.http.SearchHttpClient
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -41,11 +45,11 @@ internal class ElasticsearchWriterTest {
         clock: ManualClock = ManualClock(),
         secrets: List<String> = emptyList(),
     ): ElasticsearchWriter = ElasticsearchWriter(
-        http = ElasticsearchHttp(listOf(cluster), null, Duration.ofSeconds(30), exchange),
-        breaker = ElasticsearchCircuitBreaker(clock),
+        http = SearchHttpClient(listOf(cluster), null, null, Duration.ofSeconds(30), exchange),
+        breaker = SearchCircuitBreaker(clock),
         index = index,
         bulkSize = 500,
-        redactor = ElasticsearchRedactor(secrets),
+        redactor = CredentialRedactor(secrets),
     )
 
     private val oneUpsert = listOf<IndexAction>(IndexAction.Upsert(testRow()))

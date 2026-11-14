@@ -34,6 +34,18 @@ internal class CredentialRedactorTest {
     }
 
     @Test
+    fun `should remove the api key from an error text that echoes it`() {
+        // given: a redactor that knows the encoded API key
+        val keyed = CredentialRedactor(listOf("QXBpS2V5SWQ6c2VjcmV0"))
+
+        // when: the cluster echoes the key in its error
+        val shown = keyed.redact("the api key QXBpS2V5SWQ6c2VjcmV0 was rejected")
+
+        // then: the key is gone
+        assertThat(shown).`as`("redacted text").doesNotContain("QXBpS2V5SWQ6c2VjcmV0")
+    }
+
+    @Test
     fun `should remove the user name from an error text that echoes it`() {
         // when: the cluster echoes the user name in its error
         val shown = redactor.redact("user indexer is not authorized")

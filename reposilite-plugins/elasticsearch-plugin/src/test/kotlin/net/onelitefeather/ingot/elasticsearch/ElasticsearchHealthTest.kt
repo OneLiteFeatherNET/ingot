@@ -20,6 +20,9 @@ package net.onelitefeather.ingot.elasticsearch
 
 import net.onelitefeather.ingot.search.backend.BackendHealth
 import net.onelitefeather.ingot.search.backend.ExperimentalIngotSearchApi
+import net.onelitefeather.ingot.search.http.HttpAnswer
+import net.onelitefeather.ingot.search.http.HttpCall
+import net.onelitefeather.ingot.search.http.HttpExchange
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.io.IOException
