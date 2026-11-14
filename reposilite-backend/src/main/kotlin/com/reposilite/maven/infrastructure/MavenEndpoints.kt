@@ -26,6 +26,7 @@ import com.reposilite.maven.api.LookupRequest
 import com.reposilite.shared.ErrorResponse
 import com.reposilite.shared.extensions.NO_STORE_CACHE_CONTROL
 import com.reposilite.shared.extensions.applyErrorCacheControl
+import com.reposilite.shared.extensions.applyListingHeaders
 import com.reposilite.shared.extensions.error
 import com.reposilite.shared.extensions.attachmentHeaders
 import com.reposilite.shared.extensions.clearContentLength
@@ -100,6 +101,7 @@ internal class MavenEndpoints(
                 is DocumentInfo -> serveDocument(ctx, request, details)
                 is DirectoryInfo -> {
                     SecurityHeaders.markRepositoryContent(ctx)
+                    ctx.applyListingHeaders()
                     ctx.html(
                         createDirectoryIndexPage(
                             basePath = frontendFacade.resolveBasePath(ctx.header(frontendFacade.forwardedPrefixHeader.get())),
