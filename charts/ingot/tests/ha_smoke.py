@@ -221,8 +221,11 @@ READER = "ha-reader"
 ROLLING_GROUP = "net/onelitefeather/smoke"
 ROLLING_PATH = "net/onelitefeather/smoke/rolling/1.0.0/rolling-1.0.0.pom"
 LEASE_GROUP = "net/onelitefeather/smoke/lease"
-LEASE_VERSIONS = 80
-"""Versions seeded for the lease check. A run that keeps all but the newest one deletes this many less one."""
+LEASE_VERSIONS = 400
+"""Versions seeded for the lease check. A run that keeps all but the newest one deletes this many less one. About 25 ms
+per deletion keeps the run held for roughly 10 s, well above the observation and kill latency of the check."""
+LEASE_SEED_WORKERS = 8
+"""Parallel uploads while seeding the versions, so 400 of them stay well inside the job timeout."""
 LEASE_ATTEMPTS = 5
 """Attempts at the lease check. A cleanup run on the first replica can finish, or delete every version, between the
 409 the probe sees and the kill, or finish before the probe sees it hold the lease at all (a missed observation). Each
@@ -517,13 +520,16 @@ class Smoke:
         first_ip, second_ip = ready[first], ready[second]
         artifact = f"lease-{attempt}"
         attempt_started = self.clock.wall()
-        for index in range(LEASE_VERSIONS):
-            self.deploy(first_ip, LEASE_GROUP, artifact, f"1.0.{index}", f"<project>lease {index}</project>\n".encode())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=LEASE_SEED_WORKERS) as pool:
+            list(pool.map(lambda index: self.deploy(first_ip, LEASE_GROUP, artifact, f"1.0.{index}",
+                                                    f"<project>lease {index}</project>\n".encode()),
+                          range(LEASE_VERSIONS)))
         held = self.http.start("POST", pod_url(first_ip, f"/api/cleanup/policies/{POLICY}/run"),
                                headers=basic_auth_header())
         try:
             outcome = wait_until(lambda: self.probe_run(second_ip), clock=self.clock, timeout=180, interval=1,
                                  describe="the run on the first replica to hold the lease")
+            observed_at = self.clock.wall()
             if outcome != "held":
                 # The run ended before the probe saw it hold the lease, so the takeover of a killed run cannot be
                 # checked in this attempt. The race is lost: the caller starts over with fresh versions.
@@ -531,6 +537,8 @@ class Smoke:
                          "(missed observation)")
                 return False
             killed_at = self.clock.wall()
+            self.out(f"check 2: attempt {attempt} observed the lease held, killing the holder "
+                     f"{killed_at - observed_at:.1f}s later")
             self.kubectl.run(["delete", "pod", first, "--force", "--grace-period=0"])
         finally:
             held.kill()
@@ -540,6 +548,10 @@ class Smoke:
                    timeout=LEASE_TTL_SECONDS + POLL_SECONDS + 120, interval=1,
                    describe="the other replica to take over the killed run")
         runs = self.runs(second_ip)
+        for run in runs:
+            if run.get("policyId") == POLICY and iso_to_epoch(run["startedAt"]) >= attempt_started:
+                self.out(f"check 2: attempt {attempt} run {run.get('id')} started {run['startedAt']}, "
+                         f"finished {run.get('finishedAt')}, deleted {run.get('deletedCount')}")
         if finished_before_kill(runs, POLICY, killed_at, since=attempt_started):
             return False
         recorded = takeover_run(runs, POLICY, killed_at)
