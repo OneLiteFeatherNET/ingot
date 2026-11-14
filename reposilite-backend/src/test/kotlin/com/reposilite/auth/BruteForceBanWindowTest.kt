@@ -113,6 +113,34 @@ internal class BruteForceBanWindowTest {
         assertError(unauthorized("Invalid authorization credentials"), response)
     }
 
+    @Test
+    fun `should keep the failure record for the whole ban when the ban is longer than an hour`() {
+        // given: a two hour ban and an IP that reached the limit
+        settings.update(BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 7200))
+        createToken("deploy-bot", "secret")
+        repeat(3) { authenticate("long-ban-ip", "deploy-bot", "wrong-secret") }
+
+        // when: 90 minutes pass, longer than the one hour lifetime of a failure record
+        clock.advance(Duration.ofMinutes(90))
+
+        // then: the IP is still banned
+        assertError(unauthorized("Invalid authorization credentials"), authenticate("long-ban-ip", "deploy-bot", "secret"))
+    }
+
+    @Test
+    fun `should keep the failure record for a ban that was lengthened after the record was written`() {
+        // given: an IP that reached the limit under the default five minute ban
+        createToken("deploy-bot", "secret")
+        repeat(3) { authenticate("lengthened-ip", "deploy-bot", "wrong-secret") }
+
+        // when: the ban is raised to two hours at runtime and 90 minutes pass
+        settings.update(BruteForceProtectionSettings(enabled = true, maxAttempts = 3, banDurationSeconds = 7200))
+        clock.advance(Duration.ofMinutes(90))
+
+        // then: the IP is still banned for the lengthened period
+        assertError(unauthorized("Invalid authorization credentials"), authenticate("lengthened-ip", "deploy-bot", "secret"))
+    }
+
     private fun createToken(name: String, secret: String): AccessTokenDto =
         tokens.createAccessToken(
             CreateAccessTokenRequest(type = TEMPORARY, name = name, secret = secret, expiresAt = null)
