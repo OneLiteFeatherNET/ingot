@@ -71,15 +71,22 @@ internal class MeilisearchReader(
         val base = MeilisearchFilters.access(access) ?: return emptyPage(query)
         val conditions = listOf(base) + conditionsOf(query).map { it.second }
         val window = search(conditions, query.q, distinct = GAV, hitsPerPage = WINDOW)
-        val total = window.path("totalHits").asLong(0L)
+        val text = query.q?.trim()?.lowercase().orEmpty()
+        val dotted = '.' in text
+        val windowTotal = window.path("totalHits").asLong(0L)
         val rows = window.path("hits").map(::groupOf).filter { row ->
             query.versionPrefix?.let { row.version.lowercase().startsWith(it.lowercase()) } ?: true
-        }
+        }.filter { row -> !dotted || isMain(row, text) }
+        // The total is the count of the rows after the in-memory rules, where the server's count cannot apply them.
+        val total = if (dotted || query.versionPrefix != null) rows.size.toLong() else windowTotal
         val aggregates = aggregatesOf(rows, query, base, conditions.drop(1), sortsByAggregate(query.sort))
         val order = GroupOrder.comparator(query.sort, query.order)
-        val sorted = rows.sortedWith { a, b ->
-            order.compare(a.key.with(aggregates[a.gav]), b.key.with(aggregates[b.gav]))
+        // The groups the query is a coordinate prefix of come first, in the order of the database; the word-only groups follow.
+        val (main, wordOnly) = rows.partition { row -> isMain(row, text) }
+        val sortedBy = { list: List<GroupRow> ->
+            list.sortedWith { a, b -> order.compare(a.key.with(aggregates[a.gav]), b.key.with(aggregates[b.gav])) }
         }
+        val sorted = sortedBy(main) + sortedBy(wordOnly)
         val start = query.page * query.size
         val page = sorted.drop(start).take(query.size)
         val latest = latestOf(page, base)
@@ -252,6 +259,16 @@ internal class MeilisearchReader(
     }
 
     // ---- mapping -----------------------------------------------------------------------------------------------------
+
+    /**
+     * Whether a group is a main group of the query: a dotted query is a prefix of the groupId or of the version, any other text is a
+     * prefix of the groupId, the artifactId or the version. Every other group is matched only by a word.
+     */
+    private fun isMain(row: GroupRow, text: String): Boolean {
+        if (text.isEmpty()) return true
+        if ('.' in text) return row.key.groupLc.startsWith(text) || row.key.versionLc.startsWith(text)
+        return listOf(row.key.groupLc, row.key.artifactLc, row.key.versionLc).any { it.startsWith(text) }
+    }
 
     private fun groupOf(hit: JsonNode): GroupRow = GroupRow(
         key = GroupOrder.Key(
