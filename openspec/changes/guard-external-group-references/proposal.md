@@ -8,12 +8,7 @@
 
 ## Why
 
-A team administrator can point a team at an administrative group of an identity provider. At the next login of a provider, every member of that group receives instance administration through the synchronized admin right. The path is:
-
-- `createTeam` and `updateTeam` accept `externalRef`. The only check is the area `ingot.admin.teams` on the route (`IdentityApiEndpoints.kt`, the teams routes).
-- `ExternalGroupSync.applyAdminRights` grants `ingot.admin.*` to every team whose reference has the provider prefix and whose group is an admin group (`ExternalGroupSync.kt:121-133`).
-
-The grant endpoint already refuses to hand out rights the caller does not hold (`replaceGrants`, `IdentityFacade.kt:476-489`). The reference is the same kind of right, and it has no such check.
+Linking a team to an identity provider group is not guarded by a dedicated right; a team administrator can widen the rights of IdP group members. Fixed through a security advisory.
 
 ## What Changes
 

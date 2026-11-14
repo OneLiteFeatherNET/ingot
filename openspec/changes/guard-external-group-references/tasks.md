@@ -2,9 +2,9 @@
 
 One Conventional Commits type per commit. Every test follows F.I.R.S.T.: fixtures built per test, an injected `Clock`, no sleeps, no shared mutable state, assertions that name the team and the caller. Test runs go through the slot runner with `--max-workers=2`. Configuration changes update the matching page under `docs/gitbook/`.
 
-## 1. Reproduce the escalation
+## 1. Reproduce the gap
 
-- [ ] 1.1 Write a reproduction test first, reusing the fixture of `ExternalGroupSyncTest`: a caller holding only `ingot.admin.teams` creates a team with `externalRef` `oidc:<id>:<admin-group>`; the next sync of a member of that group ends with `ingot.admin.*`. Verify: the test is red on main, which proves the path before any fix.
+- [ ] 1.1 Write a reproduction test first, reusing the fixture of `ExternalGroupSyncTest`, that shows the gap on main. The details are kept in the security advisory. Verify: the test is red on main, which proves the gap before any fix.
 - [ ] 1.2 Verify, in the same test file, what `updateTeam` stores for a blank `externalRef` (`IdentityFacade.kt`, the `updateExternalRef` flag), and whether clearing a reference is possible through the API. Verify: the answer is written into the pull request description.
 
 ## 2. Guard tests

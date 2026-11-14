@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Linking a team to an identity provider group is a right of its own. A caller who may administer teams cannot, by that right alone, point a team at an administrative group and so gain instance administration at the next login.
+Linking a team to an identity provider group is not guarded by a dedicated right; a team administrator can widen the rights of IdP group members. Fixed through a security advisory.
 
 ## ADDED Requirements
 
