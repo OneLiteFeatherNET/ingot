@@ -131,6 +131,29 @@ class ServerImageContractTest {
         }
     }
 
+    @Test
+    @DisplayName("a stop of a root start ends with a clean shutdown, not a kill")
+    fun `stop of a root start ends with a clean shutdown`(@TempDir directory: Path) {
+        // The default start is the root one, where the entrypoint drops to the service account itself. Docker sends SIGTERM
+        // and waits for the stop timeout before it kills, so an exit code of 137 means the server never received the signal
+        // and was killed without a shutdown. A clean stop exits with 143 and logs the shutdown the server began.
+        DataDirectory(directory, ImageUnderTest.server).use { data ->
+            serverContainer(ImageUnderTest.server, data).use { server ->
+                server.start()
+
+                server.dockerClient.stopContainerCmd(server.containerId).withTimeout(STOP_TIMEOUT_SECONDS).exec()
+                val exitCode = server.dockerClient.inspectContainerCmd(server.containerId).exec().state.exitCodeLong
+
+                assertThat(exitCode)
+                    .describedAs("the server should exit on SIGTERM with 143, 137 means it was killed after the stop timeout")
+                    .isEqualTo(143L)
+                assertThat(server.logs)
+                    .describedAs("the server never logged the shutdown it started on SIGTERM")
+                    .contains("Shutting down")
+            }
+        }
+    }
+
     private fun readlink(path: String): String = runInImage("readlink", "-f", path).trim()
 
     private fun readFromImage(path: String): String = runInImage("cat", path)
@@ -154,6 +177,7 @@ class ServerImageContractTest {
 
     private companion object {
         const val REQUESTED_PORT = 8123
+        const val STOP_TIMEOUT_SECONDS = 30
         val BUNDLE_REFERENCE = Regex("""src="([^"]*index-[^"]*\.js)"""")
     }
 }
