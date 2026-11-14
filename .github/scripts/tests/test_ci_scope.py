@@ -1,7 +1,7 @@
-"""Tests for .github/scripts/coverage_changes.sh and the coverage jobs in ci.yml.
+"""Tests for .github/scripts/ci_scope.sh and the coverage jobs in ci.yml.
 
-The script reads changed paths on stdin and prints three lines: backend=, frontend= and frontend_only=, each
-true or false. The workflow appends those lines to GITHUB_OUTPUT. Each test names one behaviour and runs the
+The script reads changed paths on stdin and prints seven lines: backend=, frontend=, frontend_only=, image=,
+chart=, e2e= and unit=, each true or false. The workflow appends those lines to GITHUB_OUTPUT. Each test names one behaviour and runs the
 script as a subprocess. No git repository, no network, no clock, no files.
 
 Run from the repository root:
@@ -15,14 +15,16 @@ import subprocess
 import unittest
 
 SCRIPTS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT = os.path.join(SCRIPTS_DIR, "coverage_changes.sh")
+SCRIPT = os.path.join(SCRIPTS_DIR, "ci_scope.sh")
 CI_WORKFLOW = os.path.join(os.path.dirname(SCRIPTS_DIR), "workflows", "ci.yml")
 
+CORE = ("backend", "frontend", "frontend_only")
+FLAGS = CORE + ("image", "chart", "e2e", "unit")
 NONE = {"backend": "false", "frontend": "false", "frontend_only": "false"}
 
 
-def decide(paths):
-    """Feeds the changed paths to the script and returns its three outputs as a dict."""
+def scope(paths):
+    """Feeds the changed paths to the script and returns every output as a dict."""
     result = subprocess.run(
         ["bash", SCRIPT],
         input="".join(path + "\n" for path in paths),
@@ -37,6 +39,17 @@ def decide(paths):
         key, _, value = line.partition("=")
         outputs[key] = value
     return outputs
+
+
+def decide(paths):
+    """The three coverage outputs of the script, which the coverage jobs read."""
+    outputs = scope(paths)
+    return {key: outputs[key] for key in CORE}
+
+
+def truthy(paths):
+    """The names of the flags that are true for the changed paths."""
+    return {key for key, value in scope(paths).items() if value == "true"}
 
 
 def job_block(text, job):
@@ -159,6 +172,79 @@ class CoverageChangesScriptTest(unittest.TestCase):
         )
 
 
+class ScopeFlagsTest(unittest.TestCase):
+    """The image, chart, e2e and unit flags. Anything the script cannot place turns every flag on."""
+
+    EVERYTHING = set(FLAGS)
+
+    def test_script_prints_every_flag_exactly_once_and_in_order(self):
+        result = subprocess.run(
+            ["bash", SCRIPT], input="docs/guide.md\n", capture_output=True, text=True, check=False
+        )
+        keys = [line.partition("=")[0] for line in result.stdout.splitlines()]
+        self.assertEqual(keys, list(FLAGS))
+
+    def test_documentation_only_change_turns_every_flag_off(self):
+        self.assertEqual(truthy(["docs/guide.md", "openspec/changes/x/tasks.md"]), set())
+
+    def test_empty_change_list_turns_every_flag_off(self):
+        self.assertEqual(truthy([]), set())
+
+    def test_chart_change_turns_on_the_chart_flag_only(self):
+        self.assertEqual(truthy(["charts/ingot/values.yaml"]) - {"backend"}, {"chart"})
+
+    def test_dockerfile_change_turns_on_the_image_flag_without_unit_tests(self):
+        flags = truthy(["Dockerfile"])
+        self.assertIn("image", flags)
+        self.assertNotIn("unit", flags)
+        self.assertNotIn("chart", flags)
+
+    def test_entrypoint_change_turns_on_the_image_flag(self):
+        self.assertIn("image", truthy(["entrypoint.sh"]))
+
+    def test_compose_file_change_turns_on_the_image_flag(self):
+        self.assertIn("image", truthy(["docker-compose.split.yml"]))
+
+    def test_dashboard_dockerfile_change_turns_on_the_image_flag(self):
+        self.assertIn("image", truthy(["reposilite-frontend/Dockerfile"]))
+
+    def test_backend_source_turns_on_unit_and_e2e_but_not_image_or_chart(self):
+        flags = truthy(["reposilite-backend/src/main/kotlin/X.kt"])
+        self.assertTrue({"unit", "e2e", "backend"} <= flags)
+        self.assertFalse({"image", "chart"} & flags)
+
+    def test_frontend_source_turns_on_unit_and_e2e_but_not_image_or_chart(self):
+        flags = truthy(["reposilite-frontend/src/App.vue"])
+        self.assertTrue({"unit", "e2e", "frontend"} <= flags)
+        self.assertFalse({"image", "chart"} & flags)
+
+    def test_unknown_root_path_turns_every_flag_on(self):
+        self.assertEqual(truthy(["something-new/file.txt"]), self.EVERYTHING - {"frontend", "frontend_only"})
+
+    def test_gradle_build_file_turns_every_scope_flag_on(self):
+        flags = truthy(["build.gradle.kts"])
+        self.assertTrue({"image", "chart", "e2e", "unit"} <= flags)
+
+    def test_workflow_change_turns_every_scope_flag_on(self):
+        flags = truthy([".github/workflows/ci.yml"])
+        self.assertTrue({"image", "chart", "e2e", "unit"} <= flags)
+
+    def test_workflow_script_change_turns_every_scope_flag_on(self):
+        flags = truthy([".github/scripts/ci_scope.sh"])
+        self.assertTrue({"image", "chart", "e2e", "unit"} <= flags)
+
+    def test_shared_test_module_change_turns_every_scope_flag_on(self):
+        flags = truthy(["reposilite-test/workspace/x"])
+        self.assertTrue({"image", "chart", "e2e", "unit"} <= flags)
+
+    def test_quoted_path_from_git_turns_every_scope_flag_on(self):
+        flags = truthy(['"charts/ingot/\\303\\244.yaml"'])
+        self.assertTrue({"image", "chart", "e2e", "unit"} <= flags)
+
+    def test_mixed_chart_and_docs_change_turns_on_the_chart_flag_only(self):
+        self.assertEqual(truthy(["charts/ingot/Chart.yaml", "docs/a.md"]) - {"backend"}, {"chart"})
+
+
 class CoverageJobsInWorkflowTest(unittest.TestCase):
 
     @classmethod
@@ -173,6 +259,16 @@ class CoverageJobsInWorkflowTest(unittest.TestCase):
         self.assertIn("backend: ${{ steps.filter.outputs.backend }}", block)
         self.assertIn("frontend: ${{ steps.filter.outputs.frontend }}", block)
         self.assertIn("frontend_only: ${{ steps.filter.outputs.frontend_only }}", block)
+
+    def test_detection_job_exposes_the_scope_flags(self):
+        block = job_block(self.workflow, "coverage-changes")
+        for flag in ("image", "chart", "e2e", "unit"):
+            self.assertIn(f"{flag}: ${{{{ steps.filter.outputs.{flag} }}}}", block)
+
+    def test_detection_job_turns_every_scope_flag_on_when_the_range_is_unknown(self):
+        block = job_block(self.workflow, "coverage-changes")
+        for flag in ("image", "chart", "e2e", "unit"):
+            self.assertIn(f'echo "{flag}=true" >> "$GITHUB_OUTPUT"', block)
 
     def test_detection_job_diffs_against_the_merge_base(self):
         block = job_block(self.workflow, "coverage-changes")

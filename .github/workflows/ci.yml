@@ -739,7 +739,7 @@ jobs:
   # Decides which coverage jobs have to run. Pull requests that only touch documentation, OpenSpec
   # proposals or repository metadata skip all of them. A pull request that only touches the dashboard
   # skips the full backend suite and runs only the backend tests that serve the dashboard. Pushes always
-  # run everything, and so does any path the deny list in coverage_changes.sh does not name.
+  # run everything, and so does any path the deny list in ci_scope.sh does not name.
   coverage-changes:
     name: "Detect coverage changes"
     runs-on: ubuntu-latest
@@ -749,6 +749,10 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       frontend_only: ${{ steps.filter.outputs.frontend_only }}
+      image: ${{ steps.filter.outputs.image }}
+      chart: ${{ steps.filter.outputs.chart }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+      unit: ${{ steps.filter.outputs.unit }}
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
@@ -772,6 +776,10 @@ jobs:
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "frontend=true" >> "$GITHUB_OUTPUT"
             echo "frontend_only=false" >> "$GITHUB_OUTPUT"
+            echo "image=true" >> "$GITHUB_OUTPUT"
+            echo "chart=true" >> "$GITHUB_OUTPUT"
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            echo "unit=true" >> "$GITHUB_OUTPUT"
             exit 0
           }
 
@@ -793,7 +801,7 @@ jobs:
             full_run "Could not diff the pull request"
           fi
 
-          bash .github/scripts/coverage_changes.sh < "$RUNNER_TEMP/changed.txt" >> "$GITHUB_OUTPUT"
+          bash .github/scripts/ci_scope.sh < "$RUNNER_TEMP/changed.txt" >> "$GITHUB_OUTPUT"
 
   # Backend coverage. It is gated on coverage-changes, and a job skipped by its `if` counts as success
   # for the aggregate Coverage check below. The condition only skips when coverage-changes succeeded and
