@@ -62,6 +62,7 @@
 * [Rebuild the search index](how-to/rebuild-search-index.md)
 * [Choose a search backend](how-to/choose-a-search-backend.md)
 * [Use OpenSearch for search](how-to/use-opensearch-for-search.md)
+* [Use Meilisearch for search](how-to/use-meilisearch-for-search.md)
 * [Freeze writes for maintenance](how-to/freeze-writes-for-maintenance.md)
 * [Separate releases and snapshots](how-to/separate-releases-and-snapshots.md)
 * [Set cleanup policies](how-to/set-cleanup-policies.md)
