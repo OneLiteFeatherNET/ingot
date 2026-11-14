@@ -94,20 +94,58 @@ class PartialRunTest(unittest.TestCase):
             lambda step: "steps.select.outputs.mode == 'partial'" in condition(step),
         )
 
-    def test_partial_run_passes_filters_to_the_test_and_integration_tasks(self):
+    def test_partial_run_passes_filters_to_the_unit_test_task_only(self):
         steps = self.partial_steps()
 
         self.assertEqual(1, len(steps), "exactly one step must run when the decision is partial")
         run = run_text(steps[0])
         self.assertIn(":reposilite-backend:test", run, "the test task must run")
-        self.assertIn(":reposilite-backend:integration", run, "the integration task must run")
-        self.assertIn("--tests", run, "the selected filters must reach the tasks as --tests options")
+        self.assertNotIn(":reposilite-backend:integration", run, "a pull request runs no integration test")
+        self.assertIn("--tests", run, "the selected filters must reach the task as --tests options")
 
     def test_partial_run_produces_no_coverage_report(self):
         for step in self.partial_steps():
             with self.subTest(step=step.get("name")):
                 self.assertNotIn("testCoverage", run_text(step), "a partial run must not build the coverage report")
                 self.assertNotIn("jacoco", run_text(step).lower(), "a partial run must not build the JaCoCo report")
+
+
+class PullRequestRunsUnitTestsOnlyTest(unittest.TestCase):
+    def test_no_step_of_the_backend_job_runs_the_integration_task(self):
+        for step in steps_of("coverage-backend"):
+            with self.subTest(step=step.get("name")):
+                self.assertNotIn(":reposilite-backend:integration", run_text(step))
+
+    def test_the_coverage_task_never_runs_on_a_pull_request(self):
+        steps = find_steps("coverage-backend", lambda step: "testCoverage" in run_text(step))
+
+        self.assertEqual(1, len(steps), "the full coverage run on main must stay")
+        self.assertIn("github.event_name != 'pull_request'", condition(steps[0]))
+
+    def test_codecov_upload_never_runs_on_a_pull_request(self):
+        uploads = find_steps("coverage-backend", lambda step: "codecov" in str(step.get("uses", "")))
+
+        self.assertEqual(1, len(uploads))
+        self.assertIn("github.event_name != 'pull_request'", condition(uploads[0]))
+
+    def test_a_full_pull_request_run_executes_the_unit_suite_without_a_report(self):
+        steps = find_steps(
+            "coverage-backend",
+            lambda step: "github.event_name == 'pull_request'" in condition(step)
+            and "steps.select.outputs.mode == 'full'" in condition(step),
+        )
+
+        self.assertEqual(1, len(steps), "a full pull request run needs exactly one unit test step")
+        run = run_text(steps[0])
+        self.assertIn(":reposilite-backend:test", run)
+        self.assertNotIn("--tests", run, "the full run must not filter")
+        self.assertNotIn("jacoco", run.lower())
+
+    def test_a_frontend_only_pull_request_runs_the_dashboard_unit_tests_only(self):
+        steps = find_steps("coverage-backend", lambda step: "frontend_only == 'true'" in condition(step))
+
+        self.assertEqual(1, len(steps))
+        self.assertIn("com.reposilite.frontend.*", run_text(steps[0]))
 
 
 if __name__ == "__main__":
