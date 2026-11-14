@@ -143,7 +143,7 @@ internal class OwnAccessSummaryTest {
 
             val summary = service.ownAccess(principalCaller(service, "alice")).orNull()!!
 
-            assertThat(summary.denials).describedAs("denials").containsExactly("ingot.repository.releases.delete")
+            assertThat(summary.denials.map { it.node }).describedAs("denials").containsExactly("ingot.repository.releases.delete")
             assertThat(summary.nodes).describedAs("allowed nodes").doesNotContain("ingot.repository.releases.delete")
         }
     }
@@ -204,7 +204,7 @@ internal class OwnAccessSummaryTest {
     }
 
     @Test
-    fun `a denial that a more specific allow overrides is still listed as the rule the caller holds`() {
+    fun `a denial that a more specific allow overrides is marked overridden`() {
         withService { service, _, _, _ ->
             service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
             service.replacePrincipalNodes("alice", listOf(NodeDto("ingot.repository.releases.delete", true)), ifMatch = null)
@@ -214,7 +214,23 @@ internal class OwnAccessSummaryTest {
 
             val summary = service.ownAccess(principalCaller(service, "alice")).orNull()!!
 
-            assertThat(summary.denials).describedAs("raw denying rule of the team").containsExactly("ingot.repository.releases.delete")
+            val denial = summary.denials.single { it.node == "ingot.repository.releases.delete" }
+            assertThat(denial.overridden).describedAs("overridden by the allow of the principal").isTrue
+        }
+    }
+
+    @Test
+    fun `a denial that no allow overrides is not marked overridden`() {
+        withService { service, _, _, _ ->
+            service.createPrincipal(CreatePrincipalRequest(kind = "USER", name = "alice"))
+            service.createTeam(CreateTeamRequest(name = "readers"))
+            service.replaceTeamNodes("readers", listOf(NodeDto("ingot.repository.releases.delete", false)), ifMatch = null)
+            service.replaceMembers("readers", listOf("alice"), ifMatch = null)
+
+            val summary = service.ownAccess(principalCaller(service, "alice")).orNull()!!
+
+            val denial = summary.denials.single { it.node == "ingot.repository.releases.delete" }
+            assertThat(denial.overridden).describedAs("overridden").isFalse
         }
     }
 
@@ -252,9 +268,9 @@ internal class OwnAccessSummaryTest {
                 assertThat(service.permissionCheck(admin, "alice", node, token = null).orNull()!!.allowed)
                     .describedAs("check of allowed node $node").isTrue
             }
-            summary.denials.forEach { node ->
-                assertThat(service.permissionCheck(admin, "alice", node, token = null).orNull()!!.allowed)
-                    .describedAs("check of denial $node").isFalse
+            summary.denials.forEach { denial ->
+                assertThat(service.permissionCheck(admin, "alice", denial.node, token = null).orNull()!!.allowed)
+                    .describedAs("check of denial ${denial.node} equals its overridden flag").isEqualTo(denial.overridden)
             }
         }
     }
