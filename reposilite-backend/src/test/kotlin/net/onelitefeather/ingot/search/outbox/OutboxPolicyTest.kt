@@ -32,6 +32,16 @@ internal class OutboxPolicyTest {
     }
 
     @Test
+    fun `the claim lease outlives the longest task wait of a search backend`() {
+        // Precondition 0.3 of add-meilisearch-search-plugin: the task wait of apply is at most 60 seconds (its TASK_WAIT_SECONDS),
+        // and a claim must not expire while that wait runs, or a second replica claims a batch that is still being written.
+        val longestTaskWait = Duration.ofSeconds(60)
+        assertThat(OutboxPolicy.LEASE)
+            .`as`("claim lease must be longer than the 60 second task wait bound of the meilisearch backend")
+            .isGreaterThan(longestTaskWait)
+    }
+
+    @Test
     fun `the backoff after a failure doubles from ten seconds`() {
         assertThat(OutboxPolicy.retryAt(now, attempts = 1)).isEqualTo(now.plusSeconds(10))
         assertThat(OutboxPolicy.retryAt(now, attempts = 2)).isEqualTo(now.plusSeconds(20))
