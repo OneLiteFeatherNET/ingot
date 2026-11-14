@@ -1,0 +1,87 @@
+[
+  {
+    "file": "src/components/card/RepositorySnippet.vue",
+    "match": "snippet-url",
+    "count": 4
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "card-editor",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "copied",
+    "count": 1
+  },
+  {
+    "file": "src/components/card/SnippetsCard.vue",
+    "match": "selected",
+    "count": 1
+  },
+  {
+    "file": "src/components/maintenance/IndexPanel.vue",
+    "match": "current",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdLinearProgress.vue",
+    "match": "md-linear-indeterminate",
+    "count": 1
+  },
+  {
+    "file": "src/components/md/MdTextField.vue",
+    "match": "leading-icon",
+    "count": 2
+  },
+  {
+    "file": "src/components/md/MdTextField.vue",
+    "match": "trailing-icon",
+    "count": 1
+  },
+  {
+    "file": "src/components/search/SearchView.vue",
+    "match": "degraded",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsReviewSheet.vue",
+    "match": "added",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsReviewSheet.vue",
+    "match": "removed",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsView.vue",
+    "match": "settings-save-bar",
+    "count": 1
+  },
+  {
+    "file": "src/components/settings/SettingsView.vue",
+    "match": "settings-view",
+    "count": 1
+  },
+  {
+    "file": "src/helpers/useTreeFits.js",
+    "match": "settings-save-bar",
+    "count": 1
+  },
+  {
+    "file": "src/pages/IndexPage.vue",
+    "match": "pane-sheet",
+    "count": 1
+  },
+  {
+    "file": "src/store/configuration.js",
+    "match": "description",
+    "count": 1
+  },
+  {
+    "file": "src/store/configuration.js",
+    "match": "one-of-container",
+    "count": 1
+  }
+]

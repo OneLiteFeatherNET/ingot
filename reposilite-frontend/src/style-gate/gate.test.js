@@ -41,26 +41,27 @@ const problemsOf = async (ruleId) => {
   return checkRatchet({ occurrences, baseline, allowlist })
 }
 
-const messagesOf = (problems, kind) => problems.filter((problem) => problem.kind === kind).map((problem) => problem.message)
+const messagesOf = (problems, kind, rule) =>
+  problems.filter((problem) => problem.kind === kind).map((problem) => `${problem.message}. ${rule.hint}`)
 
 for (const rule of RULES) {
   describe(`style gate rule ${rule.number} (${rule.id})`, () => {
     it('has no violation that the baseline does not record', async () => {
       const problems = await problemsOf(rule.id)
 
-      expect(messagesOf(problems, 'unexpected'), 'new violations: fix them, or record a documented exception in the allowlist').toEqual([])
+      expect(messagesOf(problems, 'unexpected', rule), 'new violations: fix them, or record a documented exception in the allowlist').toEqual([])
     })
 
     it('has no baseline entry for a violation that is gone', async () => {
       const problems = await problemsOf(rule.id)
 
-      expect(messagesOf(problems, 'stale'), 'fixed violations: remove or lower their baseline entries in the same change').toEqual([])
+      expect(messagesOf(problems, 'stale', rule), 'fixed violations: remove or lower their baseline entries in the same change').toEqual([])
     })
 
     it('has no allowlist entry that matches nothing', async () => {
       const problems = await problemsOf(rule.id)
 
-      expect(messagesOf(problems, 'dead'), 'dead allowlist entries: remove them').toEqual([])
+      expect(messagesOf(problems, 'dead', rule), 'dead allowlist entries: remove them').toEqual([])
     })
   })
 }
