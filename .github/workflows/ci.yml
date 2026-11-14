@@ -69,7 +69,8 @@ jobs:
   # the JVM and npm trees fail in completely different ways.
   licenses:
     name: "Licenses"
-    if: github.event_name != 'push'
+    needs: coverage-changes
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.coverage-changes.result != 'success' || needs.coverage-changes.outputs.unit == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -118,7 +119,8 @@ jobs:
   # configuration fails the job. The unit tests run in Coverage (frontend), once, with coverage.
   frontend:
     name: "Frontend"
-    if: github.event_name != 'push'
+    needs: coverage-changes
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.coverage-changes.result != 'success' || (needs.coverage-changes.outputs.frontend == 'true' || (needs.coverage-changes.outputs.image == 'true' && needs.coverage-changes.outputs.chart == 'true'))) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -226,7 +228,8 @@ jobs:
   # this one answers a different question entirely.
   vulnerabilities:
     name: "Vulnerabilities"
-    if: github.event_name != 'push'
+    needs: coverage-changes
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.coverage-changes.result != 'success' || needs.coverage-changes.outputs.unit == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -517,7 +520,8 @@ jobs:
   # that breaks it. It only reads the repository: no identity token and no write permission.
   sbom:
     name: "SBOM"
-    if: github.event_name != 'push'
+    needs: coverage-changes
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.coverage-changes.result != 'success' || needs.coverage-changes.outputs.unit == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1044,7 +1048,8 @@ jobs:
   # a later change, once the first report has been triaged. The bundled plugin tests are ordinary tests and still do.
   plugin-api:
     name: "Plugin API"
-    if: github.event_name != 'push'
+    needs: coverage-changes
+    if: ${{ !cancelled() && github.event_name != 'push' && (needs.coverage-changes.result != 'success' || needs.coverage-changes.outputs.unit == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
