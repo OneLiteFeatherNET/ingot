@@ -741,8 +741,9 @@ jobs:
   # cancelled run from starting the job.
   #
   # A dashboard-only pull request runs the backend tests that serve the dashboard, because the server
-  # bundles and serves the built frontend. Everything else is skipped, and so is the Codecov upload, since
-  # a partial report would misstate the coverage Codecov shows for the default branch.
+  # bundles and serves the built frontend. Any other pull request runs the backend tests its change can
+  # reach (select_backend_tests.py), or the full suite when the selection says so. Only a full run uploads to
+  # Codecov, since a partial report would misstate the coverage Codecov shows for the default branch.
   coverage-backend:
     name: "Coverage (backend)"
     needs: coverage-changes
@@ -770,6 +771,56 @@ jobs:
       - name: "Set up Gradle"
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
 
+      # Decides which backend tests a pull request can reach (select_backend_tests.py, design Decision 3). Only a pull
+      # request gets a partial run. A push to main, a missing diff and a failing script all give mode=full, so the
+      # full suite and the Codecov upload run. The dashboard-only path below keeps its own decision.
+      - name: "Select the backend tests"
+        id: select
+        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' }}
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          selection="$RUNNER_TEMP/backend-selection.txt"
+          changed="$RUNNER_TEMP/backend-changed.txt"
+          if [ "$EVENT" != "pull_request" ]; then
+            printf '%s\n' "mode=full" "reason=not a pull request" > "$selection"
+          elif [ -z "$BASE" ] || [ -z "$HEAD" ] || ! git diff --name-only "$BASE...$HEAD" > "$changed"; then
+            printf '%s\n' "mode=full" "reason=the pull request diff is not available" > "$selection"
+          elif ! python3 .github/scripts/select_backend_tests.py < "$changed" > "$selection"; then
+            printf '%s\n' "mode=full" "reason=the selection script failed" > "$selection"
+          fi
+          mode="$(sed -n 's/^mode=//p' "$selection" | head -n 1)"
+          case "$mode" in
+            full|partial) ;;
+            *) mode=full ;;
+          esac
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Backend test selection"
+            echo
+            echo "- Mode: \`$mode\`"
+            sed -n 's/^reason=/- Reason: /p' "$selection"
+            sed -n 's/^package=\(.*\)$/- Package: `\1`/p' "$selection"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The backend tests the pull request can reach. The smoke set is always in the filters. --tests applies to the
+      # task before it, so each task gets its own filters. A partial run builds no coverage report and uploads nothing.
+      - name: "Run the selected backend tests"
+        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'partial' }}
+        run: |
+          selection="$RUNNER_TEMP/backend-selection.txt"
+          test_args=()
+          while IFS= read -r pattern; do test_args+=(--tests "$pattern"); done < <(sed -n 's/^test=//p' "$selection")
+          integration_args=()
+          while IFS= read -r pattern; do integration_args+=(--tests "$pattern"); done < <(sed -n 's/^integration=//p' "$selection")
+          if [ "${#test_args[@]}" -eq 0 ] || [ "${#integration_args[@]}" -eq 0 ]; then
+            echo "::error::The selection named no filter for one of the two tasks."
+            exit 1
+          fi
+          ./gradlew :reposilite-backend:test "${test_args[@]}" :reposilite-backend:integration "${integration_args[@]}"
+
       # The backend tests that serve the dashboard, unit and integration. The filters select the frontend
       # package, the dashboard policy, the dashboard route and caching tests, and the security header tests
       # of the dashboard document. --tests applies to each task, so the two tasks run in separate invocations.
@@ -783,11 +834,11 @@ jobs:
             --tests 'com.reposilite.web.SecurityHeadersIntegrationTest*'
 
       - name: "Run tests with coverage"
-        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' }}
+        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         run: ./gradlew :reposilite-backend:testCoverage
 
       - name: "Upload coverage to Codecov"
-        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' }}
+        if: ${{ needs.coverage-changes.outputs.frontend_only != 'true' && steps.select.outputs.mode == 'full' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v6.0.2
         with:
           files: "./reposilite-backend/build/reports/jacoco/reposilite-backend-report.xml"
