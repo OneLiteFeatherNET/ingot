@@ -123,6 +123,36 @@ const readRepository = async (id) => {
   return repositories.find(repository => repository.id === id) ?? null
 }
 
+// A user or machine account of the identity API, created for one test. Its name is removed again by deletePrincipal.
+const createPrincipal = async (body) => {
+  const response = await fetch(siteUrl('/api/identity/principals'), {
+    method: 'POST',
+    headers: { Authorization: authorization(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    throw new Error(`creating the principal answered ${response.status}: ${await response.text()}`)
+  }
+}
+
+// Removing a principal that is already gone changes nothing, so a test may remove its own principal in the UI.
+const deletePrincipal = async (name) => {
+  const response = await fetch(siteUrl(`/api/identity/principals/${encodeURIComponent(name)}`), {
+    method: 'DELETE',
+    headers: { Authorization: authorization() },
+  })
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`deleting the principal ${name} answered ${response.status}`)
+  }
+}
+
+const principalStatus = async (name) => {
+  const response = await fetch(siteUrl(`/api/identity/principals/${encodeURIComponent(name)}`), {
+    headers: { Authorization: authorization() },
+  })
+  return response.status
+}
+
 export {
   siteUrl,
   createRepository,
@@ -130,4 +160,7 @@ export {
   uploadFile,
   listRepositoryIds,
   readRepository,
+  createPrincipal,
+  deletePrincipal,
+  principalStatus,
 }

@@ -145,6 +145,17 @@ describe('PrincipalDetail', () => {
   })
 
   describe('a user', () => {
+    it('shows the username in the username row and the display name in its own row', async () => {
+      principals.get.mockResolvedValueOnce({
+        data: { ...ALICE, name: 'sdsdfsdf', displayName: 'sdfsdfsdf' },
+        headers: { etag: '"1"' }
+      })
+      await mountDetail({ name: 'sdsdfsdf', kind: 'USER' })
+
+      expect(wrapper.find('[data-test="username"]').text(), 'the username row holds the username').toBe('sdsdfsdf')
+      expect(wrapper.find('[data-test="principal-display-name"]').text(), 'the display name row holds the display name').toBe('sdfsdfsdf')
+    })
+
     it('reads the detail of the named principal', async () => {
       await mountDetail({ name: 'alice', kind: 'USER' })
 
