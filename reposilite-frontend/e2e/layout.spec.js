@@ -375,13 +375,13 @@ test.describe('the bottom navigation bar at phone width', () => {
     expect(Math.max(...widths) - Math.min(...widths), 'the four destinations have equal widths in px').toBeLessThanOrEqual(1)
   })
 
-  test('names the short Admin destination by its full name without an accessibility violation at 320 pixels', async ({ adminPage: page }) => {
+  test('names the short Admin destination by its visible label without an accessibility violation at 320 pixels', async ({ adminPage: page }) => {
     await page.setViewportSize({ width: 320, height: 640 })
     await page.goto(siteUrl('/dashboard'))
 
     const bar = page.locator('[data-ingot-component="md-navigation-bar"]')
     await expect(bar).toBeVisible()
-    await expect(bar.getByRole('link', { name: 'Administration', exact: true }).or(bar.getByRole('button', { name: 'Administration', exact: true }))).toBeVisible()
+    await expect(bar.getByRole('link', { name: 'Admin', exact: true }).or(bar.getByRole('button', { name: 'Admin', exact: true }))).toBeVisible()
 
     // label-content-name-mismatch is off in the default run: it is enabled here, so the visible label must be part of the name.
     const results = await new AxeBuilder({ page })

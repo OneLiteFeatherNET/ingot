@@ -133,11 +133,12 @@ describe('MdNavigationBar widths and short labels', () => {
     expect(wrapper.find('li span.md-label-medium').text()).toBe('Admin')
   })
 
-  it('keeps the full label as the accessible name of a destination with a short label', () => {
+  it('keeps the short label as the accessible name and the full label as its description', () => {
     const items = [{ key: 'settings', label: 'Administration', shortLabel: 'Admin' }]
     const wrapper = mount(MdNavigationBar, { props: { items, modelValue: 'settings' } })
 
-    expect(wrapper.find('button').attributes('aria-label')).toBe('Administration')
+    expect(wrapper.find('button').attributes('aria-label'), 'the name is the visible text, so axe label-content-name-mismatch passes').toBeUndefined()
+    expect(wrapper.find('button').attributes('title'), 'the full label is the description').toBe('Administration')
   })
 
   it('names no accessible label of its own for a destination without a short label', () => {

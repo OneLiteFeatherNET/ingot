@@ -456,12 +456,14 @@ describe('IndexPage navigation', () => {
     expect(barButtons(wrapper), 'nothing is left over for More').toHaveLength(0)
   })
 
-  it('shows Admin in the bottom bar and Administration in the rail, with the full name as the accessible name', async () => {
+  it('shows Admin in the bottom bar and Administration in the rail, with the full name as the description of the bar entry', async () => {
     const { wrapper } = await mountAt('/', { manager: true })
 
     expect(barLabels(wrapper), 'the bar has the short label').toContain('Admin')
     expect(railLabels(wrapper), 'the rail keeps the full label').toContain('Administration')
-    expect(navigations(wrapper)[0].findAll('a')[3].attributes('aria-label'), 'the accessible name is the full label').toBe('Administration')
+    const barAdministration = navigations(wrapper)[0].findAll('a')[3]
+    expect(barAdministration.attributes('title'), 'the full label is the description of the bar entry').toBe('Administration')
+    expect(barAdministration.attributes('aria-label'), 'the name is the visible text').toBeUndefined()
   })
 
   it('puts Browse, Search and Administration in the bottom bar for the audit node alone, without More', async () => {
