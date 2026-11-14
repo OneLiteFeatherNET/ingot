@@ -43,6 +43,9 @@ jobs:
     with:
       java-version: "17"
       java-distribution: "temurin"
+      # The integration suite runs once, in Coverage (backend), on JDK 21. Both task names are excluded: `integration`
+      # is the suite itself and `integrationTest` is its alias, which would otherwise run the full suite again.
+      gradle-task: "build test -x integration -x integrationTest"
       # The default 3-OS matrix is narrowed to Linux on purpose: the backend integration
       # tests use Testcontainers, and only the ubuntu runners ship a usable Docker daemon.
       runs-on: '["ubuntu-latest"]'
