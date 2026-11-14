@@ -43,11 +43,18 @@ internal object LoggingProbeProcess {
 
     data class Result(val exitCode: Int, val output: String)
 
-    fun run(probe: Class<*>, workingDirectory: Path, environment: Map<String, String>, arguments: List<String> = emptyList()): Result {
+    fun run(
+        probe: Class<*>,
+        workingDirectory: Path,
+        environment: Map<String, String>,
+        arguments: List<String> = emptyList(),
+        jvmArguments: List<String> = emptyList(),
+    ): Result {
         val javaBinary = System.getProperty("java.home") + "/bin/java"
         val command = listOf(
             javaBinary,
             "-Dtinylog.configuration=${shippedTinyLogConfiguration()}",
+        ) + jvmArguments + listOf(
             "-cp", System.getProperty("java.class.path"),
             probe.name,
             workingDirectory.toAbsolutePath().toString(),
