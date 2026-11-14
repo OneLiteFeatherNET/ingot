@@ -17,6 +17,7 @@
 package net.onelitefeather.ingot.identity.login.api
 
 import io.javalin.openapi.JsonSchema
+import java.time.Instant
 
 /** The methods a user with an authenticator may complete a sign-in with. */
 internal const val METHOD_AUTHENTICATOR = "AUTHENTICATOR"
@@ -36,4 +37,37 @@ data class SecondFactorRequest(
 data class SecondFactorRequiredResponse(
     val mfaRequired: Boolean,
     val methods: List<String>,
+)
+
+/** A second factor as listed for its owner or an administrator. Never carries a secret. */
+@JsonSchema(requireNonNulls = false)
+data class SecondFactorDto(
+    val id: Int,
+    val kind: String,
+    val name: String,
+    val createdAt: Instant,
+    val lastUsedAt: Instant? = null,
+)
+
+/** `POST /api/identity/me/factors/totp`: the enrolment, with the `otpauth` URI the authenticator app reads. Shown once. */
+@JsonSchema(requireNonNulls = false)
+data class AuthenticatorEnrolmentDto(
+    val otpauthUri: String,
+)
+
+/** A code of the authenticator app, for confirming an enrolment or for a change that needs a fresh proof. */
+@JsonSchema(requireNonNulls = false)
+data class CodeRequest(
+    val code: String? = null,
+)
+
+/** The factor that the confirmation created. [recoveryCodes] is set for the first factor only, and shown once. */
+@JsonSchema(requireNonNulls = false)
+data class ConfirmedEnrolmentDto(
+    val recoveryCodes: List<String>? = null,
+)
+
+@JsonSchema(requireNonNulls = false)
+data class RecoveryCodesDto(
+    val recoveryCodes: List<String>,
 )
