@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package com.reposilite.status
 
 import com.reposilite.shared.ErrorResponse
+import com.reposilite.storage.StorageProvider
+import com.reposilite.storage.api.Location
 import io.javalin.http.HttpStatus.NOT_FOUND
+import net.onelitefeather.ingot.storage.capability.ReadinessOutcome
 import panda.std.Result
 
 /**
@@ -27,3 +32,13 @@ import panda.std.Result
  */
 internal fun <T> Result<T, ErrorResponse>.answersListing(): Boolean =
     fold({ true }, { it.status == NOT_FOUND.code })
+
+/**
+ * The probe of a storage without its own [net.onelitefeather.ingot.storage.capability.ReadinessProbe]: its root is listed. An answer
+ * that the root does not exist is [ReadinessOutcome.NotFoundOk], because the backend answered. Any other failure is reported with its message.
+ */
+internal fun StorageProvider.probeListing(): ReadinessOutcome =
+    getFiles(Location.empty()).fold(
+        { ReadinessOutcome.Ok },
+        { error -> if (error.status == NOT_FOUND.code) ReadinessOutcome.NotFoundOk else ReadinessOutcome.Failed(error.message) },
+    )

@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
+@file:OptIn(net.onelitefeather.ingot.storage.ExperimentalIngotStorageApi::class)
+
 package com.reposilite.storage.s3
 
 import com.reposilite.configuration.shared.api.Doc
 import com.reposilite.configuration.shared.api.Sensitive
 import com.reposilite.storage.StorageProviderSettings
 import io.javalin.openapi.Custom
+import net.onelitefeather.ingot.storage.capability.SharedNamespaceAware
+import net.onelitefeather.ingot.storage.capability.SupportDetails
 
 @Doc(title = "S3 Metadata Cache", description = "Caches things like file size from S3 objects")
 data class S3MetadataCacheSettings(
@@ -57,7 +61,37 @@ data class S3StorageProviderSettings(
     val sharedBucket: Boolean = false,
     @get:Doc(title = "Local Metadata Cache", description = "Local metadata cache settings (optional). The default is no caching. NOTE: This cache is local only. If you run multiple instances, they will not share the cache!")
     val metadataCacheSettings: S3MetadataCacheSettings? = null,
-) : StorageProviderSettings
+) : StorageProviderSettings, SharedNamespaceAware, SupportDetails {
+
+    /**
+     * The namespace of this repository: the endpoint and the bucket, with the key prefix the repository resolves to. A blank bucket
+     * has no namespace, so it never collides.
+     */
+    override fun namespaceKey(repositoryName: String): String? {
+        if (bucketName.isBlank()) {
+            return null
+        }
+        return listOf(endpoint.trim().trimEnd('/'), bucketName.trim(), resolveKeyPrefix(repositoryName)).joinToString(NAMESPACE_SEPARATOR)
+    }
+
+    /** Two namespaces collide when they are in the same bucket of the same endpoint, and one key prefix equals or nests under the other. */
+    override fun overlaps(key: String, otherKey: String): Boolean {
+        val (endpoint, bucket, prefix) = key.split(NAMESPACE_SEPARATOR, limit = 3)
+        val (otherEndpoint, otherBucket, otherPrefix) = otherKey.split(NAMESPACE_SEPARATOR, limit = 3)
+        return endpoint == otherEndpoint && bucket == otherBucket && (prefix.startsWith(otherPrefix) || otherPrefix.startsWith(prefix))
+    }
+
+    override fun overlapMessage(): String =
+        "Its S3 key namespace overlaps another repository sharing the same bucket. Give each repository a distinct 'prefix', or enable 'sharedBucket' on every repository sharing the bucket."
+
+    /** The region, when one is configured. */
+    override fun describe(): Map<String, String> =
+        region.takeIf { it.isNotBlank() }?.let { mapOf("region" to it) }.orEmpty()
+
+}
+
+/** Separates the parts of a namespace key. It cannot occur in an endpoint, a bucket name or a configured prefix. */
+private const val NAMESPACE_SEPARATOR = "\u0000"
 
 fun S3StorageProviderSettings.resolveKeyPrefix(repositoryName: String): String {
     val base = prefix.trim().trim('/').let { if (it.isEmpty()) "" else "$it/" }
