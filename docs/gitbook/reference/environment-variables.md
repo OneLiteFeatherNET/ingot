@@ -193,6 +193,14 @@ The audit plugin reads these variables at start. Without either of them the sink
 
 Both can be set at once. When a variable is set under both names, the `INGOT_` name is used. For the standard output switch, `true` in any case turns it on, and every other value turns it off.
 
+## Cleanup variables
+
+The cleanup plugin reads this variable at start. See [Cleanup policies](cleanup-policies.md#schedule) for what it changes.
+
+| Variable | Fallback | Default | Meaning |
+| --- | --- | --- | --- |
+| `INGOT_CLEANUP_CATCHUP` | `REPOSILITE_CLEANUP_CATCHUP` | `false` | `true` in any case makes up a scheduled cleanup run that an instance was too late for, at the first check within six hours of its scheduled time, once per UTC day. Any other value, including `yes`, leaves it off, so a missed run is skipped as before. |
+
 ## Names that do not follow the rule
 
 These settings are read directly. They do not accept the `INGOT_LOCAL_` prefix, and most of them do not accept an `INGOT_` spelling at all.

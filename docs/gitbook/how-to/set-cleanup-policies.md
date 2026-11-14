@@ -52,7 +52,7 @@ A preview that says **Nothing would be deleted** means that no version matches t
 3. Select **Save policy**.
 4. Switch **Enabled** on in the policy list.
 
-An enabled policy runs once a day at that minute. If the instance is not running at that minute, the run for that day is skipped.
+An enabled policy runs once a day at that minute. If the instance is not running at that minute, the run for that day is skipped, unless the operator set `INGOT_CLEANUP_CATCHUP=true`. With that variable, the run is made up at the first check after the instance starts, as long as that is within six hours of the scheduled time.
 
 ## Verify the result
 
@@ -122,7 +122,7 @@ To schedule the policy, set `"enabled": true` and `"schedule": "04:30"` in the s
 | The preview is empty | Read the warnings. Check the repositories, the scope and the group filter. A version is only deleted when it matches every age limit. |
 | An artifact keeps a version you wanted gone | Ingot always keeps the newest version of an artifact, and keeps snapshots newer than the newest release. See [Rules](../reference/cleanup-policies.md#rules). |
 | A `MIRROR_CACHE` policy finds nothing | Only copies that Ingot recorded are considered. The repository needs a proxied entry with `store` turned on. |
-| The scheduled run did not happen | The policy has to be enabled and have a time, and the instance has to run at that minute. |
+| The scheduled run did not happen | The policy has to be enabled and have a time, and the instance has to run at that minute. Set `INGOT_CLEANUP_CATCHUP=true` to make up a run that an instance missed, within six hours. |
 | `Cleanup policy <id> is already running` | Wait until the running cleanup ends. The run can be on any instance that shares the database, not only on the one you called. |
 
 ## Related

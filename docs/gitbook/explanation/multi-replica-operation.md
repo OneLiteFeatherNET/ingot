@@ -111,7 +111,7 @@ The delay and the timeout together must fit into the grace period of your orches
 * **Readiness is per replica.** `/api/status/ready` answers whether this replica can serve traffic now. It answers `503` while the database, a storage root or, with a cluster bus, the bus is unavailable. The start-up steps, such as the database migrations, are covered by the `plugins` check, which passes only once the server has started. The health endpoint `/api/status/health` reports only that the server is alive, so a load balancer should probe `/api/status/ready`.
 * **No leader election.** Work is divided by claims and leases, not by a leader.
 * **No shared console, cache or counters.** The items in the table above stay per replica.
-* **No catch-up of a missed schedule.** A scheduled job that did not start at its minute is not run later by another replica. See [High availability support](high-availability-support.md#failure-behaviour).
+* **No catch-up of a missed schedule by default.** A scheduled job that did not start at its minute is not run later by another replica. The cleanup schedule can be made up within six hours with `INGOT_CLEANUP_CATCHUP=true`. See [High availability support](high-availability-support.md#failure-behaviour).
 * **Rolling upgrades beyond the previous release.** The mixed-version rule covers the previous release and the current build only. See [High availability support](high-availability-support.md#rolling-upgrade-rule).
 
 ## Related pages
