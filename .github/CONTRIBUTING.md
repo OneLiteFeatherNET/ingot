@@ -120,6 +120,9 @@ Ingot is a fork, so keeping it reconcilable with upstream is part of maintaining
 [MAINTAINING.md](MAINTAINING.md) describes how upstream changes are pulled in, which areas
 deliberately diverge, and which names are kept for compatibility rather than left behind.
 
+The current maintainers are listed in [MAINTAINERS.md](../MAINTAINERS.md). [GOVERNANCE.md](../GOVERNANCE.md)
+describes how decisions are taken and how maintainers join and leave.
+
 ## Code of Conduct
 
 By participating in this project you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
