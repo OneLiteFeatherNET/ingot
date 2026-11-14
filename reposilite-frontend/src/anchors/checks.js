@@ -309,10 +309,10 @@ export function listSourceFiles(frontendRoot) {
     .map((path) => ({ path, area: areaOf(path) }))
 }
 
-// Every .js and .vue file under src, for the selector rule.
+// Every .js, .ts and .vue file under src, for the selector rule.
 export function listSourceTree(frontendRoot) {
   return readdirSync(join(frontendRoot, "src"), { recursive: true })
-    .filter((path) => path.endsWith(".js") || path.endsWith(".vue"))
+    .filter((path) => path.endsWith(".js") || path.endsWith(".ts") || path.endsWith(".vue"))
     .map((path) => `src/${path}`)
     .sort()
 }

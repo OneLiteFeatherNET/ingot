@@ -161,7 +161,7 @@ export function scanSources(rule, sources, ctx) {
 // that its scripts select. A token is kept as written, so a runtime-built name shows up with its template syntax.
 export const classTokensOf = ({ file, text, ctx }) => {
   if (file.endsWith('.vue')) return vueClassTokens(text)
-  if (file.endsWith('.js')) {
+  if (file.endsWith('.js') || file.endsWith('.ts')) {
     return [...scriptClassLists(text, ctx.resolves), ...scriptSelectorNames(text)]
   }
   return []

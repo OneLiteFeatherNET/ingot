@@ -85,6 +85,10 @@ describe('rule 3: no raw colour literals', () => {
     expect(await found('raw-colour', VUE, `<div :style="{ background: '${call}' }">`), 'the overlay with a literal percentage').toEqual([call])
   })
 
+  it('reports a hex literal in a TypeScript module', async () => {
+    expect(await found('raw-colour', 'src/store/fixture.ts', "const accent = '#3A5F85'"), 'the hex literal in the .ts module').toEqual(['#3A5F85'])
+  })
+
   it('does not report prose that names the hex form', async () => {
     expect(await found('raw-colour', SCRIPT, "const hint = 'Use a colour in the form #RRGGBB'"), 'the prose').toEqual([])
   })
