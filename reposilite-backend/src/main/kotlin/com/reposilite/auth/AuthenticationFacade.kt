@@ -50,7 +50,8 @@ import java.util.concurrent.TimeUnit.NANOSECONDS
 
 private data class FailedAttempt(
     val count: Int,
-    val firstFailureMillis: Long
+    /** Clock time of the attempt that reached the limit, null while the limit has not been reached. */
+    val limitReachedMillis: Long?
 )
 
 class AuthenticationFacade(
@@ -193,15 +194,25 @@ class AuthenticationFacade(
             return false
         }
 
-        val banDuration = bruteForceProtectionSettings.map { it.banDurationSeconds } * 1000
-        val trackedDuration = System.currentTimeMillis() - attempt.firstFailureMillis
+        if (attempt.limitReachedMillis == null) {
+            return false
+        }
 
-        if (trackedDuration < banDuration) {
+        if (isBanned(attempt)) {
             return true // Host is still blocked
         }
 
         failedAttempts.invalidate(ip) // Ban duration has passed, unblocking the host
         return false
+    }
+
+    /**
+     * The ban lasts the configured duration counted from the attempt that reached the limit, on the injected clock.
+     */
+    private fun isBanned(attempt: FailedAttempt): Boolean {
+        val reachedAt = attempt.limitReachedMillis ?: return false
+        val banDuration = bruteForceProtectionSettings.map { it.banDurationSeconds } * 1000
+        return clock.millis() - reachedAt < banDuration
     }
 
     private fun trackBruteForceAttempt(ip: String, success: Boolean) {
@@ -210,15 +221,21 @@ class AuthenticationFacade(
         }
 
         if (success) {
-            failedAttempts.invalidate(ip)
+            val current = failedAttempts.getIfPresent(ip)
+            // A valid login from a shared address must not lift a ban that is still running
+            if (current == null || !isBanned(current)) {
+                failedAttempts.invalidate(ip)
+            }
             return
         }
 
         val current = failedAttempts.getIfPresent(ip)
+        val count = (current?.count ?: 0) + 1
+        val maxAttempts = bruteForceProtectionSettings.map { it.maxAttempts }
         val updated =
             FailedAttempt(
-                count = (current?.count ?: 0) + 1,
-                firstFailureMillis = current?.firstFailureMillis ?: System.currentTimeMillis()
+                count = count,
+                limitReachedMillis = if (count >= maxAttempts) current?.limitReachedMillis ?: clock.millis() else null
             )
         failedAttempts.put(ip, updated)
 
