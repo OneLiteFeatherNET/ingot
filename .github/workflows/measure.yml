@@ -2,6 +2,10 @@
 name: "Measure"
 on:
   workflow_dispatch:
+    inputs:
+      touch:
+        description: "Change one backend source before the build"
+        default: "no"
   push:
     branches: [ "ci/measure-light-checks" ]
 permissions:
@@ -29,6 +33,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb  # v6.3.0
         with:
           cache-read-only: false
+      - name: "Change one backend source"
+        if: ${{ inputs.touch == 'yes' }}
+        run: |
+          f=$(find reposilite-backend/src/main/kotlin -name '*.kt' | sort | head -1)
+          echo "// measure $GITHUB_RUN_ID" >> "$f"
+          echo "touched $f"
       - name: "Compile only"
         env:
           GRADLE_OPTS: ${{ matrix.opts }}
