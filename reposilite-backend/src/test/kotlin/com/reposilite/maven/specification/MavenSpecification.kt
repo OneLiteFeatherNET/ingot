@@ -145,6 +145,9 @@ internal abstract class MavenSpecification {
     /** The client provider the components fetch from upstream with. By default a fake that answers from this specification; a test may replace it with a real one. */
     protected open fun remoteClientProvider(): RemoteClientProvider? = null
 
+    /** The escape hatch of the cache scope, see [com.reposilite.maven.PrivateAsPublicSetting]. Off unless a test turns it on. */
+    protected open fun cachePrivateAsPublic(): Boolean = false
+
     @BeforeEach
     fun initializeFacade() {
         this.ioService = createIoService()
@@ -207,6 +210,7 @@ internal abstract class MavenSpecification {
             mirrorCacheLedger = InMemoryMirrorCacheLedger(),
             artifactIndexSink = indexSink,
             uploadChecksumDefault = uploadChecksumDefault(),
+            cachePrivateAsPublic = cachePrivateAsPublic(),
         ).mavenFacade()
     }
 

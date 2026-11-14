@@ -16,25 +16,38 @@
 
 package com.reposilite.maven
 
+import com.reposilite.maven.application.MirrorCredentials
+import com.reposilite.shared.http.AuthenticationMethod
 import com.reposilite.shared.http.CacheScope
 
-/** A local repository as the scope rule sees it: its visibility and the local repositories it references through loopback mirrors. */
+/**
+ * A local repository as the scope rule sees it: its visibility, the local repositories it references through loopback mirrors,
+ * and whether one of its remote mirrors carries credentials of the upstream.
+ */
 internal data class CacheScopeNode(
     val visibility: RepositoryVisibility,
     val loopbackReferences: List<String>,
+    val credentialedRemote: Boolean = false,
 )
 
 internal fun Repository.cacheScopeNode(): CacheScopeNode =
     CacheScopeNode(
         visibility = visibility,
         loopbackReferences = mirrorHosts.filter { it.client is RepositoryLoopbackClient }.map { it.host },
+        credentialedRemote = mirrorHosts.any { it.client !is RepositoryLoopbackClient && it.configuration.authorization.sentToUpstream() },
     )
+
+/** Whether these credentials are sent to a remote host, so that the upstream refuses readers without them. */
+private fun MirrorCredentials?.sentToUpstream(): Boolean =
+    this != null && (method == AuthenticationMethod.BASIC || method == AuthenticationMethod.CUSTOM_HEADER)
 
 /**
  * The scope of the `Cache-Control` value of a file answer from [repository]. The answer is [CacheScope.PRIVATE] when the
  * repository, or any local repository it reaches through loopback references, directly or through other groups, is not
- * PUBLIC. A walk over those references ends on a cycle, because every name is visited once. Remote references are not
- * part of the node, and a reference to a repository that does not exist is skipped. An unknown [repository] is private.
+ * PUBLIC, or when a node that the walk reaches has a remote mirror with credentials: such an upstream refuses the anonymous
+ * readers that a proxy serves, so a shared cache must not keep the answer. A walk over those references ends on a cycle,
+ * because every name is visited once. A remote mirror without credentials does not change the scope, and a reference to a
+ * repository that does not exist is skipped. An unknown [repository] is private.
  *
  * [privateAsPublic] is the escape hatch: when it is set, every answer is [CacheScope.PUBLIC].
  */
@@ -58,7 +71,7 @@ internal fun resolveCacheScope(
             continue
         }
         val node = nodeOf(name) ?: continue
-        if (node.visibility != RepositoryVisibility.PUBLIC) {
+        if (node.visibility != RepositoryVisibility.PUBLIC || node.credentialedRemote) {
             return CacheScope.PRIVATE
         }
         pending.addAll(node.loopbackReferences)
