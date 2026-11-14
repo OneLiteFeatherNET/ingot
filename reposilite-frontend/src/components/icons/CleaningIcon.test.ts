@@ -23,7 +23,8 @@ import CleaningIcon from './CleaningIcon.vue'
 // sub-path, which the filled one does not. The assertions pin that difference.
 const HANDLE_SUBPATH = 'Zm350-420v-340H430v340h100Z'
 
-const pathOf = (wrapper) => wrapper.find('path').attributes('d')
+const pathOf = (wrapper: { find: (selector: string) => { attributes: (name: string) => string | undefined } }) =>
+  wrapper.find('path').attributes('d')
 
 describe('CleaningIcon', () => {
   it('draws the outlined Material Symbols glyph when inactive', () => {

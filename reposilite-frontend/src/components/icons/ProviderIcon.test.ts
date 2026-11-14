@@ -42,8 +42,8 @@ const BRANDS = {
   GITEA: siGitea
 }
 
-const svgOf = (icon) => mount(ProviderIcon, { props: { icon } }).find('svg')
-const pathOf = (icon) => svgOf(icon).find('path').attributes('d')
+const svgOf = (icon: string) => mount(ProviderIcon, { props: { icon } }).find('svg')
+const pathOf = (icon: string): string | undefined => svgOf(icon).find('path').attributes('d')
 
 describe('ProviderIcon', () => {
   it.each(Object.entries(BRANDS))('draws the simple-icons mark for %s', (icon, brand) => {
