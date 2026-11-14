@@ -85,6 +85,10 @@ The `INGOT_` names are read first. Where a `REPOSILITE_` name exists, it is read
 * The `ingot.local.*` system properties fall back to `reposilite.local.*`.
 * `JAVA_OPTS`, `PUID` and `PGID` have no prefix and are unchanged.
 
+### Linking a team to a provider group needs the idp area
+
+Writes that set, change or clear the external reference of a team now need the admin area `ingot.admin.idp`, or `ingot.admin.*`. A token that holds only `ingot.admin.teams` gets 403 for such writes. Grant `ingot.admin.idp` to that token before the upgrade. As a temporary fallback, set `INGOT_IDENTITY_IDP_GUARD=warn`, then remove it once the grant is in place. Existing references, memberships and read-only calls are not changed by the upgrade. See [Map provider groups to teams](../how-to/map-provider-groups-to-teams.md) and [Environment variables](environment-variables.md#identity-variables).
+
 ### Cookie requests from other sites
 
 A request to the API that carries the session or refresh cookie is now refused with `403` when it comes from another site or from a sibling subdomain. The body is the same error response as the CSRF refusal. Requests with an `Authorization` header, top-level navigations and same-origin requests are not affected. Maven, Gradle, sbt and token clients send no cookie and are not affected either.
