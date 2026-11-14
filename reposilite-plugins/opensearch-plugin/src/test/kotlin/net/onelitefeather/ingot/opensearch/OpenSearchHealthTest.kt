@@ -26,6 +26,9 @@ import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import net.onelitefeather.ingot.search.http.HttpAnswer
+import net.onelitefeather.ingot.search.http.HttpCall
+import net.onelitefeather.ingot.search.http.HttpExchange
 
 /** Health through the circuit breaker, with a clock that does not move and an exchange that never reaches a socket. */
 internal class OpenSearchHealthTest {

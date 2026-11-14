@@ -20,6 +20,11 @@ package net.onelitefeather.ingot.opensearch
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.reposilite.ReposiliteObjectMapper
+import net.onelitefeather.ingot.search.http.CredentialRedactor
+import net.onelitefeather.ingot.search.http.SearchCircuitBreaker
+import net.onelitefeather.ingot.search.http.SearchHttpClient
+import net.onelitefeather.ingot.search.http.JdkHttpExchange
+import net.onelitefeather.ingot.search.http.HttpExchange
 import net.onelitefeather.ingot.search.ArtifactFilePage
 import net.onelitefeather.ingot.search.ArtifactFilesQuery
 import net.onelitefeather.ingot.search.ArtifactSearchPage
@@ -63,10 +68,10 @@ internal class OpenSearchSearchBackend(
     private val mapper = ReposiliteObjectMapper.DEFAULT_OBJECT_MAPPER
     private val alias: String = settings.index
     private val physical: String = "$alias-v1"
-    private val redactor = OpenSearchRedactor(listOfNotNull(settings.password, settings.username))
+    private val redactor = CredentialRedactor(listOfNotNull(settings.password, settings.username))
     private val timeout: Duration = Duration.ofSeconds(settings.timeoutSeconds.toLong())
-    private val breaker = OpenSearchCircuitBreaker(clock)
-    private val http = OpenSearchHttp(
+    private val breaker = SearchCircuitBreaker(clock)
+    private val http = SearchHttpClient(
         settings.urls,
         settings.username,
         settings.password,
@@ -292,7 +297,7 @@ internal class OpenSearchSearchBackend(
 
     private fun bulk(lines: List<Map<String, Any>>) {
         val body = lines.joinToString(separator = "") { mapper.writeValueAsString(it) + "\n" }
-        val answer = client.send("POST", "/_bulk", body, OpenSearchHttp.NDJSON)
+        val answer = client.send("POST", "/_bulk", body, SearchHttpClient.NDJSON)
         if (answer.status !in 200..299) {
             throw OpenSearchRejectedException(redactor.redact("the bulk request answered ${answer.status}"))
         }

@@ -27,6 +27,9 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import net.onelitefeather.ingot.search.http.HttpAnswer
+import net.onelitefeather.ingot.search.http.HttpCall
+import net.onelitefeather.ingot.search.http.HttpExchange
 
 /** A clock the test moves by hand, so that no test reads the system time. */
 internal class ManualClock(private var now: Instant = START) : Clock() {
