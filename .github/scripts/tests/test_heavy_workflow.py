@@ -106,15 +106,17 @@ class SafetyTest(unittest.TestCase):
     def test_default_permission_is_read_only(self):
         self.assertEqual({"contents": "read"}, load()["permissions"])
 
-    def test_no_job_asks_for_a_write_permission(self):
+    def test_no_job_asks_for_a_write_permission_except_code_scanning_for_codeql(self):
         for name, job in load()["jobs"].items():
             for scope, level in (job.get("permissions") or {}).items():
+                if (name, scope) == ("codeql", "security-events"):
+                    continue
                 with self.subTest(job=name, scope=scope):
                     self.assertNotEqual("write", level)
 
     def test_every_action_is_pinned_to_a_sha_with_a_version_comment(self):
         for line in read_text().splitlines():
-            if ANY_USES.match(line):
+            if ANY_USES.match(line) and "uses: ./" not in line:  # a local workflow is pinned by the commit itself
                 with self.subTest(line=line.strip()):
                     self.assertRegex(line, SHA_PINNED_USES)
 
@@ -203,8 +205,23 @@ class GateAndAggregateTest(unittest.TestCase):
             with self.subTest(job=job):
                 self.assertIn(job, outputs)
 
+    def test_all_seven_heavy_jobs_exist(self):
+        self.assertEqual(set(heavy_gate.HEAVY_JOBS), set(heavy_job_ids()))
+
+    def test_search_and_codeql_call_their_own_workflows(self):
+        jobs = load()["jobs"]
+        self.assertEqual("./.github/workflows/search-backends.yml", jobs["search"]["uses"])
+        self.assertEqual("./.github/workflows/codeql.yml", jobs["codeql"]["uses"])
+
+    def test_codeql_asks_for_the_one_extra_scope_it_needs_and_search_for_none(self):
+        jobs = load()["jobs"]
+        self.assertEqual({"contents": "read", "security-events": "write"}, jobs["codeql"]["permissions"])
+        self.assertEqual({"contents": "read"}, jobs["search"]["permissions"])
+
     def test_every_job_has_a_timeout(self):
         for name, job in load()["jobs"].items():
+            if "uses" in job:
+                continue  # a job that calls a workflow takes its time limit from the called jobs
             with self.subTest(job=name):
                 self.assertIn("timeout-minutes", job)
 

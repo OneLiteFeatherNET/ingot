@@ -56,8 +56,11 @@ def entry_for(workflow, language):
 
 class CodeqlTriggerTests(unittest.TestCase):
 
-    def test_workflow_runs_on_pull_requests_into_main(self):
-        self.assertIn("main", triggers(load_workflow())["pull_request"]["branches"])
+    def test_workflow_does_not_start_on_pull_requests_by_itself(self):
+        self.assertNotIn("pull_request", triggers(load_workflow()))
+
+    def test_workflow_can_be_called_by_the_heavy_workflow(self):
+        self.assertIn("workflow_call", triggers(load_workflow()))
 
     def test_workflow_runs_on_pushes_to_main(self):
         self.assertIn("main", triggers(load_workflow())["push"]["branches"])

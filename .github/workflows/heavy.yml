@@ -73,7 +73,7 @@ jobs:
   # asked for them, and is red on a release pull request until every heavy job ran in full and passed.
   heavy-tests:
     name: "Heavy tests"
-    needs: [ gate, integration, images, helm, ha, e2e ]
+    needs: [ gate, integration, images, helm, ha, e2e, search, codeql ]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -689,3 +689,23 @@ jobs:
           path: reposilite-backend/build/reports/tests/integration
           retention-days: 7
           if-no-files-found: ignore
+
+  # The search backend container tests. The workflow keeps its nightly schedule and is called here for a label.
+  search:
+    name: "Search backends"
+    needs: [ gate ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.search == 'true') }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/search-backends.yml
+
+  # CodeQL. The workflow keeps its push and weekly runs and is called here for a label. Uploading results to code
+  # scanning is the one write scope of this workflow, and a fork pull request gets a read-only token whatever is asked.
+  codeql:
+    name: "CodeQL"
+    needs: [ gate ]
+    if: ${{ !cancelled() && (needs.gate.result != 'success' || needs.gate.outputs.codeql == 'true') }}
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/codeql.yml
