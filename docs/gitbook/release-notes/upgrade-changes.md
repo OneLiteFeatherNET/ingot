@@ -152,7 +152,7 @@ The image ships `nexus-import-plugin.jar` in `/app/bundled-plugins/`. It is load
 * The loader now switches each bundled jar on its own variable. A jar that the loader does not know still follows the metrics switch, as before.
 * The audit action `NEXUS_IMPORT_RUN` is new. Its name is stored, so it is never renamed.
 
-See [Import from Nexus](../set-up/migrate/import-from-nexus.md) for the flow.
+See [Sonatype Nexus importer](../set-up/migrate/import-from-other-repository-managers.md#sonatype-nexus-importer) for the flow.
 
 ### OpenSearch search backend is bundled and off by default (unreleased)
 
