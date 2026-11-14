@@ -1,10 +1,10 @@
 ---
-description: Deploy artifacts to an Ingot repository with Maven and Gradle, consume them from the same repository, and follow the redeployment, snapshot and checksum rules.
+description: Publish to and consume from an Ingot repository with Maven, Gradle, sbt or Leiningen, and follow the redeployment, snapshot and checksum rules that apply to all of them.
 ---
 
 # Publish and consume artifacts
 
-Publish a build to an Ingot repository, then resolve it from Maven or Gradle. This page covers the Maven and Gradle clients. The examples use the repositories of a new instance: `releases` and `snapshots`, which are public, and `private`, which needs a token to read.
+Publish a build to an Ingot repository, then resolve it from your build tool. This page covers what the build tools have in common: the repository URLs, the tokens, the redeployment, snapshot and checksum rules. Each tool has its own page with the build file. The examples use the repositories of a new instance: `releases` and `snapshots`, which are public, and `private`, which needs a token to read.
 
 ## Before you begin
 
@@ -13,98 +13,22 @@ Publish a build to an Ingot repository, then resolve it from Maven or Gradle. Th
 * For a private repository, a token with the `read` permission. A public repository needs no token to read.
 
 {% hint style="warning" %}
-Put the token secret in a file outside the project, for example `~/.m2/settings.xml` or `~/.gradle/gradle.properties`. Do not commit it.
+Put the token secret in a file outside the project, for example `~/.m2/settings.xml` or `~/.gradle/gradle.properties`, or pass it in from the environment of your CI job. Do not commit it.
 {% endhint %}
 
-## Publish
+## Choose your build tool
 
-{% tabs %}
-{% tab title="Maven" %}
-1. Add the token to `~/.m2/settings.xml`. The `id` must match the repository id in the POM.
+| Build tool | Publish and consume |
+|---|---|
+| Maven | [Publish and consume with Maven](publish-and-consume-with-maven.md) |
+| Gradle, Kotlin DSL | [Publish and consume with Gradle (Kotlin DSL)](publish-and-consume-with-gradle-kotlin.md) |
+| Gradle, Groovy DSL | [Publish and consume with Gradle (Groovy DSL)](publish-and-consume-with-gradle-groovy.md) |
+| sbt | [Publish and consume with sbt](publish-and-consume-with-sbt.md) |
+| Leiningen | [Publish and consume with Leiningen](publish-and-consume-with-leiningen.md) |
 
-   ```xml
-   <settings>
-     <servers>
-       <server>
-         <id>ingot-releases</id>
-         <username><token-name></username>
-         <password><token-secret></password>
-       </server>
-       <server>
-         <id>ingot-snapshots</id>
-         <username><token-name></username>
-         <password><token-secret></password>
-       </server>
-     </servers>
-   </settings>
-   ```
+Every artifact is a plain `GET` on its path, so you can check one with `curl -I https://repo.example.org/releases/com/example/library/1.0.0/library-1.0.0.jar`.
 
-2. Declare the target repositories in the `pom.xml` of the project.
-
-   ```xml
-   <distributionManagement>
-     <repository>
-       <id>ingot-releases</id>
-       <url>https://repo.example.org/releases</url>
-     </repository>
-     <snapshotRepository>
-       <id>ingot-snapshots</id>
-       <url>https://repo.example.org/snapshots</url>
-     </snapshotRepository>
-   </distributionManagement>
-   ```
-
-3. Deploy.
-
-   ```bash
-   mvn deploy
-   ```
-{% endtab %}
-
-{% tab title="Gradle" %}
-1. Add the token to `~/.gradle/gradle.properties`. Gradle reads the user name and password from properties named after the repository.
-
-   ```properties
-   ingotReleasesUsername=<token-name>
-   ingotReleasesPassword=<token-secret>
-   ```
-
-2. Declare the target in the build script. This is the Kotlin DSL.
-
-   ```kotlin
-   plugins {
-     `maven-publish`
-   }
-
-   publishing {
-     repositories {
-       maven {
-         name = "ingotReleases"
-         url = uri("https://repo.example.org/releases")
-         credentials(PasswordCredentials::class)
-         authentication {
-           create<BasicAuthentication>("basic")
-         }
-       }
-     }
-     publications {
-       create<MavenPublication>("maven") {
-         groupId = "com.example"
-         artifactId = "library"
-         version = "1.0.0"
-         from(components["java"])
-       }
-     }
-   }
-   ```
-
-3. Publish.
-
-   ```bash
-   ./gradlew publish
-   ```
-{% endtab %}
-{% endtabs %}
+## Publish without a build tool
 
 To publish a file without a build tool, send it with `PUT`. The path is the group path, the artifact id, the version and the file name.
 
@@ -113,41 +37,6 @@ curl -u "<token-name>:<token-secret>" -T lib-1.0.0.jar \
   -H "X-Generate-Checksums: true" \
   https://repo.example.org/releases/com/example/library/1.0.0/library-1.0.0.jar
 ```
-
-## Consume
-
-{% tabs %}
-{% tab title="Maven" %}
-Add the repository to the `pom.xml`. Add a `server` entry with the token to `~/.m2/settings.xml` only when the repository is private.
-
-```xml
-<repositories>
-  <repository>
-    <id>ingot-releases</id>
-    <url>https://repo.example.org/releases</url>
-  </repository>
-</repositories>
-```
-{% endtab %}
-
-{% tab title="Gradle" %}
-Add the repository to the build script. A public repository needs no credentials. For a private repository, add `credentials(PasswordCredentials::class)` and the basic authentication block from the publish example, and set the properties for that repository name in `~/.gradle/gradle.properties`.
-
-```kotlin
-repositories {
-  maven {
-    url = uri("https://repo.example.org/releases")
-  }
-}
-
-dependencies {
-  implementation("com.example:library:1.0.0")
-}
-```
-{% endtab %}
-{% endtabs %}
-
-Run the build. Every artifact is a plain `GET` on its path, so you can check one with `curl -I https://repo.example.org/releases/com/example/library/1.0.0/library-1.0.0.jar`.
 
 ## Redeployment rules
 
@@ -192,4 +81,4 @@ The two values must be equal.
 
 ## Result
 
-After `mvn deploy` or `./gradlew publish`, the artifact is listed under its path in the repository, and a search for its name finds it (see [Search for artifacts](search-for-artifacts.md)). A second publish of a release file returns `409`. The checksum files next to the artifact match the artifact.
+After a deploy with any of the tools above, the artifact is listed under its path in the repository, and a search for its name finds it (see [Search for artifacts](search-for-artifacts.md)). A second publish of a release file returns `409`. The checksum files next to the artifact match the artifact.
