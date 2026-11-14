@@ -4,7 +4,7 @@ description: Set up Ingot. Lists the pages that deploy Ingot with Docker, the JA
 
 # Set up Ingot
 
-This section covers getting Ingot running outside a tutorial: the install paths, the network setup, a cluster of replicas, and the move from another repository manager. A server runs with the deploy target `all` or `server`, and the Helm chart has the modes `allInOne` and `split`. [Deploy targets](../reference/deploy-targets.md) and [Deployment options compared](deploy/deployment-options-compared.md) explain the choice.
+This section covers getting Ingot running outside a tutorial: the install paths, the network setup, a cluster of replicas, and the move from another repository manager. A server runs with the deploy target `all` or `server`, and the Helm chart has the modes `allInOne` and `split`. [Deploy targets](../references/configuration/deploy-targets.md) and [Deployment options compared](deploy/deployment-options-compared.md) explain the choice.
 
 ## Deploy
 

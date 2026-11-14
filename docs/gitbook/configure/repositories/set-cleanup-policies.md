@@ -9,7 +9,7 @@ A cleanup policy deletes old versions of artifacts from the repositories you cho
 ## Before you begin
 
 * Sign in as an instance admin. The Maintenance page and the cleanup endpoints need one.
-* Know which repositories the policy should clean, and which versions it may remove. The [cleanup policy reference](../../reference/cleanup-policies.md) lists the scopes, limits and rules.
+* Know which repositories the policy should clean, and which versions it may remove. The [cleanup policy reference](../../references/configuration/cleanup-policies.md) lists the scopes, limits and rules.
 * A copy of the repository data, if the policy touches releases.
 
 ## Create the policy in the dashboard
@@ -120,12 +120,12 @@ To schedule the policy, set `"enabled": true` and `"schedule": "04:30"` in the s
 | --- | --- |
 | The save is refused | The message names the broken rule. Set at least one limit, use a valid id and a valid regular expression. |
 | The preview is empty | Read the warnings. Check the repositories, the scope and the group filter. A version is only deleted when it matches every age limit. |
-| An artifact keeps a version you wanted gone | Ingot always keeps the newest version of an artifact, and keeps snapshots newer than the newest release. See [Rules](../../reference/cleanup-policies.md#rules). |
+| An artifact keeps a version you wanted gone | Ingot always keeps the newest version of an artifact, and keeps snapshots newer than the newest release. See [Rules](../../references/configuration/cleanup-policies.md#rules). |
 | A `MIRROR_CACHE` policy finds nothing | Only copies that Ingot recorded are considered. The repository needs a proxied entry with `store` turned on. |
 | The scheduled run did not happen | The policy has to be enabled and have a time, and the instance has to run at that minute. |
 | `Cleanup policy <id> is already running` | Wait until the running cleanup ends. The run can be on any instance that shares the database, not only on the one you called. |
 
 ## Related
 
-* [Cleanup policies](../../reference/cleanup-policies.md) lists every field, rule and endpoint.
-* [Repository settings](../../reference/repository-settings.md) describes `preserveSnapshots`, which controls the builds inside one snapshot version.
+* [Cleanup policies](../../references/configuration/cleanup-policies.md) lists every field, rule and endpoint.
+* [Repository settings](../../references/configuration/repository-settings.md) describes `preserveSnapshots`, which controls the builds inside one snapshot version.

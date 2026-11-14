@@ -21,7 +21,7 @@ Ingot reads these values from its environment, so they can come from a Secret. T
 
 The metrics plugin is not part of the image, so the two metrics variables only matter once you have installed the plugin. Their older `REPOSILITE_PROMETHEUS_` spellings still work.
 
-Any other value that Ingot reads from the environment can come from `envFrom` as well. The [environment variables](../../reference/environment-variables.md) reference lists them.
+Any other value that Ingot reads from the environment can come from `envFrom` as well. The [environment variables](../../references/configuration/environment-variables.md) reference lists them.
 
 {% hint style="warning" %}
 Do not put these values in `env` as literal `value` entries, and do not put them in the values file. A value in the values file ends up in the Git history and in the rendered manifests.
@@ -146,4 +146,4 @@ The first command lists the Secrets. The second lists the names of the variables
 
 * [Run on Kubernetes](run-on-kubernetes.md) sets the database Secret and the S3 Secret.
 * [Use S3 storage](../cluster/use-s3-storage.md) explains the repository keys.
-* [Environment variables](../../reference/environment-variables.md) lists every variable that Ingot reads.
+* [Environment variables](../../references/configuration/environment-variables.md) lists every variable that Ingot reads.

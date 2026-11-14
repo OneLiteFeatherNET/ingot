@@ -25,7 +25,7 @@ The JAR is the most direct shape. Ingot writes its configuration, database and r
 
 ## Container image
 
-The container image is the same server in a container. The data lives in the volume that you mount at `/app/data`. An upgrade is a change of the image tag, and a rollback is the same change in reverse. The data is kept across both, as long as the volume stays. The entrypoint may change the owner of the volume at start, as described in the [environment variables](../../reference/environment-variables.md) reference.
+The container image is the same server in a container. The data lives in the volume that you mount at `/app/data`. An upgrade is a change of the image tag, and a rollback is the same change in reverse. The data is kept across both, as long as the volume stays. The entrypoint may change the owner of the volume at start, as described in the [environment variables](../../references/configuration/environment-variables.md) reference.
 
 * Install: [Install with Docker](install-with-docker.md).
 * Upgrade: [Upgrade from Ingot 1.1.x](../../manage/upgrade/upgrade-ingot.md) or [Upgrade from Reposilite 3.x](../migrate/upgrade-from-reposilite.md), depending on the version you run.
@@ -55,5 +55,5 @@ The split chart runs the server and the dashboard as two workloads, with the sam
 
 ## Related
 
-* [Deploy targets](../../reference/deploy-targets.md) describes the `INGOT_TARGET` setting that the split chart uses for the server.
-* [Multi-replica operation](../../explanation/multi-replica-operation.md) describes the limits of running several replicas.
+* [Deploy targets](../../references/configuration/deploy-targets.md) describes the `INGOT_TARGET` setting that the split chart uses for the server.
+* [Multi-replica operation](../../references/architecture/multi-replica-operation.md) describes the limits of running several replicas.

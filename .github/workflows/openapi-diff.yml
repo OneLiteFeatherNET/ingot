@@ -106,4 +106,4 @@ jobs:
           echo "::error::This pull request breaks the REST API without a marker."
           echo "If the break is intended, add ! after the type or scope of the title, for example fix(api)!: drop the route,"
           echo "add a BREAKING CHANGE: footer to the commit, and refresh docs/openapi/ingot-openapi.json. The contributing"
-          echo "section of docs/gitbook/reference/http-api.md describes the refresh command."
+          echo "section of docs/gitbook/references/http-api/http-api.md describes the refresh command."

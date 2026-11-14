@@ -6,7 +6,7 @@ description: Cap the requests that one Ingot replica works on at the same time, 
 
 Ingot can cap the number of requests that one replica works on at the same time. When the cap is reached, a new request is answered at once with `503 Service Unavailable` and `Retry-After: 1`. Nothing waits in a queue. The cap keeps a burst of large transfers from filling the memory and the threads of the replica and slowing every other client down. It is off by default.
 
-This page sets the cap and checks it. The variables are listed in [Request limit variables](../reference/environment-variables.md#request-limit-variables), and the answer is described in [Overload answers](../reference/http-api.md#overload-answers).
+This page sets the cap and checks it. The variables are listed in [Request limit variables](../references/configuration/environment-variables.md#request-limit-variables), and the answer is described in [Overload answers](../references/http-api/http-api.md#overload-answers).
 
 ## Before you begin
 
@@ -78,5 +78,5 @@ The status endpoints are exempt. A liveness probe on any other path, such as `/`
 ## Related
 
 * [Shut down without dropping requests](../manage/operate/shut-down-without-dropping-requests.md) covers the drain, which refuses requests in the same way.
-* [Environment variables](../reference/environment-variables.md#request-limit-variables) lists the variable, its property and its fallback.
-* [HTTP API overview](../reference/http-api.md#overload-answers) describes the answer.
+* [Environment variables](../references/configuration/environment-variables.md#request-limit-variables) lists the variable, its property and its fallback.
+* [HTTP API overview](../references/http-api/http-api.md#overload-answers) describes the answer.

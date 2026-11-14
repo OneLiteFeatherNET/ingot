@@ -60,7 +60,7 @@ env:
     value: "-Xmx768M -Djavalin.maxRequestSize=1073741824"
 ```
 
-The value is an example of 1 GiB. Set it to at least the size of the largest artifact. See the [environment variables](../../reference/environment-variables.md) reference for the setting.
+The value is an example of 1 GiB. Set it to at least the size of the largest artifact. See the [environment variables](../../references/configuration/environment-variables.md) reference for the setting.
 
 ## Check the limits
 

@@ -58,7 +58,7 @@ Omit `nodes` for a token that is not limited. An empty `nodes` list is refused. 
 * **The node list is set at creation.** No endpoint changes the list of an existing token. To change it, create a new token, update the CI secrets, and delete the old token.
 * **Read only is a shortcut for one node.** The access choice **Read only** sends the scope `READ`, and the server turns it into the node `ingot.repository.*.read`, which allows reading in every repository. The artifact limit replaces that choice, so the dialog disables it while the limit is on.
 
-Node grammar is in [Permission nodes](../reference/permission-nodes.md). The reference for artifact nodes, including the coordinate rules, is [Artifact permission nodes](../reference/artifact-permission-nodes.md).
+Node grammar is in [Permission nodes](../references/identity/permission-nodes.md). The reference for artifact nodes, including the coordinate rules, is [Artifact permission nodes](../references/identity/artifact-permission-nodes.md).
 
 ## Verify the limit
 

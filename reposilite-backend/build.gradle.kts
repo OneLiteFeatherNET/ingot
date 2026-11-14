@@ -459,7 +459,7 @@ tasks.named<Test>("integration") {
     }
 }
 
-// The packages that plugins link against: the surface docs/gitbook/reference/plugin-api.md documents and the bundled plugins
+// The packages that plugins link against: the surface docs/gitbook/references/plugins/plugin-api.md documents and the bundled plugins
 // use. japicmp matches a name together with its subpackages. Widening this list is a reviewed one-line change.
 // com.reposilite.journalist is a separate third-party artifact and never belongs here.
 val pluginApiPackages = listOf(

@@ -4,7 +4,7 @@ description: Explains how legacy access tokens become machine accounts in Ingot,
 
 # Token migration
 
-This page explains the design of the token migration. For the steps, see [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md). For the exact mapping of each item, see [Upgrade changes and supported paths](../../reference/upgrade-changes.md).
+This page explains the design of the token migration. For the steps, see [Upgrade from Reposilite 3.x](upgrade-from-reposilite.md). For the exact mapping of each item, see [Upgrade changes and supported paths](../../release-notes/upgrade-changes.md).
 
 ## Why tokens become machine accounts
 

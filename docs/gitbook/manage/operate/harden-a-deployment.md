@@ -118,11 +118,11 @@ The policy needs a network plugin that enforces it, such as Calico or Cilium. An
 
 Terminate TLS at the proxy or ingress in front of Ingot, as described in [Terminate TLS at the gateway](../../set-up/network/terminate-tls-at-the-gateway.md) and [Run behind a reverse proxy](../../set-up/network/run-behind-reverse-proxy.md). If you want Ingot to serve HTTPS itself, follow [Enable TLS](../../set-up/network/enable-tls.md).
 
-Once users reach Ingot over HTTPS only, set `INGOT_HSTS_MAX_AGE` to a number of seconds. Ingot then sends `Strict-Transport-Security` on HTTPS requests. The variable is listed in the [environment variables](../../reference/environment-variables.md) reference.
+Once users reach Ingot over HTTPS only, set `INGOT_HSTS_MAX_AGE` to a number of seconds. Ingot then sends `Strict-Transport-Security` on HTTPS requests. The variable is listed in the [environment variables](../../references/configuration/environment-variables.md) reference.
 
 ## 8. Security headers
 
-Ingot sends its security headers on every response, and the dashboard document has its own rules. They need no setup, and your proxy should not remove them. The meaning of each header is in [Security headers](../../explanation/security-headers.md).
+Ingot sends its security headers on every response, and the dashboard document has its own rules. They need no setup, and your proxy should not remove them. The meaning of each header is in [Security headers](../../references/architecture/security-headers.md).
 
 ## 9. Trusted proxies
 
@@ -135,7 +135,7 @@ environment:
   - INGOT_TRUSTED_PROXIES=10.0.0.0/8
 ```
 
-A malformed entry stops the start and names the entry, so a typo does not silently trust more than you meant. The rules are in [Trust your proxies](../../set-up/network/run-behind-reverse-proxy.md#trust-your-proxies) and in the [environment variables](../../reference/environment-variables.md) reference.
+A malformed entry stops the start and names the entry, so a typo does not silently trust more than you meant. The rules are in [Trust your proxies](../../set-up/network/run-behind-reverse-proxy.md#trust-your-proxies) and in the [environment variables](../../references/configuration/environment-variables.md) reference.
 
 ## 10. Settings secrets
 
@@ -164,7 +164,7 @@ The file must be readable by uid `977`. Every instance that shares the database 
 
 In Kubernetes, put the key in a Secret and mount it as a file, or deliver it with your GitOps tool. Keep the database password in a Secret too: the chart reads it through `database.existingSecret`, see [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md).
 
-The steps for a first setup, a key rotation and a return to a build without encryption are in [Encrypt settings secrets](../../configure/encrypt-settings-secrets.md). The Kubernetes delivery of the secrets is in [Manage secrets with GitOps](../../set-up/deploy/manage-secrets-with-gitops.md), and the key variables are in [Settings encryption](../../reference/settings-encryption.md).
+The steps for a first setup, a key rotation and a return to a build without encryption are in [Encrypt settings secrets](../../configure/encrypt-settings-secrets.md). The Kubernetes delivery of the secrets is in [Manage secrets with GitOps](../../set-up/deploy/manage-secrets-with-gitops.md), and the key variables are in [Settings encryption](../../references/configuration/settings-encryption.md).
 
 ## 11. Token hygiene
 
@@ -194,7 +194,7 @@ environment:
   - INGOT_AUDIT_SINK_FILE=audit/ingot-audit.jsonl
 ```
 
-Use [Forward audit events to a SIEM](../monitor/forward-audit-events-to-a-siem.md) for the collector side, including rotation and filtering. The event names are listed in [Audit events](../../reference/audit-events.md).
+Use [Forward audit events to a SIEM](../monitor/forward-audit-events-to-a-siem.md) for the collector side, including rotation and filtering. The event names are listed in [Audit events](../../references/identity/audit-events.md).
 
 ## 14. Verify what you run
 
@@ -218,7 +218,7 @@ For the jar and its SBOMs, follow [Verify the SBOMs of a release](verify-release
 
 ## 15. Keep up with releases
 
-* Watch the releases of the repository, or subscribe to its release feed, and read the [upgrade changes](../../reference/upgrade-changes.md) before each upgrade.
+* Watch the releases of the repository, or subscribe to its release feed, and read the [upgrade changes](../../release-notes/upgrade-changes.md) before each upgrade.
 * Back up before each upgrade and verify the result, as described in [Back up before upgrading](../upgrade/back-up-before-upgrading.md) and [Verify an upgrade](../upgrade/verify-an-upgrade.md).
 * Security fixes are made for the latest minor release line and for `main`. The [security policy](../../../../.github/SECURITY.md) lists the supported versions. Report a vulnerability through the security advisory form of the repository, not through a public issue.
 
@@ -290,4 +290,4 @@ The chart's `env` list replaces its default list as a whole. The default holds `
 
 * [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md) covers the chart values for the database, storage and ingress.
 * The file `docker-compose.split.yml` in the repository runs the dashboard in its own container, read-only, with all capabilities dropped and no-new-privileges set. See [Run the dashboard in a separate container](../../set-up/deploy/run-split-dashboard-container.md).
-* [Configuration and startup](../../reference/configuration-and-startup.md) lists the startup parameters.
+* [Configuration and startup](../../references/configuration/configuration-and-startup.md) lists the startup parameters.

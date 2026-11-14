@@ -97,4 +97,4 @@ kubectl -n ingot get pods -l app.kubernetes.io/name=ingot
 * [Run on Kubernetes](../deploy/run-on-kubernetes.md) installs the chart and lists the basic switch.
 * [Route with a Gateway API HTTPRoute](../deploy/route-with-gateway-api.md) and [Configure the edge for large uploads](configure-the-edge-for-large-uploads.md) describe the path from the gateway to Ingot.
 * [Monitor with the Prometheus Operator](../../manage/monitor/monitor-with-the-prometheus-operator.md) describes the scrape that the policy must admit.
-* [Helm chart values](../../reference/helm-values.md#routing-and-network) lists every key of the policy.
+* [Helm chart values](../../references/configuration/helm-values.md#routing-and-network) lists every key of the policy.

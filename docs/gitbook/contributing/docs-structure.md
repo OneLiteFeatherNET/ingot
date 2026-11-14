@@ -4,7 +4,7 @@ description: Plan for restructuring the Ingot docs after the Grafana Mimir docum
 
 # Docs structure plan
 
-This page is the plan for restructuring the Ingot documentation. It is a working document for contributors and is not part of the published table of contents. When the last step is merged, the page is deleted or reduced to the rules in [Contributing to the docs](../explanation/contributing-to-the-docs.md).
+This page is the plan for restructuring the Ingot documentation. It is a working document for contributors and is not part of the published table of contents. When the last step is merged, the page is deleted or reduced to the rules in [Contributing to the docs](contributing-to-the-docs.md).
 
 ## Why
 
@@ -239,7 +239,7 @@ Images that are not Mermaid, such as a later screenshot, need a location. The ma
 | Repo-relative `.gitbook/assets/` (default) | Reviewed and versioned with the page, works offline and in the GitHub view, no dependency on a second host. | Binary files grow the repository. |
 | Absolute `https://img.onelitefeather.net/...` URLs | Keeps binaries out of the repository. | GitBook shows a broken image when the URL moves, the files are not reviewed with the page, and the GitHub view depends on that host. |
 
-Default: repo-relative for every diagram and for small images, and `img.onelitefeather.net` only for large screenshots, if the maintainer wants it. The "Screenshots" rule in [Contributing to the docs](../explanation/contributing-to-the-docs.md) says there are no screenshots, and is rewritten in the first diagram pull request.
+Default: repo-relative for every diagram and for small images, and `img.onelitefeather.net` only for large screenshots, if the maintainer wants it. The "Screenshots" rule in [Contributing to the docs](contributing-to-the-docs.md) says there are no screenshots, and is rewritten in the first diagram pull request.
 
 Rules for every diagram, independent of the format: one sentence before it that says what it shows, a text alternative (the surrounding prose carries every fact the diagram shows), no more than about 12 nodes, labels that use the exact names of the docs (`INGOT_TARGET`, `allInOne`, `split`), and no secrets or real host names.
 
@@ -274,7 +274,7 @@ Each pull request stays under about 400 changed lines, pure moves excluded. Docs
    6. References, Release notes and Contributing
 4. **Deployment modes page.** `references/architecture/deployment-modes.md`, with D2.
 5. **Diagrams, two or three per pull request.** D1 with the image rules rewrite, then D3 to D5, then D6 and D7.
-6. **Cleanup.** Update the structure rules in [Contributing to the docs](../explanation/contributing-to-the-docs.md) and delete this page.
+6. **Cleanup.** Update the structure rules in [Contributing to the docs](contributing-to-the-docs.md) and delete this page.
 
 Checks for every pull request: every relative link resolves, no dash characters (`grep -nP '[\x{2013}\x{2014}]'`), every page has a `description:` line, every page of the folder is in `SUMMARY.md`, and for a move, every old path is in `redirects:`.
 
@@ -289,6 +289,6 @@ Checks for every pull request: every relative link resolves, no dash characters 
 
 ## Related pages
 
-* [Contributing to the docs](../explanation/contributing-to-the-docs.md) holds the rules for a single page.
-* [Architecture overview](../explanation/architecture-overview.md) is the page that gets the first diagram.
-* [Deploy targets](../reference/deploy-targets.md) and [Deployment options compared](../set-up/deploy/deployment-options-compared.md) are the sources of the modes page.
+* [Contributing to the docs](contributing-to-the-docs.md) holds the rules for a single page.
+* [Architecture overview](../references/architecture/architecture-overview.md) is the page that gets the first diagram.
+* [Deploy targets](../references/configuration/deploy-targets.md) and [Deployment options compared](../set-up/deploy/deployment-options-compared.md) are the sources of the modes page.

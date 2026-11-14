@@ -93,7 +93,7 @@ An ingress controller can serve the same host name with the same certificate. Se
 
 ## Client addresses
 
-The gateway or the ingress is the proxy in front of Ingot. Ingot then sees the address of the proxy, not the client, unless you list the proxies in `INGOT_TRUSTED_PROXIES`. See [Run behind a reverse proxy](run-behind-reverse-proxy.md) and the [environment variables](../../reference/environment-variables.md) reference.
+The gateway or the ingress is the proxy in front of Ingot. Ingot then sees the address of the proxy, not the client, unless you list the proxies in `INGOT_TRUSTED_PROXIES`. See [Run behind a reverse proxy](run-behind-reverse-proxy.md) and the [environment variables](../../references/configuration/environment-variables.md) reference.
 
 ## In-app TLS
 

@@ -244,7 +244,7 @@ With an empty `publicUrl`, Ingot builds the redirect from the `Host` header and 
 
 ## Strict transport security
 
-Ingot sends `Strict-Transport-Security` only when you ask for it, with `INGOT_HSTS_MAX_AGE` set to a number of seconds, for example `31536000`. It sends the header only on requests that arrived over HTTPS, which behind a proxy means `X-Forwarded-Proto: https`. Do not set both here and in the proxy, or the browser receives the header twice. See [Environment variables](../../reference/environment-variables.md#security-header-variables).
+Ingot sends `Strict-Transport-Security` only when you ask for it, with `INGOT_HSTS_MAX_AGE` set to a number of seconds, for example `31536000`. It sends the header only on requests that arrived over HTTPS, which behind a proxy means `X-Forwarded-Proto: https`. Do not set both here and in the proxy, or the browser receives the header twice. See [Environment variables](../../references/configuration/environment-variables.md#security-header-variables).
 
 ## Verify
 
