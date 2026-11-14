@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "generated": "2026-01-01T00:00:00Z",
+  "plugins": [
+    {
+      "id": "opensearch-plugin",
+      "name": "OpenSearch search backend",
+      "description": "Test fixture, not a real plugin.",
+      "publisher": "test-publisher",
+      "coordinates": "net.onelitefeather.ingot:opensearch-plugin:1.0.0",
+      "sha256": "a694053d9255b424d43ea59d8a879de214360ba3205709146031e04d768c2cbe",
+      "compatibility": { "ingot": { "min": "1.2.0", "below": "2.0.0" }, "pluginApi": 1 },
+      "yanked": false
+    }
+  ]
+}
