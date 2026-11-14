@@ -20,7 +20,6 @@ import com.reposilite.ReposiliteRunner
 import com.reposilite.ReposiliteSpecification
 import com.reposilite.RecommendedLocalSpecificationJunitExtension
 import com.reposilite.configuration.local.LocalConfiguration
-import com.reposilite.journalist.Channel
 import kong.unirest.core.Unirest
 import net.onelitefeather.ingot.logging.AccessLogSetting
 import org.assertj.core.api.Assertions.assertThat
@@ -28,19 +27,37 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.ExtendWith
 import panda.std.reactive.ReferenceUtils
+import java.util.Base64
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
  * The access record with the switch on and the external cache bypass off, the combination that the debug line never covers.
  * The clock is a counter: every read advances it by exactly five milliseconds, so the duration is known in advance.
+ *
+ * The record is written after the response is sent, so a test waits for it on a latch that a subscriber counts down, and
+ * never on the time. Each test makes one request and expects one record.
  */
 @ExtendWith(RecommendedLocalSpecificationJunitExtension::class)
 internal class AccessLogIntegrationTest : ReposiliteSpecification() {
 
     private val ticks = AtomicLong()
 
+    private val records = ConcurrentLinkedQueue<String>()
+
+    private val recordWritten = CountDownLatch(1)
+
     override fun accessLogSetting(): AccessLogSetting =
-        AccessLogSetting(enabled = true, nanoTime = { ticks.addAndGet(FIVE_MILLISECONDS) })
+        AccessLogSetting(
+            enabled = true,
+            nanoTime = { ticks.addAndGet(FIVE_MILLISECONDS) },
+            sink = { line ->
+                records += line
+                recordWritten.countDown()
+            },
+        )
 
     override fun overrideLocalConfiguration(localConfiguration: LocalConfiguration) {
         ReferenceUtils.setValue(localConfiguration.bypassExternalCache, false)
@@ -52,10 +69,9 @@ internal class AccessLogIntegrationTest : ReposiliteSpecification() {
         // when: one request is made
         Unirest.get("$base/api/status/health").asString()
 
-        // then: exactly one INFO record names that request
-        val records = accessRecords("path=/api/status/health")
-        assertThat(records).describedAs("access records of one request").hasSize(1)
-        assertThat(records.single().first).describedAs("channel of the access record").isEqualTo(Channel.INFO)
+        // then: exactly one record names that request
+        val matching = awaitRecords().filter { it.contains("path=/api/status/health") }
+        assertThat(matching).describedAs("access records of one request").hasSize(1)
     }
 
     @Test
@@ -67,7 +83,7 @@ internal class AccessLogIntegrationTest : ReposiliteSpecification() {
             .asString()
 
         // then: the record carries each field, with the duration of the injected clock
-        val line = accessRecords("path=/api/status/instance").single().second
+        val line = awaitRecords().single { it.contains("path=/api/status/instance") }
         assertThat(line).describedAs("access record of the request")
             .contains("method=GET")
             .contains("status=200")
@@ -84,7 +100,7 @@ internal class AccessLogIntegrationTest : ReposiliteSpecification() {
         Unirest.get("$base/api/status/instance").asString()
 
         // then: the record carries the refusal and no user
-        val line = accessRecords("path=/api/status/instance").single().second
+        val line = awaitRecords().single { it.contains("path=/api/status/instance") }
         assertThat(line).describedAs("access record of the refused request")
             .contains("status=401")
             .contains("user=-")
@@ -97,8 +113,10 @@ internal class AccessLogIntegrationTest : ReposiliteSpecification() {
         Unirest.get("$base/api/status/health?token=secret-value").asString()
 
         // then: the path is recorded without the query, and the value is absent
-        val line = accessRecords("path=/api/status/health").single().second
-        assertThat(line).describedAs("access record with a query string").doesNotContain("secret-value")
+        val line = awaitRecords().single { it.contains("path=/api/status/health") }
+        assertThat(line).describedAs("access record with a query string")
+            .contains("path=/api/status/health ")
+            .doesNotContain("secret-value")
     }
 
     @Test
@@ -110,20 +128,22 @@ internal class AccessLogIntegrationTest : ReposiliteSpecification() {
             .asString()
 
         // then: neither the secret nor the encoded credentials are in the record
-        val line = accessRecords("path=/api/status/instance").single().second
+        val line = awaitRecords().single { it.contains("path=/api/status/instance") }
+        val encoded = Base64.getEncoder().encodeToString("${ReposiliteRunner.DEFAULT_TOKEN.first}:${ReposiliteRunner.DEFAULT_TOKEN.second}".toByteArray())
         assertThat(line).describedAs("access record with credentials")
             .doesNotContain(ReposiliteRunner.DEFAULT_TOKEN.second)
-            .doesNotContain(java.util.Base64.getEncoder().encodeToString("${ReposiliteRunner.DEFAULT_TOKEN.first}:${ReposiliteRunner.DEFAULT_TOKEN.second}".toByteArray()))
+            .doesNotContain(encoded)
     }
 
-    /** The records of the instance whose text contains [marker], as channel and line pairs, in the order they were written. */
-    private fun accessRecords(marker: String): List<Pair<Channel, String>> =
-        reposilite.journalist.cachedLogger.messages
-            .map { it.key to it.value }
-            .filter { (_, line) -> line.contains(marker) && line.startsWith("access ") }
+    /** Waits, with a bound, until the record of the request has been written, and returns the records written so far. */
+    private fun awaitRecords(): List<String> {
+        assertThat(recordWritten.await(30, TimeUnit.SECONDS)).describedAs("access record written within 30 seconds").isTrue()
+        return records.toList()
+    }
 
     private companion object {
         const val FIVE_MILLISECONDS = 5_000_000L
+
     }
 
 }
@@ -132,9 +152,15 @@ internal class AccessLogIntegrationTest : ReposiliteSpecification() {
 @ExtendWith(RecommendedLocalSpecificationJunitExtension::class)
 internal class AccessLogSwitchOffIntegrationTest : ReposiliteSpecification() {
 
+    private val lines = ConcurrentLinkedQueue<String>()
+
     override fun overrideLocalConfiguration(localConfiguration: LocalConfiguration) {
         ReferenceUtils.setValue(localConfiguration.bypassExternalCache, false)
     }
+
+    /** The switch is off, so no record reaches the sink. A sink is still given, to show that none arrives. */
+    override fun accessLogSetting(): AccessLogSetting =
+        AccessLogSetting(enabled = false, sink = { line -> lines += line })
 
     @Test
     @Timeout(60)
@@ -142,9 +168,9 @@ internal class AccessLogSwitchOffIntegrationTest : ReposiliteSpecification() {
         // when: a request is made
         Unirest.get("$base/api/status/health").asString()
 
-        // then: no access record is written for it
-        val records = reposilite.journalist.cachedLogger.messages.filter { it.value.startsWith("access ") }
-        assertThat(records).describedAs("access records with the switch off").isEmpty()
+        // then: no access record is written for it. The record of an enabled switch is written after the response, so this
+        // check looks at what the server has written by the time the response has arrived; it is a negative check.
+        assertThat(lines.toList()).describedAs("access records with the switch off").isEmpty()
     }
 
 }

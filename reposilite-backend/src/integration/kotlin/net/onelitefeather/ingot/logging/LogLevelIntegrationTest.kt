@@ -20,7 +20,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 
 /**
  * Each start runs in a child JVM, because the console threshold and tinylog's package levels are read once per JVM. The
@@ -84,36 +83,7 @@ internal class LogLevelIntegrationTest {
             .contains("com.reposilite.web=loud")
     }
 
-    private fun runProbe(workingDirectory: Path, environment: Map<String, String>, arguments: List<String> = emptyList()): ProbeResult {
-        val javaBinary = System.getProperty("java.home") + "/bin/java"
-        val command = listOf(
-            javaBinary,
-            "-cp", System.getProperty("java.class.path"),
-            LogLevelProbe::class.java.name,
-            workingDirectory.toAbsolutePath().toString(),
-        ) + arguments
-        val builder = ProcessBuilder(command).redirectErrorStream(true).directory(workingDirectory.toFile())
-        // Logging variables of the machine running the tests would make the probe depend on the host.
-        LOGGING_VARIABLES.forEach { builder.environment().remove(it) }
-        builder.environment().putAll(environment)
-
-        val process = builder.start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        check(process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) { "probe did not finish within $PROBE_TIMEOUT_SECONDS seconds" }
-        return ProbeResult(process.exitValue(), output)
-    }
-
-    private data class ProbeResult(val exitCode: Int, val output: String)
-
-    private companion object {
-        const val PROBE_TIMEOUT_SECONDS = 120L
-        val LOGGING_VARIABLES = listOf(
-            "INGOT_LOG_FILE", "REPOSILITE_LOG_FILE",
-            "INGOT_LOG_FORMAT", "REPOSILITE_LOG_FORMAT",
-            "INGOT_LOG_LEVEL", "REPOSILITE_LOG_LEVEL",
-            "INGOT_LOG_LEVELS", "REPOSILITE_LOG_LEVELS",
-            "INGOT_ACCESS_LOG", "REPOSILITE_ACCESS_LOG",
-        )
-    }
+    private fun runProbe(workingDirectory: Path, environment: Map<String, String>, arguments: List<String> = emptyList()): LoggingProbeProcess.Result =
+        LoggingProbeProcess.run(LogLevelProbe::class.java, workingDirectory, environment, arguments)
 
 }

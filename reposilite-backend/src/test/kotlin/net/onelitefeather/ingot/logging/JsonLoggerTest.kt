@@ -69,11 +69,21 @@ internal class JsonLoggerTest {
     fun `should write the level name of the channel`() {
         val console = Console()
 
-        console.logger().log(Channel.WARN, "disk is almost full")
+        console.logger().log(Channel.DEBUG, "details")
 
         assertThat(mapper.readTree(console.lines().single())["level"].asText())
             .describedAs("level of the JSON line")
-            .isEqualTo("WARN")
+            .isEqualTo("DEBUG")
+    }
+
+    @Test
+    fun `should write warnings to the error stream as the text console does`() {
+        val console = Console()
+
+        console.logger().log(Channel.WARN, "disk is almost full")
+
+        assertThat(console.lines()).describedAs("lines on the standard output").isEmpty()
+        assertThat(console.errorLines()).describedAs("lines on the error stream").hasSize(1)
     }
 
     @Test
@@ -108,6 +118,17 @@ internal class JsonLoggerTest {
         val line = console.lines().single()
         assertThat(line).describedAs("JSON line with colour codes in the message").doesNotContain("\u001B")
         assertThat(mapper.readTree(line)["message"].asText()).describedAs("message without colour codes").isEqualTo("Ingot 1.0")
+    }
+
+    @Test
+    fun `should not carry the line separator that the console writer appends`() {
+        val console = Console()
+
+        console.logger().log(Channel.INFO, "Ingot 1.0" + System.lineSeparator())
+
+        assertThat(mapper.readTree(console.lines().single())["message"].asText())
+            .describedAs("message without the appended line separator")
+            .isEqualTo("Ingot 1.0")
     }
 
     @Test
@@ -183,6 +204,8 @@ internal class JsonLoggerTest {
         fun logger(): JsonLogger = logger
 
         fun lines(): List<String> = out.toString(StandardCharsets.UTF_8).lines().filter { it.isNotEmpty() }
+
+        fun errorLines(): List<String> = err.toString(StandardCharsets.UTF_8).lines().filter { it.isNotEmpty() }
     }
 
 }

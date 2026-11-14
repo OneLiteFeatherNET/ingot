@@ -21,7 +21,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 
 /**
  * Each start runs in a child JVM, because tinylog reads its configuration once per JVM. The child works in a temporary
@@ -32,7 +31,7 @@ internal class LogFileIntegrationTest {
     @Test
     fun `should write the rolling log file by default`(@TempDir workingDirectory: Path) {
         // when: the server starts with no logging variable set
-        val probe = runProbe(workingDirectory, environment = emptyMap())
+        val probe = LoggingProbeProcess.run(LogFileProbe::class.java, workingDirectory, environment = emptyMap())
 
         // then: the start succeeded and the rolling file received the startup lines
         assertThat(probe.exitCode).describedAs("exit code of the probe, output: ${probe.output}").isZero()
@@ -42,7 +41,7 @@ internal class LogFileIntegrationTest {
     @Test
     fun `should not create the rolling log file when INGOT_LOG_FILE is false`(@TempDir workingDirectory: Path) {
         // when: the server starts with the file writer switched off
-        val probe = runProbe(workingDirectory, environment = mapOf("INGOT_LOG_FILE" to "false"))
+        val probe = LoggingProbeProcess.run(LogFileProbe::class.java, workingDirectory, environment = mapOf("INGOT_LOG_FILE" to "false"))
 
         // then: the start succeeded, the console still shows the startup lines, and no rolling file exists
         assertThat(probe.exitCode).describedAs("exit code of the probe, output: ${probe.output}").isZero()
@@ -53,7 +52,7 @@ internal class LogFileIntegrationTest {
     @Test
     fun `should not create the rolling log file when the legacy REPOSILITE_LOG_FILE is false`(@TempDir workingDirectory: Path) {
         // when: only the legacy spelling is set
-        val probe = runProbe(workingDirectory, environment = mapOf("REPOSILITE_LOG_FILE" to "false"))
+        val probe = LoggingProbeProcess.run(LogFileProbe::class.java, workingDirectory, environment = mapOf("REPOSILITE_LOG_FILE" to "false"))
 
         // then: the legacy spelling is honoured
         assertThat(probe.exitCode).describedAs("exit code of the probe, output: ${probe.output}").isZero()
@@ -64,38 +63,6 @@ internal class LogFileIntegrationTest {
         val logs = workingDirectory.resolve("logs")
         if (!Files.isDirectory(logs)) return emptyList()
         Files.list(logs).use { return it.toList() }
-    }
-
-    private fun runProbe(workingDirectory: Path, environment: Map<String, String>): ProbeResult {
-        val javaBinary = System.getProperty("java.home") + "/bin/java"
-        val command = listOf(
-            javaBinary,
-            "-cp", System.getProperty("java.class.path"),
-            LogFileProbe::class.java.name,
-            workingDirectory.toAbsolutePath().toString(),
-        )
-        val builder = ProcessBuilder(command).redirectErrorStream(true).directory(workingDirectory.toFile())
-        // Logging variables of the machine running the tests would make the probe depend on the host.
-        LOGGING_VARIABLES.forEach { builder.environment().remove(it) }
-        builder.environment().putAll(environment)
-
-        val process = builder.start()
-        val output = process.inputStream.bufferedReader().use { it.readText() }
-        check(process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) { "probe did not finish within $PROBE_TIMEOUT_SECONDS seconds" }
-        return ProbeResult(process.exitValue(), output)
-    }
-
-    private data class ProbeResult(val exitCode: Int, val output: String)
-
-    private companion object {
-        const val PROBE_TIMEOUT_SECONDS = 120L
-        val LOGGING_VARIABLES = listOf(
-            "INGOT_LOG_FILE", "REPOSILITE_LOG_FILE",
-            "INGOT_LOG_FORMAT", "REPOSILITE_LOG_FORMAT",
-            "INGOT_LOG_LEVEL", "REPOSILITE_LOG_LEVEL",
-            "INGOT_LOG_LEVELS", "REPOSILITE_LOG_LEVELS",
-            "INGOT_ACCESS_LOG", "REPOSILITE_ACCESS_LOG",
-        )
     }
 
 }
