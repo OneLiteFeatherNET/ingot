@@ -175,4 +175,83 @@ internal class MavenCacheControlIntegrationTest : MavenIntegrationSpecification(
         assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
     }
 
+    @Test
+    fun `should keep an authorized html listing of a private repository out of shared caches`() {
+        // given: a file in a private repository and a token that may read it
+        val (repository, gav) = useDocument(PRIVATE_REPOSITORY, "listed", "artifact.jar", "content", true)
+        val (name, secret) = useAuth("cache-listing-reader", "cache-listing-reader-secret", routes = mapOf("/$PRIVATE_REPOSITORY" to READ))
+
+        // when: the directory is browsed with those credentials
+        val response = get("$base/$repository/$gav").basicAuth(name, secret).asString()
+
+        // then: the listing it shows depends on the caller, so no shared cache may store it
+        assertThat(response.status).isEqualTo(200)
+        assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
+    }
+
+    @Test
+    fun `should vary an html listing on the caller's credentials`() {
+        // given: a file in a private repository and a token that may read it
+        val (repository, gav) = useDocument(PRIVATE_REPOSITORY, "listed-vary", "artifact.jar", "content", true)
+        val (name, secret) = useAuth("cache-vary-reader", "cache-vary-reader-secret", routes = mapOf("/$PRIVATE_REPOSITORY" to READ))
+
+        // when: the directory is browsed with those credentials
+        val response = get("$base/$repository/$gav").basicAuth(name, secret).asString()
+
+        // then: a cache keys the listing by the credentials and the session cookie
+        assertThat(response.headers.getFirst("Vary")).isEqualTo("Authorization, Cookie")
+    }
+
+    @Test
+    fun `should keep an anonymous html listing of a public repository out of shared caches`() {
+        // given: a directory in a public repository
+        val (repository, gav) = useDocument("releases", "listed-public", "artifact.jar", "content", true)
+
+        // when: the directory is browsed without credentials
+        val response = get("$base/$repository/$gav").asString()
+
+        // then: the listing is not stored by a shared cache either, so the policy stays the same for every caller
+        assertThat(response.status).isEqualTo(200)
+        assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
+    }
+
+    @Test
+    fun `should keep an api listing of a directory out of shared caches`() {
+        // given: a directory in a private repository and a token that may read it
+        val (repository, gav) = useDocument(PRIVATE_REPOSITORY, "listed-api", "artifact.jar", "content", true)
+        val (name, secret) = useAuth("cache-api-reader", "cache-api-reader-secret", routes = mapOf("/$PRIVATE_REPOSITORY" to READ))
+
+        // when: the directory is described through the API with those credentials
+        val response = get("$base/api/maven/details/$repository/$gav").basicAuth(name, secret).asString()
+
+        // then: the description depends on the caller, so no shared cache may store it
+        assertThat(response.status).isEqualTo(200)
+        assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
+        assertThat(response.headers.getFirst("Vary")).isEqualTo("Authorization, Cookie")
+    }
+
+    @Test
+    fun `should keep the api root of a repository out of shared caches`() {
+        // given: a private repository and a token that may read it
+        val (repository) = useDocument(PRIVATE_REPOSITORY, "listed-root", "artifact.jar", "content", true)
+        val (name, secret) = useAuth("cache-root-reader", "cache-root-reader-secret", routes = mapOf("/$PRIVATE_REPOSITORY" to READ))
+
+        // when: the root of the repository is described through the API with those credentials
+        val response = get("$base/api/maven/details/$repository").basicAuth(name, secret).asString()
+
+        // then: the root depends on the caller, so no shared cache may store it
+        assertThat(response.status).isEqualTo(200)
+        assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
+    }
+
+    @Test
+    fun `should keep the api list of repositories out of shared caches`() {
+        // when: the list of repositories is requested without credentials
+        val response = get("$base/api/maven/details").asString()
+
+        // then: the list is not stored by a shared cache
+        assertThat(response.status).isEqualTo(200)
+        assertThat(response.headers.getFirst(CACHE_CONTROL)).isEqualTo("no-cache, no-store, max-age=0")
+    }
+
 }
