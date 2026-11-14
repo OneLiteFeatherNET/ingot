@@ -115,7 +115,7 @@ curl "$INGOT_URL/api/identity/teams/oss-deployers" \
 The team page in the dashboard shows the same members, and the principal list shows the new user and the machine account.
 
 {% hint style="warning" %}
-Deleting a machine account stops every build that uses one of its tokens, and the tokens cannot be restored. Revoke a token first when you only want to rotate it. See [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md).
+Deleting a machine account stops every build that uses one of its tokens, and the tokens cannot be restored. Revoke a token first when you only want to rotate it. See [Use tokens in CI](../../publish-and-consume/use-tokens-in-ci.md).
 {% endhint %}
 
 {% hint style="warning" %}
@@ -124,11 +124,11 @@ The server counts an instance admin as usable only when it is enabled and holds 
 
 A team cannot become its own ancestor, and its parent chain can be at most eight levels deep. A parent list that breaks either rule returns `409 Conflict`.
 
-Users who sign in through an OIDC provider or LDAP are created at their first sign in when the provider's `autoCreateUsers` setting is `true`, which is the default. When the setting is `false`, create the user here first, with the username the provider sends. See [Configure generic OIDC login](../configure/authentication/configure-oidc-login.md).
+Users who sign in through an OIDC provider or LDAP are created at their first sign in when the provider's `autoCreateUsers` setting is `true`, which is the default. When the setting is `false`, create the user here first, with the username the provider sends. See [Configure generic OIDC login](../../configure/authentication/configure-oidc-login.md).
 
 ## Related
 
-* [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md) creates the token that a machine account signs in with.
+* [Use tokens in CI](../../publish-and-consume/use-tokens-in-ci.md) creates the token that a machine account signs in with.
 * [Grant permissions with nodes](grant-permissions-with-nodes.md) gives teams and machine accounts their rights.
 * [Check what a principal can do](check-access.md) shows the effect of a team change before a build depends on it.
-* [Permission nodes](../reference/permission-nodes.md) lists the node grammar.
+* [Permission nodes](../../reference/permission-nodes.md) lists the node grammar.

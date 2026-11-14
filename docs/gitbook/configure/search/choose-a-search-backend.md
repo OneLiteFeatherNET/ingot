@@ -4,7 +4,7 @@ description: Choose the search backend of an Ingot cluster, read each backend st
 
 # Choose a search backend
 
-Artifact search in Ingot is answered by one search backend for the whole cluster. The backend holds the index that search reads. The built-in backend is `database`, which keeps the index in the database Ingot already uses. A plugin can register more backends, for example a dedicated search service. To write one, see [Write a search backend plugin](../../how-to/write-a-search-backend-plugin.md).
+Artifact search in Ingot is answered by one search backend for the whole cluster. The backend holds the index that search reads. The built-in backend is `database`, which keeps the index in the database Ingot already uses. A plugin can register more backends, for example a dedicated search service. To write one, see [Write a search backend plugin](../../manage/plugins/write-a-search-backend-plugin.md).
 
 {% hint style="info" %}
 A default installation needs none of this page. `searchEngine` defaults to `database`, and the cluster rule and the switch only matter when you run more than one backend.
@@ -56,7 +56,7 @@ To move the cluster to another backend, change the backend on all replicas in th
 2. Stop every replica that uses the old backend. A replica that keeps writing heartbeats for the old id blocks the switch.
 3. Wait three minutes after the last old replica has stopped. The rule needs no heartbeat of the old id younger than three minutes.
 4. Set `searchEngine` to the new id on the replicas and start them. The first replica of the new backend that becomes `AVAILABLE` stores its id, clears the date of the last full rebuild, and starts a full rebuild of all repositories with the trigger `BACKEND`.
-5. Follow the rebuild in the **Search index** panel. The index state reads **Building** until it completes, and search results can be partial until then. See [Rebuild the search index](../../how-to/rebuild-search-index.md#after-a-backend-switch).
+5. Follow the rebuild in the **Search index** panel. The index state reads **Building** until it completes, and search results can be partial until then. See [Rebuild the search index](../../manage/operate/rebuild-search-index.md#after-a-backend-switch).
 
 Search is unavailable for the cluster between step 2 and step 4, because no replica of the old backend is running and the new one has not been opened yet. Plan the window for that.
 
@@ -64,7 +64,7 @@ A switch back to the old backend follows the same steps. The rebuild starts agai
 
 ## Related
 
-* [Write a search backend plugin](../../how-to/write-a-search-backend-plugin.md) describes the interfaces a plugin implements.
-* [Rebuild the search index](../../how-to/rebuild-search-index.md) covers the rebuild, its states and its triggers.
+* [Write a search backend plugin](../../manage/plugins/write-a-search-backend-plugin.md) describes the interfaces a plugin implements.
+* [Rebuild the search index](../../manage/operate/rebuild-search-index.md) covers the rebuild, its states and its triggers.
 * [Search filters and API](../../reference/search-filters-and-api.md) lists the status fields and the `503` answers.
 * [High availability support](../../explanation/high-availability-support.md) explains how replicas share one database.

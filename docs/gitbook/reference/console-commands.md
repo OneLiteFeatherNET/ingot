@@ -185,7 +185,7 @@ In the container, pass the option through `INGOT_OPTS`, for example `INGOT_OPTS=
 java -jar ingot.jar --working-directory=/app/data --snapshot-database
 ```
 
-In a container, run the same command in the running container, as the service account, as shown in [Back up and restore](../how-to/back-up-and-restore.md):
+In a container, run the same command in the running container, as the service account, as shown in [Back up and restore](../manage/operate/back-up-and-restore.md):
 
 ```sh
 docker exec --user reposilite <container> java -jar /app/ingot.jar --working-directory=/app/data --snapshot-database
@@ -197,6 +197,6 @@ On success the command prints `Snapshot written: <file name> (<size> bytes) in b
 
 * [Upgrade changes](upgrade-changes.md): how tokens are migrated and what happens to a `--token` token.
 * [Encrypt settings secrets](../configure/encrypt-settings-secrets.md): the rotation steps behind `settings-reencrypt` and `settings-decrypt`.
-* [Back up and restore](../how-to/back-up-and-restore.md): when to take a snapshot and how to restore one.
+* [Back up and restore](../manage/operate/back-up-and-restore.md): when to take a snapshot and how to restore one.
 * [Upgrade from Reposilite 2.x](../set-up/migrate/upgrade-from-reposilite-2.md): uses `token-import`.
 * [Token migration](../set-up/migrate/token-migration.md): why tokens become machine accounts.

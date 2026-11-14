@@ -9,7 +9,7 @@ A token normally has the rights of the account that owns it. You can limit a tok
 ## Prerequisites
 
 * A token creation right: the instance admin role, or the `ingot.admin.tokens` node.
-* A machine account that owns the token. See [Manage users, teams and machine accounts](../how-to/manage-users-teams-and-machine-accounts.md).
+* A machine account that owns the token. See [Manage users, teams and machine accounts](../manage/access/manage-users-teams-and-machine-accounts.md).
 * The artifact paths you want to allow. Write them as groupId and optional artifactId, for example `net.onelitefeather` and `mycelium-bom`.
 
 ## Steps in the dashboard
@@ -72,7 +72,7 @@ curl -H "Authorization: Bearer $INGOT_TOKEN" \
   "$INGOT_URL/api/identity/check?principal=ci-deploy&token=github-releases&repository=releases&path=net/onelitefeather/mycelium-api/1.0.0/mycelium-api-1.0.0.pom&action=deploy"
 ```
 
-The first answer has `"allowed": true`. The second has `"allowed": false`. The dashboard shows the same question under **Access**, then **Check**, when you pick the token in the form. See [Check what a principal can do](../how-to/check-access.md).
+The first answer has `"allowed": true`. The second has `"allowed": false`. The dashboard shows the same question under **Access**, then **Check**, when you pick the token in the form. See [Check what a principal can do](../manage/access/check-access.md).
 
 ## Result
 

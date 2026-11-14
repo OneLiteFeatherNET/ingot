@@ -152,7 +152,7 @@ rclone check ingot-s3:my-bucket/reposilite ingot-backup:ingot-backups/$(date +%F
 
 ## Sealed secrets
 
-When a settings key is set, the secret values in the database and in `configuration.shared.json` are sealed. A backup then holds the sealed values, and it restores only with the key that wrote it. Keep the key with the backup, or in the same secret store, and check that the restored instance is given that key. A restore without the key stops at start with a message that names the domain and the property. See [Settings encryption](../reference/settings-encryption.md).
+When a settings key is set, the secret values in the database and in `configuration.shared.json` are sealed. A backup then holds the sealed values, and it restores only with the key that wrote it. Keep the key with the backup, or in the same secret store, and check that the restored instance is given that key. A restore without the key stops at start with a message that names the domain and the property. See [Settings encryption](../../reference/settings-encryption.md).
 
 ## Restore
 
@@ -183,6 +183,6 @@ The instance starts with the users, tokens and settings from the backup. The rep
 
 ## Related
 
-* [Back up before upgrading](back-up-before-upgrading.md) covers the copy that you take before a new version.
-* [Roll back an upgrade](roll-back-an-upgrade.md) describes returning to an older version with the copy.
-* [Use S3 storage](../set-up/cluster/use-s3-storage.md) and [Configure a database](../set-up/cluster/configure-database.md) describe the two storage parts.
+* [Back up before upgrading](../upgrade/back-up-before-upgrading.md) covers the copy that you take before a new version.
+* [Roll back an upgrade](../upgrade/roll-back-an-upgrade.md) describes returning to an older version with the copy.
+* [Use S3 storage](../../set-up/cluster/use-s3-storage.md) and [Configure a database](../../set-up/cluster/configure-database.md) describe the two storage parts.

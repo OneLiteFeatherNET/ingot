@@ -145,5 +145,5 @@ The instance starts, and the dashboard opens. The database contains the `setting
 
 ## Next steps
 
-* Back up the database before you upgrade. See [Back up and restore](../../how-to/back-up-and-restore.md).
+* Back up the database before you upgrade. See [Back up and restore](../../manage/operate/back-up-and-restore.md).
 * Moving existing data from one database type to another is not described here.

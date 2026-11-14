@@ -71,3 +71,27 @@ redirects:
   how-to/restrict-token-to-artifacts: publish-and-consume/restrict-token-to-artifacts.md
   how-to/verify-uploaded-checksums: publish-and-consume/verify-uploaded-checksums.md
   how-to/search-for-artifacts: publish-and-consume/search-for-artifacts.md
+  how-to/back-up-and-restore: manage/operate/back-up-and-restore.md
+  how-to/freeze-writes-for-maintenance: manage/operate/freeze-writes-for-maintenance.md
+  how-to/shut-down-without-dropping-requests: manage/operate/shut-down-without-dropping-requests.md
+  how-to/harden-a-deployment: manage/operate/harden-a-deployment.md
+  how-to/verify-release-sboms: manage/operate/verify-release-sboms.md
+  how-to/troubleshoot: manage/operate/troubleshoot.md
+  how-to/collect-a-support-bundle: manage/operate/collect-a-support-bundle.md
+  how-to/rebuild-search-index: manage/operate/rebuild-search-index.md
+  how-to/back-up-before-upgrading: manage/upgrade/back-up-before-upgrading.md
+  how-to/upgrade-ingot: manage/upgrade/upgrade-ingot.md
+  how-to/verify-an-upgrade: manage/upgrade/verify-an-upgrade.md
+  how-to/roll-back-an-upgrade: manage/upgrade/roll-back-an-upgrade.md
+  how-to/monitor-status-and-failures: manage/monitor/monitor-status-and-failures.md
+  how-to/monitor-with-the-prometheus-operator: manage/monitor/monitor-with-the-prometheus-operator.md
+  how-to/review-audit-log: manage/monitor/review-audit-log.md
+  how-to/forward-audit-events-to-a-siem: manage/monitor/forward-audit-events-to-a-siem.md
+  how-to/manage-users-teams-and-machine-accounts: manage/access/manage-users-teams-and-machine-accounts.md
+  how-to/grant-permissions-with-nodes: manage/access/grant-permissions-with-nodes.md
+  how-to/check-access: manage/access/check-access.md
+  how-to/recover-admin-access: manage/access/recover-admin-access.md
+  how-to/install-a-plugin: manage/plugins/install-a-plugin.md
+  how-to/write-a-plugin: manage/plugins/write-a-plugin.md
+  how-to/write-a-search-backend-plugin: manage/plugins/write-a-search-backend-plugin.md
+  how-to/extend-the-dashboard-from-a-plugin: manage/plugins/extend-the-dashboard-from-a-plugin.md

@@ -84,4 +84,4 @@ The login is subject to the same failure limit as the local password. A wrong pa
 ## Related
 
 * [Configure generic OIDC login](configure-oidc-login.md)
-* [Recover admin access](../../how-to/recover-admin-access.md)
+* [Recover admin access](../../manage/access/recover-admin-access.md)

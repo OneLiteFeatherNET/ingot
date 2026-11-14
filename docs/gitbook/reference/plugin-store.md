@@ -4,7 +4,7 @@ description: Reference for the Ingot plugin store, covering the catalogue file, 
 
 # Plugin store
 
-The plugin store installs plugins from a catalogue that a Maven repository publishes. A selected plugin is downloaded at start, checked and loaded like a jar of the plugins directory. This page describes what the store reads and what it does with it. The variables are in [Plugin store](environment-variables.md#plugin-store), and the steps are in [Install a plugin](../how-to/install-a-plugin.md#install-from-the-plugin-store).
+The plugin store installs plugins from a catalogue that a Maven repository publishes. A selected plugin is downloaded at start, checked and loaded like a jar of the plugins directory. This page describes what the store reads and what it does with it. The variables are in [Plugin store](environment-variables.md#plugin-store), and the steps are in [Install a plugin](../manage/plugins/install-a-plugin.md#install-from-the-plugin-store).
 
 ## Sources and file layout
 
@@ -135,7 +135,7 @@ A failed plugin never stops the start. The server logs the state and starts with
 
 ## Related
 
-* [Install a plugin](../how-to/install-a-plugin.md) shows the steps for the store and for a jar.
+* [Install a plugin](../manage/plugins/install-a-plugin.md) shows the steps for the store and for a jar.
 * [Plugin store](environment-variables.md#plugin-store) lists the variables and their defaults.
 * [Configuration file and startup parameters](configuration-and-startup.md) describes the local key `plugins`, which adds to `INGOT_PLUGINS`.
 * [Plugin API](plugin-api.md) describes what a plugin can do once it is loaded.

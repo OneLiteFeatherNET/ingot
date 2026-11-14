@@ -77,7 +77,7 @@ The switch to a new backend starts a full rebuild of all repositories by itself,
 3. If no run is live and the index state reads **Empty**, select **Rebuild index**, choose all repositories and select **Rebuild**. The rebuild only reads storage, and it never changes a file.
 4. Wait until the index state reads **Ready**. Then compare a few known artifacts with a search.
 
-If the rebuild fails, the panel shows the state **Degraded**. Read the reason on the panel and in the log, fix it, and start the rebuild again. The steps are in [Rebuild the search index](../../how-to/rebuild-search-index.md).
+If the rebuild fails, the panel shows the state **Degraded**. Read the reason on the panel and in the log, fix it, and start the rebuild again. The steps are in [Rebuild the search index](../../manage/operate/rebuild-search-index.md).
 
 ## 4. The way back to the database
 
@@ -95,5 +95,5 @@ When no replica needs the plugin any longer, set `INGOT_OPENSEARCH_ENABLED=false
 
 * [OpenSearch search backend](../../reference/opensearch-search-backend.md) lists every variable, the index layout, the access rule and the states.
 * [Choose a search backend](choose-a-search-backend.md) explains the cluster rule and the backend states.
-* [Rebuild the search index](../../how-to/rebuild-search-index.md) covers the rebuild, the verify and their states.
+* [Rebuild the search index](../../manage/operate/rebuild-search-index.md) covers the rebuild, the verify and their states.
 * [Search filters and API](../../reference/search-filters-and-api.md#the-backend-block) describes the `backend` block of the status.

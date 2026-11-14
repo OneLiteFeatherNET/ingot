@@ -110,11 +110,11 @@ The backend reports one of the states of [Backend states](../configure/search/ch
 
 In every state except `AVAILABLE`, search answers `503` with `Retry-After: 30`, as described in [Backend states](../configure/search/choose-a-search-backend.md#backend-states). Writes are visible to search after the refresh interval of one second, and the `backend` block of the status reports the interval.
 
-Results of a write can lag behind a deploy by about a second. A file that was deleted can still appear for that long. The verify action of the Maintenance page repairs real drift, see [Rebuild the search index](../how-to/rebuild-search-index.md).
+Results of a write can lag behind a deploy by about a second. A file that was deleted can still appear for that long. The verify action of the Maintenance page repairs real drift, see [Rebuild the search index](../manage/operate/rebuild-search-index.md).
 
 ## Related
 
 * [Use OpenSearch for search](../configure/search/use-opensearch-for-search.md) is the setup, step by step.
 * [Choose a search backend](../configure/search/choose-a-search-backend.md) explains the states, the cluster rule and the switch between backends.
 * [Environment variables](environment-variables.md#opensearch-search-backend) lists the variables with the other settings of the server.
-* [Write a search backend plugin](../how-to/write-a-search-backend-plugin.md) describes the interfaces that this plugin implements.
+* [Write a search backend plugin](../manage/plugins/write-a-search-backend-plugin.md) describes the interfaces that this plugin implements.

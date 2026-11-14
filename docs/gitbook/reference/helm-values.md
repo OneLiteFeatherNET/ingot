@@ -218,11 +218,11 @@ Route the traffic with `ingress` or with `httpRoute`, not with both. In `split` 
 
 ## Monitoring
 
-The three switches are off by default. The ServiceMonitor and the PrometheusRule need the Prometheus Operator CRDs. The alerts and the dashboards read the metrics of the Prometheus plugin, which the image ships behind the switch `INGOT_METRICS_ENABLED`. The server must run with that switch and with the scrape credentials. See [Monitor with the Prometheus Operator](../how-to/monitor-with-the-prometheus-operator.md).
+The three switches are off by default. The ServiceMonitor and the PrometheusRule need the Prometheus Operator CRDs. The alerts and the dashboards read the metrics of the Prometheus plugin, which the image ships behind the switch `INGOT_METRICS_ENABLED`. The server must run with that switch and with the scrape credentials. See [Monitor with the Prometheus Operator](../manage/monitor/monitor-with-the-prometheus-operator.md).
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `serviceMonitor.enabled` | boolean | `false` | Renders a Prometheus Operator ServiceMonitor for the server. Needs the `monitoring.coreos.com` CRDs. See [Monitor with the Prometheus Operator](../how-to/monitor-with-the-prometheus-operator.md). |
+| `serviceMonitor.enabled` | boolean | `false` | Renders a Prometheus Operator ServiceMonitor for the server. Needs the `monitoring.coreos.com` CRDs. See [Monitor with the Prometheus Operator](../manage/monitor/monitor-with-the-prometheus-operator.md). |
 | `serviceMonitor.path` | string | `"/metrics"` | Path that Prometheus scrapes on the server. |
 | `serviceMonitor.interval` | string | `"30s"` | Scrape interval, as a Prometheus duration. |
 | `serviceMonitor.labels` | object | `{}` | Extra labels on the ServiceMonitor, for example the label that your Prometheus instance selects its monitors with. |

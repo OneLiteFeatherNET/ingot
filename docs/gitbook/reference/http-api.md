@@ -37,7 +37,7 @@ Wrong or missing credentials answer with `401`. A valid caller without the right
 
 ## Support
 
-Read-only routes for the system information and the support bundle. Both need the console area (`ingot.admin.console`), so an anonymous caller gets `401` and a principal without the area gets `403`. Every answer carries `Cache-Control: no-store`. Read-only mode does not refuse them. With the opt-out `INGOT_SUPPORT_BUNDLE_ENABLED=false` the two data routes answer `404` before anything is read. See [Collect a support bundle](../how-to/collect-a-support-bundle.md).
+Read-only routes for the system information and the support bundle. Both need the console area (`ingot.admin.console`), so an anonymous caller gets `401` and a principal without the area gets `403`. Every answer carries `Cache-Control: no-store`. Read-only mode does not refuse them. With the opt-out `INGOT_SUPPORT_BUNDLE_ENABLED=false` the two data routes answer `404` before anything is read. See [Collect a support bundle](../manage/operate/collect-a-support-bundle.md).
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
@@ -173,7 +173,7 @@ See [Login providers](login-providers.md) for the settings behind these endpoint
 | POST | `/api/admin/read-only` | Maintenance area | Turns read-only on. Writes are refused with `503` on every replica that reads the state. Answers `409` while `INGOT_READ_ONLY` forces the state. |
 | DELETE | `/api/admin/read-only` | Maintenance area | Turns read-only off again. Answers `409` while `INGOT_READ_ONLY` forces the state. |
 
-A change is written to the [audit log](audit-events.md) and announced on the cluster bus when one is configured. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
+A change is written to the [audit log](audit-events.md) and announced on the cluster bus when one is configured. See [Freeze writes for maintenance](../manage/operate/freeze-writes-for-maintenance.md).
 
 ## Migration: Nexus import
 
@@ -292,7 +292,7 @@ For the shape of error answers, see [API errors](api-errors.md).
 
 ### Read-only refusals
 
-While the instance is read-only, `PUT`, `POST`, `PATCH` and `DELETE` on the API and on the repository protocol answer `503` with a `Retry-After` header, and nothing is written. Authentication and authorization are checked first, so a caller without access still gets `401` or `403`. The exceptions are login, session refresh and the read-only toggle. `GET` and `HEAD` are served as before. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
+While the instance is read-only, `PUT`, `POST`, `PATCH` and `DELETE` on the API and on the repository protocol answer `503` with a `Retry-After` header, and nothing is written. Authentication and authorization are checked first, so a caller without access still gets `401` or `403`. The exceptions are login, session refresh and the read-only toggle. `GET` and `HEAD` are served as before. See [Freeze writes for maintenance](../manage/operate/freeze-writes-for-maintenance.md).
 
 ## Contributing: keeping the snapshot current
 

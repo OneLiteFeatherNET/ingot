@@ -112,7 +112,7 @@ A slot is held until the response is complete, not until the handler returns. An
 
 ## Read-only variables
 
-The switch is off by default, so an installation that does not set it writes as before. `INGOT_READ_ONLY` forces this instance read-only whatever the stored state says. Unset or `false` leaves the stored state in charge, and the state is set on the dashboard or with `POST /api/admin/read-only`. The `REPOSILITE_` name is read when the `INGOT_` name is unset or empty, and the system property `-Dingot.readOnly` is read when neither variable is set. A value other than `true` or `false` stops the start, and the message names the variable. See [Freeze writes for maintenance](../how-to/freeze-writes-for-maintenance.md).
+The switch is off by default, so an installation that does not set it writes as before. `INGOT_READ_ONLY` forces this instance read-only whatever the stored state says. Unset or `false` leaves the stored state in charge, and the state is set on the dashboard or with `POST /api/admin/read-only`. The `REPOSILITE_` name is read when the `INGOT_` name is unset or empty, and the system property `-Dingot.readOnly` is read when neither variable is set. A value other than `true` or `false` stops the start, and the message names the variable. See [Freeze writes for maintenance](../manage/operate/freeze-writes-for-maintenance.md).
 
 | Variable | Fallback | Property | Default | Meaning |
 | --- | --- | --- | --- | --- |
@@ -186,7 +186,7 @@ Boolean variables accept `true`, `false`, `1`, `0`, `on`, `off`, `yes` and `no`,
 
 ## Audit sink variables
 
-The audit plugin reads these variables at start. Without either of them the sink writes nothing and starts no thread. See [JSON lines sink](audit-events.md#json-lines-sink) for the line format and [Forward audit events to a SIEM](../how-to/forward-audit-events-to-a-siem.md) for a setup.
+The audit plugin reads these variables at start. Without either of them the sink writes nothing and starts no thread. See [JSON lines sink](audit-events.md#json-lines-sink) for the line format and [Forward audit events to a SIEM](../manage/monitor/forward-audit-events-to-a-siem.md) for a setup.
 
 | Variable | Fallback | Default | Meaning |
 | --- | --- | --- | --- |
@@ -268,7 +268,7 @@ A store plugin whose id is also held by a jar in the plugins directory is report
 
 ### Support bundle switch
 
-The system information page and the support bundle are on by default, because both are read-only and need the console area. A support bundle lists what the instance runs on and never holds a secret, see [Collect a support bundle](../how-to/collect-a-support-bundle.md).
+The system information page and the support bundle are on by default, because both are read-only and need the console area. A support bundle lists what the instance runs on and never holds a secret, see [Collect a support bundle](../manage/operate/collect-a-support-bundle.md).
 
 | Environment variable | Legacy environment variable | Default | Meaning |
 | --- | --- | --- | --- |

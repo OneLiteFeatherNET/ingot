@@ -61,12 +61,12 @@ This page runs the Ingot JAR under systemd, so that it starts at boot and restar
 
 The JAR name contains the version, so each upgrade changes the `ExecStart` line:
 
-1. Stop the service and [back up](../../how-to/back-up-before-upgrading.md) the data directory.
+1. Stop the service and [back up](../../manage/upgrade/back-up-before-upgrading.md) the data directory.
 2. Copy the new `ingot-<version>.jar` into `/opt/ingot` and change the name in `ExecStart`.
 3. Run `sudo systemctl daemon-reload` and `sudo systemctl restart ingot`.
-4. Check the result with the steps in [Verify an upgrade](../../how-to/verify-an-upgrade.md).
+4. Check the result with the steps in [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md).
 
-To return to the previous version, restore the old file name in `ExecStart` and restart. [Roll back an upgrade](../../how-to/roll-back-an-upgrade.md) describes the data side.
+To return to the previous version, restore the old file name in `ExecStart` and restart. [Roll back an upgrade](../../manage/upgrade/roll-back-an-upgrade.md) describes the data side.
 
 ## Verify
 

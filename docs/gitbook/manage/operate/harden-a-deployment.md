@@ -112,17 +112,17 @@ networkPolicy:
       - app.kubernetes.io/name: prometheus
 ```
 
-The policy needs a network plugin that enforces it, such as Calico or Cilium. Another plugin accepts the policy and enforces nothing. The chart's `networkPolicy.egress` section can also restrict outgoing traffic. See [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md) for the egress rules and the database and S3 endpoints that must stay reachable.
+The policy needs a network plugin that enforces it, such as Calico or Cilium. Another plugin accepts the policy and enforces nothing. The chart's `networkPolicy.egress` section can also restrict outgoing traffic. See [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md) for the egress rules and the database and S3 endpoints that must stay reachable.
 
 ## 7. TLS
 
-Terminate TLS at the proxy or ingress in front of Ingot, as described in [Terminate TLS at the gateway](../set-up/network/terminate-tls-at-the-gateway.md) and [Run behind a reverse proxy](../set-up/network/run-behind-reverse-proxy.md). If you want Ingot to serve HTTPS itself, follow [Enable TLS](../set-up/network/enable-tls.md).
+Terminate TLS at the proxy or ingress in front of Ingot, as described in [Terminate TLS at the gateway](../../set-up/network/terminate-tls-at-the-gateway.md) and [Run behind a reverse proxy](../../set-up/network/run-behind-reverse-proxy.md). If you want Ingot to serve HTTPS itself, follow [Enable TLS](../../set-up/network/enable-tls.md).
 
-Once users reach Ingot over HTTPS only, set `INGOT_HSTS_MAX_AGE` to a number of seconds. Ingot then sends `Strict-Transport-Security` on HTTPS requests. The variable is listed in the [environment variables](../reference/environment-variables.md) reference.
+Once users reach Ingot over HTTPS only, set `INGOT_HSTS_MAX_AGE` to a number of seconds. Ingot then sends `Strict-Transport-Security` on HTTPS requests. The variable is listed in the [environment variables](../../reference/environment-variables.md) reference.
 
 ## 8. Security headers
 
-Ingot sends its security headers on every response, and the dashboard document has its own rules. They need no setup, and your proxy should not remove them. The meaning of each header is in [Security headers](../explanation/security-headers.md).
+Ingot sends its security headers on every response, and the dashboard document has its own rules. They need no setup, and your proxy should not remove them. The meaning of each header is in [Security headers](../../explanation/security-headers.md).
 
 ## 9. Trusted proxies
 
@@ -135,7 +135,7 @@ environment:
   - INGOT_TRUSTED_PROXIES=10.0.0.0/8
 ```
 
-A malformed entry stops the start and names the entry, so a typo does not silently trust more than you meant. The rules are in [Trust your proxies](../set-up/network/run-behind-reverse-proxy.md#trust-your-proxies) and in the [environment variables](../reference/environment-variables.md) reference.
+A malformed entry stops the start and names the entry, so a typo does not silently trust more than you meant. The rules are in [Trust your proxies](../../set-up/network/run-behind-reverse-proxy.md#trust-your-proxies) and in the [environment variables](../../reference/environment-variables.md) reference.
 
 ## 10. Settings secrets
 
@@ -162,19 +162,19 @@ secrets:
 
 The file must be readable by uid `977`. Every instance that shares the database needs the same key, and a different key stops the instance at start.
 
-In Kubernetes, put the key in a Secret and mount it as a file, or deliver it with your GitOps tool. Keep the database password in a Secret too: the chart reads it through `database.existingSecret`, see [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md).
+In Kubernetes, put the key in a Secret and mount it as a file, or deliver it with your GitOps tool. Keep the database password in a Secret too: the chart reads it through `database.existingSecret`, see [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md).
 
-The steps for a first setup, a key rotation and a return to a build without encryption are in [Encrypt settings secrets](../configure/encrypt-settings-secrets.md). The Kubernetes delivery of the secrets is in [Manage secrets with GitOps](../set-up/deploy/manage-secrets-with-gitops.md), and the key variables are in [Settings encryption](../reference/settings-encryption.md).
+The steps for a first setup, a key rotation and a return to a build without encryption are in [Encrypt settings secrets](../../configure/encrypt-settings-secrets.md). The Kubernetes delivery of the secrets is in [Manage secrets with GitOps](../../set-up/deploy/manage-secrets-with-gitops.md), and the key variables are in [Settings encryption](../../reference/settings-encryption.md).
 
 ## 11. Token hygiene
 
-* Give each CI job or script its own machine account with the narrowest permissions it needs. Rotate its token when the job changes. See [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md) for the steps and [Restrict a token to artifacts](../publish-and-consume/restrict-token-to-artifacts.md) for limiting a token to a path.
+* Give each CI job or script its own machine account with the narrowest permissions it needs. Rotate its token when the job changes. See [Use tokens in CI](../../publish-and-consume/use-tokens-in-ci.md) for the steps and [Restrict a token to artifacts](../../publish-and-consume/restrict-token-to-artifacts.md) for limiting a token to a path.
 * Do not keep a temporary admin token in the startup options. A value in `INGOT_OPTS` is part of the container configuration and shows in `docker inspect`. Start with `--token` once, create a permanent administrator, and remove the flag.
-* Revoke a token as soon as it is no longer used, and rotate a secret that may have leaked. [Use tokens in CI](../publish-and-consume/use-tokens-in-ci.md) describes both.
+* Revoke a token as soon as it is no longer used, and rotate a secret that may have leaked. [Use tokens in CI](../../publish-and-consume/use-tokens-in-ci.md) describes both.
 
 ## 12. Admin recovery
 
-Before you need it, make sure that at least two people can sign in as an administrator, or that you know how to start a temporary admin token. [Recover admin access](recover-admin-access.md) describes the setup code, the `--token` flag and the wait for a lockout to end.
+Before you need it, make sure that at least two people can sign in as an administrator, or that you know how to start a temporary admin token. [Recover admin access](../access/recover-admin-access.md) describes the setup code, the `--token` flag and the wait for a lockout to end.
 
 A temporary token created with `--token` exists only while the server runs. Once the server restarts it is gone, unless you pass the flag again. Note when you used it, so that you can check the audit events from that period.
 
@@ -194,7 +194,7 @@ environment:
   - INGOT_AUDIT_SINK_FILE=audit/ingot-audit.jsonl
 ```
 
-Use [Forward audit events to a SIEM](forward-audit-events-to-a-siem.md) for the collector side, including rotation and filtering. The event names are listed in [Audit events](../reference/audit-events.md).
+Use [Forward audit events to a SIEM](../monitor/forward-audit-events-to-a-siem.md) for the collector side, including rotation and filtering. The event names are listed in [Audit events](../../reference/audit-events.md).
 
 ## 14. Verify what you run
 
@@ -214,13 +214,13 @@ cosign verify \
 
 Replace `<version>` with a release number. Nightly images carry no signature, so the check fails for `nightly` by design. Release images also carry an SBOM and a provenance attestation, which the release build pushes with the image.
 
-For the jar and its SBOMs, follow [Verify the SBOMs of a release](verify-release-sboms.md). The full list of checks is in [Verify a release](../../../.github/RELEASE.md#verify-a-release).
+For the jar and its SBOMs, follow [Verify the SBOMs of a release](verify-release-sboms.md). The full list of checks is in [Verify a release](../../../../.github/RELEASE.md#verify-a-release).
 
 ## 15. Keep up with releases
 
-* Watch the releases of the repository, or subscribe to its release feed, and read the [upgrade changes](../reference/upgrade-changes.md) before each upgrade.
-* Back up before each upgrade and verify the result, as described in [Back up before upgrading](back-up-before-upgrading.md) and [Verify an upgrade](verify-an-upgrade.md).
-* Security fixes are made for the latest minor release line and for `main`. The [security policy](../../../.github/SECURITY.md) lists the supported versions. Report a vulnerability through the security advisory form of the repository, not through a public issue.
+* Watch the releases of the repository, or subscribe to its release feed, and read the [upgrade changes](../../reference/upgrade-changes.md) before each upgrade.
+* Back up before each upgrade and verify the result, as described in [Back up before upgrading](../upgrade/back-up-before-upgrading.md) and [Verify an upgrade](../upgrade/verify-an-upgrade.md).
+* Security fixes are made for the latest minor release line and for `main`. The [security policy](../../../../.github/SECURITY.md) lists the supported versions. Report a vulnerability through the security advisory form of the repository, not through a public issue.
 
 ## Compose file with the hardening applied
 
@@ -288,6 +288,6 @@ The chart's `env` list replaces its default list as a whole. The default holds `
 
 ## Related
 
-* [Run on Kubernetes](../set-up/deploy/run-on-kubernetes.md) covers the chart values for the database, storage and ingress.
-* The file `docker-compose.split.yml` in the repository runs the dashboard in its own container, read-only, with all capabilities dropped and no-new-privileges set. See [Run the dashboard in a separate container](../set-up/deploy/run-split-dashboard-container.md).
-* [Configuration and startup](../reference/configuration-and-startup.md) lists the startup parameters.
+* [Run on Kubernetes](../../set-up/deploy/run-on-kubernetes.md) covers the chart values for the database, storage and ingress.
+* The file `docker-compose.split.yml` in the repository runs the dashboard in its own container, read-only, with all capabilities dropped and no-new-privileges set. See [Run the dashboard in a separate container](../../set-up/deploy/run-split-dashboard-container.md).
+* [Configuration and startup](../../reference/configuration-and-startup.md) lists the startup parameters.

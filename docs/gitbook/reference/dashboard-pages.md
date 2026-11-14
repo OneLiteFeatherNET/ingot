@@ -254,4 +254,4 @@ This section covers the Administration tree and the **Repositories** page. It de
 
 * [Search filters and API](search-filters-and-api.md)
 * [Artifact permission nodes](artifact-permission-nodes.md)
-* [Review the audit log](../how-to/review-audit-log.md)
+* [Review the audit log](../manage/monitor/review-audit-log.md)

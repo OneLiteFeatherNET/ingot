@@ -12,7 +12,7 @@ The container upgrade tests do not cover this path. The steps below come from th
 
 ## Prerequisites
 
-* A [backup](../../how-to/back-up-before-upgrading.md) of the 2.x data directory, which holds `tokens.dat`.
+* A [backup](../../manage/upgrade/back-up-before-upgrading.md) of the 2.x data directory, which holds `tokens.dat`.
 * The `migration-plugin` jar. The Ingot image does not contain it. The jar is built from the source in the Ingot repository, in the project `:reposilite-plugins:migration-plugin`, with the Gradle task `shadowJar`. The build writes it to `reposilite-test/workspace/plugins/migration-plugin.jar`. No released copy of the jar was found for Ingot, so check where your copy comes from before you use it.
 * The image `ghcr.io/onelitefeathernet/ingot:1.2.0` as the server you start in step 2.
 
@@ -28,10 +28,10 @@ The container upgrade tests do not cover this path. The steps below come from th
    token-import tokens.json
    ```
 
-4. Check the tokens as described in [Verify an upgrade](../../how-to/verify-an-upgrade.md).
+4. Check the tokens as described in [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md).
 
 5. Stop the server, remove the `migration-plugin` jar from the `plugins` directory, and start the server again.
 
 ## Result
 
-`token-import` prints one line per token, `Access token '<name>' has been imported.`. Each token is created as a machine principal. The principal list from [Verify an upgrade](../../how-to/verify-an-upgrade.md) shows them, and the `migration-plugin` jar is gone from the `plugins` directory.
+`token-import` prints one line per token, `Access token '<name>' has been imported.`. Each token is created as a machine principal. The principal list from [Verify an upgrade](../../manage/upgrade/verify-an-upgrade.md) shows them, and the `migration-plugin` jar is gone from the `plugins` directory.

@@ -12,7 +12,7 @@ Each release on the [releases page](https://github.com/OneLiteFeatherNET/ingot/r
 | `ingot-<version>.cdx.json` | The Java and Kotlin libraries that the jar contains, the runtime classpath of the server. |
 | `ingot-frontend-<version>.cdx.json` | The npm packages of the dashboard. The dashboard is compiled into the jar as JavaScript, so its packages are not visible in the first file. |
 
-Both SBOMs use the [CycloneDX](https://cyclonedx.org/) format in version 1.6, as JSON. The full list of release assets is in [`.github/RELEASE.md`](../../../.github/RELEASE.md). The container images and the Helm chart are not described by these files. Their signatures are covered in the same document.
+Both SBOMs use the [CycloneDX](https://cyclonedx.org/) format in version 1.6, as JSON. The full list of release assets is in [`.github/RELEASE.md`](../../../../.github/RELEASE.md). The container images and the Helm chart are not described by these files. Their signatures are covered in the same document.
 
 Nightly images do not come with SBOM files.
 
@@ -35,7 +35,7 @@ gh attestation verify ingot-<version>.jar \
 
 The command exits with an error when no SBOM attestation of the jar exists, or when the attestation was made by another workflow, branch or repository. The release workflow runs the same check before it publishes the files, so a release page that carries the SBOMs has passed it.
 
-To check the build provenance of the jar itself, run the command from [Verify a release](../../../.github/RELEASE.md#verify-a-release) without the `--predicate-type` option.
+To check the build provenance of the jar itself, run the command from [Verify a release](../../../../.github/RELEASE.md#verify-a-release) without the `--predicate-type` option.
 
 ## Read the components
 
@@ -70,5 +70,5 @@ A scanner report describes the components in the file, not whether Ingot is expl
 
 ## Related
 
-- [Verify a release](../../../.github/RELEASE.md#verify-a-release)
-- [Upgrade Ingot](upgrade-ingot.md)
+- [Verify a release](../../../../.github/RELEASE.md#verify-a-release)
+- [Upgrade Ingot](../upgrade/upgrade-ingot.md)

@@ -4,7 +4,7 @@ description: Answers to the questions that come up before and after adopting Ing
 
 # Frequently asked questions
 
-Each answer is short and links to the page that gives the details. For a failure you are seeing now, go to [Troubleshoot Ingot](../how-to/troubleshoot.md) instead.
+Each answer is short and links to the page that gives the details. For a failure you are seeing now, go to [Troubleshoot Ingot](../manage/operate/troubleshoot.md) instead.
 
 ## Is Ingot really a drop-in replacement for Reposilite?
 
@@ -37,7 +37,7 @@ See [Configure a database](../set-up/cluster/configure-database.md) for the conn
 
 Yes, if you take a backup before the upgrade. The old version reads the state it had before the first start of Ingot, so a rollback restores that state. Anything created in Ingot after the upgrade is not visible to Reposilite, and tokens created in Ingot do not work there.
 
-The steps and the list of what is lost are in [Roll back an upgrade](../how-to/roll-back-an-upgrade.md). Read it before you start the upgrade.
+The steps and the list of what is lost are in [Roll back an upgrade](../manage/upgrade/roll-back-an-upgrade.md). Read it before you start the upgrade.
 
 ## What does high availability need?
 
@@ -64,12 +64,12 @@ Ingot is licensed under the Apache License 2.0. It is a fork of [Reposilite](htt
 
 ## Where do I ask for help?
 
-* **Bugs and feature requests:** open an issue at [OneLiteFeatherNET/ingot](https://github.com/OneLiteFeatherNET/ingot/issues). The bug report form asks for the Ingot version, how you run Ingot, the environment, the relevant log output and the relevant configuration. A [support bundle](../how-to/collect-a-support-bundle.md) describes the instance without its secrets.
+* **Bugs and feature requests:** open an issue at [OneLiteFeatherNET/ingot](https://github.com/OneLiteFeatherNET/ingot/issues). The bug report form asks for the Ingot version, how you run Ingot, the environment, the relevant log output and the relevant configuration. A [support bundle](../manage/operate/collect-a-support-bundle.md) describes the instance without its secrets.
 * **Security problems:** report them privately through the [security policy](https://github.com/OneLiteFeatherNET/ingot/security/policy), not in a public issue.
 
 The issue templates do not list a chat channel yet.
 
 ## Related pages
 
-* [Troubleshoot Ingot](../how-to/troubleshoot.md) gives the cause and the fix of common failures.
+* [Troubleshoot Ingot](../manage/operate/troubleshoot.md) gives the cause and the fix of common failures.
 * [Glossary](glossary.md) explains the terms used across these pages.

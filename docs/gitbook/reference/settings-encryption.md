@@ -95,4 +95,4 @@ The settings can be exported with a password, independently of the key. The file
 - Encryption of the database as a whole, of the search index and of artifacts.
 - External key managers. The key is read from the environment or a file. An external provider is a follow-up.
 
-A backup of the database holds the sealed values and restores only with the key that wrote it. See [Back up and restore](../how-to/back-up-and-restore.md).
+A backup of the database holds the sealed values and restores only with the key that wrote it. See [Back up and restore](../manage/operate/back-up-and-restore.md).

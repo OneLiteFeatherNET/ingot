@@ -13,7 +13,7 @@ Ingot 1.2.0 is the first release with the identity model and artifact search. In
 * **Mirror cache.** The `mirror_cache_entry` table gains a nullable `source_host` column. Existing rows keep working without a value.
 * **Tokens.** If the instance has persistent tokens, they are copied once to machine principals. The log shows a line of the form `Identity | migrated 7 access token(s) to machine principals`.
 * **Search index.** The index is empty, so the first start runs a full rebuild in the background. Until it completes, the index state is **Building**.
-* **Schema lock.** On MariaDB and MySQL, the first start creates the `ingot_lock` table. Replicas that start together take turns on the schema, and a replica may wait for the others for a short time. No setting has to change. `INGOT_LOCAL_SCHEMALOCKTIMEOUT` (seconds, default `300`) is optional. See [Multi-replica operation](../explanation/multi-replica-operation.md#schema-initialisation).
+* **Schema lock.** On MariaDB and MySQL, the first start creates the `ingot_lock` table. Replicas that start together take turns on the schema, and a replica may wait for the others for a short time. No setting has to change. `INGOT_LOCAL_SCHEMALOCKTIMEOUT` (seconds, default `300`) is optional. See [Multi-replica operation](../../explanation/multi-replica-operation.md#schema-initialisation).
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ Ingot 1.2.0 is the first release with the identity model and artifact search. In
 * The image `ghcr.io/onelitefeathernet/ingot:1.2.0`.
 
 {% hint style="warning" %}
-A rolling upgrade, with replicas of the old and the new release on one database, is covered only for the order and the limits in [High availability support](../explanation/high-availability-support.md#rolling-upgrade-rule). Start one replica of 1.2.0 first and replace the others after it. Until every replica runs 1.2.0, enable no scheduled cleanup policy and freeze token changes (creating, rotating and revoking tokens), because token changes are not tested. Alternatively, keep a single replica running for a short window.
+A rolling upgrade, with replicas of the old and the new release on one database, is covered only for the order and the limits in [High availability support](../../explanation/high-availability-support.md#rolling-upgrade-rule). Start one replica of 1.2.0 first and replace the others after it. Until every replica runs 1.2.0, enable no scheduled cleanup policy and freeze token changes (creating, rotating and revoking tokens), because token changes are not tested. Alternatively, keep a single replica running for a short window.
 {% endhint %}
 
 ## Steps
@@ -39,7 +39,7 @@ A rolling upgrade, with replicas of the old and the new release on one database,
 
 4. Read the log of the first start. If the instance had persistent tokens, the migration line is there. Run the checks in [Verify an upgrade](verify-an-upgrade.md).
 
-5. Open the **Maintenance** page and wait for the **Search index** rebuild to finish. The state then reads **Ready**. If it reads **Degraded**, see [Rebuild the search index](rebuild-search-index.md#index-states).
+5. Open the **Maintenance** page and wait for the **Search index** rebuild to finish. The state then reads **Ready**. If it reads **Degraded**, see [Rebuild the search index](../operate/rebuild-search-index.md#index-states).
 
 ## Result
 

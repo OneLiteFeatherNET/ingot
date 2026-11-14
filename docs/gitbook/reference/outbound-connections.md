@@ -26,7 +26,7 @@ Ingot asks `https://api.github.com/repos/OneLiteFeatherNET/ingot/releases/latest
 
 The check runs when an instance status request or the `status` console command needs the latest version, and at most once an hour. It does not run at startup. The request is a plain `GET` with no body, and it carries no Ingot identifier, instance identifier or version number. The JDK adds its own default `User-Agent` header and the source address of the host, and Ingot cannot remove either.
 
-To turn it off, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment, or `-Dingot.status.remote-version-check=false` in the JVM options. The property wins when both are set. While the check is off, the instance reports its own version as the latest one. See [Remote version check](environment-variables.md#remote-version-check) and [Monitor status and failures](../how-to/monitor-status-and-failures.md).
+To turn it off, set `INGOT_STATUS_REMOTE_VERSION_CHECK=false` in the environment, or `-Dingot.status.remote-version-check=false` in the JVM options. The property wins when both are set. While the check is off, the instance reports its own version as the latest one. See [Remote version check](environment-variables.md#remote-version-check) and [Monitor status and failures](../manage/monitor/monitor-status-and-failures.md).
 
 ## Mirror and proxy repositories
 
