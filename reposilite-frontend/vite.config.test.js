@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { stripHtmlComments } from './vite.config.js'
+import { stripHtmlComments } from './vite.config'
 
 const indexHtml = readFileSync(fileURLToPath(new URL('./index.html', import.meta.url)), 'utf8')
 

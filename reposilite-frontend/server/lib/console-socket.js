@@ -20,9 +20,9 @@
 // text, and text from the server is sent back as text.
 
 import WebSocket from 'ws'
-import { dashboardOrNull } from './state.js'
-import { classify } from './route-classifier.js'
-import { upstreamUrl, forwardedHeaders } from './upstream.js'
+import { dashboardOrNull } from './state'
+import { classify } from './route-classifier'
+import { upstreamUrl, forwardedHeaders } from './upstream'
 
 // The headers of the browser that the server needs to know who is connecting.
 const FORWARDED_BY_CLIENT = ['cookie', 'authorization', 'origin', 'user-agent']

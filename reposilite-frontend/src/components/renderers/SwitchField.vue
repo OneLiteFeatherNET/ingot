@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import MdSwitch from '../md/MdSwitch.vue'
-import { descriptionText } from './description.js'
+import { descriptionText } from './description'
 
 /*
  * Material Design 3 switch for a boolean setting in the generated forms, laid out as a list row:

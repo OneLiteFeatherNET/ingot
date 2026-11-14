@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { splitDescription, descriptionText } from './description.js'
+import { splitDescription, descriptionText } from './description'
 
 describe('splitDescription', () => {
   it('returns a plain description as a single line', () => {

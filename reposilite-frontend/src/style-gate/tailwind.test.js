@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { join } from 'node:path'
-import { createResolver } from './tailwind.js'
+import { createResolver } from './tailwind'
 
 // The resolver compiles the committed src/style.css with the Tailwind compiler. Each test builds its own resolver.
 const SRC = join(process.cwd(), 'src')

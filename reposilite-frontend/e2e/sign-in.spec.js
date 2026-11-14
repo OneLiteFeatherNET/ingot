@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { signInAsAdmin, signInWithAccessToken, signOut } from './support/session.js'
-import { siteUrl } from './support/api.js'
+import { test, expect } from './support/fixtures'
+import { signInAsAdmin, signInWithAccessToken, signOut } from './support/session'
+import { siteUrl } from './support/api'
 
 test.describe('sign in and sign out', () => {
   test('signs the instance admin in and out again', async ({ page }) => {

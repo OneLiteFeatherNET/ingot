@@ -17,10 +17,10 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { siteUrl } from './support/api.js'
-import { buildStylePlugin, PLUGIN_NAME } from './support/plugin-fixture.js'
-import { resolveJar, startServer } from './support/server.js'
-import { signInAsAdmin } from './support/session.js'
+import { siteUrl } from './support/api'
+import { buildStylePlugin, PLUGIN_NAME } from './support/plugin-fixture'
+import { resolveJar, startServer } from './support/server'
+import { signInAsAdmin } from './support/session'
 
 /*
  * A plugin that ships a stylesheet, end to end: the shaded server loads the fixture plugin from its plugins directory,

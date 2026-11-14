@@ -19,7 +19,7 @@ import { isEnumControl, isOneOfEnumControl, rankWith } from '@jsonforms/core'
 import { rendererProps, useJsonFormsControl } from '@jsonforms/vue'
 import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed } from 'vue'
-import { descriptionText } from './description.js'
+import { descriptionText } from './description'
 import MdSelect from '../md/MdSelect.vue'
 
 /*

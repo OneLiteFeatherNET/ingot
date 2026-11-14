@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
-import { signInAsAdmin } from './support/session.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
+import { signInAsAdmin } from './support/session'
 
 test.describe('browse overview', () => {
   test('keeps the full repository URL of the build snippet on one line, scrolling sideways instead of breaking it', async ({ page, seed }) => {

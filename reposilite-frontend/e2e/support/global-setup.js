@@ -15,8 +15,8 @@
  */
 
 import { randomBytes } from 'node:crypto'
-import { buildStylePlugin } from './plugin-fixture.js'
-import { resolveJar, startServer } from './server.js'
+import { buildStylePlugin } from './plugin-fixture'
+import { resolveJar, startServer } from './server'
 
 /*
  * One server for the whole run. Its secrets are generated here, handed to the tests through environment

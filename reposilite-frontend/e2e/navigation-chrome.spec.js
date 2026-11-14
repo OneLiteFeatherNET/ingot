@@ -16,9 +16,9 @@
 
 // The chrome of the window: the navigation rail, the top bar and the account menu. The layout is measured in a real
 // browser, because the alignment is a matter of boxes, not of classes.
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
-import { ACCOUNT_NAME } from './support/session.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
+import { ACCOUNT_NAME } from './support/session'
 
 const DESKTOP_WIDTHS = [1280, 1920]
 

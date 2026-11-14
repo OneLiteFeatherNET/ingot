@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { COLOUR_CLASSES, parseAnsi } from './ansi.js'
+import { COLOUR_CLASSES, parseAnsi } from './ansi'
 
 const ESC = '\u001b'
 

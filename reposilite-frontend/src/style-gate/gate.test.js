@@ -17,11 +17,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { RULES } from './rules.js'
-import { collectSources } from './sources.js'
-import { scanSources } from './scan.js'
-import { createResolver } from './tailwind.js'
-import { checkRatchet, parseList } from './ratchet.js'
+import { RULES } from './rules'
+import { collectSources } from './sources'
+import { scanSources } from './scan'
+import { createResolver } from './tailwind'
+import { checkRatchet, parseList } from './ratchet'
 
 // The repository test. It reads the committed sources, baselines and allowlists under the frontend directory, where
 // vitest runs, and never writes. Every test rebuilds its inputs from disk, so no state carries from one test to another.

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { siteUrl } from './support/api.js'
+import { test, expect } from './support/fixtures'
+import { siteUrl } from './support/api'
 
 // A detail page of the administration names its item in one heading, the h1 of the page frame, and has one way back to
 // the list it belongs to. Below 1240 pixels that way back is the back arrow of the frame; from 1240 pixels it is the list

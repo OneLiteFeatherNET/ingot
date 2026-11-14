@@ -22,7 +22,7 @@ import { computed, ref } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdButton from '../md/MdButton.vue'
-import { descriptionText } from './description.js'
+import { descriptionText } from './description'
 import { COLOUR_PROPERTIES, isColour } from '../../theme/settings'
 
 const COLOUR_HELP = 'Use a colour in the form #RRGGBB, such as #006a6a.'

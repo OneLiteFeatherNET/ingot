@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { upstreamUrl, forwardedHeaders, isHopByHop } from './upstream.js'
+import { upstreamUrl, forwardedHeaders, isHopByHop } from './upstream'
 
 describe('upstream url', () => {
   it('keeps the path and the query of the request', () => {

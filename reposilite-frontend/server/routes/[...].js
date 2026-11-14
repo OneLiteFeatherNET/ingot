@@ -19,13 +19,13 @@
 
 /* global defineEventHandler */
 
-import { dashboardOrNull } from '../lib/state.js'
-import { classify } from '../lib/route-classifier.js'
-import { cacheControlFor, documentHeaders, securityHeaders } from '../lib/security-headers.js'
-import { contentTypeFor } from '../lib/mime.js'
-import { forwardedHeaders, upstreamUrl } from '../lib/upstream.js'
-import { outgoingRequestHeaders, proxyRequest } from '../lib/proxy.js'
-import { socketHooks } from '../lib/console-socket.js'
+import { dashboardOrNull } from '../lib/state'
+import { classify } from '../lib/route-classifier'
+import { cacheControlFor, documentHeaders, securityHeaders } from '../lib/security-headers'
+import { contentTypeFor } from '../lib/mime'
+import { forwardedHeaders, upstreamUrl } from '../lib/upstream'
+import { outgoingRequestHeaders, proxyRequest } from '../lib/proxy'
+import { socketHooks } from '../lib/console-socket'
 
 function respond(status, body, headers, method) {
   return new Response(method === 'HEAD' ? null : body, {

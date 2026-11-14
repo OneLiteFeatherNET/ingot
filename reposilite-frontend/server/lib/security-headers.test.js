@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest'
 import fixture from '../test/fixtures/security-headers.json'
-import { securityHeaders, cacheControlFor, documentHeaders } from './security-headers.js'
+import { securityHeaders, cacheControlFor, documentHeaders } from './security-headers'
 
 // The fixture holds the values of the nginx template this server replaces. A change to any of them
 // is then a visible change in this test.

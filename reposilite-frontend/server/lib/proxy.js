@@ -16,8 +16,8 @@
 
 import { Readable, Transform, pipeline } from 'node:stream'
 import { Agent, request } from 'undici'
-import { securityHeaders } from './security-headers.js'
-import { isHopByHop } from './upstream.js'
+import { securityHeaders } from './security-headers'
+import { isHopByHop } from './upstream'
 
 // The same budget the nginx location gave a read and a send: five minutes between two chunks, so a slow
 // artifact is not cut off while it streams, and a stalled connection does not hold a socket forever.

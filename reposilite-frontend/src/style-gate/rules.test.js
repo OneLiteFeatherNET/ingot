@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { RULES } from './rules.js'
+import { RULES } from './rules'
 
 const IDS = [
   'style-block',

@@ -134,7 +134,7 @@ import { useVanillaArrayControl } from '@dzikoysk/vue-vanilla'
 import MdButton from '../md/MdButton.vue'
 import MdIconButton from '../md/MdIconButton.vue'
 import MdTextField from '../md/MdTextField.vue'
-import { descriptionText } from './description.js'
+import { descriptionText } from './description'
 
 /*
  * Arrays, drawn as a list rather than as tabs. An array of plain values is a list of rows, each an

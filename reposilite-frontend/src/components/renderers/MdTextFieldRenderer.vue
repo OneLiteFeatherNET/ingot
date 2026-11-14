@@ -21,8 +21,8 @@ import { useVanillaControl } from '@dzikoysk/vue-vanilla'
 import { computed, ref, watch } from 'vue'
 import MdTextField from '../md/MdTextField.vue'
 import MdIconButton from '../md/MdIconButton.vue'
-import { descriptionText } from './description.js'
-import { isSensitive } from './sensitive.js'
+import { descriptionText } from './description'
+import { isSensitive } from './sensitive'
 
 /*
  * Outlined text field for a string, a number or an integer. It replaces the vanilla input for

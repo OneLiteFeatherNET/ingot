@@ -22,9 +22,9 @@
 
 import { useStorage } from 'nitropack/runtime'
 import segments from '../../src/router/dashboard-segments.json'
-import { readDashboardConfig } from '../lib/config.js'
-import { applyBasePath } from '../lib/index-html.js'
-import { setDashboard } from '../lib/state.js'
+import { readDashboardConfig } from '../lib/config'
+import { applyBasePath } from '../lib/index-html'
+import { setDashboard } from '../lib/state'
 
 export default defineNitroPlugin(() => {
   const config = readDashboardConfig(process.env)

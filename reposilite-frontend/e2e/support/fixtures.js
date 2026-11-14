@@ -15,9 +15,9 @@
  */
 
 import { test as base, expect } from '@playwright/test'
-import { createRepository, deleteRepository, uploadFile } from './api.js'
-import { scopedName } from './names.js'
-import { signInAsAdmin } from './session.js'
+import { createRepository, deleteRepository, uploadFile } from './api'
+import { scopedName } from './names'
+import { signInAsAdmin } from './session'
 
 /*
  * The test object of this suite. Every test gets:

@@ -22,7 +22,7 @@ import { flushPromises } from '@vue/test-utils'
 // stream through EventSource. Both are replaced so the test runs without a server, a token
 // or a browser stream.
 const session = vi.hoisted(() => ({ client: null, token: null, authMode: null }))
-vi.mock('../session.js', () => ({ useSession: () => session }))
+vi.mock('../session', () => ({ useSession: () => session }))
 vi.mock('../client', () => ({ createURL: (path) => `http://localhost${path}` }))
 vi.mock('../../helpers/toast', () => ({
   createErrorToast: vi.fn(),

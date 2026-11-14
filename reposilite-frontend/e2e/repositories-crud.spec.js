@@ -21,8 +21,8 @@
  * alone, once the seeding specs have finished.
  */
 
-import { test, expect } from './support/fixtures.js'
-import { listRepositoryIds, readRepository, siteUrl } from './support/api.js'
+import { test, expect } from './support/fixtures'
+import { listRepositoryIds, readRepository, siteUrl } from './support/api'
 
 const EDITED_DESCRIPTION = 'Edited by the browser suite'
 

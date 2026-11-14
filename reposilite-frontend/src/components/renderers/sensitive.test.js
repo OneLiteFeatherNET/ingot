@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { isSensitive, keyOf } from './sensitive.js'
+import { isSensitive, keyOf } from './sensitive'
 
 const plain = { type: 'string' }
 

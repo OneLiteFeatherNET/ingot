@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { applyBasePath } from './index-html.js'
+import { applyBasePath } from './index-html'
 
 const page = '<head>\n    <base href="{{REPOSILITE.BASE_PATH}}" />\n    <link rel="icon" href="favicon.png" />\n  </head>'
 
