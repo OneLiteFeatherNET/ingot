@@ -1,0 +1,97 @@
+{
+  "settings": {
+    "index": {
+      "number_of_shards": 1,
+      "number_of_replicas": 1,
+      "refresh_interval": "1s"
+    },
+    "analysis": {
+      "normalizer": {
+        "ingot_lowercase": {
+          "type": "custom",
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "_meta": {
+      "ingot_mapping_version": 1
+    },
+    "properties": {
+      "repository": {
+        "type": "keyword"
+      },
+      "path": {
+        "type": "keyword"
+      },
+      "path_lc": {
+        "type": "keyword",
+        "normalizer": "ingot_lowercase"
+      },
+      "group_id": {
+        "type": "keyword"
+      },
+      "group_id_lc": {
+        "type": "keyword",
+        "normalizer": "ingot_lowercase"
+      },
+      "artifact_id": {
+        "type": "keyword"
+      },
+      "artifact_id_lc": {
+        "type": "keyword",
+        "normalizer": "ingot_lowercase"
+      },
+      "version": {
+        "type": "keyword"
+      },
+      "version_lc": {
+        "type": "keyword",
+        "normalizer": "ingot_lowercase"
+      },
+      "gav": {
+        "type": "keyword"
+      },
+      "artifact_key": {
+        "type": "keyword"
+      },
+      "classifier": {
+        "type": "keyword"
+      },
+      "extension": {
+        "type": "keyword"
+      },
+      "snapshot": {
+        "type": "boolean"
+      },
+      "origin": {
+        "type": "keyword"
+      },
+      "source_host": {
+        "type": "keyword"
+      },
+      "size_bytes": {
+        "type": "long"
+      },
+      "last_modified": {
+        "type": "long"
+      },
+      "indexed_at": {
+        "type": "long"
+      },
+      "sha1": {
+        "type": "keyword"
+      },
+      "sha256": {
+        "type": "keyword"
+      },
+      "tokens": {
+        "type": "keyword"
+      }
+    }
+  }
+}
