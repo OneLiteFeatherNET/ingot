@@ -16,6 +16,8 @@
 
 package net.onelitefeather.ingot.logging
 
+import io.opentelemetry.api.trace.Span
+
 /** The identifiers of the active span, as lowercase hexadecimal strings. */
 data class TraceIds(val traceId: String, val spanId: String)
 
@@ -23,5 +25,18 @@ data class TraceIds(val traceId: String, val spanId: String)
 fun interface TraceContext {
 
     fun current(): TraceIds?
+
+}
+
+/**
+ * Reads the span that is current on the calling thread through the OpenTelemetry API. Under the Java agent the agent's spans
+ * are visible here, because the agent bridges them to the API that the server ships. Without an active span it reports none.
+ */
+object OpenTelemetryTraceContext : TraceContext {
+
+    override fun current(): TraceIds? {
+        val context = Span.current().spanContext
+        return if (context.isValid) TraceIds(traceId = context.traceId, spanId = context.spanId) else null
+    }
 
 }
